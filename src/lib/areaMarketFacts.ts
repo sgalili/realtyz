@@ -1,5 +1,18 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export type Comparable = {
+  id: string;
+  address: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  price: number;
+  sqm: number | null;
+  rooms: number | null;
+  features: string[];
+  photo: string | null;
+  soldAt: string;
+};
+
 export type AreaMarketFacts = {
   city: string;
   neighborhood: string | null;
@@ -15,9 +28,12 @@ export type AreaMarketFacts = {
   trendPct: number | null;
   /** Ready-to-use Hebrew sentences for landing pages and generated posts. */
   highlights: string[];
+  /** Real historical comparables (address, sqm, features, price, photo). */
+  comparables: Comparable[];
 };
 
 const FIVE_YEARS_MS = 5 * 365 * 24 * 60 * 60 * 1000;
+
 
 function avg(nums: number[]): number | null {
   if (!nums.length) return null;
@@ -48,7 +64,7 @@ export async function getAreaMarketFacts(
 
   const { data, error } = await supabase
     .from('listings')
-    .select('asking_price, sqm, rooms, deal_type, neighborhood, created_at')
+    .select('id, property_title, address, asking_price, sqm, rooms, deal_type, neighborhood, features, media_photos, created_at')
     .eq('city', city)
     .gte('created_at', since)
     .limit(1000);
@@ -119,6 +135,34 @@ export async function getAreaMarketFacts(
     );
   }
 
+  const featureList = (f: any): string[] => {
+    if (Array.isArray(f)) return f.map((x) => String(x)).filter(Boolean).slice(0, 4);
+    if (f && typeof f === 'object') {
+      return Object.entries(f)
+        .filter(([, v]) => v === true || (typeof v === 'string' && v.trim()))
+        .map(([k, v]) => (v === true ? k : `${k}: ${v}`))
+        .slice(0, 4);
+    }
+    return [];
+  };
+
+  const comparables: Comparable[] = (rows as any[])
+    .slice()
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+    .slice(0, 6)
+    .map((r) => ({
+      id: String(r.id),
+      address: r.address ?? r.property_title ?? null,
+      city,
+      neighborhood: r.neighborhood ?? null,
+      price: Number(r.asking_price),
+      sqm: Number(r.sqm) > 0 ? Number(r.sqm) : null,
+      rooms: Number(r.rooms) > 0 ? Number(r.rooms) : null,
+      features: featureList(r.features),
+      photo: Array.isArray(r.media_photos) && typeof r.media_photos[0] === 'string' ? r.media_photos[0] : null,
+      soldAt: r.created_at,
+    }));
+
   return {
     city,
     neighborhood: neighborhood ?? null,
@@ -131,5 +175,6 @@ export async function getAreaMarketFacts(
     avgSqm: avg(sqmArr),
     trendPct,
     highlights,
+    comparables,
   };
 }

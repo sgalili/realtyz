@@ -1,24 +1,38 @@
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
+import {
+  TrendingUp, TrendingDown, BarChart3, GraduationCap, Trees, HeartPulse,
+  Car, TrainFront, Waves, MapPin, Building2,
+} from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { getAreaMarketFacts } from '@/lib/areaMarketFacts';
 
 type Props = {
   city: string | null | undefined;
   neighborhood?: string | null;
   dealType: 'sale' | 'rent';
+  /** Local listing id — enables the live neighborhood amenities enrichment. */
+  listingId?: string | null;
 };
 
 function fmt(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
 }
 
-/**
- * Real local market facts (last 5 years) for the property's area, strictly
- * matched to the transaction type: sale comparables for sale pages, rental
- * comparables for rentals.
- */
-export function AreaMarketFactsCard({ city, neighborhood, dealType }: Props) {
+// Amenity buckets requested for the area profile. Each perk sentence coming
+// back from the enrichment function is routed into the first matching bucket.
+const BUCKETS = [
+  { key: 'edu', label: 'גנים, בתי ספר ומוסדות חינוך', icon: GraduationCap, re: /גן|גני|בית ספר|בתי ספר|תיכון|חינוך|מעון|אוניברסיט|מכלל/ },
+  { key: 'green', label: 'פארקים ושטחים ירוקים', icon: Trees, re: /פארק|גינה|שטח ירוק|טיילת|מגרש משחקים|ספורט|פנאי/ },
+  { key: 'health', label: 'בריאות ומרפאות', icon: HeartPulse, re: /מרפא|קופת חולים|בית חולים|רפוא|מד"?א|חירום/ },
+  { key: 'roads', label: 'צירים ראשיים וכבישים', icon: Car, re: /כביש|נתיבי איילון|מחלף|צומת|כניסה לעיר|חני/ },
+  { key: 'transit', label: 'תחבורה ציבורית ורכבת', icon: TrainFront, re: /רכבת|קו אוטובוס|אוטובוס|תחבורה|רכבת קלה|תחנת/ },
+  { key: 'beach', label: 'מרחק מהים', icon: Waves, re: /ים|חוף|מרינה/ },
+] as const;
+
+export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ['area-market-facts', city, neighborhood, dealType],
     queryFn: () => getAreaMarketFacts(city, dealType, neighborhood),
@@ -26,10 +40,39 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType }: Props) {
     staleTime: 1000 * 60 * 30,
   });
 
+  const { data: perks } = useQuery({
+    queryKey: ['area-perks', listingId],
+    enabled: !!listingId,
+    staleTime: 1000 * 60 * 60,
+    queryFn: async () => {
+      const { data: row } = await supabase
+        .from('listings')
+        .select('area_perks')
+        .eq('id', listingId as string)
+        .maybeSingle();
+      const cached = (row as any)?.area_perks;
+      if (cached?.perks?.length) return cached as { perks: string[]; one_liner_he?: string };
+      const { data: fresh } = await supabase.functions.invoke('neighborhood-perks', {
+        body: { listing_id: listingId },
+      });
+      return ((fresh as any)?.area_perks ?? null) as { perks: string[]; one_liner_he?: string } | null;
+    },
+  });
+
+  useEffect(() => {
+    // no-op: keeps the enrichment query lifecycle explicit for future extensions
+  }, [listingId]);
+
   if (isLoading || !data) return null;
 
   const isRent = dealType === 'rent';
   const label = isRent ? 'שכירות' : 'מכירה';
+  const perkList = perks?.perks ?? [];
+  const buckets = BUCKETS.map((b) => ({
+    ...b,
+    items: perkList.filter((p) => b.re.test(p)),
+  })).filter((b) => b.items.length > 0);
+  const otherPerks = perkList.filter((p) => !BUCKETS.some((b) => b.re.test(p)));
 
   return (
     <Card className="p-4 sm:p-5" dir="rtl">
@@ -67,6 +110,78 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType }: Props) {
           <li key={i} className="text-sm text-foreground/80">• {h}</li>
         ))}
       </ul>
+
+      {(buckets.length > 0 || otherPerks.length > 0) && (
+        <div className="mt-5 border-t border-border/60 pt-4">
+          <h3 className="text-sm font-bold text-foreground mb-3 inline-flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            מה יש בסביבה הקרובה
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {buckets.map((b) => (
+              <div key={b.key} className="rounded-md border border-border/60 bg-muted/30 p-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-foreground mb-1.5">
+                  <b.icon className="h-4 w-4 text-primary" />
+                  {b.label}
+                </div>
+                <ul className="space-y-1">
+                  {b.items.map((it, i) => (
+                    <li key={i} className="text-xs text-foreground/80">• {it}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          {otherPerks.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {otherPerks.map((p, i) => (
+                <li key={i} className="text-xs text-foreground/70">• {p}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {data.comparables.length > 0 && (
+        <div className="mt-5 border-t border-border/60 pt-4">
+          <h3 className="text-sm font-bold text-foreground mb-3">
+            עסקאות {isRent ? 'השכרה' : 'מכירה'} דומות באזור (5 שנים אחרונות)
+          </h3>
+          <div className="space-y-2">
+            {data.comparables.map((c) => (
+              <Link
+                key={c.id}
+                to={`/properties/${c.id}`}
+                className="flex items-center gap-3 rounded-md border border-border/60 p-2 hover:bg-muted/40 transition-colors"
+              >
+                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted border border-border/60">
+                  {c.photo ? (
+                    <img src={c.photo} alt={c.address ?? 'נכס'} loading="lazy" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Building2 className="h-4 w-4 text-muted-foreground/50" />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {c.address || c.neighborhood || c.city}
+                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {[
+                      c.sqm ? `${c.sqm} מ"ר` : null,
+                      c.rooms ? `${c.rooms} חדרים` : null,
+                      new Date(c.soldAt).getFullYear(),
+                      ...c.features,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-bold tabular-nums text-primary">{fmt(c.price)}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

@@ -20,6 +20,7 @@ import {
   type PropertyType,
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
+import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
@@ -625,6 +626,33 @@ export default function PropertyDetail() {
               <>
                 <button
                   type="button"
+                  onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${property.id}&listing=${property.id}`)}
+                  aria-label="צור פוסט לנכס"
+                  title="צור פוסט לנכס"
+                  className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
+                >
+                  <Send className="h-5 w-5" />
+                </button>
+                <PropertyShareMenu
+                  results={[{
+                    key: property.id,
+                    localId: property.id,
+                    source: 'mine',
+                    title: property.title ?? null,
+                    address: property.address ?? null,
+                    city: property.city ?? null,
+                    price: typeof property.price === 'number' ? property.price : null,
+                    rooms: (property as any).rooms ?? null,
+                    size_sqm: (property as any).sqm ?? null,
+                    property_type: (property as any).property_type ?? null,
+                    listing_type: Number(property.price) < 50_000 ? 'rent' : 'sale',
+                    photos: photos ?? [],
+                  } as any]}
+                  iconOnly
+                  variant="ghost"
+                />
+                <button
+                  type="button"
                   onClick={() => setEditMode(true)}
                   aria-label="עריכת נכס"
                   title="עריכת נכס"
@@ -990,6 +1018,7 @@ export default function PropertyDetail() {
               city={property.city}
               neighborhood={neighborhood || null}
               dealType={Number(property.price) < 50_000 ? 'rent' : 'sale'}
+              listingId={property.id}
             />
           )}
 
