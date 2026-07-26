@@ -1261,37 +1261,56 @@ Deno.serve(async (req) => {
     }
 
     // Pagination — Yad2 serves ~30-40 items per page. Walk pages until the
-    // requested `limit` is met, a page comes back empty, or `pages` is hit.
+    // requested `limit` is met, a page comes back empty, `pages` is hit, or we
+    // run out of wall-clock budget. The deadline matters: each browser page is
+    // ~15-25s, and a request that outlives the caller's fetch timeout reaches
+    // the UI as "zero Yad2 results" even though the scrape succeeded.
     const startPage = Math.max(1, Number(body?.page) || 1);
     const maxPages = isItemUrl || previewOnly
       ? 1
       : Math.min(10, Math.max(1, Number(body?.pages) || Math.ceil(limit / 30)));
+    const deadline = Date.now() + Math.min(
+      110_000,
+      Math.max(30_000, Number(body?.budget_ms) || 70_000),
+    );
     const seenKeys = new Set<string>();
     let pagesScanned = 0;
+    let stoppedOnDeadline = false;
 
-    for (let p = startPage; p < startPage + maxPages; p++) {
-      let pageUrl = inputUrl;
-      if (!isItemUrl && p > 1) {
-        const u = new URL(inputUrl);
-        u.searchParams.set("page", String(p));
-        pageUrl = u.toString();
+    try {
+      for (let p = startPage; p < startPage + maxPages; p++) {
+        if (p > startPage && Date.now() > deadline) {
+          stoppedOnDeadline = true;
+          console.warn(`[yad2-unlocker] time budget reached after ${pagesScanned} page(s) — returning ${rows.length} row(s)`);
+          break;
+        }
+        let pageUrl = inputUrl;
+        if (!isItemUrl && p > 1) {
+          const u = new URL(inputUrl);
+          u.searchParams.set("page", String(p));
+          pageUrl = u.toString();
+        }
+        pagesScanned++;
+        const pageRows = await scrapeOnce(pageUrl);
+        if (!pageRows.length) break;
+        let added = 0;
+        for (const r of pageRows) {
+          const key = String(r.external_id || r.source_url || "");
+          if (!key || seenKeys.has(key)) continue;
+          seenKeys.add(key);
+          rows.push(r);
+          added++;
+        }
+        // A page that adds nothing new means Yad2 is repeating the first page.
+        if (added === 0) break;
+        if (rows.length >= limit) break;
       }
-      pagesScanned++;
-      const pageRows = await scrapeOnce(pageUrl);
-      if (!pageRows.length) break;
-      let added = 0;
-      for (const r of pageRows) {
-        const key = String(r.external_id || r.source_url || "");
-        if (!key || seenKeys.has(key)) continue;
-        seenKeys.add(key);
-        rows.push(r);
-        added++;
-      }
-      // A page that adds nothing new means Yad2 is repeating the first page.
-      if (added === 0) break;
-      if (rows.length >= limit) break;
+    } finally {
+      try { await browserSession.browser?.disconnect?.(); } catch { /* noop */ }
+      browserSession.browser = null;
     }
     rows = rows.slice(0, limit);
+
 
 
     // Nothing worked at all — surface the real cause instead of "0 results".
