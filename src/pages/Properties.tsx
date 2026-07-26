@@ -97,7 +97,7 @@ export default function Properties() {
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
   const [sourceStatus, setSourceStatus] = useState<Record<string, { status: string; count: number; error?: string }>>({});
   const [searching, setSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.results?.length);
+  const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.hasSearched || !!cached?.results?.length);
   const [importingKey, setImportingKey] = useState<string | null>(null);
 
   // Multi-select + batch import progress
