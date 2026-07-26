@@ -1210,6 +1210,7 @@ Deno.serve(async (req) => {
             ? [toGatewayItemUrl(pageUrl)].filter(Boolean) as string[]
             : toGatewayFeedUrls(pageUrl);
           const harvest = await scrapingBrowserHarvest(pageUrl, feedUrls, (html) => {
+
             try {
               const probe = isItemUrl
                 ? ([parseItem(html, pageUrl)].filter(Boolean) as Scraped[])
