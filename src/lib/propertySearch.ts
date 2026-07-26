@@ -294,16 +294,11 @@ export async function searchAllSources(
         return { label: 'yad2' as const, results: [] };
       }
     })(),
-    invokeExternal('webtiv-homely-sync', { ...body, mode: 'search' })
-      .then((d: any) => {
-        const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
-        return { label: 'webtiv' as const, results: normalizeExternal('webtiv', items) };
-      })
-      .catch((e) => {
-        console.error('[propertySearch] webtiv-homely-sync failed', e);
-        sources.webtiv = { status: 'error', count: 0, error: String(e?.message ?? e) };
-        return { label: 'webtiv' as const, results: [] };
-      }),
+    // NOTE: `webtiv-homely-sync` is a CONTACT sync job (buyers/sellers → Homely),
+    // not a property search endpoint. Calling it here always returned a non-2xx
+    // error and never produced listings, so the office's Webtiv inventory is
+    // served through `homely-fetch-property` above (same AutomaionJson stream,
+    // both sale AND rent).
   ];
 
   const settled = await Promise.all(tasks).catch((e) => {
