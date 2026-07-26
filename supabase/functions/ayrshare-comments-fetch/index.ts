@@ -46,6 +46,13 @@ Deno.serve(async (req) => {
     const _circuit = await readCircuit(admin);
     if (_circuit) return circuitOpenResponse(_circuit, corsHeaders);
 
+    // 429 guard: exponential backoff (15s, 30s) with a hard 2-retry cap. Once
+    // the cap is hit, every remaining Ayrshare call in this invocation is
+    // short-circuited instead of hammering the provider.
+    const { createAyrshareBackoff } = await import("../_shared/ayrshare-backoff.ts");
+    const backoff = createAyrshareBackoff();
+
+
     const { profileKey } = await resolveWorkspaceProfileKey(admin);
     if (!profileKey) return json({ error: "workspace_ayrshare_profile_not_linked" }, 200);
 
