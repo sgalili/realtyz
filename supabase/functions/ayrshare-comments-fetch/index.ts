@@ -286,25 +286,33 @@ Deno.serve(async (req) => {
       try {
         // Strict 10s timeout: if Ayrshare hangs, abort gracefully so the
         // function ALWAYS terminates and the UI spinner is released.
-        const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${AYR_KEY}`,
-            "Profile-Key": profileKey,
-            "Cache-Control": "no-cache",
-          },
-          signal: AbortSignal.timeout(10_000),
+        const attempt = await backoff.run(async () => {
+          const res = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${AYR_KEY}`,
+              "Profile-Key": profileKey,
+              "Cache-Control": "no-cache",
+            },
+            signal: AbortSignal.timeout(10_000),
+          });
+          const text = await res.text();
+          let payload: any = {};
+          try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+          return { ok: res.ok, status: res.status, payload, text };
         });
-        const text = await res.text();
-        let payload: any = {};
-        try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
-        if (!res.ok) await tripOnAyrshareFailure(admin, res.status, payload, `comments:${platform}`);
-        return { ok: res.ok, status: res.status, payload, text };
+        if (!attempt) {
+          // Backoff guard halted this invocation after repeated 429s.
+          return { ok: false, status: 429, payload: { message: "rate_limited_halted", halted: true }, text: "" };
+        }
+        if (!attempt.ok) await tripOnAyrshareFailure(admin, attempt.status, attempt.payload, `comments:${platform}`);
+        return attempt;
       } catch (fetchErr) {
         const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
         console.warn("[ayrshare-comments-fetch] comments fetch aborted/failed", { id, msg });
         return { ok: false, status: 0, payload: { message: msg, timeout: true }, text: "" };
       }
     };
+
 
     // POST /api/analytics/post — returns the OUTER post's like/share/comment
     // totals (the /comments endpoint only returns the comment thread, never
