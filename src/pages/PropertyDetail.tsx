@@ -626,7 +626,7 @@ export default function PropertyDetail() {
           <div
             role="heading"
             aria-level={1}
-            className="text-xl font-bold text-right text-slate-900 block leading-snug"
+            className="text-2xl font-bold text-right text-slate-900 block leading-snug"
           >
             {dynamicHeadline}
           </div>
