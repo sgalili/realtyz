@@ -6,7 +6,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle } from 'lucide-react';
+import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
