@@ -166,6 +166,24 @@ export function PropertyRichDetailsCard({
         </section>
       )}
 
+      {amenityEntries.length > 0 && (
+        <section>
+          <h2 className="text-base font-bold text-primary mb-2 inline-flex items-center gap-2">
+            <ListChecks className="h-4 w-4" /> מתקנים ותוספות
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {amenityEntries.map(([k, v]) => (
+              <Badge key={k} variant="outline" className="font-normal">
+                {label(k)}
+                {typeof v === 'boolean' ? '' : `: ${renderValue(v)}`}
+              </Badge>
+            ))}
+          </div>
+        </section>
+      )}
+
+
+
       {chartData.length > 1 && (
         <section>
           <h2 className="text-base font-bold text-primary mb-2 inline-flex items-center gap-2">
