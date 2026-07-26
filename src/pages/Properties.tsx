@@ -1248,12 +1248,14 @@ function ResultTable({
                     const label = formatInternalListingTitle({
                       address: r.address,
                       city: r.city,
+                      neighborhood: r.neighborhood,
                       property_type: r.property_type,
                       title: r.title,
+                      raw: r.raw,
                     });
                     return r.localId
-                      ? <Link to={`/properties/${r.localId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{label}</Link>
-                      : label;
+                      ? <Link to={`/properties/${r.localId}`} className="hover:underline" onClick={(e) => e.stopPropagation()} title={label}>{label}</Link>
+                      : <span title={label}>{label}</span>;
                   })()}
                 </td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
