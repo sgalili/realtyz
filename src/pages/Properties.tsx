@@ -804,10 +804,14 @@ function ResultCard({
               ? (<>{formatPrice(result.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground">/חודש</span> : null}</>)
               : (<span className="text-sm font-semibold text-amber-600">פרטים חסרים</span>)}
           </div>
-          <Button size="sm" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="gap-1.5">
-            <Send className="h-4 w-4" />
-            פתח
-          </Button>
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <PropertyShareMenu results={[result]} />
+            <Button size="sm" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="gap-1.5">
+              <Send className="h-4 w-4" />
+              פתח
+            </Button>
+          </div>
+
         </div>
       </div>
     </Card>
