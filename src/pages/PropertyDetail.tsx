@@ -1108,10 +1108,10 @@ export default function PropertyDetail() {
 function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="h-[19px] w-[19px] text-primary mt-0.5 shrink-0" />
+      <Icon className="h-[23px] w-[23px] text-primary mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[14px] text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-[17px] font-semibold text-foreground truncate">{value}</p>
+        <p className="text-[18px] text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="text-[21px] font-semibold text-foreground truncate">{value}</p>
       </div>
     </div>
   );
@@ -1120,7 +1120,7 @@ function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: str
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-[14px] text-muted-foreground uppercase tracking-wide block">{label}</label>
+      <label className="text-[18px] text-muted-foreground uppercase tracking-wide block">{label}</label>
       {children}
     </div>
   );
