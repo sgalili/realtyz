@@ -1385,6 +1385,8 @@ Deno.serve(async (req) => {
       success: true,
       urls_scanned: pagesScanned,
       pages_scanned: pagesScanned,
+      truncated_by_budget: stoppedOnDeadline,
+
 
       records_scraped: rows.length,
       records_saved: saved,
