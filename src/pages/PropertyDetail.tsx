@@ -865,7 +865,7 @@ export default function PropertyDetail() {
 
           {/* Specs grid — editable in edit mode */}
           <Card className="p-4 sm:p-5">
-            <h2 className="text-base font-bold text-primary mb-4">מאפייני הנכס</h2>
+            <h2 className="text-xl font-bold text-primary mb-4">מאפייני הנכס</h2>
             {editMode && form ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <Field label="כותרת"><Input value={form.title} onChange={(e) => setField('title', e.target.value)} /></Field>
@@ -878,7 +878,7 @@ export default function PropertyDetail() {
                   <select
                     value={form.property_type}
                     onChange={(e) => setField('property_type', e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-base"
                   >
                     {PROPERTY_TYPE_OPTIONS.map((pt) => (
                       <option key={pt} value={pt}>{PROPERTY_TYPE_LABELS_HE[pt] || pt}</option>
@@ -902,7 +902,7 @@ export default function PropertyDetail() {
                     ['ממ"ד / מקלט', 'shelter'],
                     ['דוד שמש', 'solar'],
                   ] as const).map(([label, key]) => (
-                    <label key={key} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer">
+                    <label key={key} className="flex items-center gap-2 rounded-md border px-3 py-2 text-base cursor-pointer">
                       <input
                         type="checkbox"
                         checked={Boolean(form[key])}
