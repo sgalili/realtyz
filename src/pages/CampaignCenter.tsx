@@ -3401,16 +3401,50 @@ const PublishedFeed = () => {
     );
   };
 
-  // Remove a single image from a post card. Local-only (the card's media list
-  // is rebuilt from Ayrshare on each load, so this hides it for the session).
-  const removeMediaAt = (campaignId: string, index: number) => {
-    setRows((prev) => prev?.map((row) => {
-      if (row.id !== campaignId) return row;
-      const next = Array.isArray(row.media_urls) ? [...row.media_urls] : [];
-      next.splice(index, 1);
-      return { ...row, media_urls: next };
-    }) ?? prev);
+  // Remove a single image from a post — permanently. The URL's dedupe key is
+  // added to provider_response.removed_media_keys, which every merge path (and
+  // the DB trigger) honours, so no sync can ever bring the image back.
+  const removeMediaAt = async (campaignId: string, index: number) => {
+    const row = rows?.find((r) => r.id === campaignId);
+    const removedUrl = row?.media_urls?.[index];
+    if (!removedUrl) return;
+    const removedKey = mediaDedupeKey(removedUrl);
+
+    const nextMedia = (row.media_urls ?? []).filter((_, i) => i !== index);
+    setRows((prev) => prev?.map((r) => (r.id === campaignId ? { ...r, media_urls: nextMedia } : r)) ?? prev);
+
+    try {
+      // All DB rows behind this card (a broadcast fans out into many rows).
+      let query = supabase.from('campaign_logs').select('id, provider_response, media_urls');
+      query = row.provider_message_id
+        ? query.eq('provider_message_id', row.provider_message_id)
+        : query.eq('id', campaignId);
+      const { data: targets } = await query;
+      const list = (targets && targets.length > 0) ? targets : [{ id: campaignId, provider_response: {}, media_urls: [] } as any];
+
+      for (const t of list) {
+        const pr = (t.provider_response && typeof t.provider_response === 'object') ? { ...(t.provider_response as any) } : {};
+        const keys = new Set(readRemovedMediaKeys(pr));
+        keys.add(removedKey);
+        pr.removed_media_keys = Array.from(keys);
+        const strip = (v: unknown) => dropRemovedMedia(normalizePostMediaUrls(v), Array.from(keys));
+        if (Array.isArray(pr.media_urls)) pr.media_urls = strip(pr.media_urls);
+        if (Array.isArray(pr.cached_media_urls)) pr.cached_media_urls = strip(pr.cached_media_urls);
+
+        const { error } = await supabase
+          .from('campaign_logs')
+          .update({ provider_response: pr, media_urls: strip(t.media_urls) })
+          .eq('id', t.id);
+        if (error) throw error;
+      }
+      toast.success('התמונה הוסרה מהפוסט לצמיתות');
+    } catch (err: any) {
+      console.error('[remove-media] failed', err);
+      toast.error('הסרת התמונה נכשלה');
+      setRows((prev) => prev?.map((r) => (r.id === campaignId ? { ...r, media_urls: row.media_urls } : r)) ?? prev);
+    }
   };
+
 
 
   // Backfill missing post images (og:image) via Firecrawl once per post_url.
