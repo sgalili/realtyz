@@ -1090,42 +1090,72 @@ Deno.serve(async (req) => {
           purgeSkippedReason = `provider_returned_too_few_posts:${posts.length}/${MIN_SAFE_PURGE_POSTS}`;
         }
       }
+      // Sync integrity: never let a fresh provider payload that arrived without
+      // media wipe out media we already resolved (Graph enrichment, og:image
+      // scrape, or a permanently mirrored copy in post-media-cache).
+      const incomingIds = posts.map((p) => String(p.fb_post_id)).filter(Boolean);
+      const existingById = new Map<string, any>();
+      for (let i = 0; i < incomingIds.length; i += 200) {
+        const { data: prior } = await admin
+          .from("campaign_logs")
+          .select("provider_message_id, media_urls, provider_response")
+          .eq("user_id", ownerId)
+          .in("provider_message_id", incomingIds.slice(i, i + 200));
+        (prior ?? []).forEach((row: any) => existingById.set(String(row.provider_message_id), row));
+      }
+
       const rows = posts
         .filter((p) => p.fb_post_id)
-        .map((p) => ({
-          user_id: ownerId,
-          campaign_name: titleFromText(p.text),
-          channel: "facebook",
-          message_body: p.text || titleFromText(p.text),
-          created_at: p.created_at,
-          sent_at: p.created_at,
-          status: "sent",
-          is_archived: false,
-          provider_message_id: String(p.fb_post_id),
-          provider_response: {
-            imported_native_facebook: true,
-            imported_at: new Date().toISOString(),
-            ayrshare_profile_ref_id: p._profile_ref_id,
-            facebook_page_id: p._profile_fb_id ?? ws?.facebook_page_id ?? null,
-            facebook_page_name: p._profile_fb_name ?? ws?.facebook_page_name ??
-              null,
-            postIds: p.post_ids.map((id: string) => ({
-              platform: "facebook",
-              id,
-              postUrl: p.url || null,
-            })),
-            media_urls: p.media,
-            external_url: p.url,
-            native_status: p.status,
-            raw_keys: p._raw_keys,
-            raw: p._raw,
-          },
-          like_count: p.like_count ?? 0,
-          comment_count: p.comment_count ?? 0,
-          share_count: p.share_count ?? 0,
-          view_count: p.view_count ?? 0,
-          metrics_updated_at: new Date().toISOString(),
-        }));
+        .map((p) => {
+          const prior = existingById.get(String(p.fb_post_id));
+          const priorPr = (prior?.provider_response as any) ?? {};
+          const priorCached = normalizeMediaUrls(priorPr.cached_media_urls);
+          const priorMedia = normalizeMediaUrls(
+            (Array.isArray(prior?.media_urls) && prior.media_urls.length ? prior.media_urls : priorPr.media_urls),
+          );
+          const incomingMedia = normalizeMediaUrls(p.media);
+          const media = incomingMedia.length > 0 ? incomingMedia : priorMedia;
+          const durableMedia = priorCached.length > 0 ? priorCached : media;
+
+          return {
+            user_id: ownerId,
+            campaign_name: titleFromText(p.text),
+            channel: "facebook",
+            message_body: p.text || titleFromText(p.text),
+            created_at: p.created_at,
+            sent_at: p.created_at,
+            status: "sent",
+            is_archived: false,
+            provider_message_id: String(p.fb_post_id),
+            // Persist media on the durable column too, so the feed no longer
+            // depends on digging through provider_response.
+            media_urls: durableMedia,
+            provider_response: {
+              imported_native_facebook: true,
+              imported_at: new Date().toISOString(),
+              ayrshare_profile_ref_id: p._profile_ref_id,
+              facebook_page_id: p._profile_fb_id ?? ws?.facebook_page_id ?? null,
+              facebook_page_name: p._profile_fb_name ?? ws?.facebook_page_name ??
+                null,
+              postIds: p.post_ids.map((id: string) => ({
+                platform: "facebook",
+                id,
+                postUrl: p.url || null,
+              })),
+              media_urls: media,
+              ...(priorCached.length > 0 ? { cached_media_urls: priorCached } : {}),
+              external_url: p.url || priorPr.external_url || null,
+              native_status: p.status,
+              raw_keys: p._raw_keys,
+              raw: p._raw,
+            },
+            like_count: p.like_count ?? 0,
+            comment_count: p.comment_count ?? 0,
+            share_count: p.share_count ?? 0,
+            view_count: p.view_count ?? 0,
+            metrics_updated_at: new Date().toISOString(),
+          };
+        });
 
       if (rows.length > 0) {
         const { data, error } = await admin
