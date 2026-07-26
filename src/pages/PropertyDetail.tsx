@@ -1031,6 +1031,7 @@ export default function PropertyDetail() {
               aboutText={data.rich.about}
               furniture={data.rich.furniture}
               additional={data.rich.additional}
+              amenities={data.rich.amenities}
               priceHistory={data.rich.priceHistory}
               latitude={data.rich.latitude}
               longitude={data.rich.longitude}
