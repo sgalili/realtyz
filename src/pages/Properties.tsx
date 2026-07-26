@@ -270,6 +270,10 @@ export default function Properties() {
   const sortedResults = useMemo(() => {
     const arr = [...results];
     const numOr = (v: number | null | undefined, fallback: number) => (typeof v === 'number' && !Number.isNaN(v) ? v : fallback);
+    // Most-recent-first is the baseline everywhere: even "relevance" keeps
+    // freshly posted properties on top so the list never looks stale.
+    const byCreatedDesc = (a: UnifiedResult, b: UnifiedResult) =>
+      String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''));
     switch (sortBy) {
       case 'price_asc':
         return arr.sort((a, b) => numOr(a.price, Number.POSITIVE_INFINITY) - numOr(b.price, Number.POSITIVE_INFINITY));
@@ -280,9 +284,8 @@ export default function Properties() {
       case 'size_desc':
         return arr.sort((a, b) => numOr(b.size_sqm, -1) - numOr(a.size_sqm, -1));
       case 'newest':
-        return arr.sort((a, b) => String(b.updated_at ?? b.created_at ?? '').localeCompare(String(a.updated_at ?? a.created_at ?? '')));
       default:
-        return arr;
+        return arr.sort(byCreatedDesc);
     }
   }, [results, sortBy]);
 
