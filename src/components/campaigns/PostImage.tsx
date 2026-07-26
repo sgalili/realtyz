@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +48,7 @@ export function PostImage({
   fallbackClassName?: string;
   alt?: string;
 }) {
-  const [current, setCurrent] = useState<string | null>(() => cleanUrls([src, ...candidates])[0] ?? null);
+  const [current, setCurrent] = useState<string | null>(() => cleanUrls([src, ...candidates])[0] ?? BRAND_THUMBNAIL);
   const [attempt, setAttempt] = useState(0);
 
   const chain = cleanUrls([src, ...candidates, BRAND_THUMBNAIL]);
@@ -82,14 +81,12 @@ export function PostImage({
 
   if (!current) {
     return (
-      <div
-        className={cn(
-          'flex items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground',
-          fallbackClassName ?? className,
-        )}
-      >
-        <ImageIcon className="h-5 w-5" />
-      </div>
+      <img
+        src={BRAND_THUMBNAIL}
+        alt={alt}
+        loading="lazy"
+        className={cn(className, fallbackClassName)}
+      />
     );
   }
 
