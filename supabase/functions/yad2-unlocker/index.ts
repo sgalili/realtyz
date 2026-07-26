@@ -1157,6 +1157,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Yad2 interleaves sponsored "projects" from unrelated cities into every
+    // feed. When the caller asked for a specific city, drop rows that clearly
+    // belong somewhere else so the cache stays trustworthy. Rows with an
+    // unknown city are kept — we only discard positive mismatches.
+    const requestedCity = clean(String(body?.city ?? ""));
+    if (requestedCity && !isItemUrl) {
+      const before = rows.length;
+      const norm = (v: string) => v.replace(/["'׳״]/g, "").replace(/\s+/g, " ").trim();
+      const want = norm(requestedCity);
+      rows = rows.filter((r) => {
+        if (!r.city) return true;
+        const got = norm(r.city);
+        return got === want || got.includes(want) || want.includes(got);
+      });
+      if (rows.length !== before) {
+        console.log(
+          `[yad2-unlocker] city filter "${requestedCity}": dropped ${before - rows.length} off-city sponsored row(s)`,
+        );
+      }
+    }
+
     console.log(`[yad2-unlocker] parsed ${rows.length} row(s) via ${mode}`);
 
     let saved = 0;
