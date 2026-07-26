@@ -527,7 +527,7 @@ ${shareUrl}
           <div className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center">
             <Bot className="h-5 w-5 text-primary" />
           </div>
-          <h3 className="text-sm font-bold text-center">קצין המודיעין של Realtyz</h3>
+          <h3 className="text-[18px] font-bold text-center">קצין המודיעין של Realtyz</h3>
         </div>
 
         {/* Messages */}
@@ -536,11 +536,11 @@ ${shareUrl}
             <div className="space-y-5 py-2">
               <div className="text-center space-y-2 pb-1">
                 <Bot className="h-10 w-10 mx-auto text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
-                <p className="text-xs text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
+                <p className="text-[18px] text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
+                <p className="text-[16px] text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
               </div>
               <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold text-muted-foreground px-1">בחר נושא לקבלת 3 שאלות מומלצות:</p>
+                <p className="text-[15px] font-semibold text-muted-foreground px-1">בחר נושא לקבלת 3 שאלות מומלצות:</p>
                 {TOPICS.map((topic, ti) => {
                   const isOpen = expandedTopic === ti;
                   return (
@@ -548,7 +548,7 @@ ${shareUrl}
                       <button
                         type="button"
                         onClick={() => setExpandedTopic(isOpen ? null : ti)}
-                        className="w-full flex items-center justify-between text-right px-3 py-2.5 text-xs font-medium hover:bg-primary/5 transition-colors"
+                        className="w-full flex items-center justify-between text-right px-3 py-2.5 text-[16px] font-medium hover:bg-primary/5 transition-colors"
                       >
                         <span>{topic.label}</span>
                         {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />}
@@ -561,7 +561,7 @@ ${shareUrl}
                               type="button"
                               onClick={() => sendMessage(p)}
                               disabled={isLoading}
-                              className="w-full text-right text-[11px] leading-relaxed rounded-lg border border-border/60 bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-2.5 py-2 disabled:opacity-50"
+                              className="w-full text-right text-[15px] leading-relaxed rounded-lg border border-border/60 bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-2.5 py-2 disabled:opacity-50"
                             >
                               {p}
                             </button>
@@ -577,7 +577,7 @@ ${shareUrl}
 
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
-              <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
+              <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[18px] ${
                 msg.role === 'user'
                   ? 'bg-primary text-primary-foreground rounded-tr-sm'
                   : msg.type === 'error'
@@ -595,7 +595,7 @@ ${shareUrl}
                     })()}
 
                     <div className="overflow-x-auto max-h-48 rounded-lg border border-border/50 bg-background">
-                      <table className="w-full text-[11px]">
+                      <table className="w-full text-[15px]">
                         <thead>
                           <tr className="bg-muted/50">
                             {Object.keys(msg.data[0]).slice(0, 5).map(key => (
@@ -616,12 +616,12 @@ ${shareUrl}
                         </tbody>
                       </table>
                       {msg.data.length > 10 && (
-                        <p className="text-[10px] text-muted-foreground text-center py-1">+ {msg.data.length - 10} שורות נוספות</p>
+                        <p className="text-[14px] text-muted-foreground text-center py-1">+ {msg.data.length - 10} שורות נוספות</p>
                       )}
                     </div>
 
                     {msg.query && (
-                      <details className="text-[10px]">
+                      <details className="text-[14px]">
                         <summary className="cursor-pointer text-muted-foreground hover:text-foreground flex items-center gap-1">
                           <Database className="h-2.5 w-2.5" /> הצג שאילתה
                         </summary>
@@ -635,7 +635,7 @@ ${shareUrl}
 
                 {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
                   <div className="mt-3 pt-2 border-t border-border/30 space-y-2">
-                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <p className="text-[14px] text-muted-foreground flex items-center gap-1">
                       <FileText className="h-2.5 w-2.5" />
                       מקורות מבסיס הידע:
                     </p>
@@ -658,7 +658,7 @@ ${shareUrl}
                           return (
                             <div
                               key={src.id}
-                              className="w-full flex items-center gap-2 text-[10px] px-2 py-1 rounded-md bg-primary/10 border border-primary/20"
+                              className="w-full flex items-center gap-2 text-[14px] px-2 py-1 rounded-md bg-primary/10 border border-primary/20"
                               title={title}
                             >
                               <FileText className="h-2.5 w-2.5 text-primary shrink-0" />
@@ -668,7 +668,7 @@ ${shareUrl}
                           );
                         }
                         const commonCls =
-                          'inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors max-w-[220px]';
+                          'inline-flex items-center gap-1 text-[14px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors max-w-[220px]';
                         if (resolvedUrl) {
                           return (
                             <a
@@ -705,7 +705,7 @@ ${shareUrl}
 
                 {msg.role === 'assistant' && msg.research_sources && msg.research_sources.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-border/30">
-                    <p className="text-[10px] text-muted-foreground mb-1.5 flex items-center gap-1">
+                    <p className="text-[14px] text-muted-foreground mb-1.5 flex items-center gap-1">
                       <Globe className="h-2.5 w-2.5" /> מקורות מחקר חי:
                     </p>
                     <div className="flex flex-wrap gap-1">
@@ -715,7 +715,7 @@ ${shareUrl}
                           href={rs.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors max-w-[200px]"
+                          className="inline-flex items-center gap-1 text-[14px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors max-w-[200px]"
                           title={rs.url}
                         >
                           <Globe className="h-2.5 w-2.5 shrink-0" />
@@ -728,7 +728,7 @@ ${shareUrl}
 
                 {msg.role === 'assistant' && msg.webtiv_results && msg.webtiv_results.length > 0 && (
                   <div className="mt-3 pt-2 border-t border-border/30">
-                    <p className="text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
+                    <p className="text-[14px] text-muted-foreground mb-2 flex items-center gap-1">
                       <Globe className="h-2.5 w-2.5" />
                       תוצאות חיות מהשוק (Homely / Webtiv2):
                     </p>
@@ -831,7 +831,7 @@ ${shareUrl}
                 {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {msg.attachments.map((a, ai) => (
-                      <span key={ai} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/15 border border-white/20">
+                      <span key={ai} className="inline-flex items-center gap-1 text-[14px] px-2 py-0.5 rounded-full bg-white/15 border border-white/20">
                         <Paperclip className="h-2.5 w-2.5" />
                         <span className="truncate max-w-[140px]">{a.name}</span>
                       </span>
@@ -846,7 +846,7 @@ ${shareUrl}
             <div className="flex justify-end">
               <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                <span className="text-xs text-muted-foreground">מנתח נתונים...</span>
+                <span className="text-[16px] text-muted-foreground">מנתח נתונים...</span>
               </div>
             </div>
           )}
@@ -859,7 +859,7 @@ ${shareUrl}
         {pendingAttachments.length > 0 && (
           <div className="px-4 pt-2 flex flex-wrap gap-1.5 border-t">
             {pendingAttachments.map((a, ai) => (
-              <span key={ai} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted border border-border">
+              <span key={ai} className="inline-flex items-center gap-1 text-[14px] px-2 py-0.5 rounded-full bg-muted border border-border">
                 <Paperclip className="h-2.5 w-2.5" />
                 <span className="truncate max-w-[140px]">{a.name}</span>
                 <button onClick={() => setPendingAttachments((p) => p.filter((_, i) => i !== ai))} className="hover:text-destructive">
@@ -897,7 +897,7 @@ ${shareUrl}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={isListening ? '🎙️ מקשיב...' : researchMode ? 'מצב מחקר חי - שאל על שכונה/אזור/פרויקט' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
-              className="flex-1 h-9 text-sm"
+              className="flex-1 h-9 text-[18px]"
               disabled={isLoading}
             />
             <Button
