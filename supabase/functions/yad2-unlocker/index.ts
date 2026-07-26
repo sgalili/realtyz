@@ -79,6 +79,8 @@ function toNum(v: unknown): number | null {
 function clean(s: string | null | undefined): string | null {
   const t = (s ?? "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
   return t || null;
+}
+
 
 // HTTP/1.1-pinned client for api.brightdata.com (see brightDataRequest below).
 // `Deno.createHttpClient` is unstable-gated; guard so the function still boots
