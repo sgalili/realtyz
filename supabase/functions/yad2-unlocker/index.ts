@@ -12,6 +12,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
+import puppeteer from "npm:puppeteer-core@22.15.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +25,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const BD_TOKEN = Deno.env.get("BRIGHTDATA_API_TOKEN") ?? "";
 const BD_ZONE = Deno.env.get("BRIGHTDATA_ZONE") ?? "yad2";
+const BD_WS = Deno.env.get("BRIGHTDATA_WS_ENDPOINT") ?? "";
 
 type DealType = "sale" | "rent";
 
@@ -731,6 +733,87 @@ function parseItem(html: string, srcUrl: string): Scraped {
     owner_phone: ownerPhone,
     description: clean(ad?.description ?? null),
   };
+}
+
+
+// -------- Transport B: Bright Data Scraping Browser (WS / puppeteer) --------
+//
+// Used when the REST Web Unlocker zone is unavailable or misconfigured
+// (x-brd-err-code=client_10090). We drive a real Chromium through Bright
+// Data, land on the public Yad2 page to pick up Radware cookies, then issue
+// the gw.yad2.co.il JSON calls FROM INSIDE that page. Same-origin XHR with
+// genuine cookies is the highest-fidelity way to read the feed.
+
+type BrowserHarvest = { html: string | null; feeds: Array<{ url: string; body: string }> };
+
+async function scrapingBrowserHarvest(
+  pageUrl: string,
+  feedUrls: string[],
+): Promise<BrowserHarvest> {
+  if (!BD_WS) throw new Error("BRIGHTDATA_WS_ENDPOINT is not configured");
+  let browser: any = null;
+  try {
+    console.log("[yad2-unlocker] scraping-browser: connecting…");
+    browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1440, height: 2200 });
+    await page.setExtraHTTPHeaders({ "Accept-Language": "he-IL,he;q=0.9,en;q=0.8" });
+
+    console.log(`[yad2-unlocker] scraping-browser: goto ${pageUrl}`);
+    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page
+      .waitForSelector('a[href*="/item/"], [data-testid="feed-item"], article', { timeout: 40_000 })
+      .catch(() => {});
+
+    const html: string = await page.content().catch(() => "");
+    console.log(`[yad2-unlocker] scraping-browser: html bytes=${html.length}`);
+
+    const feeds: Array<{ url: string; body: string }> = [];
+    for (const f of feedUrls) {
+      try {
+        const body: string = await page.evaluate(async (u: string) => {
+          const r = await fetch(u, {
+            credentials: "include",
+            headers: { Accept: "application/json, text/plain, */*" },
+          });
+          return await r.text();
+        }, f);
+        console.log(
+          `[yad2-unlocker] scraping-browser: in-page fetch ${f} bytes=${body?.length ?? 0} preview=${JSON.stringify((body ?? "").slice(0, 200))}`,
+        );
+        if (bdTrace.length < 20) {
+          bdTrace.push({
+            url: `[browser] ${f}`,
+            bd_status: 200,
+            bytes: body?.length ?? 0,
+            preview: (body ?? "").slice(0, 300),
+            attempt: 1,
+          });
+        }
+        if (body && body.trim()) feeds.push({ url: f, body });
+      } catch (e) {
+        const msg = String((e as Error)?.message ?? e).slice(0, 300);
+        console.warn(`[yad2-unlocker] scraping-browser: in-page fetch failed ${f} — ${msg}`);
+        if (bdTrace.length < 20) {
+          bdTrace.push({ url: `[browser] ${f}`, bd_status: 0, bytes: 0, preview: msg, attempt: 1 });
+        }
+      }
+    }
+    await page.close().catch(() => {});
+    if (html && bdTrace.length < 20) {
+      bdTrace.push({
+        url: `[browser] ${pageUrl}`,
+        bd_status: 200,
+        bytes: html.length,
+        content_type: "text/html",
+        preview: html.slice(0, 300),
+        attempt: 1,
+      });
+    }
+    return { html: html || null, feeds };
+  } finally {
+    try { await browser?.disconnect?.(); } catch { /* noop */ }
+  }
 }
 
 // -------- Save helpers --------
