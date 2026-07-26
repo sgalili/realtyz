@@ -761,6 +761,7 @@ type BrowserHarvest = { html: string | null; feeds: Array<{ url: string; body: s
 async function scrapingBrowserHarvest(
   pageUrl: string,
   feedUrls: string[],
+  needFeeds: (html: string) => boolean = () => true,
 ): Promise<BrowserHarvest> {
   if (!BD_WS) throw new Error("BRIGHTDATA_WS_ENDPOINT is not configured");
   let browser: any = null;
@@ -783,7 +784,14 @@ async function scrapingBrowserHarvest(
     console.log(`[yad2-unlocker] scraping-browser: html bytes=${html.length}`);
 
     const feeds: Array<{ url: string; body: string }> = [];
-    for (const f of feedUrls) {
+    // The rendered HTML is the reliable source; the gw.* JSON endpoints are
+    // Radware-guarded and usually answer with an error page. Only spend time
+    // on them when the HTML yielded nothing parseable.
+    const feedTargets = needFeeds(html) ? feedUrls : [];
+    if (!feedTargets.length) {
+      console.log("[yad2-unlocker] scraping-browser: HTML sufficient — skipping gw feed calls");
+    }
+    for (const f of feedTargets) {
       try {
         const body: string = await page.evaluate(async (u: string) => {
           const r = await fetch(u, {
@@ -1051,9 +1059,33 @@ Deno.serve(async (req) => {
         const feedUrls = isItemUrl
           ? [toGatewayItemUrl(inputUrl)].filter(Boolean) as string[]
           : toGatewayFeedUrls(inputUrl);
-        const harvest = await scrapingBrowserHarvest(inputUrl, feedUrls);
+        const harvest = await scrapingBrowserHarvest(inputUrl, feedUrls, (html) => {
+          try {
+            const probe = isItemUrl
+              ? ([parseItem(html, inputUrl)].filter(Boolean) as Scraped[])
+              : parseSearch(html, inputUrl, limit);
+            return probe.length === 0;
+          } catch {
+            return true;
+          }
+        });
 
-        for (const f of harvest.feeds) {
+        if (harvest.html) {
+          const parsed = isItemUrl
+            ? ([parseItem(harvest.html, inputUrl)].filter(Boolean) as Scraped[])
+            : parseSearch(harvest.html, inputUrl, limit);
+          if (parsed.length) {
+            rows = parsed;
+            diagnostics.push({
+              endpoint: `[browser] ${inputUrl}`,
+              kind: "html",
+              status: "ok",
+              count: parsed.length,
+            });
+          }
+        }
+
+        for (const f of rows.length ? [] : harvest.feeds) {
           const parsed = isItemUrl
             ? ([parseItemJson(f.body, inputUrl)].filter(Boolean) as Scraped[])
             : parseSearchJson(f.body, inputUrl, limit);
@@ -1066,17 +1098,8 @@ Deno.serve(async (req) => {
           diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "empty" });
         }
 
-        if (!rows.length && harvest.html) {
-          const parsed = isItemUrl
-            ? [parseItem(harvest.html, inputUrl)]
-            : parseSearch(harvest.html, inputUrl, limit);
-          rows = parsed.filter(Boolean) as Scraped[];
-          diagnostics.push({
-            endpoint: `[browser] ${inputUrl}`,
-            kind: "html",
-            status: rows.length ? "ok" : "empty",
-            count: rows.length,
-          });
+        if (!rows.length) {
+          diagnostics.push({ endpoint: `[browser] ${inputUrl}`, kind: "html", status: "empty", count: 0 });
         }
       } catch (e: any) {
         const err = String(e?.message ?? e).slice(0, 400);
