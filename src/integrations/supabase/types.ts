@@ -2884,6 +2884,7 @@ export type Database = {
       }
       listings: {
         Row: {
+          additional_details: Json
           address: string | null
           area_perks: Json | null
           asking_price: number
@@ -2902,19 +2903,23 @@ export type Database = {
           featured_until: string | null
           features: Json
           floor: number | null
+          furniture_details: Json
           id: string
           image_url: string | null
           is_featured: boolean
           is_investment_opportunity: boolean
           is_promoted: boolean
           is_published: boolean
+          latitude: number | null
           long_description: string | null
+          longitude: number | null
           media_documents: Json
           media_photos: Json | null
           neighborhood: string | null
           office_notes: string | null
           owner_id: string | null
           parking: boolean | null
+          price_history: Json
           project_name: string | null
           promoted_until: string | null
           property_title: string
@@ -2930,6 +2935,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          additional_details?: Json
           address?: string | null
           area_perks?: Json | null
           asking_price?: number
@@ -2948,19 +2954,23 @@ export type Database = {
           featured_until?: string | null
           features?: Json
           floor?: number | null
+          furniture_details?: Json
           id?: string
           image_url?: string | null
           is_featured?: boolean
           is_investment_opportunity?: boolean
           is_promoted?: boolean
           is_published?: boolean
+          latitude?: number | null
           long_description?: string | null
+          longitude?: number | null
           media_documents?: Json
           media_photos?: Json | null
           neighborhood?: string | null
           office_notes?: string | null
           owner_id?: string | null
           parking?: boolean | null
+          price_history?: Json
           project_name?: string | null
           promoted_until?: string | null
           property_title: string
@@ -2976,6 +2986,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          additional_details?: Json
           address?: string | null
           area_perks?: Json | null
           asking_price?: number
@@ -2994,19 +3005,23 @@ export type Database = {
           featured_until?: string | null
           features?: Json
           floor?: number | null
+          furniture_details?: Json
           id?: string
           image_url?: string | null
           is_featured?: boolean
           is_investment_opportunity?: boolean
           is_promoted?: boolean
           is_published?: boolean
+          latitude?: number | null
           long_description?: string | null
+          longitude?: number | null
           media_documents?: Json
           media_photos?: Json | null
           neighborhood?: string | null
           office_notes?: string | null
           owner_id?: string | null
           parking?: boolean | null
+          price_history?: Json
           project_name?: string | null
           promoted_until?: string | null
           property_title?: string

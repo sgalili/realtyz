@@ -23,6 +23,7 @@ import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard';
+import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
 import { stripAddressNumbers } from '@/lib/formatAddress';
@@ -137,7 +138,7 @@ export default function PropertyDetail() {
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at, owner_id')
+        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at, owner_id, short_description, long_description, latitude, longitude, furniture_details, additional_details, price_history')
         .eq('id', id!)
         .maybeSingle();
       if (!row) return null;
@@ -231,6 +232,7 @@ export default function PropertyDetail() {
         if (op?.id) owner = { id: String(op.id), full_name: String(op.full_name || '') };
       }
 
+      const r = row as any;
       return {
         row,
         property,
@@ -241,6 +243,14 @@ export default function PropertyDetail() {
         sourceUrl: row.source_url,
         documents,
         owner,
+        rich: {
+          about: (r.long_description as string | null) || (r.short_description as string | null) || null,
+          furniture: (r.furniture_details as Record<string, unknown> | null) ?? null,
+          additional: (r.additional_details as Record<string, unknown> | null) ?? null,
+          priceHistory: Array.isArray(r.price_history) ? (r.price_history as any[]) : [],
+          latitude: r.latitude != null ? Number(r.latitude) : null,
+          longitude: r.longitude != null ? Number(r.longitude) : null,
+        },
       };
     },
   });
@@ -1013,6 +1023,18 @@ export default function PropertyDetail() {
             </Card>
           )}
 
+          {!editMode && data?.rich && (
+            <PropertyRichDetailsCard
+              aboutText={data.rich.about}
+              furniture={data.rich.furniture}
+              additional={data.rich.additional}
+              priceHistory={data.rich.priceHistory}
+              latitude={data.rich.latitude}
+              longitude={data.rich.longitude}
+              addressLabel={[property.address, property.city].filter(Boolean).join(', ')}
+            />
+          )}
+
           {!editMode && (
             <AreaMarketFactsCard
               city={property.city}
@@ -1021,6 +1043,7 @@ export default function PropertyDetail() {
               listingId={property.id}
             />
           )}
+
 
 
           {projectName && !editMode && (
