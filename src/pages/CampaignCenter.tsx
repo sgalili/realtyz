@@ -121,6 +121,22 @@ const mergePostMediaUrls = (...values: unknown[]): string[] => {
   return out;
 };
 
+// Images the user explicitly deleted from a post. Persisted in
+// campaign_logs.provider_response.removed_media_keys so no sync/merge path can
+// ever resurrect them.
+const readRemovedMediaKeys = (providerResponse: unknown): string[] => {
+  const raw = (providerResponse as any)?.removed_media_keys;
+  return Array.isArray(raw)
+    ? raw.filter((k) => typeof k === 'string' && k).map((k) => k.toLowerCase())
+    : [];
+};
+
+const dropRemovedMedia = (urls: string[], removedKeys: string[]): string[] => {
+  if (removedKeys.length === 0) return urls;
+  const blocked = new Set(removedKeys);
+  return urls.filter((u) => !blocked.has(mediaDedupeKey(u)));
+};
+
 const keepLongestMediaUrls = (current: unknown, incoming: unknown): string[] => {
   const currentUrls = normalizePostMediaUrls(current);
   const incomingUrls = normalizePostMediaUrls(incoming);
@@ -128,6 +144,7 @@ const keepLongestMediaUrls = (current: unknown, incoming: unknown): string[] => 
   if (currentUrls.length === 0) return incomingUrls;
   return incomingUrls.length >= currentUrls.length ? incomingUrls : currentUrls;
 };
+
 
 // Top row (RTL): Facebook → Instagram → X
 // Middle row (RTL): IVR → Email → AI Voice
@@ -2841,14 +2858,18 @@ const PublishedFeed = () => {
       const pr = r?.provider_response ?? {};
       // Priority: permanently mirrored copies → the durable column → whatever
       // the provider payload carried (signed FB CDN links that expire).
-      const media = mergePostMediaUrls(
-        pr?.cached_media_urls,
-        r?.media_urls,
-        pr?.media_urls,
-        pr?.media,
-        pr?.raw?.mediaUrls,
-        pr?.raw?.fullPicture ? [pr.raw.fullPicture] : null,
+      const media = dropRemovedMedia(
+        mergePostMediaUrls(
+          pr?.cached_media_urls,
+          r?.media_urls,
+          pr?.media_urls,
+          pr?.media,
+          pr?.raw?.mediaUrls,
+          pr?.raw?.fullPicture ? [pr.raw.fullPicture] : null,
+        ),
+        readRemovedMediaKeys(pr),
       );
+
       const externalUrl =
         (typeof pr?.external_url === 'string' && pr.external_url) ||
         (Array.isArray(pr?.postIds)
@@ -3191,15 +3212,19 @@ const PublishedFeed = () => {
             return {
               ...r,
               provider_message_id: r.provider_message_id || updated.provider_message_id,
-              media_urls: keepLongestMediaUrls(
-                r.media_urls,
-                mergePostMediaUrls(
-                  updated.provider_response?.cached_media_urls,
-                  updated.media_urls,
-                  updated.provider_response?.media_urls,
-                  updated.provider_response?.media,
+              media_urls: dropRemovedMedia(
+                keepLongestMediaUrls(
+                  dropRemovedMedia(r.media_urls ?? [], readRemovedMediaKeys(updated.provider_response)),
+                  mergePostMediaUrls(
+                    updated.provider_response?.cached_media_urls,
+                    updated.media_urls,
+                    updated.provider_response?.media_urls,
+                    updated.provider_response?.media,
+                  ),
                 ),
+                readRemovedMediaKeys(updated.provider_response),
               ),
+
               external_url: updated.provider_response?.external_url || r.external_url || null,
               like_count: keepMax(updated.like_count, r.like_count),
               comment_count: keepMax(updated.comment_count, r.comment_count),
@@ -3376,16 +3401,50 @@ const PublishedFeed = () => {
     );
   };
 
-  // Remove a single image from a post card. Local-only (the card's media list
-  // is rebuilt from Ayrshare on each load, so this hides it for the session).
-  const removeMediaAt = (campaignId: string, index: number) => {
-    setRows((prev) => prev?.map((row) => {
-      if (row.id !== campaignId) return row;
-      const next = Array.isArray(row.media_urls) ? [...row.media_urls] : [];
-      next.splice(index, 1);
-      return { ...row, media_urls: next };
-    }) ?? prev);
+  // Remove a single image from a post — permanently. The URL's dedupe key is
+  // added to provider_response.removed_media_keys, which every merge path (and
+  // the DB trigger) honours, so no sync can ever bring the image back.
+  const removeMediaAt = async (campaignId: string, index: number) => {
+    const row = rows?.find((r) => r.id === campaignId);
+    const removedUrl = row?.media_urls?.[index];
+    if (!removedUrl) return;
+    const removedKey = mediaDedupeKey(removedUrl);
+
+    const nextMedia = (row.media_urls ?? []).filter((_, i) => i !== index);
+    setRows((prev) => prev?.map((r) => (r.id === campaignId ? { ...r, media_urls: nextMedia } : r)) ?? prev);
+
+    try {
+      // All DB rows behind this card (a broadcast fans out into many rows).
+      let query = supabase.from('campaign_logs').select('id, provider_response, media_urls');
+      query = row.provider_message_id
+        ? query.eq('provider_message_id', row.provider_message_id)
+        : query.eq('id', campaignId);
+      const { data: targets } = await query;
+      const list = (targets && targets.length > 0) ? targets : [{ id: campaignId, provider_response: {}, media_urls: [] } as any];
+
+      for (const t of list) {
+        const pr = (t.provider_response && typeof t.provider_response === 'object') ? { ...(t.provider_response as any) } : {};
+        const keys = new Set(readRemovedMediaKeys(pr));
+        keys.add(removedKey);
+        pr.removed_media_keys = Array.from(keys);
+        const strip = (v: unknown) => dropRemovedMedia(normalizePostMediaUrls(v), Array.from(keys));
+        if (Array.isArray(pr.media_urls)) pr.media_urls = strip(pr.media_urls);
+        if (Array.isArray(pr.cached_media_urls)) pr.cached_media_urls = strip(pr.cached_media_urls);
+
+        const { error } = await supabase
+          .from('campaign_logs')
+          .update({ provider_response: pr, media_urls: strip(t.media_urls) })
+          .eq('id', t.id);
+        if (error) throw error;
+      }
+      toast.success('התמונה הוסרה מהפוסט לצמיתות');
+    } catch (err: any) {
+      console.error('[remove-media] failed', err);
+      toast.error('הסרת התמונה נכשלה');
+      setRows((prev) => prev?.map((r) => (r.id === campaignId ? { ...r, media_urls: row.media_urls } : r)) ?? prev);
+    }
   };
+
 
 
   // Backfill missing post images (og:image) via Firecrawl once per post_url.
