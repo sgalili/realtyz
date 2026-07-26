@@ -215,9 +215,7 @@ export async function searchAllSources(
   const tasks: Array<Promise<{ label: PropertySource; results: UnifiedResult[] }>> = [
     searchLocal(f)
       .then((r) => {
-        // Instant paint: local DB hits are surfaced before any gateway answers.
         sources.mine = { status: r.length ? 'ok' : 'empty', count: r.length };
-        onPartial?.({ results: r, sources: { ...sources } });
         return { label: 'mine' as const, results: r };
       })
       .catch((e) => {
