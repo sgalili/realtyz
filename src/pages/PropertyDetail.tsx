@@ -12,7 +12,7 @@ import {
   BedDouble, Ruler, MapPin, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink, Pencil, Save, X,
-  Trash2, Plus, Upload, Image as ImageIcon,
+  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2,
 } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
@@ -121,6 +121,7 @@ export default function PropertyDetail() {
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [pullingImages, setPullingImages] = useState(false);
   const [form, setForm] = useState<EditableFields | null>(null);
   const [initialFormSnapshot, setInitialFormSnapshot] = useState<string>('');
 
