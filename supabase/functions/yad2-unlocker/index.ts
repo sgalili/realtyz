@@ -514,6 +514,10 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     it?.metaData?.coverImage,
     it?.gallery,
     it?.imagesUrls,
+    it?.images?.images,
+    it?.media,
+    it?.image_urls,
+    it?.metaData?.imagesUrls,
   );
 
   const shortDesc = clean(it?.info_text ?? it?.subtitle ?? it?.metaData?.description ?? null);
