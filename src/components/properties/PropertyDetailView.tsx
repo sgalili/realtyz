@@ -109,7 +109,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           <div
             role="heading"
             aria-level={1}
-            className="text-xl font-bold text-right text-slate-900 block flex-1 leading-snug"
+            className="text-2xl font-bold text-right text-slate-900 block flex-1 leading-snug"
           >
             {headline}
           </div>
@@ -131,12 +131,12 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
             ) : null}
           </div>
           <div className="flex items-baseline gap-3 flex-wrap order-1">
-            <span className="text-3xl font-extrabold text-success tabular-nums">
+            <span className="text-4xl font-extrabold text-success tabular-nums">
               {formatPrice(property.price)}
-              {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
+              {isRent && <span className="text-lg font-normal text-muted-foreground"> /חודש</span>}
             </span>
             {pricePerMeter ? (
-              <span className="text-xs text-muted-foreground font-normal">
+              <span className="text-sm text-muted-foreground font-normal">
                 ({pricePerMeter} ₪ למ"ר)
               </span>
             ) : null}
