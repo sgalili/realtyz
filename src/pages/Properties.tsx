@@ -33,7 +33,7 @@ import {
 } from '@/lib/homelyMockProperties';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
-import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
+import { SourceBadge, sourceLabel } from '@/components/properties/SourceBadge';
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
