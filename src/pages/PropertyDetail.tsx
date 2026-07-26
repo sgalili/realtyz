@@ -1061,23 +1061,23 @@ export default function PropertyDetail() {
         <aside className="space-y-4">
           {property.agent && (
             <Card className="p-5">
-              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">הסוכן המטפל</h2>
+              <h2 className="text-base font-bold text-muted-foreground uppercase tracking-wider mb-4">הסוכן המטפל</h2>
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-14 w-14 rounded-full bg-primary/10 grid place-items-center text-primary font-bold text-lg">
+                <div className="h-14 w-14 rounded-full bg-primary/10 grid place-items-center text-primary font-bold text-xl">
                   {property.agent.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
                   <p className="font-bold text-foreground truncate">{property.agent.name}</p>
                   {property.agent.agency && (
-                    <p className="text-xs text-muted-foreground truncate">{property.agent.agency}</p>
+                    <p className="text-sm text-muted-foreground truncate">{property.agent.agency}</p>
                   )}
                 </div>
               </div>
               <div className="space-y-2">
-                <a href={`tel:${property.agent.phone}`} className="flex items-center gap-2 text-sm text-foreground hover:text-primary transition-colors">
+                <a href={`tel:${property.agent.phone}`} className="flex items-center gap-2 text-base text-foreground hover:text-primary transition-colors">
                   <Phone className="h-4 w-4 text-primary" /> {property.agent.phone}
                 </a>
-                <a href={`mailto:${property.agent.email}`} className="flex items-center gap-2 text-sm text-foreground hover:text-primary transition-colors">
+                <a href={`mailto:${property.agent.email}`} className="flex items-center gap-2 text-base text-foreground hover:text-primary transition-colors">
                   <Mail className="h-4 w-4 text-primary" /> {property.agent.email}
                 </a>
               </div>
