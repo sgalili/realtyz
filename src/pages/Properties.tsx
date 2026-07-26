@@ -948,6 +948,34 @@ function ResultCard({
   const goPrev = (e: React.SyntheticEvent) => { stop(e); setIndex((i) => (i - 1 + photos.length) % photos.length); };
   const goNext = (e: React.SyntheticEvent) => { stop(e); setIndex((i) => (i + 1) % photos.length); };
 
+  /** Manual on-demand full-gallery pull + permanent mirroring. */
+  const pullAllImages = async (e: React.SyntheticEvent) => {
+    stop(e);
+    if (pulling) return;
+    setPulling(true);
+    const toastId = toast.loading('טוען את כל התמונות…');
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-property-all-images', {
+        body: { listing_id: result.localId ?? undefined, source_url: result.url ?? undefined },
+      });
+      if (error) throw error;
+      const res = data as { ok?: boolean; count?: number; photos?: string[]; reason?: string } | null;
+      if (!res?.ok || !res.photos?.length) {
+        toast.error('לא נמצאו תמונות נוספות', { id: toastId, description: res?.reason ?? undefined });
+        return;
+      }
+      setPulledPhotos(res.photos);
+      setIndex(0);
+      setExpanded(true);
+      toast.success(`${res.count} תמונות נטענו ונשמרו`, { id: toastId });
+    } catch (err: any) {
+      toast.error('טעינת התמונות נכשלה', { id: toastId, description: err?.message ?? String(err) });
+    } finally {
+      setPulling(false);
+    }
+  };
+
+
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow cursor-pointer relative" onClick={onSelect}>
       <div className="aspect-[16/10] bg-muted relative overflow-hidden">
