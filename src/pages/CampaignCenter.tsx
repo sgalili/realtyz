@@ -3212,15 +3212,19 @@ const PublishedFeed = () => {
             return {
               ...r,
               provider_message_id: r.provider_message_id || updated.provider_message_id,
-              media_urls: keepLongestMediaUrls(
-                r.media_urls,
-                mergePostMediaUrls(
-                  updated.provider_response?.cached_media_urls,
-                  updated.media_urls,
-                  updated.provider_response?.media_urls,
-                  updated.provider_response?.media,
+              media_urls: dropRemovedMedia(
+                keepLongestMediaUrls(
+                  dropRemovedMedia(r.media_urls ?? [], readRemovedMediaKeys(updated.provider_response)),
+                  mergePostMediaUrls(
+                    updated.provider_response?.cached_media_urls,
+                    updated.media_urls,
+                    updated.provider_response?.media_urls,
+                    updated.provider_response?.media,
+                  ),
                 ),
+                readRemovedMediaKeys(updated.provider_response),
               ),
+
               external_url: updated.provider_response?.external_url || r.external_url || null,
               like_count: keepMax(updated.like_count, r.like_count),
               comment_count: keepMax(updated.comment_count, r.comment_count),
