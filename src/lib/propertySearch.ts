@@ -167,7 +167,7 @@ function normalizeExternal(source: PropertySource, items: any[]): UnifiedResult[
       floor: it.floor != null ? Number(it.floor) : null,
       photos: Array.isArray(it.photos) ? normalizeImageUrls(it.photos) : [],
       url: it.url ?? it.source_url ?? null,
-      listing_type: inferListingType(price, it.listing_type ?? it.transaction_type),
+      listing_type: inferListingType(price, it.listing_type ?? it.transaction_type ?? it.deal_type),
       property_type: it.property_type ?? null,
       raw: it,
     };
