@@ -38,7 +38,6 @@ import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchF
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle } from '@/lib/formatListingTitle';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
@@ -111,7 +110,6 @@ export default function Properties() {
   const [importingKey, setImportingKey] = useState<string | null>(null);
 
   // Multi-select + batch import progress
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [importSteps, setImportSteps] = useState<ImportStep[]>([]);
   const [progressOpen, setProgressOpen] = useState(false);
   const [previewResult, setPreviewResult] = useState<UnifiedResult | null>(null);
@@ -348,48 +346,6 @@ export default function Properties() {
       setImportingKey(null);
     }
   };
-
-  const toggleSelected = (key: string) => {
-    setSelectedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
-  const clearSelection = () => setSelectedKeys(new Set());
-  const selectAllVisible = (rows: UnifiedResult[]) => {
-    setSelectedKeys(new Set(rows.filter((r) => !r.localId).map((r) => r.key)));
-  };
-
-  const runBatchImport = useCallback(async () => {
-    const targets = results.filter((r) => selectedKeys.has(r.key) && !r.localId);
-    if (targets.length === 0) {
-      toast.info('לא נבחרו נכסים לייבוא');
-      return;
-    }
-    const initial: ImportStep[] = targets.map((r) => ({
-      key: r.key,
-      source: r.source,
-      title: formatListingTitle({ address: r.address, city: r.city, property_type: r.property_type, title: r.title }) || r.title,
-      status: 'pending',
-    }));
-    setImportSteps(initial);
-    setProgressOpen(true);
-
-    // Sequential to keep UI progress readable and avoid rate-limiting external gateways.
-    for (const r of targets) {
-      setImportSteps((prev) => prev.map((s) => (s.key === r.key ? { ...s, status: 'running' } : s)));
-      try {
-        const localId = await autoImportResult(r);
-        setImportSteps((prev) => prev.map((s) => (s.key === r.key ? { ...s, status: 'success', localId } : s)));
-      } catch (err: any) {
-        console.error('[Properties] batch import failed for', r.key, err);
-        setImportSteps((prev) => prev.map((s) => (s.key === r.key ? { ...s, status: 'error', error: String(err?.message ?? err) } : s)));
-      }
-    }
-    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
-    clearSelection();
-  }, [results, selectedKeys, queryClient]);
 
   const cityOptions = useMemo(() => {
     const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
@@ -891,9 +847,6 @@ export default function Properties() {
                 importingKey={importingKey}
                 onSelect={handleSelect}
                 onCampaign={goToCampaign}
-                selectedKeys={selectedKeys}
-                onToggleSelect={toggleSelected}
-                onToggleAll={(rows, checked) => (checked ? selectAllVisible(rows) : clearSelection())}
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -904,8 +857,6 @@ export default function Properties() {
                     importing={importingKey === r.key}
                     onSelect={() => handleSelect(r)}
                     onCampaign={() => goToCampaign(r)}
-                    selected={selectedKeys.has(r.key)}
-                    onToggleSelect={() => toggleSelected(r.key)}
                   />
                 ))}
               </div>
@@ -955,14 +906,12 @@ function ResultCard({
   onSelect,
   onCampaign,
   selected,
-  onToggleSelect,
 }: {
   result: UnifiedResult;
   importing: boolean;
   onSelect: () => void;
   onCampaign?: () => void;
   selected?: boolean;
-  onToggleSelect?: () => void;
 }) {
 
   const photos = (result.photos ?? []).filter(Boolean);
@@ -994,7 +943,7 @@ function ResultCard({
 
         {photos.length > 0 && (
           <span
-            className={`absolute top-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm ${onToggleSelect && !result.localId ? 'right-12' : 'right-2'}`}
+            className={`absolute top-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm right-2`}
             title={`${photos.length} תמונות`}
           >
             <ImageIcon className="h-3 w-3" />
@@ -1122,17 +1071,11 @@ function ResultTable({
   importingKey,
   onSelect,
   onCampaign,
-  selectedKeys,
-  onToggleSelect,
-  onToggleAll,
 }: {
   results: UnifiedResult[];
   importingKey: string | null;
   onSelect: (r: UnifiedResult) => void;
   onCampaign?: (r: UnifiedResult) => void;
-  selectedKeys?: Set<string>;
-  onToggleSelect?: (key: string) => void;
-  onToggleAll?: (rows: UnifiedResult[], checked: boolean) => void;
 }) {
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -1237,9 +1180,8 @@ function ResultTable({
           {sorted.map((r) => {
             const isRent = r.listing_type === 'rent';
             const importing = importingKey === r.key;
-            const isSelected = !!selectedKeys?.has(r.key);
             return (
-              <tr key={r.key} className={`border-t hover:bg-muted/30 cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => onSelect(r)}>
+              <tr key={r.key} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
                 <td className="px-2 py-1.5">
                   <div className="h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
