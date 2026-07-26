@@ -4757,6 +4757,20 @@ const CampaignCenter = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Deep-link entry (e.g. the airplane action on /properties):
+  // ?tab=create&channel=facebook&properties=<listingId> preselects the channel
+  // so the composer mounts immediately and auto-generates the post.
+  const channelParam = searchParams.get('channel');
+  useEffect(() => {
+    if (!channelParam) return;
+    const card = CHANNEL_CARDS.find((c) => c.id === channelParam);
+    if (!card) return;
+    setPickedChannel((prev) => prev ?? card);
+    setPickedChannelIds((prev) => (prev.has(card.id) ? prev : new Set([...prev, card.id])));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelParam]);
+
+
   const leadId = searchParams.get('lead') ?? searchParams.get('client') ?? searchParams.get('voter');
   const leadNameParam = searchParams.get('name');
   const fromRaw = searchParams.get('from');
