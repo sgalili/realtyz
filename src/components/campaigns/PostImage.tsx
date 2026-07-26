@@ -52,7 +52,7 @@ export function PostImage({
   const [current, setCurrent] = useState<string | null>(() => cleanUrls([src, ...candidates])[0] ?? BRAND_THUMBNAIL);
   const [attempt, setAttempt] = useState(0);
 
-  const chain = cleanUrls([src, ...candidates, BRAND_THUMBNAIL]);
+  const chain = cleanUrls([src, ...candidates]);
 
   useEffect(() => {
     const next = cleanUrls([src, ...candidates])[0] ?? BRAND_THUMBNAIL;
@@ -69,7 +69,7 @@ export function PostImage({
       return;
     }
 
-    const sourceUrls = chain.filter((url) => url !== BRAND_THUMBNAIL);
+    const sourceUrls = chain;
     if (sourceUrls.length === 0) {
       setCurrent(BRAND_THUMBNAIL);
       return;
