@@ -938,9 +938,14 @@ async function scrapingBrowserHarvest(
     }
     return { html: html || null, feeds };
   } finally {
-    try { await browser?.disconnect?.(); } catch { /* noop */ }
+    // Only tear the connection down when we own it. Shared sessions are closed
+    // by the caller after the last page.
+    if (!session) {
+      try { await browser?.disconnect?.(); } catch { /* noop */ }
+    }
   }
 }
+
 
 // -------- Save helpers --------
 
