@@ -320,7 +320,7 @@ export default function Properties() {
   // already imported (have a localId), navigate to the local details page.
   // For external rows, open the preview dialog. Importing is explicit —
   // either via the preview dialog's "Import & open" button or via the
-  // batch checkboxes + "Import selected" action.
+  // preview dialog's "Import & open" button.
   const handleSelect = (r: UnifiedResult) => {
     if (r.localId) {
       navigate(`/properties/${r.localId}`);
