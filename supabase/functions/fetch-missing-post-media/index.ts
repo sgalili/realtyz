@@ -210,10 +210,13 @@ Deno.serve(async (req) => {
     const budgetMs = Math.min(240_000, Math.max(10_000, Number(body?.budget_ms) || 120_000));
     const startedAt = Date.now();
 
-    // Circuit breaker first: if the provider already told us to stop, do nothing.
-    const { readCircuit, circuitOpenResponse } = await import("../_shared/ayrshare-circuit.ts");
+    // Circuit breaker: when the provider circuit is open we must not touch
+    // Ayrshare at all — but Graph/storage recovery is unaffected, so the run
+    // continues in Ayrshare-free mode instead of aborting.
+    const { readCircuit } = await import("../_shared/ayrshare-circuit.ts");
     const circuit = await readCircuit(admin);
-    if (circuit) return circuitOpenResponse(circuit, corsHeaders);
+    const ayrshareBlocked = !!circuit;
+
 
     const backoff = createAyrshareBackoff();
 
