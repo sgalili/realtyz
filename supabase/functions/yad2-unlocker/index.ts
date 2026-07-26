@@ -917,13 +917,18 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     },
   };
   if (existing?.id) {
-    await admin.from("listings").update(payload).eq("id", existing.id);
+    const { error: updErr } = await admin.from("listings").update(payload).eq("id", existing.id);
+    // Never swallow a write failure — a silently dropped row is exactly how
+    // the Yad2 feed appeared to "work" while the cache stayed empty.
+    if (updErr) throw new Error(`update_failed(${existing.id}): ${updErr.message}`);
     return { id: existing.id, updated: true };
   }
   const slug = `yad2-${row.external_id || crypto.randomUUID().slice(0, 8)}`;
-  const { data: inserted } = await admin.from("listings")
+  const { data: inserted, error: insErr } = await admin.from("listings")
     .insert({ ...payload, slug }).select("id").maybeSingle();
-  return { id: inserted?.id, updated: false };
+  if (insErr) throw new Error(`insert_failed(${row.source_url}): ${insErr.message}`);
+  if (!inserted?.id) throw new Error(`insert_returned_no_row(${row.source_url})`);
+  return { id: inserted.id, updated: false };
 }
 
 // -------- Handler --------
@@ -1162,9 +1167,12 @@ Deno.serve(async (req) => {
           await saveListing(admin, userId, r);
           saved++;
         } catch (e: any) {
-          saveErrors.push({ url: r.source_url, error: String(e?.message ?? e) });
+          const msg = String(e?.message ?? e);
+          console.error(`[yad2-unlocker] save failed ${r.source_url}: ${msg}`);
+          saveErrors.push({ url: r.source_url, error: msg });
         }
       }
+      console.log(`[yad2-unlocker] saved ${saved}/${rows.length} row(s), ${saveErrors.length} error(s)`);
     } else {
       console.log(`[yad2-unlocker] preview_only=true — skipping DB save for ${rows.length} row(s)`);
     }
