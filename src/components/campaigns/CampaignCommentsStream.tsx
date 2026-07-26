@@ -300,8 +300,13 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
     // Publish the exact rendered tree size (top-level + nested replies, deduped).
     // This is the single source of truth for the collapsed card badge — it
     // must match "תגובות לקמפיין (N) + תגובות המשך (M)" that the user sees.
-    onLiveCountResolved(campaign.id, treeCount(rows));
-  }, [rows, campaign.id, onLiveCountResolved]);
+    const live = treeCount(rows);
+    // NEVER downgrade a known non-zero badge to 0. An empty tree only means the
+    // provider tree has not been imported yet (blocked circuit, rate limit,
+    // webhook lag) — it is not proof the post lost its comments.
+    if (live === 0 && (Number(commentCount ?? 0) || 0) > 0) return;
+    onLiveCountResolved(campaign.id, live);
+  }, [rows, campaign.id, commentCount, onLiveCountResolved]);
 
   const [loading, setLoading] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState<boolean>(Array.isArray(cached));
@@ -548,6 +553,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       ]);
       let sawSessionExpired = false;
       let sawHalt = false;
+      let sawCircuitOpen = false;
       for (const result of settled) {
         if (result.status === "rejected") {
           console.warn("[CampaignCommentsStream] provider refresh rejected", result.reason);
@@ -559,6 +565,9 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
           continue;
         }
         if (isFbSessionExpired(data)) sawSessionExpired = true;
+        if (data?.circuit_open === true || String(data?.error ?? "").toUpperCase() === "ACCOUNT_SUSPENDED") {
+          sawCircuitOpen = true;
+        }
         if (data?.halt === true || data?.rate_limited === true || data?.suspended === true) {
           sawHalt = true;
         }
@@ -609,10 +618,19 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
           console.warn("[CampaignCommentsStream] counter bubble-up failed", counterErr);
         }
       }
-      onRefreshComplete?.(campaign.id, { ok: true, count: treeCount(rowsRef.current) });
+      const finalCount = Math.max(treeCount(rowsRef.current), Number(commentCount ?? 0) || 0);
+      if (sawCircuitOpen) {
+        onRefreshComplete?.(campaign.id, {
+          ok: false,
+          count: finalCount,
+          error: "חיבור הרשתות החברתיות מושהה — לא ניתן למשוך תגובות כרגע",
+        });
+      } else {
+        onRefreshComplete?.(campaign.id, { ok: true, count: finalCount });
+      }
     } catch (e: any) {
       console.warn("[CampaignCommentsStream] manual refresh failed", e);
-      onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: e?.message || 'רענון נכשל' });
+      onRefreshComplete?.(campaign.id, { ok: false, count: Math.max(treeCount(rowsRef.current), Number(commentCount ?? 0) || 0), error: e?.message || 'רענון נכשל' });
     } finally {
       setManualRefreshing(false);
     }
