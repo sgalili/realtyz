@@ -897,25 +897,35 @@ export default function Properties() {
 
       {/* Results */}
       <ErrorBoundary source="Properties.Results">
-        {!hasSearched ? (
-          <Card className="p-12 text-center text-muted-foreground">
-            <SearchIcon className="mx-auto h-8 w-8 mb-3 opacity-40" />
-            <div className="text-base font-semibold text-foreground mb-1">חפש נכס מכל המקורות</div>
-            <div className="text-sm">הזן עיר, כתובת או קישור — נחפש בו-זמנית במאגר שלך, בהומלי וביד-2.</div>
-          </Card>
-        ) : searching && sortedResults.length === 0 ? (
+        {showingFallback && sortedResults.length > 0 && (
+          <div
+            className="mb-3 flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-foreground"
+            dir="rtl"
+            role="status"
+          >
+            <SearchIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+            <span>
+              לא נמצאו נכסים תואמים לחיפוש שלך. מוצגים {DEFAULT_POOL_PER_TYPE} הנכסים האחרונים למכירה
+              ו-{DEFAULT_POOL_PER_TYPE} להשכרה ב{DEFAULT_CITIES.join(' וב')} — החדשים ביותר קודם.
+            </span>
+          </div>
+        )}
+        {searching && sortedResults.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-72 w-full rounded-lg" />
             ))}
           </div>
         ) : sortedResults.length === 0 ? (
-          <Card className="p-12 text-center text-muted-foreground">
-            לא נמצאו נכסים תואמים. נסה חיפוש רחב יותר.
-          </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-72 w-full rounded-lg" />
+            ))}
+          </div>
         ) : (
           <>
             {viewMode === 'table' ? (
+
               <ResultTable
                 results={pagedResults}
                 importingKey={importingKey}
