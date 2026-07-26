@@ -167,12 +167,21 @@ export function parseSearchQuery(input: string): ParsedQuery {
   }
   keywords = keywords
     .replace(/שכונת?/g, ' ')
-    .replace(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]?|ח['׳])/g, ' ')
+    .replace(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]|ח['׳])/g, ' ')
     .replace(/שכירות|להשכרה|להשכיר|השכרה|למכירה|מכירה|לקנות|רכישה/g, ' ')
     .replace(/(?:עד|מעל|from|above|over|under|below|max|min)\s*\d+(?:[.,]\d+)?\s*(?:מיליון|million|אלף|k|thousand)?/gi, ' ')
     .replace(/\bעם\b|\bכולל\b|\bו-/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
+  // Amenity words are handled by the structured filter, so drop them from the
+  // free-text residue that external gateways receive.
+  for (const key of amenities) {
+    const rule = AMENITY_RULES.find((r) => r.key === key);
+    if (rule) keywords = keywords.replace(new RegExp(rule.query.source, 'giu'), ' ');
+  }
+  keywords = keywords.replace(/\s+/g, ' ').trim();
+
 
   return { city, neighborhood, rooms, property_type, listing_type, min_price: min, max_price: max, amenities, keywords };
 }
