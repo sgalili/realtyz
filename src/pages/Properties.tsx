@@ -397,6 +397,37 @@ export default function Properties() {
     newest: 'החדשים ביותר',
   };
 
+  // Active advanced-filter criteria rendered as readable, removable words
+  // right inside the search field.
+  const filterChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string; clear: () => void }> = [];
+    if (city && city !== 'כל הערים') {
+      chips.push({
+        key: 'city',
+        label: city === '__my_zones__' ? 'אזורי ההתמחות שלי' : city,
+        clear: () => setCity('כל הערים'),
+      });
+    }
+    if (propertyType !== 'all') {
+      chips.push({
+        key: 'ptype',
+        label: PROPERTY_TYPE_LABELS_HE[propertyType] ?? String(propertyType),
+        clear: () => setPropertyType('all'),
+      });
+    }
+    if (rooms !== 'any') {
+      chips.push({ key: 'rooms', label: `${rooms}+ חדרים`, clear: () => setRooms('any') });
+    }
+    if (maxPrice < PRICE_MAX) {
+      chips.push({ key: 'price', label: `עד ${formatPrice(maxPrice)}`, clear: () => setMaxPrice(PRICE_MAX) });
+    }
+    if (areaMin) {
+      chips.push({ key: 'area', label: `מ-${areaMin} מ"ר`, clear: () => setAreaMin('') });
+    }
+    return chips;
+  }, [city, propertyType, rooms, maxPrice, areaMin]);
+
+
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
       <header className="text-right">
