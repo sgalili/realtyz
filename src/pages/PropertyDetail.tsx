@@ -20,6 +20,7 @@ import {
   type PropertyType,
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
+import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
@@ -637,7 +638,7 @@ export default function PropertyDetail() {
                     key: property.id,
                     localId: property.id,
                     source: 'mine',
-                    title: property.property_title ?? null,
+                    title: property.title ?? null,
                     address: property.address ?? null,
                     city: property.city ?? null,
                     price: typeof property.price === 'number' ? property.price : null,
