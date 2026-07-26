@@ -1488,6 +1488,32 @@ Deno.serve(async (req) => {
 
     console.log(`[yad2-unlocker] parsed ${rows.length} row(s) via ${mode}`);
 
+    // --- Gallery enrichment: feed rows only carry the cover thumbnail. Pull
+    // the full image array from the item endpoint for rows that look thin.
+    if (!previewOnly) {
+      const thin = rows.filter((r) => (r.photos?.length ?? 0) < 3 && r.external_id).slice(0, 12);
+      for (const r of thin) {
+        const gwItem = `https://gw.yad2.co.il/realestate-feed/item/${r.external_id}`;
+        try {
+          const raw = await unlock(gwItem, { accept: "application/json", maxAttempts: 1 });
+          const full = parseItemJson(raw, r.source_url);
+          if (full) {
+            r.photos = pickAllPhotos(full.photos, r.photos);
+            r.long_description = full.long_description ?? r.long_description ?? null;
+            r.description = r.description || full.description || null;
+            r.furniture_details = { ...(r.furniture_details ?? {}), ...(full.furniture_details ?? {}) };
+            r.additional_details = { ...(r.additional_details ?? {}), ...(full.additional_details ?? {}) };
+            r.attributes = { ...(r.attributes ?? {}), ...(full.attributes ?? {}) };
+            if (full.price_history?.length) r.price_history = full.price_history;
+            r.latitude = r.latitude ?? full.latitude ?? null;
+            r.longitude = r.longitude ?? full.longitude ?? null;
+          }
+        } catch (e) {
+          console.warn(`[yad2-unlocker] gallery enrich failed ${gwItem}: ${String((e as Error)?.message ?? e)}`);
+        }
+      }
+    }
+
     let saved = 0;
     const saveErrors: any[] = [];
     if (!previewOnly) {
