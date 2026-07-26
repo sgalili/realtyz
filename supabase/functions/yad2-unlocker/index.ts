@@ -1316,7 +1316,9 @@ Deno.serve(async (req) => {
 
     return json({
       success: true,
-      urls_scanned: 1,
+      urls_scanned: pagesScanned,
+      pages_scanned: pagesScanned,
+
       records_scraped: rows.length,
       records_saved: saved,
       results: rows,
