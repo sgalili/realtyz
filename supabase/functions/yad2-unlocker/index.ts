@@ -157,6 +157,19 @@ async function brightDataRequest(
 }
 
 
+// Rolling trace of every Bright Data hop in the current invocation. Returned
+// to the caller so a zero-result search is never silent — you always see the
+// exact status codes, byte counts and body previews that produced it.
+export type BdTrace = {
+  url: string;
+  bd_status: number;
+  bytes: number;
+  content_type?: string;
+  preview: string;
+  attempt: number;
+};
+let bdTrace: BdTrace[] = [];
+
 async function unlock(
   url: string,
   opts: { accept?: string; maxAttempts?: number } = {},
@@ -166,14 +179,36 @@ async function unlock(
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const { status, body } = await brightDataRequest(url, { accept: opts.accept });
+      const { status, body, bdHeaders } = await brightDataRequest(url, { accept: opts.accept });
       // Explicit direct-fetch diagnostics — surface Bright Data / Yad2 status
       // and a preview of the upstream body so proxy blocks, CAPTCHAs, and
       // empty gateway payloads are visible in Supabase logs.
+      const entry: BdTrace = {
+        url,
+        bd_status: status,
+        bytes: body.length,
+        content_type: bdHeaders["content-type"],
+        preview: body.slice(0, 300),
+        attempt,
+      };
+      if (bdTrace.length < 20) bdTrace.push(entry);
       console.log(
-        `[yad2-unlocker] direct-fetch ${url} → BD status=${status} bytes=${body.length} preview=${JSON.stringify(body.slice(0, 220))}`,
+        `[yad2-unlocker] direct-fetch ${url} → BD status=${status} bytes=${body.length} ct=${bdHeaders["content-type"] ?? "-"} hdrs=${JSON.stringify(bdHeaders)} preview=${JSON.stringify(body.slice(0, 300))}`,
       );
-      if (status >= 200 && status < 300) return body;
+      if (status >= 200 && status < 300) {
+        // A 2xx with an empty body means the unlocker handed back nothing —
+        // treat it as a failure instead of "0 results", which is what made
+        // this pipeline fail silently for so long.
+        if (!body.trim()) {
+          if (attempt < maxAttempts) {
+            console.warn(`[yad2-unlocker] BD 200 but EMPTY body, attempt ${attempt} for ${url}, retrying`);
+            await new Promise((r) => setTimeout(r, 600 * attempt));
+            continue;
+          }
+          throw new Error(`Bright Data returned 200 with an empty body for ${url} (zone="${BD_ZONE}")`);
+        }
+        return body;
+      }
       if ((status >= 500 || status === 429 || status === 403) && attempt < maxAttempts) {
         console.warn(`[yad2-unlocker] BD ${status} attempt ${attempt} for ${url}, retrying`);
         await new Promise((r) => setTimeout(r, 500 * attempt));
