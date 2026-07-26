@@ -905,13 +905,11 @@ function ResultCard({
   importing,
   onSelect,
   onCampaign,
-  selected,
 }: {
   result: UnifiedResult;
   importing: boolean;
   onSelect: () => void;
   onCampaign?: () => void;
-  selected?: boolean;
 }) {
 
   const photos = (result.photos ?? []).filter(Boolean);
