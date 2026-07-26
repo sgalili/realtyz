@@ -107,7 +107,7 @@ function detectCityNeighborhood(text: string): { city: string | null; neighborho
 
 function detectRooms(text: string): number | null {
   // "4 חדרים", "4 חד'", "4 ח'", "4 rooms", "חדר וחצי"
-  const m = text.match(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]?|ח['׳])\b?/);
+  const m = text.match(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]|ח['׳])/);
   if (m) return Number(m[1].replace(',', '.'));
   const m2 = text.match(/(\d+(?:[.,]\d)?)\s*rooms?/i);
   if (m2) return Number(m2[1].replace(',', '.'));
