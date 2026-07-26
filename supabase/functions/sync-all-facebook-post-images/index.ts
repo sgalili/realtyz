@@ -304,7 +304,7 @@ Deno.serve(async (req) => {
           if (!isCached(url)) mirrored++;
         }
       }
-      if (cached.length === 0) { unresolved++; continue; }
+      if (cached.length === 0) { await markEmpty(); continue; }
 
       const nextProvider = {
         ...pr,
