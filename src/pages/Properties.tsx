@@ -1200,7 +1200,7 @@ function ResultTable({
 
                   <div className="flex flex-row-reverse items-center gap-1">
                     {(r.sources ?? [r.source]).map((s) => (
-                      <SourceBadge key={s} source={s} compact />
+                      <SourceBadge key={s} source={s} />
                     ))}
                   </div>
                 </td>
