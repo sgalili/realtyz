@@ -2,37 +2,42 @@ import { cn } from '@/lib/utils';
 
 export type PropertySource = 'mine' | 'homely' | 'webtiv' | 'yad2' | 'external';
 
-// Distinct, vibrant per-source palettes. Keep both a light chip variant
-// (badges/pills) and a solid dot color for legends/checkboxes.
-const META: Record<PropertySource, { label: string; short: string; className: string; dot: string }> = {
+// Solid, high-contrast per-source pills. `compact` renders a single white
+// initial on the source's signature background color.
+const META: Record<PropertySource, { label: string; short: string; className: string; solid: string; dot: string }> = {
   mine: {
     label: 'המאגר שלי',
     short: 'ש',
-    className: 'bg-slate-100 text-slate-800 border-slate-300',
-    dot: 'bg-slate-500',
+    className: 'bg-[#0b1f4b] text-white border-[#0b1f4b]',
+    solid: 'bg-[#0b1f4b] text-white border-[#0b1f4b]',
+    dot: 'bg-[#0b1f4b]',
   },
   homely: {
     label: 'הומלי',
     short: 'H',
-    className: 'bg-violet-100 text-violet-800 border-violet-300',
-    dot: 'bg-violet-600',
+    className: 'bg-black text-white border-black',
+    solid: 'bg-black text-white border-black',
+    dot: 'bg-black',
   },
   webtiv: {
     label: 'Webtiv',
     short: 'W',
-    className: 'bg-teal-100 text-teal-800 border-teal-300',
+    className: 'bg-teal-600 text-white border-teal-600',
+    solid: 'bg-teal-600 text-white border-teal-600',
     dot: 'bg-teal-600',
   },
   yad2: {
     label: 'יד-2',
     short: 'Y',
-    className: 'bg-orange-100 text-orange-800 border-orange-300',
-    dot: 'bg-orange-600',
+    className: 'bg-orange-500 text-white border-orange-500',
+    solid: 'bg-orange-500 text-white border-orange-500',
+    dot: 'bg-orange-500',
   },
   external: {
     label: 'חיצוני',
     short: 'E',
-    className: 'bg-zinc-100 text-zinc-700 border-zinc-300',
+    className: 'bg-zinc-600 text-white border-zinc-600',
+    solid: 'bg-zinc-600 text-white border-zinc-600',
     dot: 'bg-zinc-500',
   },
 };
@@ -43,8 +48,10 @@ export function SourceBadge({ source, className, compact }: { source: PropertySo
     <span
       title={meta.label}
       className={cn(
-        'inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap',
-        meta.className,
+        'inline-flex items-center justify-center rounded-full border font-bold whitespace-nowrap',
+        compact
+          ? `h-5 w-5 text-[11px] leading-none ${meta.solid}`
+          : `px-2 py-0.5 text-[10px] font-semibold ${meta.className}`,
         className,
       )}
     >
