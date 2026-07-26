@@ -538,7 +538,12 @@ function parseItemJson(body: string, srcUrl: string): Scraped | null {
   // Item endpoint carries richer contact info
   base.owner_phone = clean(ad?.customer?.phone ?? ad?.phone_number ?? ad?.merchant_phone ?? base.owner_phone);
   base.owner_name = clean(ad?.customer?.name ?? ad?.merchant_name ?? ad?.contact_name ?? base.owner_name);
-  base.description = clean(ad?.description ?? ad?.info_text ?? base.description);
+  base.long_description = clean(ad?.description ?? ad?.info_text ?? base.long_description);
+  base.short_description = clean(ad?.info_text ?? ad?.subtitle ?? base.short_description);
+  base.available_from = pickAvailableFrom(ad) ?? base.available_from ?? null;
+  base.attributes = { ...(base.attributes ?? {}), ...pickAttributes(ad) };
+  base.photos = pickAllPhotos(base.photos, ad?.images, ad?.metaData?.images, ad?.gallery);
+  base.description = base.long_description ?? base.short_description ?? base.description;
   return base;
 }
 
