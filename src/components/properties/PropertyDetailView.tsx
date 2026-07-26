@@ -221,6 +221,18 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           </Card>
         )}
 
+        <PropertyRichDetailsCard
+          aboutText={firstString((property as any).long_description, (property as any).short_description)}
+          furniture={asRecord((property as any).furniture_details)}
+          additional={asRecord((property as any).additional_details)}
+          amenities={asRecord((property as any).attributes)}
+          priceHistory={Array.isArray((property as any).price_history) ? ((property as any).price_history as any[]) : []}
+          latitude={(property as any).latitude != null ? Number((property as any).latitude) : null}
+          longitude={(property as any).longitude != null ? Number((property as any).longitude) : null}
+          addressLabel={[stripAddressNumbers(property.address), property.city].filter(Boolean).join(', ')}
+        />
+
+
         {financialEntries.length > 0 && (
           <Card className="p-4 sm:p-5">
             <h2 className="text-base font-bold text-primary mb-3 inline-flex items-center gap-2">
