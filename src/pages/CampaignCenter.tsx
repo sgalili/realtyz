@@ -3131,6 +3131,26 @@ const PublishedFeed = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId]);
 
+  // Background media re-sync: once per browser session per workspace, mirror
+  // every Facebook post image into the permanent post-media-cache bucket so
+  // the feed never depends on an expiring CDN signature. Fire-and-forget.
+  useEffect(() => {
+    const scope = workspaceOwnerId ?? userId;
+    if (!scope) return;
+    const key = `realtyz.fb_media_resync.${scope}`;
+    try {
+      const last = Number(sessionStorage.getItem(key) || 0);
+      if (Number.isFinite(last) && Date.now() - last < 6 * 60 * 60 * 1000) return;
+      sessionStorage.setItem(key, String(Date.now()));
+    } catch { /* sessionStorage unavailable — still run once */ }
+    void supabase.functions
+      .invoke('sync-all-facebook-post-images', { body: { limit: 500 } })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceOwnerId, userId]);
+
+
+
 
 
 
@@ -3530,13 +3550,11 @@ const PublishedFeed = () => {
                 <PostImage
                   src={r.media_urls?.[0]}
                   campaignLogId={r.id}
-                  listingId={r.listing_id}
                   index={0}
                   alt=""
                   className="h-12 w-12 shrink-0 rounded-lg object-cover border border-border"
                   fallbackClassName="h-12 w-12 shrink-0"
                 />
-
                 <h3 className={cn('flex-1 font-semibold text-foreground line-clamp-2', alignClass)} dir={dirAttr}>
                   {(bodyText.trim().split('\n')[0] || r.campaign_name)}
                 </h3>
@@ -3678,10 +3696,9 @@ const PublishedFeed = () => {
                   <div className="mx-4 mb-3 flex gap-2 overflow-x-auto">
                     {r.media_urls.slice(0, 6).map((src, i) => (
                       <div key={i} className="relative shrink-0 group">
-                        <PostImage src={src} campaignLogId={r.id} listingId={r.listing_id} index={i} alt=""
+                        <PostImage src={src} campaignLogId={r.id} index={i} alt=""
                              className="h-32 w-32 rounded-lg object-cover border border-border"
                              fallbackClassName="h-32 w-32" />
-
                         <button
                           type="button"
                           title="הסר תמונה"
