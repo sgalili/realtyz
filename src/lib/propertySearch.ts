@@ -339,9 +339,19 @@ export async function searchAllSources(
     }
 
     // Token-based text filter, applied ONLY to external rows (local was already
-    // filtered server-side via ilike). Every token must appear in at least one
-    // text field — this avoids requiring the whole free-text phrase to match.
-    const tokens = tokenize(f.q).map((t) => t.toLowerCase());
+    // filtered server-side via ilike).
+    //
+    // NOTE: this used to require EVERY token to appear in the row's text. Yad2
+    // feed rows only carry "city · neighborhood" + street, so a natural query
+    // like "דירה 4 חדרים בהרצליה" matched nothing and every live Yad2 result
+    // was thrown away client-side after a successful scrape. Generic real-estate
+    // words and words already expressed as structured filters are ignored, and
+    // a row survives if it matches ANY remaining token (or the requested city).
+    const GENERIC = /^(דירה|דירות|נכס|נכסים|בית|בתים|חדר|חדרים|למכירה|להשכרה|מכירה|שכירות|עם|של|ב|apartment|house|room|rooms|sale|rent|for)$/;
+    const cityLc = String(f.city ?? '').toLowerCase().replace('כל הערים', '');
+    const tokens = tokenize(f.q)
+      .map((t) => t.toLowerCase().replace(/^ב/, ''))
+      .filter((t) => t.length >= 2 && !GENERIC.test(t) && !/^\d+$/.test(t));
     return tokens.length === 0
       ? all
       : all.filter((r) => {
@@ -350,8 +360,10 @@ export async function searchAllSources(
             .filter(Boolean)
             .join(' ')
             .toLowerCase();
-          return tokens.every((t) => hay.includes(t));
+          if (cityLc && hay.includes(cityLc)) return true;
+          return tokens.some((t) => hay.includes(t));
         });
+
   };
 
   // Stream: paint the table the moment EACH source answers instead of waiting
