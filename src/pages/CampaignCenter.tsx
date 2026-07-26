@@ -121,6 +121,25 @@ const mergePostMediaUrls = (...values: unknown[]): string[] => {
   return out;
 };
 
+// Strict uniqueness: exact URL AND canonical filename key. Used at render time
+// so a post can never paint the same image twice.
+const uniqueMediaUrls = (values: unknown): string[] => {
+  const list = Array.isArray(values) ? values : values ? [values] : [];
+  const seenExact = new Set<string>();
+  const seenKey = new Set<string>();
+  const out: string[] = [];
+  for (const value of list) {
+    if (typeof value !== 'string' || !value) continue;
+    const key = mediaDedupeKey(value);
+    if (seenExact.has(value) || seenKey.has(key)) continue;
+    seenExact.add(value);
+    seenKey.add(key);
+    out.push(value);
+  }
+  return out;
+};
+
+
 // Images the user explicitly deleted from a post. Persisted in
 // campaign_logs.provider_response.removed_media_keys so no sync/merge path can
 // ever resurrect them.
@@ -3404,14 +3423,14 @@ const PublishedFeed = () => {
   // Remove a single image from a post — permanently. The URL's dedupe key is
   // added to provider_response.removed_media_keys, which every merge path (and
   // the DB trigger) honours, so no sync can ever bring the image back.
-  const removeMediaAt = async (campaignId: string, index: number) => {
+  const removeMediaUrl = async (campaignId: string, removedUrl: string) => {
     const row = rows?.find((r) => r.id === campaignId);
-    const removedUrl = row?.media_urls?.[index];
-    if (!removedUrl) return;
+    if (!row || !removedUrl) return;
     const removedKey = mediaDedupeKey(removedUrl);
 
-    const nextMedia = (row.media_urls ?? []).filter((_, i) => i !== index);
+    const nextMedia = (row.media_urls ?? []).filter((u) => mediaDedupeKey(u) !== removedKey);
     setRows((prev) => prev?.map((r) => (r.id === campaignId ? { ...r, media_urls: nextMedia } : r)) ?? prev);
+
 
     try {
       // All DB rows behind this card (a broadcast fans out into many rows).
@@ -3600,6 +3619,10 @@ const PublishedFeed = () => {
         const alignClass = isHe ? 'text-right' : 'text-left';
         const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
         const fmt = (v: number | null | undefined) => (typeof v === 'number' ? v : 0);
+        // Final render-time uniqueness guard: even if any upstream path leaks a
+        // repeat, each image is painted exactly once.
+        const uniqueMedia = uniqueMediaUrls(r.media_urls);
+
         const liveCount = liveCommentCounts[r.id];
         // Once the comment tree has been loaded (even once), it is the
         // authoritative count — top-level + follow-up replies. Never mix in
@@ -3624,20 +3647,20 @@ const PublishedFeed = () => {
               <div className={cn('flex items-center gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
                 <div className="relative h-12 w-12 shrink-0">
                   <PostImage
-                    src={r.media_urls?.[0]}
-                    candidates={r.media_urls ?? []}
+                    src={uniqueMedia[0]}
+                    candidates={uniqueMedia}
                     campaignLogId={r.id}
                     index={0}
                     alt=""
                     className="h-12 w-12 rounded-lg object-cover border border-border"
                     fallbackClassName="block h-12 w-12 rounded-lg border border-border bg-muted"
                   />
-                  {(r.media_urls?.length ?? 0) > 0 && (
+                  {uniqueMedia.length > 0 && (
                     <span
                       className="absolute -top-1 -right-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-black/70 px-1 py-0 text-[10px] font-bold leading-4 text-white"
-                      title={`${r.media_urls!.length} תמונות`}
+                      title={`${uniqueMedia.length} תמונות`}
                     >
-                      {r.media_urls!.length}
+                      {uniqueMedia.length}
                     </span>
                   )}
                 </div>
@@ -3779,15 +3802,15 @@ const PublishedFeed = () => {
                     </ul>
                   </div>
                 )}
-                {r.media_urls && r.media_urls.length > 0 && (
+                {uniqueMedia.length > 0 && (
                   <div className={cn(
                     'mx-4 mb-3 grid gap-2',
-                    r.media_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3',
+                    uniqueMedia.length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3',
                   )}>
-                    {r.media_urls.map((src, i) => (
-                      <div key={`${src}-${i}`} className="relative group aspect-square min-w-0">
+                    {uniqueMedia.map((src, i) => (
+                      <div key={src} className="relative group aspect-square min-w-0">
                         <PostImage src={src} campaignLogId={r.id} index={i} alt=""
-                             candidates={r.media_urls ?? []}
+                             candidates={uniqueMedia}
                              className="h-full w-full rounded-lg object-cover border border-border"
                              fallbackClassName="h-full w-full" />
                         <button
@@ -3796,7 +3819,7 @@ const PublishedFeed = () => {
                           aria-label="הסר תמונה"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm('להסיר את התמונה מהפוסט?')) removeMediaAt(r.id, i);
+                            if (window.confirm('להסיר את התמונה מהפוסט?')) removeMediaUrl(r.id, src);
                           }}
                           className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
                         >
