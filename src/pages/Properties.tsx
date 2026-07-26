@@ -576,24 +576,8 @@ export default function Properties() {
 
         <CollapsibleContent>
           <Card className="p-4 sm:p-5 mt-3">
-            {/* Deal type toggle — Sale / Rent / All */}
-            <div className="flex items-center justify-between mb-4">
-              <Label className="text-xs font-semibold">סוג עסקה</Label>
-              <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5" dir="rtl">
-                {(['all', 'sale', 'rent'] as Array<ListingType | 'all'>).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setListingType(t)}
-                    className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-                      listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Deal type toggle now lives above the search bar */}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2 lg:col-span-2">
                 <div className="flex items-center justify-between">
