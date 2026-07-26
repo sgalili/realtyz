@@ -406,14 +406,18 @@ ${shareUrl}
     }
   }, [mintShareUrl, buildOfferMessage]);
 
-  // Generic share (no known recipient): WhatsApp picker, SMS, or copy link.
-  const shareProperty = useCallback(async (r: WebtivResult, mode: 'whatsapp' | 'sms' | 'copy') => {
+  // Generic share: WhatsApp, SMS, or copyable landing-page link.
+  const shareProperty = useCallback(async (
+    r: WebtivResult,
+    mode: 'whatsapp' | 'sms' | 'copy',
+    recipientPhone: string | null,
+  ) => {
     try {
-      setSharingId(r.id);
-      const phone = (/\d/.test(String(sharePhoneRef.current ?? '')) ? String(sharePhoneRef.current) : '').replace(/\D/g, '');
+      const phone = (recipientPhone || '').replace(/\D/g, '');
       const normalized = !phone ? null
         : phone.startsWith('972') ? phone
         : phone.startsWith('0') ? '972' + phone.slice(1) : phone;
+
       const shareUrl = await mintShareUrl(r, normalized);
       const text = buildOfferMessage(r, shareUrl);
       if (mode === 'whatsapp') {
