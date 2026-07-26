@@ -107,7 +107,10 @@ Deno.serve(async (req) => {
     collectFacebookPostAliases(response).forEach(add);
   }
 
-  const postIds = Array.from(ids).slice(0, 500);
+  // HARD CAP: 25 most-recent posts per run. Previously 500, which fanned out
+  // to thousands of Ayrshare calls and triggered HTTP 429 / suspension.
+  const postIds = Array.from(ids).slice(0, 25);
+
   let childResult: any = null;
   if (postIds.length > 0) {
     const p = fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comments-fetch`, {
