@@ -104,6 +104,10 @@ export default function Properties() {
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
   const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.hasSearched || !!cached?.results?.length);
+  // True when the current table is the default pool shown because the user's
+  // own search returned nothing. The grid is never allowed to be empty.
+  const [showingFallback, setShowingFallback] = useState(false);
+
   const [importingKey, setImportingKey] = useState<string | null>(null);
 
   // Multi-select + batch import progress
