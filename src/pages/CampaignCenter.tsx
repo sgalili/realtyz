@@ -584,6 +584,17 @@ const buildFirstCommentKeywordLine = (listing: CampaignListing | null | undefine
   return Array.from(new Set(parts.map((s) => s.trim()))).join(' | ');
 };
 
+// Hard cap: the property line in the first comment is at most 10 words.
+const limitToTenWords = (line: string) =>
+  String(line || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 10)
+    .join(' ')
+    .replace(/[,;:\-–—]+$/, '');
+
 const buildFallbackFirstComment = (listing: CampaignListing | null) => {
   const city = normalizeListingText(listing?.city) || 'הרצליה';
   const neighborhood = normalizeListingText(listing?.neighborhood);
@@ -592,11 +603,11 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
   const keywordLine = buildFirstCommentKeywordLine(listing);
   const propertyPhrase = rooms ? `דירת ${rooms} ב${location}` : `נכס ב${location}`;
   const variants = [
-    `${propertyPhrase} — הזדמנות שכדאי לראות לפני שמקבלים החלטה.`,
-    `${propertyPhrase} עם מיקום נכון ופוטנציאל אמיתי למי שמחפש איכות חיים.`,
-    `${propertyPhrase} שמשלב מיקום, נוחות ואופי — שווה ביקור.`,
+    `${propertyPhrase} — הזדמנות שכדאי לראות.`,
+    `${propertyPhrase} עם מיקום נכון ופוטנציאל אמיתי.`,
+    `${propertyPhrase} שמשלב מיקום ואופי, שווה ביקור.`,
   ];
-  const oneLiner = variants[Math.floor(Math.random() * variants.length)];
+  const oneLiner = limitToTenWords(variants[Math.floor(Math.random() * variants.length)]);
   return `${oneLiner}\n${keywordLine}`.trim();
 };
 
