@@ -64,7 +64,7 @@ export async function getAreaMarketFacts(
 
   const { data, error } = await supabase
     .from('listings')
-    .select('asking_price, sqm, rooms, deal_type, neighborhood, created_at')
+    .select('id, property_title, address, asking_price, sqm, rooms, deal_type, neighborhood, features, media_photos, created_at')
     .eq('city', city)
     .gte('created_at', since)
     .limit(1000);
