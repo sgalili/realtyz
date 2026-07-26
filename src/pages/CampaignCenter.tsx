@@ -1576,7 +1576,7 @@ const InlineComposer = ({
             setBodyManuallyEdited(true);
           }}
           placeholder="תוכן הפוסט"
-          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pr-12"
+          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pl-12"
         />
         <button
           type="button"
@@ -1585,7 +1585,7 @@ const InlineComposer = ({
             return bodyManuallyEdited ? finalizeBody() : handleGenerate({ rotateTemplate: true });
           }}
           disabled={generating || finalizingBody}
-          className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
+          className="absolute top-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
           aria-label={!hasBody ? 'חולל תוכן עם AI' : (bodyManuallyEdited ? 'שיוף לגרסה סופית' : 'חולל טקסט מחדש')}
           title={!hasBody ? 'חולל תוכן עם AI' : (bodyManuallyEdited ? 'שיוף לגרסה סופית' : 'חולל טקסט מחדש')}
         >
