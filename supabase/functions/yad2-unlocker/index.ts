@@ -1141,6 +1141,11 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     long_description: row.long_description ?? row.description ?? null,
     available_from: row.available_from ?? null,
     attributes: row.attributes ?? {},
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
+    furniture_details: row.furniture_details ?? {},
+    additional_details: row.additional_details ?? {},
+    price_history: row.price_history ?? [],
     owner_id: ownerId,
     source_metadata: {
       scraper: "yad2-unlocker",
