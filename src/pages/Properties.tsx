@@ -820,13 +820,13 @@ export default function Properties() {
             <div className="text-base font-semibold text-foreground mb-1">חפש נכס מכל המקורות</div>
             <div className="text-sm">הזן עיר, כתובת או קישור — נחפש בו-זמנית במאגר שלך, בהומלי וביד-2.</div>
           </Card>
-        ) : searching ? (
+        ) : searching && sortedResults.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-72 w-full rounded-lg" />
             ))}
           </div>
-        ) : sortedResults.length === 0 ? (
+        ) : searching && sortedResults.length === 0 ? null : sortedResults.length === 0 ? (
           <Card className="p-12 text-center text-muted-foreground">
             לא נמצאו נכסים תואמים. נסה חיפוש רחב יותר.
           </Card>
