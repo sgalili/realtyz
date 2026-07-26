@@ -211,11 +211,18 @@ export async function searchAllSources(
   );
 
   const tasks: Array<Promise<{ label: PropertySource; results: UnifiedResult[] }>> = [
-    searchLocal(f).then((r) => ({ label: 'mine' as const, results: r })).catch((e) => {
-      console.error('[propertySearch] local source failed', e);
-      sources.mine = { status: 'error', count: 0, error: String(e?.message ?? e) };
-      return { label: 'mine' as const, results: [] };
-    }),
+    searchLocal(f)
+      .then((r) => {
+        // Instant paint: local DB hits are surfaced before any gateway answers.
+        sources.mine = { status: r.length ? 'ok' : 'empty', count: r.length };
+        onPartial?.({ results: r, sources: { ...sources } });
+        return { label: 'mine' as const, results: r };
+      })
+      .catch((e) => {
+        console.error('[propertySearch] local source failed', e);
+        sources.mine = { status: 'error', count: 0, error: String(e?.message ?? e) };
+        return { label: 'mine' as const, results: [] };
+      }),
     invokeExternal('homely-fetch-property', {
       action: homelyHasFilter ? 'searchProperties' : 'fetchAllProperties',
       filters: homelyFilters,
