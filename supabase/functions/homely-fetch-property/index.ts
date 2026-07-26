@@ -2737,14 +2737,26 @@ Deno.serve(async (req) => {
             const verifiedImages = await mirrorVerifiedImageCandidates(admin, listingId, imageCandidates, versionTag, 40);
             const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document", versionTag);
 
-            const cleanList = (arr: string[]): string[] =>
-              (arr || []).filter((u) =>
-                typeof u === "string" &&
-                u.trim() !== "" &&
-                u.includes("/storage/v1/object/") &&
-                u.includes("/homely-media/") &&
-                !mediaRejectReason(u),
-              );
+            const cleanList = (arr: string[]): string[] => {
+              const seen = new Set<string>();
+              const out: string[] = [];
+              for (const u of arr || []) {
+                if (
+                  typeof u !== "string" ||
+                  u.trim() === "" ||
+                  !u.includes("/storage/v1/object/") ||
+                  !u.includes("/homely-media/") ||
+                  mediaRejectReason(u)
+                ) continue;
+                // Dedupe on the path (ignore cache-busting / signature query).
+                const key = u.split("?")[0].toLowerCase();
+                if (seen.has(key)) continue;
+                seen.add(key);
+                out.push(u);
+              }
+              return out;
+            };
+
 
             const cleanedMirrored = cleanList(verifiedImages.photos);
             const existingMeta = (existing as any)?.source_metadata && typeof (existing as any).source_metadata === "object"
