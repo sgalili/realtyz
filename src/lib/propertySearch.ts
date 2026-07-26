@@ -280,15 +280,22 @@ export async function searchAllSources(
           ...body,
           query: queryText || undefined,
           mode: 'search',
-          // Walk the Yad2 directory in depth instead of stopping at the
-          // first results page — the edge function paginates server-side.
-          limit: 120,
-          pages: 4,
+          // Walk the Yad2 directory in depth, but keep the whole scrape inside
+          // a wall-clock budget: each Scraping Browser page costs ~15-25s and
+          // an over-long call reaches the UI as "0 Yad2 results".
+          limit: 90,
+          pages: 3,
+          budget_ms: 70_000,
         });
 
         if (Array.isArray(d?.diagnostics) && d.diagnostics.length) {
           console.info('[propertySearch] yad2-unlocker diagnostics', d.diagnostics);
         }
+        if (d?.error) {
+          console.error('[propertySearch] yad2-unlocker error', d.error, d.detail);
+          sources.yad2 = { status: 'error', count: 0, error: String(d.detail ?? d.error) };
+        }
+
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
         return { label: 'yad2' as const, results: normalizeExternal('yad2', items) };
       } catch (e: any) {
