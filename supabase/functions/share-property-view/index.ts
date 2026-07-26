@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
     const { data: share, error } = await admin
       .from("property_shares")
-      .select("id, listing_id, external_snapshot, workspace_name, broker_wa, expires_at")
+      .select("id, owner_id, listing_id, external_snapshot, workspace_name, broker_wa, expires_at")
       .eq("token", token)
       .maybeSingle();
     if (error || !share) {
@@ -39,12 +39,42 @@ Deno.serve(async (req) => {
     if (share.listing_id) {
       const { data: l } = await admin
         .from("listings")
-        .select("id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, media_photos, deal_type, features")
+        .select("id, owner_id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, media_photos, deal_type, features")
         .eq("id", share.listing_id)
         .maybeSingle();
       if (l) property = l;
     }
     if (!property && share.external_snapshot) property = share.external_snapshot;
+
+    // Workspace branding (logo + name) for the public header.
+    let logo_url: string | null = null;
+    let workspace_name = share.workspace_name as string | null;
+    if (share.owner_id) {
+      const { data: wl } = await admin
+        .from("white_label_settings")
+        .select("agency_name, logo_url, landscape_logo_url")
+        .eq("user_id", share.owner_id)
+        .maybeSingle();
+      if (wl) {
+        logo_url = wl.logo_url || wl.landscape_logo_url || null;
+        workspace_name = workspace_name || wl.agency_name || null;
+      }
+    }
+
+    // Prefer the property owner's mobile for the WhatsApp CTA, fall back to broker.
+    let owner_wa: string | null = null;
+    let owner_name: string | null = null;
+    if (property?.owner_id) {
+      const { data: owner } = await admin
+        .from("crm_profiles")
+        .select("full_name, phone")
+        .eq("id", property.owner_id)
+        .maybeSingle();
+      if (owner?.phone) {
+        owner_wa = owner.phone;
+        owner_name = owner.full_name ?? null;
+      }
+    }
 
     // Fire-and-forget view counter — never blocks response.
     admin.from("property_shares").update({ views_count: (undefined as any) })
@@ -60,7 +90,10 @@ Deno.serve(async (req) => {
     );
 
     return new Response(JSON.stringify({
-      workspace_name: share.workspace_name,
+      workspace_name,
+      logo_url,
+      owner_wa,
+      owner_name,
       broker_wa: share.broker_wa,
       property,
     }), {
