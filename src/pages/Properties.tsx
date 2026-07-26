@@ -273,7 +273,21 @@ export default function Properties() {
         setSearchProgress(null);
       }
     }
-  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin]);
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool]);
+
+  // Last-resort guard: whatever happens, an idle page always shows listings.
+  useEffect(() => {
+    if (searching || results.length) return;
+    let cancelled = false;
+    (async () => {
+      const pool = await loadDefaultPool().catch(() => [] as UnifiedResult[]);
+      if (cancelled || !pool.length) return;
+      setResults(pool);
+      setShowingFallback(true);
+    })();
+    return () => { cancelled = true; };
+  }, [searching, results.length, loadDefaultPool]);
+
 
   // Abort the running fetch and immediately show the partial results found
   // so far. Nothing is cleared.
