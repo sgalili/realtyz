@@ -715,8 +715,12 @@ const InlineComposer = ({
         setMode('scheduled');
       }
     }
-    const listingParam = presetListingId ?? params.get('listing');
+    const listingParam = presetListingId
+      ?? params.get('listing')
+      ?? (params.get('properties') || '').split(',').map((s) => s.trim()).filter(Boolean)[0]
+      ?? null;
     if (listingParam) setSelectedListingId(listingParam);
+
     const variant = presetVariant ?? Number(params.get('variant') || '');
     const variants = presetVariants ?? Number(params.get('variants') || '');
     if (variant > 0 && variants > 1) {
