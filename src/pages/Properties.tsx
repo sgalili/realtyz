@@ -706,9 +706,10 @@ export default function Properties() {
                 <Button variant="outline" size="sm" className="h-10 flex-1" onClick={() => {
                   setCity('כל הערים'); setPropertyType('all'); setRooms('any'); setMaxPrice(PRICE_MAX); setAreaMin('');
                 }}>איפוס</Button>
-                <Button size="sm" className="h-10 flex-1" onClick={runSearch} disabled={searching}>
+                <Button size="sm" className="h-10 flex-1" onClick={() => { setFiltersOpen(false); runSearch(); }} disabled={searching}>
                   החל
                 </Button>
+
               </div>
             </div>
           </Card>
