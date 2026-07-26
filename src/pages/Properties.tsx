@@ -630,7 +630,24 @@ export default function Properties() {
 
         <CollapsibleContent>
           <Card className="p-4 sm:p-5 mt-3">
-            {/* Deal type toggle now lives above the search bar */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm font-semibold">סינון מתקדם</div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setFiltersOpen(false)}
+                className="h-8 gap-1.5 text-xs"
+                aria-label="סגור סינון"
+                title="סגור סינון"
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+                סגור
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
+
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2 lg:col-span-2">
