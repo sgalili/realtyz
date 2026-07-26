@@ -134,15 +134,22 @@ async function brightDataRequest(
     headers: forwarded,
   };
 
+  // api.brightdata.com negotiates HTTP/2, and Deno's h2 client reliably dies
+  // with "stream error detected: unspecific protocol error" against it. Pin
+  // the connection to HTTP/1.1 via a custom HTTP client when the runtime
+  // exposes one; fall back to plain fetch otherwise.
   const res = await fetch("https://api.brightdata.com/request", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${BD_TOKEN}`,
       Accept: "*/*",
+      // Discourage h2 upgrade on the fallback path.
+      Connection: "close",
     },
     body: JSON.stringify(payload),
-  });
+    ...(bdHttpClient ? { client: bdHttpClient } : {}),
+  } as RequestInit);
   const body = await res.text();
   const bdHeaders: Record<string, string> = {};
   for (const [k, v] of res.headers.entries()) {
