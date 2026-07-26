@@ -122,6 +122,30 @@ export default function Properties() {
     return () => window.removeEventListener('properties:add', handler);
   }, []);
 
+  // The properties page is NEVER blank. With no active search we preload the
+  // agent's primary city (first configured service area, else הרצליה) straight
+  // from the local cache, newest listings first.
+  const defaultCity = coveredCities?.[0] || 'הרצליה';
+  useEffect(() => {
+    if (hasSearched || results.length) return;
+    let cancelled = false;
+    (async () => {
+      setSearching(true);
+      try {
+        const rows = await searchLocalListings({ city: defaultCity, listing_type: 'all' });
+        if (cancelled) return;
+        setResults(rows);
+        setSourceStatus({ local: { status: rows.length ? 'ok' : 'empty', count: rows.length } });
+      } catch (err) {
+        console.error('[Properties] default city preload failed', err);
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultCity]);
+
   const runSearch = useCallback(async () => {
     setSearching(true);
     setHasSearched(true);
