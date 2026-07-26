@@ -1012,21 +1012,92 @@ Deno.serve(async (req) => {
       console.warn(`[yad2-unlocker] JSON gateway threw: ${String(e?.message ?? e).slice(0, 200)}`);
     }
 
-    // --- Fallback: HTML scrape of the public www URL (still direct Yad2) ----
+    // --- Fallback B: HTML scrape of the public www URL via the REST unlocker -
     if (!rows.length) {
       mode = "html";
       console.log(`[yad2-unlocker] falling back to HTML: ${inputUrl}`);
       try {
-        const html = await unlock(inputUrl);
+        const html = await unlock(inputUrl, { maxAttempts: 2 });
         rows = isItemUrl ? [parseItem(html, inputUrl)] : parseSearch(html, inputUrl, limit);
         diagnostics.push({ endpoint: inputUrl, kind: "html", status: rows.length ? "ok" : "empty", count: rows.length });
       } catch (e: any) {
         const err = String(e?.message ?? e).slice(0, 400);
+        console.warn(`[yad2-unlocker] HTML unlocker failed: ${err}`);
         diagnostics.push({ endpoint: inputUrl, kind: "html", status: "error", error: err });
-        // Re-throw so the client sees a 502 with details rather than a silent empty list.
-        throw e;
       }
     }
+
+    // --- Fallback C: Bright Data Scraping Browser (real Chromium over WS) ----
+    // Reached when the REST Web Unlocker zone is the wrong product type
+    // (client_10090) or Yad2 hard-blocks the proxy. This path uses the
+    // separately provisioned BRIGHTDATA_WS_ENDPOINT.
+    if (!rows.length && BD_WS) {
+      mode = "browser";
+      try {
+        const feedUrls = isItemUrl
+          ? [toGatewayItemUrl(inputUrl)].filter(Boolean) as string[]
+          : toGatewayFeedUrls(inputUrl);
+        const harvest = await scrapingBrowserHarvest(inputUrl, feedUrls);
+
+        for (const f of harvest.feeds) {
+          const parsed = isItemUrl
+            ? ([parseItemJson(f.body, inputUrl)].filter(Boolean) as Scraped[])
+            : parseSearchJson(f.body, inputUrl, limit);
+          if (parsed.length) {
+            rows = parsed;
+            jsonSource = f.url;
+            diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "ok", count: parsed.length });
+            break;
+          }
+          diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "empty" });
+        }
+
+        if (!rows.length && harvest.html) {
+          const parsed = isItemUrl
+            ? [parseItem(harvest.html, inputUrl)]
+            : parseSearch(harvest.html, inputUrl, limit);
+          rows = parsed.filter(Boolean) as Scraped[];
+          diagnostics.push({
+            endpoint: `[browser] ${inputUrl}`,
+            kind: "html",
+            status: rows.length ? "ok" : "empty",
+            count: rows.length,
+          });
+        }
+      } catch (e: any) {
+        const err = String(e?.message ?? e).slice(0, 400);
+        console.warn(`[yad2-unlocker] scraping-browser failed: ${err}`);
+        diagnostics.push({ endpoint: "[browser]", kind: "html", status: "error", error: err });
+      }
+    }
+
+    // Nothing worked at all — surface the real cause instead of "0 results".
+    if (!rows.length) {
+      const hardErrors = diagnostics.filter((d) => d.status === "error");
+      const zoneFault = hardErrors.find((d) => /brightdata_zone_mode|client_10090/i.test(d.error ?? ""));
+      if (zoneFault) {
+        return json({
+          error: "brightdata_zone_misconfigured",
+          detail:
+            'The Bright Data zone "' + BD_ZONE +
+            '" is a Scraping Browser zone, but the REST Web Unlocker API was called against it. ' +
+            "Create a Web Unlocker zone and set BRIGHTDATA_ZONE to its name, or ensure BRIGHTDATA_WS_ENDPOINT is valid so the browser transport can be used.",
+          diagnostics,
+          bd_trace: bdTrace,
+          resolved_url: inputUrl,
+        }, 502);
+      }
+      if (hardErrors.length) {
+        return json({
+          error: "yad2_fetch_failed",
+          detail: hardErrors.map((d) => `${d.endpoint}: ${d.error}`).join(" | ").slice(0, 1200),
+          diagnostics,
+          bd_trace: bdTrace,
+          resolved_url: inputUrl,
+        }, 502);
+      }
+    }
+
     console.log(`[yad2-unlocker] parsed ${rows.length} row(s) via ${mode}`);
 
     let saved = 0;
