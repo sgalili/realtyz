@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
@@ -291,8 +291,15 @@ export default function Properties() {
     return Array.from(cities);
   }, [results]);
 
+  // Transaction-type toggle filters the rendered list instantly (the live
+  // search re-runs in parallel through the effect below).
+  const typeFiltered = useMemo(
+    () => (listingType === 'all' ? results : results.filter((r) => r.listing_type === listingType)),
+    [results, listingType],
+  );
+
   const sortedResults = useMemo(() => {
-    const arr = [...results];
+    const arr = [...typeFiltered];
     const numOr = (v: number | null | undefined, fallback: number) => (typeof v === 'number' && !Number.isNaN(v) ? v : fallback);
     // Most-recent-first is the baseline everywhere: even "relevance" keeps
     // freshly posted properties on top so the list never looks stale.
@@ -311,7 +318,59 @@ export default function Properties() {
       default:
         return arr.sort(byCreatedDesc);
     }
-  }, [results, sortBy]);
+  }, [typeFiltered, sortBy]);
+
+  // Lazy loading — render 10 rows at a time and grow as the sentinel scrolls
+  // into view, so a deep Yad2 directory pull never freezes the page.
+  const PAGE_SIZE = 10;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [results, sortBy, listingType, viewMode]);
+  const pagedResults = useMemo(() => sortedResults.slice(0, visibleCount), [sortedResults, visibleCount]);
+  const hasMore = visibleCount < sortedResults.length;
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        setVisibleCount((c) => c + PAGE_SIZE);
+      }
+    }, { rootMargin: '300px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, pagedResults.length]);
+
+  // Re-run the live multi-source search whenever the transaction-type toggle
+  // changes after the first search, so external gateways get the new filter.
+  const firstTypeRunRef = useRef(true);
+  useEffect(() => {
+    if (firstTypeRunRef.current) { firstTypeRunRef.current = false; return; }
+    if (!hasSearched) return;
+    runSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingType]);
+
+  // Airplane action — send the property straight to the campaign composer
+  // with an auto-generated post + first comment. External rows are imported
+  // first so the composer has a real listing to build from.
+  const goToCampaign = useCallback(async (r: UnifiedResult) => {
+    let id = r.localId;
+    if (!id) {
+      setImportingKey(r.key);
+      try {
+        id = await autoImportResult(r);
+      } catch (err: any) {
+        console.error('[Properties] campaign import failed', err);
+        toast.error('ייבוא הנכס לקמפיין נכשל: ' + (err?.message ?? 'שגיאה'));
+        return;
+      } finally {
+        setImportingKey(null);
+      }
+    }
+    navigate(`/campaigns?tab=create&channel=facebook&properties=${id}&listing=${id}`);
+  }, [navigate]);
+
 
   // Per-source count breakdown for the total-count dropdown.
   const sourceBreakdown = useMemo(() => {
@@ -349,8 +408,28 @@ export default function Properties() {
 
       {/* Compact unified control bar */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+        {/* Row 0 — transaction type: הכל / להשכרה / למכירה, right above the search bar */}
+        <div className="flex items-center gap-2 mb-2" dir="rtl">
+          <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5">
+            {(['all', 'rent', 'sale'] as Array<ListingType | 'all'>).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setListingType(t)}
+                aria-pressed={listingType === t}
+                className={`px-3.5 py-1.5 text-xs font-semibold rounded transition-colors ${
+                  listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Row 1 — search: [advanced filter icon] [search input with go button] */}
         <div className="flex items-center gap-2" dir="rtl">
+
           <div className="relative flex-1 min-w-[200px]">
             <CollapsibleTrigger asChild>
               <button
@@ -497,24 +576,8 @@ export default function Properties() {
 
         <CollapsibleContent>
           <Card className="p-4 sm:p-5 mt-3">
-            {/* Deal type toggle — Sale / Rent / All */}
-            <div className="flex items-center justify-between mb-4">
-              <Label className="text-xs font-semibold">סוג עסקה</Label>
-              <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5" dir="rtl">
-                {(['all', 'sale', 'rent'] as Array<ListingType | 'all'>).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setListingType(t)}
-                    className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-                      listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Deal type toggle now lives above the search bar */}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2 lg:col-span-2">
                 <div className="flex items-center justify-between">
@@ -637,34 +700,47 @@ export default function Properties() {
               <Skeleton key={i} className="h-72 w-full rounded-lg" />
             ))}
           </div>
-        ) : results.length === 0 ? (
+        ) : sortedResults.length === 0 ? (
           <Card className="p-12 text-center text-muted-foreground">
             לא נמצאו נכסים תואמים. נסה חיפוש רחב יותר.
           </Card>
-        ) : viewMode === 'table' ? (
-          <ResultTable
-            results={sortedResults}
-            importingKey={importingKey}
-            onSelect={handleSelect}
-            selectedKeys={selectedKeys}
-            onToggleSelect={toggleSelected}
-            onToggleAll={(rows, checked) => (checked ? selectAllVisible(rows) : clearSelection())}
-          />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sortedResults.map((r) => (
-              <ResultCard
-                key={r.key}
-                result={r}
-                importing={importingKey === r.key}
-                onSelect={() => handleSelect(r)}
-                selected={selectedKeys.has(r.key)}
-                onToggleSelect={() => toggleSelected(r.key)}
+          <>
+            {viewMode === 'table' ? (
+              <ResultTable
+                results={pagedResults}
+                importingKey={importingKey}
+                onSelect={handleSelect}
+                onCampaign={goToCampaign}
+                selectedKeys={selectedKeys}
+                onToggleSelect={toggleSelected}
+                onToggleAll={(rows, checked) => (checked ? selectAllVisible(rows) : clearSelection())}
               />
-            ))}
-          </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pagedResults.map((r) => (
+                  <ResultCard
+                    key={r.key}
+                    result={r}
+                    importing={importingKey === r.key}
+                    onSelect={() => handleSelect(r)}
+                    onCampaign={() => goToCampaign(r)}
+                    selected={selectedKeys.has(r.key)}
+                    onToggleSelect={() => toggleSelected(r.key)}
+                  />
+                ))}
+              </div>
+            )}
+            {hasMore && (
+              <div ref={sentinelRef} className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                טוען עוד נכסים… ({pagedResults.length}/{sortedResults.length})
+              </div>
+            )}
+          </>
         )}
       </ErrorBoundary>
+
 
       <AddPropertyDialog
         open={addOpen}
@@ -698,15 +774,18 @@ function ResultCard({
   result,
   importing,
   onSelect,
+  onCampaign,
   selected,
   onToggleSelect,
 }: {
   result: UnifiedResult;
   importing: boolean;
   onSelect: () => void;
+  onCampaign?: () => void;
   selected?: boolean;
   onToggleSelect?: () => void;
 }) {
+
   const photos = (result.photos ?? []).filter(Boolean);
   const hasPhotos = photos.length > 0;
   const hasMany = photos.length > 1;
@@ -833,11 +912,20 @@ function ResultCard({
           </div>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <PropertyShareMenu results={[result]} />
-            <Button size="sm" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="gap-1.5">
-              <Send className="h-4 w-4" />
-              פתח
-            </Button>
+            {onCampaign && (
+              <Button
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); onCampaign(); }}
+                className="gap-1.5"
+                title="צור קמפיין לנכס"
+                aria-label="צור קמפיין לנכס"
+              >
+                <Send className="h-4 w-4" />
+                קמפיין
+              </Button>
+            )}
           </div>
+
 
         </div>
       </div>
@@ -851,6 +939,7 @@ function ResultTable({
   results,
   importingKey,
   onSelect,
+  onCampaign,
   selectedKeys,
   onToggleSelect,
   onToggleAll,
@@ -858,10 +947,12 @@ function ResultTable({
   results: UnifiedResult[];
   importingKey: string | null;
   onSelect: (r: UnifiedResult) => void;
+  onCampaign?: (r: UnifiedResult) => void;
   selectedKeys?: Set<string>;
   onToggleSelect?: (key: string) => void;
   onToggleAll?: (rows: UnifiedResult[], checked: boolean) => void;
 }) {
+
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -938,7 +1029,9 @@ function ResultTable({
                 )}
               </th>
             )}
+            <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
             <HeaderCell col="source" label="מקור" />
+
             <HeaderCell col="name" label="שם" />
             <HeaderCell col="listing_type" label="סוג" />
             <HeaderCell col="price" label="מחיר" />
@@ -968,6 +1061,23 @@ function ResultTable({
                   </td>
                 )}
                 <td className="px-2 py-1.5">
+                  <div className="h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
+                    {r.photos?.[0] ? (
+                      <img
+                        src={r.photos[0]}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center">
+                        <Building2 className="h-4 w-4 text-muted-foreground/50" />
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td className="px-2 py-1.5">
+
                   <div className="flex flex-row-reverse items-center gap-1">
                     {(r.sources ?? [r.source]).map((s) => (
                       <SourceBadge key={s} source={s} compact />
@@ -998,13 +1108,15 @@ function ResultTable({
                     <Button
                       size="icon"
                       variant="ghost"
-                      title="פתח"
-                      aria-label="פתח נכס"
-                      onClick={(e) => { e.stopPropagation(); onSelect(r); }}
+                      title="צור קמפיין לנכס"
+                      aria-label="צור קמפיין לנכס"
+                      disabled={importing}
+                      onClick={(e) => { e.stopPropagation(); onCampaign ? onCampaign(r) : onSelect(r); }}
                       className="h-8 w-8"
                     >
-                      <Send className="h-3.5 w-3.5" />
+                      {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     </Button>
+
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
                   </div>
                 </td>

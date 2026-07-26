@@ -280,8 +280,12 @@ export async function searchAllSources(
           ...body,
           query: queryText || undefined,
           mode: 'search',
-          limit: 30,
+          // Walk the Yad2 directory in depth instead of stopping at the
+          // first results page — the edge function paginates server-side.
+          limit: 120,
+          pages: 4,
         });
+
         if (Array.isArray(d?.diagnostics) && d.diagnostics.length) {
           console.info('[propertySearch] yad2-unlocker diagnostics', d.diagnostics);
         }

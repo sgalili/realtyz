@@ -1031,7 +1031,7 @@ Deno.serve(async (req) => {
 
     bdTrace = [];
     const body = await req.json().catch(() => ({} as any));
-    const limit = Math.min(80, Math.max(1, Number(body?.limit) || 30));
+    const limit = Math.min(300, Math.max(1, Number(body?.limit) || 30));
     const previewOnly = Boolean(body?.preview_only);
 
     // Accept several shapes:
@@ -1097,121 +1097,154 @@ Deno.serve(async (req) => {
     // exactly which direct-Yad2 hop returned data vs. was blocked.
     const diagnostics: Array<{ endpoint: string; kind: "json" | "html" | "item"; status: "ok" | "empty" | "error"; count?: number; error?: string }> = [];
 
-    // --- Primary path: Yad2 internal JSON gateway (direct, no aggregator) ---
-    try {
-      if (isItemUrl) {
-        const gwItem = toGatewayItemUrl(inputUrl);
-        if (gwItem) {
-          console.log(`[yad2-unlocker] JSON item ${gwItem}`);
-          try {
-            const body = await unlock(gwItem, { accept: "application/json" });
-            const row = parseItemJson(body, inputUrl);
-            if (row) { rows = [row]; jsonSource = gwItem; diagnostics.push({ endpoint: gwItem, kind: "item", status: "ok", count: 1 }); }
-            else diagnostics.push({ endpoint: gwItem, kind: "item", status: "empty" });
-          } catch (e: any) {
-            diagnostics.push({ endpoint: gwItem, kind: "item", status: "error", error: String(e?.message ?? e).slice(0, 400) });
+    // One full three-tier scrape of a single Yad2 results page.
+    async function scrapeOnce(pageUrl: string): Promise<Scraped[]> {
+      let out: Scraped[] = [];
+
+      // --- Primary path: Yad2 internal JSON gateway (direct, no aggregator) ---
+      try {
+        if (isItemUrl) {
+          const gwItem = toGatewayItemUrl(pageUrl);
+          if (gwItem) {
+            console.log(`[yad2-unlocker] JSON item ${gwItem}`);
+            try {
+              const raw = await unlock(gwItem, { accept: "application/json" });
+              const row = parseItemJson(raw, pageUrl);
+              if (row) { out = [row]; jsonSource = gwItem; diagnostics.push({ endpoint: gwItem, kind: "item", status: "ok", count: 1 }); }
+              else diagnostics.push({ endpoint: gwItem, kind: "item", status: "empty" });
+            } catch (e: any) {
+              diagnostics.push({ endpoint: gwItem, kind: "item", status: "error", error: String(e?.message ?? e).slice(0, 400) });
+            }
+          }
+        } else {
+          const candidates = toGatewayFeedUrls(pageUrl);
+          for (const gw of candidates) {
+            try {
+              console.log(`[yad2-unlocker] JSON search ${gw}`);
+              const raw = await unlock(gw, { accept: "application/json", maxAttempts: 2 });
+              const parsed = parseSearchJson(raw, pageUrl, limit);
+              if (parsed.length) {
+                out = parsed; jsonSource = gw; mode = "json";
+                diagnostics.push({ endpoint: gw, kind: "json", status: "ok", count: parsed.length });
+                break;
+              }
+              console.warn(`[yad2-unlocker] JSON endpoint returned 0 items: ${gw}`);
+              diagnostics.push({ endpoint: gw, kind: "json", status: "empty" });
+            } catch (e: any) {
+              const err = String(e?.message ?? e).slice(0, 400);
+              console.warn(`[yad2-unlocker] JSON endpoint failed: ${gw} — ${err}`);
+              diagnostics.push({ endpoint: gw, kind: "json", status: "error", error: err });
+            }
           }
         }
-      } else {
-        const candidates = toGatewayFeedUrls(inputUrl);
-        for (const gw of candidates) {
-          try {
-            console.log(`[yad2-unlocker] JSON search ${gw}`);
-            const body = await unlock(gw, { accept: "application/json", maxAttempts: 2 });
-            const parsed = parseSearchJson(body, inputUrl, limit);
+      } catch (e: any) {
+        console.warn(`[yad2-unlocker] JSON gateway threw: ${String(e?.message ?? e).slice(0, 200)}`);
+      }
+
+      // --- Fallback B: HTML scrape of the public www URL via the REST unlocker -
+      if (!out.length) {
+        mode = "html";
+        console.log(`[yad2-unlocker] falling back to HTML: ${pageUrl}`);
+        try {
+          const html = await unlock(pageUrl, { maxAttempts: 2 });
+          out = isItemUrl ? [parseItem(html, pageUrl)] : parseSearch(html, pageUrl, limit);
+          diagnostics.push({ endpoint: pageUrl, kind: "html", status: out.length ? "ok" : "empty", count: out.length });
+        } catch (e: any) {
+          const err = String(e?.message ?? e).slice(0, 400);
+          console.warn(`[yad2-unlocker] HTML unlocker failed: ${err}`);
+          diagnostics.push({ endpoint: pageUrl, kind: "html", status: "error", error: err });
+        }
+      }
+
+      // --- Fallback C: Bright Data Scraping Browser (real Chromium over WS) ----
+      if (!out.length && BD_WS) {
+        mode = "browser";
+        try {
+          const feedUrls = isItemUrl
+            ? [toGatewayItemUrl(pageUrl)].filter(Boolean) as string[]
+            : toGatewayFeedUrls(pageUrl);
+          const harvest = await scrapingBrowserHarvest(pageUrl, feedUrls, (html) => {
+            try {
+              const probe = isItemUrl
+                ? ([parseItem(html, pageUrl)].filter(Boolean) as Scraped[])
+                : parseSearch(html, pageUrl, limit);
+              console.log(`[yad2-unlocker] scraping-browser: HTML parse yielded ${probe.length} row(s)`);
+              return probe.length === 0;
+            } catch (e) {
+              console.warn(`[yad2-unlocker] scraping-browser: HTML parse threw ${String((e as Error)?.message ?? e)}`);
+              return true;
+            }
+          });
+
+          if (harvest.html) {
+            const parsed = isItemUrl
+              ? ([parseItem(harvest.html, pageUrl)].filter(Boolean) as Scraped[])
+              : parseSearch(harvest.html, pageUrl, limit);
             if (parsed.length) {
-              rows = parsed; jsonSource = gw;
-              diagnostics.push({ endpoint: gw, kind: "json", status: "ok", count: parsed.length });
+              out = parsed;
+              diagnostics.push({ endpoint: `[browser] ${pageUrl}`, kind: "html", status: "ok", count: parsed.length });
+            }
+          }
+
+          for (const f of out.length ? [] : harvest.feeds) {
+            const parsed = isItemUrl
+              ? ([parseItemJson(f.body, pageUrl)].filter(Boolean) as Scraped[])
+              : parseSearchJson(f.body, pageUrl, limit);
+            if (parsed.length) {
+              out = parsed;
+              jsonSource = f.url;
+              diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "ok", count: parsed.length });
               break;
             }
-            console.warn(`[yad2-unlocker] JSON endpoint returned 0 items: ${gw}`);
-            diagnostics.push({ endpoint: gw, kind: "json", status: "empty" });
-          } catch (e: any) {
-            const err = String(e?.message ?? e).slice(0, 400);
-            console.warn(`[yad2-unlocker] JSON endpoint failed: ${gw} — ${err}`);
-            diagnostics.push({ endpoint: gw, kind: "json", status: "error", error: err });
+            diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "empty" });
           }
+
+          if (!out.length) {
+            diagnostics.push({ endpoint: `[browser] ${pageUrl}`, kind: "html", status: "empty", count: 0 });
+          }
+        } catch (e: any) {
+          const err = String(e?.message ?? e).slice(0, 400);
+          console.warn(`[yad2-unlocker] scraping-browser failed: ${err}`);
+          diagnostics.push({ endpoint: "[browser]", kind: "html", status: "error", error: err });
         }
       }
-    } catch (e: any) {
-      console.warn(`[yad2-unlocker] JSON gateway threw: ${String(e?.message ?? e).slice(0, 200)}`);
+
+      return out;
     }
 
-    // --- Fallback B: HTML scrape of the public www URL via the REST unlocker -
-    if (!rows.length) {
-      mode = "html";
-      console.log(`[yad2-unlocker] falling back to HTML: ${inputUrl}`);
-      try {
-        const html = await unlock(inputUrl, { maxAttempts: 2 });
-        rows = isItemUrl ? [parseItem(html, inputUrl)] : parseSearch(html, inputUrl, limit);
-        diagnostics.push({ endpoint: inputUrl, kind: "html", status: rows.length ? "ok" : "empty", count: rows.length });
-      } catch (e: any) {
-        const err = String(e?.message ?? e).slice(0, 400);
-        console.warn(`[yad2-unlocker] HTML unlocker failed: ${err}`);
-        diagnostics.push({ endpoint: inputUrl, kind: "html", status: "error", error: err });
+    // Pagination — Yad2 serves ~30-40 items per page. Walk pages until the
+    // requested `limit` is met, a page comes back empty, or `pages` is hit.
+    const startPage = Math.max(1, Number(body?.page) || 1);
+    const maxPages = isItemUrl || previewOnly
+      ? 1
+      : Math.min(10, Math.max(1, Number(body?.pages) || Math.ceil(limit / 30)));
+    const seenKeys = new Set<string>();
+    let pagesScanned = 0;
+
+    for (let p = startPage; p < startPage + maxPages; p++) {
+      let pageUrl = inputUrl;
+      if (!isItemUrl && p > 1) {
+        const u = new URL(inputUrl);
+        u.searchParams.set("page", String(p));
+        pageUrl = u.toString();
       }
-    }
-
-    // --- Fallback C: Bright Data Scraping Browser (real Chromium over WS) ----
-    // Reached when the REST Web Unlocker zone is the wrong product type
-    // (client_10090) or Yad2 hard-blocks the proxy. This path uses the
-    // separately provisioned BRIGHTDATA_WS_ENDPOINT.
-    if (!rows.length && BD_WS) {
-      mode = "browser";
-      try {
-        const feedUrls = isItemUrl
-          ? [toGatewayItemUrl(inputUrl)].filter(Boolean) as string[]
-          : toGatewayFeedUrls(inputUrl);
-        const harvest = await scrapingBrowserHarvest(inputUrl, feedUrls, (html) => {
-          try {
-            const probe = isItemUrl
-              ? ([parseItem(html, inputUrl)].filter(Boolean) as Scraped[])
-              : parseSearch(html, inputUrl, limit);
-            console.log(`[yad2-unlocker] scraping-browser: HTML parse yielded ${probe.length} row(s)`);
-            return probe.length === 0;
-          } catch (e) {
-            console.warn(`[yad2-unlocker] scraping-browser: HTML parse threw ${String((e as Error)?.message ?? e)}`);
-            return true;
-          }
-        });
-
-        if (harvest.html) {
-          const parsed = isItemUrl
-            ? ([parseItem(harvest.html, inputUrl)].filter(Boolean) as Scraped[])
-            : parseSearch(harvest.html, inputUrl, limit);
-          if (parsed.length) {
-            rows = parsed;
-            diagnostics.push({
-              endpoint: `[browser] ${inputUrl}`,
-              kind: "html",
-              status: "ok",
-              count: parsed.length,
-            });
-          }
-        }
-
-        for (const f of rows.length ? [] : harvest.feeds) {
-          const parsed = isItemUrl
-            ? ([parseItemJson(f.body, inputUrl)].filter(Boolean) as Scraped[])
-            : parseSearchJson(f.body, inputUrl, limit);
-          if (parsed.length) {
-            rows = parsed;
-            jsonSource = f.url;
-            diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "ok", count: parsed.length });
-            break;
-          }
-          diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "empty" });
-        }
-
-        if (!rows.length) {
-          diagnostics.push({ endpoint: `[browser] ${inputUrl}`, kind: "html", status: "empty", count: 0 });
-        }
-      } catch (e: any) {
-        const err = String(e?.message ?? e).slice(0, 400);
-        console.warn(`[yad2-unlocker] scraping-browser failed: ${err}`);
-        diagnostics.push({ endpoint: "[browser]", kind: "html", status: "error", error: err });
+      pagesScanned++;
+      const pageRows = await scrapeOnce(pageUrl);
+      if (!pageRows.length) break;
+      let added = 0;
+      for (const r of pageRows) {
+        const key = String(r.external_id || r.source_url || "");
+        if (!key || seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        rows.push(r);
+        added++;
       }
+      // A page that adds nothing new means Yad2 is repeating the first page.
+      if (added === 0) break;
+      if (rows.length >= limit) break;
     }
+    rows = rows.slice(0, limit);
+
 
     // Nothing worked at all — surface the real cause instead of "0 results".
     if (!rows.length) {
@@ -1283,7 +1316,9 @@ Deno.serve(async (req) => {
 
     return json({
       success: true,
-      urls_scanned: 1,
+      urls_scanned: pagesScanned,
+      pages_scanned: pagesScanned,
+
       records_scraped: rows.length,
       records_saved: saved,
       results: rows,
