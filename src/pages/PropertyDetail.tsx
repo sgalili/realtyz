@@ -626,7 +626,7 @@ export default function PropertyDetail() {
           <div
             role="heading"
             aria-level={1}
-            className="text-xl font-bold text-right text-slate-900 block leading-snug"
+            className="text-2xl font-bold text-right text-slate-900 block leading-snug"
           >
             {dynamicHeadline}
           </div>
@@ -745,18 +745,18 @@ export default function PropertyDetail() {
               <>
                 {property.price > 0 ? (
                   <>
-                    <span className="text-3xl font-extrabold text-success tabular-nums">
+                    <span className="text-4xl font-extrabold text-success tabular-nums">
                       {formatPrice(property.price)}
-                      {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
+                      {isRent && <span className="text-lg font-normal text-muted-foreground"> /חודש</span>}
                     </span>
                     {pricePerMeter ? (
-                      <span className="text-xs text-muted-foreground font-normal">
+                      <span className="text-sm text-muted-foreground font-normal">
                         ({pricePerMeter} ₪ למ"ר)
                       </span>
                     ) : null}
                   </>
                 ) : (
-                  <span className="text-xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
+                  <span className="text-2xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
                 )}
               </>
             )}
@@ -775,8 +775,8 @@ export default function PropertyDetail() {
                 ) : (meta as any)?.media_status === 'images_unavailable' ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
                     <ImageIcon className="h-10 w-10" />
-                    <div className="text-sm font-medium text-foreground">תמונות לא זמינות עבור נכס זה</div>
-                    <div className="text-xs">צרו קשר עם הסוכן לפרטים נוספים ולתמונות מלאות</div>
+                    <div className="text-base font-medium text-foreground">תמונות לא זמינות עבור נכס זה</div>
+                    <div className="text-sm">צרו קשר עם הסוכן לפרטים נוספים ולתמונות מלאות</div>
                   </div>
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
@@ -818,7 +818,7 @@ export default function PropertyDetail() {
           )}
           {editMode && form && (
             <Card className="p-4 sm:p-5 space-y-3">
-              <h2 className="text-base font-bold text-primary">תמונות הנכס</h2>
+              <h2 className="text-xl font-bold text-primary">תמונות הנכס</h2>
               <div
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 onDrop={handlePhotoDrop}
@@ -865,7 +865,7 @@ export default function PropertyDetail() {
 
           {/* Specs grid — editable in edit mode */}
           <Card className="p-4 sm:p-5">
-            <h2 className="text-base font-bold text-primary mb-4">מאפייני הנכס</h2>
+            <h2 className="text-xl font-bold text-primary mb-4">מאפייני הנכס</h2>
             {editMode && form ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <Field label="כותרת"><Input value={form.title} onChange={(e) => setField('title', e.target.value)} /></Field>
@@ -878,7 +878,7 @@ export default function PropertyDetail() {
                   <select
                     value={form.property_type}
                     onChange={(e) => setField('property_type', e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-base"
                   >
                     {PROPERTY_TYPE_OPTIONS.map((pt) => (
                       <option key={pt} value={pt}>{PROPERTY_TYPE_LABELS_HE[pt] || pt}</option>
@@ -902,7 +902,7 @@ export default function PropertyDetail() {
                     ['ממ"ד / מקלט', 'shelter'],
                     ['דוד שמש', 'solar'],
                   ] as const).map(([label, key]) => (
-                    <label key={key} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer">
+                    <label key={key} className="flex items-center gap-2 rounded-md border px-3 py-2 text-base cursor-pointer">
                       <input
                         type="checkbox"
                         checked={Boolean(form[key])}
@@ -947,7 +947,7 @@ export default function PropertyDetail() {
                   href={yad2Url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+                  className="inline-flex items-center gap-2 text-base font-semibold text-primary hover:underline"
                 >
                   מעבר למודעה ביד-2 ↗
                 </a>
@@ -958,7 +958,7 @@ export default function PropertyDetail() {
           {/* Description */}
           {(editMode || property.description || data?.owner) && (
             <Card className="p-4 sm:p-5">
-              <h2 className="text-base font-bold text-primary mb-2">תיאור הנכס</h2>
+              <h2 className="text-xl font-bold text-primary mb-2">תיאור הנכס</h2>
               {editMode && form ? (
                 <Textarea
                   dir="rtl"
@@ -967,10 +967,10 @@ export default function PropertyDetail() {
                   onChange={(e) => setField('description', e.target.value)}
                 />
               ) : (
-                <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
+                <p className="text-base leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
               )}
               {!editMode && data?.owner && (
-                <div className="mt-4 pt-3 border-t border-border/60 text-sm">
+                <div className="mt-4 pt-3 border-t border-border/60 text-base">
                   <span className="text-muted-foreground">בעלים: </span>
                   <Link
                     to={`/crm/profile/${data.owner.id}`}
@@ -985,24 +985,24 @@ export default function PropertyDetail() {
 
           {!editMode && documents.length > 0 && (
             <Card className="p-4 sm:p-5">
-              <h2 className="text-base font-bold text-primary mb-3">מסמכים</h2>
+              <h2 className="text-xl font-bold text-primary mb-3">מסמכים</h2>
               <ul className="space-y-2">
                 {documents.map((d, i) => (
                   <li key={`${d.url}-${i}`} className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2 hover:bg-muted/40">
-                    <span className="text-sm text-foreground truncate">{d.name}</span>
+                    <span className="text-base text-foreground truncate">{d.name}</span>
                     <div className="flex items-center gap-2">
                       <a
                         href={d.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-semibold text-primary hover:underline"
+                        className="text-sm font-semibold text-primary hover:underline"
                       >
                         צפה
                       </a>
                       <a
                         href={d.url}
                         download
-                        className="text-xs font-semibold text-primary hover:underline"
+                        className="text-sm font-semibold text-primary hover:underline"
                       >
                         הורד
                       </a>
@@ -1015,7 +1015,7 @@ export default function PropertyDetail() {
 
           {!editMode && financialEntries.length > 0 && (
             <Card className="p-4 sm:p-5">
-              <h2 className="text-base font-bold text-primary mb-3 inline-flex items-center gap-2">
+              <h2 className="text-xl font-bold text-primary mb-3 inline-flex items-center gap-2">
                 <Receipt className="h-4 w-4" /> פרטים פיננסיים
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -1061,23 +1061,23 @@ export default function PropertyDetail() {
         <aside className="space-y-4">
           {property.agent && (
             <Card className="p-5">
-              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">הסוכן המטפל</h2>
+              <h2 className="text-base font-bold text-muted-foreground uppercase tracking-wider mb-4">הסוכן המטפל</h2>
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-14 w-14 rounded-full bg-primary/10 grid place-items-center text-primary font-bold text-lg">
+                <div className="h-14 w-14 rounded-full bg-primary/10 grid place-items-center text-primary font-bold text-xl">
                   {property.agent.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
                   <p className="font-bold text-foreground truncate">{property.agent.name}</p>
                   {property.agent.agency && (
-                    <p className="text-xs text-muted-foreground truncate">{property.agent.agency}</p>
+                    <p className="text-sm text-muted-foreground truncate">{property.agent.agency}</p>
                   )}
                 </div>
               </div>
               <div className="space-y-2">
-                <a href={`tel:${property.agent.phone}`} className="flex items-center gap-2 text-sm text-foreground hover:text-primary transition-colors">
+                <a href={`tel:${property.agent.phone}`} className="flex items-center gap-2 text-base text-foreground hover:text-primary transition-colors">
                   <Phone className="h-4 w-4 text-primary" /> {property.agent.phone}
                 </a>
-                <a href={`mailto:${property.agent.email}`} className="flex items-center gap-2 text-sm text-foreground hover:text-primary transition-colors">
+                <a href={`mailto:${property.agent.email}`} className="flex items-center gap-2 text-base text-foreground hover:text-primary transition-colors">
                   <Mail className="h-4 w-4 text-primary" /> {property.agent.email}
                 </a>
               </div>
@@ -1108,10 +1108,10 @@ export default function PropertyDetail() {
 function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="h-[19px] w-[19px] text-primary mt-0.5 shrink-0" />
+      <Icon className="h-[23px] w-[23px] text-primary mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[14px] text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-[17px] font-semibold text-foreground truncate">{value}</p>
+        <p className="text-[18px] text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="text-[21px] font-semibold text-foreground truncate">{value}</p>
       </div>
     </div>
   );
@@ -1120,7 +1120,7 @@ function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: str
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-[14px] text-muted-foreground uppercase tracking-wide block">{label}</label>
+      <label className="text-[18px] text-muted-foreground uppercase tracking-wide block">{label}</label>
       {children}
     </div>
   );

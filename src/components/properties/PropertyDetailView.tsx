@@ -109,7 +109,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           <div
             role="heading"
             aria-level={1}
-            className="text-xl font-bold text-right text-slate-900 block flex-1 leading-snug"
+            className="text-2xl font-bold text-right text-slate-900 block flex-1 leading-snug"
           >
             {headline}
           </div>
@@ -131,12 +131,12 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
             ) : null}
           </div>
           <div className="flex items-baseline gap-3 flex-wrap order-1">
-            <span className="text-3xl font-extrabold text-success tabular-nums">
+            <span className="text-4xl font-extrabold text-success tabular-nums">
               {formatPrice(property.price)}
-              {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
+              {isRent && <span className="text-lg font-normal text-muted-foreground"> /חודש</span>}
             </span>
             {pricePerMeter ? (
-              <span className="text-xs text-muted-foreground font-normal">
+              <span className="text-sm text-muted-foreground font-normal">
                 ({pricePerMeter} ₪ למ"ר)
               </span>
             ) : null}
@@ -181,7 +181,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
         )}
 
         <Card className="p-4 sm:p-5">
-          <h2 className="text-base font-bold text-primary mb-4">מאפייני הנכס</h2>
+          <h2 className="text-xl font-bold text-primary mb-4">מאפייני הנכס</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Spec icon={BedDouble} label="חדרים" value={property.rooms ? `${property.rooms}` : '—'} />
             <Spec icon={Ruler} label='שטח' value={property.size_sqm ? `${property.size_sqm} מ"ר` : '—'} />
@@ -210,7 +210,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
                 href={yad2Url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-base font-semibold text-primary hover:underline"
               >
                 <ExternalLink className="h-4 w-4" />
                 🔗 מעבר למודעה ביד2
@@ -221,8 +221,8 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
 
         {property.description && (
           <Card className="p-4 sm:p-5">
-            <h2 className="text-base font-bold text-primary mb-2">תיאור הנכס</h2>
-            <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
+            <h2 className="text-xl font-bold text-primary mb-2">תיאור הנכס</h2>
+            <p className="text-base leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
           </Card>
         )}
 
@@ -240,7 +240,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
 
         {financialEntries.length > 0 && (
           <Card className="p-4 sm:p-5">
-            <h2 className="text-base font-bold text-primary mb-3 inline-flex items-center gap-2">
+            <h2 className="text-xl font-bold text-primary mb-3 inline-flex items-center gap-2">
               <Receipt className="h-4 w-4" /> פרטים פיננסיים
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -258,10 +258,10 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
 function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+      <Icon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-sm font-semibold text-foreground truncate">{value}</p>
+        <p className="text-[15px] text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="text-base font-semibold text-foreground truncate">{value}</p>
       </div>
     </div>
   );
