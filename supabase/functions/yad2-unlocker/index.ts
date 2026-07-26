@@ -966,7 +966,7 @@ Deno.serve(async (req) => {
 
 
     let rows: Scraped[] = [];
-    let mode: "json" | "html" = "json";
+    let mode: "json" | "html" | "browser" = "json";
     let jsonSource: string | null = null;
     // Per-endpoint diagnostics so callers (and Supabase logs) can see
     // exactly which direct-Yad2 hop returned data vs. was blocked.
