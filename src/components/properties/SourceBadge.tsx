@@ -15,9 +15,9 @@ const META: Record<PropertySource, { label: string; short: string; className: st
   homely: {
     label: 'הומלי',
     short: 'H',
-    className: 'bg-black text-white border-black',
-    solid: 'bg-black text-white border-black',
-    dot: 'bg-black',
+    className: 'bg-purple-600 text-white border-purple-600',
+    solid: 'bg-purple-600 text-white border-purple-600',
+    dot: 'bg-purple-600',
   },
   webtiv: {
     label: 'Webtiv',

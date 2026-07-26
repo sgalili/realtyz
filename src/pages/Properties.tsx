@@ -979,7 +979,7 @@ function ResultCard({
 
         <div className="absolute top-3 right-3 z-10 flex flex-row-reverse items-center gap-1">
           {(result.sources ?? [result.source]).map((s) => (
-            <SourceBadge key={s} source={s} compact />
+            <SourceBadge key={s} source={s} />
           ))}
         </div>
         {result.listing_type && (
