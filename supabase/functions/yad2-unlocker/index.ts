@@ -1131,12 +1131,23 @@ Deno.serve(async (req) => {
     // exactly which direct-Yad2 hop returned data vs. was blocked.
     const diagnostics: Array<{ endpoint: string; kind: "json" | "html" | "item"; status: "ok" | "empty" | "error"; count?: number; error?: string }> = [];
 
+    // Shared Scraping Browser session reused by every paginated page.
+    const browserSession: { browser: any | null } = { browser: null };
+
     // One full three-tier scrape of a single Yad2 results page.
     async function scrapeOnce(pageUrl: string): Promise<Scraped[]> {
       let out: Scraped[] = [];
+      // Once the REST Web Unlocker zone has been proven unusable (client_10090)
+      // and a Scraping Browser endpoint exists, stop paying for the doomed
+      // REST tiers on every subsequent page — go straight to the browser.
+      const browserFirst = Boolean(BD_WS && bdZoneBroken);
+      if (browserFirst) {
+        console.log("[yad2-unlocker] REST zone known-bad — browser-first transport");
+      }
 
       // --- Primary path: Yad2 internal JSON gateway (direct, no aggregator) ---
-      try {
+      if (!browserFirst) try {
+
         if (isItemUrl) {
           const gwItem = toGatewayItemUrl(pageUrl);
           if (gwItem) {
