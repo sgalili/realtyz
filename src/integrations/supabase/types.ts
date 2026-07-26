@@ -5021,6 +5021,10 @@ export type Database = {
       cleanup_expired_email_login_otps: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
+      dedupe_media_jsonb: {
+        Args: { _arr: Json; _blocked?: Json }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -5175,6 +5179,7 @@ export type Database = {
         }[]
       }
       matcher_periodic_sweep: { Args: never; Returns: undefined }
+      media_dedupe_key: { Args: { _url: string }; Returns: string }
       merge_lead_into: {
         Args: { _source: string; _target: string }
         Returns: string
