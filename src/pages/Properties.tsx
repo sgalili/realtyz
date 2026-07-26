@@ -923,6 +923,19 @@ function ResultCard({
   const hasPhotos = photos.length > 0;
   const hasMany = photos.length > 1;
   const [index, setIndex] = useState(0);
+  // Lazy gallery: until the card is expanded we only paint the cover image.
+  // Already-imported photos come straight from the DB/storage URLs, so the
+  // cover is instant; the rest are fetched on expand.
+  const [expanded, setExpanded] = useState(false);
+  // Total number of images the property has — reported by the source payload
+  // even when the media was not imported into our storage yet.
+  const rawAny = (result.raw ?? {}) as any;
+  const reportedCount = Number(
+    rawAny.images_count ?? rawAny.photos_count ?? rawAny.media_count ??
+    (Array.isArray(rawAny.photos) ? rawAny.photos.length : 0) ??
+    (Array.isArray(rawAny.media_photos) ? rawAny.media_photos.length : 0),
+  );
+  const photoCount = Math.max(photos.length, Number.isFinite(reportedCount) ? reportedCount : 0);
   const activePhoto = hasPhotos ? photos[Math.min(index, photos.length - 1)] : null;
   const isRent = result.listing_type === 'rent';
 
@@ -946,14 +959,17 @@ function ResultCard({
           <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">אין תמונה</div>
         )}
 
-        {photos.length > 0 && (
-          <span
-            className={`absolute top-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm right-2`}
-            title={`${photos.length} תמונות`}
+        {photoCount > 0 && (
+          <button
+            type="button"
+            onClick={(e) => { stop(e); setExpanded((v) => !v); }}
+            className="absolute top-2 right-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm"
+            title={`${photoCount} תמונות`}
+            aria-label={`${photoCount} תמונות`}
           >
             <ImageIcon className="h-3 w-3" />
-            {photos.length}
-          </span>
+            {photoCount}
+          </button>
         )}
 
 
@@ -1003,8 +1019,8 @@ function ResultCard({
         )}
       </div>
 
-      {/* Thumbnail row — appears only when there are multiple photos */}
-      {hasMany && (
+      {/* Thumbnail row — lazily mounted: images load only once expanded */}
+      {hasMany && expanded && (
         <div
           className="flex gap-1.5 overflow-x-auto px-2 py-2 bg-muted/40 border-b scrollbar-thin"
           dir="rtl"
