@@ -384,6 +384,114 @@ function pickAttributes(it: any): Record<string, unknown> {
   return attrs;
 }
 
+/** Latitude / longitude from any of Yad2's coordinate shapes. */
+function pickCoords(it: any): { lat: number | null; lng: number | null } {
+  const cands = [
+    it?.address?.coords,
+    it?.address?.coordinates,
+    it?.coords,
+    it?.coordinates,
+    it?.location,
+    it?.metaData?.coords,
+    it,
+  ];
+  for (const c of cands) {
+    if (!c || typeof c !== "object") continue;
+    const lat = toNum(c.lat ?? c.latitude ?? c.y ?? null);
+    const lng = toNum(c.lon ?? c.lng ?? c.long ?? c.longitude ?? c.x ?? null);
+    if (lat != null && lng != null && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0)) {
+      return { lat, lng };
+    }
+  }
+  return { lat: null, lng: null };
+}
+
+/** "פירוט הריהוט" — furniture inventory block. */
+function pickFurniture(it: any): Record<string, unknown> {
+  const src =
+    it?.furniture ?? it?.additionalDetails?.furniture ?? it?.inProperty?.furniture ??
+    it?.propertyDetails?.furniture ?? null;
+  const out: Record<string, unknown> = {};
+  if (src && typeof src === "object" && !Array.isArray(src)) {
+    for (const [k, v] of Object.entries(src)) {
+      if (v == null || v === "") continue;
+      out[k] = typeof v === "object" ? JSON.stringify(v) : v;
+    }
+  } else if (Array.isArray(src)) {
+    out.items = src.map((x: any) => (typeof x === "string" ? x : x?.name ?? x?.text ?? x?.key)).filter(Boolean);
+  } else if (typeof src === "string" && src.trim()) {
+    out.note = src.trim();
+  }
+  const note = clean(it?.furnitureDescription ?? it?.additionalDetails?.furnitureDescription ?? null);
+  if (note) out.note = note;
+  return out;
+}
+
+/** "פרטים נוספים" — elevator / parking / MAMAD / balcony style specs. */
+function pickAdditionalDetails(it: any): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const collect = (src: any) => {
+    if (!src) return;
+    if (Array.isArray(src)) {
+      for (const x of src) {
+        if (typeof x === "string") out[x] = true;
+        else if (x && typeof x === "object") {
+          const key = x.key ?? x.name ?? x.title ?? x.label;
+          if (key) out[String(key)] = x.value ?? x.text ?? true;
+        }
+      }
+      return;
+    }
+    if (typeof src === "object") {
+      for (const [k, v] of Object.entries(src)) {
+        if (v == null || v === "" || typeof v === "object") continue;
+        out[k] = v;
+      }
+    }
+  };
+  collect(it?.inProperty);
+  collect(it?.additionalDetails?.property);
+  collect(it?.additionalDetails);
+  collect(it?.propertyDetails);
+  collect(it?.tags);
+  delete (out as any).images;
+  delete (out as any).coverImage;
+  return out;
+}
+
+/** Value-history graph points Yad2 renders on the item page. */
+function pickPriceHistory(it: any): Array<{ date: string | null; price: number | null; label?: string }> {
+  const src =
+    it?.priceHistory ?? it?.price_history ?? it?.priceList ?? it?.pricesHistory ??
+    it?.metaData?.priceHistory ?? it?.valueHistory ?? it?.graph?.points ?? null;
+  if (!Array.isArray(src)) return [];
+  const out: Array<{ date: string | null; price: number | null; label?: string }> = [];
+  for (const p of src) {
+    if (!p) continue;
+    if (typeof p === "number") { out.push({ date: null, price: Math.round(p) }); continue; }
+    if (typeof p !== "object") continue;
+    const price = toInt(p.price ?? p.value ?? p.y ?? p.amount ?? null);
+    const rawDate = p.date ?? p.updatedAt ?? p.timestamp ?? p.x ?? p.label ?? null;
+    let date: string | null = null;
+    if (rawDate != null) {
+      const s = String(rawDate);
+      const iso = s.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+      if (iso) date = iso;
+      else {
+        const dmy = s.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+        if (dmy) date = `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+        else {
+          const d = new Date(rawDate as any);
+          if (!Number.isNaN(d.getTime())) date = d.toISOString().slice(0, 10);
+        }
+      }
+    }
+    if (price == null && date == null) continue;
+    out.push({ date, price, label: typeof p.label === "string" ? p.label : undefined });
+  }
+  return out.slice(0, 40);
+}
+
 function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
   const token = it?.token ?? it?.orderId ?? it?.order_id ?? it?.adNumber ?? it?.id ?? null;
   if (!token || typeof token !== "string") return null;
