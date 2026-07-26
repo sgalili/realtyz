@@ -4,6 +4,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { formatListingTitle } from '@/lib/formatListingTitle';
 import type { UnifiedResult } from '@/lib/propertySearch';
+import { publicUrl } from '@/lib/publicUrl';
 
 export type ShareMode = 'whatsapp' | 'sms' | 'copy';
 
@@ -53,7 +54,7 @@ export async function mintShareUrlForResult(
   if (error) throw error;
   const token = (data as any)?.token;
   if (!token) throw new Error('לא התקבל טוקן שיתוף');
-  return `${window.location.origin}/share/property/${token}`;
+  return publicUrl(`/share/property/${token}`);
 }
 
 export function buildPropertyShareMessage(r: UnifiedResult, shareUrl: string): string {
