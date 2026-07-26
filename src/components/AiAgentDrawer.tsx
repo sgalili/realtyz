@@ -793,7 +793,7 @@ ${shareUrl}
                                     שתף
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" dir="rtl" className="text-[14px]">
+                                <DropdownMenuContent align="end" className="text-[14px]">
                                   <DropdownMenuItem onClick={() => shareProperty(r, 'whatsapp', msg.recipient_phone ?? null)}>
                                     <MessageCircle className="h-4 w-4 me-2" /> שליחה ב-WhatsApp
                                   </DropdownMenuItem>
