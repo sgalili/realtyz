@@ -134,7 +134,7 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
       photos: normalizeImageUrls(Array.isArray(row.media_photos) ? row.media_photos.filter((p: any) => typeof p === 'string') : []),
       url: row.source_url ?? meta.source_url ?? null,
       listing_type: inferListingType(price, row.deal_type ?? meta.transaction_type ?? meta.listing_type ?? meta.deal_type),
-      property_type: (meta as any).property_type ?? null,
+      property_type: (meta as any).property_type ?? (row.attributes as any)?.property_type ?? (row.attributes as any)?.subcategory ?? null,
       updated_at: row.updated_at ?? null,
       created_at: row.created_at ?? null,
       raw: row,

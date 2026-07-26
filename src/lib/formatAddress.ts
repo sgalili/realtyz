@@ -5,6 +5,7 @@
 export function stripAddressNumbers(value: unknown): string {
   let s = String(value ?? '').replace(/\s+/g, ' ').trim();
   if (!s) return s;
+  s = s.replace(/(?:דירה|דירת|ד['׳"]|כניסה|בית|מספר)\s*\d+[א-ת]?\b/g, '');
   const UNIT = /(?:חדרים|חדר|מ["׳']?\s*ר|מטר|מ['׳]|קומה|קומות|דקות|שעות|שנה|שנים|אחוז|%|₪|ש["׳']?\s*ח|דולר|\$|€)/;
   const wordDigit = /(^|[^\d:=״"׳'])([\u0590-\u05FF]{2,}(?:[\u0590-\u05FF״"׳'-]*[\u0590-\u05FF])?)\s+(\d{1,4})[א-ת]?(?=\s|,|$)/;
   for (let i = 0; i < 6; i++) {
@@ -17,5 +18,5 @@ export function stripAddressNumbers(value: unknown): string {
     if (next === s) break;
     s = next;
   }
-  return s.replace(/\s+,/g, ',').replace(/[ \t]{2,}/g, ' ').trim();
+  return s.replace(/\s+,/g, ',').replace(/[ \t]{2,}/g, ' ').replace(/[,\s]+$/g, '').trim();
 }

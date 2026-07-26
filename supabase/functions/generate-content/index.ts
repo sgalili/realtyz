@@ -23,6 +23,25 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function stripAddressNumbers(value: unknown): string {
+  let s = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!s) return s;
+  s = s.replace(/(?:דירה|דירת|ד['׳"]|כניסה|בית|מספר)\s*\d+[א-ת]?\b/g, "");
+  const unit = /(?:חדרים|חדר|מ["׳']?\s*ר|מטר|קומה|קומות|דקות|שעות|שנה|שנים|אחוז|%|₪|ש["׳']?\s*ח|דולר|\$|€)/;
+  const wordDigit = /(^|[^\d:=״"׳'])([\u0590-\u05FF]{2,}(?:[\u0590-\u05FF״"׳'-]*[\u0590-\u05FF])?)\s+(\d{1,4})[א-ת]?(?=\s|,|$)/;
+  for (let i = 0; i < 6; i++) {
+    const next = s.replace(wordDigit, (m, pre, word, _num, offset, full) => {
+      const after = String(full).slice(offset + m.length, offset + m.length + 24);
+      if (unit.test(after.trim())) return m;
+      if (/^(שנת|שנה|גיל|טלפון|נייד|מספר|דירה|קומה|בנין|בניין|פרויקט|פרוייקט|בן|בת)$/.test(word)) return m;
+      return `${pre}${word}`;
+    });
+    if (next === s) break;
+    s = next;
+  }
+  return s.replace(/\s+,/g, ",").replace(/[ \t]{2,}/g, " ").replace(/[,\s]+$/g, "").trim();
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -116,6 +135,7 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
       : "";
 
     const promotedFeatures = promotedListing ? featureLabels(promotedListing.features) : [];
+    const publicListingAddress = promotedListing?.address ? stripAddressNumbers(promotedListing.address) : null;
     const promotedListingType = promotedListing ? listingTypeFromFeatures(promotedListing.features) : null;
     const promotedAreaPerks: string[] = Array.isArray(promotedListing?.area_perks?.perks)
       ? promotedListing.area_perks.perks.slice(0, 6)
@@ -196,7 +216,7 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
           promotedListing.property_title ? `כותרת הנכס: ${promotedListing.property_title}` : null,
           propertyTypeLabel ? `סוג נכס: ${propertyTypeLabel}` : null,
           dealTypeLabel ? `סוג עסקה: ${dealTypeLabel}` : null,
-          promotedListing.address ? `כתובת (רחוב בלבד, בלי מספר בית): ${promotedListing.address}` : null,
+          publicListingAddress ? `כתובת (רחוב בלבד, בלי מספר בית): ${publicListingAddress}` : null,
           promotedListing.neighborhood ? `שכונה: ${promotedListing.neighborhood}` : null,
           promotedListing.city ? `עיר: ${promotedListing.city}` : null,
           promotedListing.rooms ? `חדרים: ${promotedListing.rooms}` : null,

@@ -41,11 +41,19 @@ function normalizeWA(raw?: string | null) {
 function publicAddress(raw?: string | null) {
   if (!raw) return '';
   return String(raw)
-    .replace(/\b(דירה|דירת|כניסה|קומה)\s*\d+[א-ת]?\b/g, '')
-    .replace(/[,\/]\s*\d+[א-ת]?\s*$/g, '')
+    .replace(/\b(דירה|דירת|ד['׳"]|כניסה|קומה|בית|מספר)\s*\d+[א-ת]?\b/g, '')
+    .replace(/[,/]\s*\d+[א-ת]?\s*$/g, '')
     .replace(/\s\d+[א-ת]?\b/g, ' ')
     .replace(/\s{2,}/g, ' ')
+    .replace(/\bד['׳"]\b/g, '')
     .replace(/[,\s]+$/g, '')
+    .trim();
+}
+
+function publicTitle(raw?: string | null) {
+  return publicAddress(raw)
+    .replace(/\s*[,·]\s*[,·]/g, ' · ')
+    .replace(/[\s,·]+$/g, '')
     .trim();
 }
 
@@ -128,11 +136,12 @@ export default function SharedProperty() {
     ? (p.features as Record<string, any>) : {};
   const addr = publicAddress(p.address);
   const locationLine = [addr, p.neighborhood, p.city].filter(Boolean).join(' · ');
+  const displayTitle = publicTitle(p.property_title ?? p.title ?? p.address ?? 'נכס') || 'נכס';
   const about = p.long_description || p.description || p.short_description || null;
 
   const wa = normalizeWA(data?.owner_wa) ?? normalizeWA(data?.broker_wa);
   const waMsg = encodeURIComponent(
-    `שלום, ראיתי את הנכס "${p.property_title ?? p.title ?? ''}" ואשמח לקבל פרטים נוספים.`,
+    `שלום, ראיתי את הנכס "${displayTitle}" ואשמח לקבל פרטים נוספים.`,
   );
   const waHref = wa ? `https://wa.me/${wa}?text=${waMsg}` : null;
 
@@ -187,7 +196,7 @@ export default function SharedProperty() {
             {p.project_name ? <Badge variant="outline">{p.project_name}</Badge> : null}
           </div>
           <h2 className="text-[26px] font-bold leading-snug text-slate-900">
-            {p.property_title ?? p.title ?? 'נכס'}
+            {displayTitle}
           </h2>
           {locationLine ? (
             <p className="inline-flex items-center gap-1.5 text-[17px] text-slate-600">
@@ -212,7 +221,7 @@ export default function SharedProperty() {
             >
               <img
                 src={photos[0]}
-                alt={p.property_title ?? 'נכס'}
+                alt={displayTitle}
                 className="h-80 w-full object-cover transition hover:scale-[1.01]"
                 onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
               />

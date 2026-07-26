@@ -80,7 +80,16 @@ export function formatInternalListingTitle(input: {
   apartment?: string | number | null;
   raw?: any;
 }): string {
-  const type = normalizePropertyTypeLabel(input.property_type ?? null);
+  const r = input.raw ?? {};
+  const rawMeta = r.source_metadata && typeof r.source_metadata === 'object' ? r.source_metadata : {};
+  const rawAttrs = r.attributes && typeof r.attributes === 'object' ? r.attributes : {};
+  const rawFeatures = r.features && typeof r.features === 'object' && !Array.isArray(r.features) ? r.features : {};
+  const rawType = input.property_type ??
+    rawMeta.property_type ?? rawMeta.propertyType ?? rawMeta.type ??
+    rawAttrs.property_type ?? rawAttrs.propertyType ?? rawAttrs.assetType ?? rawAttrs.subcategory ??
+    rawFeatures.property_type ??
+    null;
+  const type = normalizePropertyTypeLabel(rawType == null ? null : String(rawType));
   const city = String(input.city ?? '').trim();
   const hood = String(input.neighborhood ?? '').trim();
 
@@ -93,13 +102,24 @@ export function formatInternalListingTitle(input: {
     .filter((p) => p && p !== city && p !== hood)
     .join(', ');
 
+  const houseRaw =
+    r.house_number ?? r.houseNumber ?? r.street_number ?? r.streetNumber ?? r.number ??
+    rawMeta.house_number ?? rawMeta.houseNumber ?? rawMeta.street_number ?? rawMeta.streetNumber ?? rawMeta.number ??
+    null;
+  const house = houseRaw === null || houseRaw === undefined ? '' : String(houseRaw).trim();
+  const addressHasHouseNumber = /\d+[א-תA-Za-z]?\s*$/.test(address);
+  if (address && house && !addressHasHouseNumber) {
+    address = `${address} ${house}`.trim();
+  }
+
   // 2. Resolve the apartment / unit number from explicit fields when the
   //    address itself doesn't already carry one.
-  const r = input.raw ?? {};
   const rawApt =
     input.apartment ??
     r.apartment_number ?? r.apartmentNumber ?? r.apt_number ?? r.aptNumber ??
-    r.apartment ?? r.apt ?? r.unit ?? r.unit_number ?? null;
+    r.apartment ?? r.apt ?? r.unit ?? r.unit_number ??
+    rawMeta.apartment_number ?? rawMeta.apartmentNumber ?? rawMeta.apt_number ?? rawMeta.aptNumber ??
+    rawMeta.apartment ?? rawMeta.apt ?? rawMeta.unit ?? rawMeta.unit_number ?? null;
   const apt = rawApt === null || rawApt === undefined ? '' : String(rawApt).trim();
 
   const hasAptInAddress = /(?:דירה|דירת|ד['׳"]|יח["׳']|apt\.?|apartment|unit|#)\s*\d/i.test(address);
