@@ -189,24 +189,41 @@ export default function Properties() {
 
       // Local DB results paint instantly; external gateways stream in after.
       const resp = await searchAllSources(filters, (partial) => {
+        if (searchTokenRef.current !== token) return;
         setResults(applyType(partial.results));
         setSourceStatus(partial.sources);
       });
+      if (searchTokenRef.current !== token) return; // cancelled — keep partials
       const filtered = applyType(resp.results);
       setResults(filtered);
       setSourceStatus(resp.sources);
-      saveCache({ q, listingType, city, propertyType, rooms, maxPrice, areaMin, results: filtered.slice(0, 100) });
       const errored = Object.entries(resp.sources).filter(([, v]) => v.status === 'error');
       if (errored.length) {
         toast.info(`חלק מהמקורות לא זמינים: ${errored.map(([k]) => sourceLabel(k as any)).join(', ')}`);
       }
     } catch (err: any) {
+      if (searchTokenRef.current !== token) return;
       console.error('[Properties] search failed', err);
       toast.error('חיפוש נכשל: ' + (err?.message ?? 'שגיאה לא ידועה'));
     } finally {
-      setSearching(false);
+      if (searchTokenRef.current === token) setSearching(false);
     }
   }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin]);
+
+  // Abort the running fetch and immediately show the partial results found
+  // so far. Nothing is cleared.
+  const cancelSearch = useCallback(() => {
+    searchTokenRef.current++;
+    setSearching(false);
+    toast.info('החיפוש בוטל — מוצגות התוצאות שנמצאו עד כה');
+  }, []);
+
+  // Persist the full search state (criteria + results) on every change, so
+  // navigating away and back restores the exact same table.
+  useEffect(() => {
+    saveCache({ q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results: results.slice(0, 100) });
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results]);
+
 
   // When the user commits a URL (Yad2) in the search box, hand off to
   // the quick-import flow via AddPropertyDialog.
