@@ -106,10 +106,12 @@ function detectCityNeighborhood(text: string): { city: string | null; neighborho
 }
 
 function detectRooms(text: string): number | null {
-  const m = text.match(/(\d+(?:[.,]\d)?)\s*חדרים?/);
+  // "4 חדרים", "4 חד'", "4 ח'", "4 rooms", "חדר וחצי"
+  const m = text.match(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]?|ח['׳])\b?/);
   if (m) return Number(m[1].replace(',', '.'));
   const m2 = text.match(/(\d+(?:[.,]\d)?)\s*rooms?/i);
   if (m2) return Number(m2[1].replace(',', '.'));
+  if (/חדר\s*וחצי/.test(text)) return 1.5;
   return null;
 }
 
@@ -119,8 +121,8 @@ function detectPropertyType(text: string): string | null {
 }
 
 function detectListingType(text: string): 'sale' | 'rent' | null {
-  if (/שכירות|להשכרה|שכר\s*חודשי|for\s*rent|rental/i.test(text)) return 'rent';
-  if (/למכירה|מכירה|for\s*sale|sale/i.test(text)) return 'sale';
+  if (/שכירות|להשכרה|להשכיר|השכרה|שכר\s*דירה|שכר\s*חודשי|for\s*rent|rental|to\s*let/i.test(text)) return 'rent';
+  if (/למכירה|מכירה|לקנות|קנייה|רכישה|for\s*sale|buy/i.test(text)) return 'sale';
   return null;
 }
 
@@ -135,7 +137,7 @@ function detectPrice(text: string): { min: number | null; max: number | null } {
   let max: number | null = null;
   const maxM = text.match(/(?:עד|max|maximum|below|under)\s*(\d+(?:[.,]\d+)?)\s*(?:מיליון|million|אלף|k|thousand)?/i);
   if (maxM) max = priceScale(maxM[0], Number(maxM[1].replace(',', '.')));
-  const minM = text.match(/(?:מעל|from|above|over)\s*(\d+(?:[.,]\d+)?)\s*(?:מיליון|million|אלף|k|thousand)?/i);
+  const minM = text.match(/(?:מעל|החל\s*מ|from|above|over)\s*(\d+(?:[.,]\d+)?)\s*(?:מיליון|million|אלף|k|thousand)?/i);
   if (minM) min = priceScale(minM[0], Number(minM[1].replace(',', '.')));
   const rangeM = text.match(/(\d+(?:[.,]\d+)?)\s*(?:מיליון|million|אלף|k)?\s*-\s*(\d+(?:[.,]\d+)?)\s*(?:מיליון|million|אלף|k)?/i);
   if (rangeM) {
@@ -148,13 +150,14 @@ function detectPrice(text: string): { min: number | null; max: number | null } {
 export function parseSearchQuery(input: string): ParsedQuery {
   const text = (input ?? '').replace(/\s+/g, ' ').trim();
   if (!text) {
-    return { city: null, neighborhood: null, rooms: null, property_type: null, listing_type: null, min_price: null, max_price: null, keywords: '' };
+    return { city: null, neighborhood: null, rooms: null, property_type: null, listing_type: null, min_price: null, max_price: null, amenities: [], keywords: '' };
   }
   const { city, neighborhood } = detectCityNeighborhood(text);
   const rooms = detectRooms(text);
   const property_type = detectPropertyType(text);
   const listing_type = detectListingType(text);
   const { min, max } = detectPrice(text);
+  const amenities = detectAmenities(text);
 
   // Keywords = everything the user typed with the detected structured tokens
   // stripped, so external free-text search still gets meaningful residue.
@@ -164,10 +167,13 @@ export function parseSearchQuery(input: string): ParsedQuery {
   }
   keywords = keywords
     .replace(/שכונת?/g, ' ')
-    .replace(/(\d+(?:[.,]\d)?)\s*חדרים?/g, ' ')
+    .replace(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]?|ח['׳])/g, ' ')
+    .replace(/שכירות|להשכרה|להשכיר|השכרה|למכירה|מכירה|לקנות|רכישה/g, ' ')
     .replace(/(?:עד|מעל|from|above|over|under|below|max|min)\s*\d+(?:[.,]\d+)?\s*(?:מיליון|million|אלף|k|thousand)?/gi, ' ')
+    .replace(/\bעם\b|\bכולל\b|\bו-/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
-  return { city, neighborhood, rooms, property_type, listing_type, min_price: min, max_price: max, keywords };
+  return { city, neighborhood, rooms, property_type, listing_type, min_price: min, max_price: max, amenities, keywords };
 }
+
