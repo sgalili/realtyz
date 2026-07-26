@@ -33,7 +33,7 @@ import {
 } from '@/lib/homelyMockProperties';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
-import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
+import { SourceBadge, sourceLabel } from '@/components/properties/SourceBadge';
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
@@ -1085,7 +1085,7 @@ function ResultCard({
   );
 }
 
-type SortCol = 'source' | 'name' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
+type SortCol = 'name' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
 
 function ResultTable({
   results,
@@ -1101,20 +1101,8 @@ function ResultTable({
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  // Source column cycles through which source is pinned to the top:
-  // yad2 (orange) → homely (black) → mine (navy).
-  const SOURCE_CYCLE: Array<PropertySource> = ['yad2', 'homely', 'mine'];
-  const SOURCE_CYCLE_LABEL: Record<PropertySource, string> = {
-    yad2: 'יד-2', homely: 'הומלי', mine: 'המאגר שלי', webtiv: 'Webtiv', external: 'חיצוני',
-  };
-  const [sourcePin, setSourcePin] = useState(0);
 
   const toggleSort = (col: SortCol) => {
-    if (col === 'source') {
-      setSourcePin((p) => (sortCol === 'source' ? (p + 1) % SOURCE_CYCLE.length : p));
-      setSortCol('source');
-      return;
-    }
     if (sortCol === col) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -1125,14 +1113,6 @@ function ResultTable({
 
   const sorted = useMemo(() => {
     if (!sortCol) return results;
-    if (sortCol === 'source') {
-      const pinned = SOURCE_CYCLE[sourcePin];
-      const rank = (r: UnifiedResult) => {
-        const all = (r.sources ?? [r.source]) as PropertySource[];
-        return all.includes(pinned) ? 0 : 1;
-      };
-      return [...results].sort((a, b) => rank(a) - rank(b));
-    }
     const arr = [...results];
     const getVal = (r: UnifiedResult): string | number | null => {
       switch (sortCol) {
@@ -1158,19 +1138,16 @@ function ResultTable({
       return String(av).localeCompare(String(bv), 'he') * dir;
     });
     return arr;
-  }, [results, sortCol, sortDir, sourcePin]);
+  }, [results, sortCol, sortDir]);
 
   const HeaderCell = ({ col, label, extraClass }: { col: SortCol; label: string; extraClass?: string }) => (
     <th
       className={`px-2 py-2 font-semibold whitespace-nowrap cursor-pointer select-none hover:bg-muted ${extraClass ?? ''}`}
       onClick={() => toggleSort(col)}
-      title={col === 'source' ? 'לחיצה מסדרת לפי מקור: יד-2 → הומלי → המאגר שלי' : undefined}
     >
       <span className="inline-flex items-center gap-1">
         {label}
-        {col === 'source' && sortCol === 'source' ? (
-          <span className="text-[10px] opacity-70">{SOURCE_CYCLE_LABEL[SOURCE_CYCLE[sourcePin]]}</span>
-        ) : sortCol === col ? (
+        {sortCol === col ? (
           <span className="text-xs opacity-70">{sortDir === 'asc' ? '▲' : '▼'}</span>
         ) : (
           <ArrowUpDown className="h-3 w-3 opacity-40" />
@@ -1185,7 +1162,6 @@ function ResultTable({
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
             <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
-            <HeaderCell col="source" label="מקור" />
 
             <HeaderCell col="name" label="שם" />
             <HeaderCell col="listing_type" label="סוג" />
@@ -1217,14 +1193,6 @@ function ResultTable({
                         <Building2 className="h-4 w-4 text-muted-foreground/50" />
                       </div>
                     )}
-                  </div>
-                </td>
-                <td className="px-2 py-1.5">
-
-                  <div className="flex flex-row-reverse items-center gap-1">
-                    {(r.sources ?? [r.source]).map((s) => (
-                      <SourceBadge key={s} source={s} />
-                    ))}
                   </div>
                 </td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
