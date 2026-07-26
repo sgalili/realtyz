@@ -231,6 +231,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    // HARD CAP: never fan out to more than 25 posts in a single invocation.
+    // Unbounded batches (hundreds of posts x several calls each) are exactly
+    // what got the provider profile rate-limited/suspended.
+    const MAX_TARGETS_PER_RUN = 25;
+    if (targets.size > MAX_TARGETS_PER_RUN) {
+      const trimmed = Array.from(targets.entries()).slice(0, MAX_TARGETS_PER_RUN);
+      console.warn("[ayrshare-comments-fetch] target cap applied", { requested: targets.size, capped: MAX_TARGETS_PER_RUN });
+      targets.clear();
+      for (const [k, v] of trimmed) targets.set(k, v);
+    }
+
+
     const ownPage = await resolveOwnPageIdentity(admin);
 
     const pickStr = (...vals: unknown[]) => {
