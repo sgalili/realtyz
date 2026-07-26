@@ -1212,7 +1212,7 @@ Deno.serve(async (req) => {
       if (cred.token) {
         const { data: allFbPosts } = await admin
           .from("campaign_logs")
-          .select("id, provider_message_id, provider_response, created_at, like_count, comment_count, share_count")
+          .select("id, provider_message_id, provider_response, media_urls, created_at, like_count, comment_count, share_count")
           .eq("channel", "facebook")
           .eq("user_id", ownerId)
           .eq("is_archived", false)
