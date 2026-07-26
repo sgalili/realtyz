@@ -28,7 +28,8 @@ async function resolveCached(campaignLogId: string, urls: string[]): Promise<str
         .catch(() => []),
     );
   }
-  return inflight.get(key)!;
+  const pending = inflight.get(key);
+  return pending ?? [];
 }
 
 export function PostImage({
