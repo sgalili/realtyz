@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
       const page = await browser.newPage();
       try {
         await page.setViewport({ width: 1440, height: 2400 });
-        await page.setExtraHTTPHeaders({ "Accept-Language": "he-IL,he;q=0.9,en;q=0.8" });
+        // NOTE: Bright Data Scraping Browser forbids header overrides.
         console.log(`[scrape-yad2] navigating → ${searchUrl}`);
         await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
         // Yad2 renders feed after hydration; wait for any feed item link.

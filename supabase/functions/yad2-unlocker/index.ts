@@ -12,8 +12,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import https from "node:https";
-import { Buffer } from "node:buffer";
+import puppeteer from "npm:puppeteer-core@22.15.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +25,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const BD_TOKEN = Deno.env.get("BRIGHTDATA_API_TOKEN") ?? "";
 const BD_ZONE = Deno.env.get("BRIGHTDATA_ZONE") ?? "yad2";
+const BD_WS = Deno.env.get("BRIGHTDATA_WS_ENDPOINT") ?? "";
 
 type DealType = "sale" | "rent";
 
@@ -83,84 +83,190 @@ function clean(s: string | null | undefined): string | null {
   return t || null;
 }
 
-function brightDataRequest(
-  url: string,
-  opts: { accept?: string } = {},
-): Promise<{ status: number; body: string }> {
-  return new Promise((resolve, reject) => {
-    // Forward realistic browser headers to the target (Yad2). Without a
-    // real User-Agent + Referer + Accept-Language the gw.yad2.co.il JSON
-    // gateway returns an empty body / 403 even through Bright Data's
-    // unlocker. Bright Data's /request API forwards any `headers` array
-    // entries to the upstream site verbatim.
-    const forwardedAccept = opts.accept ?? "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,*/*;q=0.8";
-    const payload = JSON.stringify({
-      zone: BD_ZONE,
-      url,
-      format: "raw",
-      country: "il",
-      method: "GET",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-        "Accept": forwardedAccept,
-        "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Referer": "https://www.yad2.co.il/",
-        "Origin": "https://www.yad2.co.il",
-        "sec-ch-ua": '"Chromium";v="126", "Not.A/Brand";v="24"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"macOS"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-site",
-      },
-    });
-    const req = https.request(
-      {
-        hostname: "api.brightdata.com",
-        port: 443,
-        path: "/request",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${BD_TOKEN}`,
-          Accept: opts.accept ?? "text/html,application/xhtml+xml,*/*",
-          "Content-Length": Buffer.byteLength(payload),
-        },
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on("data", (c: Buffer) => chunks.push(c));
-        res.on("end", () => {
-          const body = Buffer.concat(chunks).toString("utf8");
-          resolve({ status: res.statusCode ?? 0, body });
-        });
-        res.on("error", reject);
-      },
-    );
-    req.on("error", reject);
-    req.write(payload);
-    req.end();
-  });
+
+// HTTP/1.1-pinned client for api.brightdata.com (see brightDataRequest below).
+// `Deno.createHttpClient` is unstable-gated; guard so the function still boots
+// if the runtime doesn't expose it.
+let bdHttpClient: unknown = null;
+try {
+  const create = (Deno as unknown as {
+    createHttpClient?: (o: Record<string, unknown>) => unknown;
+  }).createHttpClient;
+  if (typeof create === "function") {
+    bdHttpClient = create({ http1: true, http2: false });
+    console.log("[yad2-unlocker] using HTTP/1.1-pinned Bright Data client");
+  } else {
+    console.warn("[yad2-unlocker] Deno.createHttpClient unavailable — using default fetch");
+  }
+} catch (e) {
+  console.warn(`[yad2-unlocker] createHttpClient failed: ${String((e as Error)?.message ?? e)}`);
 }
 
+
+// Bright Data Web Unlocker transport.
+//
+// NOTE (2026-07 audit): the previous implementation used `node:https`, which in
+// the Deno edge runtime resolved with `status=200 bytes=0` for EVERY request —
+// the response stream was never delivered, so the parser always saw an empty
+// body and every search silently returned zero results. Native `fetch` handles
+// TLS/HTTP2 + content-encoding correctly, so we use that instead.
+//
+// Bright Data's /request API validates `headers` as a plain OBJECT
+// (array-of-strings returns `"headers" must be of type object`, 400).
+async function brightDataRequest(
+  url: string,
+  opts: { accept?: string } = {},
+): Promise<{ status: number; body: string; bdHeaders: Record<string, string> }> {
+  const forwardedAccept = opts.accept ??
+    "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,*/*;q=0.8";
+  const isGateway = /(^|\/\/)gw\.yad2\.co\.il/i.test(url);
+
+  const forwarded: Record<string, string> = {
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Accept": forwardedAccept,
+    "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Referer": "https://www.yad2.co.il/",
+    "sec-ch-ua": '"Chromium";v="126", "Not.A/Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+  };
+  if (isGateway) {
+    // XHR-style fingerprint for the JSON gateway.
+    forwarded["Origin"] = "https://www.yad2.co.il";
+    forwarded["Sec-Fetch-Dest"] = "empty";
+    forwarded["Sec-Fetch-Mode"] = "cors";
+    forwarded["Sec-Fetch-Site"] = "same-site";
+    forwarded["mainsite_user_token"] = "";
+  } else {
+    // Top-level document fingerprint for www HTML pages. Sending
+    // Sec-Fetch-Mode: cors on a document request is a bot tell.
+    forwarded["Sec-Fetch-Dest"] = "document";
+    forwarded["Sec-Fetch-Mode"] = "navigate";
+    forwarded["Sec-Fetch-Site"] = "none";
+    forwarded["Upgrade-Insecure-Requests"] = "1";
+  }
+
+  const payload = {
+    zone: BD_ZONE,
+    url,
+    format: "raw",
+    country: "il",
+    method: "GET",
+    headers: forwarded,
+  };
+
+  // api.brightdata.com negotiates HTTP/2, and Deno's h2 client reliably dies
+  // with "stream error detected: unspecific protocol error" against it. Pin
+  // the connection to HTTP/1.1 via a custom HTTP client when the runtime
+  // exposes one; fall back to plain fetch otherwise.
+  const res = await fetch("https://api.brightdata.com/request", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${BD_TOKEN}`,
+      Accept: "*/*",
+      // Discourage h2 upgrade on the fallback path.
+      Connection: "close",
+    },
+    body: JSON.stringify(payload),
+    ...(bdHttpClient ? { client: bdHttpClient } : {}),
+  } as RequestInit);
+  const body = await res.text();
+  const bdHeaders: Record<string, string> = {};
+  for (const [k, v] of res.headers.entries()) {
+    if (/^(content-type|content-length|content-encoding|x-brd|x-luminati|x-response|x-unblock)/i.test(k)) {
+      bdHeaders[k] = v;
+    }
+  }
+  return { status: res.status, body, bdHeaders };
+}
+
+// Bright Data returns 200 with an EMPTY body and an `x-brd-err-code` header
+// when the configured zone is the wrong product type. client_10090 =
+// "Scraping Browser zone used as a regular proxy" — permanent config error,
+// never worth retrying, and the exact reason Yad2 search silently returned
+// zero results.
+// Once we've seen client_10090 we know the REST Web Unlocker path is dead for
+// this deployment. Remember it for the lifetime of the isolate so subsequent
+// searches jump straight to the browser transport instead of burning ~4s on
+// four guaranteed-to-fail endpoints.
+let bdZoneBroken = false;
+
+function zoneModeError(bdHeaders: Record<string, string>): string | null {
+  const code = bdHeaders["x-brd-err-code"] ?? "";
+  const msg = bdHeaders["x-brd-err-msg"] ?? bdHeaders["x-brd-error"] ?? "";
+  if (!code && !msg) return null;
+  return `${code || "brd_error"}: ${msg}`;
+}
+
+
+// Rolling trace of every Bright Data hop in the current invocation. Returned
+// to the caller so a zero-result search is never silent — you always see the
+// exact status codes, byte counts and body previews that produced it.
+export type BdTrace = {
+  url: string;
+  bd_status: number;
+  bytes: number;
+  content_type?: string;
+  preview: string;
+  attempt: number;
+};
+let bdTrace: BdTrace[] = [];
 
 async function unlock(
   url: string,
   opts: { accept?: string; maxAttempts?: number } = {},
 ): Promise<string> {
+  if (bdZoneBroken && BD_WS) {
+    // Known-bad REST zone + a usable browser endpoint: fail instantly so the
+    // caller falls through to the Scraping Browser transport.
+    throw new Error("brightdata_zone_mode: client_10090 (cached) — skipping REST unlocker");
+  }
   if (!BD_TOKEN) throw new Error("BRIGHTDATA_API_TOKEN is not configured");
   const maxAttempts = opts.maxAttempts ?? 4;
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const { status, body } = await brightDataRequest(url, { accept: opts.accept });
+      const { status, body, bdHeaders } = await brightDataRequest(url, { accept: opts.accept });
+      const zoneErr = zoneModeError(bdHeaders);
       // Explicit direct-fetch diagnostics — surface Bright Data / Yad2 status
       // and a preview of the upstream body so proxy blocks, CAPTCHAs, and
       // empty gateway payloads are visible in Supabase logs.
+      const entry: BdTrace = {
+        url,
+        bd_status: status,
+        bytes: body.length,
+        content_type: bdHeaders["content-type"],
+        preview: body.slice(0, 300),
+        attempt,
+      };
+      if (bdTrace.length < 20) bdTrace.push(entry);
       console.log(
-        `[yad2-unlocker] direct-fetch ${url} → BD status=${status} bytes=${body.length} preview=${JSON.stringify(body.slice(0, 220))}`,
+        `[yad2-unlocker] direct-fetch ${url} → BD status=${status} bytes=${body.length} ct=${bdHeaders["content-type"] ?? "-"} hdrs=${JSON.stringify(bdHeaders)} preview=${JSON.stringify(body.slice(0, 300))}`,
       );
-      if (status >= 200 && status < 300) return body;
+      if (zoneErr) {
+        // Permanent configuration fault — fail fast so the caller can switch
+        // transports instead of burning 4 retries per endpoint.
+        if (/client_10090/.test(zoneErr)) bdZoneBroken = true;
+        const e = new Error(`brightdata_zone_mode: ${zoneErr}`);
+        (e as Error & { permanent?: boolean }).permanent = true;
+        throw e;
+      }
+      if (status >= 200 && status < 300) {
+        // A 2xx with an empty body means the unlocker handed back nothing —
+        // treat it as a failure instead of "0 results", which is what made
+        // this pipeline fail silently for so long.
+        if (!body.trim()) {
+          if (attempt < maxAttempts) {
+            console.warn(`[yad2-unlocker] BD 200 but EMPTY body, attempt ${attempt} for ${url}, retrying`);
+            await new Promise((r) => setTimeout(r, 600 * attempt));
+            continue;
+          }
+          throw new Error(`Bright Data returned 200 with an empty body for ${url} (zone="${BD_ZONE}")`);
+        }
+        return body;
+      }
       if ((status >= 500 || status === 429 || status === 403) && attempt < maxAttempts) {
         console.warn(`[yad2-unlocker] BD ${status} attempt ${attempt} for ${url}, retrying`);
         await new Promise((r) => setTimeout(r, 500 * attempt));
@@ -170,6 +276,7 @@ async function unlock(
     } catch (e) {
       lastErr = e;
       const msg = String((e as Error)?.message ?? e);
+      if ((e as Error & { permanent?: boolean })?.permanent) throw e;
       const transient = /http2|stream error|SendRequest|network|reset|ECONNRESET|EOF|timeout|socket hang up/i.test(msg);
       if (!transient || attempt >= maxAttempts) throw e;
       console.warn(`[yad2-unlocker] transient error attempt ${attempt} for ${url}: ${msg.slice(0, 200)}`);
@@ -640,6 +747,112 @@ function parseItem(html: string, srcUrl: string): Scraped {
   };
 }
 
+
+// -------- Transport B: Bright Data Scraping Browser (WS / puppeteer) --------
+//
+// Used when the REST Web Unlocker zone is unavailable or misconfigured
+// (x-brd-err-code=client_10090). We drive a real Chromium through Bright
+// Data, land on the public Yad2 page to pick up Radware cookies, then issue
+// the gw.yad2.co.il JSON calls FROM INSIDE that page. Same-origin XHR with
+// genuine cookies is the highest-fidelity way to read the feed.
+
+type BrowserHarvest = { html: string | null; feeds: Array<{ url: string; body: string }> };
+
+async function scrapingBrowserHarvest(
+  pageUrl: string,
+  feedUrls: string[],
+  needFeeds: (html: string) => boolean = () => true,
+): Promise<BrowserHarvest> {
+  if (!BD_WS) throw new Error("BRIGHTDATA_WS_ENDPOINT is not configured");
+  let browser: any = null;
+  try {
+    console.log("[yad2-unlocker] scraping-browser: connecting…");
+    browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1440, height: 2200 });
+    // NOTE: Bright Data Scraping Browser forbids overriding accept-language
+    // ("Overriding accept-language headers forbidden"). Locale comes from the
+    // il-geolocated exit node instead.
+
+    console.log(`[yad2-unlocker] scraping-browser: goto ${pageUrl}`);
+    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page
+      .waitForSelector('a[href*="/item/"], [data-testid="feed-item"], article', { timeout: 40_000 })
+      .catch(() => {});
+    // Yad2 hydrates the feed after the first paint; wait for real item anchors
+    // rather than the shell, otherwise the RSC payload we parse is still empty.
+    await page
+      .waitForFunction(
+        () => document.querySelectorAll('a[href*="/item/"]').length > 0,
+        { timeout: 25_000, polling: 500 },
+      )
+      .catch(() => {});
+
+    const itemAnchors: number = await page
+      .evaluate(() => document.querySelectorAll('a[href*="/item/"]').length)
+      .catch(() => -1);
+    const pageTitle: string = await page.title().catch(() => "");
+
+    const html: string = await page.content().catch(() => "");
+    console.log(
+      `[yad2-unlocker] scraping-browser: html bytes=${html.length} item_anchors=${itemAnchors} title=${JSON.stringify(pageTitle)}`,
+    );
+
+    const feeds: Array<{ url: string; body: string }> = [];
+    // The rendered HTML is the reliable source; the gw.* JSON endpoints are
+    // Radware-guarded and usually answer with an error page. Only spend time
+    // on them when the HTML yielded nothing parseable.
+    const feedTargets = needFeeds(html) ? feedUrls : [];
+    if (!feedTargets.length) {
+      console.log("[yad2-unlocker] scraping-browser: HTML sufficient — skipping gw feed calls");
+    }
+    for (const f of feedTargets) {
+      try {
+        const body: string = await page.evaluate(async (u: string) => {
+          const r = await fetch(u, {
+            credentials: "include",
+            headers: { Accept: "application/json, text/plain, */*" },
+          });
+          return await r.text();
+        }, f);
+        console.log(
+          `[yad2-unlocker] scraping-browser: in-page fetch ${f} bytes=${body?.length ?? 0} preview=${JSON.stringify((body ?? "").slice(0, 200))}`,
+        );
+        if (bdTrace.length < 20) {
+          bdTrace.push({
+            url: `[browser] ${f}`,
+            bd_status: 200,
+            bytes: body?.length ?? 0,
+            preview: (body ?? "").slice(0, 300),
+            attempt: 1,
+          });
+        }
+        if (body && body.trim()) feeds.push({ url: f, body });
+      } catch (e) {
+        const msg = String((e as Error)?.message ?? e).slice(0, 300);
+        console.warn(`[yad2-unlocker] scraping-browser: in-page fetch failed ${f} — ${msg}`);
+        if (bdTrace.length < 20) {
+          bdTrace.push({ url: `[browser] ${f}`, bd_status: 0, bytes: 0, preview: msg, attempt: 1 });
+        }
+      }
+    }
+    await page.close().catch(() => {});
+    if (html && bdTrace.length < 20) {
+      bdTrace.push({
+        url: `[browser] ${pageUrl}`,
+        bd_status: 200,
+        bytes: html.length,
+        content_type: "text/html",
+        preview: html.slice(0, 300),
+        attempt: 1,
+      });
+    }
+    return { html: html || null, feeds };
+  } finally {
+    try { await browser?.disconnect?.(); } catch { /* noop */ }
+  }
+}
+
 // -------- Save helpers --------
 
 async function upsertOwnerProfile(
@@ -704,13 +917,18 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     },
   };
   if (existing?.id) {
-    await admin.from("listings").update(payload).eq("id", existing.id);
+    const { error: updErr } = await admin.from("listings").update(payload).eq("id", existing.id);
+    // Never swallow a write failure — a silently dropped row is exactly how
+    // the Yad2 feed appeared to "work" while the cache stayed empty.
+    if (updErr) throw new Error(`update_failed(${existing.id}): ${updErr.message}`);
     return { id: existing.id, updated: true };
   }
   const slug = `yad2-${row.external_id || crypto.randomUUID().slice(0, 8)}`;
-  const { data: inserted } = await admin.from("listings")
+  const { data: inserted, error: insErr } = await admin.from("listings")
     .insert({ ...payload, slug }).select("id").maybeSingle();
-  return { id: inserted?.id, updated: false };
+  if (insErr) throw new Error(`insert_failed(${row.source_url}): ${insErr.message}`);
+  if (!inserted?.id) throw new Error(`insert_returned_no_row(${row.source_url})`);
+  return { id: inserted.id, updated: false };
 }
 
 // -------- Handler --------
@@ -728,6 +946,7 @@ Deno.serve(async (req) => {
     const userId = claims?.claims?.sub;
     if (!userId) return json({ error: "Unauthorized" }, 401);
 
+    bdTrace = [];
     const body = await req.json().catch(() => ({} as any));
     const limit = Math.min(80, Math.max(1, Number(body?.limit) || 30));
     const previewOnly = Boolean(body?.preview_only);
@@ -789,7 +1008,7 @@ Deno.serve(async (req) => {
 
 
     let rows: Scraped[] = [];
-    let mode: "json" | "html" = "json";
+    let mode: "json" | "html" | "browser" = "json";
     let jsonSource: string | null = null;
     // Per-endpoint diagnostics so callers (and Supabase logs) can see
     // exactly which direct-Yad2 hop returned data vs. was blocked.
@@ -835,21 +1054,130 @@ Deno.serve(async (req) => {
       console.warn(`[yad2-unlocker] JSON gateway threw: ${String(e?.message ?? e).slice(0, 200)}`);
     }
 
-    // --- Fallback: HTML scrape of the public www URL (still direct Yad2) ----
+    // --- Fallback B: HTML scrape of the public www URL via the REST unlocker -
     if (!rows.length) {
       mode = "html";
       console.log(`[yad2-unlocker] falling back to HTML: ${inputUrl}`);
       try {
-        const html = await unlock(inputUrl);
+        const html = await unlock(inputUrl, { maxAttempts: 2 });
         rows = isItemUrl ? [parseItem(html, inputUrl)] : parseSearch(html, inputUrl, limit);
         diagnostics.push({ endpoint: inputUrl, kind: "html", status: rows.length ? "ok" : "empty", count: rows.length });
       } catch (e: any) {
         const err = String(e?.message ?? e).slice(0, 400);
+        console.warn(`[yad2-unlocker] HTML unlocker failed: ${err}`);
         diagnostics.push({ endpoint: inputUrl, kind: "html", status: "error", error: err });
-        // Re-throw so the client sees a 502 with details rather than a silent empty list.
-        throw e;
       }
     }
+
+    // --- Fallback C: Bright Data Scraping Browser (real Chromium over WS) ----
+    // Reached when the REST Web Unlocker zone is the wrong product type
+    // (client_10090) or Yad2 hard-blocks the proxy. This path uses the
+    // separately provisioned BRIGHTDATA_WS_ENDPOINT.
+    if (!rows.length && BD_WS) {
+      mode = "browser";
+      try {
+        const feedUrls = isItemUrl
+          ? [toGatewayItemUrl(inputUrl)].filter(Boolean) as string[]
+          : toGatewayFeedUrls(inputUrl);
+        const harvest = await scrapingBrowserHarvest(inputUrl, feedUrls, (html) => {
+          try {
+            const probe = isItemUrl
+              ? ([parseItem(html, inputUrl)].filter(Boolean) as Scraped[])
+              : parseSearch(html, inputUrl, limit);
+            console.log(`[yad2-unlocker] scraping-browser: HTML parse yielded ${probe.length} row(s)`);
+            return probe.length === 0;
+          } catch (e) {
+            console.warn(`[yad2-unlocker] scraping-browser: HTML parse threw ${String((e as Error)?.message ?? e)}`);
+            return true;
+          }
+        });
+
+        if (harvest.html) {
+          const parsed = isItemUrl
+            ? ([parseItem(harvest.html, inputUrl)].filter(Boolean) as Scraped[])
+            : parseSearch(harvest.html, inputUrl, limit);
+          if (parsed.length) {
+            rows = parsed;
+            diagnostics.push({
+              endpoint: `[browser] ${inputUrl}`,
+              kind: "html",
+              status: "ok",
+              count: parsed.length,
+            });
+          }
+        }
+
+        for (const f of rows.length ? [] : harvest.feeds) {
+          const parsed = isItemUrl
+            ? ([parseItemJson(f.body, inputUrl)].filter(Boolean) as Scraped[])
+            : parseSearchJson(f.body, inputUrl, limit);
+          if (parsed.length) {
+            rows = parsed;
+            jsonSource = f.url;
+            diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "ok", count: parsed.length });
+            break;
+          }
+          diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "empty" });
+        }
+
+        if (!rows.length) {
+          diagnostics.push({ endpoint: `[browser] ${inputUrl}`, kind: "html", status: "empty", count: 0 });
+        }
+      } catch (e: any) {
+        const err = String(e?.message ?? e).slice(0, 400);
+        console.warn(`[yad2-unlocker] scraping-browser failed: ${err}`);
+        diagnostics.push({ endpoint: "[browser]", kind: "html", status: "error", error: err });
+      }
+    }
+
+    // Nothing worked at all — surface the real cause instead of "0 results".
+    if (!rows.length) {
+      const hardErrors = diagnostics.filter((d) => d.status === "error");
+      const zoneFault = hardErrors.find((d) => /brightdata_zone_mode|client_10090/i.test(d.error ?? ""));
+      if (zoneFault) {
+        return json({
+          error: "brightdata_zone_misconfigured",
+          detail:
+            'The Bright Data zone "' + BD_ZONE +
+            '" is a Scraping Browser zone, but the REST Web Unlocker API was called against it. ' +
+            "Create a Web Unlocker zone and set BRIGHTDATA_ZONE to its name, or ensure BRIGHTDATA_WS_ENDPOINT is valid so the browser transport can be used.",
+          diagnostics,
+          bd_trace: bdTrace,
+          resolved_url: inputUrl,
+        }, 502);
+      }
+      if (hardErrors.length) {
+        return json({
+          error: "yad2_fetch_failed",
+          detail: hardErrors.map((d) => `${d.endpoint}: ${d.error}`).join(" | ").slice(0, 1200),
+          diagnostics,
+          bd_trace: bdTrace,
+          resolved_url: inputUrl,
+        }, 502);
+      }
+    }
+
+    // Yad2 interleaves sponsored "projects" from unrelated cities into every
+    // feed. When the caller asked for a specific city, drop rows that clearly
+    // belong somewhere else so the cache stays trustworthy. Rows with an
+    // unknown city are kept — we only discard positive mismatches.
+    const requestedCity = clean(String(body?.city ?? ""));
+    if (requestedCity && !isItemUrl) {
+      const before = rows.length;
+      const norm = (v: string) => v.replace(/["'׳״]/g, "").replace(/\s+/g, " ").trim();
+      const want = norm(requestedCity);
+      rows = rows.filter((r) => {
+        if (!r.city) return true;
+        const got = norm(r.city);
+        return got === want || got.includes(want) || want.includes(got);
+      });
+      if (rows.length !== before) {
+        console.log(
+          `[yad2-unlocker] city filter "${requestedCity}": dropped ${before - rows.length} off-city sponsored row(s)`,
+        );
+      }
+    }
+
     console.log(`[yad2-unlocker] parsed ${rows.length} row(s) via ${mode}`);
 
     let saved = 0;
@@ -860,9 +1188,12 @@ Deno.serve(async (req) => {
           await saveListing(admin, userId, r);
           saved++;
         } catch (e: any) {
-          saveErrors.push({ url: r.source_url, error: String(e?.message ?? e) });
+          const msg = String(e?.message ?? e);
+          console.error(`[yad2-unlocker] save failed ${r.source_url}: ${msg}`);
+          saveErrors.push({ url: r.source_url, error: msg });
         }
       }
+      console.log(`[yad2-unlocker] saved ${saved}/${rows.length} row(s), ${saveErrors.length} error(s)`);
     } else {
       console.log(`[yad2-unlocker] preview_only=true — skipping DB save for ${rows.length} row(s)`);
     }
@@ -878,10 +1209,11 @@ Deno.serve(async (req) => {
       transport: mode,
       json_source: jsonSource,
       diagnostics,
+      bd_trace: bdTrace,
       resolved_url: inputUrl,
     });
   } catch (e: any) {
     console.error("[yad2-unlocker] error", e);
-    return json({ error: "scrape_failed", detail: String(e?.message ?? e) }, 502);
+    return json({ error: "scrape_failed", detail: String(e?.message ?? e), bd_trace: bdTrace }, 502);
   }
 });
