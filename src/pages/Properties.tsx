@@ -126,29 +126,48 @@ export default function Properties() {
     return () => window.removeEventListener('properties:add', handler);
   }, []);
 
-  // The properties page is NEVER blank. With no active search we preload the
-  // agent's primary city (first configured service area, else הרצליה) straight
-  // from the local cache, newest listings first.
-  const defaultCity = coveredCities?.[0] || 'הרצליה';
+  // The properties page is NEVER blank. The default pool is the 100 newest
+  // listings for sale + the 100 newest for rent across the agent's home
+  // markets (Herzliya + Ramat Hasharon), newest first.
+  const defaultPoolRef = useRef<UnifiedResult[] | null>(null);
+  const loadDefaultPool = useCallback(async (): Promise<UnifiedResult[]> => {
+    if (defaultPoolRef.current) return defaultPoolRef.current;
+    const cities = DEFAULT_CITIES;
+    const batches = await Promise.all(
+      cities.map((c) => searchLocalListings({ city: c, listing_type: 'all' }).catch(() => [] as UnifiedResult[])),
+    );
+    const seen = new Set<string>();
+    const all = batches.flat().filter((r) => (seen.has(r.key) ? false : (seen.add(r.key), true)));
+    const newestFirst = (a: UnifiedResult, b: UnifiedResult) =>
+      new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+    const sale = all.filter((r) => r.listing_type === 'sale').sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
+    const rent = all.filter((r) => r.listing_type === 'rent').sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
+    const pool = [...sale, ...rent].sort(newestFirst);
+    defaultPoolRef.current = pool;
+    return pool;
+  }, []);
+
   useEffect(() => {
     if (hasSearched || results.length) return;
     let cancelled = false;
     (async () => {
       setSearching(true);
       try {
-        const rows = await searchLocalListings({ city: defaultCity, listing_type: 'all' });
+        const rows = await loadDefaultPool();
         if (cancelled) return;
         setResults(rows);
+        setShowingFallback(false);
         setSourceStatus({ local: { status: rows.length ? 'ok' : 'empty', count: rows.length } });
       } catch (err) {
-        console.error('[Properties] default city preload failed', err);
+        console.error('[Properties] default pool preload failed', err);
       } finally {
         if (!cancelled) setSearching(false);
       }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultCity]);
+  }, [loadDefaultPool]);
+
 
   // Monotonic token — bumping it aborts the in-flight search: late partials
   // and the final payload are ignored, so whatever was already painted stays.
