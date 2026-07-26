@@ -121,6 +121,25 @@ const mergePostMediaUrls = (...values: unknown[]): string[] => {
   return out;
 };
 
+// Strict uniqueness: exact URL AND canonical filename key. Used at render time
+// so a post can never paint the same image twice.
+const uniqueMediaUrls = (values: unknown): string[] => {
+  const list = Array.isArray(values) ? values : values ? [values] : [];
+  const seenExact = new Set<string>();
+  const seenKey = new Set<string>();
+  const out: string[] = [];
+  for (const value of list) {
+    if (typeof value !== 'string' || !value) continue;
+    const key = mediaDedupeKey(value);
+    if (seenExact.has(value) || seenKey.has(key)) continue;
+    seenExact.add(value);
+    seenKey.add(key);
+    out.push(value);
+  }
+  return out;
+};
+
+
 // Images the user explicitly deleted from a post. Persisted in
 // campaign_logs.provider_response.removed_media_keys so no sync/merge path can
 // ever resurrect them.
