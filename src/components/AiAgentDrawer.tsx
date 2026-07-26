@@ -344,48 +344,39 @@ export default function AiAgentDrawer() {
   }, [messages, open, historyLoaded]);
 
 
-  // Mint a share token via edge fn, then open a pre-filled WhatsApp message
-  // to the recipient with the shared property link. Works for both local
+  // Mint a share token via edge fn for a property card. Works for both local
   // listings (r.id looks like a UUID) and external Webtiv/Homely results
-  // (we send an external_snapshot instead).
-  const sendPropertyOffer = useCallback(async (r: WebtivResult, recipientPhone: string | null) => {
-    const phone = (recipientPhone || '').replace(/\D/g, '');
-    if (!phone) {
-      toast.error('חסר מספר טלפון של המתעניין');
-      return;
+  // (we send an external_snapshot instead). Returns the public landing URL.
+  const mintShareUrl = useCallback(async (r: WebtivResult, leadPhone: string | null): Promise<string> => {
+    const isUuid = /^[0-9a-f-]{36}$/i.test(r.id);
+    const payload: any = { lead_phone: leadPhone };
+    if (isUuid) {
+      payload.listing_id = r.id;
+    } else {
+      payload.external_snapshot = {
+        property_title: r.title,
+        asking_price: r.price,
+        city: r.city,
+        rooms: r.rooms,
+        sqm: r.sqm,
+        floor: r.floor,
+        deal_type: r.transaction_type,
+        media_photos: r.photo ? [r.photo] : [],
+        source_url: r.source_url,
+      };
     }
-    const normalized = phone.startsWith('972') ? phone
-      : phone.startsWith('0') ? '972' + phone.slice(1) : phone;
-    try {
-      const isUuid = /^[0-9a-f-]{36}$/i.test(r.id);
-      const payload: any = { lead_phone: normalized };
-      if (isUuid) {
-        payload.listing_id = r.id;
-      } else {
-        payload.external_snapshot = {
-          property_title: r.title,
-          asking_price: r.price,
-          city: r.city,
-          rooms: r.rooms,
-          sqm: r.sqm,
-          floor: r.floor,
-          deal_type: r.transaction_type,
-          media_photos: r.photo ? [r.photo] : [],
-          source_url: r.source_url,
-        };
-      }
-      const { data, error } = await supabase.functions.invoke('create-property-share', {
-        body: payload,
-      });
-      if (error) throw error;
-      const token = (data as any)?.token;
-      if (!token) throw new Error('לא התקבל טוקן שיתוף');
-      const shareUrl = `${window.location.origin}/share/property/${token}`;
-      const priceStr = r.price
-        ? `₪${r.price.toLocaleString('he-IL')}${r.transaction_type === 'rent' ? '/חודש' : ''}`
-        : 'לפרטים';
-      const msg =
-`שלום 👋
+    const { data, error } = await supabase.functions.invoke('create-property-share', { body: payload });
+    if (error) throw error;
+    const token = (data as any)?.token;
+    if (!token) throw new Error('לא התקבל טוקן שיתוף');
+    return `${window.location.origin}/share/property/${token}`;
+  }, []);
+
+  const buildOfferMessage = useCallback((r: WebtivResult, shareUrl: string) => {
+    const priceStr = r.price
+      ? `₪${r.price.toLocaleString('he-IL')}${r.transaction_type === 'rent' ? '/חודש' : ''}`
+      : 'לפרטים';
+    return `שלום 👋
 מצאתי עבורך נכס שאני חושב שיעניין אותך:
 
 🏠 ${r.title}
@@ -396,12 +387,54 @@ export default function AiAgentDrawer() {
 ${shareUrl}
 
 מוזמנ/ת להגיב כאן ואחזור אליך.`;
-      const wa = `https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`;
+  }, []);
+
+  const sendPropertyOffer = useCallback(async (r: WebtivResult, recipientPhone: string | null) => {
+    const phone = (recipientPhone || '').replace(/\D/g, '');
+    if (!phone) {
+      toast.error('חסר מספר טלפון של המתעניין');
+      return;
+    }
+    const normalized = phone.startsWith('972') ? phone
+      : phone.startsWith('0') ? '972' + phone.slice(1) : phone;
+    try {
+      const shareUrl = await mintShareUrl(r, normalized);
+      const wa = `https://wa.me/${normalized}?text=${encodeURIComponent(buildOfferMessage(r, shareUrl))}`;
       window.open(wa, '_blank', 'noopener,noreferrer');
     } catch (e: any) {
       toast.error(e?.message ?? 'שליחת ההצעה נכשלה');
     }
-  }, []);
+  }, [mintShareUrl, buildOfferMessage]);
+
+  // Generic share (no known recipient): WhatsApp picker, SMS, or copy link.
+  const shareProperty = useCallback(async (r: WebtivResult, mode: 'whatsapp' | 'sms' | 'copy') => {
+    try {
+      setSharingId(r.id);
+      const phone = (/\d/.test(String(sharePhoneRef.current ?? '')) ? String(sharePhoneRef.current) : '').replace(/\D/g, '');
+      const normalized = !phone ? null
+        : phone.startsWith('972') ? phone
+        : phone.startsWith('0') ? '972' + phone.slice(1) : phone;
+      const shareUrl = await mintShareUrl(r, normalized);
+      const text = buildOfferMessage(r, shareUrl);
+      if (mode === 'whatsapp') {
+        window.open(
+          normalized ? `https://wa.me/${normalized}?text=${encodeURIComponent(text)}`
+                     : `https://wa.me/?text=${encodeURIComponent(text)}`,
+          '_blank', 'noopener,noreferrer',
+        );
+      } else if (mode === 'sms') {
+        window.location.href = `sms:${normalized ?? ''}?&body=${encodeURIComponent(text)}`;
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('הקישור הועתק');
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? 'יצירת קישור השיתוף נכשלה');
+    } finally {
+      setSharingId(null);
+    }
+  }, [mintShareUrl, buildOfferMessage]);
+
 
   const sendMessage = async (text: string) => {
     const hasFiles = pendingAttachments.length > 0;
