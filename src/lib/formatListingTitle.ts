@@ -74,12 +74,47 @@ export function formatListingTitle(input: {
 export function formatInternalListingTitle(input: {
   address?: string | null;
   city?: string | null;
+  neighborhood?: string | null;
   property_type?: string | null;
   title?: string | null;
+  apartment?: string | number | null;
+  raw?: any;
 }): string {
-  const address = String(input.address ?? '').replace(/\s+/g, ' ').trim();
   const type = normalizePropertyTypeLabel(input.property_type ?? null);
-  const parts = [address, type].filter(Boolean) as string[];
+  const city = String(input.city ?? '').trim();
+  const hood = String(input.neighborhood ?? '').trim();
+
+  // 1. Clean the address: collapse whitespace, drop trailing city/neighborhood
+  //    fragments so we keep only `street + house number [+ apt]`.
+  let address = String(input.address ?? '').replace(/\s+/g, ' ').trim();
+  address = address
+    .split(',')
+    .map((p) => p.trim())
+    .filter((p) => p && p !== city && p !== hood)
+    .join(', ');
+
+  // 2. Resolve the apartment / unit number from explicit fields when the
+  //    address itself doesn't already carry one.
+  const r = input.raw ?? {};
+  const rawApt =
+    input.apartment ??
+    r.apartment_number ?? r.apartmentNumber ?? r.apt_number ?? r.aptNumber ??
+    r.apartment ?? r.apt ?? r.unit ?? r.unit_number ?? null;
+  const apt = rawApt === null || rawApt === undefined ? '' : String(rawApt).trim();
+
+  const hasAptInAddress = /(?:דירה|דירת|ד['׳"]|יח["׳']|apt\.?|apartment|unit|#)\s*\d/i.test(address);
+
+  if (apt && !hasAptInAddress) {
+    address = `${address} ד' ${apt}`.trim();
+  } else if (!apt && !hasAptInAddress) {
+    // Address may carry a bare second numeric group ("הפסנתר 8 16") — render
+    // that tail as an apartment number for internal clarity.
+    const m = address.match(/^(.*?\d+[א-תA-Za-z]?)\s+(\d{1,4}[א-תA-Za-z]?)\s*$/);
+    if (m) address = `${m[1]} ד' ${m[2]}`;
+  }
+
+  const parts = [address, type].map((p) => (p ? String(p).trim() : '')).filter(Boolean);
   if (!parts.length) return (input.title ?? '').trim() || 'נכס';
   return parts.join(', ');
 }
+
