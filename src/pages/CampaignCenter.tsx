@@ -40,6 +40,8 @@ import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdo
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
+import { resolveMediaUrl, resolveMediaUrls, mediaDedupeKey } from '@/lib/postMediaUrl';
+
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
