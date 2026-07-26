@@ -408,8 +408,28 @@ export default function Properties() {
 
       {/* Compact unified control bar */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+        {/* Row 0 — transaction type: הכל / להשכרה / למכירה, right above the search bar */}
+        <div className="flex items-center gap-2 mb-2" dir="rtl">
+          <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5">
+            {(['all', 'rent', 'sale'] as Array<ListingType | 'all'>).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setListingType(t)}
+                aria-pressed={listingType === t}
+                className={`px-3.5 py-1.5 text-xs font-semibold rounded transition-colors ${
+                  listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Row 1 — search: [advanced filter icon] [search input with go button] */}
         <div className="flex items-center gap-2" dir="rtl">
+
           <div className="relative flex-1 min-w-[200px]">
             <CollapsibleTrigger asChild>
               <button
