@@ -142,6 +142,28 @@ const normalizePostMediaUrls = (value: unknown): string[] => {
   return out;
 };
 
+const mergePostMediaUrls = (...values: unknown[]): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    for (const url of normalizePostMediaUrls(value)) {
+      const key = mediaDedupeKey(url);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(url);
+    }
+  }
+  return out;
+};
+
+const keepLongestMediaUrls = (current: unknown, incoming: unknown): string[] => {
+  const currentUrls = normalizePostMediaUrls(current);
+  const incomingUrls = normalizePostMediaUrls(incoming);
+  if (incomingUrls.length === 0) return currentUrls;
+  if (currentUrls.length === 0) return incomingUrls;
+  return incomingUrls.length >= currentUrls.length ? incomingUrls : currentUrls;
+};
+
 // Top row (RTL): Facebook → Instagram → X
 // Middle row (RTL): IVR → Email → AI Voice
 // Bottom row (RTL): YouTube → LinkedIn → TikTok
@@ -2841,14 +2863,14 @@ const PublishedFeed = () => {
       const pr = r?.provider_response ?? {};
       // Priority: permanently mirrored copies → the durable column → whatever
       // the provider payload carried (signed FB CDN links that expire).
-      const media = [
+      const media = mergePostMediaUrls(
         pr?.cached_media_urls,
         r?.media_urls,
         pr?.media_urls,
         pr?.media,
         pr?.raw?.mediaUrls,
         pr?.raw?.fullPicture ? [pr.raw.fullPicture] : null,
-      ].find((c: any) => Array.isArray(c) && c.length > 0) ?? [];
+      );
       const externalUrl =
         (typeof pr?.external_url === 'string' && pr.external_url) ||
         (Array.isArray(pr?.postIds)
@@ -2857,7 +2879,7 @@ const PublishedFeed = () => {
         null;
       return {
         ...r,
-        media_urls: normalizePostMediaUrls(media),
+        media_urls: media,
         external_url: externalUrl,
         listing_id: (typeof pr?.listing_id === 'string' && pr.listing_id) || null,
       };
@@ -2875,7 +2897,7 @@ const PublishedFeed = () => {
         if (!existing.provider_message_id && r.provider_message_id) {
           existing.provider_message_id = r.provider_message_id;
         }
-        existing.media_urls = existing.media_urls?.length ? existing.media_urls : r.media_urls;
+        existing.media_urls = keepLongestMediaUrls(existing.media_urls, r.media_urls);
         existing.external_url = existing.external_url || r.external_url || null;
         existing.like_count = Math.max(existing.like_count || 0, r.like_count || 0);
         existing.comment_count = Math.max(existing.comment_count || 0, r.comment_count || 0);
@@ -3188,7 +3210,15 @@ const PublishedFeed = () => {
             return {
               ...r,
               provider_message_id: r.provider_message_id || updated.provider_message_id,
-              media_urls: normalizePostMediaUrls(updated.provider_response?.media_urls ?? updated.provider_response?.media ?? r.media_urls ?? []),
+              media_urls: keepLongestMediaUrls(
+                r.media_urls,
+                mergePostMediaUrls(
+                  updated.provider_response?.cached_media_urls,
+                  updated.media_urls,
+                  updated.provider_response?.media_urls,
+                  updated.provider_response?.media,
+                ),
+              ),
               external_url: updated.provider_response?.external_url || r.external_url || null,
               like_count: keepMax(updated.like_count, r.like_count),
               comment_count: keepMax(updated.comment_count, r.comment_count),
@@ -3211,7 +3241,12 @@ const PublishedFeed = () => {
               const provider = inserted.provider_response ?? {};
               const normalized = {
                 ...inserted,
-                media_urls: normalizePostMediaUrls(provider.media_urls ?? provider.media ?? []),
+                media_urls: mergePostMediaUrls(
+                  provider.cached_media_urls,
+                  inserted.media_urls,
+                  provider.media_urls,
+                  provider.media,
+                ),
                 external_url: provider.external_url || (Array.isArray(provider.postIds) ? provider.postIds[0]?.postUrl : null) || null,
               } as CampaignRow;
               const next = [normalized, ...prev];
@@ -3411,7 +3446,7 @@ const PublishedFeed = () => {
           const media = (data as any)?.media_urls;
           if (Array.isArray(media) && media.length > 0) {
             setRows((prev) => prev?.map((row) => row.id === r.id
-              ? { ...row, media_urls: media }
+              ? { ...row, media_urls: keepLongestMediaUrls(row.media_urls, media) }
               : row,
             ) ?? prev);
           }
@@ -3549,6 +3584,7 @@ const PublishedFeed = () => {
               <div className={cn('flex items-center gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
                 <PostImage
                   src={r.media_urls?.[0]}
+                  candidates={r.media_urls ?? []}
                   campaignLogId={r.id}
                   index={0}
                   alt=""
@@ -3693,12 +3729,16 @@ const PublishedFeed = () => {
                   </div>
                 )}
                 {r.media_urls && r.media_urls.length > 0 && (
-                  <div className="mx-4 mb-3 flex gap-2 overflow-x-auto">
-                    {r.media_urls.slice(0, 6).map((src, i) => (
-                      <div key={i} className="relative shrink-0 group">
+                  <div className={cn(
+                    'mx-4 mb-3 grid gap-2',
+                    r.media_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3',
+                  )}>
+                    {r.media_urls.map((src, i) => (
+                      <div key={`${src}-${i}`} className="relative group aspect-square min-w-0">
                         <PostImage src={src} campaignLogId={r.id} index={i} alt=""
-                             className="h-32 w-32 rounded-lg object-cover border border-border"
-                             fallbackClassName="h-32 w-32" />
+                             candidates={r.media_urls ?? []}
+                             className="h-full w-full rounded-lg object-cover border border-border"
+                             fallbackClassName="h-full w-full" />
                         <button
                           type="button"
                           title="הסר תמונה"

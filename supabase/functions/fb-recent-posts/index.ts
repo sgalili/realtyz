@@ -97,6 +97,28 @@ const normalizeMediaUrls = (value: unknown): string[] => {
   return out;
 };
 
+const mergeMediaUrls = (...values: unknown[]): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    for (const url of normalizeMediaUrls(value)) {
+      const key = mediaDedupeKey(url);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(url);
+    }
+  }
+  return out;
+};
+
+const protectExistingGallery = (existing: unknown, incoming: unknown): string[] => {
+  const existingUrls = normalizeMediaUrls(existing);
+  const incomingUrls = normalizeMediaUrls(incoming);
+  if (incomingUrls.length === 0) return existingUrls;
+  if (existingUrls.length > 1 && incomingUrls.length <= 1) return existingUrls;
+  return incomingUrls.length >= existingUrls.length ? incomingUrls : existingUrls;
+};
+
 const addUrl = (set: Set<string>, value: unknown) => {
   if (isRenderableMediaUrl(value)) set.add(asText(value));
 };
@@ -1110,12 +1132,15 @@ Deno.serve(async (req) => {
           const prior = existingById.get(String(p.fb_post_id));
           const priorPr = (prior?.provider_response as any) ?? {};
           const priorCached = normalizeMediaUrls(priorPr.cached_media_urls);
-          const priorMedia = normalizeMediaUrls(
-            (Array.isArray(prior?.media_urls) && prior.media_urls.length ? prior.media_urls : priorPr.media_urls),
+          const priorMedia = mergeMediaUrls(
+            prior?.media_urls,
+            priorPr.media_urls,
+            priorPr.raw?.mediaUrls,
+            priorPr.raw?.fullPicture ? [priorPr.raw.fullPicture] : [],
           );
           const incomingMedia = normalizeMediaUrls(p.media);
-          const media = incomingMedia.length > 0 ? incomingMedia : priorMedia;
-          const durableMedia = priorCached.length > 0 ? priorCached : media;
+          const media = protectExistingGallery(priorMedia, incomingMedia);
+          const durableMedia = protectExistingGallery(priorCached.length > 0 ? priorCached : priorMedia, mergeMediaUrls(priorCached, media));
 
           return {
             user_id: ownerId,
@@ -1259,17 +1284,18 @@ Deno.serve(async (req) => {
             // True native created_time
             const nativeCreatedAt = firstValidDate(entry?.created_time);
 
-            const existingMedia = normalizeMediaUrls(
-              (Array.isArray((t as any).media_urls) && (t as any).media_urls.length
-                ? (t as any).media_urls
-                : (t as any).provider_response?.media_urls),
+            const existingMedia = mergeMediaUrls(
+              (t as any).media_urls,
+              (t as any).provider_response?.cached_media_urls,
+              (t as any).provider_response?.media_urls,
             );
             const cachedMedia = normalizeMediaUrls((t as any).provider_response?.cached_media_urls);
-            const mergedMedia = urls.length > 0 ? urls : existingMedia;
+            const mergedMedia = protectExistingGallery(existingMedia, urls);
+            const durableMedia = protectExistingGallery(existingMedia, mergeMediaUrls(cachedMedia, mergedMedia));
 
             const updatePayload: Record<string, unknown> = {
               // Keep the durable column in sync; never downgrade to an empty list.
-              media_urls: cachedMedia.length > 0 ? cachedMedia : mergedMedia,
+              media_urls: durableMedia,
               provider_response: {
                 ...((t as any).provider_response || {}),
                 media_urls: mergedMedia,

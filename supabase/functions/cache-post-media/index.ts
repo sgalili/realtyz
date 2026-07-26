@@ -26,6 +26,40 @@ const isHttp = (v: unknown): v is string =>
 
 const isVideo = (u: string) => /\.(mp4|mov|m4v|webm)(\?|$)/i.test(u);
 
+const mediaDedupeKey = (url: string): string => {
+  try {
+    const u = new URL(url);
+    return `${u.hostname}${u.pathname}`.toLowerCase();
+  } catch {
+    return url.split("?")[0].toLowerCase();
+  }
+};
+
+const mergeUrls = (...values: unknown[]): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    const items = Array.isArray(value) ? value : [];
+    for (const item of items) {
+      const url = typeof item === "string" ? item.trim() : "";
+      if (!isHttp(url)) continue;
+      const key = mediaDedupeKey(url);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(url);
+    }
+  }
+  return out;
+};
+
+const keepLongest = (existing: unknown, incoming: unknown): string[] => {
+  const existingUrls = mergeUrls(existing);
+  const incomingUrls = mergeUrls(incoming);
+  if (incomingUrls.length === 0) return existingUrls;
+  if (existingUrls.length > 1 && incomingUrls.length <= 1) return existingUrls;
+  return incomingUrls.length >= existingUrls.length ? incomingUrls : existingUrls;
+};
+
 // Stable key per remote asset: hash the path only (FB rotates query params on
 // every fetch, so keying on the full URL would re-upload the same bytes).
 async function storageKey(url: string): Promise<string> {
@@ -127,16 +161,18 @@ Deno.serve(async (req) => {
 
     if (cached.length === 0) return json({ cached: [], media_urls: candidates });
 
-    const nextProvider = { ...pr, cached_media_urls: cached, media_cached_at: new Date().toISOString() };
+    const nextCached = keepLongest((pr as any).cached_media_urls, cached);
+    const nextMedia = keepLongest(row.media_urls, nextCached);
+    const nextProvider = { ...pr, cached_media_urls: nextCached, media_cached_at: new Date().toISOString() };
     if (!Array.isArray((pr as any).media_urls) || (pr as any).media_urls.length === 0) {
       (nextProvider as any).media_urls = candidates;
     }
     await admin
       .from("campaign_logs")
-      .update({ media_urls: cached, provider_response: nextProvider })
+      .update({ media_urls: nextMedia, provider_response: nextProvider })
       .eq("id", campaignLogId);
 
-    return json({ cached, media_urls: cached });
+    return json({ cached: nextCached, media_urls: nextMedia });
   } catch (e) {
     console.error("[cache-post-media] fatal", e);
     return json({ error: String((e as Error)?.message ?? e) }, 500);
