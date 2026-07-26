@@ -1097,6 +1097,42 @@ async function upsertOwnerProfile(
   return created?.id ?? null;
 }
 
+const MEDIA_BUCKET = "post-media-cache";
+
+/**
+ * Downloads every scraped photo and stores it permanently in the
+ * `post-media-cache` bucket so cards never depend on Yad2's CDN.
+ * Already-mirrored URLs are passed through untouched.
+ */
+async function mirrorPhotos(admin: any, keyPrefix: string, urls: string[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const url of urls.slice(0, 25)) {
+    if (url.includes(`/storage/v1/object/public/${MEDIA_BUCKET}/`)) { out.push(url); continue; }
+    try {
+      const res = await fetch(url, {
+        headers: { "user-agent": "Mozilla/5.0", referer: "https://www.yad2.co.il/" },
+      });
+      if (!res.ok) { out.push(url); continue; }
+      const ct = (res.headers.get("content-type") || "image/jpeg").split(";")[0];
+      if (!ct.startsWith("image/")) { out.push(url); continue; }
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (bytes.byteLength < 1024) { out.push(url); continue; }
+      const ext = ct.split("/")[1]?.replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "") || "jpg";
+      const nameKey = url.split("?")[0].split("/").pop()?.replace(/[^\w.-]+/g, "_").slice(-48) || "img";
+      const path = `yad2/${keyPrefix}/${nameKey}.${ext}`;
+      const { error } = await admin.storage.from(MEDIA_BUCKET)
+        .upload(path, bytes, { contentType: ct, upsert: true });
+      if (error) { out.push(url); continue; }
+      const { data: pub } = admin.storage.from(MEDIA_BUCKET).getPublicUrl(path);
+      out.push(pub?.publicUrl || url);
+    } catch (e) {
+      console.warn(`[yad2-unlocker] mirror failed ${url}: ${String((e as Error)?.message ?? e)}`);
+      out.push(url);
+    }
+  }
+  return Array.from(new Set(out));
+}
+
 async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
   const { data: existing } = await admin
     .from("listings").select("id, slug, media_photos").eq("source_url", row.source_url).maybeSingle();
@@ -1108,7 +1144,7 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
   const previousPhotos = Array.isArray((existing as any)?.media_photos)
     ? ((existing as any).media_photos as unknown[]).filter((u): u is string => typeof u === "string")
     : [];
-  const mergedPhotos: string[] = [];
+  const scrapedPhotos: string[] = [];
   const seenPhotoKeys = new Set<string>();
   for (const url of [...(row.photos ?? []), ...previousPhotos]) {
     const u = String(url ?? "").trim();
@@ -1117,8 +1153,16 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     const key = u.split("?")[0].replace(/\/+$/, "").toLowerCase();
     if (seenPhotoKeys.has(key)) continue;
     seenPhotoKeys.add(key);
-    mergedPhotos.push(u);
+    scrapedPhotos.push(u);
   }
+  // Permanently mirror into Supabase storage so galleries load instantly and
+  // the image counters stay accurate even if Yad2 rotates its CDN links.
+  const mergedPhotos = await mirrorPhotos(
+    admin,
+    String(row.external_id || row.source_url.split("/").pop() || "misc"),
+    scrapedPhotos,
+  );
+
 
   const payload: Record<string, unknown> = {
     user_id: workspaceOwnerId,
