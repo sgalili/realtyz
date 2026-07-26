@@ -958,7 +958,7 @@ export default function PropertyDetail() {
           {/* Description */}
           {(editMode || property.description || data?.owner) && (
             <Card className="p-4 sm:p-5">
-              <h2 className="text-base font-bold text-primary mb-2">תיאור הנכס</h2>
+              <h2 className="text-xl font-bold text-primary mb-2">תיאור הנכס</h2>
               {editMode && form ? (
                 <Textarea
                   dir="rtl"
@@ -967,10 +967,10 @@ export default function PropertyDetail() {
                   onChange={(e) => setField('description', e.target.value)}
                 />
               ) : (
-                <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
+                <p className="text-base leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
               )}
               {!editMode && data?.owner && (
-                <div className="mt-4 pt-3 border-t border-border/60 text-sm">
+                <div className="mt-4 pt-3 border-t border-border/60 text-base">
                   <span className="text-muted-foreground">בעלים: </span>
                   <Link
                     to={`/crm/profile/${data.owner.id}`}
