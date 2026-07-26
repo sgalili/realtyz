@@ -34,7 +34,7 @@ import {
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { SourceBadge, sourceLabel } from '@/components/properties/SourceBadge';
-import { searchAllSources, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
+import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle } from '@/lib/formatListingTitle';
