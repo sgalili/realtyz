@@ -947,6 +947,17 @@ function ResultCard({
           <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">אין תמונה</div>
         )}
 
+        {photos.length > 0 && (
+          <span
+            className={`absolute top-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm ${onToggleSelect && !result.localId ? 'right-12' : 'right-2'}`}
+            title={`${photos.length} תמונות`}
+          >
+            <ImageIcon className="h-3 w-3" />
+            {photos.length}
+          </span>
+        )}
+
+
         {/* Side navigation arrows — RTL: right chevron = previous, left chevron = next */}
         {hasMany && (
           <>
