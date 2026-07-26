@@ -646,32 +646,11 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       }
       await load();
 
-      // Conservative auto-refresh: on card expand, if the 15-minute provider
-      // lock is NOT active for these post ids, trigger ONE background fetch
-      // of new comments. This respects the existing rate-limit lock (Ayrshare
-      // rate-limit protection stays intact) while still surfacing new
-      // comments without requiring the user to click רענן every time.
-      try {
-        if (postIds.length > 0 && !isProviderFetchLocked(postIds, { manual: false })) {
-          stampProviderFetch(postIds);
-          const platform = platformForCampaignChannel(campaign.channel);
-          supabase.functions.invoke("ayrshare-comments-fetch", {
-            body: {
-              user_id: commentOwnerId,
-              post_ids: postIds,
-              platform,
-              campaign_body: campaign.message_body ?? null,
-              force_refresh: false,
-            },
-          }).then(async () => {
-            await fetchRows();
-          }).catch((err) => {
-            console.warn("[CampaignCommentsStream] auto comment sync failed (non-fatal)", err);
-          });
-        }
-      } catch (autoErr) {
-        console.warn("[CampaignCommentsStream] auto comment sync guard failed", autoErr);
-      }
+      // RATE-LIMIT HARD RULE: no automatic provider fetch on card expand.
+      // Comments arrive event-driven (ayrshare-webhook -> engagement_events ->
+      // realtime) or via the explicit user-triggered רענן action. Any
+      // background polling here is what caused the HTTP 429 storm.
+
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.id, postIdsKey, campaign.channel]);

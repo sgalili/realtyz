@@ -46,6 +46,13 @@ Deno.serve(async (req) => {
     const _circuit = await readCircuit(admin);
     if (_circuit) return circuitOpenResponse(_circuit, corsHeaders);
 
+    // 429 guard: exponential backoff (15s, 30s) with a hard 2-retry cap. Once
+    // the cap is hit, every remaining Ayrshare call in this invocation is
+    // short-circuited instead of hammering the provider.
+    const { createAyrshareBackoff } = await import("../_shared/ayrshare-backoff.ts");
+    const backoff = createAyrshareBackoff();
+
+
     const { profileKey } = await resolveWorkspaceProfileKey(admin);
     if (!profileKey) return json({ error: "workspace_ayrshare_profile_not_linked" }, 200);
 
@@ -224,6 +231,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    // HARD CAP: never fan out to more than 25 posts in a single invocation.
+    // Unbounded batches (hundreds of posts x several calls each) are exactly
+    // what got the provider profile rate-limited/suspended.
+    const MAX_TARGETS_PER_RUN = 25;
+    if (targets.size > MAX_TARGETS_PER_RUN) {
+      const trimmed = Array.from(targets.entries()).slice(0, MAX_TARGETS_PER_RUN);
+      console.warn("[ayrshare-comments-fetch] target cap applied", { requested: targets.size, capped: MAX_TARGETS_PER_RUN });
+      targets.clear();
+      for (const [k, v] of trimmed) targets.set(k, v);
+    }
+
+
     const ownPage = await resolveOwnPageIdentity(admin);
 
     const pickStr = (...vals: unknown[]) => {
@@ -279,25 +298,33 @@ Deno.serve(async (req) => {
       try {
         // Strict 10s timeout: if Ayrshare hangs, abort gracefully so the
         // function ALWAYS terminates and the UI spinner is released.
-        const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${AYR_KEY}`,
-            "Profile-Key": profileKey,
-            "Cache-Control": "no-cache",
-          },
-          signal: AbortSignal.timeout(10_000),
+        const attempt = await backoff.run(async () => {
+          const res = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${AYR_KEY}`,
+              "Profile-Key": profileKey,
+              "Cache-Control": "no-cache",
+            },
+            signal: AbortSignal.timeout(10_000),
+          });
+          const text = await res.text();
+          let payload: any = {};
+          try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+          return { ok: res.ok, status: res.status, payload, text };
         });
-        const text = await res.text();
-        let payload: any = {};
-        try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
-        if (!res.ok) await tripOnAyrshareFailure(admin, res.status, payload, `comments:${platform}`);
-        return { ok: res.ok, status: res.status, payload, text };
+        if (!attempt) {
+          // Backoff guard halted this invocation after repeated 429s.
+          return { ok: false, status: 429, payload: { message: "rate_limited_halted", halted: true }, text: "" };
+        }
+        if (!attempt.ok) await tripOnAyrshareFailure(admin, attempt.status, attempt.payload, `comments:${platform}`);
+        return attempt;
       } catch (fetchErr) {
         const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
         console.warn("[ayrshare-comments-fetch] comments fetch aborted/failed", { id, msg });
         return { ok: false, status: 0, payload: { message: msg, timeout: true }, text: "" };
       }
     };
+
 
     // POST /api/analytics/post — returns the OUTER post's like/share/comment
     // totals (the /comments endpoint only returns the comment thread, never
@@ -307,26 +334,31 @@ Deno.serve(async (req) => {
       try {
         const body: Record<string, unknown> = { id, platforms: [platform] };
         if (useSearchPlatformId) body.searchPlatformId = true;
-        const res = await fetch(`${AYR_BASE}/analytics/post`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${AYR_KEY}`,
-            "Profile-Key": profileKey,
-            "Content-Type": "application/json",
-            "Cache-Control": "no-cache",
-          },
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(10_000),
+        const attempt = await backoff.run(async () => {
+          const res = await fetch(`${AYR_BASE}/analytics/post`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${AYR_KEY}`,
+              "Profile-Key": profileKey,
+              "Content-Type": "application/json",
+              "Cache-Control": "no-cache",
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(10_000),
+          });
+          const text = await res.text();
+          let payload: any = {};
+          try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+          return { ok: res.ok, status: res.status, payload };
         });
-        const text = await res.text();
-        let payload: any = {};
-        try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
-        if (!res.ok) await tripOnAyrshareFailure(admin, res.status, payload, `analytics_post_from_comments:${platform}`);
-        return { ok: res.ok, status: res.status, payload };
+        if (!attempt) return { ok: false, status: 429, payload: { message: "rate_limited_halted", halted: true } };
+        if (!attempt.ok) await tripOnAyrshareFailure(admin, attempt.status, attempt.payload, `analytics_post_from_comments:${platform}`);
+        return attempt;
       } catch (e) {
         return { ok: false, status: 0, payload: { message: e instanceof Error ? e.message : String(e) } };
       }
     };
+
 
     // Extracts numeric like/share/comment counts from the /analytics/post
     // shape, which differs from /comments: numbers live under
@@ -499,11 +531,14 @@ Deno.serve(async (req) => {
 
     await runWithConcurrency(
       Array.from(targets.values()),
-      8,
+      4,
       async (target) => {
         const { fetchPostId, nativePostId, platform } = target;
         const activeRefId = "ayrshare_comments_native";
+        // Provider asked us to back off — stop the batch immediately.
+        if (backoff.halted) return;
         try {
+
           if (isUuid(fetchPostId) || isUuid(nativePostId)) {
             const mappingError = {
               post_id: nativePostId,
