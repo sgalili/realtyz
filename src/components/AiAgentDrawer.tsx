@@ -736,48 +736,83 @@ ${shareUrl}
                         const priceStr = r.price
                           ? `₪${r.price.toLocaleString('he-IL')}${r.transaction_type === 'rent' ? '/חודש' : ''}`
                           : '—';
+                        const isLocal = /^[0-9a-f-]{36}$/i.test(r.id);
+                        const openDetails = () => {
+                          if (isLocal) {
+                            setOpen(false);
+                            navigate(`/properties/${r.id}`);
+                          } else if (r.source_url) {
+                            window.open(r.source_url, '_blank', 'noopener,noreferrer');
+                          } else {
+                            toast.info('אין עמוד נכס זמין למקור הזה');
+                          }
+                        };
                         return (
                           <div key={r.id} className="rounded-lg border border-border/60 bg-background overflow-hidden">
-                            {r.source_url ? (
-                              <a href={r.source_url} target="_blank" rel="noreferrer" className="block hover:opacity-90 transition-opacity">
-                                {r.photo ? (
-                                  <img
-                                    src={r.photo}
-                                    alt={r.title}
-                                    loading="lazy"
-                                    className="w-full h-20 object-cover"
-                                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                                  />
-                                ) : (
-                                  <div className="w-full h-20 bg-muted flex items-center justify-center text-[10px] text-muted-foreground">אין תמונה</div>
-                                )}
-                              </a>
-                            ) : r.photo ? (
-                              <img
-                                src={r.photo}
-                                alt={r.title}
-                                loading="lazy"
-                                className="w-full h-20 object-cover"
-                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                              />
-                            ) : (
-                              <div className="w-full h-20 bg-muted flex items-center justify-center text-[10px] text-muted-foreground">אין תמונה</div>
-                            )}
+                            <button
+                              type="button"
+                              onClick={openDetails}
+                              className="block w-full text-right hover:opacity-90 transition-opacity"
+                              title="פתח דף נכס מלא"
+                            >
+                              {r.photo ? (
+                                <img
+                                  src={r.photo}
+                                  alt={r.title}
+                                  loading="lazy"
+                                  className="w-full h-20 object-cover"
+                                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                />
+                              ) : (
+                                <div className="w-full h-20 bg-muted flex items-center justify-center text-[14px] text-muted-foreground">אין תמונה</div>
+                              )}
+                            </button>
                             <div className="p-1.5 space-y-1">
-                              <p className="text-[10px] font-semibold leading-tight line-clamp-2">{r.title}</p>
-                              <p className="text-[10px] text-primary font-bold tabular-nums">{priceStr}</p>
-                              <p className="text-[9px] text-muted-foreground">
+                              <button
+                                type="button"
+                                onClick={openDetails}
+                                className="block w-full text-right text-[14px] font-semibold leading-tight line-clamp-2 hover:text-primary transition-colors"
+                              >
+                                {r.title}
+                              </button>
+                              <p className="text-[14px] text-primary font-bold tabular-nums">{priceStr}</p>
+                              <p className="text-[13px] text-muted-foreground">
                                 {[r.rooms ? `${r.rooms} חד׳` : '', r.sqm ? `${r.sqm} מ״ר` : '', r.city].filter(Boolean).join(' · ')}
                               </p>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full h-7 mt-1 gap-1 text-[14px]"
+                                    title="שתף נכס עם מתעניין"
+                                  >
+                                    <Share2 className="h-3.5 w-3.5" />
+                                    שתף
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" dir="rtl" className="text-[14px]">
+                                  <DropdownMenuItem onClick={() => shareProperty(r, 'whatsapp', msg.recipient_phone ?? null)}>
+                                    <MessageCircle className="h-4 w-4 me-2" /> שליחה ב-WhatsApp
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => shareProperty(r, 'sms', msg.recipient_phone ?? null)}>
+                                    <Send className="h-4 w-4 me-2" /> שליחה ב-SMS
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => shareProperty(r, 'copy', msg.recipient_phone ?? null)}>
+                                    <Copy className="h-4 w-4 me-2" /> העתק קישור
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                               {msg.recipient_phone && (
                                 <Button
                                   type="button"
                                   size="sm"
-                                  className="w-full h-6 mt-1 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px]"
+                                  className="w-full h-7 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[14px]"
                                   onClick={() => sendPropertyOffer(r, msg.recipient_phone ?? null)}
                                   title="שלח הצעת נכס ב-WhatsApp"
                                 >
-                                  <MessageCircle className="h-3 w-3" />
+                                  <MessageCircle className="h-3.5 w-3.5" />
                                   שלח ב-WhatsApp
                                 </Button>
                               )}
@@ -785,6 +820,7 @@ ${shareUrl}
                           </div>
                         );
                       })}
+
                     </div>
                   </div>
                 )}
