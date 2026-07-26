@@ -190,7 +190,7 @@ export default function Properties() {
     try {
       // Parse the free-text query into structured hints so external gateways
       // (Yad2, Homely, Webtiv) receive real filters instead of raw prose.
-      const { parseSearchQuery } = await import('@/lib/parseSearchQuery');
+      const { parseSearchQuery, matchesAmenities } = await import('@/lib/parseSearchQuery');
       const parsed = parseSearchQuery(q);
       const explicitCity = city && city !== 'כל הערים' && city !== '__my_zones__' ? city : null;
       const effectiveCity = explicitCity ?? parsed.city;
@@ -200,6 +200,7 @@ export default function Properties() {
       const effectivePropertyType = propertyType !== 'all' ? propertyType : (parsed.property_type ?? 'all');
       const effectiveMaxPrice = maxPrice < PRICE_MAX ? maxPrice : (parsed.max_price ?? undefined);
       const effectiveMinPrice = parsed.min_price ?? undefined;
+      const wantedAmenities = parsed.amenities;
 
       const filters: SearchFilters = {
         q: (parsed.keywords || q.trim()) || undefined,
@@ -212,16 +213,31 @@ export default function Properties() {
         min_sqm: areaMin ? Number(areaMin) : undefined,
         property_type: effectivePropertyType !== 'all' ? effectivePropertyType : undefined,
       };
-      const applyType = (rows: UnifiedResult[]) =>
-        effectivePropertyType !== 'all'
+      const applyType = (rows: UnifiedResult[]) => {
+        let out = effectivePropertyType !== 'all'
           ? rows.filter((r) => !r.property_type || String(r.property_type).toLowerCase() === effectivePropertyType)
           : rows;
+        if (wantedAmenities.length) {
+          const strict = out.filter((r) =>
+            matchesAmenities(
+              [r.title, r.description, r.address, r.neighborhood, JSON.stringify((r.raw as any)?.features ?? '')]
+                .filter(Boolean).join(' '),
+              wantedAmenities,
+            ),
+          );
+          // Amenity data is patchy across sources — only narrow when it pays off.
+          if (strict.length) out = strict;
+        }
+        return out;
+      };
 
       // Each source streams into the table the moment it answers.
       const resp = await searchAllSources(filters, (partial) => {
         if (searchTokenRef.current !== token) return;
         const rows = applyType(partial.results);
+        if (!rows.length) return; // never blank the table mid-stream
         setResults(rows);
+        setShowingFallback(false);
         setSourceStatus(partial.sources);
         if (partial.progress) {
           setSearchProgress({ ...partial.progress, loaded: rows.length });
@@ -229,12 +245,24 @@ export default function Properties() {
       });
       if (searchTokenRef.current !== token) return; // cancelled — keep partials
       const filtered = applyType(resp.results);
-      setResults(filtered);
-      setSourceStatus(resp.sources);
+      if (filtered.length) {
+        setResults(filtered);
+        setShowingFallback(false);
+        setSourceStatus(resp.sources);
+      } else {
+        // Zero-result guard: fall back to the default recent pool instead of
+        // ever showing an empty table.
+        const pool = await loadDefaultPool();
+        if (searchTokenRef.current !== token) return;
+        setResults(pool);
+        setShowingFallback(true);
+        setSourceStatus({ local: { status: pool.length ? 'ok' : 'empty', count: pool.length } as any });
+      }
       const errored = Object.entries(resp.sources).filter(([, v]) => v.status === 'error');
       if (errored.length) {
         toast.info(`חלק מהמקורות לא זמינים: ${errored.map(([k]) => sourceLabel(k as any)).join(', ')}`);
       }
+
     } catch (err: any) {
       if (searchTokenRef.current !== token) return;
       console.error('[Properties] search failed', err);
