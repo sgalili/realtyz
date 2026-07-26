@@ -841,13 +841,23 @@ async function scrapingBrowserHarvest(
   pageUrl: string,
   feedUrls: string[],
   needFeeds: (html: string) => boolean = () => true,
+  // When a shared session is supplied the browser is reused across paginated
+  // requests (one Bright Data connect costs ~10-20s, so re-connecting per page
+  // was the single biggest reason deep searches timed out client-side).
+  session?: { browser: any | null },
 ): Promise<BrowserHarvest> {
   if (!BD_WS) throw new Error("BRIGHTDATA_WS_ENDPOINT is not configured");
-  let browser: any = null;
+  let browser: any = session?.browser ?? null;
   try {
-    console.log("[yad2-unlocker] scraping-browser: connecting…");
-    browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
+    if (!browser) {
+      console.log("[yad2-unlocker] scraping-browser: connecting…");
+      browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
+      if (session) session.browser = browser;
+    } else {
+      console.log("[yad2-unlocker] scraping-browser: reusing session");
+    }
     const page = await browser.newPage();
+
     await page.setViewport({ width: 1440, height: 2200 });
     // NOTE: Bright Data Scraping Browser forbids overriding accept-language
     // ("Overriding accept-language headers forbidden"). Locale comes from the
