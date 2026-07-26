@@ -1101,16 +1101,19 @@ Deno.serve(async (req) => {
       if (Number.isFinite(minP) || Number.isFinite(maxP)) {
         u.searchParams.set("price", `${Number.isFinite(minP) ? minP : 0}-${Number.isFinite(maxP) ? maxP : ""}`);
       }
-      // Free-text keywords (neighborhood, property type) go into the
-      // catch-all `text` param. Yad2's server-side matcher is lenient
-      // enough to accept these alongside structured filters.
+      // Free-text keywords go into the catch-all `text` param — but ONLY when
+      // we could not resolve a structured city code. Yad2's `text` matcher is
+      // literal: sending a natural sentence like "דירה 4 חדרים בהרצליה"
+      // alongside area+city returns an empty feed. Structured filters win;
+      // the caller re-filters the returned rows by keyword client-side.
       const kwParts: string[] = [];
       const hood = clean(String(body?.neighborhood ?? ""));
       if (hood) kwParts.push(hood);
-      if (freeText) kwParts.push(freeText);
+      if (freeText && !cfg) kwParts.push(freeText);
       if (kwParts.length && !u.searchParams.get("text")) {
         u.searchParams.set("text", kwParts.join(" "));
       }
+
       return u.toString();
     }
 
