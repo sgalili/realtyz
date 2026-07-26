@@ -286,7 +286,15 @@ Deno.serve(async (req) => {
         (Array.isArray((listing as any)?.media_photos) ? (listing as any).media_photos : []).forEach(push);
       }
 
-      if (candidates.length === 0) { unresolved++; continue; }
+      const markEmpty = async () => {
+        unresolved++;
+        await admin
+          .from("campaign_logs")
+          .update({ provider_response: { ...pr, media_scan_empty_at: new Date().toISOString() } })
+          .eq("id", (row as any).id);
+      };
+      if (candidates.length === 0) { await markEmpty(); continue; }
+
 
       const cached: string[] = [];
       for (const url of candidates.slice(0, 8)) {
