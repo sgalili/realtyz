@@ -531,15 +531,16 @@ export default function Properties() {
             <Button
               type="button"
               size="sm"
-              onClick={submitQuery}
-              disabled={searching}
-              aria-label="חפש"
-              title="חפש"
+              variant={searching ? 'destructive' : 'default'}
+              onClick={searching ? cancelSearch : submitQuery}
+              aria-label={searching ? 'בטל חיפוש' : 'חפש'}
+              title={searching ? 'בטל חיפוש' : 'חפש'}
               className="absolute left-1.5 top-1.5 h-7 gap-1.5 px-3 text-xs"
             >
-              {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SearchIcon className="h-3.5 w-3.5" />}
-              <span>{searching ? 'מחפש' : 'חפש'}</span>
+              {searching ? <X className="h-3.5 w-3.5" /> : <SearchIcon className="h-3.5 w-3.5" />}
+              <span>{searching ? 'בטל' : 'חפש'}</span>
             </Button>
+
           </div>
         </div>
 
