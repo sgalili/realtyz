@@ -458,29 +458,51 @@ export default function Properties() {
           </div>
         </div>
 
-        {/* Row 1 — search: [advanced filter icon] [search input with go button] */}
+        {/* Row 1 — search field: [filter icon] [active filter words] [text] [go] */}
         <div className="flex items-center gap-2" dir="rtl">
-
           <div className="relative flex-1 min-w-[200px]">
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                aria-label="סינון מתקדם"
-                title="סינון מתקדם"
-                className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <Filter className="h-4 w-4" />
-              </button>
-            </CollapsibleTrigger>
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitQuery(); } }}
-              placeholder="חיפוש נכסים"
-              aria-label="חיפוש נכסים"
-              className="h-10 text-right pr-10 pl-24 text-sm"
-              dir="rtl"
-            />
+            <div className="flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background ps-2 pe-24 py-1 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="סינון מתקדם"
+                  title="סינון מתקדם"
+                  className={`inline-flex shrink-0 items-center justify-center h-7 w-7 rounded-md transition-colors ${filtersOpen || filterChips.length ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                >
+                  <Filter className="h-4 w-4" />
+                </button>
+              </CollapsibleTrigger>
+
+              {filterChips.map((chip) => (
+                <span
+                  key={chip.key}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/30 px-2 py-0.5 text-xs font-semibold"
+                >
+                  {chip.label}
+                  <button
+                    type="button"
+                    onClick={() => { chip.clear(); }}
+                    aria-label={`הסר סינון ${chip.label}`}
+                    className="hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); submitQuery(); }
+                  if (e.key === 'Backspace' && !q && filterChips.length) filterChips[filterChips.length - 1].clear();
+                }}
+                placeholder={filterChips.length ? 'הוסף מילות חיפוש…' : 'חיפוש נכסים'}
+                aria-label="חיפוש נכסים"
+                className="flex-1 min-w-[90px] bg-transparent text-right text-sm outline-none placeholder:text-muted-foreground h-7"
+                dir="rtl"
+              />
+            </div>
             <Button
               type="button"
               size="sm"
@@ -488,13 +510,14 @@ export default function Properties() {
               disabled={searching}
               aria-label="חפש"
               title="חפש"
-              className="absolute left-1.5 top-1/2 -translate-y-1/2 h-7 gap-1.5 px-3 text-xs"
+              className="absolute left-1.5 top-1.5 h-7 gap-1.5 px-3 text-xs"
             >
               {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SearchIcon className="h-3.5 w-3.5" />}
               <span>{searching ? 'מחפש' : 'חפש'}</span>
             </Button>
           </div>
         </div>
+
 
 
         {/* Row 2 — actions: [view toggle] ⇢ opposite side ⇠ [sort] [total count + breakdown] */}
