@@ -919,9 +919,12 @@ function ResultCard({
   onCampaign?: () => void;
 }) {
 
-  const photos = (result.photos ?? []).filter(Boolean);
+  const [pulledPhotos, setPulledPhotos] = useState<string[] | null>(null);
+  const [pulling, setPulling] = useState(false);
+  const photos = (pulledPhotos ?? result.photos ?? []).filter(Boolean);
   const hasPhotos = photos.length > 0;
   const hasMany = photos.length > 1;
+
   const [index, setIndex] = useState(0);
   // Lazy gallery: until the card is expanded we only paint the cover image.
   // Already-imported photos come straight from the DB/storage URLs, so the
