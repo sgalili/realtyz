@@ -333,6 +333,57 @@ function pickPhotos(raw: any): string[] {
   return Array.from(new Set(out));
 }
 
+/** Merges every image container Yad2 ships so we keep the FULL gallery. */
+function pickAllPhotos(...raws: any[]): string[] {
+  const out: string[] = [];
+  for (const raw of raws) out.push(...pickPhotos(raw));
+  return Array.from(new Set(out)).slice(0, 40);
+}
+
+/** Normalises Yad2 availability wording / dates into an ISO date string. */
+function pickAvailableFrom(it: any): string | null {
+  const raw =
+    it?.availableFrom ?? it?.available_from ?? it?.entryDate ?? it?.entry_date ??
+    it?.additionalDetails?.entranceDate ?? it?.additionalDetails?.availableFrom ??
+    it?.dates?.entrance ?? null;
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    if (/מיידי|immediate|גמיש/i.test(raw)) return new Date().toISOString().slice(0, 10);
+    const iso = raw.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+    if (iso) return iso;
+    const dmy = raw.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+    if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+    return null;
+  }
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
+/** Collects every scalar custom attribute Yad2 exposes for the ad. */
+function pickAttributes(it: any): Record<string, unknown> {
+  const attrs: Record<string, unknown> = {};
+  const merge = (src: any) => {
+    if (!src || typeof src !== "object" || Array.isArray(src)) return;
+    for (const [k, v] of Object.entries(src)) {
+      if (v == null || v === "") continue;
+      if (typeof v === "object") continue;
+      attrs[k] = v;
+    }
+  };
+  merge(it?.additionalDetails);
+  merge(it?.additionalDetails?.property);
+  merge(it?.metaData);
+  merge(it?.inProperty);
+  merge(it?.propertyDetails);
+  if (Array.isArray(it?.tags)) attrs.tags = it.tags.map((t: any) => (typeof t === "string" ? t : t?.name)).filter(Boolean);
+  if (Array.isArray(it?.inProperty)) {
+    attrs.in_property = it.inProperty.map((t: any) => (typeof t === "string" ? t : t?.name ?? t?.key)).filter(Boolean);
+  }
+  delete (attrs as any).images;
+  delete (attrs as any).coverImage;
+  return attrs;
+}
+
 function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
   const token = it?.token ?? it?.orderId ?? it?.order_id ?? it?.adNumber ?? it?.id ?? null;
   if (!token || typeof token !== "string") return null;
