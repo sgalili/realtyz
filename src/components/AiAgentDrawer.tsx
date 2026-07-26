@@ -6,7 +6,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle } from 'lucide-react';
+import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -344,48 +345,39 @@ export default function AiAgentDrawer() {
   }, [messages, open, historyLoaded]);
 
 
-  // Mint a share token via edge fn, then open a pre-filled WhatsApp message
-  // to the recipient with the shared property link. Works for both local
+  // Mint a share token via edge fn for a property card. Works for both local
   // listings (r.id looks like a UUID) and external Webtiv/Homely results
-  // (we send an external_snapshot instead).
-  const sendPropertyOffer = useCallback(async (r: WebtivResult, recipientPhone: string | null) => {
-    const phone = (recipientPhone || '').replace(/\D/g, '');
-    if (!phone) {
-      toast.error('חסר מספר טלפון של המתעניין');
-      return;
+  // (we send an external_snapshot instead). Returns the public landing URL.
+  const mintShareUrl = useCallback(async (r: WebtivResult, leadPhone: string | null): Promise<string> => {
+    const isUuid = /^[0-9a-f-]{36}$/i.test(r.id);
+    const payload: any = { lead_phone: leadPhone };
+    if (isUuid) {
+      payload.listing_id = r.id;
+    } else {
+      payload.external_snapshot = {
+        property_title: r.title,
+        asking_price: r.price,
+        city: r.city,
+        rooms: r.rooms,
+        sqm: r.sqm,
+        floor: r.floor,
+        deal_type: r.transaction_type,
+        media_photos: r.photo ? [r.photo] : [],
+        source_url: r.source_url,
+      };
     }
-    const normalized = phone.startsWith('972') ? phone
-      : phone.startsWith('0') ? '972' + phone.slice(1) : phone;
-    try {
-      const isUuid = /^[0-9a-f-]{36}$/i.test(r.id);
-      const payload: any = { lead_phone: normalized };
-      if (isUuid) {
-        payload.listing_id = r.id;
-      } else {
-        payload.external_snapshot = {
-          property_title: r.title,
-          asking_price: r.price,
-          city: r.city,
-          rooms: r.rooms,
-          sqm: r.sqm,
-          floor: r.floor,
-          deal_type: r.transaction_type,
-          media_photos: r.photo ? [r.photo] : [],
-          source_url: r.source_url,
-        };
-      }
-      const { data, error } = await supabase.functions.invoke('create-property-share', {
-        body: payload,
-      });
-      if (error) throw error;
-      const token = (data as any)?.token;
-      if (!token) throw new Error('לא התקבל טוקן שיתוף');
-      const shareUrl = `${window.location.origin}/share/property/${token}`;
-      const priceStr = r.price
-        ? `₪${r.price.toLocaleString('he-IL')}${r.transaction_type === 'rent' ? '/חודש' : ''}`
-        : 'לפרטים';
-      const msg =
-`שלום 👋
+    const { data, error } = await supabase.functions.invoke('create-property-share', { body: payload });
+    if (error) throw error;
+    const token = (data as any)?.token;
+    if (!token) throw new Error('לא התקבל טוקן שיתוף');
+    return `${window.location.origin}/share/property/${token}`;
+  }, []);
+
+  const buildOfferMessage = useCallback((r: WebtivResult, shareUrl: string) => {
+    const priceStr = r.price
+      ? `₪${r.price.toLocaleString('he-IL')}${r.transaction_type === 'rent' ? '/חודש' : ''}`
+      : 'לפרטים';
+    return `שלום 👋
 מצאתי עבורך נכס שאני חושב שיעניין אותך:
 
 🏠 ${r.title}
@@ -396,12 +388,57 @@ export default function AiAgentDrawer() {
 ${shareUrl}
 
 מוזמנ/ת להגיב כאן ואחזור אליך.`;
-      const wa = `https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`;
+  }, []);
+
+  const sendPropertyOffer = useCallback(async (r: WebtivResult, recipientPhone: string | null) => {
+    const phone = (recipientPhone || '').replace(/\D/g, '');
+    if (!phone) {
+      toast.error('חסר מספר טלפון של המתעניין');
+      return;
+    }
+    const normalized = phone.startsWith('972') ? phone
+      : phone.startsWith('0') ? '972' + phone.slice(1) : phone;
+    try {
+      const shareUrl = await mintShareUrl(r, normalized);
+      const wa = `https://wa.me/${normalized}?text=${encodeURIComponent(buildOfferMessage(r, shareUrl))}`;
       window.open(wa, '_blank', 'noopener,noreferrer');
     } catch (e: any) {
       toast.error(e?.message ?? 'שליחת ההצעה נכשלה');
     }
-  }, []);
+  }, [mintShareUrl, buildOfferMessage]);
+
+  // Generic share: WhatsApp, SMS, or copyable landing-page link.
+  const shareProperty = useCallback(async (
+    r: WebtivResult,
+    mode: 'whatsapp' | 'sms' | 'copy',
+    recipientPhone: string | null,
+  ) => {
+    try {
+      const phone = (recipientPhone || '').replace(/\D/g, '');
+      const normalized = !phone ? null
+        : phone.startsWith('972') ? phone
+        : phone.startsWith('0') ? '972' + phone.slice(1) : phone;
+
+      const shareUrl = await mintShareUrl(r, normalized);
+      const text = buildOfferMessage(r, shareUrl);
+      if (mode === 'whatsapp') {
+        window.open(
+          normalized ? `https://wa.me/${normalized}?text=${encodeURIComponent(text)}`
+                     : `https://wa.me/?text=${encodeURIComponent(text)}`,
+          '_blank', 'noopener,noreferrer',
+        );
+      } else if (mode === 'sms') {
+        window.location.href = `sms:${normalized ?? ''}?&body=${encodeURIComponent(text)}`;
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('הקישור הועתק');
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? 'יצירת קישור השיתוף נכשלה');
+    }
+  }, [mintShareUrl, buildOfferMessage]);
+
+
 
   const sendMessage = async (text: string) => {
     const hasFiles = pendingAttachments.length > 0;
@@ -490,7 +527,7 @@ ${shareUrl}
           <div className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center">
             <Bot className="h-5 w-5 text-primary" />
           </div>
-          <h3 className="text-sm font-bold text-center">קצין המודיעין של Realtyz</h3>
+          <h3 className="text-[18px] font-bold text-center">קצין המודיעין של Realtyz</h3>
         </div>
 
         {/* Messages */}
@@ -499,11 +536,11 @@ ${shareUrl}
             <div className="space-y-5 py-2">
               <div className="text-center space-y-2 pb-1">
                 <Bot className="h-10 w-10 mx-auto text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
-                <p className="text-xs text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
+                <p className="text-[18px] text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
+                <p className="text-[16px] text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
               </div>
               <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold text-muted-foreground px-1">בחר נושא לקבלת 3 שאלות מומלצות:</p>
+                <p className="text-[15px] font-semibold text-muted-foreground px-1">בחר נושא לקבלת 3 שאלות מומלצות:</p>
                 {TOPICS.map((topic, ti) => {
                   const isOpen = expandedTopic === ti;
                   return (
@@ -511,7 +548,7 @@ ${shareUrl}
                       <button
                         type="button"
                         onClick={() => setExpandedTopic(isOpen ? null : ti)}
-                        className="w-full flex items-center justify-between text-right px-3 py-2.5 text-xs font-medium hover:bg-primary/5 transition-colors"
+                        className="w-full flex items-center justify-between text-right px-3 py-2.5 text-[16px] font-medium hover:bg-primary/5 transition-colors"
                       >
                         <span>{topic.label}</span>
                         {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />}
@@ -524,7 +561,7 @@ ${shareUrl}
                               type="button"
                               onClick={() => sendMessage(p)}
                               disabled={isLoading}
-                              className="w-full text-right text-[11px] leading-relaxed rounded-lg border border-border/60 bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-2.5 py-2 disabled:opacity-50"
+                              className="w-full text-right text-[15px] leading-relaxed rounded-lg border border-border/60 bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-2.5 py-2 disabled:opacity-50"
                             >
                               {p}
                             </button>
@@ -540,7 +577,7 @@ ${shareUrl}
 
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
-              <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
+              <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[18px] ${
                 msg.role === 'user'
                   ? 'bg-primary text-primary-foreground rounded-tr-sm'
                   : msg.type === 'error'
@@ -558,7 +595,7 @@ ${shareUrl}
                     })()}
 
                     <div className="overflow-x-auto max-h-48 rounded-lg border border-border/50 bg-background">
-                      <table className="w-full text-[11px]">
+                      <table className="w-full text-[15px]">
                         <thead>
                           <tr className="bg-muted/50">
                             {Object.keys(msg.data[0]).slice(0, 5).map(key => (
@@ -579,12 +616,12 @@ ${shareUrl}
                         </tbody>
                       </table>
                       {msg.data.length > 10 && (
-                        <p className="text-[10px] text-muted-foreground text-center py-1">+ {msg.data.length - 10} שורות נוספות</p>
+                        <p className="text-[14px] text-muted-foreground text-center py-1">+ {msg.data.length - 10} שורות נוספות</p>
                       )}
                     </div>
 
                     {msg.query && (
-                      <details className="text-[10px]">
+                      <details className="text-[14px]">
                         <summary className="cursor-pointer text-muted-foreground hover:text-foreground flex items-center gap-1">
                           <Database className="h-2.5 w-2.5" /> הצג שאילתה
                         </summary>
@@ -598,7 +635,7 @@ ${shareUrl}
 
                 {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
                   <div className="mt-3 pt-2 border-t border-border/30 space-y-2">
-                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <p className="text-[14px] text-muted-foreground flex items-center gap-1">
                       <FileText className="h-2.5 w-2.5" />
                       מקורות מבסיס הידע:
                     </p>
@@ -621,7 +658,7 @@ ${shareUrl}
                           return (
                             <div
                               key={src.id}
-                              className="w-full flex items-center gap-2 text-[10px] px-2 py-1 rounded-md bg-primary/10 border border-primary/20"
+                              className="w-full flex items-center gap-2 text-[14px] px-2 py-1 rounded-md bg-primary/10 border border-primary/20"
                               title={title}
                             >
                               <FileText className="h-2.5 w-2.5 text-primary shrink-0" />
@@ -631,7 +668,7 @@ ${shareUrl}
                           );
                         }
                         const commonCls =
-                          'inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors max-w-[220px]';
+                          'inline-flex items-center gap-1 text-[14px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors max-w-[220px]';
                         if (resolvedUrl) {
                           return (
                             <a
@@ -668,7 +705,7 @@ ${shareUrl}
 
                 {msg.role === 'assistant' && msg.research_sources && msg.research_sources.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-border/30">
-                    <p className="text-[10px] text-muted-foreground mb-1.5 flex items-center gap-1">
+                    <p className="text-[14px] text-muted-foreground mb-1.5 flex items-center gap-1">
                       <Globe className="h-2.5 w-2.5" /> מקורות מחקר חי:
                     </p>
                     <div className="flex flex-wrap gap-1">
@@ -678,7 +715,7 @@ ${shareUrl}
                           href={rs.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors max-w-[200px]"
+                          className="inline-flex items-center gap-1 text-[14px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors max-w-[200px]"
                           title={rs.url}
                         >
                           <Globe className="h-2.5 w-2.5 shrink-0" />
@@ -691,7 +728,7 @@ ${shareUrl}
 
                 {msg.role === 'assistant' && msg.webtiv_results && msg.webtiv_results.length > 0 && (
                   <div className="mt-3 pt-2 border-t border-border/30">
-                    <p className="text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
+                    <p className="text-[14px] text-muted-foreground mb-2 flex items-center gap-1">
                       <Globe className="h-2.5 w-2.5" />
                       תוצאות חיות מהשוק (Homely / Webtiv2):
                     </p>
@@ -700,48 +737,83 @@ ${shareUrl}
                         const priceStr = r.price
                           ? `₪${r.price.toLocaleString('he-IL')}${r.transaction_type === 'rent' ? '/חודש' : ''}`
                           : '—';
+                        const isLocal = /^[0-9a-f-]{36}$/i.test(r.id);
+                        const openDetails = () => {
+                          if (isLocal) {
+                            setOpen(false);
+                            navigate(`/properties/${r.id}`);
+                          } else if (r.source_url) {
+                            window.open(r.source_url, '_blank', 'noopener,noreferrer');
+                          } else {
+                            toast.info('אין עמוד נכס זמין למקור הזה');
+                          }
+                        };
                         return (
                           <div key={r.id} className="rounded-lg border border-border/60 bg-background overflow-hidden">
-                            {r.source_url ? (
-                              <a href={r.source_url} target="_blank" rel="noreferrer" className="block hover:opacity-90 transition-opacity">
-                                {r.photo ? (
-                                  <img
-                                    src={r.photo}
-                                    alt={r.title}
-                                    loading="lazy"
-                                    className="w-full h-20 object-cover"
-                                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                                  />
-                                ) : (
-                                  <div className="w-full h-20 bg-muted flex items-center justify-center text-[10px] text-muted-foreground">אין תמונה</div>
-                                )}
-                              </a>
-                            ) : r.photo ? (
-                              <img
-                                src={r.photo}
-                                alt={r.title}
-                                loading="lazy"
-                                className="w-full h-20 object-cover"
-                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                              />
-                            ) : (
-                              <div className="w-full h-20 bg-muted flex items-center justify-center text-[10px] text-muted-foreground">אין תמונה</div>
-                            )}
+                            <button
+                              type="button"
+                              onClick={openDetails}
+                              className="block w-full text-right hover:opacity-90 transition-opacity"
+                              title="פתח דף נכס מלא"
+                            >
+                              {r.photo ? (
+                                <img
+                                  src={r.photo}
+                                  alt={r.title}
+                                  loading="lazy"
+                                  className="w-full h-20 object-cover"
+                                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                />
+                              ) : (
+                                <div className="w-full h-20 bg-muted flex items-center justify-center text-[14px] text-muted-foreground">אין תמונה</div>
+                              )}
+                            </button>
                             <div className="p-1.5 space-y-1">
-                              <p className="text-[10px] font-semibold leading-tight line-clamp-2">{r.title}</p>
-                              <p className="text-[10px] text-primary font-bold tabular-nums">{priceStr}</p>
-                              <p className="text-[9px] text-muted-foreground">
+                              <button
+                                type="button"
+                                onClick={openDetails}
+                                className="block w-full text-right text-[14px] font-semibold leading-tight line-clamp-2 hover:text-primary transition-colors"
+                              >
+                                {r.title}
+                              </button>
+                              <p className="text-[14px] text-primary font-bold tabular-nums">{priceStr}</p>
+                              <p className="text-[13px] text-muted-foreground">
                                 {[r.rooms ? `${r.rooms} חד׳` : '', r.sqm ? `${r.sqm} מ״ר` : '', r.city].filter(Boolean).join(' · ')}
                               </p>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full h-7 mt-1 gap-1 text-[14px]"
+                                    title="שתף נכס עם מתעניין"
+                                  >
+                                    <Share2 className="h-3.5 w-3.5" />
+                                    שתף
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="text-[14px]">
+                                  <DropdownMenuItem onClick={() => shareProperty(r, 'whatsapp', msg.recipient_phone ?? null)}>
+                                    <MessageCircle className="h-4 w-4 me-2" /> שליחה ב-WhatsApp
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => shareProperty(r, 'sms', msg.recipient_phone ?? null)}>
+                                    <Send className="h-4 w-4 me-2" /> שליחה ב-SMS
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => shareProperty(r, 'copy', msg.recipient_phone ?? null)}>
+                                    <Copy className="h-4 w-4 me-2" /> העתק קישור
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                               {msg.recipient_phone && (
                                 <Button
                                   type="button"
                                   size="sm"
-                                  className="w-full h-6 mt-1 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px]"
+                                  className="w-full h-7 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[14px]"
                                   onClick={() => sendPropertyOffer(r, msg.recipient_phone ?? null)}
                                   title="שלח הצעת נכס ב-WhatsApp"
                                 >
-                                  <MessageCircle className="h-3 w-3" />
+                                  <MessageCircle className="h-3.5 w-3.5" />
                                   שלח ב-WhatsApp
                                 </Button>
                               )}
@@ -749,6 +821,7 @@ ${shareUrl}
                           </div>
                         );
                       })}
+
                     </div>
                   </div>
                 )}
@@ -758,7 +831,7 @@ ${shareUrl}
                 {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {msg.attachments.map((a, ai) => (
-                      <span key={ai} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/15 border border-white/20">
+                      <span key={ai} className="inline-flex items-center gap-1 text-[14px] px-2 py-0.5 rounded-full bg-white/15 border border-white/20">
                         <Paperclip className="h-2.5 w-2.5" />
                         <span className="truncate max-w-[140px]">{a.name}</span>
                       </span>
@@ -773,7 +846,7 @@ ${shareUrl}
             <div className="flex justify-end">
               <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                <span className="text-xs text-muted-foreground">מנתח נתונים...</span>
+                <span className="text-[16px] text-muted-foreground">מנתח נתונים...</span>
               </div>
             </div>
           )}
@@ -786,7 +859,7 @@ ${shareUrl}
         {pendingAttachments.length > 0 && (
           <div className="px-4 pt-2 flex flex-wrap gap-1.5 border-t">
             {pendingAttachments.map((a, ai) => (
-              <span key={ai} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted border border-border">
+              <span key={ai} className="inline-flex items-center gap-1 text-[14px] px-2 py-0.5 rounded-full bg-muted border border-border">
                 <Paperclip className="h-2.5 w-2.5" />
                 <span className="truncate max-w-[140px]">{a.name}</span>
                 <button onClick={() => setPendingAttachments((p) => p.filter((_, i) => i !== ai))} className="hover:text-destructive">
@@ -824,7 +897,7 @@ ${shareUrl}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={isListening ? '🎙️ מקשיב...' : researchMode ? 'מצב מחקר חי - שאל על שכונה/אזור/פרויקט' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
-              className="flex-1 h-9 text-sm"
+              className="flex-1 h-9 text-[18px]"
               disabled={isLoading}
             />
             <Button

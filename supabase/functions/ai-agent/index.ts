@@ -193,9 +193,77 @@ serve(async (req) => {
         const phoneMatch = text.match(/(?:\+?972[-\s]?|0)5\d(?:[-\s]?\d){7}|\b0\d{1,2}[-\s]?\d{7}\b/);
         const hasIntent = intentRe.test(text);
 
-        // No phone yet → refuse politely and demand a phone number. A CRM
-        // row without a WhatsApp-reachable phone is worthless for follow-up.
+        // Extract a candidate person name. Accepts explicit "בשם X" and also a
+        // bare name that follows the intent verb ("הוסף ליד רוני מליאר").
+        const extractName = (): string | null => {
+          const explicit = text.match(
+            /(?:בשם|שם\s*[:\-]?\s*|name\s*[:\-]?\s*)([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF' \-]{1,60})/iu,
+          );
+          if (explicit?.[1]) return explicit[1].trim().replace(/\s+(עם|בטלפון|טלפון|נייד|ל?שכירות|למכירה|בעיר).*$/u, "").trim();
+          const after = text.match(
+            /(?:ליד|מתעניין|איש\s*קשר|לקוח[הת]?|contact|lead)\s+(?:חדש[ה]?\s+)?([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF'\-]{1,25}(?:\s+[\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF'\-]{1,25})?)/u,
+          );
+          const cand = after?.[1]?.trim() ?? null;
+          if (!cand) return null;
+          // Reject stop-words that are not names.
+          if (/^(חדש|חדשה|עם|של|בשם|בעיר|לשכירות|למכירה)$/u.test(cand)) return null;
+          return cand;
+        };
+        const candidateName = extractName();
+
+        // Look up an existing CRM contact by name (fuzzy) or phone before
+        // doing anything else, so "רוני מליאר" resolves to the real card
+        // instead of spawning a blank "לקוח חדש" duplicate.
+        const lookupExisting = async (client: any, uid: string) => {
+          if (phoneMatch) {
+            const raw = phoneMatch[0].replace(/\D/g, "");
+            const norm = raw.startsWith("972") ? raw : raw.startsWith("0") ? `972${raw.slice(1)}` : raw;
+            const local = norm.startsWith("972") ? `0${norm.slice(3)}` : norm;
+            const { data } = await client
+              .from("leads")
+              .select("id, full_name, phone_number, city, deal_type")
+              .eq("assigned_to", uid)
+              .or(`phone_number.eq.${norm},phone_number.eq.${local},phone_number.eq.${raw}`)
+              .limit(1);
+            if (data?.[0]) return data[0];
+          }
+          if (candidateName) {
+            const parts = candidateName.split(/\s+/).filter((p) => p.length >= 2);
+            const filters = [`full_name.ilike.%${candidateName}%`, ...parts.map((p) => `full_name.ilike.%${p}%`)];
+            const { data } = await client
+              .from("leads")
+              .select("id, full_name, phone_number, city, deal_type")
+              .eq("assigned_to", uid)
+              .or(filters.join(","))
+              .limit(5);
+            if (data?.length) {
+              // Prefer a row matching every token of the candidate name.
+              const strict = data.find((row: any) =>
+                parts.every((p) => String(row.full_name ?? "").includes(p)));
+              return strict ?? data[0];
+            }
+          }
+          return null;
+        };
+
+        // No phone yet → try to resolve an existing contact first; only ask
+        // for a phone number when the person truly isn't in the CRM.
         if (hasIntent && !phoneMatch && authHeaderEarly.startsWith("Bearer ")) {
+          const probeClient = createClient(supabaseUrlEarly, anonKey, {
+            global: { headers: { Authorization: authHeaderEarly } },
+          });
+          const { data: uProbe } = await probeClient.auth.getUser();
+          const probeUid = uProbe?.user?.id;
+          if (probeUid) {
+            const found = await lookupExisting(probeClient, probeUid);
+            if (found) {
+              return new Response(JSON.stringify({
+                type: "text",
+                content: `מצאתי את איש הקשר הקיים ב-CRM: ${found.full_name || found.phone_number}${found.city ? ` (${found.city})` : ""}. לא יצרתי כרטיס חדש. אפשר לעדכן את הכרטיס הקיים או לחפש עבורו נכסים מתאימים.`,
+                recipient_phone: found.phone_number ?? null,
+              }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+          }
           return new Response(JSON.stringify({
             type: "text",
             content: "כדי להוסיף את הלקוח ל-CRM אני חייב מספר טלפון (עדיף נייד ישראלי כמו 05X-XXXXXXX). שלח לי את הטלפון ואני מוסיף את הליד ומיד מתחיל לחפש נכסים מתאימים.",
@@ -207,9 +275,7 @@ serve(async (req) => {
           const normalized = rawPhone.startsWith("972")
             ? rawPhone
             : rawPhone.startsWith("0") ? `972${rawPhone.slice(1)}` : rawPhone;
-          const nameMatch =
-            text.match(/(?:בשם|שם\s*[:\-]?\s*|name\s*[:\-]?\s*)([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF' \-]{1,60})/iu);
-          const fullName = nameMatch?.[1]?.trim() || null;
+          const fullName = candidateName;
           const cityMatch = text.match(/(?:בעיר|עיר\s*[:\-]?\s*|city\s*[:\-]?\s*|ב([\u0590-\u05FF][\u0590-\u05FF' \-]{2,30}))/u);
           const city = (cityMatch?.[1] || cityMatch?.[2] || "").trim() || null;
           const dealHint =
@@ -230,19 +296,16 @@ serve(async (req) => {
           const { data: uRes } = await userClient.auth.getUser();
           const uid = uRes?.user?.id;
           if (uid) {
-            const { data: existing } = await userClient
-              .from("leads")
-              .select("id, full_name")
-              .eq("assigned_to", uid)
-              .eq("phone_number", normalized)
-              .maybeSingle();
+            const existing = await lookupExisting(userClient, uid);
 
             if (existing) {
               return new Response(JSON.stringify({
                 type: "text",
                 content: `המתעניין כבר קיים ב-CRM: ${existing.full_name || normalized}. לא נוצר כפיל.`,
+                recipient_phone: existing.phone_number ?? normalized,
               }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
             }
+
 
             const preferences: Record<string, unknown> = {};
             if (dealHint) preferences.listing_type = dealHint;
