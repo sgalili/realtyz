@@ -624,7 +624,27 @@ export default function Properties() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+
+            {/* Transaction type: הכל / להשכרה / למכירה — same toolbar row,
+                between the results-count pill and the view toggle. */}
+            <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5" role="group" aria-label="סוג עסקה">
+              {(['all', 'rent', 'sale'] as Array<ListingType | 'all'>).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setListingType(t)}
+                  aria-pressed={listingType === t}
+                  className={`px-3 h-7 text-xs font-semibold rounded transition-colors ${
+                    listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
+                </button>
+              ))}
+            </div>
           </div>
+
+
 
           {/* Side B — view toggle */}
           <div className="ms-auto inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
