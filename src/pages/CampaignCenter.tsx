@@ -3423,14 +3423,14 @@ const PublishedFeed = () => {
   // Remove a single image from a post — permanently. The URL's dedupe key is
   // added to provider_response.removed_media_keys, which every merge path (and
   // the DB trigger) honours, so no sync can ever bring the image back.
-  const removeMediaAt = async (campaignId: string, index: number) => {
+  const removeMediaUrl = async (campaignId: string, removedUrl: string) => {
     const row = rows?.find((r) => r.id === campaignId);
-    const removedUrl = row?.media_urls?.[index];
-    if (!removedUrl) return;
+    if (!row || !removedUrl) return;
     const removedKey = mediaDedupeKey(removedUrl);
 
-    const nextMedia = (row.media_urls ?? []).filter((_, i) => i !== index);
+    const nextMedia = (row.media_urls ?? []).filter((u) => mediaDedupeKey(u) !== removedKey);
     setRows((prev) => prev?.map((r) => (r.id === campaignId ? { ...r, media_urls: nextMedia } : r)) ?? prev);
+
 
     try {
       // All DB rows behind this card (a broadcast fans out into many rows).
