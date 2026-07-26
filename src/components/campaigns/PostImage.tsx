@@ -1,20 +1,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { resolveMediaUrls } from '@/lib/postMediaUrl';
 
 const inflight = new Map<string, Promise<string[]>>();
 
-const cleanUrls = (urls: Array<string | null | undefined>): string[] => {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const value of urls) {
-    const url = typeof value === 'string' ? value.trim() : '';
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
-    out.push(url);
-  }
-  return out;
-};
+// Always hand the <img> tag a fully-qualified URL: storage keys and relative
+// paths get the public bucket base, JSON-object rows get unwrapped.
+const cleanUrls = (urls: Array<unknown>): string[] => resolveMediaUrls(urls);
+
 
 async function resolveCached(campaignLogId: string, urls: string[]): Promise<string[]> {
   const key = `${campaignLogId}|${urls.join('|')}`;
