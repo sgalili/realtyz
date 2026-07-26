@@ -291,8 +291,15 @@ export default function Properties() {
     return Array.from(cities);
   }, [results]);
 
+  // Transaction-type toggle filters the rendered list instantly (the live
+  // search re-runs in parallel through the effect below).
+  const typeFiltered = useMemo(
+    () => (listingType === 'all' ? results : results.filter((r) => r.listing_type === listingType)),
+    [results, listingType],
+  );
+
   const sortedResults = useMemo(() => {
-    const arr = [...results];
+    const arr = [...typeFiltered];
     const numOr = (v: number | null | undefined, fallback: number) => (typeof v === 'number' && !Number.isNaN(v) ? v : fallback);
     // Most-recent-first is the baseline everywhere: even "relevance" keeps
     // freshly posted properties on top so the list never looks stale.
@@ -311,7 +318,59 @@ export default function Properties() {
       default:
         return arr.sort(byCreatedDesc);
     }
-  }, [results, sortBy]);
+  }, [typeFiltered, sortBy]);
+
+  // Lazy loading — render 10 rows at a time and grow as the sentinel scrolls
+  // into view, so a deep Yad2 directory pull never freezes the page.
+  const PAGE_SIZE = 10;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [results, sortBy, listingType, viewMode]);
+  const pagedResults = useMemo(() => sortedResults.slice(0, visibleCount), [sortedResults, visibleCount]);
+  const hasMore = visibleCount < sortedResults.length;
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        setVisibleCount((c) => c + PAGE_SIZE);
+      }
+    }, { rootMargin: '300px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, pagedResults.length]);
+
+  // Re-run the live multi-source search whenever the transaction-type toggle
+  // changes after the first search, so external gateways get the new filter.
+  const firstTypeRunRef = useRef(true);
+  useEffect(() => {
+    if (firstTypeRunRef.current) { firstTypeRunRef.current = false; return; }
+    if (!hasSearched) return;
+    runSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingType]);
+
+  // Airplane action — send the property straight to the campaign composer
+  // with an auto-generated post + first comment. External rows are imported
+  // first so the composer has a real listing to build from.
+  const goToCampaign = useCallback(async (r: UnifiedResult) => {
+    let id = r.localId;
+    if (!id) {
+      setImportingKey(r.key);
+      try {
+        id = await autoImportResult(r);
+      } catch (err: any) {
+        console.error('[Properties] campaign import failed', err);
+        toast.error('ייבוא הנכס לקמפיין נכשל: ' + (err?.message ?? 'שגיאה'));
+        return;
+      } finally {
+        setImportingKey(null);
+      }
+    }
+    navigate(`/campaigns?tab=create&channel=facebook&properties=${id}&listing=${id}`);
+  }, [navigate]);
+
 
   // Per-source count breakdown for the total-count dropdown.
   const sourceBreakdown = useMemo(() => {
