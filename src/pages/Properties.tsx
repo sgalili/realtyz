@@ -868,48 +868,8 @@ export default function Properties() {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Batch selection action bar */}
-      {hasSearched && results.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card/40 px-3 py-2 text-xs" dir="rtl">
-          <button
-            type="button"
-            onClick={() => selectAllVisible(sortedResults)}
-            className="text-primary hover:underline font-semibold"
-          >
-            בחר הכל
-          </button>
-          <span className="text-muted-foreground">·</span>
-          <button
-            type="button"
-            onClick={clearSelection}
-            className="text-muted-foreground hover:text-foreground"
-            disabled={selectedKeys.size === 0}
-          >
-            נקה בחירה
-          </button>
-          <span className="ms-auto flex items-center gap-2">
-            <span className="text-muted-foreground">
-              {selectedKeys.size} נבחרו
-            </span>
-          </span>
-        </div>
-      )}
-
       {/* Results */}
       <ErrorBoundary source="Properties.Results">
-        {showingFallback && sortedResults.length > 0 && (
-          <div
-            className="mb-3 flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-foreground"
-            dir="rtl"
-            role="status"
-          >
-            <SearchIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-            <span>
-              לא נמצאו נכסים תואמים לחיפוש שלך. מוצגים {DEFAULT_POOL_PER_TYPE} הנכסים האחרונים למכירה
-              ו-{DEFAULT_POOL_PER_TYPE} להשכרה ב{DEFAULT_CITIES.join(' וב')} — החדשים ביותר קודם.
-            </span>
-          </div>
-        )}
         {searching && sortedResults.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -1018,14 +978,6 @@ function ResultCard({
 
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow cursor-pointer relative" onClick={onSelect}>
-      {onToggleSelect && !result.localId && (
-        <div
-          className="absolute top-3 right-3 z-20 rounded-md bg-background/80 backdrop-blur-sm border p-1"
-          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
-        >
-          <Checkbox checked={!!selected} aria-label="בחר לייבוא" />
-        </div>
-      )}
       <div className="aspect-[16/10] bg-muted relative overflow-hidden">
 
         {activePhoto ? (
@@ -1268,20 +1220,6 @@ function ResultTable({
       <table className="w-full text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
-            {onToggleSelect && (
-              <th className="px-2 py-2 w-8">
-                {onToggleAll && (
-                  <Checkbox
-                    checked={
-                      sorted.length > 0 &&
-                      sorted.filter((r) => !r.localId).every((r) => selectedKeys?.has(r.key))
-                    }
-                    onCheckedChange={(v) => onToggleAll(sorted, !!v)}
-                    aria-label="בחר הכל"
-                  />
-                )}
-              </th>
-            )}
             <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
             <HeaderCell col="source" label="מקור" />
 
@@ -1302,17 +1240,6 @@ function ResultTable({
             const isSelected = !!selectedKeys?.has(r.key);
             return (
               <tr key={r.key} className={`border-t hover:bg-muted/30 cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => onSelect(r)}>
-                {onToggleSelect && (
-                  <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
-                    {!r.localId && (
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => onToggleSelect(r.key)}
-                        aria-label="בחר לייבוא"
-                      />
-                    )}
-                  </td>
-                )}
                 <td className="px-2 py-1.5">
                   <div className="h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
