@@ -40,6 +40,8 @@ import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdo
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
+import { resolveMediaUrl, resolveMediaUrls, mediaDedupeKey } from '@/lib/postMediaUrl';
+
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
@@ -98,49 +100,12 @@ type ConfirmPayload = {
   attach_msngr_link: boolean;
 };
 
-const isRenderablePostMediaUrl = (value: unknown): value is string => {
-  if (typeof value !== 'string') return false;
-  const url = value.trim();
-  if (!/^https?:\/\//i.test(url)) return false;
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase();
-    const path = parsed.pathname.toLowerCase();
-    const facebookPagePaths = ['/photo.php', '/permalink.php', '/share/', '/posts/', '/videos/', '/watch'];
-    if ((host === 'facebook.com' || host.endsWith('.facebook.com')) && facebookPagePaths.some((p) => path.startsWith(p))) {
-      return false;
-    }
-    return /\.(jpg|jpeg|png|webp|gif|avif|mp4|mov|m4v)(\?|$)/i.test(url)
-      || host.includes('fbcdn.net')
-      || host.includes('cdninstagram.com');
-  } catch {
-    return false;
-  }
-};
+// Media URL handling lives in src/lib/postMediaUrl.ts so the feed, the post
+// card and the cache resolver all agree on what a valid absolute URL is.
+const isRenderablePostMediaUrl = (value: unknown): value is string => resolveMediaUrl(value) !== '';
 
-const mediaDedupeKey = (url: string): string => {
-  try {
-    const u = new URL(url);
-    const filename = u.pathname.split('/').pop() || u.pathname;
-    return filename.toLowerCase();
-  } catch {
-    return url.split('?')[0].toLowerCase();
-  }
-};
+const normalizePostMediaUrls = (value: unknown): string[] => resolveMediaUrls(value);
 
-const normalizePostMediaUrls = (value: unknown): string[] => {
-  const source = Array.isArray(value) ? value : [];
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const item of source) {
-    if (!isRenderablePostMediaUrl(item)) continue;
-    const key = mediaDedupeKey(item);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(item);
-  }
-  return out;
-};
 
 const mergePostMediaUrls = (...values: unknown[]): string[] => {
   const seen = new Set<string>();
