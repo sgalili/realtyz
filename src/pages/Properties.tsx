@@ -1042,8 +1042,20 @@ function ResultTable({
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  // Source column cycles through which source is pinned to the top:
+  // yad2 (orange) → homely (black) → mine (navy).
+  const SOURCE_CYCLE: Array<PropertySource> = ['yad2', 'homely', 'mine'];
+  const SOURCE_CYCLE_LABEL: Record<PropertySource, string> = {
+    yad2: 'יד-2', homely: 'הומלי', mine: 'המאגר שלי', webtiv: 'Webtiv', external: 'חיצוני',
+  };
+  const [sourcePin, setSourcePin] = useState(0);
 
   const toggleSort = (col: SortCol) => {
+    if (col === 'source') {
+      setSourcePin((p) => (sortCol === 'source' ? (p + 1) % SOURCE_CYCLE.length : p));
+      setSortCol('source');
+      return;
+    }
     if (sortCol === col) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -1054,6 +1066,14 @@ function ResultTable({
 
   const sorted = useMemo(() => {
     if (!sortCol) return results;
+    if (sortCol === 'source') {
+      const pinned = SOURCE_CYCLE[sourcePin];
+      const rank = (r: UnifiedResult) => {
+        const all = (r.sources ?? [r.source]) as PropertySource[];
+        return all.includes(pinned) ? 0 : 1;
+      };
+      return [...results].sort((a, b) => rank(a) - rank(b));
+    }
     const arr = [...results];
     const getVal = (r: UnifiedResult): string | number | null => {
       switch (sortCol) {
@@ -1079,7 +1099,7 @@ function ResultTable({
       return String(av).localeCompare(String(bv), 'he') * dir;
     });
     return arr;
-  }, [results, sortCol, sortDir]);
+  }, [results, sortCol, sortDir, sourcePin]);
 
   const HeaderCell = ({ col, label, extraClass }: { col: SortCol; label: string; extraClass?: string }) => (
     <th
