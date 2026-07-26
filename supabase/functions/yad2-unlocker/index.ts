@@ -1156,7 +1156,19 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     },
   };
   if (existing?.id) {
-    const { error: updErr } = await admin.from("listings").update(payload).eq("id", existing.id);
+    // Never overwrite previously-scraped rich metadata with an empty result:
+    // feed rows carry less detail than item pages.
+    const updatePayload: Record<string, unknown> = { ...payload };
+    if (updatePayload.latitude == null) delete updatePayload.latitude;
+    if (updatePayload.longitude == null) delete updatePayload.longitude;
+    for (const k of ["furniture_details", "additional_details"]) {
+      const v = updatePayload[k] as Record<string, unknown> | undefined;
+      if (!v || Object.keys(v).length === 0) delete updatePayload[k];
+    }
+    if (!Array.isArray(updatePayload.price_history) || (updatePayload.price_history as unknown[]).length === 0) {
+      delete updatePayload.price_history;
+    }
+    const { error: updErr } = await admin.from("listings").update(updatePayload).eq("id", existing.id);
     // Never swallow a write failure — a silently dropped row is exactly how
     // the Yad2 feed appeared to "work" while the cache stayed empty.
     if (updErr) throw new Error(`update_failed(${existing.id}): ${updErr.message}`);
