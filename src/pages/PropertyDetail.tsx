@@ -985,24 +985,24 @@ export default function PropertyDetail() {
 
           {!editMode && documents.length > 0 && (
             <Card className="p-4 sm:p-5">
-              <h2 className="text-base font-bold text-primary mb-3">מסמכים</h2>
+              <h2 className="text-xl font-bold text-primary mb-3">מסמכים</h2>
               <ul className="space-y-2">
                 {documents.map((d, i) => (
                   <li key={`${d.url}-${i}`} className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2 hover:bg-muted/40">
-                    <span className="text-sm text-foreground truncate">{d.name}</span>
+                    <span className="text-base text-foreground truncate">{d.name}</span>
                     <div className="flex items-center gap-2">
                       <a
                         href={d.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-semibold text-primary hover:underline"
+                        className="text-sm font-semibold text-primary hover:underline"
                       >
                         צפה
                       </a>
                       <a
                         href={d.url}
                         download
-                        className="text-xs font-semibold text-primary hover:underline"
+                        className="text-sm font-semibold text-primary hover:underline"
                       >
                         הורד
                       </a>
