@@ -1029,7 +1029,9 @@ function ResultTable({
                 )}
               </th>
             )}
+            <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
             <HeaderCell col="source" label="מקור" />
+
             <HeaderCell col="name" label="שם" />
             <HeaderCell col="listing_type" label="סוג" />
             <HeaderCell col="price" label="מחיר" />
