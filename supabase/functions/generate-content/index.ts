@@ -135,6 +135,53 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
       if (dt === "sale" || dt === "מכירה") return "למכירה";
       return null;
     })();
+    // Real local market facts (last 5 years) for the promoted property's city,
+    // strictly matched to the transaction type so a rental post never quotes
+    // sale prices and vice versa.
+    let marketFactsLine: string | null = null;
+    if (promotedListing?.city) {
+      try {
+        const since = new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: comps } = await admin
+          .from("listings")
+          .select("asking_price, sqm, deal_type, neighborhood")
+          .eq("city", promotedListing.city)
+          .gte("created_at", since)
+          .limit(1000);
+        const wantRent = dealTypeLabel === "להשכרה";
+        let rows = (comps ?? []).filter((r: any) => {
+          const price = Number(r.asking_price);
+          if (!(price > 0)) return false;
+          const isRent = r.deal_type ? String(r.deal_type) === "rent" : price < 50_000;
+          return wantRent ? isRent : !isRent;
+        });
+        if (promotedListing.neighborhood) {
+          const local = rows.filter((r: any) => r.neighborhood === promotedListing.neighborhood);
+          if (local.length >= 4) rows = local;
+        }
+        if (rows.length >= 3) {
+          const prices = rows.map((r: any) => Number(r.asking_price));
+          const avgPrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
+          const sqmRows = rows.filter((r: any) => Number(r.sqm) > 0);
+          const avgSqm = sqmRows.length
+            ? Math.round(
+                sqmRows.reduce((a: number, r: any) => a + Number(r.asking_price) / Number(r.sqm), 0) /
+                  sqmRows.length,
+              )
+            : null;
+          const area = promotedListing.neighborhood || promotedListing.city;
+          marketFactsLine = [
+            `נתוני שוק אמיתיים ב${area} (5 שנים אחרונות, ${wantRent ? "שכירות" : "מכירה"}):`,
+            `${rows.length} עסקאות`,
+            `ממוצע ${avgPrice.toLocaleString("he-IL")} ש"ח${wantRent ? " לחודש" : ""}`,
+            avgSqm && !wantRent ? `ממוצע ${avgSqm.toLocaleString("he-IL")} ש"ח למ"ר` : null,
+          ].filter(Boolean).join(" · ");
+        }
+      } catch (e) {
+        console.error("[generate-content] market facts failed", e);
+      }
+    }
+
     const propertyTypeLabel = (() => {
       const sm = promotedListing?.source_metadata;
       if (sm && typeof sm === "object") {
