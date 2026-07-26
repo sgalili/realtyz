@@ -59,7 +59,7 @@ export function PropertyShareMenu({
           {!iconOnly && <span>{count > 1 ? `${label} (${count})` : label}</span>}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" dir="rtl" className="w-48" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuContent align="end" className="w-48" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuLabel className="text-xs">
           {count > 1 ? `שיתוף ${count} נכסים` : 'שיתוף נכס'}
         </DropdownMenuLabel>
