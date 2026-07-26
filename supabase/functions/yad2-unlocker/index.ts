@@ -841,13 +841,23 @@ async function scrapingBrowserHarvest(
   pageUrl: string,
   feedUrls: string[],
   needFeeds: (html: string) => boolean = () => true,
+  // When a shared session is supplied the browser is reused across paginated
+  // requests (one Bright Data connect costs ~10-20s, so re-connecting per page
+  // was the single biggest reason deep searches timed out client-side).
+  session?: { browser: any | null },
 ): Promise<BrowserHarvest> {
   if (!BD_WS) throw new Error("BRIGHTDATA_WS_ENDPOINT is not configured");
-  let browser: any = null;
+  let browser: any = session?.browser ?? null;
   try {
-    console.log("[yad2-unlocker] scraping-browser: connecting…");
-    browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
+    if (!browser) {
+      console.log("[yad2-unlocker] scraping-browser: connecting…");
+      browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
+      if (session) session.browser = browser;
+    } else {
+      console.log("[yad2-unlocker] scraping-browser: reusing session");
+    }
     const page = await browser.newPage();
+
     await page.setViewport({ width: 1440, height: 2200 });
     // NOTE: Bright Data Scraping Browser forbids overriding accept-language
     // ("Overriding accept-language headers forbidden"). Locale comes from the
@@ -928,9 +938,14 @@ async function scrapingBrowserHarvest(
     }
     return { html: html || null, feeds };
   } finally {
-    try { await browser?.disconnect?.(); } catch { /* noop */ }
+    // Only tear the connection down when we own it. Shared sessions are closed
+    // by the caller after the last page.
+    if (!session) {
+      try { await browser?.disconnect?.(); } catch { /* noop */ }
+    }
   }
 }
+
 
 // -------- Save helpers --------
 
@@ -1086,16 +1101,19 @@ Deno.serve(async (req) => {
       if (Number.isFinite(minP) || Number.isFinite(maxP)) {
         u.searchParams.set("price", `${Number.isFinite(minP) ? minP : 0}-${Number.isFinite(maxP) ? maxP : ""}`);
       }
-      // Free-text keywords (neighborhood, property type) go into the
-      // catch-all `text` param. Yad2's server-side matcher is lenient
-      // enough to accept these alongside structured filters.
+      // Free-text keywords go into the catch-all `text` param — but ONLY when
+      // we could not resolve a structured city code. Yad2's `text` matcher is
+      // literal: sending a natural sentence like "דירה 4 חדרים בהרצליה"
+      // alongside area+city returns an empty feed. Structured filters win;
+      // the caller re-filters the returned rows by keyword client-side.
       const kwParts: string[] = [];
       const hood = clean(String(body?.neighborhood ?? ""));
       if (hood) kwParts.push(hood);
-      if (freeText) kwParts.push(freeText);
+      if (freeText && !cfg) kwParts.push(freeText);
       if (kwParts.length && !u.searchParams.get("text")) {
         u.searchParams.set("text", kwParts.join(" "));
       }
+
       return u.toString();
     }
 
@@ -1116,12 +1134,23 @@ Deno.serve(async (req) => {
     // exactly which direct-Yad2 hop returned data vs. was blocked.
     const diagnostics: Array<{ endpoint: string; kind: "json" | "html" | "item"; status: "ok" | "empty" | "error"; count?: number; error?: string }> = [];
 
+    // Shared Scraping Browser session reused by every paginated page.
+    const browserSession: { browser: any | null } = { browser: null };
+
     // One full three-tier scrape of a single Yad2 results page.
     async function scrapeOnce(pageUrl: string): Promise<Scraped[]> {
       let out: Scraped[] = [];
+      // Once the REST Web Unlocker zone has been proven unusable (client_10090)
+      // and a Scraping Browser endpoint exists, stop paying for the doomed
+      // REST tiers on every subsequent page — go straight to the browser.
+      const browserFirst = Boolean(BD_WS && bdZoneBroken);
+      if (browserFirst) {
+        console.log("[yad2-unlocker] REST zone known-bad — browser-first transport");
+      }
 
       // --- Primary path: Yad2 internal JSON gateway (direct, no aggregator) ---
-      try {
+      if (!browserFirst) try {
+
         if (isItemUrl) {
           const gwItem = toGatewayItemUrl(pageUrl);
           if (gwItem) {
@@ -1161,7 +1190,8 @@ Deno.serve(async (req) => {
       }
 
       // --- Fallback B: HTML scrape of the public www URL via the REST unlocker -
-      if (!out.length) {
+      if (!out.length && !browserFirst) {
+
         mode = "html";
         console.log(`[yad2-unlocker] falling back to HTML: ${pageUrl}`);
         try {
@@ -1183,6 +1213,7 @@ Deno.serve(async (req) => {
             ? [toGatewayItemUrl(pageUrl)].filter(Boolean) as string[]
             : toGatewayFeedUrls(pageUrl);
           const harvest = await scrapingBrowserHarvest(pageUrl, feedUrls, (html) => {
+
             try {
               const probe = isItemUrl
                 ? ([parseItem(html, pageUrl)].filter(Boolean) as Scraped[])
@@ -1193,7 +1224,8 @@ Deno.serve(async (req) => {
               console.warn(`[yad2-unlocker] scraping-browser: HTML parse threw ${String((e as Error)?.message ?? e)}`);
               return true;
             }
-          });
+          }, browserSession);
+
 
           if (harvest.html) {
             const parsed = isItemUrl
@@ -1232,37 +1264,56 @@ Deno.serve(async (req) => {
     }
 
     // Pagination — Yad2 serves ~30-40 items per page. Walk pages until the
-    // requested `limit` is met, a page comes back empty, or `pages` is hit.
+    // requested `limit` is met, a page comes back empty, `pages` is hit, or we
+    // run out of wall-clock budget. The deadline matters: each browser page is
+    // ~15-25s, and a request that outlives the caller's fetch timeout reaches
+    // the UI as "zero Yad2 results" even though the scrape succeeded.
     const startPage = Math.max(1, Number(body?.page) || 1);
     const maxPages = isItemUrl || previewOnly
       ? 1
       : Math.min(10, Math.max(1, Number(body?.pages) || Math.ceil(limit / 30)));
+    const deadline = Date.now() + Math.min(
+      110_000,
+      Math.max(30_000, Number(body?.budget_ms) || 70_000),
+    );
     const seenKeys = new Set<string>();
     let pagesScanned = 0;
+    let stoppedOnDeadline = false;
 
-    for (let p = startPage; p < startPage + maxPages; p++) {
-      let pageUrl = inputUrl;
-      if (!isItemUrl && p > 1) {
-        const u = new URL(inputUrl);
-        u.searchParams.set("page", String(p));
-        pageUrl = u.toString();
+    try {
+      for (let p = startPage; p < startPage + maxPages; p++) {
+        if (p > startPage && Date.now() > deadline) {
+          stoppedOnDeadline = true;
+          console.warn(`[yad2-unlocker] time budget reached after ${pagesScanned} page(s) — returning ${rows.length} row(s)`);
+          break;
+        }
+        let pageUrl = inputUrl;
+        if (!isItemUrl && p > 1) {
+          const u = new URL(inputUrl);
+          u.searchParams.set("page", String(p));
+          pageUrl = u.toString();
+        }
+        pagesScanned++;
+        const pageRows = await scrapeOnce(pageUrl);
+        if (!pageRows.length) break;
+        let added = 0;
+        for (const r of pageRows) {
+          const key = String(r.external_id || r.source_url || "");
+          if (!key || seenKeys.has(key)) continue;
+          seenKeys.add(key);
+          rows.push(r);
+          added++;
+        }
+        // A page that adds nothing new means Yad2 is repeating the first page.
+        if (added === 0) break;
+        if (rows.length >= limit) break;
       }
-      pagesScanned++;
-      const pageRows = await scrapeOnce(pageUrl);
-      if (!pageRows.length) break;
-      let added = 0;
-      for (const r of pageRows) {
-        const key = String(r.external_id || r.source_url || "");
-        if (!key || seenKeys.has(key)) continue;
-        seenKeys.add(key);
-        rows.push(r);
-        added++;
-      }
-      // A page that adds nothing new means Yad2 is repeating the first page.
-      if (added === 0) break;
-      if (rows.length >= limit) break;
+    } finally {
+      try { await browserSession.browser?.disconnect?.(); } catch { /* noop */ }
+      browserSession.browser = null;
     }
     rows = rows.slice(0, limit);
+
 
 
     // Nothing worked at all — surface the real cause instead of "0 results".
@@ -1337,6 +1388,8 @@ Deno.serve(async (req) => {
       success: true,
       urls_scanned: pagesScanned,
       pages_scanned: pagesScanned,
+      truncated_by_budget: stoppedOnDeadline,
+
 
       records_scraped: rows.length,
       records_saved: saved,
