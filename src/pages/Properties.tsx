@@ -157,6 +157,7 @@ export default function Properties() {
   const runSearch = useCallback(async () => {
     const token = ++searchTokenRef.current;
     setSearching(true);
+    setSearchProgress({ done: 0, total: 3, loaded: 0, pending: ['mine', 'homely', 'yad2'] });
 
     setHasSearched(true);
     try {
@@ -189,11 +190,15 @@ export default function Properties() {
           ? rows.filter((r) => !r.property_type || String(r.property_type).toLowerCase() === effectivePropertyType)
           : rows;
 
-      // Local DB results paint instantly; external gateways stream in after.
+      // Each source streams into the table the moment it answers.
       const resp = await searchAllSources(filters, (partial) => {
         if (searchTokenRef.current !== token) return;
-        setResults(applyType(partial.results));
+        const rows = applyType(partial.results);
+        setResults(rows);
         setSourceStatus(partial.sources);
+        if (partial.progress) {
+          setSearchProgress({ ...partial.progress, loaded: rows.length });
+        }
       });
       if (searchTokenRef.current !== token) return; // cancelled — keep partials
       const filtered = applyType(resp.results);
@@ -208,7 +213,10 @@ export default function Properties() {
       console.error('[Properties] search failed', err);
       toast.error('חיפוש נכשל: ' + (err?.message ?? 'שגיאה לא ידועה'));
     } finally {
-      if (searchTokenRef.current === token) setSearching(false);
+      if (searchTokenRef.current === token) {
+        setSearching(false);
+        setSearchProgress(null);
+      }
     }
   }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin]);
 
@@ -217,8 +225,10 @@ export default function Properties() {
   const cancelSearch = useCallback(() => {
     searchTokenRef.current++;
     setSearching(false);
+    setSearchProgress(null);
     toast.info('החיפוש בוטל — מוצגות התוצאות שנמצאו עד כה');
   }, []);
+
 
   // Persist the full search state (criteria + results) on every change, so
   // navigating away and back restores the exact same table.
