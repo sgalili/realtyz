@@ -247,6 +247,9 @@ export default function PropertyDetail() {
           about: (r.long_description as string | null) || (r.short_description as string | null) || null,
           furniture: (r.furniture_details as Record<string, unknown> | null) ?? null,
           additional: (r.additional_details as Record<string, unknown> | null) ?? null,
+          amenities: (r.attributes && typeof r.attributes === 'object' && !Array.isArray(r.attributes)
+            ? (r.attributes as Record<string, unknown>)
+            : null),
           priceHistory: Array.isArray(r.price_history) ? (r.price_history as any[]) : [],
           latitude: r.latitude != null ? Number(r.latitude) : null,
           longitude: r.longitude != null ? Number(r.longitude) : null,
