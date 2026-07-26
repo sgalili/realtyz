@@ -398,7 +398,18 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
   const neighborhood = clean(it?.address?.neighborhood?.text ?? it?.neighborhood ?? it?.neighborhood_text);
   const address = clean(it?.address?.street?.text ?? it?.street ?? it?.row_2);
 
-  const photos = pickPhotos(it?.metaData?.images ?? it?.images ?? it?.image ?? it?.metaData?.coverImage);
+  // Full gallery, not just the cover thumbnail.
+  const photos = pickAllPhotos(
+    it?.metaData?.images,
+    it?.images,
+    it?.image,
+    it?.metaData?.coverImage,
+    it?.gallery,
+    it?.imagesUrls,
+  );
+
+  const shortDesc = clean(it?.info_text ?? it?.subtitle ?? it?.metaData?.description ?? null);
+  const longDesc = clean(it?.description ?? it?.metaData?.longDescription ?? it?.freeText ?? null);
 
   return {
     source_url: href,
@@ -418,7 +429,11 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     deal_type: dealType,
     owner_name: clean(it?.customer?.name ?? it?.merchant_name ?? null),
     owner_phone: clean(it?.customer?.phone ?? null),
-    description: clean(it?.description ?? null),
+    description: longDesc ?? shortDesc,
+    short_description: shortDesc,
+    long_description: longDesc,
+    available_from: pickAvailableFrom(it),
+    attributes: pickAttributes(it),
   };
 }
 
