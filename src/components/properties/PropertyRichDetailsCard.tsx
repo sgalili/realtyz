@@ -18,6 +18,7 @@ type Props = {
   aboutText?: string | null;
   furniture?: Record<string, unknown> | null;
   additional?: Record<string, unknown> | null;
+  amenities?: Record<string, unknown> | null;
   priceHistory?: PricePoint[] | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -46,6 +47,27 @@ const KEY_LABELS: Record<string, string> = {
   totalFloors: 'קומות בבניין',
   note: 'הערה',
   items: 'פריטים',
+  condition: 'מצב הנכס',
+  propertyCondition: 'מצב הנכס',
+  entryDate: 'תאריך כניסה',
+  availableFrom: 'תאריך כניסה',
+  builtSquareMeter: 'מ״ר בנוי',
+  buildingFloors: 'קומות בבניין',
+  parkingSpaces: 'מקומות חניה',
+  vaadBayit: 'ועד בית',
+  vaad_bayit: 'ועד בית',
+  arnona: 'ארנונה',
+  payments: 'מספר תשלומים',
+  solarHeater: 'דוד שמש',
+  boiler: 'דוד שמש',
+  securityDoor: 'דלתות ביטחון',
+  safeRoom: 'ממ״ד',
+  petsAllowed: 'מותר בע״ח',
+  pets: 'מותר בע״ח',
+  roommates: 'מתאים לשותפים',
+  warehouse: 'מחסן',
+  tadiran: 'מיזוג',
+  longTerm: 'לטווח ארוך',
 };
 
 function label(key: string) {
@@ -67,6 +89,7 @@ export function PropertyRichDetailsCard({
   aboutText,
   furniture,
   additional,
+  amenities,
   priceHistory,
   latitude,
   longitude,
@@ -74,6 +97,7 @@ export function PropertyRichDetailsCard({
 }: Props) {
   const furnitureEntries = entriesOf(furniture);
   const additionalEntries = entriesOf(additional);
+  const amenityEntries = entriesOf(amenities).filter(([, v]) => v !== false);
   const points = (priceHistory ?? []).filter((p) => p && p.price != null);
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
 
@@ -81,6 +105,7 @@ export function PropertyRichDetailsCard({
     !aboutText &&
     !furnitureEntries.length &&
     !additionalEntries.length &&
+    !amenityEntries.length &&
     !points.length &&
     !hasCoords
   ) {
@@ -140,6 +165,24 @@ export function PropertyRichDetailsCard({
           </div>
         </section>
       )}
+
+      {amenityEntries.length > 0 && (
+        <section>
+          <h2 className="text-base font-bold text-primary mb-2 inline-flex items-center gap-2">
+            <ListChecks className="h-4 w-4" /> מתקנים ותוספות
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {amenityEntries.map(([k, v]) => (
+              <Badge key={k} variant="outline" className="font-normal">
+                {label(k)}
+                {typeof v === 'boolean' ? '' : `: ${renderValue(v)}`}
+              </Badge>
+            ))}
+          </div>
+        </section>
+      )}
+
+
 
       {chartData.length > 1 && (
         <section>

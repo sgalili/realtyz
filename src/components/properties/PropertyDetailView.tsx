@@ -7,11 +7,16 @@ import {
 import { PROPERTY_TYPE_LABELS_HE, type HomelyProperty } from '@/lib/homelyMockProperties';
 import { useVisibleImageUrls } from '@/lib/imageHealth';
 import { stripAddressNumbers } from '@/lib/formatAddress';
+import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
 
 type JsonRecord = Record<string, unknown>;
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item.length > 0) : [];
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
 function firstString(...values: unknown[]) {
@@ -220,6 +225,18 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
             <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
           </Card>
         )}
+
+        <PropertyRichDetailsCard
+          aboutText={firstString((property as any).long_description, (property as any).short_description)}
+          furniture={asRecord((property as any).furniture_details)}
+          additional={asRecord((property as any).additional_details)}
+          amenities={asRecord((property as any).attributes)}
+          priceHistory={Array.isArray((property as any).price_history) ? ((property as any).price_history as any[]) : []}
+          latitude={(property as any).latitude != null ? Number((property as any).latitude) : null}
+          longitude={(property as any).longitude != null ? Number((property as any).longitude) : null}
+          addressLabel={[stripAddressNumbers(property.address), property.city].filter(Boolean).join(', ')}
+        />
+
 
         {financialEntries.length > 0 && (
           <Card className="p-4 sm:p-5">
