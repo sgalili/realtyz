@@ -21,8 +21,10 @@ import {
   Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
@@ -919,9 +921,12 @@ function ResultCard({
   onCampaign?: () => void;
 }) {
 
-  const photos = (result.photos ?? []).filter(Boolean);
+  const [pulledPhotos, setPulledPhotos] = useState<string[] | null>(null);
+  const [pulling, setPulling] = useState(false);
+  const photos = (pulledPhotos ?? result.photos ?? []).filter(Boolean);
   const hasPhotos = photos.length > 0;
   const hasMany = photos.length > 1;
+
   const [index, setIndex] = useState(0);
   // Lazy gallery: until the card is expanded we only paint the cover image.
   // Already-imported photos come straight from the DB/storage URLs, so the
@@ -942,6 +947,34 @@ function ResultCard({
   const stop = (e: React.SyntheticEvent) => { e.stopPropagation(); e.preventDefault(); };
   const goPrev = (e: React.SyntheticEvent) => { stop(e); setIndex((i) => (i - 1 + photos.length) % photos.length); };
   const goNext = (e: React.SyntheticEvent) => { stop(e); setIndex((i) => (i + 1) % photos.length); };
+
+  /** Manual on-demand full-gallery pull + permanent mirroring. */
+  const pullAllImages = async (e: React.SyntheticEvent) => {
+    stop(e);
+    if (pulling) return;
+    setPulling(true);
+    const toastId = toast.loading('טוען את כל התמונות…');
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-property-all-images', {
+        body: { listing_id: result.localId ?? undefined, source_url: result.url ?? undefined },
+      });
+      if (error) throw error;
+      const res = data as { ok?: boolean; count?: number; photos?: string[]; reason?: string } | null;
+      if (!res?.ok || !res.photos?.length) {
+        toast.error('לא נמצאו תמונות נוספות', { id: toastId, description: res?.reason ?? undefined });
+        return;
+      }
+      setPulledPhotos(res.photos);
+      setIndex(0);
+      setExpanded(true);
+      toast.success(`${res.count} תמונות נטענו ונשמרו`, { id: toastId });
+    } catch (err: any) {
+      toast.error('טעינת התמונות נכשלה', { id: toastId, description: err?.message ?? String(err) });
+    } finally {
+      setPulling(false);
+    }
+  };
+
 
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow cursor-pointer relative" onClick={onSelect}>
@@ -969,6 +1002,20 @@ function ResultCard({
           >
             <ImageIcon className="h-3 w-3" />
             {photoCount}
+          </button>
+        )}
+
+        {(result.localId || result.url) && (
+          <button
+            type="button"
+            onClick={pullAllImages}
+            disabled={pulling}
+            className="absolute bottom-2 right-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur-sm hover:bg-black/80 disabled:opacity-60"
+            title="טען את כל התמונות"
+            aria-label="טען את כל התמונות"
+          >
+            {pulling ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            טען תמונות
           </button>
         )}
 
