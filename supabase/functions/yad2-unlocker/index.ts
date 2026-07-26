@@ -1031,7 +1031,7 @@ Deno.serve(async (req) => {
 
     bdTrace = [];
     const body = await req.json().catch(() => ({} as any));
-    const limit = Math.min(80, Math.max(1, Number(body?.limit) || 30));
+    const limit = Math.min(300, Math.max(1, Number(body?.limit) || 30));
     const previewOnly = Boolean(body?.preview_only);
 
     // Accept several shapes:
