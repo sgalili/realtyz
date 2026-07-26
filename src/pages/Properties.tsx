@@ -1005,6 +1005,20 @@ function ResultCard({
           </button>
         )}
 
+        {(result.localId || result.url) && (
+          <button
+            type="button"
+            onClick={pullAllImages}
+            disabled={pulling}
+            className="absolute bottom-2 right-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur-sm hover:bg-black/80 disabled:opacity-60"
+            title="טען את כל התמונות"
+            aria-label="טען את כל התמונות"
+          >
+            {pulling ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            טען תמונות
+          </button>
+        )}
+
 
         {/* Side navigation arrows — RTL: right chevron = previous, left chevron = next */}
         {hasMany && (
