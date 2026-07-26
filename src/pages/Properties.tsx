@@ -1108,13 +1108,15 @@ function ResultTable({
                     <Button
                       size="icon"
                       variant="ghost"
-                      title="פתח"
-                      aria-label="פתח נכס"
-                      onClick={(e) => { e.stopPropagation(); onSelect(r); }}
+                      title="צור קמפיין לנכס"
+                      aria-label="צור קמפיין לנכס"
+                      disabled={importing}
+                      onClick={(e) => { e.stopPropagation(); onCampaign ? onCampaign(r) : onSelect(r); }}
                       className="h-8 w-8"
                     >
-                      <Send className="h-3.5 w-3.5" />
+                      {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     </Button>
+
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
                   </div>
                 </td>
