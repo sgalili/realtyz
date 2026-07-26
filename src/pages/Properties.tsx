@@ -968,13 +968,20 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
                   <div className="inline-flex items-center gap-1.5">
-                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onSelect(r); }} className="gap-1.5">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="פתח"
+                      aria-label="פתח נכס"
+                      onClick={(e) => { e.stopPropagation(); onSelect(r); }}
+                      className="h-8 w-8"
+                    >
                       <Send className="h-3.5 w-3.5" />
-                      פתח
                     </Button>
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
                   </div>
                 </td>
+
 
               </tr>
             );
