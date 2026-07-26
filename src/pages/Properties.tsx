@@ -41,6 +41,8 @@ import { formatListingTitle } from '@/lib/formatListingTitle';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
+import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
+
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
