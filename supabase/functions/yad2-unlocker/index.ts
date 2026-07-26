@@ -967,8 +967,26 @@ async function upsertOwnerProfile(
 
 async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
   const { data: existing } = await admin
-    .from("listings").select("id, slug").eq("source_url", row.source_url).maybeSingle();
+    .from("listings").select("id, slug, media_photos").eq("source_url", row.source_url).maybeSingle();
   const ownerId = await upsertOwnerProfile(admin, workspaceOwnerId, row.owner_name, row.owner_phone);
+
+  // Full gallery, never a single thumbnail: merge whatever we already stored
+  // with the freshly scraped set and dedupe by URL (ignoring the CDN's
+  // size/quality query string so the same photo isn't saved twice).
+  const previousPhotos = Array.isArray((existing as any)?.media_photos)
+    ? ((existing as any).media_photos as unknown[]).filter((u): u is string => typeof u === "string")
+    : [];
+  const mergedPhotos: string[] = [];
+  const seenPhotoKeys = new Set<string>();
+  for (const url of [...(row.photos ?? []), ...previousPhotos]) {
+    const u = String(url ?? "").trim();
+    if (!u || !/^https?:\/\//i.test(u)) continue;
+    if (/placeholder|default|no[-_]?image|logo|sprite/i.test(u)) continue;
+    const key = u.split("?")[0].replace(/\/+$/, "").toLowerCase();
+    if (seenPhotoKeys.has(key)) continue;
+    seenPhotoKeys.add(key);
+    mergedPhotos.push(u);
+  }
 
   const payload: Record<string, unknown> = {
     user_id: workspaceOwnerId,
@@ -985,7 +1003,8 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     source: "yad2",
     source_url: row.source_url,
     external_id: row.external_id,
-    media_photos: row.photos,
+    media_photos: mergedPhotos.slice(0, 40),
+
     short_description: row.short_description ?? null,
     long_description: row.long_description ?? row.description ?? null,
     available_from: row.available_from ?? null,

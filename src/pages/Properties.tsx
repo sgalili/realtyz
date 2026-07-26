@@ -62,7 +62,9 @@ type SavedState = {
   maxPrice: number;
   areaMin: string;
   results?: UnifiedResult[];
+  hasSearched?: boolean;
 };
+
 
 function loadCache(): SavedState | null {
   try {
@@ -95,7 +97,7 @@ export default function Properties() {
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
   const [sourceStatus, setSourceStatus] = useState<Record<string, { status: string; count: number; error?: string }>>({});
   const [searching, setSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.results?.length);
+  const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.hasSearched || !!cached?.results?.length);
   const [importingKey, setImportingKey] = useState<string | null>(null);
 
   // Multi-select + batch import progress
@@ -146,8 +148,14 @@ export default function Properties() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultCity]);
 
+  // Monotonic token — bumping it aborts the in-flight search: late partials
+  // and the final payload are ignored, so whatever was already painted stays.
+  const searchTokenRef = useRef(0);
+
   const runSearch = useCallback(async () => {
+    const token = ++searchTokenRef.current;
     setSearching(true);
+
     setHasSearched(true);
     try {
       // Parse the free-text query into structured hints so external gateways
@@ -181,24 +189,41 @@ export default function Properties() {
 
       // Local DB results paint instantly; external gateways stream in after.
       const resp = await searchAllSources(filters, (partial) => {
+        if (searchTokenRef.current !== token) return;
         setResults(applyType(partial.results));
         setSourceStatus(partial.sources);
       });
+      if (searchTokenRef.current !== token) return; // cancelled — keep partials
       const filtered = applyType(resp.results);
       setResults(filtered);
       setSourceStatus(resp.sources);
-      saveCache({ q, listingType, city, propertyType, rooms, maxPrice, areaMin, results: filtered.slice(0, 100) });
       const errored = Object.entries(resp.sources).filter(([, v]) => v.status === 'error');
       if (errored.length) {
         toast.info(`חלק מהמקורות לא זמינים: ${errored.map(([k]) => sourceLabel(k as any)).join(', ')}`);
       }
     } catch (err: any) {
+      if (searchTokenRef.current !== token) return;
       console.error('[Properties] search failed', err);
       toast.error('חיפוש נכשל: ' + (err?.message ?? 'שגיאה לא ידועה'));
     } finally {
-      setSearching(false);
+      if (searchTokenRef.current === token) setSearching(false);
     }
   }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin]);
+
+  // Abort the running fetch and immediately show the partial results found
+  // so far. Nothing is cleared.
+  const cancelSearch = useCallback(() => {
+    searchTokenRef.current++;
+    setSearching(false);
+    toast.info('החיפוש בוטל — מוצגות התוצאות שנמצאו עד כה');
+  }, []);
+
+  // Persist the full search state (criteria + results) on every change, so
+  // navigating away and back restores the exact same table.
+  useEffect(() => {
+    saveCache({ q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results: results.slice(0, 100) });
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results]);
+
 
   // When the user commits a URL (Yad2) in the search box, hand off to
   // the quick-import flow via AddPropertyDialog.
@@ -439,24 +464,8 @@ export default function Properties() {
 
       {/* Compact unified control bar */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        {/* Row 0 — transaction type: הכל / להשכרה / למכירה, right above the search bar */}
-        <div className="flex items-center gap-2 mb-2" dir="rtl">
-          <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5">
-            {(['all', 'rent', 'sale'] as Array<ListingType | 'all'>).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setListingType(t)}
-                aria-pressed={listingType === t}
-                className={`px-3.5 py-1.5 text-xs font-semibold rounded transition-colors ${
-                  listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
-              </button>
-            ))}
-          </div>
-        </div>
+
+
 
         {/* Row 1 — search field: [filter icon] [active filter words] [text] [go] */}
         <div className="flex items-center gap-2" dir="rtl">
@@ -506,15 +515,16 @@ export default function Properties() {
             <Button
               type="button"
               size="sm"
-              onClick={submitQuery}
-              disabled={searching}
-              aria-label="חפש"
-              title="חפש"
+              variant={searching ? 'destructive' : 'default'}
+              onClick={searching ? cancelSearch : submitQuery}
+              aria-label={searching ? 'בטל חיפוש' : 'חפש'}
+              title={searching ? 'בטל חיפוש' : 'חפש'}
               className="absolute left-1.5 top-1.5 h-7 gap-1.5 px-3 text-xs"
             >
-              {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SearchIcon className="h-3.5 w-3.5" />}
-              <span>{searching ? 'מחפש' : 'חפש'}</span>
+              {searching ? <X className="h-3.5 w-3.5" /> : <SearchIcon className="h-3.5 w-3.5" />}
+              <span>{searching ? 'בטל' : 'חפש'}</span>
             </Button>
+
           </div>
         </div>
 
@@ -599,7 +609,27 @@ export default function Properties() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+
+            {/* Transaction type: הכל / להשכרה / למכירה — same toolbar row,
+                between the results-count pill and the view toggle. */}
+            <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5" role="group" aria-label="סוג עסקה">
+              {(['all', 'rent', 'sale'] as Array<ListingType | 'all'>).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setListingType(t)}
+                  aria-pressed={listingType === t}
+                  className={`px-3 h-7 text-xs font-semibold rounded transition-colors ${
+                    listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
+                </button>
+              ))}
+            </div>
           </div>
+
+
 
           {/* Side B — view toggle */}
           <div className="ms-auto inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
