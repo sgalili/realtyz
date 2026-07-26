@@ -1,5 +1,6 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Bot, User, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff } from 'lucide-react';
@@ -20,7 +21,6 @@ import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DEMO_AUTH_REQUIRED_EVENT, DEMO_EXIT_PENDING_KEY, DEMO_UPGRADE_EVENT } from '@/lib/demoGuard';
