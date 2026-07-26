@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
-  ArrowUpDown, Database, ChevronLeft, ChevronRight,
+  ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
