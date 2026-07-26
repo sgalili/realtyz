@@ -984,6 +984,15 @@ export default function PropertyDetail() {
             </Card>
           )}
 
+          {!editMode && (
+            <AreaMarketFactsCard
+              city={property.city}
+              neighborhood={neighborhood || null}
+              dealType={Number(property.price) < 50_000 ? 'rent' : 'sale'}
+            />
+          )}
+
+
           {projectName && !editMode && (
             <ProjectAlternativesCard
               currentListingId={property.id}
