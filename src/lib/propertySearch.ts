@@ -43,9 +43,11 @@ export type SearchFilters = {
 };
 
 export type SourceStatus = 'ok' | 'empty' | 'unavailable' | 'error';
+export type SearchProgress = { done: number; total: number; loaded: number; pending: string[] };
 export type SearchResponse = {
   results: UnifiedResult[];
   sources: Record<string, { status: SourceStatus; count: number; error?: string }>;
+  progress?: SearchProgress;
 };
 
 function normPhone(price: unknown): number | null {
@@ -213,9 +215,7 @@ export async function searchAllSources(
   const tasks: Array<Promise<{ label: PropertySource; results: UnifiedResult[] }>> = [
     searchLocal(f)
       .then((r) => {
-        // Instant paint: local DB hits are surfaced before any gateway answers.
         sources.mine = { status: r.length ? 'ok' : 'empty', count: r.length };
-        onPartial?.({ results: r, sources: { ...sources } });
         return { label: 'mine' as const, results: r };
       })
       .catch((e) => {
@@ -305,51 +305,85 @@ export async function searchAllSources(
     // both sale AND rent).
   ];
 
-  const settled = await Promise.all(tasks).catch((e) => {
-    console.error('[propertySearch] unexpected Promise.all failure', e);
-    return [] as Array<{ label: PropertySource; results: UnifiedResult[] }>;
-  });
-
-  const all: UnifiedResult[] = [];
-  const byKey = new Map<string, number>(); // dedupe key -> index in `all`
-  // Order sources so local rows land first — that way an external duplicate
-  // merges INTO the local card (keeping localId) instead of the other way.
-  const orderedSettled = [...settled].sort((a, b) => (a.label === 'mine' ? -1 : b.label === 'mine' ? 1 : 0));
-  for (const s of orderedSettled) {
-    if (!sources[s.label]) sources[s.label] = { status: s.results.length ? 'ok' : 'empty', count: s.results.length };
-    for (const r of s.results) {
-      if (f.listing_type && f.listing_type !== 'all' && r.listing_type !== f.listing_type) continue;
-      const k = dedupeKey(r);
-      const stripped = k.replace(/\|/g, '');
-      if (stripped && byKey.has(k)) {
-        const existing = all[byKey.get(k)!];
-        if (!existing.sources.includes(r.source)) existing.sources.push(r.source);
-        // Prefer external URL/photos when the local row lacks them.
-        if (!existing.url && r.url) existing.url = r.url;
-        if ((!existing.photos || existing.photos.length === 0) && r.photos?.length) existing.photos = r.photos;
-        continue;
+  // Merge + dedupe + text-filter a set of settled source buckets.
+  const mergeSettled = (buckets: Array<{ label: PropertySource; results: UnifiedResult[] }>) => {
+    const all: UnifiedResult[] = [];
+    const byKey = new Map<string, number>(); // dedupe key -> index in `all`
+    // Order sources so local rows land first — that way an external duplicate
+    // merges INTO the local card (keeping localId) instead of the other way.
+    const ordered = [...buckets].sort((a, b) => (a.label === 'mine' ? -1 : b.label === 'mine' ? 1 : 0));
+    for (const s of ordered) {
+      if (!sources[s.label]) sources[s.label] = { status: s.results.length ? 'ok' : 'empty', count: s.results.length };
+      for (const r of s.results) {
+        if (f.listing_type && f.listing_type !== 'all' && r.listing_type !== f.listing_type) continue;
+        const k = dedupeKey(r);
+        const stripped = k.replace(/\|/g, '');
+        if (stripped && byKey.has(k)) {
+          const existing = all[byKey.get(k)!];
+          if (!existing.sources.includes(r.source)) existing.sources.push(r.source);
+          // Prefer external URL/photos when the local row lacks them.
+          if (!existing.url && r.url) existing.url = r.url;
+          if ((!existing.photos || existing.photos.length === 0) && r.photos?.length) existing.photos = r.photos;
+          continue;
+        }
+        byKey.set(k, all.length);
+        all.push(r);
       }
-      byKey.set(k, all.length);
-      all.push(r);
     }
-  }
 
-  // Token-based text filter, applied ONLY to external rows (local was already
-  // filtered server-side via ilike). Every token must appear in at least one
-  // text field — this avoids requiring the whole free-text phrase to match.
-  const tokens = tokenize(f.q).map((t) => t.toLowerCase());
-  const filtered = tokens.length === 0
-    ? all
-    : all.filter((r) => {
-        if (r.source === 'mine') return true;
-        const hay = [r.title, r.description, r.city, r.address, r.neighborhood]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return tokens.every((t) => hay.includes(t));
-      });
+    // Token-based text filter, applied ONLY to external rows (local was already
+    // filtered server-side via ilike). Every token must appear in at least one
+    // text field — this avoids requiring the whole free-text phrase to match.
+    const tokens = tokenize(f.q).map((t) => t.toLowerCase());
+    return tokens.length === 0
+      ? all
+      : all.filter((r) => {
+          if (r.source === 'mine') return true;
+          const hay = [r.title, r.description, r.city, r.address, r.neighborhood]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+          return tokens.every((t) => hay.includes(t));
+        });
+  };
 
+  // Stream: paint the table the moment EACH source answers instead of waiting
+  // for the slowest gateway. `onPartial` fires once per settled source with a
+  // running progress counter (done / total).
+  const labels: PropertySource[] = ['mine', 'homely', 'yad2'];
+  const collected: Array<{ label: PropertySource; results: UnifiedResult[] }> = [];
+  const total = tasks.length;
+  let done = 0;
 
+  await Promise.all(
+    tasks.map((t, i) =>
+      t
+        .then((s) => {
+          collected.push(s);
+          return s;
+        })
+        .catch((e) => {
+          console.error('[propertySearch] source task rejected', e);
+          const label = labels[i] ?? ('mine' as PropertySource);
+          collected.push({ label, results: [] });
+        })
+        .finally(() => {
+          done += 1;
+          const partial = mergeSettled(collected);
+          const pending = labels.filter((l) => !collected.some((c) => c.label === l));
+          onPartial?.({
+            results: partial,
+            sources: { ...sources },
+            progress: { done, total, loaded: partial.length, pending },
+          });
+        }),
+    ),
+  );
 
-  return { results: filtered, sources };
+  const filtered = mergeSettled(collected);
+  return {
+    results: filtered,
+    sources,
+    progress: { done, total, loaded: filtered.length, pending: [] },
+  };
 }

@@ -97,6 +97,8 @@ export default function Properties() {
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
   const [sourceStatus, setSourceStatus] = useState<Record<string, { status: string; count: number; error?: string }>>({});
   const [searching, setSearching] = useState(false);
+  // Live streaming progress for the active search (sources answered / total).
+  const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
   const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.hasSearched || !!cached?.results?.length);
   const [importingKey, setImportingKey] = useState<string | null>(null);
 
@@ -155,6 +157,7 @@ export default function Properties() {
   const runSearch = useCallback(async () => {
     const token = ++searchTokenRef.current;
     setSearching(true);
+    setSearchProgress({ done: 0, total: 3, loaded: 0, pending: ['mine', 'homely', 'yad2'] });
 
     setHasSearched(true);
     try {
@@ -187,11 +190,15 @@ export default function Properties() {
           ? rows.filter((r) => !r.property_type || String(r.property_type).toLowerCase() === effectivePropertyType)
           : rows;
 
-      // Local DB results paint instantly; external gateways stream in after.
+      // Each source streams into the table the moment it answers.
       const resp = await searchAllSources(filters, (partial) => {
         if (searchTokenRef.current !== token) return;
-        setResults(applyType(partial.results));
+        const rows = applyType(partial.results);
+        setResults(rows);
         setSourceStatus(partial.sources);
+        if (partial.progress) {
+          setSearchProgress({ ...partial.progress, loaded: rows.length });
+        }
       });
       if (searchTokenRef.current !== token) return; // cancelled — keep partials
       const filtered = applyType(resp.results);
@@ -206,7 +213,10 @@ export default function Properties() {
       console.error('[Properties] search failed', err);
       toast.error('חיפוש נכשל: ' + (err?.message ?? 'שגיאה לא ידועה'));
     } finally {
-      if (searchTokenRef.current === token) setSearching(false);
+      if (searchTokenRef.current === token) {
+        setSearching(false);
+        setSearchProgress(null);
+      }
     }
   }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin]);
 
@@ -215,8 +225,10 @@ export default function Properties() {
   const cancelSearch = useCallback(() => {
     searchTokenRef.current++;
     setSearching(false);
+    setSearchProgress(null);
     toast.info('החיפוש בוטל — מוצגות התוצאות שנמצאו עד כה');
   }, []);
+
 
   // Persist the full search state (criteria + results) on every change, so
   // navigating away and back restores the exact same table.
@@ -526,6 +538,33 @@ export default function Properties() {
             </Button>
 
           </div>
+
+          {/* Live streaming status: how many sources answered, how many rows are
+              already on the table, and which gateways are still working. */}
+          {searching && (
+            <div className="mt-2 space-y-1" dir="rtl">
+              <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>
+                    טוען תוצאות… {searchProgress?.loaded ?? results.length} נטענו
+                    {searchProgress ? ` · ${searchProgress.done}/${searchProgress.total} מקורות` : ''}
+                  </span>
+                </span>
+                {searchProgress?.pending?.length ? (
+                  <span className="truncate">
+                    ממתין ל: {searchProgress.pending.map((p) => sourceLabel(p as any)).join(', ')}
+                  </span>
+                ) : null}
+              </div>
+              <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-300"
+                  style={{ width: `${Math.round(((searchProgress?.done ?? 0) / (searchProgress?.total || 3)) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
 
@@ -781,7 +820,7 @@ export default function Properties() {
             <div className="text-base font-semibold text-foreground mb-1">חפש נכס מכל המקורות</div>
             <div className="text-sm">הזן עיר, כתובת או קישור — נחפש בו-זמנית במאגר שלך, בהומלי וביד-2.</div>
           </Card>
-        ) : searching ? (
+        ) : searching && sortedResults.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-72 w-full rounded-lg" />

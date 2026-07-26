@@ -584,6 +584,17 @@ const buildFirstCommentKeywordLine = (listing: CampaignListing | null | undefine
   return Array.from(new Set(parts.map((s) => s.trim()))).join(' | ');
 };
 
+// Hard cap: the property line in the first comment is at most 10 words.
+const limitToTenWords = (line: string) =>
+  String(line || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 10)
+    .join(' ')
+    .replace(/[,;:\-–—]+$/, '');
+
 const buildFallbackFirstComment = (listing: CampaignListing | null) => {
   const city = normalizeListingText(listing?.city) || 'הרצליה';
   const neighborhood = normalizeListingText(listing?.neighborhood);
@@ -592,11 +603,11 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
   const keywordLine = buildFirstCommentKeywordLine(listing);
   const propertyPhrase = rooms ? `דירת ${rooms} ב${location}` : `נכס ב${location}`;
   const variants = [
-    `${propertyPhrase} — הזדמנות שכדאי לראות לפני שמקבלים החלטה.`,
-    `${propertyPhrase} עם מיקום נכון ופוטנציאל אמיתי למי שמחפש איכות חיים.`,
-    `${propertyPhrase} שמשלב מיקום, נוחות ואופי — שווה ביקור.`,
+    `${propertyPhrase} — הזדמנות שכדאי לראות.`,
+    `${propertyPhrase} עם מיקום נכון ופוטנציאל אמיתי.`,
+    `${propertyPhrase} שמשלב מיקום ואופי, שווה ביקור.`,
   ];
-  const oneLiner = variants[Math.floor(Math.random() * variants.length)];
+  const oneLiner = limitToTenWords(variants[Math.floor(Math.random() * variants.length)]);
   return `${oneLiner}\n${keywordLine}`.trim();
 };
 
@@ -1229,7 +1240,7 @@ const InlineComposer = ({
       const styleInstructions = [
         'כתוב את התגובה הראשונה (First Comment) לפוסט נדל"ן — פורמט קצר וקפדני של שתי שורות בלבד.',
         'מבנה מחייב, בדיוק שתי שורות ותו לא:',
-        'שורה 1: משפט אחד קצר, אנושי ומשכנע על הנכס (עד ~18 מילים). בלי אימוג\'ים, בלי בולטים, בלי סוגריים מרובעים.',
+        'שורה 1: משפט אחד ישיר ופשוט על הנכס, מקסימום 10 מילים בסך הכל. בלי מילות מילוי, בלי הקדמות, בלי אימוג\'ים, בלי בולטים, בלי סוגריים מרובעים.',
         `שורה 2: שורת מילות מפתח בדיוק זו, מופרדת בקווים אנכיים (|), ללא שינוי סדר או תוכן: ${keywordLine}`,
         listingFacts ? `פרטים יבשים של הנכס להישען עליהם בלבד (אסור להמציא נתונים שלא מופיעים כאן): ${listingFacts}` : '',
         'אסור בהחלט: יותר משתי שורות, פסקאות תיאור ארוכות, בולטים (✅/📍/💰/📞), אימוג\'ים בכלל, כוכביות, האשטגים, em-dash, מקפים כפולים (--), סוגריים מרובעים, או placeholders.',
@@ -1247,10 +1258,10 @@ const InlineComposer = ({
       });
       if (error) throw error;
       let text = cleanFirstComment(String(data?.content || data?.text || ''));
-      // Enforce strict 2-line layout: keep first non-empty line as the sentence,
-      // then append the canonical keyword line as the second line.
+      // Enforce strict 2-line layout: a single property line capped at 10
+      // words, immediately followed by the canonical keyword line.
       const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-      const firstSentence = lines.find((l) => !l.includes('|')) || lines[0] || '';
+      const firstSentence = limitToTenWords(lines.find((l) => !l.includes('|')) || lines[0] || '');
       const finalText = firstSentence && keywordLine
         ? `${firstSentence}\n${keywordLine}`
         : buildFallbackFirstComment(listing as CampaignListing | null);
@@ -1565,7 +1576,7 @@ const InlineComposer = ({
             setBodyManuallyEdited(true);
           }}
           placeholder="תוכן הפוסט"
-          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pr-12"
+          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pl-12"
         />
         <button
           type="button"
@@ -1574,7 +1585,7 @@ const InlineComposer = ({
             return bodyManuallyEdited ? finalizeBody() : handleGenerate({ rotateTemplate: true });
           }}
           disabled={generating || finalizingBody}
-          className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
+          className="absolute top-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
           aria-label={!hasBody ? 'חולל תוכן עם AI' : (bodyManuallyEdited ? 'שיוף לגרסה סופית' : 'חולל טקסט מחדש')}
           title={!hasBody ? 'חולל תוכן עם AI' : (bodyManuallyEdited ? 'שיוף לגרסה סופית' : 'חולל טקסט מחדש')}
         >
@@ -1654,7 +1665,7 @@ const InlineComposer = ({
           comment on the published post. WA / Messenger link options live
           here and no longer touch the main post body. */}
       <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2" dir="rtl">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-row-reverse items-center justify-between gap-2">
           <label className="flex items-center gap-2 text-sm font-semibold text-foreground select-none cursor-pointer">
             <Checkbox
               checked={firstCommentEnabled}
