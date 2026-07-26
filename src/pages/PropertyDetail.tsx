@@ -1018,6 +1018,7 @@ export default function PropertyDetail() {
               city={property.city}
               neighborhood={neighborhood || null}
               dealType={Number(property.price) < 50_000 ? 'rent' : 'sale'}
+              listingId={property.id}
             />
           )}
 
