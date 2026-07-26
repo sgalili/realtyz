@@ -43,9 +43,11 @@ export type SearchFilters = {
 };
 
 export type SourceStatus = 'ok' | 'empty' | 'unavailable' | 'error';
+export type SearchProgress = { done: number; total: number; loaded: number; pending: string[] };
 export type SearchResponse = {
   results: UnifiedResult[];
   sources: Record<string, { status: SourceStatus; count: number; error?: string }>;
+  progress?: SearchProgress;
 };
 
 function normPhone(price: unknown): number | null {
