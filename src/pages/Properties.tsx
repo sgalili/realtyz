@@ -912,11 +912,20 @@ function ResultCard({
           </div>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <PropertyShareMenu results={[result]} />
-            <Button size="sm" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="gap-1.5">
-              <Send className="h-4 w-4" />
-              פתח
-            </Button>
+            {onCampaign && (
+              <Button
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); onCampaign(); }}
+                className="gap-1.5"
+                title="צור קמפיין לנכס"
+                aria-label="צור קמפיין לנכס"
+              >
+                <Send className="h-4 w-4" />
+                קמפיין
+              </Button>
+            )}
           </div>
+
 
         </div>
       </div>
