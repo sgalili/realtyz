@@ -211,6 +211,9 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
           promotedAreaPerks.length
             ? `יתרונות סביבה קרובה (השתמש בקצרה, מקסימום 2 פריטים בשורה אחת): ${promotedAreaPerks.join(" · ")}`
             : null,
+          marketFactsLine
+            ? `${marketFactsLine}\nשלב עובדת שוק אחת קצרה מהנתונים האלה בגוף הפוסט, וכן הדגש יתרון מקומי אמיתי של האזור. אל תמציא נתונים שלא מופיעים כאן.`
+            : null,
           // NOTE: The full free-text description is INTENTIONALLY excluded from the main post prompt.
           // It belongs in the FIRST COMMENT box (handled client-side), not in the main post body.
 
