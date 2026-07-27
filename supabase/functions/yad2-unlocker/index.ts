@@ -1551,7 +1551,10 @@ Deno.serve(async (req) => {
     let pagesScanned = 0;
 
     for (let p = startPage; p < startPage + maxPages; p++) {
+      // Leave room for enrichment + saving.
+      if (timeLeft() < 35_000) { timedOut = true; break; }
       let pageUrl = inputUrl;
+
       if (!isItemUrl && p > 1) {
         const u = new URL(inputUrl);
         u.searchParams.set("page", String(p));
