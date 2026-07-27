@@ -69,6 +69,31 @@ function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
 }
 
+type SourceInfo = { status: string; count: number; error?: string };
+
+/**
+ * Searches fan out per city, so every city returns its own per-source report.
+ * Counts are SUMMED (not overwritten) and an error in one city doesn't erase
+ * a successful count from another.
+ */
+function mergeSourceStatuses(reports: Array<Record<string, SourceInfo>>): Record<string, SourceInfo> {
+  const out: Record<string, SourceInfo> = {};
+  for (const report of reports) {
+    for (const [key, info] of Object.entries(report ?? {})) {
+      if (!info) continue;
+      const prev = out[key];
+      if (!prev) { out[key] = { ...info }; continue; }
+      const count = (prev.count ?? 0) + (info.count ?? 0);
+      const status =
+        prev.status === 'ok' || info.status === 'ok' ? 'ok'
+        : prev.status === 'error' || info.status === 'error' ? 'error'
+        : info.status;
+      out[key] = { status, count, error: prev.error ?? info.error };
+    }
+  }
+  return out;
+}
+
 type SavedState = {
   q: string;
   listingType: ListingType | 'all';
