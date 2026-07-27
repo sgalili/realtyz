@@ -577,6 +577,25 @@ export default function PropertyDetail() {
     }
   };
 
+  /**
+   * Carousel navigation. When the gallery hasn't been fully imported yet
+   * (single/no image), the first arrow click pulls the complete gallery from
+   * the source before moving.
+   */
+  const stepPhoto = async (delta: number) => {
+    if (pullingImages) return;
+    if (photos.length <= 1) {
+      if (!galleryPulledRef.current && (sourceUrl || photos.length === 0)) {
+        galleryPulledRef.current = true;
+        await pullAllImages();
+      }
+      return;
+    }
+    setActivePhoto((i) => (i + delta + photos.length) % photos.length);
+  };
+
+
+
 
 
   const mirrorExternalUrl = async (rawUrl: string): Promise<string | null> => {
