@@ -1313,10 +1313,19 @@ function ResultTable({
                       title: r.title,
                       raw: r.raw,
                     });
-                    return r.localId
+                    const link = r.localId
                       ? <Link to={`/properties/${r.localId}`} className="hover:underline" onClick={(e) => e.stopPropagation()} title={label}>{label}</Link>
                       : <span title={label}>{label}</span>;
+                    return (
+                      <span className="inline-flex items-center gap-1.5 min-w-0">
+                        {isNewListing(r) && (
+                          <span className="shrink-0 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">חדש</span>
+                        )}
+                        <span className="truncate">{link}</span>
+                      </span>
+                    );
                   })()}
+
                 </td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
