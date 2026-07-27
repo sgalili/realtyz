@@ -24,9 +24,9 @@ export function listingActivityAt(r: any): number | null {
   return listingPublishedAt(r);
 }
 
-/** dd/MM/yyyy for the table cell — the original "פורסם ב-" date. */
+/** dd/MM/yyyy for the table cell — the original "פורסם ב-" date from the source. */
 export function formatListingDate(r: any): string {
-  const t = listingPublishedAt(r) ?? listingActivityAt(r);
+  const t = listingSourcePublishedAt(r) ?? listingPublishedAt(r) ?? listingActivityAt(r);
   if (!t) return '—';
   const d = new Date(t);
   const p = (n: number) => String(n).padStart(2, '0');
