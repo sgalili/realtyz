@@ -732,7 +732,10 @@ export default function PropertyDetail() {
             aria-level={1}
             className="text-3xl font-bold text-right text-slate-900 block leading-snug"
           >
-            {dynamicHeadline}
+            {/* Neighborhood is part of the internal headline. */}
+            {neighborhood && !dynamicHeadline.includes(neighborhood)
+              ? `${dynamicHeadline}, ${neighborhood}`
+              : dynamicHeadline}
           </div>
         </div>
 
