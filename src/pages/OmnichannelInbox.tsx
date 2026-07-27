@@ -537,8 +537,8 @@ const OmnichannelInbox = () => {
       setSendChannel(requestedChannel);
       return;
     }
-    setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
-    setInviteChannel(requestedChannel);
+    // No invite flow any more — open the chat on the requested channel anyway.
+    setSendChannel(requestedChannel);
   }, [searchParams, selectedVoterId, selectedVoter?.phone_number, availableChannels]);
 
 
@@ -826,12 +826,7 @@ const OmnichannelInbox = () => {
               setChannelFilter(c.key);
               if (c.key === 'all') return;
               if (!selectedVoterId) return;
-              if (isAvail) {
-                setSendChannel(c.key);
-              } else {
-                setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
-                setInviteChannel(c.key);
-              }
+              setSendChannel(c.key);
             };
             return (
               <button
