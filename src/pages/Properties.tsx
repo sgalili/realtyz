@@ -1179,7 +1179,15 @@ function ResultCard({
   );
 }
 
-type SortCol = 'name' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'published';
+/** Neighborhood for the table, resolved from the row or its source payload. */
+function neighborhoodOf(r: UnifiedResult): string {
+  const raw = (r.raw ?? {}) as any;
+  const meta = (raw?.source_metadata ?? {}) as any;
+  const v = r.neighborhood ?? raw.neighborhood ?? meta.neighborhood ?? meta.neighbourhood ?? meta.area ?? raw.area ?? null;
+  return typeof v === 'string' ? v.trim() : '';
+}
+
+type SortCol = 'name' | 'neighborhood' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'published';
 
 /** Official Yad2 button — rendered only after the ad is verified as still live. */
 function Yad2AdButton({ url }: { url: string }) {
@@ -1232,6 +1240,7 @@ function ResultTable({
       switch (sortCol) {
 
         case 'name': return formatStreetTypeTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
+        case 'neighborhood': return neighborhoodOf(r) || '';
         case 'house_number': return Number(houseNumberOf({ address: r.address, raw: r.raw })) || null;
         case 'apt_number': return Number(apartmentNumberOf({ address: r.address, raw: r.raw })) || null;
         case 'listing_type': return r.listing_type ?? '';
@@ -1282,6 +1291,7 @@ function ResultTable({
             <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
 
             <HeaderCell col="name" label="רחוב" />
+            <HeaderCell col="neighborhood" label="שכונה" />
             {/* Internal-only: house & apartment numbers never leave the workspace. */}
             <HeaderCell col="house_number" label="מספר בית" />
             <HeaderCell col="apt_number" label="מספר דירה" />
@@ -1342,6 +1352,7 @@ function ResultTable({
                   })()}
 
                 </td>
+                <td className="px-2 py-1.5 whitespace-nowrap max-w-[10rem] truncate">{neighborhoodOf(r) || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{houseNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{apartmentNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
