@@ -397,11 +397,6 @@ export function PropertyRichDetailsCard({
                 <Navigation className="h-5 w-5 ms-1" /> נווט לנכס
               </a>
             </Button>
-            <Button asChild size="sm" variant="outline">
-              <a href={mapUrl!} target="_blank" rel="noopener noreferrer">
-                פתח במפות
-              </a>
-            </Button>
             <span className="text-lg text-muted-foreground">
               {addressLabel || `${latitude?.toFixed(5)}, ${longitude?.toFixed(5)}`}
             </span>
