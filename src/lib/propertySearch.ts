@@ -289,10 +289,10 @@ export async function searchAllSources(
           ...body,
           query: queryText || undefined,
           mode: 'search',
-          // Walk the Yad2 directory in depth instead of stopping at the
-          // first results page — the edge function paginates server-side.
-          limit: 120,
-          pages: 4,
+          // Kept deliberately small: the edge worker has a hard memory
+          // budget, and every extra page burns BrightData credits.
+          limit: 40,
+          pages: 1,
         });
 
         if (Array.isArray(d?.diagnostics) && d.diagnostics.length) {
@@ -301,7 +301,7 @@ export async function searchAllSources(
         // Soft failures come back as HTTP 200 with { error, results: [] } so the
         // other sources keep streaming. Record the reason, don't throw.
         if (d?.error) {
-          sources.yad2 = { status: 'error', count: 0, error: String(d.detail || d.error) };
+          sources.yad2 = { status: 'error', count: 0, error: friendlyYad2Error(String(d.detail || d.error)) };
           return { label: 'yad2' as const, results: [] };
         }
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
@@ -310,7 +310,7 @@ export async function searchAllSources(
       } catch (e: any) {
         const msg = String(e?.message ?? e);
         console.error('[propertySearch] yad2-unlocker failed', e);
-        sources.yad2 = { status: 'error', count: 0, error: msg };
+        sources.yad2 = { status: 'error', count: 0, error: friendlyYad2Error(msg) };
         return { label: 'yad2' as const, results: [] };
       }
     })();
