@@ -309,10 +309,10 @@ export function PropertyRichDetailsCard({
             <Sofa className="h-5 w-5 text-primary" /> פירוט הריהוט
           </h2>
           <dl className="divide-y divide-border/60">
-            {furnitureEntries.map(([k, v]) => (
-              <div key={k} className="flex items-start justify-between gap-6 py-2.5">
-                <dt className="text-lg text-muted-foreground">{label(k)}</dt>
-                <dd className="text-lg font-medium text-foreground text-left">{renderValue(v)}</dd>
+            {furnitureEntries.map(({ key, name, value }) => (
+              <div key={key} className="flex items-start justify-between gap-6 py-2.5">
+                <dt className="text-lg text-muted-foreground">{name}</dt>
+                <dd className="text-lg font-medium text-foreground text-left">{renderValue(value)}</dd>
               </div>
             ))}
           </dl>
@@ -323,10 +323,10 @@ export function PropertyRichDetailsCard({
         <section>
           <h2 className="text-2xl font-bold text-foreground mb-3">פרטים נוספים</h2>
           <dl className="divide-y divide-border/60">
-            {detailRows.map(([k, v]) => (
-              <div key={k} className="flex items-start justify-between gap-6 py-2.5">
-                <dt className="text-lg text-muted-foreground">{label(k)}</dt>
-                <dd className="text-lg font-medium text-foreground text-left">{renderValue(v)}</dd>
+            {detailRows.map(({ key, name, value }) => (
+              <div key={key} className="flex items-start justify-between gap-6 py-2.5">
+                <dt className="text-lg text-muted-foreground">{name}</dt>
+                <dd className="text-lg font-medium text-foreground text-left">{renderValue(value)}</dd>
               </div>
             ))}
           </dl>
