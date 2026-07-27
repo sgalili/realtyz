@@ -1,6 +1,6 @@
 // Publication / last-update date resolution for listing rows coming from
 // Yad2, Homely, WebTiv or the local DB.
-import { listingPublishedAt } from '@/lib/listingFreshness';
+import { listingPublishedAt, listingSourcePublishedAt } from '@/lib/listingFreshness';
 
 function toTime(v: unknown): number | null {
   if (!v) return null;
