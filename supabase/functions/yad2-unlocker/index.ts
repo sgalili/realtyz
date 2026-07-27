@@ -1013,6 +1013,7 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     furniture_details: pickFurniture(it),
     additional_details: pickAdditionalDetails(it),
     price_history: pickPriceHistory(it),
+    ...pickListingDates(it),
   };
 }
 
