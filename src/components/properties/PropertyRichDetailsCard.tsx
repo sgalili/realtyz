@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  FileText, Sofa, TrendingUp, MapPin, Navigation,
+  Sofa, TrendingUp, MapPin, Navigation,
   ArrowUpCircle, Wind, Grid2X2, ShieldCheck, Sun, Armchair, DoorClosed,
   Accessibility, Fan, PaintRoller, Package, Warehouse, PawPrint, Users, Car, Home,
 } from 'lucide-react';
@@ -289,9 +289,6 @@ export function PropertyRichDetailsCard({
 
   const navUrl = hasCoords
     ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
-    : null;
-  const mapUrl = hasCoords
-    ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
     : null;
 
   return (
