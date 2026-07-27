@@ -119,9 +119,10 @@ Deno.serve(async (req) => {
   const cfg: Cfg = { ...((existing?.config as Cfg) ?? {}) };
 
   const wabaId = String(input.waba_id ?? cfg.waba_id ?? Deno.env.get("META_WABA_ID") ?? "");
-  const phoneNumberId = String(
+  let phoneNumberId = String(
     input.phone_number_id ?? cfg.phone_number_id ?? Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? "",
-  );
+  ).trim();
+
   const accessToken = String(
     input.access_token ?? cfg.access_token ?? Deno.env.get("META_WA_ACCESS_TOKEN") ?? "",
   );
