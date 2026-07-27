@@ -1167,7 +1167,7 @@ function ResultCard({
                 aria-label="צור קמפיין לנכס"
               >
                 <Send className="h-4 w-4" />
-                קמפיין
+                פרסם
               </Button>
             )}
           </div>
