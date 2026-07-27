@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { ensureFullPropertyImport } from '@/lib/propertyFullSync';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -287,6 +288,34 @@ export default function PropertyDetail() {
   const documents = data?.documents ?? [];
 
   const dbPhotos = property?.photos ?? [];
+
+  // ---- Automatic on-view metadata hydration -------------------------------
+  // When a property is opened and key Yad2 metadata is missing (ארנונה,
+  // ועד בית, מספר תשלומים, or the "על הנכס" text), re-parse the source ad
+  // once, persist it server-side, and refresh the view.
+  const hydratedRef = useRef<string | null>(null);
+  const [hydrating, setHydrating] = useState(false);
+  useEffect(() => {
+    if (!id || !data) return;
+    if (hydratedRef.current === id) return;
+    const src = data.sourceUrl;
+    if (!src || !/yad2\.co\.il/i.test(src)) return;
+
+    const add = (data.rich?.additional ?? {}) as Record<string, unknown>;
+    const has = (v: unknown) => v != null && v !== '' && String(v) !== '0';
+    const about = (data.rich?.about ?? '').toString().trim();
+    const missing =
+      about.length < 25 || !has(add.arnona) || !has(add.vaadBayit) || !has(add.paymentsCount);
+    if (!missing) return;
+
+    hydratedRef.current = id;
+    setHydrating(true);
+    ensureFullPropertyImport(id, src)
+      .then(() => qc.invalidateQueries({ queryKey: ['property-detail', id] }))
+      .catch(() => {})
+      .finally(() => setHydrating(false));
+  }, [id, data, qc]);
+
 
 
   // Initialize edit form when entering edit mode. Prefer a locally-persisted

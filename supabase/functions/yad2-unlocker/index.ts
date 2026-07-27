@@ -491,8 +491,25 @@ function pickAddressNumbers(it: any, addressText?: string | null): {
  * `freeText`, `adDescription`, `metaData.longDescription`, ...). Walk the
  * whole payload and keep the longest human-looking text we find so the
  * description is never lost.
+ *
+ * Guard: SEO / meta / breadcrumb blocks contain long *location* strings
+ * ("דירה למכירה ברחוב ... הרצליה | יד2") that used to win the "longest text"
+ * race and replace the real description. Those keys and value shapes are
+ * rejected outright.
  */
 const DESC_KEY_RE = /(description|info_?text|free_?text|about|remarks|comments?|body_?text|ad_?text)/i;
+const DESC_KEY_DENY_RE = /(seo|meta_?title|metaDescription|og_?|breadcrumb|share|canonical|page_?title|schema|alt|image|agency|office|contact|category|sub_?title|short)/i;
+const DESC_VALUE_DENY_RE =
+  /(יד ?2|yad2\.co\.il|\|\s*יד|כל הזכויות שמורות|לוח מודעות|נדל"ן\s*[-|]|תנאי שימוש|מדיניות פרטיות)/i;
+
+/** Location-ish boilerplate, e.g. "דירה למכירה, הרצליה, בן יהודה 27". */
+function looksLikeLocationString(v: string): boolean {
+  if (/[.!?]/.test(v) && v.length > 80) return false; // real prose
+  const commas = (v.match(/,/g) ?? []).length;
+  if (commas >= 2 && v.length < 120) return true;
+  return /^(דירה|בית|פנטהאוז|מגרש|נכס)\s+(למכירה|להשכרה)\b/.test(v) && v.length < 120;
+}
+
 function deepDescription(obj: any, depth = 0): string | null {
   if (!obj || depth > 6) return null;
   let best: string | null = null;
@@ -500,6 +517,8 @@ function deepDescription(obj: any, depth = 0): string | null {
     const v = clean(typeof s === "string" ? s : null);
     if (!v || v.length < 25) return;
     if (/^https?:\/\//i.test(v)) return;
+    if (DESC_VALUE_DENY_RE.test(v)) return;
+    if (looksLikeLocationString(v)) return;
     if (!best || v.length > best.length) best = v;
   };
   if (Array.isArray(obj)) {
@@ -511,6 +530,7 @@ function deepDescription(obj: any, depth = 0): string | null {
   }
   if (typeof obj !== "object") return null;
   for (const [k, v] of Object.entries(obj)) {
+    if (DESC_KEY_DENY_RE.test(k)) continue;
     if (typeof v === "string") {
       if (DESC_KEY_RE.test(k)) consider(v);
     } else if (v && typeof v === "object") {
@@ -523,23 +543,86 @@ function deepDescription(obj: any, depth = 0): string | null {
 /** HTML fallback: pull the text that sits under the "על הנכס" heading. */
 function descriptionFromHtml($: any): string | null {
   if (!$) return null;
-  let found: string | null = null;
+  const accept = (s: string | null | undefined, min = 25): string | null => {
+    const v = clean(s ?? null);
+    if (!v || v.length < min) return null;
+    if (DESC_VALUE_DENY_RE.test(v)) return null;
+    if (looksLikeLocationString(v)) return null;
+    return v.replace(/^על הנכס\s*/, "").trim() || null;
+  };
+
+  // 1. Exact "על הנכס" heading → its sibling / container body. This is the
+  //    authoritative block; never fall through to generic text if it exists.
   try {
-    $('h2,h3,[class*="description"],[data-testid*="description"]').each((_: number, el: any) => {
-      if (found) return;
+    let exact: string | null = null;
+    $("h1,h2,h3,h4,span,div").each((_: number, el: any) => {
+      if (exact) return;
       const node = $(el);
       const heading = clean(node.text());
-      if (heading && /על הנכס/.test(heading)) {
-        const body = clean(node.next().text()) || clean(node.parent().text());
-        if (body && body.length > 25) found = body.replace(/^על הנכס\s*/, "").trim();
-      } else if (!heading || heading.length > 40) {
-        const body = clean(node.text());
-        if (body && body.length > 60 && (!found || body.length > found.length)) found = body;
-      }
+      if (!heading || !/^על הנכס\s*$/.test(heading)) return;
+      exact =
+        accept(node.next().text()) ||
+        accept(node.parent().next().text()) ||
+        accept(node.parent().text());
     });
+    if (exact) return exact;
   } catch { /* cheerio shape mismatch — ignore */ }
+
+  // 2. Explicit description containers.
+  try {
+    let byTestId: string | null = null;
+    $('[data-testid*="description" i], [class*="description" i], [class*="about" i]').each(
+      (_: number, el: any) => {
+        const body = accept($(el).text(), 40);
+        if (body && (!byTestId || body.length > byTestId.length)) byTestId = body;
+      },
+    );
+    if (byTestId) return byTestId;
+  } catch { /* ignore */ }
+
+  // 3. Last resort: longest paragraph-like block on the page.
+  let found: string | null = null;
+  try {
+    $("p").each((_: number, el: any) => {
+      const body = accept($(el).text(), 60);
+      if (body && (!found || body.length > found.length)) found = body;
+    });
+  } catch { /* ignore */ }
   return found;
 }
+
+/**
+ * Recursively hunt a numeric/short-text value by key across the whole payload.
+ * Yad2 nests ארנונה / ועד בית / מספר תשלומים under different parents per
+ * endpoint (`additionalDetails`, `priceDetails`, `payments`, `terms`, ...).
+ */
+function deepFindByKey(obj: any, keyRe: RegExp, depth = 0): unknown {
+  if (!obj || typeof obj !== "object" || depth > 6) return null;
+  const entries = Array.isArray(obj) ? obj.map((v, i) => [String(i), v] as const) : Object.entries(obj);
+  for (const [k, v] of entries) {
+    if (keyRe.test(k)) {
+      if (v == null || v === "") continue;
+      if (typeof v === "object") {
+        const inner = (v as any).value ?? (v as any).text ?? (v as any).amount ?? (v as any).price;
+        if (inner != null && inner !== "" && typeof inner !== "object") return inner;
+        continue;
+      }
+      return v;
+    }
+  }
+  for (const [, v] of entries) {
+    if (v && typeof v === "object") {
+      const found = deepFindByKey(v, keyRe, depth + 1);
+      if (found != null && found !== "") return found;
+    }
+  }
+  return null;
+}
+
+const ARNONA_KEY_RE = /^(arnona|municipal_?tax|propertyTax|city_?tax)$/i;
+const VAAD_KEY_RE = /^(vaad_?bayit|house_?committee|houseCommitteeFee|maintenance_?fee|committee)$/i;
+const PAYMENTS_KEY_RE = /^(payments_?count|num_?of_?payments|numberOfPayments|paymentsNumber|monthly_?payments)$/i;
+
 
 /** "פירוט הריהוט" — furniture inventory block. */
 function pickFurniture(it: any): Record<string, unknown> {
@@ -615,9 +698,9 @@ function pickAdditionalDetails(it: any): Record<string, unknown> {
       it?.assetCondition,
     ),
     squareMeterBuild: first(out.squareMeterBuild, ad.squareMeterBuild, ad.squareMeter, it?.square_meters),
-    arnona: first(out.arnona, ad.arnona, ad.municipalTax, it?.arnona, it?.municipalTax, it?.taxes),
-    vaadBayit: first(out.vaadBayit, ad.vaadBayit, ad.houseCommittee, it?.houseCommittee, it?.vaadBayit),
-    paymentsCount: first(out.paymentsCount, ad.paymentsCount, ad.numOfPayments, it?.numOfPayments),
+    arnona: first(out.arnona, ad.arnona, ad.municipalTax, it?.arnona, it?.municipalTax, it?.taxes, deepFindByKey(it, ARNONA_KEY_RE)),
+    vaadBayit: first(out.vaadBayit, ad.vaadBayit, ad.houseCommittee, it?.houseCommittee, it?.vaadBayit, deepFindByKey(it, VAAD_KEY_RE)),
+    paymentsCount: first(out.paymentsCount, ad.paymentsCount, ad.numOfPayments, it?.numOfPayments, deepFindByKey(it, PAYMENTS_KEY_RE)),
     entranceDate: first(out.entranceDate, ad.entranceDate, it?.entranceDate, it?.dates?.entrance),
     yearBuilt: first(out.yearBuilt, ad.yearBuilt, ad.buildingYear, it?.buildingYear),
   };
