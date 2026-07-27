@@ -124,17 +124,26 @@ export function formatInternalListingTitle(input: {
 
   const hasAptInAddress = /(?:דירה|דירת|ד['׳"]|יח["׳']|apt\.?|apartment|unit|#)\s*\d/i.test(address);
 
+  // Required internal format: `רחוב מספר, דירה מספר, סוג נכס`
   if (apt && !hasAptInAddress) {
-    address = `${address} ד' ${apt}`.trim();
+    address = `${address}, דירה ${apt}`.trim();
   } else if (!apt && !hasAptInAddress) {
     // Address may carry a bare second numeric group ("הפסנתר 8 16") — render
     // that tail as an apartment number for internal clarity.
     const m = address.match(/^(.*?\d+[א-תA-Za-z]?)\s+(\d{1,4}[א-תA-Za-z]?)\s*$/);
-    if (m) address = `${m[1]} ד' ${m[2]}`;
+    if (m) address = `${m[1]}, דירה ${m[2]}`;
+  } else if (hasAptInAddress) {
+    // Normalize any existing apartment marker to the canonical "דירה N" form.
+    address = address
+      .replace(/[,\s]*(?:דירת|ד['׳"]|יח["׳']|apt\.?|apartment|unit|#)\s*(\d{1,4}[א-תA-Za-z]?)/i, ', דירה $1')
+      .replace(/[,\s]*דירה\s*(\d{1,4}[א-תA-Za-z]?)/, ', דירה $1')
+      .replace(/\s+,/g, ',')
+      .trim();
   }
 
   const parts = [address, type].map((p) => (p ? String(p).trim() : '')).filter(Boolean);
   if (!parts.length) return (input.title ?? '').trim() || 'נכס';
   return parts.join(', ');
 }
+
 

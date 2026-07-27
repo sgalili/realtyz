@@ -40,6 +40,8 @@ import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchF
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle } from '@/lib/formatListingTitle';
+import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/propertyFullSync';
+
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
@@ -330,19 +332,30 @@ export default function Properties() {
     runSearch();
   }, [q, runSearch]);
 
-  // Clicking a row/card ONLY opens the details view. For rows that were
-  // already imported (have a localId), navigate to the local details page.
-  // For external rows, open the preview dialog. Importing is explicit —
-  // either via the preview dialog's "Import & open" button or via the
-  // preview dialog's "Import & open" button.
+  // Clicking a row/card opens the details view AND kicks off a background
+  // full import: complete metadata re-scrape + full gallery mirroring into
+  // permanent storage, so the property is cached for instant future access.
   const handleSelect = (r: UnifiedResult) => {
     if (r.localId) {
+      triggerFullPropertyImport(r.localId, r.url ?? null);
       navigate(`/properties/${r.localId}`);
       return;
     }
     setPreviewResult(r);
     setPreviewOpen(true);
+    // External row — import it into the DB in the background, then pull the
+    // full gallery and metadata so it is permanently cached.
+    void (async () => {
+      try {
+        const id = await autoImportResult(r);
+        await ensureFullPropertyImport(id, r.url ?? null);
+        queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+      } catch (err) {
+        console.warn('[Properties] background full import failed', err);
+      }
+    })();
   };
+
 
   const handleImport = async (r: UnifiedResult) => {
     if (r.localId) { navigate(`/properties/${r.localId}`); return; }

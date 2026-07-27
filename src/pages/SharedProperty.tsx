@@ -181,9 +181,6 @@ export default function SharedProperty() {
               {data?.workspace_name || 'Realtyz'}
             </h1>
           </div>
-          <div className="absolute left-4 top-1/2 -translate-y-1/2">
-            <WaButton compact />
-          </div>
         </div>
       </header>
 
