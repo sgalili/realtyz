@@ -1227,6 +1227,7 @@ function ResultTable({
         case 'name': return formatInternalListingTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
         case 'house_number': return Number(houseNumberOf({ address: r.address, raw: r.raw })) || null;
         case 'apt_number': return Number(apartmentNumberOf({ address: r.address, raw: r.raw })) || null;
+        case 'listing_type': return r.listing_type ?? '';
         case 'price': return typeof r.price === 'number' ? r.price : null;
         case 'city': return r.city ?? '';
         case 'address': return stripAddressNumbers(r.address ?? '') || '';
