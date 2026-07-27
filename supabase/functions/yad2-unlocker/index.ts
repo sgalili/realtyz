@@ -1135,6 +1135,9 @@ function parseItemJson(body: string, srcUrl: string): Scraped | null {
   base.apartment_number = nums.apartment_number ?? base.apartment_number ?? null;
   const hist = pickPriceHistory(ad);
   if (hist.length) base.price_history = hist;
+  const dates = pickListingDates(ad);
+  base.published_at = dates.published_at ?? base.published_at ?? null;
+  base.updated_at_source = dates.updated_at_source ?? base.updated_at_source ?? null;
   return base;
 }
 
