@@ -2102,18 +2102,8 @@ const LeadCRM = () => {
                                 <PhoneIcon className="h-4 w-4" strokeWidth={1.8} />
                               </a>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => pushLeadToHomely(selectedVoter.id, false)}
-                              disabled={pushingHomely}
-                              aria-label="סנכרן להומלי"
-                              title="סנכרן להומלי"
-                              className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
-                            >
-                              {pushingHomely
-                                ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.8} />
-                                : <UploadCloud className="h-4 w-4" strokeWidth={1.8} />}
-                            </button>
+                            {/* Homely / WebTiv are read-only sources — no push action. */}
+
                             <LeadEnrichmentIconButton lead={selectedVoter} />
                             <div className="flex items-center gap-1.5 mr-auto ps-2">
                               <Switch
