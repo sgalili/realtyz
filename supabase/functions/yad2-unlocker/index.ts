@@ -1719,7 +1719,7 @@ async function mirrorPhotos(admin: any, keyPrefix: string, urls: string[]): Prom
 
 async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
   const { data: existing } = await admin
-    .from("listings").select("id, slug, media_photos").eq("source_url", row.source_url).maybeSingle();
+    .from("listings").select("id, slug, media_photos, source_metadata").eq("source_url", row.source_url).maybeSingle();
   const ownerId = await upsertOwnerProfile(admin, workspaceOwnerId, row.owner_name, row.owner_phone);
 
   // Full gallery, never a single thumbnail: merge whatever we already stored
