@@ -698,9 +698,9 @@ function pickAdditionalDetails(it: any): Record<string, unknown> {
       it?.assetCondition,
     ),
     squareMeterBuild: first(out.squareMeterBuild, ad.squareMeterBuild, ad.squareMeter, it?.square_meters),
-    arnona: first(out.arnona, ad.arnona, ad.municipalTax, it?.arnona, it?.municipalTax, it?.taxes),
-    vaadBayit: first(out.vaadBayit, ad.vaadBayit, ad.houseCommittee, it?.houseCommittee, it?.vaadBayit),
-    paymentsCount: first(out.paymentsCount, ad.paymentsCount, ad.numOfPayments, it?.numOfPayments),
+    arnona: first(out.arnona, ad.arnona, ad.municipalTax, it?.arnona, it?.municipalTax, it?.taxes, deepFindByKey(it, ARNONA_KEY_RE)),
+    vaadBayit: first(out.vaadBayit, ad.vaadBayit, ad.houseCommittee, it?.houseCommittee, it?.vaadBayit, deepFindByKey(it, VAAD_KEY_RE)),
+    paymentsCount: first(out.paymentsCount, ad.paymentsCount, ad.numOfPayments, it?.numOfPayments, deepFindByKey(it, PAYMENTS_KEY_RE)),
     entranceDate: first(out.entranceDate, ad.entranceDate, it?.entranceDate, it?.dates?.entrance),
     yearBuilt: first(out.yearBuilt, ad.yearBuilt, ad.buildingYear, it?.buildingYear),
   };
