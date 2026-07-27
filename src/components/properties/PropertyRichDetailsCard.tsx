@@ -236,7 +236,11 @@ export function PropertyRichDetailsCard({
   longitude,
   addressLabel,
 }: Props) {
-  const furnitureEntries = entriesOf(furniture);
+  // Only keys we can present with a real Hebrew label are rendered — raw
+  // English field names must never reach the UI.
+  const furnitureEntries = entriesOf(furniture)
+    .map(([k, v]) => ({ key: k, name: label(k), value: v }))
+    .filter((e): e is { key: string; name: string; value: unknown } => !!e.name);
   const rawAdditional = entriesOf(additional);
   const rawAmenities = entriesOf(amenities);
 
@@ -245,18 +249,22 @@ export function PropertyRichDetailsCard({
   // the grid, regardless of which source object they arrived in.
   const all: Entry[] = [...rawAdditional, ...rawAmenities];
   const seen = new Set<string>();
-  const deduped = all.filter(([k]) => {
-    const n = normalizeKey(k);
-    if (seen.has(n)) return false;
-    seen.add(n);
-    return true;
-  });
+  const deduped = all
+    .filter(([k]) => {
+      const n = normalizeKey(k);
+      if (seen.has(n)) return false;
+      seen.add(n);
+      return true;
+    })
+    .map(([k, v]) => ({ key: k, name: label(k), value: v }))
+    .filter((e): e is { key: string; name: string; value: unknown } => !!e.name);
 
-  const detailRows = deduped.filter(([, v]) => !isBooleanish(v));
+  const detailRows = deduped.filter((e) => !isBooleanish(e.value));
   const featureFlags = deduped
-    .filter(([, v]) => isBooleanish(v))
-    .map(([k, v]) => ({ name: label(k), on: truthy(v) }))
+    .filter((e) => isBooleanish(e.value))
+    .map((e) => ({ name: e.name, on: truthy(e.value) }))
     .sort((a, b) => Number(b.on) - Number(a.on));
+
 
   const points = (priceHistory ?? []).filter((p) => p && p.price != null);
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
