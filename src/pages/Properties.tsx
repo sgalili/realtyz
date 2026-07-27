@@ -1389,8 +1389,6 @@ function ResultTable({
                       return <Yad2AdButton url={live} />;
                     })()}
 
-                    })()}
-
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
                   </div>
                 </td>
