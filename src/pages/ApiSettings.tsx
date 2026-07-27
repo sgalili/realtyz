@@ -273,7 +273,6 @@ const ApiSettings = () => {
   const [homelyClientCode, setHomelyClientCode] = useState('');
   const [homelyProvider, setHomelyProvider] = useState('Realtyz');
   const [homelyDefaultAgent, setHomelyDefaultAgent] = useState('');
-  const [homelyAutoPush, setHomelyAutoPush] = useState(false);
   // Per-broker Homely login (stored encrypted server-side)
   const [homelyAgency, setHomelyAgency] = useState('');
   const [homelyUsername, setHomelyUsername] = useState('');
@@ -522,7 +521,6 @@ const ApiSettings = () => {
         setHomelyClientCode((data as any).homely_client_code || '');
         setHomelyProvider((data as any).homely_provider || 'Realtyz');
         setHomelyDefaultAgent((data as any).homely_default_agent || '');
-        setHomelyAutoPush(Boolean((data as any).homely_auto_push));
       }
       setHomelyLoaded(true);
 
@@ -627,16 +625,14 @@ const ApiSettings = () => {
           homely_client_code: homelyClientCode.trim(),
           homely_provider: homelyProvider.trim() || 'Realtyz',
           homely_default_agent: homelyDefaultAgent.trim() || null,
-          homely_auto_push: homelyAutoPush,
+          homely_auto_push: false,
           updated_at: new Date().toISOString(),
         } as any,
         { onConflict: 'user_id' },
       );
     setSavingKey(null);
     if (error) { toast.error('שמירה נכשלה: ' + error.message); return; }
-    toast.success(homelyAutoPush
-      ? '✅ פרטי Homely Open Card נשמרו — סנכרון אוטומטי פעיל'
-      : '✅ פרטי Homely Open Card נשמרו');
+    toast.success('✅ פרטי Homely נשמרו');
   };
 
   const handleSaveHomely = async () => {
