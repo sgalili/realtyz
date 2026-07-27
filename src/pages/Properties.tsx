@@ -456,11 +456,15 @@ export default function Properties() {
   // Transaction-type toggle filters the rendered list instantly (the live
   // search re-runs in parallel through the effect below).
   const typeFiltered = useMemo(() => {
-    if (listingType === 'all') return results;
-    const narrowed = results.filter((r) => r.listing_type === listingType);
+    const bySource = sourceFilter
+      ? results.filter((r) => (r.sources ?? [r.source]).includes(sourceFilter))
+      : results;
+    const base = sourceFilter && !bySource.length ? results : bySource;
+    if (listingType === 'all') return base;
+    const narrowed = base.filter((r) => r.listing_type === listingType);
     // Never let a toggle blank the table — keep the wider pool instead.
-    return narrowed.length ? narrowed : results;
-  }, [results, listingType]);
+    return narrowed.length ? narrowed : base;
+  }, [results, listingType, sourceFilter]);
 
 
   const sortedResults = useMemo(() => {
