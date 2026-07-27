@@ -32,7 +32,13 @@ async function callMeta(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('meta-wa-register', { body });
   if (error) throw new Error(error.message);
   if (data && data.success === false) throw new Error(String(data.error ?? 'שגיאה מול Meta'));
-  return data as { success: boolean; authorized?: boolean; config: MetaCfg };
+  return data as {
+    success: boolean;
+    authorized?: boolean;
+    already_verified?: boolean;
+    message?: string;
+    config: MetaCfg;
+  };
 }
 
 export function MetaWhatsAppAuthCard() {
