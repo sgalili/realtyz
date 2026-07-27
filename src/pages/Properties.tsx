@@ -302,7 +302,7 @@ export default function Properties() {
       } else {
         // Zero-result guard: fall back to the default recent pool instead of
         // ever showing an empty table.
-        const pool = await loadDefaultPool();
+        const pool = await loadDefaultPool(listingType);
         if (searchTokenRef.current !== token) return;
         setResults(pool);
         setShowingFallback(true);
