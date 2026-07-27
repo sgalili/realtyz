@@ -217,7 +217,7 @@ export default function Properties() {
         setResults(rows);
         setHasSearched(false);
         setShowingFallback(false);
-        setSourceStatus({ local: { status: rows.length ? 'ok' : 'empty', count: rows.length } });
+        setSourceStatus({ mine: { status: rows.length ? 'ok' : 'empty', count: rows.length } });
       } catch (err) {
         console.error('[Properties] default pool preload failed', err);
       } finally {
@@ -334,7 +334,7 @@ export default function Properties() {
         if (searchTokenRef.current !== token) return;
         setResults(pool);
         setShowingFallback(true);
-        setSourceStatus({ local: { status: pool.length ? 'ok' : 'empty', count: pool.length } as any });
+        setSourceStatus({ mine: { status: pool.length ? 'ok' : 'empty', count: pool.length } as any });
       }
       const errored = Object.entries(respSources).filter(([, v]: any) => v?.status === 'error');
 
