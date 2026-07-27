@@ -45,6 +45,9 @@ import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/prope
 import { isNewListing } from '@/lib/listingFreshness';
 import { liveYad2Url } from '@/lib/yad2Ad';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
+import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
+import { formatListingDate, listingActivityAt } from '@/lib/listingDates';
+
 
 
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
@@ -1195,7 +1198,27 @@ function ResultCard({
   );
 }
 
-type SortCol = 'name' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
+type SortCol = 'name' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'published';
+
+/** Official Yad2 button — rendered only after the ad is verified as still live. */
+function Yad2AdButton({ url }: { url: string }) {
+  const status = useYad2AdStatus(url);
+  if (status !== 'live') return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="פתח את המודעה ביד2"
+      aria-label="פתח את המודעה ביד2"
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+    >
+      <Yad2Icon className="h-5 w-5" />
+    </a>
+  );
+}
+
 
 function ResultTable({
   results,
@@ -1236,6 +1259,8 @@ function ResultTable({
         case 'address': return stripAddressNumbers(r.address ?? '') || '';
         case 'rooms': return typeof r.rooms === 'number' ? r.rooms : (r.rooms ? Number(r.rooms) : null);
         case 'size_sqm': return typeof r.size_sqm === 'number' ? r.size_sqm : (r.size_sqm ? Number(r.size_sqm) : null);
+        case 'published': return listingActivityAt(r);
+
       }
     };
     const dir = sortDir === 'asc' ? 1 : -1;
@@ -1284,7 +1309,9 @@ function ResultTable({
             <HeaderCell col="city" label="עיר" />
             <HeaderCell col="rooms" label="חדרים" />
             <HeaderCell col="size_sqm" label='מ"ר' />
+            <HeaderCell col="published" label="תאריך פרסום/עדכון" />
             <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th>
+
           </tr>
         </thead>
         <tbody>
@@ -1341,6 +1368,7 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">{formatListingDate(r)}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
                   <div className="inline-flex items-center gap-1.5">
                     <Button
@@ -1358,19 +1386,7 @@ function ResultTable({
                     {(() => {
                       const live = liveYad2Url(r);
                       if (!live) return null;
-                      return (
-                        <a
-                          href={live}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="פתח את המודעה ביד2"
-                          aria-label="פתח את המודעה ביד2"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
-                        >
-                          <Yad2Icon className="h-5 w-5" />
-                        </a>
-                      );
+                      return <Yad2AdButton url={live} />;
                     })()}
 
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />

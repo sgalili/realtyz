@@ -42,7 +42,15 @@ export function liveYad2Url(row: {
   const flagTrue = pick(raw, ['is_deleted', 'is_removed', 'is_sold']) ?? pick(meta, ['is_deleted', 'is_removed', 'is_sold']);
   if (flagTrue === true || flagTrue === 'true') return '';
 
+  // Only real ad pages (…/item/<token>) can be opened; search/category URLs are not ads.
+  try {
+    if (!/\/item\/[A-Za-z0-9_-]+/.test(new URL(url).pathname)) return '';
+  } catch {
+    return '';
+  }
+
   return url;
+
 }
 
 export default liveYad2Url;
