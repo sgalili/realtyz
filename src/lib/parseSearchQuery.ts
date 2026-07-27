@@ -105,15 +105,40 @@ function detectCityNeighborhood(text: string): { city: string | null; neighborho
   return { city: matchedCity, neighborhood: matchedHood };
 }
 
+// Spelled-out Hebrew numerals, e.g. "ארבעה חדרים" / "שלוש חדרים".
+const HEB_NUMBER_WORDS: Array<[RegExp, number]> = [
+  [/\b(אחד|אחת)\b/, 1],
+  [/\b(שניים|שתיים|שני|שתי)\b/, 2],
+  [/\b(שלושה|שלוש)\b/, 3],
+  [/\b(ארבעה|ארבע)\b/, 4],
+  [/\b(חמישה|חמש)\b/, 5],
+  [/\b(שישה|שש|ששה)\b/, 6],
+  [/\b(שבעה|שבע)\b/, 7],
+  [/\b(שמונה)\b/, 8],
+  [/\b(תשעה|תשע)\b/, 9],
+  [/\b(עשרה|עשר)\b/, 10],
+];
+
+const ROOMS_WORD = `(?:חדרים|חדרי|חדר|חד['׳]|ח['׳])`;
+
 function detectRooms(text: string): number | null {
   // "4 חדרים", "4 חד'", "4 ח'", "4 rooms", "חדר וחצי"
-  const m = text.match(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]|ח['׳])/);
+  const m = text.match(new RegExp(`(\\d+(?:[.,]\\d)?)\\s*${ROOMS_WORD}`));
   if (m) return Number(m[1].replace(',', '.'));
   const m2 = text.match(/(\d+(?:[.,]\d)?)\s*rooms?/i);
   if (m2) return Number(m2[1].replace(',', '.'));
   if (/חדר\s*וחצי/.test(text)) return 1.5;
+  // Spelled-out: "ארבעה חדרים" (word may come before or after the noun).
+  for (const [re, n] of HEB_NUMBER_WORDS) {
+    const word = re.source.replace(/\\b/g, '');
+    const before = new RegExp(`${word}\\s*(?:ו?חצי\\s*)?${ROOMS_WORD}`);
+    const after = new RegExp(`${ROOMS_WORD}\\s*${word}`);
+    if (before.test(text)) return /(?:ו?חצי)\s*חדר/.test(text) ? n + 0.5 : n;
+    if (after.test(text)) return n;
+  }
   return null;
 }
+
 
 function detectPropertyType(text: string): string | null {
   for (const [re, type] of PROPERTY_TYPE_MAP) if (re.test(text)) return type;
