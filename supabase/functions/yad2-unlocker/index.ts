@@ -1412,6 +1412,8 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     city: row.city,
     neighborhood: row.neighborhood,
     address: row.address,
+    house_number: row.house_number ?? null,
+    apartment_number: row.apartment_number ?? null,
     sqm: row.sqm,
     floor: row.floor,
     deal_type: row.deal_type,
