@@ -1508,6 +1508,8 @@ function parseItem(html: string, srcUrl: string): Scraped {
     furniture_details: pickFurniture(ad ?? {}),
     additional_details: additional,
     price_history: pickPriceHistory(ad ?? {}),
+    published_at: publishedAt,
+    updated_at_source: jsonDates.updated_at_source,
   };
 
 }
