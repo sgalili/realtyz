@@ -45,6 +45,9 @@ import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/prope
 import { isNewListing } from '@/lib/listingFreshness';
 import { liveYad2Url } from '@/lib/yad2Ad';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
+import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
+import { formatListingDate, listingActivityAt } from '@/lib/listingDates';
+
 
 
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
