@@ -977,6 +977,7 @@ function parseSearch(html: string, srcUrl: string, limit: number): Scraped[] {
       city,
       neighborhood,
       address,
+      ...pickAddressNumbers(it, address),
       sqm: toInt(sqmRaw),
       floor: toInt(floorRaw),
       photos,
