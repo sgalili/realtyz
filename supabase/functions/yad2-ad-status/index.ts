@@ -89,7 +89,8 @@ Deno.serve(async (req) => {
       let browser: any = null;
       try {
         browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
-        for (const u of probeList) {
+
+        const probeOne = async (u: string) => {
           const token = itemToken(u)!;
           const page = await browser.newPage();
           try {
@@ -112,7 +113,7 @@ Deno.serve(async (req) => {
             if (/radware/i.test(pageTitle)) {
               statuses[u] = 'unknown';
               console.log(`[yad2-ad-status] ${u} blocked by bot wall -> unknown`);
-              continue;
+              return;
             }
             statuses[u] = classify(finalUrl, httpStatus, html, token);
             console.log(
@@ -124,6 +125,11 @@ Deno.serve(async (req) => {
           } finally {
             await page.close().catch(() => {});
           }
+        };
+
+        const CONCURRENCY = 4;
+        for (let i = 0; i < probeList.length; i += CONCURRENCY) {
+          await Promise.all(probeList.slice(i, i + CONCURRENCY).map(probeOne));
         }
       } catch (e) {
         console.warn(`[yad2-ad-status] browser connect failed: ${(e as Error).message}`);
