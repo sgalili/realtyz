@@ -178,7 +178,6 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
 
         {property.description && (
           <Card className="p-4 sm:p-5">
-            <h2 className="text-2xl font-bold text-primary mb-2">תיאור הנכס</h2>
             <p className="text-xl leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
           </Card>
         )}
