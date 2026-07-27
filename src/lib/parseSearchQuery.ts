@@ -191,8 +191,9 @@ export function parseSearchQuery(input: string): ParsedQuery {
   // stripped, so external free-text search still gets meaningful residue.
   let keywords = text;
   for (const tok of [city, neighborhood]) {
-    if (tok) keywords = keywords.replace(new RegExp(tok, 'gu'), ' ');
+    if (tok) keywords = keywords.replace(new RegExp(`[בלמה]?${tok}`, 'gu'), ' ');
   }
+
   keywords = keywords
     .replace(/שכונת?/g, ' ')
     .replace(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]|ח['׳])/g, ' ')
