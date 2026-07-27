@@ -957,7 +957,7 @@ export default function PropertyDetail() {
 
             </Card>
           )}
-          {photos.length > 1 && (
+          {(photos.length > 1 || editMode) && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {photos.map((p, i) => (
                 <button
