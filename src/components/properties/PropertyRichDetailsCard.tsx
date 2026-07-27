@@ -43,34 +43,67 @@ const HIDDEN_KEYS = new Set([
 const LABELS: Record<string, string> = {
   text: 'סוג נכס',
   propertytype: 'סוג נכס',
+  assettype: 'סוג נכס',
+  subcategory: 'סוג נכס',
   rooms: 'חדרים',
   roomscount: 'חדרים',
+  roomsnumber: 'חדרים',
+  bedrooms: 'חדרי שינה',
+  bathrooms: 'חדרי רחצה',
+  toilets: 'שירותים',
   מר: 'מ״ר בנוי סה״כ',
   squaremeter: 'מ״ר בנוי סה״כ',
   squaremeterbuild: 'מ״ר בנוי',
+  squaremeterbuilt: 'מ״ר בנוי',
   builtsquaremeter: 'מ״ר בנוי',
+  buildarea: 'מ״ר בנוי',
+  totalsquaremeter: 'מ״ר סה״כ',
   squaremetergarden: 'מ״ר גינה',
+  gardenarea: 'מ״ר גינה',
   balconiescount: 'מרפסות',
   balconies: 'מרפסות',
   buildingtopfloor: 'קומות בבניין',
   buildingfloors: 'קומות בבניין',
   totalfloors: 'קומות בבניין',
+  floors: 'קומות בבניין',
   floor: 'קומה',
-  parkingquantity: 'חניות',
-  parkingspaces: 'חניות',
+  onfloor: 'קומה',
+  parkingquantity: 'מספר חניות',
+  parkingspaces: 'מספר חניות',
+  parkingspacescount: 'מספר חניות',
+  parkingcount: 'מספר חניות',
   parking: 'חניה',
   vaadbayit: 'ועד בית לחודש',
   vaad: 'ועד בית לחודש',
+  committee: 'ועד בית לחודש',
   arnona: 'ארנונה',
+  municipaltax: 'ארנונה',
+  price: 'מחיר',
+  pricepermeter: 'מחיר למ״ר',
+  monthlyrent: 'שכר דירה חודשי',
+  deposit: 'פיקדון',
   payments: 'מספר תשלומים',
   paymentscount: 'מספר תשלומים',
+  numofpayments: 'מספר תשלומים',
   entrancedate: 'תאריך כניסה',
   entrydate: 'תאריך כניסה',
+  enterdate: 'תאריך כניסה',
+  enterdateflexible: 'כניסה גמישה',
+  flexibleentrydate: 'כניסה גמישה',
+  immediate: 'כניסה מיידית',
   availablefrom: 'תאריך כניסה',
+  yearbuilt: 'שנת בנייה',
+  buildingyear: 'שנת בנייה',
   propertycondition: 'מצב הנכס',
   condition: 'מצב הנכס',
   renovated: 'משופץ',
   new: 'חדש',
+  direction: 'כיווני אוויר',
+  airdirections: 'כיווני אוויר',
+  neighborhood: 'שכונה',
+  street: 'רחוב',
+  city: 'עיר',
+  area: 'אזור',
   // Amenity-style flags
   bars: 'סורגים',
   boiler: 'דוד שמש',
@@ -78,58 +111,61 @@ const LABELS: Record<string, string> = {
   elevator: 'מעלית',
   maalit: 'מעלית',
   airconditioner: 'מיזוג',
+  airconditioning: 'מיזוג',
   ac: 'מיזוג',
   tornado: 'מזגן טורנדו',
   tadiran: 'מיזוג',
   mamad: 'ממ״ד',
   shelter: 'ממ״ד',
   saferoom: 'ממ״ד',
+  securityroom: 'ממ״ד',
+  cludesecurityroom: 'ממ״ד',
   securitydoor: 'דלתות רב בריח',
   handicapped: 'גישה לנכים',
   accessible: 'גישה לנכים',
+  accessibility: 'גישה לנכים',
   warehouse: 'מחסן',
   storage: 'מחסן',
   balcony: 'מרפסת',
+  terrace: 'מרפסת',
   furniture: 'ריהוט',
+  furnished: 'מרוהט',
+  kitchen: 'מטבח',
+  garden: 'גינה',
+  pool: 'בריכה',
+  gym: 'חדר כושר',
+  doorman: 'סדרן כניסה',
   petsallowed: 'חיות מחמד',
   pets: 'חיות מחמד',
   forpartners: 'מתאים לשותפים',
+  partners: 'מתאים לשותפים',
   roommates: 'מתאים לשותפים',
   longterm: 'לטווח ארוך',
+  sublet: 'סאבלט',
   note: 'הערה',
+  notes: 'הערה',
   items: 'פריטים',
-};
-
-/** Yad2-style icons for the "מה יש בנכס?" grid. */
-const ICONS: Record<string, LucideIcon> = {
-  מעלית: ArrowUpCircle,
-  מיזוג: Wind,
-  'מזגן טורנדו': Fan,
-  סורגים: Grid2X2,
-  'ממ״ד': ShieldCheck,
-  'דוד שמש': Sun,
-  ריהוט: Armchair,
-  'דלתות רב בריח': DoorClosed,
-  'גישה לנכים': Accessibility,
-  משופץ: PaintRoller,
-  מחסן: Warehouse,
-  מרפסת: Package,
-  'חיות מחמד': PawPrint,
-  'מתאים לשותפים': Users,
-  חניה: Car,
-  'לטווח ארוך': Home,
+  description: 'תיאור',
 };
 
 function normalizeKey(key: string) {
   return String(key)
-    .replace(/^(is|include|includes|has)(?=[A-Z_])/, '')
+    .replace(/^(is|include|includes|has|in|num_?of|number_?of|total)(?=[A-Z_])/, '')
     .replace(/[^A-Za-z\u0590-\u05FF0-9]/g, '')
     .toLowerCase();
 }
 
-function label(key: string) {
+/**
+ * Hebrew-only display labels. Unknown English-only keys are never shown as
+ * raw field names (`isRenovated`, `squareMeterBuild`, ...) — they are hidden.
+ */
+function label(key: string): string | null {
   const n = normalizeKey(key);
-  return LABELS[n] || String(key).replace(/_/g, ' ');
+  if (LABELS[n]) return LABELS[n];
+  const raw = String(key).replace(/_/g, ' ').trim();
+  // Keep values that already arrive in Hebrew from the source.
+  if (/[\u0590-\u05FF]/.test(raw)) return raw;
+  return null;
 }
 
 function isBooleanish(v: unknown) {
