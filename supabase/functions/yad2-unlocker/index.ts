@@ -709,6 +709,7 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     city,
     neighborhood,
     address,
+    ...pickAddressNumbers(it, address),
     sqm,
     floor,
     photos,
