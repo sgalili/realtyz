@@ -313,13 +313,17 @@ export async function searchAllSources(
         sources.yad2 = { status: 'error', count: 0, error: msg };
         return { label: 'yad2' as const, results: [] };
       }
-    })(),
-    // NOTE: `webtiv-homely-sync` is a CONTACT sync job (buyers/sellers → Homely),
-    // not a property search endpoint. Calling it here always returned a non-2xx
-    // error and never produced listings, so the office's Webtiv inventory is
-    // served through `homely-fetch-property` above (same AutomaionJson stream,
-    // both sale AND rent).
+    })();
+
+  // NOTE: `webtiv-homely-sync` is a CONTACT sync job (buyers/sellers → Homely),
+  // not a property search endpoint, so the office's Webtiv inventory is served
+  // through `homely-fetch-property` (same AutomaionJson stream, sale AND rent).
+  const stages: Array<{ label: PropertySource; run: () => Promise<{ label: PropertySource; results: UnifiedResult[] }> }> = [
+    { label: 'mine', run: localTask },
+    { label: 'yad2', run: yad2Task },
+    { label: 'homely', run: homelyTask },
   ];
+
 
   // Merge + dedupe + text-filter a set of settled source buckets.
   const mergeSettled = (buckets: Array<{ label: PropertySource; results: UnifiedResult[] }>) => {
