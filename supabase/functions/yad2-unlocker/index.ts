@@ -589,6 +589,43 @@ function pickAdditionalDetails(it: any): Record<string, unknown> {
   collect(it?.additionalDetails);
   collect(it?.propertyDetails);
   collect(it?.tags);
+  collect(it?.metaData?.additionalDetails);
+  collect(it?.priceDetails);
+  collect(it?.payments);
+
+  // Canonical Yad2 secondary fields — guaranteed present when the source has
+  // them, whatever key shape the endpoint used.
+  const first = (...vals: any[]) => {
+    for (const v of vals) {
+      if (v == null || v === "" || typeof v === "object") continue;
+      return v;
+    }
+    return null;
+  };
+  const ad = it?.additionalDetails ?? {};
+  const canon: Record<string, unknown> = {
+    floor: first(out.floor, ad.floor, it?.floor, it?.address?.house?.floor),
+    totalFloors: first(out.totalFloors, ad.totalFloors, ad.buildingTopFloor, it?.buildingTopFloor, it?.totalFloors),
+    parkingSpacesCount: first(out.parkingSpacesCount, ad.parkingSpacesCount, ad.parkingQuantity, it?.parking, it?.parkingSpaces),
+    balconiesCount: first(out.balconiesCount, ad.balconiesCount, ad.balconies, it?.balconies),
+    propertyCondition: first(
+      out.propertyCondition,
+      ad.propertyCondition?.text, ad.propertyCondition,
+      it?.propertyCondition?.text, it?.propertyCondition,
+      it?.assetCondition,
+    ),
+    squareMeterBuild: first(out.squareMeterBuild, ad.squareMeterBuild, ad.squareMeter, it?.square_meters),
+    arnona: first(out.arnona, ad.arnona, ad.municipalTax, it?.arnona, it?.municipalTax, it?.taxes),
+    vaadBayit: first(out.vaadBayit, ad.vaadBayit, ad.houseCommittee, it?.houseCommittee, it?.vaadBayit),
+    paymentsCount: first(out.paymentsCount, ad.paymentsCount, ad.numOfPayments, it?.numOfPayments),
+    entranceDate: first(out.entranceDate, ad.entranceDate, it?.entranceDate, it?.dates?.entrance),
+    yearBuilt: first(out.yearBuilt, ad.yearBuilt, ad.buildingYear, it?.buildingYear),
+  };
+  for (const [k, v] of Object.entries(canon)) {
+    if (v == null || v === "") continue;
+    out[k] = v;
+  }
+
   delete (out as any).images;
   delete (out as any).coverImage;
   return out;
