@@ -195,7 +195,7 @@ export function parseSearchQuery(input: string): ParsedQuery {
     .replace(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]|ח['׳])/g, ' ')
     .replace(new RegExp(`(?:${HEB_NUMBER_WORDS.map(([re]) => re.source.replace(/\\b/g, '')).join('|')})\\s*(?:ו?חצי\\s*)?${ROOMS_WORD}`, 'g'), ' ')
     .replace(new RegExp(`${ROOMS_WORD}(?=\\s|$)`, 'g'), ' ')
-    .replace(/בבעלות|בהרצליה/g, ' ')
+    
     .replace(/שכירות|להשכרה|להשכיר|השכרה|למכירה|מכירה|לקנות|רכישה/g, ' ')
 
     .replace(/(?:עד|מעל|from|above|over|under|below|max|min)\s*\d+(?:[.,]\d+)?\s*(?:מיליון|million|אלף|k|thousand)?/gi, ' ')
