@@ -2072,7 +2072,7 @@ Deno.serve(async (req) => {
     const startPage = Math.max(1, Number(body?.page) || 1);
     const maxPages = isItemUrl || previewOnly
       ? 1
-      : Math.min(10, Math.max(1, Number(body?.pages) || Math.ceil(limit / 30)));
+      : Math.min(2, Math.max(1, Number(body?.pages) || Math.ceil(limit / 30)));
     const seenKeys = new Set<string>();
     let pagesScanned = 0;
 
