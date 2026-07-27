@@ -2069,7 +2069,10 @@ const LeadCRM = () => {
                           return !!socialHandleFromLead(selectedVoter, key);
                         };
                         const isChatAvailable = (key: string) =>
+                          // WhatsApp is always live for any lead holding a phone number:
+                          // the official Meta Cloud API lets us initiate the conversation.
                           inboundChannels.has(key) || ((key === 'whatsapp' || key === 'sms' || key === 'email') && hasChannelIdentifier(key));
+
                         const channels = CRM_MESSAGE_CHANNELS
                           .filter((c) => isChatAvailable(c.key) || hasChannelIdentifier(c.key))
                           .map((c) => ({
