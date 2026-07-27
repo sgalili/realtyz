@@ -1331,11 +1331,20 @@ Deno.serve(async (req) => {
   try {
     const auth = req.headers.get("Authorization") || "";
     if (!auth.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
     const token = auth.replace("Bearer ", "");
-    const { data: claims } = await userClient.auth.getClaims(token);
-    const userId = claims?.claims?.sub;
+    const earlyBody = await req.json().catch(() => ({} as any));
+    let userId: string | undefined;
+    if (SERVICE_KEY && token === SERVICE_KEY) {
+      // Internal call (scheduled background sync). The caller states which
+      // workspace owner the scraped inventory belongs to.
+      userId = String(earlyBody?.owner_id ?? "") || undefined;
+    } else {
+      const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
+      const { data: claims } = await userClient.auth.getClaims(token);
+      userId = claims?.claims?.sub;
+    }
     if (!userId) return json({ error: "Unauthorized" }, 401);
+
 
     bdTrace = [];
     // Hard wall-clock budget. The platform kills the request at 150s with an
@@ -1345,7 +1354,7 @@ Deno.serve(async (req) => {
     const BUDGET_MS = 110_000;
     const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
     let timedOut = false;
-    const body = await req.json().catch(() => ({} as any));
+    const body = earlyBody;
     const limit = Math.min(300, Math.max(1, Number(body?.limit) || 30));
     const previewOnly = Boolean(body?.preview_only);
 

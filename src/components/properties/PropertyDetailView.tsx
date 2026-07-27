@@ -188,7 +188,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
         )}
 
         <Card className="p-4 sm:p-5">
-          <h2 className="text-[19px] font-bold text-primary mb-4">מאפייני הנכס</h2>
+          <h2 className="text-[15px] font-bold text-primary mb-4">מאפייני הנכס</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Spec icon={BedDouble} label="חדרים" value={property.rooms ? `${property.rooms}` : '—'} />
             <Spec icon={Ruler} label='שטח' value={property.size_sqm ? `${property.size_sqm} מ"ר` : '—'} />
@@ -217,7 +217,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
                 href={yad2Url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xl font-semibold text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-base font-semibold text-primary hover:underline"
               >
                 <ExternalLink className="h-4 w-4" />
                 🔗 מעבר למודעה ביד2
@@ -267,8 +267,8 @@ function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: str
     <div className="flex items-start gap-2">
       <Icon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[14px] text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-[15px] font-semibold text-foreground truncate">{value}</p>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="text-[11px] font-semibold text-foreground truncate">{value}</p>
       </div>
     </div>
   );

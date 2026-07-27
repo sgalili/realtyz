@@ -41,6 +41,8 @@ import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/propertyFullSync';
+import { isNewListing } from '@/lib/listingFreshness';
+
 
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
@@ -136,25 +138,26 @@ export default function Properties() {
     return () => window.removeEventListener('properties:add', handler);
   }, []);
 
-  // The properties page is NEVER blank. The default pool is the 100 newest
-  // listings for sale + the 100 newest for rent across the agent's home
-  // markets (Herzliya + Ramat Hasharon), newest first.
+  // LOCAL-FIRST: entering the page never triggers a live scraper call.
+  // The default pool is read straight from our own `listings` table
+  // (100 newest for sale + 100 newest for rent across the workspace's home
+  // markets), which keeps external API quota untouched. Fresh external
+  // inventory arrives through the twice-daily background sync job.
   const defaultPoolRef = useRef<UnifiedResult[] | null>(null);
   const loadDefaultPool = useCallback(async (): Promise<UnifiedResult[]> => {
     if (defaultPoolRef.current) return defaultPoolRef.current;
     const cities = DEFAULT_CITIES;
-    // The default feed must include EVERY source (local storage + Homely +
-    // Yad2), not just the local `listings` table.
     const batches = await Promise.all(
-      cities.flatMap((c) => [
+      cities.map((c) =>
         searchLocalListings({ city: c, listing_type: 'all' }).catch(() => [] as UnifiedResult[]),
-        searchAllSources({ city: c, listing_type: 'all' })
-          .then((resp) => resp.results)
-          .catch(() => [] as UnifiedResult[]),
-      ]),
+      ),
     );
     const seen = new Set<string>();
-    const all = batches.flat().filter((r) => (seen.has(r.key) ? false : (seen.add(r.key), true)));
+    let all = batches.flat().filter((r) => (seen.has(r.key) ? false : (seen.add(r.key), true)));
+    // Safety net: if the workspace cities hold nothing yet, show all stored inventory.
+    if (!all.length) {
+      all = await searchLocalListings({ listing_type: 'all' }).catch(() => [] as UnifiedResult[]);
+    }
     const newestFirst = (a: UnifiedResult, b: UnifiedResult) =>
       new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
     const sale = all.filter((r) => r.listing_type === 'sale').sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
@@ -163,6 +166,7 @@ export default function Properties() {
     defaultPoolRef.current = pool;
     return pool;
   }, []);
+
 
   useEffect(() => {
     if (hasSearched || results.length) return;
@@ -240,24 +244,47 @@ export default function Properties() {
         return out;
       };
 
-      // Each source streams into the table the moment it answers.
-      const resp = await searchAllSources(filters, (partial) => {
-        if (searchTokenRef.current !== token) return;
-        const rows = applyType(partial.results);
-        if (!rows.length) return; // never blank the table mid-stream
-        setResults(rows);
-        setShowingFallback(false);
-        setSourceStatus(partial.sources);
-        if (partial.progress) {
-          setSearchProgress({ ...partial.progress, loaded: rows.length });
+      // Searches are scoped to the workspace territory by default. Only when
+      // the user explicitly types/picks another city do we leave the zone.
+      const searchCities: string[] = effectiveCity ? [effectiveCity] : DEFAULT_CITIES;
+      const perCity = new Map<string, UnifiedResult[]>();
+      const paint = () => {
+        const seen = new Set<string>();
+        const merged: UnifiedResult[] = [];
+        for (const rows of perCity.values()) {
+          for (const r of rows) if (!seen.has(r.key)) { seen.add(r.key); merged.push(r); }
         }
-      });
+        return applyType(merged);
+      };
+
+      // Each source streams into the table the moment it answers.
+      const responses = await Promise.all(
+        searchCities.map((c) =>
+          searchAllSources({ ...filters, city: c }, (partial) => {
+            if (searchTokenRef.current !== token) return;
+            perCity.set(c, partial.results);
+            const rows = paint();
+            if (!rows.length) return; // never blank the table mid-stream
+            setResults(rows);
+            setShowingFallback(false);
+            setSourceStatus(partial.sources);
+            if (partial.progress) {
+              setSearchProgress({ ...partial.progress, loaded: rows.length });
+            }
+          }).catch((e) => {
+            console.error('[Properties] city search failed', c, e);
+            return { results: [] as UnifiedResult[], sources: {} as any };
+          }),
+        ),
+      );
       if (searchTokenRef.current !== token) return; // cancelled — keep partials
-      const filtered = applyType(resp.results);
+      searchCities.forEach((c, i) => perCity.set(c, responses[i].results));
+      const respSources = Object.assign({}, ...responses.map((r) => r.sources ?? {}));
+      const filtered = paint();
       if (filtered.length) {
         setResults(filtered);
         setShowingFallback(false);
-        setSourceStatus(resp.sources);
+        setSourceStatus(respSources);
       } else {
         // Zero-result guard: fall back to the default recent pool instead of
         // ever showing an empty table.
@@ -267,7 +294,8 @@ export default function Properties() {
         setShowingFallback(true);
         setSourceStatus({ local: { status: pool.length ? 'ok' : 'empty', count: pool.length } as any });
       }
-      const errored = Object.entries(resp.sources).filter(([, v]) => v.status === 'error');
+      const errored = Object.entries(respSources).filter(([, v]: any) => v?.status === 'error');
+
       if (errored.length) {
         for (const [k, v] of errored) {
           toast.info(`${sourceLabel(k as any)}: לא זמין`, {
@@ -1083,6 +1111,12 @@ function ResultCard({
             {LISTING_TYPE_LABELS_HE[result.listing_type]}
           </Badge>
         )}
+        {isNewListing(result) && (
+          <Badge className="absolute top-11 left-3 z-10 border-0 bg-emerald-500 text-white shadow-sm">
+            חדש
+          </Badge>
+        )}
+
         {importing && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm z-20">
             <div className="flex items-center gap-2 text-sm font-semibold">
@@ -1279,10 +1313,19 @@ function ResultTable({
                       title: r.title,
                       raw: r.raw,
                     });
-                    return r.localId
+                    const link = r.localId
                       ? <Link to={`/properties/${r.localId}`} className="hover:underline" onClick={(e) => e.stopPropagation()} title={label}>{label}</Link>
                       : <span title={label}>{label}</span>;
+                    return (
+                      <span className="inline-flex items-center gap-1.5 min-w-0">
+                        {isNewListing(r) && (
+                          <span className="shrink-0 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">חדש</span>
+                        )}
+                        <span className="truncate">{link}</span>
+                      </span>
+                    );
                   })()}
+
                 </td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
