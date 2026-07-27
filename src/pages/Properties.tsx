@@ -288,6 +288,7 @@ export default function Properties() {
       // the user explicitly types/picks another city do we leave the zone.
       const searchCities: string[] = effectiveCity ? [effectiveCity] : DEFAULT_CITIES;
       const perCity = new Map<string, UnifiedResult[]>();
+      const perCityStatus = new Map<string, Record<string, SourceInfo>>();
       const paint = () => {
         const seen = new Set<string>();
         const merged: UnifiedResult[] = [];
@@ -303,11 +304,12 @@ export default function Properties() {
           searchAllSources({ ...filters, city: c }, (partial) => {
             if (searchTokenRef.current !== token) return;
             perCity.set(c, partial.results);
+            perCityStatus.set(c, partial.sources as Record<string, SourceInfo>);
             const rows = paint();
             if (!rows.length) return; // never blank the table mid-stream
             setResults(rows);
             setShowingFallback(false);
-            setSourceStatus(partial.sources);
+            setSourceStatus(mergeSourceStatuses(Array.from(perCityStatus.values())));
             if (partial.progress) {
               setSearchProgress({ ...partial.progress, loaded: rows.length });
             }
@@ -319,7 +321,7 @@ export default function Properties() {
       );
       if (searchTokenRef.current !== token) return; // cancelled — keep partials
       searchCities.forEach((c, i) => perCity.set(c, responses[i].results));
-      const respSources = Object.assign({}, ...responses.map((r) => r.sources ?? {}));
+      const respSources = mergeSourceStatuses(responses.map((r) => (r.sources ?? {}) as Record<string, SourceInfo>));
       const filtered = paint();
       if (filtered.length) {
         setResults(filtered);
