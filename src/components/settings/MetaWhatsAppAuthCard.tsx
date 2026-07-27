@@ -64,23 +64,33 @@ export function MetaWhatsAppAuthCard() {
     refetchInterval: (query) => (query.state.data?.authorized ? false : 30_000),
   });
 
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
+
   const run = useMutation({
     mutationFn: (body: Record<string, unknown>) => callMeta(body),
     onSuccess: (res) => {
       queryClient.setQueryData(['meta-wa-status'], res.config);
-      toast.success(res.authorized ? 'המספר אושר ומחובר ל-Meta' : 'הפעולה הושלמה');
+      if (res.already_verified) setAlreadyVerified(true);
+      if (res.authorized) setAlreadyVerified(false);
+      toast.success(
+        res.message ?? (res.authorized ? 'המספר אושר ומחובר ל-Meta' : 'הפעולה הושלמה'),
+      );
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const needsPinOnly = alreadyVerified || (!cfg?.authorized && cfg?.code_verification_status === 'VERIFIED');
+
   const statusBadge = useMemo(() => {
     if (cfg?.authorized) return { label: 'מאושר ומחובר', className: 'bg-green-600 text-white' };
+    if (needsPinOnly) return { label: 'מאומת — נדרש PIN', className: 'bg-blue-600 text-white' };
     if (cfg?.code_verification_status === 'PENDING') return { label: 'ממתין לקוד אימות', className: 'bg-amber-500 text-white' };
     if (cfg?.phone_number_id) return { label: 'ממתין לאישור', className: 'bg-slate-500 text-white' };
     return { label: 'לא מוגדר', className: 'bg-muted text-muted-foreground' };
-  }, [cfg]);
+  }, [cfg, needsPinOnly]);
 
   const busy = run.isPending;
+
 
   return (
     <Card dir="rtl">
