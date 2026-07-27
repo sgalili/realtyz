@@ -1452,6 +1452,11 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     const updatePayload: Record<string, unknown> = { ...payload };
     if (updatePayload.latitude == null) delete updatePayload.latitude;
     if (updatePayload.longitude == null) delete updatePayload.longitude;
+    // Keep previously resolved address numbers / description when this pass
+    // (a feed row) carries less detail than the item page did.
+    for (const k of ["house_number", "apartment_number", "short_description", "long_description"]) {
+      if (updatePayload[k] == null || updatePayload[k] === "") delete updatePayload[k];
+    }
     for (const k of ["furniture_details", "additional_details"]) {
       const v = updatePayload[k] as Record<string, unknown> | undefined;
       if (!v || Object.keys(v).length === 0) delete updatePayload[k];
