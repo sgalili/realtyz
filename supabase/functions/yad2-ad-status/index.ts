@@ -48,16 +48,17 @@ function itemToken(u: string): string | null {
 
 type Status = 'live' | 'gone' | 'unknown';
 
-function classify(finalUrl: string, httpStatus: number, html: string, token: string): Status {
+function classify(finalUrl: string, httpStatus: number, title: string, html: string): Status {
   if (httpStatus === 404 || httpStatus === 410) return 'gone';
-  // Yad2 bounces removed ads back to the category / search page.
   if (finalUrl && !/\/item\//i.test(finalUrl)) return 'gone';
   const low = html.toLowerCase();
   if (GONE_MARKERS.some((m) => low.includes(m.toLowerCase()))) return 'gone';
-  if (httpStatus >= 200 && httpStatus < 400) {
-    if (low.includes(token.toLowerCase()) || low.includes('__next_data__')) return 'live';
-  }
-  return 'unknown';
+  // A live Yad2 ad always renders a document title ("דירה, רחוב, עיר | ...")
+  // and gets rewritten to /item/<region>/<token>. Removed ads keep the bare
+  // /item/<token> path and render an empty title.
+  const t = (title ?? '').trim();
+  if (!t) return 'gone';
+  return 'live';
 }
 
 Deno.serve(async (req) => {
@@ -91,7 +92,6 @@ Deno.serve(async (req) => {
         browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
 
         const probeOne = async (u: string) => {
-          const token = itemToken(u)!;
           const page = await browser.newPage();
           try {
             const resp = await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 45_000 });
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
               console.log(`[yad2-ad-status] ${u} blocked by bot wall -> unknown`);
               return;
             }
-            statuses[u] = classify(finalUrl, httpStatus, html, token);
+            statuses[u] = classify(finalUrl, httpStatus, pageTitle, html);
             console.log(
               `[yad2-ad-status] ${u} http=${httpStatus} final=${finalUrl} title=${JSON.stringify(pageTitle)} bytes=${html.length} -> ${statuses[u]}`,
             );
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
           }
         };
 
-        const CONCURRENCY = 4;
+        const CONCURRENCY = 2;
         for (let i = 0; i < probeList.length; i += CONCURRENCY) {
           await Promise.all(probeList.slice(i, i + CONCURRENCY).map(probeOne));
         }
