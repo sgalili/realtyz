@@ -1111,6 +1111,12 @@ function ResultCard({
             {LISTING_TYPE_LABELS_HE[result.listing_type]}
           </Badge>
         )}
+        {isNewListing(result) && (
+          <Badge className="absolute top-11 left-3 z-10 border-0 bg-emerald-500 text-white shadow-sm">
+            חדש
+          </Badge>
+        )}
+
         {importing && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm z-20">
             <div className="flex items-center gap-2 text-sm font-semibold">
