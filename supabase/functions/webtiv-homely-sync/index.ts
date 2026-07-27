@@ -116,21 +116,12 @@ function mapToHomelyPayload(
   return { payload, phone, email: email ?? null };
 }
 
-async function pushToHomely(payload: Record<string, unknown>) {
-  try {
-    const r = await fetch(proxied(HOMELY_URL), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const text = await r.text();
-    let parsed: any = null;
-    try { parsed = JSON.parse(text); } catch { parsed = { text }; }
-    return { ok: r.ok && (parsed?.success === true || parsed?.success === "true" || r.status === 200), status: r.status, parsed };
-  } catch (e) {
-    return { ok: false, status: 0, parsed: { error: (e as Error).message } };
-  }
+// READ-ONLY ISOLATION: Homely / WebTiv are pull-only. We no longer POST any
+// record to their API. The mapped payload is kept locally for reference only.
+function pushToHomely(_payload: Record<string, unknown>) {
+  return { ok: true, status: 0, parsed: { read_only: true } };
 }
+
 
 async function syncBroker(
   admin: ReturnType<typeof createClient>,
