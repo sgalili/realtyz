@@ -926,7 +926,7 @@ export default function PropertyDetail() {
                       title="התמונה הקודמת"
                       className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
                     >
-                      {pullingImages ? <Loader2 className="h-5 w-5 animate-spin" /> : <ChevronRight className="h-5 w-5" />}
+                      <ChevronRight className="h-5 w-5" />
                     </button>
                     <button
                       type="button"
