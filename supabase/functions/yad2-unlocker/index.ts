@@ -2024,6 +2024,8 @@ Deno.serve(async (req) => {
             const parsed = isItemUrl
               ? ([parseItem(harvest.html, pageUrl)].filter(Boolean) as Scraped[])
               : parseSearch(harvest.html, pageUrl, limit);
+            // Release the multi-MB document as soon as it is parsed.
+            harvest.html = null;
             if (parsed.length) {
               out = parsed;
               diagnostics.push({ endpoint: `[browser] ${pageUrl}`, kind: "html", status: "ok", count: parsed.length });
@@ -2031,7 +2033,8 @@ Deno.serve(async (req) => {
           }
 
           // Merge (item) or fall back (search) using the harvested JSON feeds.
-          for (const f of harvest.feeds) {
+          while (harvest.feeds.length) {
+            const f = harvest.feeds.shift()!;
             const parsed = isItemUrl
               ? ([parseItemJson(f.body, pageUrl)].filter(Boolean) as Scraped[])
               : parseSearchJson(f.body, pageUrl, limit);
