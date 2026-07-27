@@ -148,6 +148,29 @@ const LABELS: Record<string, string> = {
   description: 'תיאור',
 };
 
+/** Yad2-style icons for the "מה יש בנכס?" grid. */
+const ICONS: Record<string, LucideIcon> = {
+  מעלית: ArrowUpCircle,
+  מיזוג: Wind,
+  'מזגן טורנדו': Fan,
+  סורגים: Grid2X2,
+  'ממ״ד': ShieldCheck,
+  'דוד שמש': Sun,
+  ריהוט: Armchair,
+  מרוהט: Armchair,
+  'דלתות רב בריח': DoorClosed,
+  'גישה לנכים': Accessibility,
+  משופץ: PaintRoller,
+  מחסן: Warehouse,
+  מרפסת: Package,
+  'חיות מחמד': PawPrint,
+  'מתאים לשותפים': Users,
+  חניה: Car,
+  'כניסה גמישה': Home,
+  'לטווח ארוך': Home,
+};
+
+
 function normalizeKey(key: string) {
   return String(key)
     .replace(/^(is|include|includes|has|in|num_?of|number_?of|total)(?=[A-Z_])/, '')
