@@ -683,9 +683,16 @@ export default function Properties() {
                         className="text-xs justify-between gap-3"
                         title={row.error ?? undefined}
                       >
-                        <span className="flex items-center gap-2">
-                          <SourceBadge source={row.key} compact />
-                          <span>{sourceLabel(row.key)}</span>
+                        <span className="flex flex-col items-start gap-0.5">
+                          <span className="flex items-center gap-2">
+                            <SourceBadge source={row.key} compact />
+                            <span>{sourceLabel(row.key)}</span>
+                          </span>
+                          {isError && row.error && (
+                            <span className="text-[10px] text-destructive max-w-[11rem] truncate">
+                              {row.error}
+                            </span>
+                          )}
                         </span>
                         <span className={`font-bold tabular-nums ${isError ? 'text-destructive' : ''}`}>
                           {isError ? '!' : row.count}
@@ -698,6 +705,7 @@ export default function Properties() {
                     <span>סה״כ (לאחר איחוד)</span>
                     <span className="tabular-nums">{results.length}</span>
                   </DropdownMenuItem>
+
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
