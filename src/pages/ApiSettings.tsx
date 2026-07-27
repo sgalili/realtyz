@@ -977,17 +977,17 @@ const ApiSettings = () => {
           </div>
         </div>
 
-        {/* ── Open Card auto-push (push leads INTO Homely CRM) ── */}
+        {/* ── Homely credentials (READ-ONLY: we only pull data from Homely) ── */}
         <div className="mt-4 rounded-lg border border-border/40 bg-muted/20 p-3 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold">סנכרון אוטומטי לכרטסת Homely</p>
+              <p className="text-sm font-semibold">פרטי גישה ל-Homely (קריאה בלבד)</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                כל מתעניין חדש שנוצר ב‑Realtyz ייפתח אוטומטית ככרטיס ב‑Homely שלך.
+                Realtyz מושכת נתונים מ‑Homely / WebTiv בלבד ואינה כותבת אליהם מידע.
               </p>
             </div>
-            <Switch checked={homelyAutoPush} onCheckedChange={setHomelyAutoPush} />
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="space-y-1">
               <Label className="text-xs">קוד לקוח Homely *</Label>
