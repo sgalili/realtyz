@@ -935,15 +935,29 @@ export default function PropertyDetail() {
                       title="התמונה הבאה"
                       className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
                     >
-                      {pullingImages ? <Loader2 className="h-5 w-5 animate-spin" /> : <ChevronLeft className="h-5 w-5" />}
+                      <ChevronLeft className="h-5 w-5" />
                     </button>
+
+                    {/* Total images available for this listing. */}
+                    {photos.length > 0 && (
+                      <span className="absolute top-2 right-2 rounded-full bg-black/70 px-2.5 py-1 text-xs font-bold leading-none text-white tabular-nums">
+                        {activePhoto + 1}/{photos.length}
+                      </span>
+                    )}
+
+                    {/* Text-free ring loader, dead center, while more images load. */}
+                    {pullingImages && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                        <span className="h-12 w-12 rounded-full border-4 border-white/40 border-t-white animate-spin" />
+                      </span>
+                    )}
                   </>
                 )}
               </div>
 
             </Card>
           )}
-          {photos.length > 0 && (
+          {photos.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {photos.map((p, i) => (
                 <button
