@@ -612,7 +612,8 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
   );
 
   const shortDesc = clean(it?.info_text ?? it?.subtitle ?? it?.metaData?.description ?? null);
-  const longDesc = clean(it?.description ?? it?.metaData?.longDescription ?? it?.freeText ?? null);
+  const longDesc = clean(it?.description ?? it?.metaData?.longDescription ?? it?.freeText ?? null)
+    ?? deepDescription(it);
   const coords = pickCoords(it);
 
   return {
