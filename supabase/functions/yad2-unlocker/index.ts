@@ -1128,7 +1128,35 @@ async function scrapingBrowserHarvest(
   }
 }
 
+/**
+ * Field-level merge of an HTML-parsed row with the richer gw JSON row.
+ * JSON wins on descriptive fields; photo arrays are unioned (order-preserving).
+ */
+function mergeScraped(base: Scraped, extra: Scraped | null | undefined): Scraped {
+  if (!extra) return base;
+  const merged: Scraped = { ...base };
+  for (const [k, v] of Object.entries(extra)) {
+    if (v == null) continue;
+    if (k === "photos") continue;
+    if (typeof v === "string" && !v.trim()) continue;
+    if (typeof v === "object" && !Array.isArray(v) && !Object.keys(v).length) continue;
+    if (Array.isArray(v) && !v.length) continue;
+    (merged as Record<string, unknown>)[k] = v;
+  }
+  const seen = new Set<string>();
+  const photos: string[] = [];
+  for (const u of [...(base.photos ?? []), ...(extra.photos ?? [])]) {
+    const key = String(u).split("?")[0].toLowerCase();
+    if (!u || seen.has(key)) continue;
+    seen.add(key);
+    photos.push(u);
+  }
+  merged.photos = photos;
+  return merged;
+}
+
 // -------- Save helpers --------
+
 
 async function upsertOwnerProfile(
   admin: any,
@@ -1443,11 +1471,13 @@ Deno.serve(async (req) => {
           const feedUrls = isItemUrl
             ? [toGatewayItemUrl(pageUrl)].filter(Boolean) as string[]
             : toGatewayFeedUrls(pageUrl);
+          // For a single item we ALWAYS want the gw JSON: it is the only source
+          // of `על הנכס` / `פרטים נוספים` / coordinates / price history. The HTML
+          // alone yields a thin row (title = neighbourhood, no description).
           const harvest = await scrapingBrowserHarvest(pageUrl, feedUrls, (html) => {
+            if (isItemUrl) return true;
             try {
-              const probe = isItemUrl
-                ? ([parseItem(html, pageUrl)].filter(Boolean) as Scraped[])
-                : parseSearch(html, pageUrl, limit);
+              const probe = parseSearch(html, pageUrl, limit);
               console.log(`[yad2-unlocker] scraping-browser: HTML parse yielded ${probe.length} row(s)`);
               return probe.length === 0;
             } catch (e) {
@@ -1466,22 +1496,33 @@ Deno.serve(async (req) => {
             }
           }
 
-          for (const f of out.length ? [] : harvest.feeds) {
+          // Merge (item) or fall back (search) using the harvested JSON feeds.
+          for (const f of harvest.feeds) {
             const parsed = isItemUrl
               ? ([parseItemJson(f.body, pageUrl)].filter(Boolean) as Scraped[])
               : parseSearchJson(f.body, pageUrl, limit);
-            if (parsed.length) {
+            if (!parsed.length) {
+              diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "empty" });
+              continue;
+            }
+            if (isItemUrl && out.length) {
+              out = [mergeScraped(out[0], parsed[0])];
+              jsonSource = f.url;
+              diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "ok", count: 1 });
+              break;
+            }
+            if (!out.length) {
               out = parsed;
               jsonSource = f.url;
               diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "ok", count: parsed.length });
               break;
             }
-            diagnostics.push({ endpoint: `[browser] ${f.url}`, kind: "json", status: "empty" });
           }
 
           if (!out.length) {
             diagnostics.push({ endpoint: `[browser] ${pageUrl}`, kind: "html", status: "empty", count: 0 });
           }
+
         } catch (e: any) {
           const err = String(e?.message ?? e).slice(0, 400);
           console.warn(`[yad2-unlocker] scraping-browser failed: ${err}`);
