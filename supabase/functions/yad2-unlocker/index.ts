@@ -1338,9 +1338,17 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: "Unauthorized" }, 401);
 
     bdTrace = [];
+    // Hard wall-clock budget. The platform kills the request at 150s with an
+    // IDLE_TIMEOUT 504, so we stop scraping well before that and return
+    // whatever we already have.
+    const startedAt = Date.now();
+    const BUDGET_MS = 110_000;
+    const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
+    let timedOut = false;
     const body = await req.json().catch(() => ({} as any));
     const limit = Math.min(300, Math.max(1, Number(body?.limit) || 30));
     const previewOnly = Boolean(body?.preview_only);
+
 
     // Accept several shapes:
     //   1) { url: "https://www.yad2.co.il/..." }          — direct URL
