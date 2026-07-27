@@ -1195,7 +1195,27 @@ function ResultCard({
   );
 }
 
-type SortCol = 'name' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
+type SortCol = 'name' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'published';
+
+/** Official Yad2 button — rendered only after the ad is verified as still live. */
+function Yad2AdButton({ url }: { url: string }) {
+  const status = useYad2AdStatus(url);
+  if (status !== 'live') return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="פתח את המודעה ביד2"
+      aria-label="פתח את המודעה ביד2"
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+    >
+      <Yad2Icon className="h-5 w-5" />
+    </a>
+  );
+}
+
 
 function ResultTable({
   results,
