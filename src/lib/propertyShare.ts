@@ -33,8 +33,23 @@ export async function mintShareUrlForResult(
 ): Promise<string> {
   const payload: Record<string, unknown> = { lead_phone: leadPhone };
   if (r.localId) {
+    // Guarantee the share page has everything: full metadata + all mirrored
+    // images are pulled BEFORE the link is minted.
+    await ensureFullPropertyImport(r.localId, r.url ?? null);
     payload.listing_id = r.localId;
   } else {
+    // External row — import it first so the visitor gets the full gallery
+    // and description instead of a thin snapshot.
+    try {
+      const id = await autoImportResult(r);
+      await ensureFullPropertyImport(id, r.url ?? null);
+      payload.listing_id = id;
+    } catch (e) {
+      console.warn('[propertyShare] pre-import failed, falling back to snapshot', e);
+    }
+  }
+  if (!payload.listing_id) {
+
     payload.external_snapshot = {
       property_title: resultLabel(r),
       asking_price: r.price,
