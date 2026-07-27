@@ -1869,7 +1869,10 @@ Deno.serve(async (req) => {
     const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
     let timedOut = false;
     const body = earlyBody;
-    const limit = Math.min(300, Math.max(1, Number(body?.limit) || 30));
+    // Memory guard: each Yad2 page is multi-MB of HTML and the regex parsers
+    // hold several copies at once. Keeping the per-invocation working set small
+    // is what prevents WORKER_RESOURCE_LIMIT (out-of-memory) kills.
+    const limit = Math.min(60, Math.max(1, Number(body?.limit) || 30));
     const previewOnly = Boolean(body?.preview_only);
 
 
@@ -2021,6 +2024,8 @@ Deno.serve(async (req) => {
             const parsed = isItemUrl
               ? ([parseItem(harvest.html, pageUrl)].filter(Boolean) as Scraped[])
               : parseSearch(harvest.html, pageUrl, limit);
+            // Release the multi-MB document as soon as it is parsed.
+            harvest.html = null;
             if (parsed.length) {
               out = parsed;
               diagnostics.push({ endpoint: `[browser] ${pageUrl}`, kind: "html", status: "ok", count: parsed.length });
@@ -2028,7 +2033,8 @@ Deno.serve(async (req) => {
           }
 
           // Merge (item) or fall back (search) using the harvested JSON feeds.
-          for (const f of harvest.feeds) {
+          while (harvest.feeds.length) {
+            const f = harvest.feeds.shift()!;
             const parsed = isItemUrl
               ? ([parseItemJson(f.body, pageUrl)].filter(Boolean) as Scraped[])
               : parseSearchJson(f.body, pageUrl, limit);
@@ -2069,7 +2075,7 @@ Deno.serve(async (req) => {
     const startPage = Math.max(1, Number(body?.page) || 1);
     const maxPages = isItemUrl || previewOnly
       ? 1
-      : Math.min(10, Math.max(1, Number(body?.pages) || Math.ceil(limit / 30)));
+      : Math.min(2, Math.max(1, Number(body?.pages) || Math.ceil(limit / 30)));
     const seenKeys = new Set<string>();
     let pagesScanned = 0;
 
@@ -2178,7 +2184,7 @@ Deno.serve(async (req) => {
     // --- Gallery enrichment: feed rows only carry the cover thumbnail. Pull
     // the full image array from the item endpoint for rows that look thin.
     if (!previewOnly) {
-      const thin = rows.filter((r) => (r.photos?.length ?? 0) < 3 && r.external_id).slice(0, 12);
+      const thin = rows.filter((r) => (r.photos?.length ?? 0) < 3 && r.external_id).slice(0, 8);
       const enrichOne = async (r: typeof thin[number]) => {
         const gwItem = `https://gw.yad2.co.il/realestate-feed/item/${r.external_id}`;
         try {
@@ -2201,9 +2207,9 @@ Deno.serve(async (req) => {
       };
       // Run in small parallel batches, and bail out once the budget is thin so
       // the save step still gets to run before the platform's 150s cut-off.
-      for (let i = 0; i < thin.length; i += 4) {
+      for (let i = 0; i < thin.length; i += 2) {
         if (timeLeft() < 25_000) { timedOut = true; break; }
-        await Promise.all(thin.slice(i, i + 4).map(enrichOne));
+        await Promise.all(thin.slice(i, i + 2).map(enrichOne));
       }
     }
 
@@ -2220,9 +2226,9 @@ Deno.serve(async (req) => {
           saveErrors.push({ url: r.source_url, error: msg });
         }
       };
-      for (let i = 0; i < rows.length; i += 5) {
+      for (let i = 0; i < rows.length; i += 3) {
         if (timeLeft() < 5_000) { timedOut = true; break; }
-        await Promise.all(rows.slice(i, i + 5).map(saveOne));
+        await Promise.all(rows.slice(i, i + 3).map(saveOne));
       }
       console.log(`[yad2-unlocker] saved ${saved}/${rows.length} row(s), ${saveErrors.length} error(s)`);
     } else {
