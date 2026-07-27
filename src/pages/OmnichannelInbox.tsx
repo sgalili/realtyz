@@ -699,6 +699,52 @@ const OmnichannelInbox = () => {
     return base;
   })();
 
+  // ── Direct-dial search: typing a raw Israeli mobile number lets the broker
+  // start a WhatsApp chat immediately. A CRM lead card is created on the spot.
+  const searchedPhone = (() => {
+    const digits = search.replace(/\D/g, '');
+    if (!digits) return null;
+    let local = digits;
+    if (local.startsWith('972')) local = '0' + local.slice(3);
+    if (!/^05\d{8}$/.test(local)) return null;
+    return '972' + local.slice(1);
+  })();
+  const phoneAlreadyKnown = !!searchedPhone && (dbVoters ?? []).some(
+    (v: any) => (v?.phone_number || '').replace(/\D/g, '') === searchedPhone,
+  );
+  const [creatingLead, setCreatingLead] = useState(false);
+  const startChatWithPhone = async () => {
+    if (!searchedPhone || creatingLead) return;
+    setCreatingLead(true);
+    try {
+      const { data: existing } = await supabase
+        .from('leads').select('id').eq('phone_number', searchedPhone).maybeSingle();
+      let leadId = (existing as any)?.id as string | undefined;
+      if (!leadId) {
+        const { data: created, error } = await supabase
+          .from('leads')
+          .insert({
+            phone_number: searchedPhone,
+            full_name: formatPhoneDisplay(searchedPhone),
+            user_id: user?.id,
+          } as any)
+          .select('id')
+          .single();
+        if (error) throw error;
+        leadId = (created as any).id;
+        toast.success('נוצר כרטיס מתעניין חדש');
+      }
+      await queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+      setSearch('');
+      setSendChannel('whatsapp');
+      setSelectedVoterId(leadId!);
+    } catch (e: any) {
+      toast.error('יצירת הכרטיס נכשלה', { description: e?.message });
+    } finally {
+      setCreatingLead(false);
+    }
+  };
+
   const handleSend = () => {
     const content = newMessage.trim();
     if (!content && !attachment) return;
@@ -860,6 +906,24 @@ const OmnichannelInbox = () => {
             </div>
           </div>
           <ScrollArea className="flex-1">
+            {searchedPhone && !phoneAlreadyKnown && (
+              <button
+                type="button"
+                onClick={startChatWithPhone}
+                disabled={creatingLead}
+                className="flex w-full items-center gap-3 border-b border-border/30 px-3 py-3 text-right transition-colors hover:bg-muted/50 disabled:opacity-60"
+              >
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-whatsapp-header/10 text-whatsapp-header">
+                  <BrandIcon name="whatsapp" className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{formatPhoneDisplay(searchedPhone)}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {creatingLead ? 'יוצר כרטיס...' : 'התחל שיחת וואטסאפ ופתח כרטיס מתעניין'}
+                  </span>
+                </span>
+              </button>
+            )}
             <AnimatePresence initial={false}>
               {filteredVoters?.map((voter) => {
                 const lastMsg = lastMessages?.get(voter.id);
