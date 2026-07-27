@@ -136,7 +136,9 @@ export default function Properties() {
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
 
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
-  const [sourceStatus, setSourceStatus] = useState<Record<string, { status: string; count: number; error?: string }>>({});
+  const [sourceStatus, setSourceStatus] = useState<Record<string, SourceInfo>>({});
+  // Active source filter from the breakdown popup (null = all sources).
+  const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
   const [searching, setSearching] = useState(false);
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
