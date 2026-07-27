@@ -1273,14 +1273,13 @@ function ResultTable({
           <tr className="text-right">
             <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
 
-            <HeaderCell col="name" label="שם" />
+            <HeaderCell col="name" label="רחוב" />
             {/* Internal-only: house & apartment numbers never leave the workspace. */}
             <HeaderCell col="house_number" label="מספר בית" />
             <HeaderCell col="apt_number" label="מספר דירה" />
             <HeaderCell col="listing_type" label="סוג" />
             <HeaderCell col="price" label="מחיר" />
             <HeaderCell col="city" label="עיר" />
-            <HeaderCell col="address" label="רחוב" />
             <HeaderCell col="rooms" label="חדרים" />
             <HeaderCell col="size_sqm" label='מ"ר' />
             <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th>
