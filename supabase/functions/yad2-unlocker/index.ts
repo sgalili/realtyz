@@ -394,6 +394,86 @@ function pickAvailableFrom(it: any): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
+/** Parses any Yad2 date shape (ISO, dd/MM/yy, dd/MM/yyyy, epoch) to ISO. */
+function toIsoDate(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw === "number") {
+    const ms = raw < 1e12 ? raw * 1000 : raw;
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const s = String(raw).trim();
+  if (!s) return null;
+  const iso = s.match(/\d{4}-\d{2}-\d{2}(?:[T ][\d:.]+)?/)?.[0];
+  if (iso) {
+    const d = new Date(iso.replace(" ", "T"));
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  const dmy = s.match(/(\d{1,2})[./](\d{1,2})[./](\d{2,4})/);
+  if (dmy) {
+    const yy = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+    const d = new Date(`${yy}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}T00:00:00Z`);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/**
+ * Original publication date of the ad ("פורסם ב-"), plus the last source
+ * update. Yad2 exposes these under `dates.*` on the gateway feed and as free
+ * text on the rendered item page.
+ */
+function pickListingDates(it: any): { published_at: string | null; updated_at_source: string | null } {
+  const dts = it?.dates ?? it?.date ?? {};
+  const published = toIsoDate(
+    dts?.createdAt ?? dts?.created_at ?? dts?.publishedAt ?? dts?.published_at ??
+    dts?.uploadDate ?? dts?.upload_date ?? dts?.firstPublished ??
+    it?.createdAt ?? it?.created_at ?? it?.publishedAt ?? it?.published_at ??
+    it?.uploadDate ?? it?.upload_date ?? it?.date_added ?? it?.metaData?.publishedAt ?? null,
+  );
+  const updated = toIsoDate(
+    dts?.updatedAt ?? dts?.updated_at ?? dts?.modifiedAt ?? dts?.lastUpdated ??
+    it?.updatedAt ?? it?.updated_at ?? it?.date_modified ?? null,
+  );
+  return { published_at: published, updated_at_source: updated };
+}
+
+/** "פורסם ב 18/07/26" fallback straight off the rendered item page. */
+function publishedFromText(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const m = String(text).match(/פורסם\s*ב[-\s]*(\d{1,2}[./]\d{1,2}[./]\d{2,4})/);
+  return m ? toIsoDate(m[1]) : null;
+}
+
+/** Last-resort house/apartment numbers parsed out of the ad's address text. */
+function addressNumbersFromText(...texts: Array<string | null | undefined>): {
+  house_number: string | null;
+  apartment_number: string | null;
+} {
+  let house: string | null = null;
+  let apt: string | null = null;
+  for (const t of texts) {
+    const s = String(t ?? "").replace(/\s+/g, " ").trim();
+    if (!s) continue;
+    if (!apt) {
+      const m = s.match(/(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)\s*(\d{1,4}[א-תA-Za-z]?)/i);
+      if (m) apt = m[1];
+    }
+    if (!house) {
+      const head = s.split(/(?:,|\s)+(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)/i)[0]
+        // Never mistake a unit value (חדרים / מ"ר / קומה) for a house number.
+        .replace(/\d+(?:[.,]\d+)?\s*(?:חדרים|חדר|מ["״׳]?ר|מטר|קומה|קומות)/g, " ");
+      const m = head.match(/(?:^|[^\d])(\d{1,4}[א-תA-Za-z]?)(?!\s*(?:חדרים|חדר|מ["״׳]?ר|קומה))(?:\s|,|$)/);
+      if (m) house = m[1];
+    }
+    if (house && apt) break;
+  }
+  return { house_number: house, apartment_number: apt };
+}
+
+
+
 /** Collects every scalar custom attribute Yad2 exposes for the ad. */
 function pickAttributes(it: any): Record<string, unknown> {
   const attrs: Record<string, unknown> = {};
