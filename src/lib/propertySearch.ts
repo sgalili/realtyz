@@ -226,8 +226,11 @@ export async function searchAllSources(
         console.error('[propertySearch] local source failed', e);
         sources.mine = { status: 'error', count: 0, error: String(e?.message ?? e) };
         return { label: 'mine' as const, results: [] };
-      }),
+      });
+
+  const homelyTask = () =>
     invokeExternal('homely-fetch-property', {
+
       action: homelyHasFilter ? 'searchProperties' : 'fetchAllProperties',
       filters: homelyFilters,
     })
