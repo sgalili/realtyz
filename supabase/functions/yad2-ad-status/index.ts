@@ -127,9 +127,18 @@ Deno.serve(async (req) => {
           }
         };
 
+        const started = Date.now();
+        const BUDGET_MS = 120_000;
         const CONCURRENCY = 2;
         for (let i = 0; i < probeList.length; i += CONCURRENCY) {
+          if (Date.now() - started > BUDGET_MS) break;
           await Promise.all(probeList.slice(i, i + CONCURRENCY).map(probeOne));
+        }
+        // One retry for anything the bot wall swallowed, while budget allows.
+        for (const u of probeList) {
+          if (statuses[u] !== 'unknown') continue;
+          if (Date.now() - started > BUDGET_MS) break;
+          await probeOne(u);
         }
       } catch (e) {
         console.warn(`[yad2-ad-status] browser connect failed: ${(e as Error).message}`);
