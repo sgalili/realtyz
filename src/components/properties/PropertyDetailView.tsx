@@ -175,31 +175,6 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           </div>
         )}
 
-        <Card className="p-4 sm:p-5">
-          <h2 className="text-[15px] font-bold text-primary mb-4">מאפייני הנכס</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Spec icon={BedDouble} label="חדרים" value={property.rooms ? `${property.rooms}` : '—'} />
-            <Spec icon={Ruler} label='שטח' value={property.size_sqm ? `${property.size_sqm} מ"ר` : '—'} />
-            <Spec icon={Layers} label="קומה" value={property.floor != null ? `${property.floor}${property.total_floors ? ` / ${property.total_floors}` : ''}` : '—'} />
-            <Spec icon={Calendar} label="שנת בנייה" value={property.year_built ? `${property.year_built}` : '—'} />
-            <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
-            <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
-            <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
-            <Spec icon={MapPin} label="כתובת" value={stripAddressNumbers(property.address) || '—'} />
-
-            <Spec icon={Receipt} label="ועד בית (לחודש)" value={`${vaadBayit.toLocaleString('he-IL')} ₪`} />
-            <Spec icon={Receipt} label="ארנונה (לחודשיים)" value={`${arnonaBimonthly.toLocaleString('he-IL')} ₪`} />
-            <Spec icon={Receipt} label="מספר תשלומים" value={`${payments}`} />
-            <Spec icon={Car} label="חניות" value={`${amenities?.parking ?? 0}`} />
-            <Spec icon={Calendar} label="תאריך כניסה" value={entryDate} />
-            {amenities?.elevator && <Spec icon={ArrowUpCircle} label="מעלית" value="כן" />}
-            {amenities?.balcony != null && <Spec icon={Sun} label="מרפסת" value={amenities.balcony ? 'כן' : 'לא'} />}
-            {amenities?.ac && <Spec icon={Wind} label="מיזוג" value="כן" />}
-            {amenities?.shelter && <Spec icon={Shield} label='ממ"ד / מקלט' value="כן" />}
-            {amenities?.solar && <Spec icon={Sun} label="דוד שמש" value="כן" />}
-          </div>
-
-        </Card>
 
         {property.description && (
           <Card className="p-4 sm:p-5">
