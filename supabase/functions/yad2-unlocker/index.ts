@@ -1869,7 +1869,10 @@ Deno.serve(async (req) => {
     const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
     let timedOut = false;
     const body = earlyBody;
-    const limit = Math.min(300, Math.max(1, Number(body?.limit) || 30));
+    // Memory guard: each Yad2 page is multi-MB of HTML and the regex parsers
+    // hold several copies at once. Keeping the per-invocation working set small
+    // is what prevents WORKER_RESOURCE_LIMIT (out-of-memory) kills.
+    const limit = Math.min(60, Math.max(1, Number(body?.limit) || 30));
     const previewOnly = Boolean(body?.preview_only);
 
 
