@@ -186,6 +186,14 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
   );
 }
 
+/** "רחוב 12, שכונה" — always appends the house number and neighborhood. */
+function comparableTitle(c: { address?: string | null; neighborhood?: string | null; city?: string | null }) {
+  const base = (c.address || '').trim();
+  const parts = [base || c.neighborhood || c.city || 'נכס'];
+  if (base && c.neighborhood && !base.includes(c.neighborhood)) parts.push(c.neighborhood);
+  return parts.filter(Boolean).join(', ');
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
