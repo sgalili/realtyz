@@ -967,7 +967,8 @@ export default function PropertyDetail() {
           )}
 
 
-          {/* Specs grid — editable in edit mode */}
+          {/* Specs grid — edit mode only */}
+          {editMode && form && (
           <Card className="p-4 sm:p-5">
             <h2 className="text-[19px] font-bold text-primary mb-4">מאפייני הנכס</h2>
             {editMode && form ? (

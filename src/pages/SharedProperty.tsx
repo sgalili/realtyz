@@ -244,26 +244,6 @@ export default function SharedProperty() {
           </section>
         ) : null}
 
-        <Card className="space-y-3 p-4 sm:p-5">
-          <h3 className="text-[19px] font-bold text-primary">נתוני הנכס</h3>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {p.rooms ? <Spec icon={Bed} label="חדרים" value={String(p.rooms)} /> : null}
-            {(p.sqm ?? p.size_sqm) ? <Spec icon={Ruler} label='מ״ר' value={String(p.sqm ?? p.size_sqm)} /> : null}
-            {p.floor != null ? <Spec icon={Building2} label="קומה" value={String(p.floor)} /> : null}
-            {(p.parking ?? features.parking) != null
-              ? <Spec icon={Car} label="חניות" value={String(p.parking ?? features.parking)} /> : null}
-            {(p.elevator ?? features.elevator) ? <Spec icon={ArrowUpCircle} label="מעלית" value="כן" /> : null}
-            {features.balcony ? <Spec icon={Sun} label="מרפסת" value="כן" /> : null}
-            {features.ac ? <Spec icon={Wind} label="מיזוג" value="כן" /> : null}
-            {(features.shelter || features.mamad) ? <Spec icon={Shield} label='ממ״ד / מקלט' value="כן" /> : null}
-            {features.solar ? <Spec icon={Sun} label="דוד שמש" value="כן" /> : null}
-            {!p.rooms && !p.sqm && p.floor == null ? (
-              <div className="col-span-full inline-flex items-center gap-2 text-[15px] text-muted-foreground">
-                <Home className="h-5 w-5" /> פרטים נוספים אצל הסוכן
-              </div>
-            ) : null}
-          </div>
-        </Card>
 
         <PropertyRichDetailsCard
           aboutText={about}
