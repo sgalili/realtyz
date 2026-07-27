@@ -1368,6 +1368,7 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">{formatListingDate(r)}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
                   <div className="inline-flex items-center gap-1.5">
                     <Button
@@ -1385,19 +1386,9 @@ function ResultTable({
                     {(() => {
                       const live = liveYad2Url(r);
                       if (!live) return null;
-                      return (
-                        <a
-                          href={live}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="פתח את המודעה ביד2"
-                          aria-label="פתח את המודעה ביד2"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
-                        >
-                          <Yad2Icon className="h-5 w-5" />
-                        </a>
-                      );
+                      return <Yad2AdButton url={live} />;
+                    })()}
+
                     })()}
 
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
