@@ -38,6 +38,11 @@
     --accent: 213 73% 16%;
     --accent-foreground: 0 0% 100%;
 
+    /* Deal-type pills (להשכרה / למכירה) — vivid blue */
+    --deal-blue: 214 90% 48%;
+    --deal-blue-foreground: 0 0% 100%;
+    --deal-blue-soft: 214 90% 42%;
+
     --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
 

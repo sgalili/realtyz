@@ -394,6 +394,86 @@ function pickAvailableFrom(it: any): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
+/** Parses any Yad2 date shape (ISO, dd/MM/yy, dd/MM/yyyy, epoch) to ISO. */
+function toIsoDate(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw === "number") {
+    const ms = raw < 1e12 ? raw * 1000 : raw;
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const s = String(raw).trim();
+  if (!s) return null;
+  const iso = s.match(/\d{4}-\d{2}-\d{2}(?:[T ][\d:.]+)?/)?.[0];
+  if (iso) {
+    const d = new Date(iso.replace(" ", "T"));
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  const dmy = s.match(/(\d{1,2})[./](\d{1,2})[./](\d{2,4})/);
+  if (dmy) {
+    const yy = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+    const d = new Date(`${yy}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}T00:00:00Z`);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/**
+ * Original publication date of the ad ("פורסם ב-"), plus the last source
+ * update. Yad2 exposes these under `dates.*` on the gateway feed and as free
+ * text on the rendered item page.
+ */
+function pickListingDates(it: any): { published_at: string | null; updated_at_source: string | null } {
+  const dts = it?.dates ?? it?.date ?? {};
+  const published = toIsoDate(
+    dts?.createdAt ?? dts?.created_at ?? dts?.publishedAt ?? dts?.published_at ??
+    dts?.uploadDate ?? dts?.upload_date ?? dts?.firstPublished ??
+    it?.createdAt ?? it?.created_at ?? it?.publishedAt ?? it?.published_at ??
+    it?.uploadDate ?? it?.upload_date ?? it?.date_added ?? it?.metaData?.publishedAt ?? null,
+  );
+  const updated = toIsoDate(
+    dts?.updatedAt ?? dts?.updated_at ?? dts?.modifiedAt ?? dts?.lastUpdated ??
+    it?.updatedAt ?? it?.updated_at ?? it?.date_modified ?? null,
+  );
+  return { published_at: published, updated_at_source: updated };
+}
+
+/** "פורסם ב 18/07/26" fallback straight off the rendered item page. */
+function publishedFromText(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const m = String(text).match(/פורסם\s*ב[-\s]*(\d{1,2}[./]\d{1,2}[./]\d{2,4})/);
+  return m ? toIsoDate(m[1]) : null;
+}
+
+/** Last-resort house/apartment numbers parsed out of the ad's address text. */
+function addressNumbersFromText(...texts: Array<string | null | undefined>): {
+  house_number: string | null;
+  apartment_number: string | null;
+} {
+  let house: string | null = null;
+  let apt: string | null = null;
+  for (const t of texts) {
+    const s = String(t ?? "").replace(/\s+/g, " ").trim();
+    if (!s) continue;
+    if (!apt) {
+      const m = s.match(/(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)\s*(\d{1,4}[א-תA-Za-z]?)/i);
+      if (m) apt = m[1];
+    }
+    if (!house) {
+      const head = s.split(/(?:,|\s)+(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)/i)[0]
+        // Never mistake a unit value (חדרים / מ"ר / קומה) for a house number.
+        .replace(/\d+(?:[.,]\d+)?\s*(?:חדרים|חדר|מ["״׳]?ר|מטר|קומה|קומות)/g, " ");
+      const m = head.match(/(?:^|[^\d])(\d{1,4}[א-תA-Za-z]?)(?!\s*(?:חדרים|חדר|מ["״׳]?ר|קומה))(?:\s|,|$)/);
+      if (m) house = m[1];
+    }
+    if (house && apt) break;
+  }
+  return { house_number: house, apartment_number: apt };
+}
+
+
+
 /** Collects every scalar custom attribute Yad2 exposes for the ad. */
 function pickAttributes(it: any): Record<string, unknown> {
   const attrs: Record<string, unknown> = {};
@@ -904,7 +984,19 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     city,
     neighborhood,
     address,
-    ...pickAddressNumbers(it, address),
+    ...(() => {
+      // Batch mode: resolve house/apartment numbers up-front from the JSON,
+      // falling back to the address/title free text so the table is populated
+      // immediately at import time (no click-to-hydrate needed).
+      const n = pickAddressNumbers(it, address);
+      const t = addressNumbersFromText(
+        it?.address?.street?.text, address, it?.row_2, it?.title, it?.merchandise, it?.metaData?.title,
+      );
+      return {
+        house_number: n.house_number ?? t.house_number,
+        apartment_number: n.apartment_number ?? t.apartment_number,
+      };
+    })(),
     sqm,
     floor,
     photos,
@@ -921,6 +1013,7 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     furniture_details: pickFurniture(it),
     additional_details: pickAdditionalDetails(it),
     price_history: pickPriceHistory(it),
+    ...pickListingDates(it),
   };
 }
 
@@ -1042,6 +1135,9 @@ function parseItemJson(body: string, srcUrl: string): Scraped | null {
   base.apartment_number = nums.apartment_number ?? base.apartment_number ?? null;
   const hist = pickPriceHistory(ad);
   if (hist.length) base.price_history = hist;
+  const dates = pickListingDates(ad);
+  base.published_at = dates.published_at ?? base.published_at ?? null;
+  base.updated_at_source = dates.updated_at_source ?? base.updated_at_source ?? null;
   return base;
 }
 
@@ -1075,6 +1171,8 @@ type Scraped = {
   furniture_details?: Record<string, unknown>;
   additional_details?: Record<string, unknown>;
   price_history?: Array<{ date: string | null; price: number | null; label?: string }>;
+  published_at?: string | null;
+  updated_at_source?: string | null;
 };
 
 /**
@@ -1177,7 +1275,15 @@ function parseSearch(html: string, srcUrl: string, limit: number): Scraped[] {
       city,
       neighborhood,
       address,
-      ...pickAddressNumbers(it, address),
+      ...(() => {
+        const n = pickAddressNumbers(it, address);
+        const t = addressNumbersFromText(address, it?.row_2, it?.title, it?.merchandise);
+        return {
+          house_number: n.house_number ?? t.house_number,
+          apartment_number: n.apartment_number ?? t.apartment_number,
+        };
+      })(),
+      ...pickListingDates(it),
       sqm: toInt(sqmRaw),
       floor: toInt(floorRaw),
       photos,
@@ -1353,6 +1459,16 @@ function parseItem(html: string, srcUrl: string): Scraped {
     houseNum = houseNum ?? domNums.house_number;
     aptNum = aptNum ?? domNums.apartment_number;
   }
+  if (!houseNum || !aptNum) {
+    const txtNums = addressNumbersFromText(addressText, clean($("h1").first().text()));
+    houseNum = houseNum ?? txtNums.house_number;
+    aptNum = aptNum ?? txtNums.apartment_number;
+  }
+  // "פורסם ב 18/07/26" — original publication date printed on the ad page.
+  const jsonDates = pickListingDates(ad ?? {});
+  const publishedAt = jsonDates.published_at
+    ?? (() => { for (const b of jsonBlobs) { const d = pickListingDates(b).published_at; if (d) return d; } return null; })()
+    ?? publishedFromText(text);
 
   const additional = pickAdditionalDetails(ad ?? {});
   const domMoney = financialsFromHtml($, text);
@@ -1392,6 +1508,8 @@ function parseItem(html: string, srcUrl: string): Scraped {
     furniture_details: pickFurniture(ad ?? {}),
     additional_details: additional,
     price_history: pickPriceHistory(ad ?? {}),
+    published_at: publishedAt,
+    updated_at_source: jsonDates.updated_at_source,
   };
 
 }
@@ -1601,7 +1719,7 @@ async function mirrorPhotos(admin: any, keyPrefix: string, urls: string[]): Prom
 
 async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
   const { data: existing } = await admin
-    .from("listings").select("id, slug, media_photos").eq("source_url", row.source_url).maybeSingle();
+    .from("listings").select("id, slug, media_photos, source_metadata").eq("source_url", row.source_url).maybeSingle();
   const ownerId = await upsertOwnerProfile(admin, workspaceOwnerId, row.owner_name, row.owner_phone);
 
   // Full gallery, never a single thumbnail: merge whatever we already stored
@@ -1671,12 +1789,25 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
       house_number: row.house_number ?? null,
       apartment_number: row.apartment_number ?? null,
       scraped_at: new Date().toISOString(),
+      // Original "פורסם ב-" date from Yad2 (never the import date).
+      published_at: row.published_at ?? null,
+      updated_at_source: row.updated_at_source ?? null,
     },
   };
   if (existing?.id) {
     // Never overwrite previously-scraped rich metadata with an empty result:
     // feed rows carry less detail than item pages.
     const updatePayload: Record<string, unknown> = { ...payload };
+    // Keep the first-known publication date; a later pass must never
+    // overwrite "פורסם ב-" with today's import timestamp.
+    const prevMeta = (existing as any)?.source_metadata && typeof (existing as any).source_metadata === "object"
+      ? (existing as any).source_metadata as Record<string, unknown>
+      : {};
+    updatePayload.source_metadata = {
+      ...(payload.source_metadata as Record<string, unknown>),
+      published_at: row.published_at ?? prevMeta.published_at ?? null,
+      updated_at_source: row.updated_at_source ?? prevMeta.updated_at_source ?? null,
+    };
     if (updatePayload.latitude == null) delete updatePayload.latitude;
     if (updatePayload.longitude == null) delete updatePayload.longitude;
     // Keep previously resolved address numbers / description when this pass

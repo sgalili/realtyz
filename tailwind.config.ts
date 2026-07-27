@@ -94,6 +94,11 @@ export default {
           email: "hsl(var(--social-email))",
           foreground: "hsl(var(--social-foreground))",
         },
+        "deal-blue": {
+          DEFAULT: "hsl(var(--deal-blue))",
+          foreground: "hsl(var(--deal-blue-foreground))",
+          soft: "hsl(var(--deal-blue-soft))",
+        },
         brand: {
           navy: "hsl(var(--brand-navy))",
           blue: "hsl(var(--brand-blue))",

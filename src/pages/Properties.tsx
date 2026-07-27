@@ -47,6 +47,7 @@ import { liveYad2Url } from '@/lib/yad2Ad';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
 import { formatListingDate, listingActivityAt } from '@/lib/listingDates';
+import { listingPublishedAt } from '@/lib/listingFreshness';
 
 
 
@@ -745,7 +746,9 @@ export default function Properties() {
                   onClick={() => setListingType(t)}
                   aria-pressed={listingType === t}
                   className={`px-3 h-7 text-xs font-semibold rounded transition-colors ${
-                    listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    listingType === t
+                      ? (t === 'all' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-deal-blue text-deal-blue-foreground shadow-sm')
+                      : (t === 'all' ? 'text-muted-foreground hover:text-foreground' : 'text-deal-blue hover:bg-deal-blue/10')
                   }`}
                 >
                   {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
@@ -1237,7 +1240,7 @@ function ResultTable({
         case 'address': return stripAddressNumbers(r.address ?? '') || '';
         case 'rooms': return typeof r.rooms === 'number' ? r.rooms : (r.rooms ? Number(r.rooms) : null);
         case 'size_sqm': return typeof r.size_sqm === 'number' ? r.size_sqm : (r.size_sqm ? Number(r.size_sqm) : null);
-        case 'published': return listingActivityAt(r);
+        case 'published': return listingPublishedAt(r) ?? listingActivityAt(r);
 
       }
     };
