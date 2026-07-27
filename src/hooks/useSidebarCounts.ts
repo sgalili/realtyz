@@ -79,15 +79,29 @@ export function useSidebarCounts() {
         );
       };
 
+      // Properties badge = Yad2 inventory (sale + rent) published in the last
+      // 7 days inside the workspace territory only.
+      const WS_CITIES = ['הרצליה', 'רמת השרון'];
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const yad2FreshCount = async (): Promise<number> => {
+        return safeCount('listings', (q) =>
+          q
+            .ilike('source', '%yad2%')
+            .gte('created_at', since)
+            .in('city', WS_CITIES),
+        );
+      };
+
       const [leads, listings, chats, deals, campaigns] = await Promise.all([
         safeCount('leads'),
-        safeCount('listings'),
+        yad2FreshCount(),
         distinctChatLeads(),
         activeDealsCount(),
         groupedCampaignCount(),
       ]);
 
       return { leads, listings, chats, deals, campaigns };
+
 
     },
   });
