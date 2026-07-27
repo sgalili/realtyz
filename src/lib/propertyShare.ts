@@ -5,6 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatListingTitle } from '@/lib/formatListingTitle';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { publicUrl } from '@/lib/publicUrl';
+import { ensureFullPropertyImport } from '@/lib/propertyFullSync';
+import { autoImportResult } from '@/lib/propertyAutoImport';
+
 
 export type ShareMode = 'whatsapp' | 'sms' | 'copy';
 
