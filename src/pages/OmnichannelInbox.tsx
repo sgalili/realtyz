@@ -165,9 +165,6 @@ const OmnichannelInbox = () => {
   const [manualTakeoverWarning, setManualTakeoverWarning] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeletingChat, setIsDeletingChat] = useState(false);
-  const [inviteChannel, setInviteChannel] = useState<string | null>(null);
-  const [inviteVia, setInviteVia] = useState<'whatsapp' | 'sms'>('whatsapp');
-  const [inviteSending, setInviteSending] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -640,17 +637,7 @@ const OmnichannelInbox = () => {
     },
     onError: (error: Error) => {
       if (error.message === 'demo-blocked') return;
-      // If Messenger/Instagram DM was rejected because we don't hold a PSID
-      // for this lead (they never messaged our Page), pivot to an invite
-      // via WhatsApp/SMS with an m.me/ig.me deep-link.
       const msg = error.message || '';
-      if (/no_recipient_psid|PSID|messaged your Page|messaged you first|recipient/i.test(msg) &&
-          (sendChannel === 'messenger' || sendChannel === 'instagram' || sendChannel === 'facebook' || sendChannel === 'linkedin')) {
-        setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
-        setInviteChannel(sendChannel);
-        toast.info('הליד עדיין לא פנה לעמוד — נשלחת הזמנה בערוץ אחר');
-        return;
-      }
       toast.error('שליחת ההודעה נכשלה', { description: msg, duration: 8000 });
     },
   });
@@ -1226,56 +1213,6 @@ const OmnichannelInbox = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Invite modal — sends WA/SMS invite so the lead opens the closed channel */}
-      <Dialog open={!!inviteChannel} onOpenChange={(open) => { if (!open) setInviteChannel(null); }}>
-        <DialogContent dir="rtl" className="text-right sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>הזמנה לערוץ {channelConfig[inviteChannel || '']?.label || inviteChannel}</DialogTitle>
-            <DialogDescription>
-              הערוץ עדיין לא פתוח מול הליד. נשלח קישור הזמנה קצר בוואטסאפ או SMS כדי שהוא יפתח שיחה עם העסק.
-            </DialogDescription>
-          </DialogHeader>
-          <RadioGroup value={inviteVia} onValueChange={(v) => setInviteVia(v as any)} className="space-y-2">
-            <label className="flex flex-row-reverse items-center justify-between gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
-              <span className="text-sm">שליחה בוואטסאפ</span>
-              <RadioGroupItem value="whatsapp" disabled={!selectedVoter?.phone_number} />
-            </label>
-            <label className="flex flex-row-reverse items-center justify-between gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
-              <span className="text-sm">שליחה ב-SMS</span>
-              <RadioGroupItem value="sms" disabled={!selectedVoter?.phone_number} />
-            </label>
-          </RadioGroup>
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button variant="outline" onClick={() => setInviteChannel(null)} disabled={inviteSending}>ביטול</Button>
-            <Button
-              disabled={inviteSending || !selectedVoter?.phone_number || !inviteChannel}
-              onClick={async () => {
-                if (!selectedVoterId || !inviteChannel) return;
-                setInviteSending(true);
-                const label = channelConfig[inviteChannel]?.label || inviteChannel;
-                const body = `שלום, נשמח להמשיך את השיחה גם ב-${label}. לחצו כאן לפתיחת ההתכתבות: {LINK}`;
-                const { error } = await supabase.functions.invoke('send-message', {
-                  body: {
-                    lead_id: selectedVoterId.startsWith('phone:') ? undefined : selectedVoterId,
-                    content: body,
-                    channel: inviteVia,
-                    phone_number: selectedVoter?.phone_number,
-                    invite_channel: inviteChannel,
-                  },
-                });
-                setInviteSending(false);
-                if (error) toast.error('שליחת ההזמנה נכשלה', { description: await readFunctionError(error) || error.message });
-                else {
-                  toast.success('ההזמנה נשלחה');
-                  setInviteChannel(null);
-                }
-              }}
-            >
-              {inviteSending ? 'שולח...' : 'שליחת הזמנה'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
