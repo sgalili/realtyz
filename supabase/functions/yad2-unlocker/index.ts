@@ -1656,7 +1656,7 @@ Deno.serve(async (req) => {
     // the full image array from the item endpoint for rows that look thin.
     if (!previewOnly) {
       const thin = rows.filter((r) => (r.photos?.length ?? 0) < 3 && r.external_id).slice(0, 12);
-      for (const r of thin) {
+      const enrichOne = async (r: typeof thin[number]) => {
         const gwItem = `https://gw.yad2.co.il/realestate-feed/item/${r.external_id}`;
         try {
           const raw = await unlock(gwItem, { accept: "application/json", maxAttempts: 1 });
@@ -1675,13 +1675,19 @@ Deno.serve(async (req) => {
         } catch (e) {
           console.warn(`[yad2-unlocker] gallery enrich failed ${gwItem}: ${String((e as Error)?.message ?? e)}`);
         }
+      };
+      // Run in small parallel batches, and bail out once the budget is thin so
+      // the save step still gets to run before the platform's 150s cut-off.
+      for (let i = 0; i < thin.length; i += 4) {
+        if (timeLeft() < 25_000) { timedOut = true; break; }
+        await Promise.all(thin.slice(i, i + 4).map(enrichOne));
       }
     }
 
     let saved = 0;
     const saveErrors: any[] = [];
     if (!previewOnly) {
-      for (const r of rows) {
+      const saveOne = async (r: typeof rows[number]) => {
         try {
           await saveListing(admin, userId, r);
           saved++;
@@ -1690,11 +1696,16 @@ Deno.serve(async (req) => {
           console.error(`[yad2-unlocker] save failed ${r.source_url}: ${msg}`);
           saveErrors.push({ url: r.source_url, error: msg });
         }
+      };
+      for (let i = 0; i < rows.length; i += 5) {
+        if (timeLeft() < 5_000) { timedOut = true; break; }
+        await Promise.all(rows.slice(i, i + 5).map(saveOne));
       }
       console.log(`[yad2-unlocker] saved ${saved}/${rows.length} row(s), ${saveErrors.length} error(s)`);
     } else {
       console.log(`[yad2-unlocker] preview_only=true — skipping DB save for ${rows.length} row(s)`);
     }
+
 
     return json({
       success: true,
