@@ -923,7 +923,7 @@ export default function PropertyDetail() {
 
           {/* Specs grid — editable in edit mode */}
           <Card className="p-4 sm:p-5">
-            <h2 className="text-2xl font-bold text-primary mb-4">מאפייני הנכס</h2>
+            <h2 className="text-[19px] font-bold text-primary mb-4">מאפייני הנכס</h2>
             {editMode && form ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <Field label="כותרת"><Input value={form.title} onChange={(e) => setField('title', e.target.value)} /></Field>
@@ -1154,10 +1154,10 @@ export default function PropertyDetail() {
 function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="h-[23px] w-[23px] text-primary mt-0.5 shrink-0" />
+      <Icon className="h-[18px] w-[18px] text-primary mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[22px] text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-[25px] font-semibold text-foreground truncate">{value}</p>
+        <p className="text-[17px] text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="text-[20px] font-semibold text-foreground truncate">{value}</p>
       </div>
     </div>
   );
