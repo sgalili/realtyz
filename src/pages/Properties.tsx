@@ -39,10 +39,12 @@ import { SourceBadge, sourceLabel } from '@/components/properties/SourceBadge';
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
-import { formatListingTitle, formatInternalListingTitle } from '@/lib/formatListingTitle';
+import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle } from '@/lib/formatListingTitle';
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
 import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/propertyFullSync';
 import { isNewListing } from '@/lib/listingFreshness';
+import { liveYad2Url } from '@/lib/yad2Ad';
+import { Yad2Icon } from '@/components/properties/Yad2Icon';
 
 
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
@@ -1113,7 +1115,7 @@ function ResultCard({
           </Badge>
         )}
         {isNewListing(result) && (
-          <Badge className="absolute top-11 left-3 z-10 border-0 bg-emerald-500 text-white shadow-sm">
+          <Badge className="absolute top-11 left-3 z-10 border-0 bg-[#FF7A00] text-white shadow-sm">
             חדש
           </Badge>
         )}
@@ -1225,7 +1227,7 @@ function ResultTable({
     const getVal = (r: UnifiedResult): string | number | null => {
       switch (sortCol) {
 
-        case 'name': return formatInternalListingTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
+        case 'name': return formatStreetTypeTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
         case 'house_number': return Number(houseNumberOf({ address: r.address, raw: r.raw })) || null;
         case 'apt_number': return Number(apartmentNumberOf({ address: r.address, raw: r.raw })) || null;
         case 'listing_type': return r.listing_type ?? '';
@@ -1273,14 +1275,13 @@ function ResultTable({
           <tr className="text-right">
             <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
 
-            <HeaderCell col="name" label="שם" />
+            <HeaderCell col="name" label="רחוב" />
             {/* Internal-only: house & apartment numbers never leave the workspace. */}
             <HeaderCell col="house_number" label="מספר בית" />
             <HeaderCell col="apt_number" label="מספר דירה" />
             <HeaderCell col="listing_type" label="סוג" />
             <HeaderCell col="price" label="מחיר" />
             <HeaderCell col="city" label="עיר" />
-            <HeaderCell col="address" label="רחוב" />
             <HeaderCell col="rooms" label="חדרים" />
             <HeaderCell col="size_sqm" label='מ"ר' />
             <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th>
@@ -1310,8 +1311,8 @@ function ResultTable({
                 </td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
                   {(() => {
-                    // Internal workspace table: full detail incl. house/apt number.
-                    const label = formatInternalListingTitle({
+                    // Internal table "רחוב" column: street name + property type only.
+                    const label = formatStreetTypeTitle({
                       address: r.address,
                       city: r.city,
                       neighborhood: r.neighborhood,
@@ -1325,7 +1326,7 @@ function ResultTable({
                     return (
                       <span className="inline-flex items-center gap-1.5 min-w-0">
                         {isNewListing(r) && (
-                          <span className="shrink-0 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">חדש</span>
+                          <span className="shrink-0 rounded-full bg-[#FF7A00] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm">חדש</span>
                         )}
                         <span className="truncate">{link}</span>
                       </span>
@@ -1338,7 +1339,6 @@ function ResultTable({
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap max-w-[180px] truncate" title={r.address ?? ''}>{r.address || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
@@ -1354,6 +1354,24 @@ function ResultTable({
                     >
                       {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     </Button>
+
+                    {(() => {
+                      const live = liveYad2Url(r);
+                      if (!live) return null;
+                      return (
+                        <a
+                          href={live}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="פתח את המודעה ביד2"
+                          aria-label="פתח את המודעה ביד2"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+                        >
+                          <Yad2Icon className="h-5 w-5" />
+                        </a>
+                      );
+                    })()}
 
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
                   </div>
