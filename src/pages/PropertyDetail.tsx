@@ -141,7 +141,7 @@ export default function PropertyDetail() {
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at, owner_id, short_description, long_description, latitude, longitude, furniture_details, additional_details, price_history')
+        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at, owner_id, short_description, long_description, latitude, longitude, furniture_details, additional_details, price_history, attributes, available_from, house_number, apartment_number')
         .eq('id', id!)
         .maybeSingle();
       if (!row) return null;
