@@ -2184,7 +2184,7 @@ Deno.serve(async (req) => {
     // --- Gallery enrichment: feed rows only carry the cover thumbnail. Pull
     // the full image array from the item endpoint for rows that look thin.
     if (!previewOnly) {
-      const thin = rows.filter((r) => (r.photos?.length ?? 0) < 3 && r.external_id).slice(0, 12);
+      const thin = rows.filter((r) => (r.photos?.length ?? 0) < 3 && r.external_id).slice(0, 8);
       const enrichOne = async (r: typeof thin[number]) => {
         const gwItem = `https://gw.yad2.co.il/realestate-feed/item/${r.external_id}`;
         try {
@@ -2207,9 +2207,9 @@ Deno.serve(async (req) => {
       };
       // Run in small parallel batches, and bail out once the budget is thin so
       // the save step still gets to run before the platform's 150s cut-off.
-      for (let i = 0; i < thin.length; i += 4) {
+      for (let i = 0; i < thin.length; i += 2) {
         if (timeLeft() < 25_000) { timedOut = true; break; }
-        await Promise.all(thin.slice(i, i + 4).map(enrichOne));
+        await Promise.all(thin.slice(i, i + 2).map(enrichOne));
       }
     }
 
@@ -2226,9 +2226,9 @@ Deno.serve(async (req) => {
           saveErrors.push({ url: r.source_url, error: msg });
         }
       };
-      for (let i = 0; i < rows.length; i += 5) {
+      for (let i = 0; i < rows.length; i += 3) {
         if (timeLeft() < 5_000) { timedOut = true; break; }
-        await Promise.all(rows.slice(i, i + 5).map(saveOne));
+        await Promise.all(rows.slice(i, i + 3).map(saveOne));
       }
       console.log(`[yad2-unlocker] saved ${saved}/${rows.length} row(s), ${saveErrors.length} error(s)`);
     } else {
