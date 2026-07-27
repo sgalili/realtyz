@@ -53,7 +53,9 @@ async function bdFetch(url: string): Promise<{ status: number; body: string } | 
     });
     const body = await r.text();
     const upstream = Number(r.headers.get('x-response-status') ?? r.headers.get('x-brd-status') ?? r.status);
-    if (r.headers.get('x-brd-err-code')) return null;
+    const errCode = r.headers.get('x-brd-err-code');
+    console.log(`[yad2-ad-status] bd ${url} gw=${r.status} upstream=${upstream} err=${errCode ?? '-'} bytes=${body.length} preview=${JSON.stringify(body.slice(0, 200))}`);
+    if (errCode) return null;
     return { status: Number.isFinite(upstream) ? upstream : r.status, body };
   } catch {
     return null;
