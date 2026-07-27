@@ -40,24 +40,54 @@ function itemToken(u: string): string | null {
   }
 }
 
+let bdHttpClient: unknown = null;
+try {
+  const create = (Deno as unknown as { createHttpClient?: (o: Record<string, unknown>) => unknown }).createHttpClient;
+  if (typeof create === 'function') bdHttpClient = create({ http1: true, http2: false });
+} catch { /* ignore */ }
+
 /** Fetch a URL through the Bright Data Web Unlocker; returns upstream status + body. */
 async function bdFetch(url: string): Promise<{ status: number; body: string } | null> {
+  const isGateway = /(^|\/\/)gw\.yad2\.co\.il/i.test(url);
+  const forwarded: Record<string, string> = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    'Accept': isGateway ? 'application/json,*/*;q=0.8' : 'text/html,application/xhtml+xml,*/*;q=0.8',
+    'Accept-Language': 'he-IL,he;q=0.9,en;q=0.7',
+    'Referer': 'https://www.yad2.co.il/',
+  };
+  if (isGateway) {
+    forwarded['Origin'] = 'https://www.yad2.co.il';
+    forwarded['Sec-Fetch-Dest'] = 'empty';
+    forwarded['Sec-Fetch-Mode'] = 'cors';
+    forwarded['Sec-Fetch-Site'] = 'same-site';
+  } else {
+    forwarded['Sec-Fetch-Dest'] = 'document';
+    forwarded['Sec-Fetch-Mode'] = 'navigate';
+    forwarded['Sec-Fetch-Site'] = 'none';
+    forwarded['Upgrade-Insecure-Requests'] = '1';
+  }
+
   try {
     const r = await fetch('https://api.brightdata.com/request', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${BD_TOKEN}`,
+        Accept: '*/*',
+        Connection: 'close',
       },
-      body: JSON.stringify({ zone: BD_ZONE, url, format: 'raw', method: 'GET' }),
-    });
+      body: JSON.stringify({ zone: BD_ZONE, url, format: 'raw', country: 'il', method: 'GET', headers: forwarded }),
+      ...(bdHttpClient ? { client: bdHttpClient } : {}),
+    } as RequestInit);
     const body = await r.text();
-    const upstream = Number(r.headers.get('x-response-status') ?? r.headers.get('x-brd-status') ?? r.status);
     const errCode = r.headers.get('x-brd-err-code');
-    console.log(`[yad2-ad-status] bd ${url} gw=${r.status} upstream=${upstream} err=${errCode ?? '-'} bytes=${body.length} preview=${JSON.stringify(body.slice(0, 200))}`);
+    const upstreamRaw = r.headers.get('x-response-status') ?? r.headers.get('x-brd-status');
+    const upstream = Number(upstreamRaw ?? r.status);
+    console.log(`[yad2-ad-status] bd ${url} gw=${r.status} upstream=${upstreamRaw ?? '-'} err=${errCode ?? '-'} bytes=${body.length}`);
     if (errCode) return null;
     return { status: Number.isFinite(upstream) ? upstream : r.status, body };
-  } catch {
+  } catch (e) {
+    console.warn(`[yad2-ad-status] bd failed ${url}: ${(e as Error).message}`);
     return null;
   }
 }
