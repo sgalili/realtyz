@@ -543,18 +543,25 @@ export default function Properties() {
 
   // Per-source count breakdown for the total-count dropdown.
   const sourceBreakdown = useMemo(() => {
-    // Prefer the fan-out status (accurate raw counts before dedupe/text filter).
-    const fromStatus = Object.entries(sourceStatus).map(([src, info]) => ({
-      key: src as any,
-      count: info.count,
-      status: info.status,
-      error: info.error,
-    }));
-    if (fromStatus.length) return fromStatus;
-    // Fallback: count the rendered results by their assigned source.
+    // Real, deduped counts of what the table actually holds per source.
     const buckets = new Map<string, number>();
-    results.forEach((r) => buckets.set(r.source, (buckets.get(r.source) ?? 0) + 1));
-    return Array.from(buckets.entries()).map(([key, count]) => ({ key: key as any, count, status: 'ok' as const, error: undefined }));
+    results.forEach((r) => {
+      for (const s of (r.sources?.length ? r.sources : [r.source])) {
+        buckets.set(s, (buckets.get(s) ?? 0) + 1);
+      }
+    });
+    const keys = new Set<string>([...Object.keys(sourceStatus), ...buckets.keys()]);
+    return Array.from(keys).map((src) => {
+      const info = sourceStatus[src];
+      const rendered = buckets.get(src) ?? 0;
+      return {
+        key: src as PropertySource,
+        // Rendered rows win — the status count is only a hint before dedupe.
+        count: rendered || info?.count || 0,
+        status: info?.status ?? 'ok',
+        error: info?.error,
+      };
+    }).sort((a, b) => b.count - a.count);
   }, [sourceStatus, results]);
 
   const SORT_LABELS: Record<typeof sortBy, string> = {
