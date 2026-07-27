@@ -212,8 +212,12 @@ export async function searchAllSources(
       (homelyFilters.deal && homelyFilters.deal !== 'all'),
   );
 
-  const tasks: Array<Promise<{ label: PropertySource; results: UnifiedResult[] }>> = [
+  // STAGED PIPELINE (API conservation): each stage only starts after the
+  // previous one has painted. Local DB first (free, instant), Yad2 second,
+  // Homely/Webtiv last — so a cancelled search never burns external quota.
+  const localTask = () =>
     searchLocal(f)
+
       .then((r) => {
         sources.mine = { status: r.length ? 'ok' : 'empty', count: r.length };
         return { label: 'mine' as const, results: r };
