@@ -267,12 +267,14 @@ export async function searchAllSources(
         console.error('[propertySearch] homely-fetch-property failed', e);
         sources.homely = { status: 'error', count: 0, error: String(e?.message ?? e) };
         return { label: 'homely' as const, results: [] };
-      }),
+      });
+
+  const yad2Task = () =>
     (async () => {
-      // Yad2 tab / unified search ALWAYS triggers a direct live fetch against
-      // the yad2-unlocker edge function (which talks to gw.yad2.co.il and
-      // www.yad2.co.il via Bright Data). It does NOT fall back to Homely or
-      // Webtiv — those run as independent siblings in this Promise.all.
+      // Yad2 runs as the SECOND stage — a live fetch against the
+      // yad2-unlocker edge function (gw.yad2.co.il / www.yad2.co.il via
+      // Bright Data). It never falls back to Homely or Webtiv.
+
       const queryText = [f.q, f.city && f.city !== 'כל הערים' ? f.city : null, f.neighborhood]
         .filter(Boolean)
         .join(' ')
