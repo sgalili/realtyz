@@ -1335,6 +1335,36 @@ function parseItem(html: string, srcUrl: string): Scraped {
   const ownerPhone = clean(ad?.phone_number ?? ad?.merchant_phone ?? null);
   const coords = pickCoords(ad ?? {});
 
+  // JSON first, then DOM/text fallbacks for the fields Yad2 only prints in HTML.
+  const addressText = clean(ad?.street ?? ad?.address?.street?.text ?? null);
+  const jsonNums = pickAddressNumbers(ad ?? {}, addressText ?? clean($("h1").first().text()));
+  let houseNum = jsonNums.house_number;
+  let aptNum = jsonNums.apartment_number;
+  if (!houseNum || !aptNum) {
+    for (const blob of jsonBlobs) {
+      if (houseNum && aptNum) break;
+      const n = pickAddressNumbers(blob, null);
+      houseNum = houseNum ?? n.house_number;
+      aptNum = aptNum ?? n.apartment_number;
+    }
+  }
+  if (!houseNum || !aptNum) {
+    const domNums = addressNumbersFromHtml($, text);
+    houseNum = houseNum ?? domNums.house_number;
+    aptNum = aptNum ?? domNums.apartment_number;
+  }
+
+  const additional = pickAdditionalDetails(ad ?? {});
+  const domMoney = financialsFromHtml($, text);
+  for (const [k, v] of Object.entries(domMoney)) {
+    if (additional[k] == null || additional[k] === "") additional[k] = v;
+  }
+
+  const about = clean(ad?.description ?? ad?.info_text ?? null)
+    ?? deepDescription(ad)
+    ?? (() => { for (const b of jsonBlobs) { const d = deepDescription(b); if (d) return d; } return null; })()
+    ?? descriptionFromHtml($);
+
   return {
     source_url: srcUrl,
     external_id: idMatch?.[1] ?? null,
@@ -1343,25 +1373,27 @@ function parseItem(html: string, srcUrl: string): Scraped {
     rooms: toNum(roomsText),
     city: clean(ad?.city ?? ad?.address?.city?.text ?? null),
     neighborhood: clean(ad?.neighborhood ?? ad?.address?.neighborhood?.text ?? null),
-    address: clean(ad?.street ?? ad?.address?.street?.text ?? null),
-    ...pickAddressNumbers(ad ?? {}, clean(ad?.street ?? ad?.address?.street?.text ?? null) ?? clean($("h1").first().text())),
+    address: addressText,
+    house_number: houseNum,
+    apartment_number: aptNum,
     sqm: toInt(sqmText),
     floor: toInt(floorText),
     photos: pickAllPhotos(photos).slice(0, 40),
     deal_type: dealType,
     owner_name: ownerName,
     owner_phone: ownerPhone,
-    description: clean(ad?.description ?? null) ?? deepDescription(ad) ?? descriptionFromHtml($),
+    description: about,
     short_description: clean(ad?.info_text ?? ad?.subtitle ?? null),
-    long_description: clean(ad?.description ?? null) ?? deepDescription(ad) ?? descriptionFromHtml($),
+    long_description: about,
     available_from: pickAvailableFrom(ad ?? {}),
     attributes: pickAttributes(ad ?? {}),
     latitude: coords.lat,
     longitude: coords.lng,
     furniture_details: pickFurniture(ad ?? {}),
-    additional_details: pickAdditionalDetails(ad ?? {}),
+    additional_details: additional,
     price_history: pickPriceHistory(ad ?? {}),
   };
+
 }
 
 
