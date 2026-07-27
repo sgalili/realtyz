@@ -173,14 +173,12 @@ Deno.serve(async (req) => {
       );
       if (match?.id) phoneNumberId = String(match.id);
     }
-    if (phoneNumberId === digits || looksLikePhoneNumberStill(phoneNumberId)) {
-      // still not a node id
+    if (phoneNumberId !== String(input.phone_number_id ?? phoneNumberId)) {
+      await persist({ phone_number_id: phoneNumberId });
     }
   }
 
-  function looksLikePhoneNumberStill(v: string) {
-    return v.startsWith("+");
-  }
+
 
   if (phoneNumberId.startsWith("+")) {
     return await fail(
