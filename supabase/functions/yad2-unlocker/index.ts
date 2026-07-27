@@ -442,6 +442,50 @@ function pickCoords(it: any): { lat: number | null; lng: number | null } {
 }
 
 /**
+ * House number (מספר בית) + apartment number (מספר דירה). Yad2 exposes these
+ * under `address.house.{number,floor,apartment}` on the item feed, and only as
+ * free text inside the street line on some legacy shapes.
+ */
+function pickAddressNumbers(it: any, addressText?: string | null): {
+  house_number: string | null;
+  apartment_number: string | null;
+} {
+  const pick = (...vals: any[]): string | null => {
+    for (const v of vals) {
+      if (v == null) continue;
+      const s = String(v).trim();
+      if (s && s !== "0" && s.toLowerCase() !== "null") return s;
+    }
+    return null;
+  };
+  const h = it?.address?.house ?? it?.house ?? {};
+  let house = pick(
+    h?.number, h?.houseNumber, h?.house_number,
+    it?.address?.houseNumber, it?.address?.house_number, it?.address?.number,
+    it?.houseNumber, it?.house_number, it?.streetNumber, it?.street_number,
+    it?.additionalDetails?.houseNumber, it?.additionalDetails?.house_number,
+  );
+  let apt = pick(
+    h?.apartment, h?.apartmentNumber, h?.apartment_number, h?.flat, h?.unit,
+    it?.address?.apartmentNumber, it?.address?.apartment_number, it?.address?.apartment,
+    it?.apartmentNumber, it?.apartment_number, it?.apartment, it?.unit, it?.unitNumber,
+    it?.additionalDetails?.apartmentNumber, it?.additionalDetails?.apartment_number,
+  );
+
+  const addr = clean(addressText ?? it?.address?.street?.text ?? it?.street ?? null) ?? "";
+  if (!apt) {
+    const marked = addr.match(/(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)\s*(\d{1,4}[א-תA-Za-z]?)/i);
+    if (marked) apt = marked[1];
+  }
+  if (!house) {
+    const head = addr.split(/(?:,|\s)+(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)/i)[0];
+    const m = head.match(/(\d{1,4}[א-תA-Za-z]?)\s*$/) || head.match(/(\d{1,4}[א-תA-Za-z]?)/);
+    if (m) house = m[1];
+  }
+  return { house_number: house, apartment_number: apt };
+}
+
+/**
  * "על הנכס" — Yad2 hides the free-text description under several different
  * keys depending on the endpoint/version (`description`, `info_text`,
  * `freeText`, `adDescription`, `metaData.longDescription`, ...). Walk the
@@ -545,6 +589,43 @@ function pickAdditionalDetails(it: any): Record<string, unknown> {
   collect(it?.additionalDetails);
   collect(it?.propertyDetails);
   collect(it?.tags);
+  collect(it?.metaData?.additionalDetails);
+  collect(it?.priceDetails);
+  collect(it?.payments);
+
+  // Canonical Yad2 secondary fields — guaranteed present when the source has
+  // them, whatever key shape the endpoint used.
+  const first = (...vals: any[]) => {
+    for (const v of vals) {
+      if (v == null || v === "" || typeof v === "object") continue;
+      return v;
+    }
+    return null;
+  };
+  const ad = it?.additionalDetails ?? {};
+  const canon: Record<string, unknown> = {
+    floor: first(out.floor, ad.floor, it?.floor, it?.address?.house?.floor),
+    totalFloors: first(out.totalFloors, ad.totalFloors, ad.buildingTopFloor, it?.buildingTopFloor, it?.totalFloors),
+    parkingSpacesCount: first(out.parkingSpacesCount, ad.parkingSpacesCount, ad.parkingQuantity, it?.parking, it?.parkingSpaces),
+    balconiesCount: first(out.balconiesCount, ad.balconiesCount, ad.balconies, it?.balconies),
+    propertyCondition: first(
+      out.propertyCondition,
+      ad.propertyCondition?.text, ad.propertyCondition,
+      it?.propertyCondition?.text, it?.propertyCondition,
+      it?.assetCondition,
+    ),
+    squareMeterBuild: first(out.squareMeterBuild, ad.squareMeterBuild, ad.squareMeter, it?.square_meters),
+    arnona: first(out.arnona, ad.arnona, ad.municipalTax, it?.arnona, it?.municipalTax, it?.taxes),
+    vaadBayit: first(out.vaadBayit, ad.vaadBayit, ad.houseCommittee, it?.houseCommittee, it?.vaadBayit),
+    paymentsCount: first(out.paymentsCount, ad.paymentsCount, ad.numOfPayments, it?.numOfPayments),
+    entranceDate: first(out.entranceDate, ad.entranceDate, it?.entranceDate, it?.dates?.entrance),
+    yearBuilt: first(out.yearBuilt, ad.yearBuilt, ad.buildingYear, it?.buildingYear),
+  };
+  for (const [k, v] of Object.entries(canon)) {
+    if (v == null || v === "") continue;
+    out[k] = v;
+  }
+
   delete (out as any).images;
   delete (out as any).coverImage;
   return out;
@@ -628,6 +709,7 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     city,
     neighborhood,
     address,
+    ...pickAddressNumbers(it, address),
     sqm,
     floor,
     photos,
@@ -760,6 +842,9 @@ function parseItemJson(body: string, srcUrl: string): Scraped | null {
   base.longitude = coords.lng ?? base.longitude ?? null;
   base.furniture_details = { ...(base.furniture_details ?? {}), ...pickFurniture(ad) };
   base.additional_details = { ...(base.additional_details ?? {}), ...pickAdditionalDetails(ad) };
+  const nums = pickAddressNumbers(ad, base.address);
+  base.house_number = nums.house_number ?? base.house_number ?? null;
+  base.apartment_number = nums.apartment_number ?? base.apartment_number ?? null;
   const hist = pickPriceHistory(ad);
   if (hist.length) base.price_history = hist;
   return base;
@@ -777,6 +862,8 @@ type Scraped = {
   city: string | null;
   neighborhood: string | null;
   address: string | null;
+  house_number?: string | null;
+  apartment_number?: string | null;
   sqm: number | null;
   floor: number | null;
   photos: string[];
@@ -895,6 +982,7 @@ function parseSearch(html: string, srcUrl: string, limit: number): Scraped[] {
       city,
       neighborhood,
       address,
+      ...pickAddressNumbers(it, address),
       sqm: toInt(sqmRaw),
       floor: toInt(floorRaw),
       photos,
@@ -1061,6 +1149,7 @@ function parseItem(html: string, srcUrl: string): Scraped {
     city: clean(ad?.city ?? ad?.address?.city?.text ?? null),
     neighborhood: clean(ad?.neighborhood ?? ad?.address?.neighborhood?.text ?? null),
     address: clean(ad?.street ?? ad?.address?.street?.text ?? null),
+    ...pickAddressNumbers(ad ?? {}, clean(ad?.street ?? ad?.address?.street?.text ?? null) ?? clean($("h1").first().text())),
     sqm: toInt(sqmText),
     floor: toInt(floorText),
     photos: pickAllPhotos(photos).slice(0, 40),
@@ -1323,6 +1412,8 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     city: row.city,
     neighborhood: row.neighborhood,
     address: row.address,
+    house_number: row.house_number ?? null,
+    apartment_number: row.apartment_number ?? null,
     sqm: row.sqm,
     floor: row.floor,
     deal_type: row.deal_type,
@@ -1350,6 +1441,8 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
       media_photos_count: mergedPhotos.length,
       owner_name: row.owner_name,
       owner_phone: row.owner_phone,
+      house_number: row.house_number ?? null,
+      apartment_number: row.apartment_number ?? null,
       scraped_at: new Date().toISOString(),
     },
   };
@@ -1359,6 +1452,11 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     const updatePayload: Record<string, unknown> = { ...payload };
     if (updatePayload.latitude == null) delete updatePayload.latitude;
     if (updatePayload.longitude == null) delete updatePayload.longitude;
+    // Keep previously resolved address numbers / description when this pass
+    // (a feed row) carries less detail than the item page did.
+    for (const k of ["house_number", "apartment_number", "short_description", "long_description"]) {
+      if (updatePayload[k] == null || updatePayload[k] === "") delete updatePayload[k];
+    }
     for (const k of ["furniture_details", "additional_details"]) {
       const v = updatePayload[k] as Record<string, unknown> | undefined;
       if (!v || Object.keys(v).length === 0) delete updatePayload[k];

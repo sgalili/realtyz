@@ -84,7 +84,7 @@ export async function searchLocalListings(f: SearchFilters): Promise<UnifiedResu
 async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
   let q = supabase
     .from('listings')
-    .select('id, property_title, description, short_description, long_description, available_from, attributes, asking_price, deal_type, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, media_photos, created_at, updated_at')
+    .select('id, property_title, description, short_description, long_description, available_from, attributes, house_number, apartment_number, asking_price, deal_type, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, media_photos, created_at, updated_at')
     .order('created_at', { ascending: false })
     .limit(200);
 

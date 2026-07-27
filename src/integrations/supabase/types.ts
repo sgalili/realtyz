@@ -2886,6 +2886,7 @@ export type Database = {
         Row: {
           additional_details: Json
           address: string | null
+          apartment_number: string | null
           area_perks: Json | null
           asking_price: number
           attributes: Json
@@ -2904,6 +2905,7 @@ export type Database = {
           features: Json
           floor: number | null
           furniture_details: Json
+          house_number: string | null
           id: string
           image_url: string | null
           is_featured: boolean
@@ -2937,6 +2939,7 @@ export type Database = {
         Insert: {
           additional_details?: Json
           address?: string | null
+          apartment_number?: string | null
           area_perks?: Json | null
           asking_price?: number
           attributes?: Json
@@ -2955,6 +2958,7 @@ export type Database = {
           features?: Json
           floor?: number | null
           furniture_details?: Json
+          house_number?: string | null
           id?: string
           image_url?: string | null
           is_featured?: boolean
@@ -2988,6 +2992,7 @@ export type Database = {
         Update: {
           additional_details?: Json
           address?: string | null
+          apartment_number?: string | null
           area_perks?: Json | null
           asking_price?: number
           attributes?: Json
@@ -3006,6 +3011,7 @@ export type Database = {
           features?: Json
           floor?: number | null
           furniture_details?: Json
+          house_number?: string | null
           id?: string
           image_url?: string | null
           is_featured?: boolean

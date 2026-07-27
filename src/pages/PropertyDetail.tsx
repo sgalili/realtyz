@@ -141,7 +141,7 @@ export default function PropertyDetail() {
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at, owner_id, short_description, long_description, latitude, longitude, furniture_details, additional_details, price_history')
+        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at, owner_id, short_description, long_description, latitude, longitude, furniture_details, additional_details, price_history, attributes, available_from, house_number, apartment_number')
         .eq('id', id!)
         .maybeSingle();
       if (!row) return null;
@@ -247,9 +247,26 @@ export default function PropertyDetail() {
         documents,
         owner,
         rich: {
-          about: (r.long_description as string | null) || (r.short_description as string | null) || null,
+          about:
+            (r.long_description as string | null) ||
+            (r.short_description as string | null) ||
+            (row.description as string | null) ||
+            null,
           furniture: (r.furniture_details as Record<string, unknown> | null) ?? null,
-          additional: (r.additional_details as Record<string, unknown> | null) ?? null,
+          additional: (() => {
+            const base = (r.additional_details && typeof r.additional_details === 'object' && !Array.isArray(r.additional_details)
+              ? { ...(r.additional_details as Record<string, unknown>) }
+              : {}) as Record<string, unknown>;
+            // Guarantee the core secondary fields are always populated from the
+            // listing columns when the scraped blob is missing them.
+            if (base.floor == null && row.floor != null) base.floor = row.floor;
+            if (base.parkingSpacesCount == null && (row as any).parking != null) {
+              base.parkingSpacesCount = (row as any).parking;
+            }
+            if (base.squareMeterBuild == null && row.sqm != null) base.squareMeterBuild = row.sqm;
+            if (base.rooms == null && row.rooms != null) base.rooms = row.rooms;
+            return Object.keys(base).length ? base : null;
+          })(),
           amenities: (r.attributes && typeof r.attributes === 'object' && !Array.isArray(r.attributes)
             ? (r.attributes as Record<string, unknown>)
             : null),
