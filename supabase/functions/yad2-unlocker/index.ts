@@ -842,6 +842,9 @@ function parseItemJson(body: string, srcUrl: string): Scraped | null {
   base.longitude = coords.lng ?? base.longitude ?? null;
   base.furniture_details = { ...(base.furniture_details ?? {}), ...pickFurniture(ad) };
   base.additional_details = { ...(base.additional_details ?? {}), ...pickAdditionalDetails(ad) };
+  const nums = pickAddressNumbers(ad, base.address);
+  base.house_number = nums.house_number ?? base.house_number ?? null;
+  base.apartment_number = nums.apartment_number ?? base.apartment_number ?? null;
   const hist = pickPriceHistory(ad);
   if (hist.length) base.price_history = hist;
   return base;
