@@ -1366,7 +1366,7 @@ function ResultTable({
             return (
               <tr key={r.key} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
                 <td className="px-2 py-1.5">
-                  <div className="h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
+                  <div className="relative h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
                       <img
                         src={r.photos[0]}
@@ -1378,6 +1378,12 @@ function ResultTable({
                       <div className="h-full w-full flex items-center justify-center">
                         <Building2 className="h-4 w-4 text-muted-foreground/50" />
                       </div>
+                    )}
+                    {/* Total images available for this listing. */}
+                    {(r.photos?.length ?? 0) > 1 && (
+                      <span className="absolute top-0 right-0 rounded-bl-md bg-black/70 px-1 text-[9px] font-bold leading-[13px] text-white tabular-nums">
+                        {r.photos!.length}
+                      </span>
                     )}
                   </div>
                 </td>
