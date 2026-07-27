@@ -1259,6 +1259,8 @@ function ResultTable({
         case 'address': return stripAddressNumbers(r.address ?? '') || '';
         case 'rooms': return typeof r.rooms === 'number' ? r.rooms : (r.rooms ? Number(r.rooms) : null);
         case 'size_sqm': return typeof r.size_sqm === 'number' ? r.size_sqm : (r.size_sqm ? Number(r.size_sqm) : null);
+        case 'published': return listingActivityAt(r);
+
       }
     };
     const dir = sortDir === 'asc' ? 1 : -1;
