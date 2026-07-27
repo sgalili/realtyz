@@ -1128,7 +1128,35 @@ async function scrapingBrowserHarvest(
   }
 }
 
+/**
+ * Field-level merge of an HTML-parsed row with the richer gw JSON row.
+ * JSON wins on descriptive fields; photo arrays are unioned (order-preserving).
+ */
+function mergeScraped(base: Scraped, extra: Scraped | null | undefined): Scraped {
+  if (!extra) return base;
+  const merged: Scraped = { ...base };
+  for (const [k, v] of Object.entries(extra)) {
+    if (v == null) continue;
+    if (k === "photos") continue;
+    if (typeof v === "string" && !v.trim()) continue;
+    if (typeof v === "object" && !Array.isArray(v) && !Object.keys(v).length) continue;
+    if (Array.isArray(v) && !v.length) continue;
+    (merged as Record<string, unknown>)[k] = v;
+  }
+  const seen = new Set<string>();
+  const photos: string[] = [];
+  for (const u of [...(base.photos ?? []), ...(extra.photos ?? [])]) {
+    const key = String(u).split("?")[0].toLowerCase();
+    if (!u || seen.has(key)) continue;
+    seen.add(key);
+    photos.push(u);
+  }
+  merged.photos = photos;
+  return merged;
+}
+
 // -------- Save helpers --------
+
 
 async function upsertOwnerProfile(
   admin: any,
