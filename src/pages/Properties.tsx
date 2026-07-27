@@ -1309,8 +1309,8 @@ function ResultTable({
                 </td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
                   {(() => {
-                    // Internal workspace table: full detail incl. house/apt number.
-                    const label = formatInternalListingTitle({
+                    // Internal table "רחוב" column: street name + property type only.
+                    const label = formatStreetTypeTitle({
                       address: r.address,
                       city: r.city,
                       neighborhood: r.neighborhood,
@@ -1324,7 +1324,7 @@ function ResultTable({
                     return (
                       <span className="inline-flex items-center gap-1.5 min-w-0">
                         {isNewListing(r) && (
-                          <span className="shrink-0 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">חדש</span>
+                          <span className="shrink-0 rounded-full bg-[#FF7A00] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm">חדש</span>
                         )}
                         <span className="truncate">{link}</span>
                       </span>
@@ -1337,7 +1337,6 @@ function ResultTable({
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap max-w-[180px] truncate" title={r.address ?? ''}>{r.address || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
@@ -1353,6 +1352,24 @@ function ResultTable({
                     >
                       {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     </Button>
+
+                    {(() => {
+                      const live = liveYad2Url(r);
+                      if (!live) return null;
+                      return (
+                        <a
+                          href={live}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="פתח את המודעה ביד2"
+                          aria-label="פתח את המודעה ביד2"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+                        >
+                          <Yad2Icon className="h-5 w-5" />
+                        </a>
+                      );
+                    })()}
 
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
                   </div>
