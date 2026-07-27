@@ -743,11 +743,17 @@ export default function Properties() {
                   )}
                   {sourceBreakdown.map((row) => {
                     const isError = row.status === 'error';
+                    const active = sourceFilter === row.key;
                     return (
                       <DropdownMenuItem
                         key={row.key}
-                        className="text-xs justify-between gap-3"
-                        title={row.error ?? undefined}
+                        className={`text-xs justify-between gap-3 cursor-pointer ${active ? 'bg-primary/10 text-primary' : ''}`}
+                        title={row.error ?? 'סנן את הטבלה לפי מקור זה'}
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          // Click a source to filter + float it to the top of the table.
+                          setSourceFilter(active ? null : row.key);
+                        }}
                       >
                         <span className="flex flex-col items-start gap-0.5">
                           <span className="flex items-center gap-2">
@@ -761,12 +767,20 @@ export default function Properties() {
                           )}
                         </span>
                         <span className={`font-bold tabular-nums ${isError ? 'text-destructive' : ''}`}>
-                          {isError ? '!' : row.count}
+                          {isError && !row.count ? '!' : row.count}
                         </span>
                       </DropdownMenuItem>
                     );
                   })}
                   <DropdownMenuSeparator />
+                  {sourceFilter && (
+                    <DropdownMenuItem
+                      className="text-xs justify-center text-primary"
+                      onSelect={(e) => { e.preventDefault(); setSourceFilter(null); }}
+                    >
+                      נקה סינון מקור
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem className="text-xs justify-between gap-3 font-semibold">
                     <span>סה״כ (לאחר איחוד)</span>
                     <span className="tabular-nums">{results.length}</span>
