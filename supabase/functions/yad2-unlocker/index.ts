@@ -1354,7 +1354,7 @@ Deno.serve(async (req) => {
     const BUDGET_MS = 110_000;
     const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
     let timedOut = false;
-    const body = await req.json().catch(() => ({} as any));
+    const body = earlyBody;
     const limit = Math.min(300, Math.max(1, Number(body?.limit) || 30));
     const previewOnly = Boolean(body?.preview_only);
 
