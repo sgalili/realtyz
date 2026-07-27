@@ -165,9 +165,6 @@ const OmnichannelInbox = () => {
   const [manualTakeoverWarning, setManualTakeoverWarning] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeletingChat, setIsDeletingChat] = useState(false);
-  const [inviteChannel, setInviteChannel] = useState<string | null>(null);
-  const [inviteVia, setInviteVia] = useState<'whatsapp' | 'sms'>('whatsapp');
-  const [inviteSending, setInviteSending] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -540,8 +537,8 @@ const OmnichannelInbox = () => {
       setSendChannel(requestedChannel);
       return;
     }
-    setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
-    setInviteChannel(requestedChannel);
+    // No invite flow any more — open the chat on the requested channel anyway.
+    setSendChannel(requestedChannel);
   }, [searchParams, selectedVoterId, selectedVoter?.phone_number, availableChannels]);
 
 
@@ -640,17 +637,7 @@ const OmnichannelInbox = () => {
     },
     onError: (error: Error) => {
       if (error.message === 'demo-blocked') return;
-      // If Messenger/Instagram DM was rejected because we don't hold a PSID
-      // for this lead (they never messaged our Page), pivot to an invite
-      // via WhatsApp/SMS with an m.me/ig.me deep-link.
       const msg = error.message || '';
-      if (/no_recipient_psid|PSID|messaged your Page|messaged you first|recipient/i.test(msg) &&
-          (sendChannel === 'messenger' || sendChannel === 'instagram' || sendChannel === 'facebook' || sendChannel === 'linkedin')) {
-        setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
-        setInviteChannel(sendChannel);
-        toast.info('הליד עדיין לא פנה לעמוד — נשלחת הזמנה בערוץ אחר');
-        return;
-      }
       toast.error('שליחת ההודעה נכשלה', { description: msg, duration: 8000 });
     },
   });
@@ -711,6 +698,52 @@ const OmnichannelInbox = () => {
     }
     return base;
   })();
+
+  // ── Direct-dial search: typing a raw Israeli mobile number lets the broker
+  // start a WhatsApp chat immediately. A CRM lead card is created on the spot.
+  const searchedPhone = (() => {
+    const digits = search.replace(/\D/g, '');
+    if (!digits) return null;
+    let local = digits;
+    if (local.startsWith('972')) local = '0' + local.slice(3);
+    if (!/^05\d{8}$/.test(local)) return null;
+    return '972' + local.slice(1);
+  })();
+  const phoneAlreadyKnown = !!searchedPhone && (dbVoters ?? []).some(
+    (v: any) => (v?.phone_number || '').replace(/\D/g, '') === searchedPhone,
+  );
+  const [creatingLead, setCreatingLead] = useState(false);
+  const startChatWithPhone = async () => {
+    if (!searchedPhone || creatingLead) return;
+    setCreatingLead(true);
+    try {
+      const { data: existing } = await supabase
+        .from('leads').select('id').eq('phone_number', searchedPhone).maybeSingle();
+      let leadId = (existing as any)?.id as string | undefined;
+      if (!leadId) {
+        const { data: created, error } = await supabase
+          .from('leads')
+          .insert({
+            phone_number: searchedPhone,
+            full_name: formatPhoneDisplay(searchedPhone),
+            user_id: user?.id,
+          } as any)
+          .select('id')
+          .single();
+        if (error) throw error;
+        leadId = (created as any).id;
+        toast.success('נוצר כרטיס מתעניין חדש');
+      }
+      await queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+      setSearch('');
+      setSendChannel('whatsapp');
+      setSelectedVoterId(leadId!);
+    } catch (e: any) {
+      toast.error('יצירת הכרטיס נכשלה', { description: e?.message });
+    } finally {
+      setCreatingLead(false);
+    }
+  };
 
   const handleSend = () => {
     const content = newMessage.trim();
@@ -793,12 +826,7 @@ const OmnichannelInbox = () => {
               setChannelFilter(c.key);
               if (c.key === 'all') return;
               if (!selectedVoterId) return;
-              if (isAvail) {
-                setSendChannel(c.key);
-              } else {
-                setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
-                setInviteChannel(c.key);
-              }
+              setSendChannel(c.key);
             };
             return (
               <button
@@ -873,6 +901,24 @@ const OmnichannelInbox = () => {
             </div>
           </div>
           <ScrollArea className="flex-1">
+            {searchedPhone && !phoneAlreadyKnown && (
+              <button
+                type="button"
+                onClick={startChatWithPhone}
+                disabled={creatingLead}
+                className="flex w-full items-center gap-3 border-b border-border/30 px-3 py-3 text-right transition-colors hover:bg-muted/50 disabled:opacity-60"
+              >
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-whatsapp-header/10 text-whatsapp-header">
+                  <BrandIcon name="whatsapp" className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{formatPhoneDisplay(searchedPhone)}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {creatingLead ? 'יוצר כרטיס...' : 'התחל שיחת וואטסאפ ופתח כרטיס מתעניין'}
+                  </span>
+                </span>
+              </button>
+            )}
             <AnimatePresence initial={false}>
               {filteredVoters?.map((voter) => {
                 const lastMsg = lastMessages?.get(voter.id);
@@ -1091,19 +1137,14 @@ const OmnichannelInbox = () => {
 
               {/* Input Area */}
               <div className="border-t border-border/50 bg-whatsapp-footer p-2 sm:p-3">
-                {leadAutopilot && aiAutopilot && !manualTakeoverWarning ? (
-                  <div className="flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-2 text-whatsapp-header shadow-sm">
-                    <div className="relative inline-flex" title="טייס AI לשיחה זו">
-                      <Switch checked={leadAutopilot} className="peer border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground" onCheckedChange={(v) => {
-                        setLeadAutopilot(v);
-                        if (v) setManualTakeoverWarning(false);
-                      }} />
-                      <Bot className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 transition-all peer-data-[state=checked]:left-[26px] peer-data-[state=checked]:text-whatsapp-header peer-data-[state=unchecked]:left-1.5 peer-data-[state=unchecked]:text-muted-foreground" />
-                    </div>
+                {/* Autopilot notice — the composer below stays visible at all times. */}
+                {leadAutopilot && aiAutopilot && !manualTakeoverWarning && (
+                  <div className="mb-2 flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-1.5 text-whatsapp-header shadow-sm">
+                    <Bot className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium">טייס אוטומטי פעיל לשיחה זו - ה-AI עונה באופן אוטומטי</span>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2">
+                )}
+                <div className="flex items-center gap-2">
                     <div className="relative inline-flex" title={aiAutopilot ? 'טייס AI לשיחה זו' : 'הטייס הכללי כבוי (מהכותרת)'}>
                       <Switch checked={leadAutopilot} disabled={!selectedVoterId} className="peer border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground" onCheckedChange={(v) => {
                         setLeadAutopilot(v);
@@ -1191,8 +1232,7 @@ const OmnichannelInbox = () => {
                     <Button onClick={handleSend} disabled={(!newMessage.trim() && !attachment) || sendMessage.isPending} size="icon" title="שלח" className="h-11 w-11 shrink-0 rounded-full bg-whatsapp-header text-whatsapp-header-foreground hover:bg-whatsapp-header/90">
                       {newMessage.trim() || attachment ? <Send className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </Button>
-                  </div>
-                )}
+                </div>
               </div>
             </>
           )}
@@ -1226,56 +1266,6 @@ const OmnichannelInbox = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Invite modal — sends WA/SMS invite so the lead opens the closed channel */}
-      <Dialog open={!!inviteChannel} onOpenChange={(open) => { if (!open) setInviteChannel(null); }}>
-        <DialogContent dir="rtl" className="text-right sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>הזמנה לערוץ {channelConfig[inviteChannel || '']?.label || inviteChannel}</DialogTitle>
-            <DialogDescription>
-              הערוץ עדיין לא פתוח מול הליד. נשלח קישור הזמנה קצר בוואטסאפ או SMS כדי שהוא יפתח שיחה עם העסק.
-            </DialogDescription>
-          </DialogHeader>
-          <RadioGroup value={inviteVia} onValueChange={(v) => setInviteVia(v as any)} className="space-y-2">
-            <label className="flex flex-row-reverse items-center justify-between gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
-              <span className="text-sm">שליחה בוואטסאפ</span>
-              <RadioGroupItem value="whatsapp" disabled={!selectedVoter?.phone_number} />
-            </label>
-            <label className="flex flex-row-reverse items-center justify-between gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
-              <span className="text-sm">שליחה ב-SMS</span>
-              <RadioGroupItem value="sms" disabled={!selectedVoter?.phone_number} />
-            </label>
-          </RadioGroup>
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button variant="outline" onClick={() => setInviteChannel(null)} disabled={inviteSending}>ביטול</Button>
-            <Button
-              disabled={inviteSending || !selectedVoter?.phone_number || !inviteChannel}
-              onClick={async () => {
-                if (!selectedVoterId || !inviteChannel) return;
-                setInviteSending(true);
-                const label = channelConfig[inviteChannel]?.label || inviteChannel;
-                const body = `שלום, נשמח להמשיך את השיחה גם ב-${label}. לחצו כאן לפתיחת ההתכתבות: {LINK}`;
-                const { error } = await supabase.functions.invoke('send-message', {
-                  body: {
-                    lead_id: selectedVoterId.startsWith('phone:') ? undefined : selectedVoterId,
-                    content: body,
-                    channel: inviteVia,
-                    phone_number: selectedVoter?.phone_number,
-                    invite_channel: inviteChannel,
-                  },
-                });
-                setInviteSending(false);
-                if (error) toast.error('שליחת ההזמנה נכשלה', { description: await readFunctionError(error) || error.message });
-                else {
-                  toast.success('ההזמנה נשלחה');
-                  setInviteChannel(null);
-                }
-              }}
-            >
-              {inviteSending ? 'שולח...' : 'שליחת הזמנה'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

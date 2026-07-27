@@ -22,7 +22,7 @@ import {
   Users, Download, Megaphone, Trash2, X, Sparkles, Eye, SlidersHorizontal,
   Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
   Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail,
-  UploadCloud, Loader2, Pencil, Check
+  Loader2, Pencil, Check
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
@@ -377,78 +377,6 @@ const LeadCRM = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeLeadId]);
   const [statusInfoOpen, setStatusInfoOpen] = useState(false);
-  const [pushingHomely, setPushingHomely] = useState(false);
-  const [homelyPushDialog, setHomelyPushDialog] = useState<{
-    open: boolean;
-    phase: 'running' | 'success' | 'error';
-    leadName?: string;
-    startedAt?: number;
-    durationMs?: number;
-    homelyId?: string | number | null;
-    fields?: string[];
-    error?: string;
-    httpStatus?: number | string;
-    raw?: any;
-  }>({ open: false, phase: 'running' });
-  const pushLeadToHomely = useCallback(async (leadId: string, silent = false) => {
-    const startedAt = Date.now();
-    try {
-      if (!silent) {
-        setPushingHomely(true);
-        setHomelyPushDialog({ open: true, phase: 'running', startedAt });
-      }
-      const payloadPreview = { lead_id: leadId, action: 'WebtivLidPost', office: '9095' };
-      // eslint-disable-next-line no-console
-      console.log('Pushing Payload to Homely:', JSON.stringify(payloadPreview));
-      const { data, error } = await supabase.functions.invoke('homely-push-lead', {
-        body: { lead_id: leadId },
-      });
-      if (error) throw error;
-      const res = data as any;
-      // eslint-disable-next-line no-console
-      console.log('Homely push response:', JSON.stringify(res));
-      if (res?.ok) {
-        if (!silent) {
-          toast.success('איש הקשר נדחף בהצלחה ל-Homely');
-          setHomelyPushDialog({
-            open: true,
-            phase: 'success',
-            durationMs: Date.now() - startedAt,
-            homelyId: res?.homely_id ?? res?.id ?? res?.data?.id ?? null,
-            fields: Array.isArray(res?.fields_sent) ? res.fields_sent : (res?.payload ? Object.keys(res.payload) : []),
-            raw: res,
-          });
-        }
-        return true;
-      }
-      const msg = res?.error || res?.message || `HTTP ${res?.status || '???'}`;
-      if (!silent) {
-        toast.error(`דחיפה ל-Homely נכשלה: ${msg}`);
-        setHomelyPushDialog({
-          open: true,
-          phase: 'error',
-          durationMs: Date.now() - startedAt,
-          error: String(msg),
-          httpStatus: res?.status,
-          raw: res,
-        });
-      }
-      return false;
-    } catch (e: any) {
-      if (!silent) {
-        toast.error(`דחיפה ל-Homely נכשלה: ${e?.message || 'unknown'}`);
-        setHomelyPushDialog({
-          open: true,
-          phase: 'error',
-          durationMs: Date.now() - startedAt,
-          error: String(e?.message || e || 'unknown'),
-        });
-      }
-      return false;
-    } finally {
-      if (!silent) setPushingHomely(false);
-    }
-  }, []);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
@@ -2069,7 +1997,10 @@ const LeadCRM = () => {
                           return !!socialHandleFromLead(selectedVoter, key);
                         };
                         const isChatAvailable = (key: string) =>
+                          // WhatsApp is always live for any lead holding a phone number:
+                          // the official Meta Cloud API lets us initiate the conversation.
                           inboundChannels.has(key) || ((key === 'whatsapp' || key === 'sms' || key === 'email') && hasChannelIdentifier(key));
+
                         const channels = CRM_MESSAGE_CHANNELS
                           .filter((c) => isChatAvailable(c.key) || hasChannelIdentifier(c.key))
                           .map((c) => ({
@@ -2099,18 +2030,8 @@ const LeadCRM = () => {
                                 <PhoneIcon className="h-4 w-4" strokeWidth={1.8} />
                               </a>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => pushLeadToHomely(selectedVoter.id, false)}
-                              disabled={pushingHomely}
-                              aria-label="סנכרן להומלי"
-                              title="סנכרן להומלי"
-                              className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
-                            >
-                              {pushingHomely
-                                ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.8} />
-                                : <UploadCloud className="h-4 w-4" strokeWidth={1.8} />}
-                            </button>
+                            {/* Homely / WebTiv are read-only sources — no push action. */}
+
                             <LeadEnrichmentIconButton lead={selectedVoter} />
                             <div className="flex items-center gap-1.5 mr-auto ps-2">
                               <Switch
@@ -2214,11 +2135,8 @@ const LeadCRM = () => {
                       if (error) { toast.error('שגיאה בעדכון'); return; }
                       toast.success('עודכן');
                       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-                      // eslint-disable-next-line no-console
-                      console.log('Pushing Payload to Homely:', JSON.stringify({ lead_id: selectedVoter.id, patch }));
-                      // Instant background push to Homely (Open Card) with latest fields
-                      pushLeadToHomely(selectedVoter.id, true);
                     };
+
                     const savePref = (pref: Record<string, any>) =>
                       saveLead({ preferences: { ...prefs, ...pref } });
 
@@ -2520,95 +2438,6 @@ const LeadCRM = () => {
         mode="contacts"
       />
 
-      {/* Homely push status dialog — surfaces progress, summary, and API errors */}
-      <Dialog
-        open={homelyPushDialog.open}
-        onOpenChange={(o) => {
-          if (homelyPushDialog.phase === 'running') return;
-          setHomelyPushDialog((s) => ({ ...s, open: o }));
-        }}
-      >
-        <DialogContent dir="rtl" className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {homelyPushDialog.phase === 'running' && 'מסנכרן ל-Homely...'}
-              {homelyPushDialog.phase === 'success' && 'סנכרון ל-Homely הושלם'}
-              {homelyPushDialog.phase === 'error' && 'סנכרון ל-Homely נכשל'}
-            </DialogTitle>
-            <DialogDescription>
-              {homelyPushDialog.phase === 'running' && 'שולח את נתוני איש הקשר ל-Homely Open Card, אנא המתן...'}
-              {homelyPushDialog.phase === 'success' && 'איש הקשר נדחף בהצלחה. סיכום הפעולה מוצג למטה.'}
-              {homelyPushDialog.phase === 'error' && 'ה-API של Homely החזיר שגיאה. פרטי השגיאה מוצגים למטה.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2 text-sm">
-            {homelyPushDialog.phase === 'running' && (
-              <div className="flex items-center gap-2 text-slate-600">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>ממתין לתגובה מ-Homely...</span>
-              </div>
-            )}
-
-            {homelyPushDialog.phase === 'success' && (
-              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 space-y-1">
-                <div className="flex justify-between"><span className="text-slate-500">סטטוס</span><span className="font-medium text-emerald-700">הצלחה</span></div>
-                {homelyPushDialog.homelyId != null && (
-                  <div className="flex justify-between"><span className="text-slate-500">מזהה ב-Homely</span><span className="font-mono">#{String(homelyPushDialog.homelyId)}</span></div>
-                )}
-                {typeof homelyPushDialog.durationMs === 'number' && (
-                  <div className="flex justify-between"><span className="text-slate-500">משך</span><span>{(homelyPushDialog.durationMs / 1000).toFixed(2)}s</span></div>
-                )}
-                {homelyPushDialog.fields && homelyPushDialog.fields.length > 0 && (
-                  <div>
-                    <div className="text-slate-500 mb-1">שדות שנשלחו ({homelyPushDialog.fields.length})</div>
-                    <div className="flex flex-wrap gap-1">
-                      {homelyPushDialog.fields.slice(0, 40).map((f) => (
-                        <span key={f} className="rounded bg-white px-1.5 py-0.5 text-[11px] font-mono border border-emerald-200">{f}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {homelyPushDialog.phase === 'error' && (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 space-y-1">
-                <div className="flex justify-between"><span className="text-slate-500">סטטוס</span><span className="font-medium text-destructive">שגיאה</span></div>
-                {homelyPushDialog.httpStatus != null && (
-                  <div className="flex justify-between"><span className="text-slate-500">HTTP</span><span className="font-mono">{String(homelyPushDialog.httpStatus)}</span></div>
-                )}
-                {typeof homelyPushDialog.durationMs === 'number' && (
-                  <div className="flex justify-between"><span className="text-slate-500">משך</span><span>{(homelyPushDialog.durationMs / 1000).toFixed(2)}s</span></div>
-                )}
-                <div>
-                  <div className="text-slate-500 mb-1">הודעת שגיאה</div>
-                  <div className="rounded bg-white p-2 text-xs font-mono whitespace-pre-wrap break-all border border-destructive/30">
-                    {homelyPushDialog.error || 'שגיאה לא ידועה'}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            {homelyPushDialog.phase === 'error' && selectedVoter && (
-              <Button
-                variant="outline"
-                onClick={() => pushLeadToHomely(selectedVoter.id, false)}
-              >
-                נסה שוב
-              </Button>
-            )}
-            <Button
-              onClick={() => setHomelyPushDialog((s) => ({ ...s, open: false }))}
-              disabled={homelyPushDialog.phase === 'running'}
-            >
-              סגור
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={(o) => { if (!deleting) setDeleteDialogOpen(o); }}>
         <AlertDialogContent dir="rtl">

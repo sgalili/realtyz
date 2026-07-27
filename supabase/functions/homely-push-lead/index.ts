@@ -206,7 +206,15 @@ async function pushLead(params: {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // ── READ-ONLY ISOLATION ─────────────────────────────────────────────
+  // Homely / WebTiv are strictly pull-only resources. We never create or
+  // update records on their side any more. This endpoint is kept so old
+  // callers/triggers don't 404, but it performs no outbound write.
+  return json({ ok: false, skipped: true, reason: "homely_read_only" }, 200);
+
+  // eslint-disable-next-line no-unreachable
   try {
+
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const body = await req.json().catch(() => ({}));
     const leadId = (body as any)?.lead_id as string | undefined;

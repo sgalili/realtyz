@@ -19,6 +19,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Homely endpoint kept for reference only — READ-ONLY: never posted to.
 const HOMELY_URL = "https://webtivapi.webtiv.co.il/api/WebtivLid/WebtivLidPost";
 const STREAM_BASE = "https://webtivapi.webtiv.co.il/AutomaionJson/outJson.ashx";
 const PROVIDER = "RealtyZ";
@@ -116,21 +117,12 @@ function mapToHomelyPayload(
   return { payload, phone, email: email ?? null };
 }
 
-async function pushToHomely(payload: Record<string, unknown>) {
-  try {
-    const r = await fetch(proxied(HOMELY_URL), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const text = await r.text();
-    let parsed: any = null;
-    try { parsed = JSON.parse(text); } catch { parsed = { text }; }
-    return { ok: r.ok && (parsed?.success === true || parsed?.success === "true" || r.status === 200), status: r.status, parsed };
-  } catch (e) {
-    return { ok: false, status: 0, parsed: { error: (e as Error).message } };
-  }
+// READ-ONLY ISOLATION: Homely / WebTiv are pull-only. We no longer POST any
+// record to their API. The mapped payload is kept locally for reference only.
+function pushToHomely(_payload: Record<string, unknown>) {
+  return { ok: true, status: 0, parsed: { read_only: true } };
 }
+
 
 async function syncBroker(
   admin: ReturnType<typeof createClient>,
