@@ -6,8 +6,38 @@
 import { supabase } from '@/integrations/supabase/client';
 
 const inFlight = new Map<string, Promise<void>>();
+/** Listings proven fully cached in this session — never re-fetched. */
+const cachedIds = new Set<string>();
+
+/**
+ * A listing counts as fully cached once our DB already holds the mirrored
+ * gallery + the descriptive metadata. In that case we skip BrightData
+ * entirely, which is what keeps the scraping credits alive.
+ */
+async function isFullyCached(listingId: string): Promise<boolean> {
+  if (cachedIds.has(listingId)) return true;
+  const { data } = await supabase
+    .from('listings')
+    .select('media_photos, description, long_description, source_metadata')
+    .eq('id', listingId)
+    .maybeSingle();
+  if (!data) return false;
+  const photos = Array.isArray(data.media_photos) ? data.media_photos.filter(Boolean) : [];
+  const meta = (data.source_metadata ?? {}) as any;
+  const mirrored = photos.filter((p: any) => typeof p === 'string' && p.includes('/storage/v1/object/public/'));
+  const hasText = Boolean(
+    (data.long_description && String(data.long_description).trim()) ||
+    (data.description && String(data.description).trim()),
+  );
+  const ok = mirrored.length >= 2 && hasText && Boolean(meta.media_last_fetched_at);
+  if (ok) cachedIds.add(listingId);
+  return ok;
+}
 
 async function runFullSync(listingId: string, sourceUrl?: string | null): Promise<void> {
+  // 0. Cache-first: a listing we already mirrored never hits the scraper again.
+  if (await isFullyCached(listingId)) return;
+
   // 1. Deep metadata re-scrape for source-backed listings (Yad2 item feed).
   if (sourceUrl && /yad2\.co\.il/i.test(sourceUrl)) {
     try {
@@ -24,6 +54,7 @@ async function runFullSync(listingId: string, sourceUrl?: string | null): Promis
     await supabase.functions.invoke('fetch-property-all-images', {
       body: { listing_id: listingId, source_url: sourceUrl ?? undefined },
     });
+    cachedIds.add(listingId);
   } catch (e) {
     console.warn('[propertyFullSync] image mirroring failed', e);
   }
