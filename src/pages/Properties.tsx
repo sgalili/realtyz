@@ -40,6 +40,8 @@ import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchF
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle } from '@/lib/formatListingTitle';
+import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/propertyFullSync';
+
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
