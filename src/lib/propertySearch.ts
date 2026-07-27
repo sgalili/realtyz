@@ -367,38 +367,30 @@ export async function searchAllSources(
         });
   };
 
-  // Stream: paint the table the moment EACH source answers instead of waiting
-  // for the slowest gateway. `onPartial` fires once per settled source with a
-  // running progress counter (done / total).
-  const labels: PropertySource[] = ['mine', 'homely', 'yad2'];
+  // Stream sequentially: paint after each stage completes, then move on to
+  // the next (more expensive) source. `onPartial` fires once per stage.
+  const labels: PropertySource[] = stages.map((s) => s.label);
   const collected: Array<{ label: PropertySource; results: UnifiedResult[] }> = [];
-  const total = tasks.length;
+  const total = stages.length;
   let done = 0;
 
-  await Promise.all(
-    tasks.map((t, i) =>
-      t
-        .then((s) => {
-          collected.push(s);
-          return s;
-        })
-        .catch((e) => {
-          console.error('[propertySearch] source task rejected', e);
-          const label = labels[i] ?? ('mine' as PropertySource);
-          collected.push({ label, results: [] });
-        })
-        .finally(() => {
-          done += 1;
-          const partial = mergeSettled(collected);
-          const pending = labels.filter((l) => !collected.some((c) => c.label === l));
-          onPartial?.({
-            results: partial,
-            sources: { ...sources },
-            progress: { done, total, loaded: partial.length, pending },
-          });
-        }),
-    ),
-  );
+  for (const stage of stages) {
+    try {
+      collected.push(await stage.run());
+    } catch (e) {
+      console.error('[propertySearch] source stage rejected', stage.label, e);
+      collected.push({ label: stage.label, results: [] });
+    }
+    done += 1;
+    const partial = mergeSettled(collected);
+    const pending = labels.filter((l) => !collected.some((c) => c.label === l));
+    onPartial?.({
+      results: partial,
+      sources: { ...sources },
+      progress: { done, total, loaded: partial.length, pending },
+    });
+  }
+
 
   const filtered = mergeSettled(collected);
   return {
