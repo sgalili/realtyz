@@ -1,7 +1,11 @@
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Sofa, ListChecks, TrendingUp, MapPin, Navigation } from 'lucide-react';
+import {
+  FileText, Sofa, TrendingUp, MapPin, Navigation,
+  ArrowUpCircle, Wind, Grid2X2, ShieldCheck, Sun, Armchair, DoorClosed,
+  Accessibility, Fan, PaintRoller, Package, Warehouse, PawPrint, Users, Car, Home,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -25,64 +29,142 @@ type Props = {
   addressLabel?: string | null;
 };
 
-const KEY_LABELS: Record<string, string> = {
-  elevator: 'מעלית',
-  maalit: 'מעלית',
-  parking: 'חניה',
-  parkingQuantity: 'חניות',
-  mamad: 'ממ״ד',
-  shelter: 'ממ״ד',
-  balcony: 'מרפסת',
+/** Keys that are internal identifiers / noise — never rendered. */
+const HIDDEN_KEYS = new Set([
+  'id', 'uuid', 'key', 'texteng', 'slug', 'token', 'orderid', 'adnumber',
+  'categoryid', 'subcategoryid', 'source', 'source_url', 'sourceurl',
+]);
+
+/**
+ * Canonical Hebrew labels, keyed by a normalized form of the raw source key
+ * (lowercase, `is`/`include`/`has` prefixes stripped, non-alphanumerics gone).
+ * This is what turns `isRenovated` / `includeBars` into Yad2's own wording.
+ */
+const LABELS: Record<string, string> = {
+  text: 'סוג נכס',
+  propertytype: 'סוג נכס',
+  rooms: 'חדרים',
+  roomscount: 'חדרים',
+  מר: 'מ״ר בנוי סה״כ',
+  squaremeter: 'מ״ר בנוי סה״כ',
+  squaremeterbuild: 'מ״ר בנוי',
+  builtsquaremeter: 'מ״ר בנוי',
+  squaremetergarden: 'מ״ר גינה',
+  balconiescount: 'מרפסות',
   balconies: 'מרפסות',
-  airConditioner: 'מיזוג',
-  ac: 'מיזוג',
-  bars: 'סורגים',
-  renovated: 'משופצת',
-  accessible: 'גישה לנכים',
-  storage: 'מחסן',
-  furniture: 'ריהוט',
-  roomsCount: 'חדרים',
-  squareMeter: 'מ״ר',
+  buildingtopfloor: 'קומות בבניין',
+  buildingfloors: 'קומות בבניין',
+  totalfloors: 'קומות בבניין',
   floor: 'קומה',
-  totalFloors: 'קומות בבניין',
-  note: 'הערה',
-  items: 'פריטים',
-  condition: 'מצב הנכס',
-  propertyCondition: 'מצב הנכס',
-  entryDate: 'תאריך כניסה',
-  availableFrom: 'תאריך כניסה',
-  builtSquareMeter: 'מ״ר בנוי',
-  buildingFloors: 'קומות בבניין',
-  parkingSpaces: 'מקומות חניה',
-  vaadBayit: 'ועד בית',
-  vaad_bayit: 'ועד בית',
+  parkingquantity: 'חניות',
+  parkingspaces: 'חניות',
+  parking: 'חניה',
+  vaadbayit: 'ועד בית לחודש',
+  vaad: 'ועד בית לחודש',
   arnona: 'ארנונה',
   payments: 'מספר תשלומים',
-  solarHeater: 'דוד שמש',
+  paymentscount: 'מספר תשלומים',
+  entrancedate: 'תאריך כניסה',
+  entrydate: 'תאריך כניסה',
+  availablefrom: 'תאריך כניסה',
+  propertycondition: 'מצב הנכס',
+  condition: 'מצב הנכס',
+  renovated: 'משופץ',
+  new: 'חדש',
+  // Amenity-style flags
+  bars: 'סורגים',
   boiler: 'דוד שמש',
-  securityDoor: 'דלתות ביטחון',
-  safeRoom: 'ממ״ד',
-  petsAllowed: 'מותר בע״ח',
-  pets: 'מותר בע״ח',
-  roommates: 'מתאים לשותפים',
-  warehouse: 'מחסן',
+  solarheater: 'דוד שמש',
+  elevator: 'מעלית',
+  maalit: 'מעלית',
+  airconditioner: 'מיזוג',
+  ac: 'מיזוג',
+  tornado: 'מזגן טורנדו',
   tadiran: 'מיזוג',
-  longTerm: 'לטווח ארוך',
+  mamad: 'ממ״ד',
+  shelter: 'ממ״ד',
+  saferoom: 'ממ״ד',
+  securitydoor: 'דלתות רב בריח',
+  handicapped: 'גישה לנכים',
+  accessible: 'גישה לנכים',
+  warehouse: 'מחסן',
+  storage: 'מחסן',
+  balcony: 'מרפסת',
+  furniture: 'ריהוט',
+  petsallowed: 'חיות מחמד',
+  pets: 'חיות מחמד',
+  forpartners: 'מתאים לשותפים',
+  roommates: 'מתאים לשותפים',
+  longterm: 'לטווח ארוך',
+  note: 'הערה',
+  items: 'פריטים',
 };
 
+/** Yad2-style icons for the "מה יש בנכס?" grid. */
+const ICONS: Record<string, LucideIcon> = {
+  מעלית: ArrowUpCircle,
+  מיזוג: Wind,
+  'מזגן טורנדו': Fan,
+  סורגים: Grid2X2,
+  'ממ״ד': ShieldCheck,
+  'דוד שמש': Sun,
+  ריהוט: Armchair,
+  'דלתות רב בריח': DoorClosed,
+  'גישה לנכים': Accessibility,
+  משופץ: PaintRoller,
+  מחסן: Warehouse,
+  מרפסת: Package,
+  'חיות מחמד': PawPrint,
+  'מתאים לשותפים': Users,
+  חניה: Car,
+  'לטווח ארוך': Home,
+};
+
+function normalizeKey(key: string) {
+  return String(key)
+    .replace(/^(is|include|includes|has)(?=[A-Z_])/, '')
+    .replace(/[^A-Za-z\u0590-\u05FF0-9]/g, '')
+    .toLowerCase();
+}
+
 function label(key: string) {
-  return KEY_LABELS[key] || key.replace(/_/g, ' ');
+  const n = normalizeKey(key);
+  return LABELS[n] || String(key).replace(/_/g, ' ');
+}
+
+function isBooleanish(v: unknown) {
+  if (typeof v === 'boolean') return true;
+  const s = String(v ?? '').trim();
+  return s === 'יש' || s === 'אין' || s === 'true' || s === 'false' || s === 'כן' || s === 'לא';
+}
+function truthy(v: unknown) {
+  if (typeof v === 'boolean') return v;
+  const s = String(v ?? '').trim();
+  return s === 'יש' || s === 'true' || s === 'כן';
+}
+
+function formatDateish(v: unknown): string | null {
+  const s = String(v ?? '');
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  return `${m[3]}.${m[2]}.${m[1]}`;
 }
 
 function renderValue(v: unknown): string {
   if (typeof v === 'boolean') return v ? 'יש' : 'אין';
   if (Array.isArray(v)) return v.map((x) => String(x)).join(', ');
+  const d = formatDateish(v);
+  if (d) return d;
   return String(v ?? '');
 }
 
-function entriesOf(obj: Record<string, unknown> | null | undefined) {
-  if (!obj || typeof obj !== 'object') return [] as Array<[string, unknown]>;
-  return Object.entries(obj).filter(([, v]) => v !== null && v !== '' && v !== undefined);
+type Entry = [string, unknown];
+
+function entriesOf(obj: Record<string, unknown> | null | undefined): Entry[] {
+  if (!obj || typeof obj !== 'object') return [];
+  return Object.entries(obj).filter(
+    ([k, v]) => v !== null && v !== '' && v !== undefined && !HIDDEN_KEYS.has(normalizeKey(k)),
+  );
 }
 
 export function PropertyRichDetailsCard({
@@ -96,16 +178,35 @@ export function PropertyRichDetailsCard({
   addressLabel,
 }: Props) {
   const furnitureEntries = entriesOf(furniture);
-  const additionalEntries = entriesOf(additional);
-  const amenityEntries = entriesOf(amenities).filter(([, v]) => v !== false);
+  const rawAdditional = entriesOf(additional);
+  const rawAmenities = entriesOf(amenities);
+
+  // Yad2 splits the data in two: a value list ("פרטים נוספים") and a
+  // boolean feature grid ("מה יש בנכס?"). Boolean-ish flags always move to
+  // the grid, regardless of which source object they arrived in.
+  const all: Entry[] = [...rawAdditional, ...rawAmenities];
+  const seen = new Set<string>();
+  const deduped = all.filter(([k]) => {
+    const n = normalizeKey(k);
+    if (seen.has(n)) return false;
+    seen.add(n);
+    return true;
+  });
+
+  const detailRows = deduped.filter(([, v]) => !isBooleanish(v));
+  const featureFlags = deduped
+    .filter(([, v]) => isBooleanish(v))
+    .map(([k, v]) => ({ name: label(k), on: truthy(v) }))
+    .sort((a, b) => Number(b.on) - Number(a.on));
+
   const points = (priceHistory ?? []).filter((p) => p && p.price != null);
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
 
   if (
     !aboutText &&
     !furnitureEntries.length &&
-    !additionalEntries.length &&
-    !amenityEntries.length &&
+    !detailRows.length &&
+    !featureFlags.length &&
     !points.length &&
     !hasCoords
   ) {
@@ -125,69 +226,70 @@ export function PropertyRichDetailsCard({
     : null;
 
   return (
-    <Card className="p-4 sm:p-5 space-y-5" dir="rtl">
+    <Card className="p-4 sm:p-6 space-y-8" dir="rtl">
       {aboutText && (
         <section>
-          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
-            <FileText className="h-5 w-5" /> על הנכס
+          <h2 className="text-2xl font-bold text-foreground mb-3 inline-flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" /> על הנכס
           </h2>
-          <p className="text-xl leading-relaxed text-foreground/80 whitespace-pre-line">{aboutText}</p>
+          <p className="text-lg leading-8 text-foreground/80 whitespace-pre-line">{aboutText}</p>
         </section>
       )}
 
       {furnitureEntries.length > 0 && (
         <section>
-          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
-            <Sofa className="h-5 w-5" /> פירוט הריהוט
+          <h2 className="text-2xl font-bold text-foreground mb-3 inline-flex items-center gap-2">
+            <Sofa className="h-5 w-5 text-primary" /> פירוט הריהוט
           </h2>
-          <div className="flex flex-wrap gap-2">
+          <dl className="divide-y divide-border/60">
             {furnitureEntries.map(([k, v]) => (
-              <Badge key={k} variant="secondary" className="font-normal text-xl">
-                {label(k)}: {renderValue(v)}
-              </Badge>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {additionalEntries.length > 0 && (
-        <section>
-          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
-            <ListChecks className="h-5 w-5" /> פרטים נוספים
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
-            {additionalEntries.map(([k, v]) => (
-              <div key={k} className="text-xl">
-                <span className="text-muted-foreground">{label(k)}: </span>
-                <span className="font-medium text-foreground">{renderValue(v)}</span>
+              <div key={k} className="flex items-start justify-between gap-6 py-2.5">
+                <dt className="text-lg text-muted-foreground">{label(k)}</dt>
+                <dd className="text-lg font-medium text-foreground text-left">{renderValue(v)}</dd>
               </div>
             ))}
-          </div>
+          </dl>
         </section>
       )}
 
-      {amenityEntries.length > 0 && (
+      {detailRows.length > 0 && (
         <section>
-          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
-            <ListChecks className="h-5 w-5" /> מתקנים ותוספות
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {amenityEntries.map(([k, v]) => (
-              <Badge key={k} variant="outline" className="font-normal text-xl">
-                {label(k)}
-                {typeof v === 'boolean' ? '' : `: ${renderValue(v)}`}
-              </Badge>
+          <h2 className="text-2xl font-bold text-foreground mb-3">פרטים נוספים</h2>
+          <dl className="divide-y divide-border/60">
+            {detailRows.map(([k, v]) => (
+              <div key={k} className="flex items-start justify-between gap-6 py-2.5">
+                <dt className="text-lg text-muted-foreground">{label(k)}</dt>
+                <dd className="text-lg font-medium text-foreground text-left">{renderValue(v)}</dd>
+              </div>
             ))}
-          </div>
+          </dl>
         </section>
       )}
 
-
+      {featureFlags.length > 0 && (
+        <section>
+          <h2 className="text-2xl font-bold text-foreground mb-3">מה יש בנכס?</h2>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            {featureFlags.map(({ name, on }) => {
+              const Icon = ICONS[name] ?? Home;
+              return (
+                <div
+                  key={name}
+                  className={`flex items-center gap-3 ${on ? 'text-foreground' : 'text-muted-foreground/50 line-through decoration-1'}`}
+                >
+                  <Icon className="h-6 w-6 shrink-0" />
+                  <span className="text-lg">{name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {chartData.length > 1 && (
         <section>
-          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" /> היסטוריית מחיר
+          <h2 className="text-2xl font-bold text-foreground mb-3 inline-flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" /> הסטוריית שווי נכס
           </h2>
           <div className="h-48 w-full" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
@@ -204,7 +306,7 @@ export function PropertyRichDetailsCard({
       )}
 
       {chartData.length === 1 && (
-        <section className="text-xl">
+        <section className="text-lg">
           <span className="text-muted-foreground">מחיר קודם: </span>
           <span className="font-medium">₪{chartData[0].price.toLocaleString()}</span>
         </section>
@@ -212,8 +314,8 @@ export function PropertyRichDetailsCard({
 
       {hasCoords && (
         <section>
-          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
-            <MapPin className="h-5 w-5" /> מיקום על המפה
+          <h2 className="text-2xl font-bold text-foreground mb-3 inline-flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-primary" /> מיקום על המפה
           </h2>
           <div className="overflow-hidden rounded-lg border border-border/60">
             <iframe

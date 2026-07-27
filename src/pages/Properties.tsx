@@ -40,6 +40,7 @@ import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchF
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle } from '@/lib/formatListingTitle';
+import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
 import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/propertyFullSync';
 import { isNewListing } from '@/lib/listingFreshness';
 
@@ -1192,7 +1193,7 @@ function ResultCard({
   );
 }
 
-type SortCol = 'name' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
+type SortCol = 'name' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
 
 function ResultTable({
   results,
@@ -1225,6 +1226,8 @@ function ResultTable({
       switch (sortCol) {
 
         case 'name': return formatInternalListingTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
+        case 'house_number': return Number(houseNumberOf({ address: r.address, raw: r.raw })) || null;
+        case 'apt_number': return Number(apartmentNumberOf({ address: r.address, raw: r.raw })) || null;
         case 'listing_type': return r.listing_type ?? '';
         case 'price': return typeof r.price === 'number' ? r.price : null;
         case 'city': return r.city ?? '';
@@ -1271,6 +1274,9 @@ function ResultTable({
             <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
 
             <HeaderCell col="name" label="שם" />
+            {/* Internal-only: house & apartment numbers never leave the workspace. */}
+            <HeaderCell col="house_number" label="מספר בית" />
+            <HeaderCell col="apt_number" label="מספר דירה" />
             <HeaderCell col="listing_type" label="סוג" />
             <HeaderCell col="price" label="מחיר" />
             <HeaderCell col="city" label="עיר" />
@@ -1327,6 +1333,8 @@ function ResultTable({
                   })()}
 
                 </td>
+                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{houseNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{apartmentNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>

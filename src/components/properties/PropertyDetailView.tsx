@@ -123,20 +123,8 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
         </div>
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3 order-2">
-            {yad2Url ? (
-              <a
-                href={yad2Url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="פתח בעמוד יד2"
-                title="פתח בעמוד יד2"
-                className="text-slate-600 hover:text-blue-600 block z-50 cursor-pointer"
-              >
-                <ExternalLink className="w-6 h-6" />
-              </a>
-            ) : null}
-          </div>
+          <div className="flex items-center gap-3 order-2" />
+
           <div className="flex items-baseline gap-3 flex-wrap order-1">
             <span className="text-5xl font-extrabold text-success tabular-nums">
               {formatPrice(property.price)}
@@ -211,19 +199,6 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
             {amenities?.solar && <Spec icon={Sun} label="דוד שמש" value="כן" />}
           </div>
 
-          {yad2Url && (
-            <div className="mt-5 pt-4 border-t border-border/60">
-              <a
-                href={yad2Url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-base font-semibold text-primary hover:underline"
-              >
-                <ExternalLink className="h-4 w-4" />
-                🔗 מעבר למודעה ביד2
-              </a>
-            </div>
-          )}
         </Card>
 
         {property.description && (
