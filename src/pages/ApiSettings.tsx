@@ -36,6 +36,7 @@ import { AyrshareBulkPurgeCard } from '@/components/admin/AyrshareBulkPurgeCard'
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
+import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
 import { SocialChannelsGrid } from '@/components/social/SocialChannelsGrid';
 import { CustomGroupsManager } from '@/components/social/CustomGroupsManager';
 
@@ -1268,6 +1269,10 @@ const ApiSettings = () => {
           </div>
         </div>
       </ServiceCard>
+
+      <div className="mb-4">
+        <MetaWhatsAppAuthCard />
+      </div>
 
       <ServiceCard
         title="שער WhatsApp"
