@@ -22,7 +22,7 @@ import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 const DEFAULT_API_VERSION = "v21.0";
 
 const BodySchema = z.object({
-  action: z.enum(["save", "status", "request_code", "verify_code", "subscribe"]),
+  action: z.enum(["save", "status", "request_code", "verify_code", "register", "subscribe"]),
   waba_id: z.string().min(3).max(64).optional(),
   phone_number_id: z.string().min(3).max(64).optional(),
   access_token: z.string().min(20).max(4000).optional(),
