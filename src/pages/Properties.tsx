@@ -1423,6 +1423,13 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">{formatListingDate(r)}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
                   <div className="inline-flex items-center gap-1.5">
+                    {/* Yad2 ad first, campaign second (swapped per workspace spec). */}
+                    {(() => {
+                      const live = liveYad2Url(r);
+                      if (!live) return null;
+                      return <Yad2AdButton url={live} />;
+                    })()}
+
                     <Button
                       size="icon"
                       variant="ghost"
@@ -1434,12 +1441,6 @@ function ResultTable({
                     >
                       {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     </Button>
-
-                    {(() => {
-                      const live = liveYad2Url(r);
-                      if (!live) return null;
-                      return <Yad2AdButton url={live} />;
-                    })()}
 
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
                   </div>
