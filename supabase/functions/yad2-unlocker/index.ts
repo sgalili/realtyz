@@ -1709,6 +1709,9 @@ Deno.serve(async (req) => {
 
     return json({
       success: true,
+      partial: timedOut,
+      elapsed_ms: Date.now() - startedAt,
+
       urls_scanned: pagesScanned,
       pages_scanned: pagesScanned,
 
