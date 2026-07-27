@@ -1227,7 +1227,7 @@ function ResultTable({
     const getVal = (r: UnifiedResult): string | number | null => {
       switch (sortCol) {
 
-        case 'name': return formatInternalListingTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
+        case 'name': return formatStreetTypeTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
         case 'house_number': return Number(houseNumberOf({ address: r.address, raw: r.raw })) || null;
         case 'apt_number': return Number(apartmentNumberOf({ address: r.address, raw: r.raw })) || null;
         case 'listing_type': return r.listing_type ?? '';
