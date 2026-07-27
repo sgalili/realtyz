@@ -855,6 +855,18 @@ export default function PropertyDetail() {
             )}
           </div>
         </div>
+
+        {!editMode && data?.owner && (
+          <div className="text-left text-xl">
+            <span className="text-muted-foreground">בעלים: </span>
+            <Link
+              to={`/crm/profile/${data.owner.id}`}
+              className="font-semibold text-primary hover:underline"
+            >
+              {data.owner.full_name}
+            </Link>
+          </div>
+        )}
       </header>
 
       {/* Gallery + sidebar */}
