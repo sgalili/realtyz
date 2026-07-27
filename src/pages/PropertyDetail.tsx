@@ -967,10 +967,10 @@ export default function PropertyDetail() {
           )}
 
 
-          {/* Specs grid — editable in edit mode */}
+          {/* Specs grid — edit mode only */}
+          {editMode && form && (
           <Card className="p-4 sm:p-5">
             <h2 className="text-[19px] font-bold text-primary mb-4">מאפייני הנכס</h2>
-            {editMode && form ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <Field label="כותרת"><Input value={form.title} onChange={(e) => setField('title', e.target.value)} /></Field>
                 <Field label="חדרים"><Input type="number" step="0.5" value={form.rooms} onChange={(e) => setField('rooms', e.target.value)} /></Field>
@@ -1018,34 +1018,9 @@ export default function PropertyDetail() {
                   ))}
                 </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <Spec icon={BedDouble} label="חדרים" value={property.rooms ? `${property.rooms}` : '—'} />
-                <Spec icon={Ruler} label='שטח' value={property.size_sqm ? `${property.size_sqm} מ"ר` : '—'} />
-                <Spec
-                  icon={Layers}
-                  label="קומה"
-                  value={property.floor != null ? `${property.floor}${property.total_floors ? ` / ${property.total_floors}` : ''}` : '—'}
-                />
-                <Spec icon={Calendar} label="שנת בנייה" value={property.year_built ? `${property.year_built}` : '—'} />
-                <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
-                <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
-                <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
-                <Spec icon={MapPin} label="כתובת" value={stripAddressNumbers(property.address) || '—'} />
-                <Spec icon={Receipt} label="ועד בית (לחודש)" value={vaadBayit ? `${vaadBayit.toLocaleString('he-IL')} ₪` : '—'} />
-                <Spec icon={Receipt} label="ארנונה (לחודשיים)" value={arnonaBimonthly ? `${arnonaBimonthly.toLocaleString('he-IL')} ₪` : '—'} />
-                <Spec icon={Receipt} label="מספר תשלומים" value={payments ? `${payments}` : '—'} />
-                <Spec icon={Car} label="חניות" value={`${amenities?.parking ?? 0}`} />
-                <Spec icon={Calendar} label="תאריך כניסה" value={entryDate} />
-                {amenities?.elevator && <Spec icon={ArrowUpCircle} label="מעלית" value="כן" />}
-                {amenities?.balcony != null && <Spec icon={Sun} label="מרפסת" value={amenities.balcony ? 'כן' : 'לא'} />}
-                {amenities?.ac && <Spec icon={Wind} label="מיזוג" value="כן" />}
-                {amenities?.shelter && <Spec icon={Shield} label='ממ"ד / מקלט' value="כן" />}
-                {amenities?.solar && <Spec icon={Sun} label="דוד שמש" value="כן" />}
-              </div>
-            )}
-
           </Card>
+          )}
+
 
           {/* Description */}
           {(editMode || property.description || data?.owner) && (
