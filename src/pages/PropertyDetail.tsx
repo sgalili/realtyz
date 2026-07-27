@@ -302,14 +302,19 @@ export default function PropertyDetail() {
     const src = data.sourceUrl;
     if (!src || !/yad2\.co\.il/i.test(src)) return;
 
-    const add = (data.rich?.additional ?? {}) as Record<string, unknown>;
-    const has = (v: unknown) => v != null && v !== '' && String(v) !== '0';
-    const about = (data.rich?.about ?? '').toString().trim();
-    const missing =
-      about.length < 25 || !has(add.arnona) || !has(add.vaadBayit) || !has(add.paymentsCount);
-    if (!missing) return;
+    // Full hydration on first view: pull the complete metadata + gallery once
+    // per property per session so the DB always holds the whole record.
+    const sessionKey = `realtyz:hydrated:${id}`;
+    try {
+      if (window.sessionStorage.getItem(sessionKey)) {
+        hydratedRef.current = id;
+        return;
+      }
+      window.sessionStorage.setItem(sessionKey, '1');
+    } catch { /* private mode — hydrate anyway */ }
 
     hydratedRef.current = id;
+    galleryPulledRef.current = true;
     setHydrating(true);
     ensureFullPropertyImport(id, src)
       .then(() => qc.invalidateQueries({ queryKey: ['property-detail', id] }))
