@@ -1022,31 +1022,15 @@ export default function PropertyDetail() {
           )}
 
 
-          {/* Description */}
-          {(editMode || property.description || data?.owner) && (
+          {/* Description — editable text only (no heading in view mode) */}
+          {editMode && form && (
             <Card className="p-4 sm:p-5">
-              <h2 className="text-2xl font-bold text-primary mb-2">תיאור הנכס</h2>
-              {editMode && form ? (
-                <Textarea
-                  dir="rtl"
-                  rows={8}
-                  value={form.description}
-                  onChange={(e) => setField('description', e.target.value)}
-                />
-              ) : (
-                <p className="text-xl leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
-              )}
-              {!editMode && data?.owner && (
-                <div className="mt-4 pt-3 border-t border-border/60 text-xl">
-                  <span className="text-muted-foreground">בעלים: </span>
-                  <Link
-                    to={`/crm/profile/${data.owner.id}`}
-                    className="font-semibold text-primary hover:underline"
-                  >
-                    {data.owner.full_name}
-                  </Link>
-                </div>
-              )}
+              <Textarea
+                dir="rtl"
+                rows={8}
+                value={form.description}
+                onChange={(e) => setField('description', e.target.value)}
+              />
             </Card>
           )}
 
