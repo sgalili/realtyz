@@ -138,25 +138,26 @@ export default function Properties() {
     return () => window.removeEventListener('properties:add', handler);
   }, []);
 
-  // The properties page is NEVER blank. The default pool is the 100 newest
-  // listings for sale + the 100 newest for rent across the agent's home
-  // markets (Herzliya + Ramat Hasharon), newest first.
+  // LOCAL-FIRST: entering the page never triggers a live scraper call.
+  // The default pool is read straight from our own `listings` table
+  // (100 newest for sale + 100 newest for rent across the workspace's home
+  // markets), which keeps external API quota untouched. Fresh external
+  // inventory arrives through the twice-daily background sync job.
   const defaultPoolRef = useRef<UnifiedResult[] | null>(null);
   const loadDefaultPool = useCallback(async (): Promise<UnifiedResult[]> => {
     if (defaultPoolRef.current) return defaultPoolRef.current;
     const cities = DEFAULT_CITIES;
-    // The default feed must include EVERY source (local storage + Homely +
-    // Yad2), not just the local `listings` table.
     const batches = await Promise.all(
-      cities.flatMap((c) => [
+      cities.map((c) =>
         searchLocalListings({ city: c, listing_type: 'all' }).catch(() => [] as UnifiedResult[]),
-        searchAllSources({ city: c, listing_type: 'all' })
-          .then((resp) => resp.results)
-          .catch(() => [] as UnifiedResult[]),
-      ]),
+      ),
     );
     const seen = new Set<string>();
-    const all = batches.flat().filter((r) => (seen.has(r.key) ? false : (seen.add(r.key), true)));
+    let all = batches.flat().filter((r) => (seen.has(r.key) ? false : (seen.add(r.key), true)));
+    // Safety net: if the workspace cities hold nothing yet, show all stored inventory.
+    if (!all.length) {
+      all = await searchLocalListings({ listing_type: 'all' }).catch(() => [] as UnifiedResult[]);
+    }
     const newestFirst = (a: UnifiedResult, b: UnifiedResult) =>
       new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
     const sale = all.filter((r) => r.listing_type === 'sale').sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
@@ -165,6 +166,7 @@ export default function Properties() {
     defaultPoolRef.current = pool;
     return pool;
   }, []);
+
 
   useEffect(() => {
     if (hasSearched || results.length) return;
