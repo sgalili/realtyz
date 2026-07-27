@@ -43,34 +43,67 @@ const HIDDEN_KEYS = new Set([
 const LABELS: Record<string, string> = {
   text: 'סוג נכס',
   propertytype: 'סוג נכס',
+  assettype: 'סוג נכס',
+  subcategory: 'סוג נכס',
   rooms: 'חדרים',
   roomscount: 'חדרים',
+  roomsnumber: 'חדרים',
+  bedrooms: 'חדרי שינה',
+  bathrooms: 'חדרי רחצה',
+  toilets: 'שירותים',
   מר: 'מ״ר בנוי סה״כ',
   squaremeter: 'מ״ר בנוי סה״כ',
   squaremeterbuild: 'מ״ר בנוי',
+  squaremeterbuilt: 'מ״ר בנוי',
   builtsquaremeter: 'מ״ר בנוי',
+  buildarea: 'מ״ר בנוי',
+  totalsquaremeter: 'מ״ר סה״כ',
   squaremetergarden: 'מ״ר גינה',
+  gardenarea: 'מ״ר גינה',
   balconiescount: 'מרפסות',
   balconies: 'מרפסות',
   buildingtopfloor: 'קומות בבניין',
   buildingfloors: 'קומות בבניין',
   totalfloors: 'קומות בבניין',
+  floors: 'קומות בבניין',
   floor: 'קומה',
-  parkingquantity: 'חניות',
-  parkingspaces: 'חניות',
+  onfloor: 'קומה',
+  parkingquantity: 'מספר חניות',
+  parkingspaces: 'מספר חניות',
+  parkingspacescount: 'מספר חניות',
+  parkingcount: 'מספר חניות',
   parking: 'חניה',
   vaadbayit: 'ועד בית לחודש',
   vaad: 'ועד בית לחודש',
+  committee: 'ועד בית לחודש',
   arnona: 'ארנונה',
+  municipaltax: 'ארנונה',
+  price: 'מחיר',
+  pricepermeter: 'מחיר למ״ר',
+  monthlyrent: 'שכר דירה חודשי',
+  deposit: 'פיקדון',
   payments: 'מספר תשלומים',
   paymentscount: 'מספר תשלומים',
+  numofpayments: 'מספר תשלומים',
   entrancedate: 'תאריך כניסה',
   entrydate: 'תאריך כניסה',
+  enterdate: 'תאריך כניסה',
+  enterdateflexible: 'כניסה גמישה',
+  flexibleentrydate: 'כניסה גמישה',
+  immediate: 'כניסה מיידית',
   availablefrom: 'תאריך כניסה',
+  yearbuilt: 'שנת בנייה',
+  buildingyear: 'שנת בנייה',
   propertycondition: 'מצב הנכס',
   condition: 'מצב הנכס',
   renovated: 'משופץ',
   new: 'חדש',
+  direction: 'כיווני אוויר',
+  airdirections: 'כיווני אוויר',
+  neighborhood: 'שכונה',
+  street: 'רחוב',
+  city: 'עיר',
+  area: 'אזור',
   // Amenity-style flags
   bars: 'סורגים',
   boiler: 'דוד שמש',
@@ -78,26 +111,41 @@ const LABELS: Record<string, string> = {
   elevator: 'מעלית',
   maalit: 'מעלית',
   airconditioner: 'מיזוג',
+  airconditioning: 'מיזוג',
   ac: 'מיזוג',
   tornado: 'מזגן טורנדו',
   tadiran: 'מיזוג',
   mamad: 'ממ״ד',
   shelter: 'ממ״ד',
   saferoom: 'ממ״ד',
+  securityroom: 'ממ״ד',
+  cludesecurityroom: 'ממ״ד',
   securitydoor: 'דלתות רב בריח',
   handicapped: 'גישה לנכים',
   accessible: 'גישה לנכים',
+  accessibility: 'גישה לנכים',
   warehouse: 'מחסן',
   storage: 'מחסן',
   balcony: 'מרפסת',
+  terrace: 'מרפסת',
   furniture: 'ריהוט',
+  furnished: 'מרוהט',
+  kitchen: 'מטבח',
+  garden: 'גינה',
+  pool: 'בריכה',
+  gym: 'חדר כושר',
+  doorman: 'סדרן כניסה',
   petsallowed: 'חיות מחמד',
   pets: 'חיות מחמד',
   forpartners: 'מתאים לשותפים',
+  partners: 'מתאים לשותפים',
   roommates: 'מתאים לשותפים',
   longterm: 'לטווח ארוך',
+  sublet: 'סאבלט',
   note: 'הערה',
+  notes: 'הערה',
   items: 'פריטים',
+  description: 'תיאור',
 };
 
 /** Yad2-style icons for the "מה יש בנכס?" grid. */
@@ -109,6 +157,7 @@ const ICONS: Record<string, LucideIcon> = {
   'ממ״ד': ShieldCheck,
   'דוד שמש': Sun,
   ריהוט: Armchair,
+  מרוהט: Armchair,
   'דלתות רב בריח': DoorClosed,
   'גישה לנכים': Accessibility,
   משופץ: PaintRoller,
@@ -117,19 +166,29 @@ const ICONS: Record<string, LucideIcon> = {
   'חיות מחמד': PawPrint,
   'מתאים לשותפים': Users,
   חניה: Car,
+  'כניסה גמישה': Home,
   'לטווח ארוך': Home,
 };
 
+
 function normalizeKey(key: string) {
   return String(key)
-    .replace(/^(is|include|includes|has)(?=[A-Z_])/, '')
+    .replace(/^(is|include|includes|has|in|num_?of|number_?of|total)(?=[A-Z_])/, '')
     .replace(/[^A-Za-z\u0590-\u05FF0-9]/g, '')
     .toLowerCase();
 }
 
-function label(key: string) {
+/**
+ * Hebrew-only display labels. Unknown English-only keys are never shown as
+ * raw field names (`isRenovated`, `squareMeterBuild`, ...) — they are hidden.
+ */
+function label(key: string): string | null {
   const n = normalizeKey(key);
-  return LABELS[n] || String(key).replace(/_/g, ' ');
+  if (LABELS[n]) return LABELS[n];
+  const raw = String(key).replace(/_/g, ' ').trim();
+  // Keep values that already arrive in Hebrew from the source.
+  if (/[\u0590-\u05FF]/.test(raw)) return raw;
+  return null;
 }
 
 function isBooleanish(v: unknown) {
@@ -177,7 +236,11 @@ export function PropertyRichDetailsCard({
   longitude,
   addressLabel,
 }: Props) {
-  const furnitureEntries = entriesOf(furniture);
+  // Only keys we can present with a real Hebrew label are rendered — raw
+  // English field names must never reach the UI.
+  const furnitureEntries = entriesOf(furniture)
+    .map(([k, v]) => ({ key: k, name: label(k), value: v }))
+    .filter((e): e is { key: string; name: string; value: unknown } => !!e.name);
   const rawAdditional = entriesOf(additional);
   const rawAmenities = entriesOf(amenities);
 
@@ -186,18 +249,22 @@ export function PropertyRichDetailsCard({
   // the grid, regardless of which source object they arrived in.
   const all: Entry[] = [...rawAdditional, ...rawAmenities];
   const seen = new Set<string>();
-  const deduped = all.filter(([k]) => {
-    const n = normalizeKey(k);
-    if (seen.has(n)) return false;
-    seen.add(n);
-    return true;
-  });
+  const deduped = all
+    .filter(([k]) => {
+      const n = normalizeKey(k);
+      if (seen.has(n)) return false;
+      seen.add(n);
+      return true;
+    })
+    .map(([k, v]) => ({ key: k, name: label(k), value: v }))
+    .filter((e): e is { key: string; name: string; value: unknown } => !!e.name);
 
-  const detailRows = deduped.filter(([, v]) => !isBooleanish(v));
+  const detailRows = deduped.filter((e) => !isBooleanish(e.value));
   const featureFlags = deduped
-    .filter(([, v]) => isBooleanish(v))
-    .map(([k, v]) => ({ name: label(k), on: truthy(v) }))
+    .filter((e) => isBooleanish(e.value))
+    .map((e) => ({ name: e.name, on: truthy(e.value) }))
     .sort((a, b) => Number(b.on) - Number(a.on));
+
 
   const points = (priceHistory ?? []).filter((p) => p && p.price != null);
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
@@ -242,10 +309,10 @@ export function PropertyRichDetailsCard({
             <Sofa className="h-5 w-5 text-primary" /> פירוט הריהוט
           </h2>
           <dl className="divide-y divide-border/60">
-            {furnitureEntries.map(([k, v]) => (
-              <div key={k} className="flex items-start justify-between gap-6 py-2.5">
-                <dt className="text-lg text-muted-foreground">{label(k)}</dt>
-                <dd className="text-lg font-medium text-foreground text-left">{renderValue(v)}</dd>
+            {furnitureEntries.map(({ key, name, value }) => (
+              <div key={key} className="flex items-start justify-between gap-6 py-2.5">
+                <dt className="text-lg text-muted-foreground">{name}</dt>
+                <dd className="text-lg font-medium text-foreground text-left">{renderValue(value)}</dd>
               </div>
             ))}
           </dl>
@@ -256,10 +323,10 @@ export function PropertyRichDetailsCard({
         <section>
           <h2 className="text-2xl font-bold text-foreground mb-3">פרטים נוספים</h2>
           <dl className="divide-y divide-border/60">
-            {detailRows.map(([k, v]) => (
-              <div key={k} className="flex items-start justify-between gap-6 py-2.5">
-                <dt className="text-lg text-muted-foreground">{label(k)}</dt>
-                <dd className="text-lg font-medium text-foreground text-left">{renderValue(v)}</dd>
+            {detailRows.map(({ key, name, value }) => (
+              <div key={key} className="flex items-start justify-between gap-6 py-2.5">
+                <dt className="text-lg text-muted-foreground">{name}</dt>
+                <dd className="text-lg font-medium text-foreground text-left">{renderValue(value)}</dd>
               </div>
             ))}
           </dl>
