@@ -1115,7 +1115,7 @@ function ResultCard({
           </Badge>
         )}
         {isNewListing(result) && (
-          <Badge className="absolute top-11 left-3 z-10 border-0 bg-emerald-500 text-white shadow-sm">
+          <Badge className="absolute top-11 left-3 z-10 border-0 bg-[#FF7A00] text-white shadow-sm">
             חדש
           </Badge>
         )}
