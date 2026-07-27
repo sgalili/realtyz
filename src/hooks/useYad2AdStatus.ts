@@ -1,0 +1,54 @@
+// Lazily verifies that Yad2 ad URLs still resolve to a live ad.
+// Results are cached per-session so the table never re-probes the same URL.
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+export type AdStatus = 'live' | 'gone' | 'unknown' | 'checking';
+
+const cache = new Map<string, AdStatus>();
+const listeners = new Set<() => void>();
+let pending: string[] = [];
+let timer: ReturnType<typeof setTimeout> | null = null;
+
+function notify() { listeners.forEach((l) => l()); }
+
+async function flush() {
+  timer = null;
+  const batch = pending.splice(0, 40);
+  if (!batch.length) return;
+  try {
+    const { data, error } = await supabase.functions.invoke('yad2-ad-status', { body: { urls: batch } });
+    const statuses = (data as any)?.statuses ?? {};
+    for (const u of batch) {
+      const s = error ? 'unknown' : (statuses[u] as AdStatus | undefined) ?? 'unknown';
+      cache.set(u, s);
+    }
+  } catch {
+    for (const u of batch) cache.set(u, 'unknown');
+  }
+  notify();
+  if (pending.length && !timer) timer = setTimeout(flush, 300);
+}
+
+function enqueue(url: string) {
+  if (cache.has(url)) return;
+  cache.set(url, 'checking');
+  pending.push(url);
+  if (!timer) timer = setTimeout(flush, 250);
+}
+
+/** Returns the cached/live-probed status of a single Yad2 ad URL. */
+export function useYad2AdStatus(url: string | null | undefined): AdStatus {
+  const [, force] = useState(0);
+
+  useEffect(() => {
+    if (!url) return;
+    const listener = () => force((n) => n + 1);
+    listeners.add(listener);
+    enqueue(url);
+    return () => { listeners.delete(listener); };
+  }, [url]);
+
+  if (!url) return 'gone';
+  return cache.get(url) ?? 'checking';
+}
