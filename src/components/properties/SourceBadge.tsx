@@ -5,9 +5,9 @@ export type PropertySource = 'mine' | 'homely' | 'webtiv' | 'yad2' | 'external';
 // Minimalist dot-only source indicators (no text labels).
 //   Homely      → black   #000000
 //   Yad2        → orange  #FF7A00
-//   Our storage → navy    #1B365D
+//   Our storage → blue    #0E7EE6
 const META: Record<PropertySource, { label: string; short: string; color: string }> = {
-  mine: { label: 'המאגר שלי', short: 'ש', color: '#1B365D' },
+  mine: { label: 'המאגר שלי', short: 'ש', color: '#0E7EE6' },
   homely: { label: 'הומלי', short: 'H', color: '#000000' },
   webtiv: { label: 'Webtiv', short: 'W', color: '#0d9488' },
   yad2: { label: 'יד-2', short: 'Y', color: '#FF7A00' },
