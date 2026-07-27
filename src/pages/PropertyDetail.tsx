@@ -1154,10 +1154,10 @@ export default function PropertyDetail() {
 function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="h-[23px] w-[23px] text-primary mt-0.5 shrink-0" />
+      <Icon className="h-[18px] w-[18px] text-primary mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[22px] text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-[25px] font-semibold text-foreground truncate">{value}</p>
+        <p className="text-[17px] text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="text-[20px] font-semibold text-foreground truncate">{value}</p>
       </div>
     </div>
   );
