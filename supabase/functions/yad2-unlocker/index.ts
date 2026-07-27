@@ -984,7 +984,19 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     city,
     neighborhood,
     address,
-    ...pickAddressNumbers(it, address),
+    ...(() => {
+      // Batch mode: resolve house/apartment numbers up-front from the JSON,
+      // falling back to the address/title free text so the table is populated
+      // immediately at import time (no click-to-hydrate needed).
+      const n = pickAddressNumbers(it, address);
+      const t = addressNumbersFromText(
+        it?.address?.street?.text, address, it?.row_2, it?.title, it?.merchandise, it?.metaData?.title,
+      );
+      return {
+        house_number: n.house_number ?? t.house_number,
+        apartment_number: n.apartment_number ?? t.apartment_number,
+      };
+    })(),
     sqm,
     floor,
     photos,
