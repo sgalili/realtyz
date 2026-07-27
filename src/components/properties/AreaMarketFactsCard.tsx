@@ -145,7 +145,7 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
       {data.comparables.length > 0 && (
         <div className="mt-5 border-t border-border/60 pt-4">
           <h3 className="text-lg font-bold text-foreground mb-3">
-            עסקאות {isRent ? 'השכרה' : 'מכירה'} דומות באזור (5 שנים אחרונות)
+            עסקאות {isRent ? 'השכרה' : 'מכירה'} דומות באזור
           </h3>
           <div className="space-y-2">
             {data.comparables.map((c) => (
@@ -165,7 +165,7 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-lg font-semibold text-foreground">
-                    {c.address || c.neighborhood || c.city}
+                    {comparableTitle(c)}
                   </p>
                   <p className="truncate text-[15px] text-muted-foreground">
                     {[
@@ -184,6 +184,14 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
       )}
     </Card>
   );
+}
+
+/** "רחוב 12, שכונה" — always appends the house number and neighborhood. */
+function comparableTitle(c: { address?: string | null; neighborhood?: string | null; city?: string | null }) {
+  const base = (c.address || '').trim();
+  const parts = [base || c.neighborhood || c.city || 'נכס'];
+  if (base && c.neighborhood && !base.includes(c.neighborhood)) parts.push(c.neighborhood);
+  return parts.filter(Boolean).join(', ');
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

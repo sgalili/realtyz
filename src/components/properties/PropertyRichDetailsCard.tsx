@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  FileText, Sofa, TrendingUp, MapPin, Navigation,
+  Sofa, TrendingUp, MapPin, Navigation,
   ArrowUpCircle, Wind, Grid2X2, ShieldCheck, Sun, Armchair, DoorClosed,
   Accessibility, Fan, PaintRoller, Package, Warehouse, PawPrint, Users, Car, Home,
 } from 'lucide-react';
@@ -259,7 +259,9 @@ export function PropertyRichDetailsCard({
     .map(([k, v]) => ({ key: k, name: label(k), value: v }))
     .filter((e): e is { key: string; name: string; value: unknown } => !!e.name);
 
-  const detailRows = deduped.filter((e) => !isBooleanish(e.value));
+  const detailRows = deduped.filter(
+    (e) => !isBooleanish(e.value) && e.name !== 'תיאור' && e.name !== 'הערה',
+  );
   const featureFlags = deduped
     .filter((e) => isBooleanish(e.value))
     .map((e) => ({ name: e.name, on: truthy(e.value) }))
@@ -288,17 +290,11 @@ export function PropertyRichDetailsCard({
   const navUrl = hasCoords
     ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
     : null;
-  const mapUrl = hasCoords
-    ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
-    : null;
 
   return (
     <Card className="p-4 sm:p-6 space-y-8" dir="rtl">
       {aboutText && (
         <section>
-          <h2 className="text-2xl font-bold text-foreground mb-3 inline-flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" /> על הנכס
-          </h2>
           <p className="text-lg leading-8 text-foreground/80 whitespace-pre-line">{aboutText}</p>
         </section>
       )}
@@ -321,7 +317,6 @@ export function PropertyRichDetailsCard({
 
       {detailRows.length > 0 && (
         <section>
-          <h2 className="text-2xl font-bold text-foreground mb-3">פרטים נוספים</h2>
           <dl className="divide-y divide-border/60">
             {detailRows.map(({ key, name, value }) => (
               <div key={key} className="flex items-start justify-between gap-6 py-2.5">
@@ -397,11 +392,6 @@ export function PropertyRichDetailsCard({
             <Button asChild size="sm">
               <a href={navUrl!} target="_blank" rel="noopener noreferrer">
                 <Navigation className="h-5 w-5 ms-1" /> נווט לנכס
-              </a>
-            </Button>
-            <Button asChild size="sm" variant="outline">
-              <a href={mapUrl!} target="_blank" rel="noopener noreferrer">
-                פתח במפות
               </a>
             </Button>
             <span className="text-lg text-muted-foreground">

@@ -13,7 +13,7 @@ import {
   BedDouble, Ruler, MapPin, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink, Pencil, Save, X,
-  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2,
+  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
@@ -125,6 +125,7 @@ export default function PropertyDetail() {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [pullingImages, setPullingImages] = useState(false);
+  const galleryPulledRef = useRef(false);
   const [form, setForm] = useState<EditableFields | null>(null);
   const [initialFormSnapshot, setInitialFormSnapshot] = useState<string>('');
 
@@ -301,14 +302,19 @@ export default function PropertyDetail() {
     const src = data.sourceUrl;
     if (!src || !/yad2\.co\.il/i.test(src)) return;
 
-    const add = (data.rich?.additional ?? {}) as Record<string, unknown>;
-    const has = (v: unknown) => v != null && v !== '' && String(v) !== '0';
-    const about = (data.rich?.about ?? '').toString().trim();
-    const missing =
-      about.length < 25 || !has(add.arnona) || !has(add.vaadBayit) || !has(add.paymentsCount);
-    if (!missing) return;
+    // Full hydration on first view: pull the complete metadata + gallery once
+    // per property per session so the DB always holds the whole record.
+    const sessionKey = `realtyz:hydrated:${id}`;
+    try {
+      if (window.sessionStorage.getItem(sessionKey)) {
+        hydratedRef.current = id;
+        return;
+      }
+      window.sessionStorage.setItem(sessionKey, '1');
+    } catch { /* private mode — hydrate anyway */ }
 
     hydratedRef.current = id;
+    galleryPulledRef.current = true;
     setHydrating(true);
     ensureFullPropertyImport(id, src)
       .then(() => qc.invalidateQueries({ queryKey: ['property-detail', id] }))
@@ -577,6 +583,25 @@ export default function PropertyDetail() {
     }
   };
 
+  /**
+   * Carousel navigation. When the gallery hasn't been fully imported yet
+   * (single/no image), the first arrow click pulls the complete gallery from
+   * the source before moving.
+   */
+  const stepPhoto = async (delta: number) => {
+    if (pullingImages) return;
+    if (photos.length <= 1) {
+      if (!galleryPulledRef.current && (sourceUrl || photos.length === 0)) {
+        galleryPulledRef.current = true;
+        await pullAllImages();
+      }
+      return;
+    }
+    setActivePhoto((i) => (i + delta + photos.length) % photos.length);
+  };
+
+
+
 
 
   const mirrorExternalUrl = async (rawUrl: string): Promise<string | null> => {
@@ -716,18 +741,7 @@ export default function PropertyDetail() {
           <div className="order-2 flex items-center gap-3">
             {!editMode ? (
               <>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={pullAllImages}
-                  disabled={pullingImages}
-                  title="טען את כל התמונות מהמקור"
-                  className="gap-2"
-                >
-                  {pullingImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}
-                  טען את כל התמונות
-                </Button>
+
 
                 <button
                   type="button"
@@ -866,6 +880,18 @@ export default function PropertyDetail() {
             )}
           </div>
         </div>
+
+        {!editMode && data?.owner && (
+          <div className="text-left text-xl">
+            <span className="text-muted-foreground">בעלים: </span>
+            <Link
+              to={`/crm/profile/${data.owner.id}`}
+              className="font-semibold text-primary hover:underline"
+            >
+              {data.owner.full_name}
+            </Link>
+          </div>
+        )}
       </header>
 
       {/* Gallery + sidebar */}
@@ -886,6 +912,29 @@ export default function PropertyDetail() {
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                     <ImageIcon className="h-10 w-10" />
                   </div>
+                )}
+
+                {!editMode && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => stepPhoto(-1)}
+                      aria-label="התמונה הקודמת"
+                      title="התמונה הקודמת"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
+                    >
+                      {pullingImages ? <Loader2 className="h-5 w-5 animate-spin" /> : <ChevronRight className="h-5 w-5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => stepPhoto(1)}
+                      aria-label="התמונה הבאה"
+                      title="התמונה הבאה"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
+                    >
+                      {pullingImages ? <Loader2 className="h-5 w-5 animate-spin" /> : <ChevronLeft className="h-5 w-5" />}
+                    </button>
+                  </>
                 )}
               </div>
 
@@ -1022,31 +1071,15 @@ export default function PropertyDetail() {
           )}
 
 
-          {/* Description */}
-          {(editMode || property.description || data?.owner) && (
+          {/* Description — editable text only (no heading in view mode) */}
+          {editMode && form && (
             <Card className="p-4 sm:p-5">
-              <h2 className="text-2xl font-bold text-primary mb-2">תיאור הנכס</h2>
-              {editMode && form ? (
-                <Textarea
-                  dir="rtl"
-                  rows={8}
-                  value={form.description}
-                  onChange={(e) => setField('description', e.target.value)}
-                />
-              ) : (
-                <p className="text-xl leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
-              )}
-              {!editMode && data?.owner && (
-                <div className="mt-4 pt-3 border-t border-border/60 text-xl">
-                  <span className="text-muted-foreground">בעלים: </span>
-                  <Link
-                    to={`/crm/profile/${data.owner.id}`}
-                    className="font-semibold text-primary hover:underline"
-                  >
-                    {data.owner.full_name}
-                  </Link>
-                </div>
-              )}
+              <Textarea
+                dir="rtl"
+                rows={8}
+                value={form.description}
+                onChange={(e) => setField('description', e.target.value)}
+              />
             </Card>
           )}
 
