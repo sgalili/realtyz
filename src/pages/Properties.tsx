@@ -745,7 +745,9 @@ export default function Properties() {
                   onClick={() => setListingType(t)}
                   aria-pressed={listingType === t}
                   className={`px-3 h-7 text-xs font-semibold rounded transition-colors ${
-                    listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    listingType === t
+                      ? (t === 'all' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-deal-blue text-deal-blue-foreground shadow-sm')
+                      : (t === 'all' ? 'text-muted-foreground hover:text-foreground' : 'text-deal-blue hover:bg-deal-blue/10')
                   }`}
                 >
                   {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
