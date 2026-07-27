@@ -1144,6 +1144,7 @@ function parseItem(html: string, srcUrl: string): Scraped {
     city: clean(ad?.city ?? ad?.address?.city?.text ?? null),
     neighborhood: clean(ad?.neighborhood ?? ad?.address?.neighborhood?.text ?? null),
     address: clean(ad?.street ?? ad?.address?.street?.text ?? null),
+    ...pickAddressNumbers(ad ?? {}, clean(ad?.street ?? ad?.address?.street?.text ?? null) ?? clean($("h1").first().text())),
     sqm: toInt(sqmText),
     floor: toInt(floorText),
     photos: pickAllPhotos(photos).slice(0, 40),
