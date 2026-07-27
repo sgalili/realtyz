@@ -1275,7 +1275,15 @@ function parseSearch(html: string, srcUrl: string, limit: number): Scraped[] {
       city,
       neighborhood,
       address,
-      ...pickAddressNumbers(it, address),
+      ...(() => {
+        const n = pickAddressNumbers(it, address);
+        const t = addressNumbersFromText(address, it?.row_2, it?.title, it?.merchandise);
+        return {
+          house_number: n.house_number ?? t.house_number,
+          apartment_number: n.apartment_number ?? t.apartment_number,
+        };
+      })(),
+      ...pickListingDates(it),
       sqm: toInt(sqmRaw),
       floor: toInt(floorRaw),
       photos,
