@@ -743,15 +743,7 @@ export default function PropertyDetail() {
               <>
 
 
-                <button
-                  type="button"
-                  onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${property.id}&listing=${property.id}`)}
-                  aria-label="צור פוסט לנכס"
-                  title="צור פוסט לנכס"
-                  className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
-                >
-                  <Send className="h-5 w-5" />
-                </button>
+                {/* Yad2 live ad first, campaign second (positions swapped). */}
                 {yad2Url && (
                   <a
                     href={yad2Url}
@@ -764,6 +756,15 @@ export default function PropertyDetail() {
                     <Yad2Icon className="h-6 w-6" />
                   </a>
                 )}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${property.id}&listing=${property.id}`)}
+                  aria-label="צור פוסט לנכס"
+                  title="צור פוסט לנכס"
+                  className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
+                >
+                  <Send className="h-5 w-5" />
+                </button>
                 <PropertyShareMenu
                   results={[{
                     key: property.id,
