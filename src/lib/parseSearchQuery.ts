@@ -85,17 +85,20 @@ function detectCityNeighborhood(text: string): { city: string | null; neighborho
   const t = normalizeCity(text);
   let matchedCity: string | null = null;
   let matchedHood: string | null = null;
+  // Hebrew glues prepositions onto place names ("בהרצליה", "לרמת השרון"),
+  // so allow an optional ב/ל/מ/ה prefix before the place name.
+  const placeRe = (name: string) =>
+    new RegExp(`(?:^|[^\\p{L}])[בלמה]?${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}])`, 'u');
   for (const { city, neighborhoods } of CURATED_SERVICE_AREAS) {
-    const cityRe = new RegExp(`(?:^|[^\\p{L}])${city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}])`, 'u');
-    if (cityRe.test(t)) matchedCity = city;
+    if (placeRe(city).test(t)) matchedCity = city;
     for (const n of neighborhoods) {
-      const hoodRe = new RegExp(`(?:^|[^\\p{L}])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}])`, 'u');
-      if (hoodRe.test(t)) {
+      if (placeRe(n).test(t)) {
         matchedHood = n;
         if (!matchedCity) matchedCity = city;
       }
     }
   }
+
   // Explicit "בשכונת X" / "שכונת X" pattern — capture user-typed hood names
   // even when they're not in the curated list.
   if (!matchedHood) {
