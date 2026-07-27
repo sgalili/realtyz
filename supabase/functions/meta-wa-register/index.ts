@@ -155,7 +155,41 @@ Deno.serve(async (req) => {
     return json({ success: false, error: message, details: details ?? null }, status);
   };
 
+  // ── Users often paste the actual phone number (e.g. "+972537983832") into the
+  // Phone Number ID field. Graph rejects that with code 100/subcode 33.
+  // Resolve it to the real numeric node ID via the WABA's phone_numbers edge.
+  const looksLikePhoneNumber = phoneNumberId.startsWith("+") || phoneNumberId.length < 10;
+  if (phoneNumberId && accessToken && wabaId && looksLikePhoneNumber) {
+    const digits = phoneNumberId.replace(/\D/g, "");
+    const list = await graph(
+      `/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name`,
+      accessToken,
+      apiVersion,
+    );
+    if (list.ok && Array.isArray(list.data?.data)) {
+      const match = list.data.data.find(
+        (p: { display_phone_number?: string }) =>
+          String(p.display_phone_number ?? "").replace(/\D/g, "") === digits,
+      );
+      if (match?.id) phoneNumberId = String(match.id);
+    }
+    if (phoneNumberId === digits || looksLikePhoneNumberStill(phoneNumberId)) {
+      // still not a node id
+    }
+  }
+
+  function looksLikePhoneNumberStill(v: string) {
+    return v.startsWith("+");
+  }
+
+  if (phoneNumberId.startsWith("+")) {
+    return await fail(
+      "השדה Phone Number ID חייב להכיל את מזהה המספר המספרי מ-Meta (לא את מספר הטלפון עצמו). ניתן למצוא אותו ב-WhatsApp Manager ליד המספר.",
+    );
+  }
+
   try {
+
     // ── save ────────────────────────────────────────────────────────────────
     if (input.action === "save") {
       if (!wabaId || !phoneNumberId || !accessToken) {
