@@ -1192,7 +1192,7 @@ function ResultCard({
   );
 }
 
-type SortCol = 'name' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
+type SortCol = 'name' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
 
 function ResultTable({
   results,
