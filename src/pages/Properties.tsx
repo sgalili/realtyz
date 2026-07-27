@@ -1412,9 +1412,9 @@ function ResultTable({
                   })()}
 
                 </td>
-                <td className="px-2 py-1.5 whitespace-nowrap max-w-[10rem] truncate">{neighborhoodOf(r) || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{houseNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{apartmentNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap max-w-[10rem] truncate">{neighborhoodOf(r) || '—'}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
