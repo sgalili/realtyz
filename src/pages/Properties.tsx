@@ -336,13 +336,14 @@ export default function Properties() {
     if (searching || results.length) return;
     let cancelled = false;
     (async () => {
-      const pool = await loadDefaultPool().catch(() => [] as UnifiedResult[]);
+      const pool = await loadDefaultPool(listingType).catch(() => [] as UnifiedResult[]);
       if (cancelled || !pool.length) return;
       setResults(pool);
       setShowingFallback(true);
     })();
     return () => { cancelled = true; };
-  }, [searching, results.length, loadDefaultPool]);
+  }, [searching, results.length, loadDefaultPool, listingType]);
+
 
 
   // Abort the running fetch and immediately show the partial results found
