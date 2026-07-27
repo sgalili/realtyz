@@ -472,18 +472,130 @@ function pickAddressNumbers(it: any, addressText?: string | null): {
     it?.additionalDetails?.apartmentNumber, it?.additionalDetails?.apartment_number,
   );
 
+  // Deep key hunt across the whole payload (endpoint shapes vary a lot).
+  if (!house) house = normNum(deepFindByKey(it, HOUSE_NUM_KEY_RE));
+  if (!apt) apt = normNum(deepFindByKey(it, APT_NUM_KEY_RE));
+
   const addr = clean(addressText ?? it?.address?.street?.text ?? it?.street ?? null) ?? "";
   if (!apt) {
     const marked = addr.match(/(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)\s*(\d{1,4}[א-תA-Za-z]?)/i);
     if (marked) apt = marked[1];
+    else {
+      // Bare second numeric group: "הפסנתר 8 16" → apartment 16.
+      const tail = addr.match(/\d{1,4}[א-תA-Za-z]?\s+(\d{1,4}[א-תA-Za-z]?)\s*$/);
+      if (tail) apt = tail[1];
+    }
   }
   if (!house) {
     const head = addr.split(/(?:,|\s)+(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)/i)[0];
-    const m = head.match(/(\d{1,4}[א-תA-Za-z]?)\s*$/) || head.match(/(\d{1,4}[א-תA-Za-z]?)/);
+    const m = head.match(/(\d{1,4}[א-תA-Za-z]?)(?=\s|,|$)/);
     if (m) house = m[1];
   }
   return { house_number: house, apartment_number: apt };
 }
+
+/** Accepts only short, number-like values (Yad2 sometimes nests {value:"12"}). */
+function normNum(v: unknown): string | null {
+  if (v == null || typeof v === "object") return null;
+  const s = String(v).trim();
+  if (!s || s === "0" || s.toLowerCase() === "null") return null;
+  return /^\d{1,4}[א-תA-Za-z]?$/.test(s) ? s : null;
+}
+
+const HOUSE_NUM_KEY_RE = /^(house_?number|houseNum|building_?number|street_?number|bldg_?number)$/i;
+const APT_NUM_KEY_RE = /^(apartment_?number|apartmentNum|apt_?number|flat_?number|unit_?number)$/i;
+
+/**
+ * DOM fallback: Yad2 renders the address in the item header (h1 / address
+ * breakdown) and repeats מספר בית / מספר דירה inside the details rows.
+ */
+function addressNumbersFromHtml($: any, bodyText: string): {
+  house_number: string | null;
+  apartment_number: string | null;
+} {
+  let house: string | null = null;
+  let apt: string | null = null;
+  if ($) {
+    const headerSelectors = [
+      "h1",
+      '[data-testid="address"]',
+      '[data-nagish="item-address"]',
+      '[class*="address" i]',
+      '[class*="title" i] h1',
+      "header h1",
+    ];
+    for (const sel of headerSelectors) {
+      if (house && apt) break;
+      try {
+        $(sel).each((_: number, el: any) => {
+          if (house && apt) return;
+          const t = clean($(el).text());
+          if (!t || t.length > 160) return;
+          const n = pickAddressNumbers({}, t);
+          house = house ?? n.house_number;
+          apt = apt ?? n.apartment_number;
+        });
+      } catch { /* ignore */ }
+    }
+    // Explicit labelled rows anywhere in the details tables.
+    try {
+      $("li,tr,dl,div,span").each((_: number, el: any) => {
+        if (house && apt) return;
+        const t = clean($(el).text());
+        if (!t || t.length > 60) return;
+        if (!house) {
+          const m = t.match(/מספר\s*(?:בית|בנין|בניין)\s*[:\-]?\s*(\d{1,4}[א-ת]?)/);
+          if (m) house = m[1];
+        }
+        if (!apt) {
+          const m = t.match(/(?:מספר\s*דירה|דירה\s*מס['׳]?)\s*[:\-]?\s*(\d{1,4}[א-ת]?)/);
+          if (m) apt = m[1];
+        }
+      });
+    } catch { /* ignore */ }
+  }
+  const txt = String(bodyText ?? "").replace(/\s+/g, " ");
+  if (!house) house = txt.match(/מספר\s*(?:בית|בנין|בניין)\s*[:\-]?\s*(\d{1,4}[א-ת]?)/)?.[1] ?? null;
+  if (!apt) apt = txt.match(/(?:מספר\s*דירה|דירה\s*מס['׳]?)\s*[:\-]?\s*(\d{1,4}[א-ת]?)/)?.[1] ?? null;
+  return { house_number: house, apartment_number: apt };
+}
+
+/**
+ * DOM fallback for the money rows Yad2 prints under "פרטים נוספים":
+ * ארנונה, ועד בית, מספר תשלומים, and the entrance date.
+ */
+function financialsFromHtml($: any, bodyText: string): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const txt = String(bodyText ?? "").replace(/\u00a0/g, " ").replace(/\s+/g, " ");
+  const grab = (re: RegExp): string | null => {
+    const m = txt.match(re);
+    return m ? m[1].replace(/,/g, "").trim() : null;
+  };
+  // Label/value pairs first — cheaper and far more accurate than page-wide regex.
+  if ($) {
+    try {
+      $("li,tr,dl,div").each((_: number, el: any) => {
+        const t = clean($(el).text());
+        if (!t || t.length > 80) return;
+        const pair = (label: RegExp, key: string) => {
+          if (out[key] != null) return;
+          const m = t.match(label);
+          if (m) out[key] = m[1].replace(/,/g, "").trim();
+        };
+        pair(/ארנונה[^\d]{0,12}([\d,]{2,9})/, "arnona");
+        pair(/ועד\s*בית[^\d]{0,12}([\d,]{1,7})/, "vaadBayit");
+        pair(/(?:מספר\s*תשלומים|תשלומים)[^\d]{0,12}(\d{1,2})/, "paymentsCount");
+      });
+    } catch { /* ignore */ }
+  }
+  if (out.arnona == null) { const v = grab(/ארנונה[^\d]{0,12}([\d,]{2,9})/); if (v) out.arnona = v; }
+  if (out.vaadBayit == null) { const v = grab(/ועד\s*בית[^\d]{0,12}([\d,]{1,7})/); if (v) out.vaadBayit = v; }
+  if (out.paymentsCount == null) { const v = grab(/(?:מספר\s*תשלומים|תשלומים)[^\d]{0,12}(\d{1,2})/); if (v) out.paymentsCount = v; }
+  const entrance = txt.match(/תאריך\s*כניסה\s*[:\-]?\s*([^|<]{3,24}?)(?:\s{2,}|$|\s(?:ארנונה|ועד|מספר))/);
+  if (entrance) out.entranceDate = entrance[1].trim();
+  return out;
+}
+
 
 /**
  * "על הנכס" — Yad2 hides the free-text description under several different
@@ -1223,6 +1335,36 @@ function parseItem(html: string, srcUrl: string): Scraped {
   const ownerPhone = clean(ad?.phone_number ?? ad?.merchant_phone ?? null);
   const coords = pickCoords(ad ?? {});
 
+  // JSON first, then DOM/text fallbacks for the fields Yad2 only prints in HTML.
+  const addressText = clean(ad?.street ?? ad?.address?.street?.text ?? null);
+  const jsonNums = pickAddressNumbers(ad ?? {}, addressText ?? clean($("h1").first().text()));
+  let houseNum = jsonNums.house_number;
+  let aptNum = jsonNums.apartment_number;
+  if (!houseNum || !aptNum) {
+    for (const blob of jsonBlobs) {
+      if (houseNum && aptNum) break;
+      const n = pickAddressNumbers(blob, null);
+      houseNum = houseNum ?? n.house_number;
+      aptNum = aptNum ?? n.apartment_number;
+    }
+  }
+  if (!houseNum || !aptNum) {
+    const domNums = addressNumbersFromHtml($, text);
+    houseNum = houseNum ?? domNums.house_number;
+    aptNum = aptNum ?? domNums.apartment_number;
+  }
+
+  const additional = pickAdditionalDetails(ad ?? {});
+  const domMoney = financialsFromHtml($, text);
+  for (const [k, v] of Object.entries(domMoney)) {
+    if (additional[k] == null || additional[k] === "") additional[k] = v;
+  }
+
+  const about = clean(ad?.description ?? ad?.info_text ?? null)
+    ?? deepDescription(ad)
+    ?? (() => { for (const b of jsonBlobs) { const d = deepDescription(b); if (d) return d; } return null; })()
+    ?? descriptionFromHtml($);
+
   return {
     source_url: srcUrl,
     external_id: idMatch?.[1] ?? null,
@@ -1231,25 +1373,27 @@ function parseItem(html: string, srcUrl: string): Scraped {
     rooms: toNum(roomsText),
     city: clean(ad?.city ?? ad?.address?.city?.text ?? null),
     neighborhood: clean(ad?.neighborhood ?? ad?.address?.neighborhood?.text ?? null),
-    address: clean(ad?.street ?? ad?.address?.street?.text ?? null),
-    ...pickAddressNumbers(ad ?? {}, clean(ad?.street ?? ad?.address?.street?.text ?? null) ?? clean($("h1").first().text())),
+    address: addressText,
+    house_number: houseNum,
+    apartment_number: aptNum,
     sqm: toInt(sqmText),
     floor: toInt(floorText),
     photos: pickAllPhotos(photos).slice(0, 40),
     deal_type: dealType,
     owner_name: ownerName,
     owner_phone: ownerPhone,
-    description: clean(ad?.description ?? null) ?? deepDescription(ad) ?? descriptionFromHtml($),
+    description: about,
     short_description: clean(ad?.info_text ?? ad?.subtitle ?? null),
-    long_description: clean(ad?.description ?? null) ?? deepDescription(ad) ?? descriptionFromHtml($),
+    long_description: about,
     available_from: pickAvailableFrom(ad ?? {}),
     attributes: pickAttributes(ad ?? {}),
     latitude: coords.lat,
     longitude: coords.lng,
     furniture_details: pickFurniture(ad ?? {}),
-    additional_details: pickAdditionalDetails(ad ?? {}),
+    additional_details: additional,
     price_history: pickPriceHistory(ad ?? {}),
   };
+
 }
 
 
