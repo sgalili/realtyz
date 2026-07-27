@@ -862,6 +862,8 @@ type Scraped = {
   city: string | null;
   neighborhood: string | null;
   address: string | null;
+  house_number?: string | null;
+  apartment_number?: string | null;
   sqm: number | null;
   floor: number | null;
   photos: string[];
