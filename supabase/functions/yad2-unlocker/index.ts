@@ -1798,6 +1798,16 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     // Never overwrite previously-scraped rich metadata with an empty result:
     // feed rows carry less detail than item pages.
     const updatePayload: Record<string, unknown> = { ...payload };
+    // Keep the first-known publication date; a later pass must never
+    // overwrite "פורסם ב-" with today's import timestamp.
+    const prevMeta = (existing as any)?.source_metadata && typeof (existing as any).source_metadata === "object"
+      ? (existing as any).source_metadata as Record<string, unknown>
+      : {};
+    updatePayload.source_metadata = {
+      ...(payload.source_metadata as Record<string, unknown>),
+      published_at: row.published_at ?? prevMeta.published_at ?? null,
+      updated_at_source: row.updated_at_source ?? prevMeta.updated_at_source ?? null,
+    };
     if (updatePayload.latitude == null) delete updatePayload.latitude;
     if (updatePayload.longitude == null) delete updatePayload.longitude;
     // Keep previously resolved address numbers / description when this pass
