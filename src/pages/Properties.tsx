@@ -244,24 +244,47 @@ export default function Properties() {
         return out;
       };
 
-      // Each source streams into the table the moment it answers.
-      const resp = await searchAllSources(filters, (partial) => {
-        if (searchTokenRef.current !== token) return;
-        const rows = applyType(partial.results);
-        if (!rows.length) return; // never blank the table mid-stream
-        setResults(rows);
-        setShowingFallback(false);
-        setSourceStatus(partial.sources);
-        if (partial.progress) {
-          setSearchProgress({ ...partial.progress, loaded: rows.length });
+      // Searches are scoped to the workspace territory by default. Only when
+      // the user explicitly types/picks another city do we leave the zone.
+      const searchCities: string[] = effectiveCity ? [effectiveCity] : DEFAULT_CITIES;
+      const perCity = new Map<string, UnifiedResult[]>();
+      const paint = () => {
+        const seen = new Set<string>();
+        const merged: UnifiedResult[] = [];
+        for (const rows of perCity.values()) {
+          for (const r of rows) if (!seen.has(r.key)) { seen.add(r.key); merged.push(r); }
         }
-      });
+        return applyType(merged);
+      };
+
+      // Each source streams into the table the moment it answers.
+      const responses = await Promise.all(
+        searchCities.map((c) =>
+          searchAllSources({ ...filters, city: c }, (partial) => {
+            if (searchTokenRef.current !== token) return;
+            perCity.set(c, partial.results);
+            const rows = paint();
+            if (!rows.length) return; // never blank the table mid-stream
+            setResults(rows);
+            setShowingFallback(false);
+            setSourceStatus(partial.sources);
+            if (partial.progress) {
+              setSearchProgress({ ...partial.progress, loaded: rows.length });
+            }
+          }).catch((e) => {
+            console.error('[Properties] city search failed', c, e);
+            return { results: [] as UnifiedResult[], sources: {} as any };
+          }),
+        ),
+      );
       if (searchTokenRef.current !== token) return; // cancelled — keep partials
-      const filtered = applyType(resp.results);
+      searchCities.forEach((c, i) => perCity.set(c, responses[i].results));
+      const respSources = Object.assign({}, ...responses.map((r) => r.sources ?? {}));
+      const filtered = paint();
       if (filtered.length) {
         setResults(filtered);
         setShowingFallback(false);
-        setSourceStatus(resp.sources);
+        setSourceStatus(respSources);
       } else {
         // Zero-result guard: fall back to the default recent pool instead of
         // ever showing an empty table.
@@ -271,7 +294,8 @@ export default function Properties() {
         setShowingFallback(true);
         setSourceStatus({ local: { status: pool.length ? 'ok' : 'empty', count: pool.length } as any });
       }
-      const errored = Object.entries(resp.sources).filter(([, v]) => v.status === 'error');
+      const errored = Object.entries(respSources).filter(([, v]: any) => v?.status === 'error');
+
       if (errored.length) {
         for (const [k, v] of errored) {
           toast.info(`${sourceLabel(k as any)}: לא זמין`, {
