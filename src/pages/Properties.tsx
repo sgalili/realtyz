@@ -267,8 +267,13 @@ export default function Properties() {
       }
       const errored = Object.entries(resp.sources).filter(([, v]) => v.status === 'error');
       if (errored.length) {
-        toast.info(`חלק מהמקורות לא זמינים: ${errored.map(([k]) => sourceLabel(k as any)).join(', ')}`);
+        for (const [k, v] of errored) {
+          toast.info(`${sourceLabel(k as any)}: לא זמין`, {
+            description: (v as any)?.error ? String((v as any).error).slice(0, 220) : undefined,
+          });
+        }
       }
+
 
     } catch (err: any) {
       if (searchTokenRef.current !== token) return;
