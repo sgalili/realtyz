@@ -39,10 +39,12 @@ import { SourceBadge, sourceLabel } from '@/components/properties/SourceBadge';
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
-import { formatListingTitle, formatInternalListingTitle } from '@/lib/formatListingTitle';
+import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle } from '@/lib/formatListingTitle';
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
 import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/propertyFullSync';
 import { isNewListing } from '@/lib/listingFreshness';
+import { liveYad2Url } from '@/lib/yad2Ad';
+import { Yad2Icon } from '@/components/properties/Yad2Icon';
 
 
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
