@@ -1459,6 +1459,16 @@ function parseItem(html: string, srcUrl: string): Scraped {
     houseNum = houseNum ?? domNums.house_number;
     aptNum = aptNum ?? domNums.apartment_number;
   }
+  if (!houseNum || !aptNum) {
+    const txtNums = addressNumbersFromText(addressText, clean($("h1").first().text()));
+    houseNum = houseNum ?? txtNums.house_number;
+    aptNum = aptNum ?? txtNums.apartment_number;
+  }
+  // "פורסם ב 18/07/26" — original publication date printed on the ad page.
+  const jsonDates = pickListingDates(ad ?? {});
+  const publishedAt = jsonDates.published_at
+    ?? (() => { for (const b of jsonBlobs) { const d = pickListingDates(b).published_at; if (d) return d; } return null; })()
+    ?? publishedFromText(text);
 
   const additional = pickAdditionalDetails(ad ?? {});
   const domMoney = financialsFromHtml($, text);
