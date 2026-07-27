@@ -95,11 +95,28 @@ Deno.serve(async (req) => {
           try {
             const resp = await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 45_000 });
             const httpStatus = resp?.status?.() ?? 0;
+            // Radware serves a JS loader shell first; wait until the real ad
+            // document replaces it, otherwise every URL looks identical.
+            await page
+              .waitForFunction(
+                () =>
+                  !/radware/i.test(document.title) &&
+                  (document.querySelector('h1') !== null ||
+                    document.body.innerText.trim().length > 400),
+                { timeout: 30_000, polling: 750 },
+              )
+              .catch(() => {});
             const finalUrl = page.url();
             const html = await page.content().catch(() => '');
+            const pageTitle = await page.title().catch(() => '');
+            if (/radware/i.test(pageTitle)) {
+              statuses[u] = 'unknown';
+              console.log(`[yad2-ad-status] ${u} blocked by bot wall -> unknown`);
+              continue;
+            }
             statuses[u] = classify(finalUrl, httpStatus, html, token);
             console.log(
-              `[yad2-ad-status] ${u} http=${httpStatus} final=${finalUrl} bytes=${html.length} -> ${statuses[u]}`,
+              `[yad2-ad-status] ${u} http=${httpStatus} final=${finalUrl} title=${JSON.stringify(pageTitle)} bytes=${html.length} -> ${statuses[u]}`,
             );
           } catch (e) {
             console.warn(`[yad2-ad-status] probe failed ${u}: ${(e as Error).message}`);
