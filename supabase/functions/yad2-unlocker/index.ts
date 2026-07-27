@@ -1441,6 +1441,8 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
       media_photos_count: mergedPhotos.length,
       owner_name: row.owner_name,
       owner_phone: row.owner_phone,
+      house_number: row.house_number ?? null,
+      apartment_number: row.apartment_number ?? null,
       scraped_at: new Date().toISOString(),
     },
   };
