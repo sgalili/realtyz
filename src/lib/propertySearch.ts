@@ -69,6 +69,16 @@ function dedupeKey(r: Pick<UnifiedResult, 'city' | 'address' | 'rooms' | 'price'
     .join('|');
 }
 
+/** Human-readable Hebrew reason for a Yad2 gateway failure. */
+function friendlyYad2Error(raw: string): string {
+  const s = raw.toLowerCase();
+  if (/non-2xx|546|worker_resource_limit|memory/.test(s)) return 'שירות יד-2 עמוס כרגע — נסה שוב בעוד רגע';
+  if (/timeout|idle_timeout|504/.test(s)) return 'יד-2 לא הגיב בזמן';
+  if (/suspend|billing|zone|misconfigured|402|403/.test(s)) return 'חשבון הגישה ליד-2 אינו פעיל';
+  if (/429|rate/.test(s)) return 'יותר מדי בקשות ליד-2 — נסה שוב בקרוב';
+  return raw.slice(0, 120);
+}
+
 function tokenize(q: string | null | undefined): string[] {
   return String(q ?? '')
     .split(/\s+/)
@@ -289,10 +299,10 @@ export async function searchAllSources(
           ...body,
           query: queryText || undefined,
           mode: 'search',
-          // Walk the Yad2 directory in depth instead of stopping at the
-          // first results page — the edge function paginates server-side.
-          limit: 120,
-          pages: 4,
+          // Kept deliberately small: the edge worker has a hard memory
+          // budget, and every extra page burns BrightData credits.
+          limit: 40,
+          pages: 1,
         });
 
         if (Array.isArray(d?.diagnostics) && d.diagnostics.length) {
@@ -301,7 +311,7 @@ export async function searchAllSources(
         // Soft failures come back as HTTP 200 with { error, results: [] } so the
         // other sources keep streaming. Record the reason, don't throw.
         if (d?.error) {
-          sources.yad2 = { status: 'error', count: 0, error: String(d.detail || d.error) };
+          sources.yad2 = { status: 'error', count: 0, error: friendlyYad2Error(String(d.detail || d.error)) };
           return { label: 'yad2' as const, results: [] };
         }
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
@@ -310,7 +320,7 @@ export async function searchAllSources(
       } catch (e: any) {
         const msg = String(e?.message ?? e);
         console.error('[propertySearch] yad2-unlocker failed', e);
-        sources.yad2 = { status: 'error', count: 0, error: msg };
+        sources.yad2 = { status: 'error', count: 0, error: friendlyYad2Error(msg) };
         return { label: 'yad2' as const, results: [] };
       }
     })();

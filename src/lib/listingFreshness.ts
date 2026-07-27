@@ -23,17 +23,33 @@ function toTime(v: unknown): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
-/** Best-effort publish timestamp across local rows and external payloads. */
-export function listingPublishedAt(r: any): number | null {
+/**
+ * Publish timestamp reported by the ORIGINAL source listing only.
+ * Never falls back to our own import timestamps, so the table shows the real
+ * ad date instead of "today" for freshly imported rows.
+ */
+export function listingSourcePublishedAt(r: any): number | null {
   const raw = (r?.raw ?? {}) as any;
   const meta = (raw?.source_metadata ?? {}) as any;
   const candidates = [
-    raw.published_at, raw.publish_date, raw.first_seen_at, raw.date, raw.updated_at_source,
+    raw.published_at, raw.publish_date, raw.date, raw.updated_at_source,
     meta.published_at, meta.publish_date, meta.date_published, meta.original_published_at,
-    meta.posted_at, meta.date, meta.published_text,
-    r?.published_at, r?.created_at, raw.created_at,
+    meta.posted_at, meta.date, meta.published_text, meta.updated_at_source,
+    r?.published_at,
   ];
   for (const c of candidates) {
+    const t = toTime(c);
+    if (t) return t;
+  }
+  return null;
+}
+
+/** Best-effort publish timestamp across local rows and external payloads. */
+export function listingPublishedAt(r: any): number | null {
+  const fromSource = listingSourcePublishedAt(r);
+  if (fromSource) return fromSource;
+  const raw = (r?.raw ?? {}) as any;
+  for (const c of [raw.first_seen_at, r?.created_at, raw.created_at]) {
     const t = toTime(c);
     if (t) return t;
   }

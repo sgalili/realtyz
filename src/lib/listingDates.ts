@@ -1,6 +1,6 @@
 // Publication / last-update date resolution for listing rows coming from
 // Yad2, Homely, WebTiv or the local DB.
-import { listingPublishedAt } from '@/lib/listingFreshness';
+import { listingPublishedAt, listingSourcePublishedAt } from '@/lib/listingFreshness';
 
 function toTime(v: unknown): number | null {
   if (!v) return null;
@@ -24,9 +24,9 @@ export function listingActivityAt(r: any): number | null {
   return listingPublishedAt(r);
 }
 
-/** dd/MM/yyyy for the table cell — the original "פורסם ב-" date. */
+/** dd/MM/yyyy for the table cell — the original "פורסם ב-" date from the source. */
 export function formatListingDate(r: any): string {
-  const t = listingPublishedAt(r) ?? listingActivityAt(r);
+  const t = listingSourcePublishedAt(r) ?? listingPublishedAt(r) ?? listingActivityAt(r);
   if (!t) return '—';
   const d = new Date(t);
   const p = (n: number) => String(n).padStart(2, '0');

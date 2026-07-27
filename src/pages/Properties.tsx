@@ -35,7 +35,7 @@ import {
 } from '@/lib/homelyMockProperties';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
-import { SourceBadge, sourceLabel } from '@/components/properties/SourceBadge';
+import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
@@ -67,6 +67,31 @@ const DEFAULT_POOL_PER_TYPE = 100;
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
+}
+
+type SourceInfo = { status: string; count: number; error?: string };
+
+/**
+ * Searches fan out per city, so every city returns its own per-source report.
+ * Counts are SUMMED (not overwritten) and an error in one city doesn't erase
+ * a successful count from another.
+ */
+function mergeSourceStatuses(reports: Array<Record<string, SourceInfo>>): Record<string, SourceInfo> {
+  const out: Record<string, SourceInfo> = {};
+  for (const report of reports) {
+    for (const [key, info] of Object.entries(report ?? {})) {
+      if (!info) continue;
+      const prev = out[key];
+      if (!prev) { out[key] = { ...info }; continue; }
+      const count = (prev.count ?? 0) + (info.count ?? 0);
+      const status =
+        prev.status === 'ok' || info.status === 'ok' ? 'ok'
+        : prev.status === 'error' || info.status === 'error' ? 'error'
+        : info.status;
+      out[key] = { status, count, error: prev.error ?? info.error };
+    }
+  }
+  return out;
 }
 
 type SavedState = {
@@ -111,7 +136,9 @@ export default function Properties() {
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
 
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
-  const [sourceStatus, setSourceStatus] = useState<Record<string, { status: string; count: number; error?: string }>>({});
+  const [sourceStatus, setSourceStatus] = useState<Record<string, SourceInfo>>({});
+  // Active source filter from the breakdown popup (null = all sources).
+  const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
   const [searching, setSearching] = useState(false);
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
@@ -192,7 +219,7 @@ export default function Properties() {
         setResults(rows);
         setHasSearched(false);
         setShowingFallback(false);
-        setSourceStatus({ local: { status: rows.length ? 'ok' : 'empty', count: rows.length } });
+        setSourceStatus({ mine: { status: rows.length ? 'ok' : 'empty', count: rows.length } });
       } catch (err) {
         console.error('[Properties] default pool preload failed', err);
       } finally {
@@ -263,6 +290,7 @@ export default function Properties() {
       // the user explicitly types/picks another city do we leave the zone.
       const searchCities: string[] = effectiveCity ? [effectiveCity] : DEFAULT_CITIES;
       const perCity = new Map<string, UnifiedResult[]>();
+      const perCityStatus = new Map<string, Record<string, SourceInfo>>();
       const paint = () => {
         const seen = new Set<string>();
         const merged: UnifiedResult[] = [];
@@ -278,11 +306,12 @@ export default function Properties() {
           searchAllSources({ ...filters, city: c }, (partial) => {
             if (searchTokenRef.current !== token) return;
             perCity.set(c, partial.results);
+            perCityStatus.set(c, partial.sources as Record<string, SourceInfo>);
             const rows = paint();
             if (!rows.length) return; // never blank the table mid-stream
             setResults(rows);
             setShowingFallback(false);
-            setSourceStatus(partial.sources);
+            setSourceStatus(mergeSourceStatuses(Array.from(perCityStatus.values())));
             if (partial.progress) {
               setSearchProgress({ ...partial.progress, loaded: rows.length });
             }
@@ -294,7 +323,7 @@ export default function Properties() {
       );
       if (searchTokenRef.current !== token) return; // cancelled — keep partials
       searchCities.forEach((c, i) => perCity.set(c, responses[i].results));
-      const respSources = Object.assign({}, ...responses.map((r) => r.sources ?? {}));
+      const respSources = mergeSourceStatuses(responses.map((r) => (r.sources ?? {}) as Record<string, SourceInfo>));
       const filtered = paint();
       if (filtered.length) {
         setResults(filtered);
@@ -307,7 +336,7 @@ export default function Properties() {
         if (searchTokenRef.current !== token) return;
         setResults(pool);
         setShowingFallback(true);
-        setSourceStatus({ local: { status: pool.length ? 'ok' : 'empty', count: pool.length } as any });
+        setSourceStatus({ mine: { status: pool.length ? 'ok' : 'empty', count: pool.length } as any });
       }
       const errored = Object.entries(respSources).filter(([, v]: any) => v?.status === 'error');
 
@@ -427,11 +456,15 @@ export default function Properties() {
   // Transaction-type toggle filters the rendered list instantly (the live
   // search re-runs in parallel through the effect below).
   const typeFiltered = useMemo(() => {
-    if (listingType === 'all') return results;
-    const narrowed = results.filter((r) => r.listing_type === listingType);
+    const bySource = sourceFilter
+      ? results.filter((r) => (r.sources ?? [r.source]).includes(sourceFilter))
+      : results;
+    const base = sourceFilter && !bySource.length ? results : bySource;
+    if (listingType === 'all') return base;
+    const narrowed = base.filter((r) => r.listing_type === listingType);
     // Never let a toggle blank the table — keep the wider pool instead.
-    return narrowed.length ? narrowed : results;
-  }, [results, listingType]);
+    return narrowed.length ? narrowed : base;
+  }, [results, listingType, sourceFilter]);
 
 
   const sortedResults = useMemo(() => {
@@ -510,18 +543,25 @@ export default function Properties() {
 
   // Per-source count breakdown for the total-count dropdown.
   const sourceBreakdown = useMemo(() => {
-    // Prefer the fan-out status (accurate raw counts before dedupe/text filter).
-    const fromStatus = Object.entries(sourceStatus).map(([src, info]) => ({
-      key: src as any,
-      count: info.count,
-      status: info.status,
-      error: info.error,
-    }));
-    if (fromStatus.length) return fromStatus;
-    // Fallback: count the rendered results by their assigned source.
+    // Real, deduped counts of what the table actually holds per source.
     const buckets = new Map<string, number>();
-    results.forEach((r) => buckets.set(r.source, (buckets.get(r.source) ?? 0) + 1));
-    return Array.from(buckets.entries()).map(([key, count]) => ({ key: key as any, count, status: 'ok' as const, error: undefined }));
+    results.forEach((r) => {
+      for (const s of (r.sources?.length ? r.sources : [r.source])) {
+        buckets.set(s, (buckets.get(s) ?? 0) + 1);
+      }
+    });
+    const keys = new Set<string>([...Object.keys(sourceStatus), ...buckets.keys()]);
+    return Array.from(keys).map((src) => {
+      const info = sourceStatus[src];
+      const rendered = buckets.get(src) ?? 0;
+      return {
+        key: src as PropertySource,
+        // Rendered rows win — the status count is only a hint before dedupe.
+        count: rendered || info?.count || 0,
+        status: info?.status ?? 'ok',
+        error: info?.error,
+      };
+    }).sort((a, b) => b.count - a.count);
   }, [sourceStatus, results]);
 
   const SORT_LABELS: Record<typeof sortBy, string> = {
@@ -703,11 +743,17 @@ export default function Properties() {
                   )}
                   {sourceBreakdown.map((row) => {
                     const isError = row.status === 'error';
+                    const active = sourceFilter === row.key;
                     return (
                       <DropdownMenuItem
                         key={row.key}
-                        className="text-xs justify-between gap-3"
-                        title={row.error ?? undefined}
+                        className={`text-xs justify-between gap-3 cursor-pointer ${active ? 'bg-primary/10 text-primary' : ''}`}
+                        title={row.error ?? 'סנן את הטבלה לפי מקור זה'}
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          // Click a source to filter + float it to the top of the table.
+                          setSourceFilter(active ? null : row.key);
+                        }}
                       >
                         <span className="flex flex-col items-start gap-0.5">
                           <span className="flex items-center gap-2">
@@ -721,12 +767,20 @@ export default function Properties() {
                           )}
                         </span>
                         <span className={`font-bold tabular-nums ${isError ? 'text-destructive' : ''}`}>
-                          {isError ? '!' : row.count}
+                          {isError && !row.count ? '!' : row.count}
                         </span>
                       </DropdownMenuItem>
                     );
                   })}
                   <DropdownMenuSeparator />
+                  {sourceFilter && (
+                    <DropdownMenuItem
+                      className="text-xs justify-center text-primary"
+                      onSelect={(e) => { e.preventDefault(); setSourceFilter(null); }}
+                    >
+                      נקה סינון מקור
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem className="text-xs justify-between gap-3 font-semibold">
                     <span>סה״כ (לאחר איחוד)</span>
                     <span className="tabular-nums">{results.length}</span>
@@ -1291,10 +1345,10 @@ function ResultTable({
             <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
 
             <HeaderCell col="name" label="רחוב" />
-            <HeaderCell col="neighborhood" label="שכונה" />
             {/* Internal-only: house & apartment numbers never leave the workspace. */}
-            <HeaderCell col="house_number" label="מספר בית" />
-            <HeaderCell col="apt_number" label="מספר דירה" />
+            <HeaderCell col="house_number" label="בית" />
+            <HeaderCell col="apt_number" label="דירה" />
+            <HeaderCell col="neighborhood" label="שכונה" />
             <HeaderCell col="listing_type" label="סוג" />
             <HeaderCell col="price" label="מחיר" />
             <HeaderCell col="city" label="עיר" />
@@ -1312,7 +1366,7 @@ function ResultTable({
             return (
               <tr key={r.key} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
                 <td className="px-2 py-1.5">
-                  <div className="h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
+                  <div className="relative h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
                       <img
                         src={r.photos[0]}
@@ -1324,6 +1378,12 @@ function ResultTable({
                       <div className="h-full w-full flex items-center justify-center">
                         <Building2 className="h-4 w-4 text-muted-foreground/50" />
                       </div>
+                    )}
+                    {/* Total images available for this listing. */}
+                    {(r.photos?.length ?? 0) > 1 && (
+                      <span className="absolute top-0 right-0 rounded-bl-md bg-black/70 px-1 text-[9px] font-bold leading-[13px] text-white tabular-nums">
+                        {r.photos!.length}
+                      </span>
                     )}
                   </div>
                 </td>
@@ -1352,9 +1412,9 @@ function ResultTable({
                   })()}
 
                 </td>
-                <td className="px-2 py-1.5 whitespace-nowrap max-w-[10rem] truncate">{neighborhoodOf(r) || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{houseNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{apartmentNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap max-w-[10rem] truncate">{neighborhoodOf(r) || '—'}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
@@ -1363,6 +1423,13 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">{formatListingDate(r)}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
                   <div className="inline-flex items-center gap-1.5">
+                    {/* Yad2 ad first, campaign second (swapped per workspace spec). */}
+                    {(() => {
+                      const live = liveYad2Url(r);
+                      if (!live) return null;
+                      return <Yad2AdButton url={live} />;
+                    })()}
+
                     <Button
                       size="icon"
                       variant="ghost"
@@ -1374,12 +1441,6 @@ function ResultTable({
                     >
                       {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     </Button>
-
-                    {(() => {
-                      const live = liveYad2Url(r);
-                      if (!live) return null;
-                      return <Yad2AdButton url={live} />;
-                    })()}
 
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
                   </div>

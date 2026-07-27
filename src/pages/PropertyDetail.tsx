@@ -732,7 +732,10 @@ export default function PropertyDetail() {
             aria-level={1}
             className="text-3xl font-bold text-right text-slate-900 block leading-snug"
           >
-            {dynamicHeadline}
+            {/* Neighborhood is part of the internal headline. */}
+            {neighborhood && !dynamicHeadline.includes(neighborhood)
+              ? `${dynamicHeadline}, ${neighborhood}`
+              : dynamicHeadline}
           </div>
         </div>
 
@@ -743,15 +746,7 @@ export default function PropertyDetail() {
               <>
 
 
-                <button
-                  type="button"
-                  onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${property.id}&listing=${property.id}`)}
-                  aria-label="צור פוסט לנכס"
-                  title="צור פוסט לנכס"
-                  className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
-                >
-                  <Send className="h-5 w-5" />
-                </button>
+                {/* Yad2 live ad first, campaign second (positions swapped). */}
                 {yad2Url && (
                   <a
                     href={yad2Url}
@@ -764,6 +759,15 @@ export default function PropertyDetail() {
                     <Yad2Icon className="h-6 w-6" />
                   </a>
                 )}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${property.id}&listing=${property.id}`)}
+                  aria-label="צור פוסט לנכס"
+                  title="צור פוסט לנכס"
+                  className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
+                >
+                  <Send className="h-5 w-5" />
+                </button>
                 <PropertyShareMenu
                   results={[{
                     key: property.id,
@@ -863,7 +867,8 @@ export default function PropertyDetail() {
               <>
                 {property.price > 0 ? (
                   <>
-                    <span className="text-5xl font-extrabold text-success tabular-nums">
+                    {/* 48px → 38px per workspace spec */}
+                    <span className="text-[38px] leading-none font-extrabold text-success tabular-nums">
                       {formatPrice(property.price)}
                       {isRent && <span className="text-xl font-normal text-muted-foreground"> /חודש</span>}
                     </span>
@@ -876,22 +881,20 @@ export default function PropertyDetail() {
                 ) : (
                   <span className="text-3xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
                 )}
+                {/* Owner sits on the same row as the action buttons, opposite side. */}
+                {data?.owner && (
+                  <Link
+                    to={`/crm/profile/${data.owner.id}`}
+                    className="text-[16px] font-semibold text-primary hover:underline"
+                    title="פתיחת כרטיס הלקוח"
+                  >
+                    {data.owner.full_name}
+                  </Link>
+                )}
               </>
             )}
           </div>
         </div>
-
-        {!editMode && data?.owner && (
-          <div className="text-left text-xl">
-            <span className="text-muted-foreground">בעלים: </span>
-            <Link
-              to={`/crm/profile/${data.owner.id}`}
-              className="font-semibold text-primary hover:underline"
-            >
-              {data.owner.full_name}
-            </Link>
-          </div>
-        )}
       </header>
 
       {/* Gallery + sidebar */}
@@ -923,7 +926,7 @@ export default function PropertyDetail() {
                       title="התמונה הקודמת"
                       className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
                     >
-                      {pullingImages ? <Loader2 className="h-5 w-5 animate-spin" /> : <ChevronRight className="h-5 w-5" />}
+                      <ChevronRight className="h-5 w-5" />
                     </button>
                     <button
                       type="button"
@@ -932,15 +935,29 @@ export default function PropertyDetail() {
                       title="התמונה הבאה"
                       className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
                     >
-                      {pullingImages ? <Loader2 className="h-5 w-5 animate-spin" /> : <ChevronLeft className="h-5 w-5" />}
+                      <ChevronLeft className="h-5 w-5" />
                     </button>
+
+                    {/* Total images available for this listing. */}
+                    {photos.length > 0 && (
+                      <span className="absolute top-2 right-2 rounded-full bg-black/70 px-2.5 py-1 text-xs font-bold leading-none text-white tabular-nums">
+                        {activePhoto + 1}/{photos.length}
+                      </span>
+                    )}
+
+                    {/* Text-free ring loader, dead center, while more images load. */}
+                    {pullingImages && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                        <span className="h-12 w-12 rounded-full border-4 border-white/40 border-t-white animate-spin" />
+                      </span>
+                    )}
                   </>
                 )}
               </div>
 
             </Card>
           )}
-          {photos.length > 0 && (
+          {(photos.length > 1 || editMode) && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {photos.map((p, i) => (
                 <button
