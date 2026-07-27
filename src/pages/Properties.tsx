@@ -40,6 +40,7 @@ import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchF
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle } from '@/lib/formatListingTitle';
+import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
 import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/propertyFullSync';
 import { isNewListing } from '@/lib/listingFreshness';
 
