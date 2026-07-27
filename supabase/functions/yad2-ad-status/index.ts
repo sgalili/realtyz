@@ -1,27 +1,33 @@
 // yad2-ad-status
 // Liveness probe for Yad2 ad URLs. The UI calls it before showing the official
-// Yad2 button so a dead/removed ad never renders a link to a missing page.
+// Yad2 button so a dead/removed ad never links to a missing page.
 //
 // POST { urls: string[] }  ->  { statuses: { [url]: 'live' | 'gone' | 'unknown' } }
 //
-// Yad2 sits behind a Radware bot wall, so direct fetches always return a
-// challenge shell. We therefore probe through the Bright Data Web Unlocker
-// (same zone as yad2-unlocker) and read the real upstream status.
-// 'unknown' means we could not verify (no token / blocked / transient) — the
-// UI keeps the button hidden unless the ad is verified 'live'.
+// Yad2 sits behind a Radware bot wall, so a direct fetch always returns a
+// challenge shell (identical bytes for real and fake ads). The Bright Data
+// REST Web Unlocker is unusable here too — the configured zone is a Scraping
+// Browser zone (x-brd-err-code=client_10090). We therefore drive the same
+// Bright Data Chromium that yad2-unlocker uses, load the ad page and read the
+// real HTTP status + page content.
+//
+// 'unknown' means we could not verify; the UI keeps the button hidden unless
+// the ad is verified 'live'.
 
+import puppeteer from 'npm:puppeteer-core@22.15.0';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const BD_TOKEN = Deno.env.get('BRIGHTDATA_API_TOKEN') ?? '';
-const BD_ZONE = Deno.env.get('BRIGHTDATA_ZONE') ?? 'yad2';
+const BD_WS = Deno.env.get('BRIGHTDATA_WS_ENDPOINT') ?? '';
 
 const GONE_MARKERS = [
   'המודעה שחיפשת אינה קיימת',
   'המודעה אינה קיימת',
   'המודעה הוסרה',
+  'המודעה שחיפשת הוסרה',
   'הדף שחיפשת לא נמצא',
+  'העמוד לא נמצא',
   '"notfound":true',
-  '"statuscode":404',
+  'page not found',
 ];
 
 function json(body: unknown, status = 200) {
@@ -40,89 +46,17 @@ function itemToken(u: string): string | null {
   }
 }
 
-let bdHttpClient: unknown = null;
-try {
-  const create = (Deno as unknown as { createHttpClient?: (o: Record<string, unknown>) => unknown }).createHttpClient;
-  if (typeof create === 'function') bdHttpClient = create({ http1: true, http2: false });
-} catch { /* ignore */ }
+type Status = 'live' | 'gone' | 'unknown';
 
-/** Fetch a URL through the Bright Data Web Unlocker; returns upstream status + body. */
-async function bdFetch(url: string): Promise<{ status: number; body: string } | null> {
-  const isGateway = /(^|\/\/)gw\.yad2\.co\.il/i.test(url);
-  const forwarded: Record<string, string> = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-    'Accept': isGateway ? 'application/json,*/*;q=0.8' : 'text/html,application/xhtml+xml,*/*;q=0.8',
-    'Accept-Language': 'he-IL,he;q=0.9,en;q=0.7',
-    'Referer': 'https://www.yad2.co.il/',
-  };
-  if (isGateway) {
-    forwarded['Origin'] = 'https://www.yad2.co.il';
-    forwarded['Sec-Fetch-Dest'] = 'empty';
-    forwarded['Sec-Fetch-Mode'] = 'cors';
-    forwarded['Sec-Fetch-Site'] = 'same-site';
-  } else {
-    forwarded['Sec-Fetch-Dest'] = 'document';
-    forwarded['Sec-Fetch-Mode'] = 'navigate';
-    forwarded['Sec-Fetch-Site'] = 'none';
-    forwarded['Upgrade-Insecure-Requests'] = '1';
-  }
-
-  try {
-    const r = await fetch('https://api.brightdata.com/request', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${BD_TOKEN}`,
-        Accept: '*/*',
-        Connection: 'close',
-      },
-      body: JSON.stringify({ zone: BD_ZONE, url, format: 'raw', country: 'il', method: 'GET', headers: forwarded }),
-      ...(bdHttpClient ? { client: bdHttpClient } : {}),
-    } as RequestInit);
-    const body = await r.text();
-    const errCode = r.headers.get('x-brd-err-code');
-    const upstreamRaw = r.headers.get('x-response-status') ?? r.headers.get('x-brd-status');
-    const upstream = Number(upstreamRaw ?? r.status);
-    console.log(`[yad2-ad-status] bd ${url} gw=${r.status} upstream=${upstreamRaw ?? '-'} err=${errCode ?? '-'} bytes=${body.length}`);
-    if (errCode) return null;
-    return { status: Number.isFinite(upstream) ? upstream : r.status, body };
-  } catch (e) {
-    console.warn(`[yad2-ad-status] bd failed ${url}: ${(e as Error).message}`);
-    return null;
-  }
-}
-
-async function probe(url: string): Promise<'live' | 'gone' | 'unknown'> {
-  if (!/^https?:\/\//i.test(url) || !/yad2\.co\.il/i.test(url)) return 'gone';
-  const token = itemToken(url);
-  if (!token) return 'gone';
-  if (!BD_TOKEN) return 'unknown';
-
-  // The JSON item feed is the cheapest authoritative signal.
-  const feed = await bdFetch(`https://gw.yad2.co.il/realestate-feed/item/${token}`);
-  if (feed) {
-    if (feed.status === 404 || feed.status === 410) return 'gone';
-    if (feed.status >= 200 && feed.status < 300) {
-      const low = feed.body.toLowerCase();
-      if (GONE_MARKERS.some((m) => low.includes(m.toLowerCase()))) return 'gone';
-      try {
-        const j = JSON.parse(feed.body);
-        const d = j?.data ?? j;
-        if (d && typeof d === 'object' && Object.keys(d).length > 0) return 'live';
-      } catch {
-        if (feed.body.length > 500) return 'live';
-      }
-    }
-  }
-
-  // Fallback: the public ad page itself.
-  const page = await bdFetch(url);
-  if (!page) return 'unknown';
-  if (page.status === 404 || page.status === 410) return 'gone';
-  if (page.status < 200 || page.status >= 300) return 'unknown';
-  const low = page.body.toLowerCase();
+function classify(finalUrl: string, httpStatus: number, html: string, token: string): Status {
+  if (httpStatus === 404 || httpStatus === 410) return 'gone';
+  // Yad2 bounces removed ads back to the category / search page.
+  if (finalUrl && !/\/item\//i.test(finalUrl)) return 'gone';
+  const low = html.toLowerCase();
   if (GONE_MARKERS.some((m) => low.includes(m.toLowerCase()))) return 'gone';
-  if (low.includes('__next_data__') || low.includes(token.toLowerCase())) return 'live';
+  if (httpStatus >= 200 && httpStatus < 400) {
+    if (low.includes(token.toLowerCase()) || low.includes('__next_data__')) return 'live';
+  }
   return 'unknown';
 }
 
@@ -132,15 +66,53 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({} as any));
     const urls: string[] = Array.from(
-      new Set((Array.isArray(body?.urls) ? body.urls : []).map((u: unknown) => String(u ?? '').trim()).filter(Boolean)),
-    ).slice(0, 30);
+      new Set(
+        (Array.isArray(body?.urls) ? body.urls : [])
+          .map((u: unknown) => String(u ?? '').trim())
+          .filter(Boolean),
+      ),
+    ).slice(0, 12);
 
-    const statuses: Record<string, 'live' | 'gone' | 'unknown'> = {};
-    const CONCURRENCY = 5;
-    for (let i = 0; i < urls.length; i += CONCURRENCY) {
-      const slice = urls.slice(i, i + CONCURRENCY);
-      const res = await Promise.all(slice.map((u) => probe(u)));
-      slice.forEach((u, idx) => { statuses[u] = res[idx]; });
+    const statuses: Record<string, Status> = {};
+    const probeList: string[] = [];
+
+    for (const u of urls) {
+      if (!/^https?:\/\//i.test(u) || !/yad2\.co\.il/i.test(u) || !itemToken(u)) {
+        statuses[u] = 'gone';
+      } else {
+        statuses[u] = 'unknown';
+        probeList.push(u);
+      }
+    }
+
+    if (probeList.length && BD_WS) {
+      let browser: any = null;
+      try {
+        browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
+        for (const u of probeList) {
+          const token = itemToken(u)!;
+          const page = await browser.newPage();
+          try {
+            const resp = await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+            const httpStatus = resp?.status?.() ?? 0;
+            const finalUrl = page.url();
+            const html = await page.content().catch(() => '');
+            statuses[u] = classify(finalUrl, httpStatus, html, token);
+            console.log(
+              `[yad2-ad-status] ${u} http=${httpStatus} final=${finalUrl} bytes=${html.length} -> ${statuses[u]}`,
+            );
+          } catch (e) {
+            console.warn(`[yad2-ad-status] probe failed ${u}: ${(e as Error).message}`);
+            statuses[u] = 'unknown';
+          } finally {
+            await page.close().catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.warn(`[yad2-ad-status] browser connect failed: ${(e as Error).message}`);
+      } finally {
+        await browser?.close?.().catch(() => {});
+      }
     }
 
     return json({ ok: true, statuses });
