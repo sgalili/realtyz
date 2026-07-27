@@ -149,9 +149,11 @@ export default function Properties() {
   // (100 newest for sale + 100 newest for rent across the workspace's home
   // markets), which keeps external API quota untouched. Fresh external
   // inventory arrives through the twice-daily background sync job.
-  const defaultPoolRef = useRef<UnifiedResult[] | null>(null);
-  const loadDefaultPool = useCallback(async (): Promise<UnifiedResult[]> => {
-    if (defaultPoolRef.current) return defaultPoolRef.current;
+  const defaultPoolRef = useRef<Map<string, UnifiedResult[]>>(new Map());
+  const loadDefaultPool = useCallback(async (type: ListingType | 'all' = 'all'): Promise<UnifiedResult[]> => {
+    const cacheKey = type;
+    const hit = defaultPoolRef.current.get(cacheKey);
+    if (hit) return hit;
     const cities = DEFAULT_CITIES;
     const batches = await Promise.all(
       cities.map((c) =>
@@ -166,23 +168,28 @@ export default function Properties() {
     }
     const newestFirst = (a: UnifiedResult, b: UnifiedResult) =>
       new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
-    const sale = all.filter((r) => r.listing_type === 'sale').sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
-    const rent = all.filter((r) => r.listing_type === 'rent').sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
-    const pool = [...sale, ...rent].sort(newestFirst);
-    defaultPoolRef.current = pool;
+    const take = (t: ListingType) => all.filter((r) => r.listing_type === t).sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
+    const pool =
+      type === 'all'
+        ? [...take('sale'), ...take('rent')].sort(newestFirst)
+        : take(type);
+    defaultPoolRef.current.set(cacheKey, pool);
     return pool;
   }, []);
 
 
+  // The table is NEVER empty: whenever the query box is blank we repaint the
+  // local pool for the active transaction toggle (all / rent / sale).
   useEffect(() => {
-    if (hasSearched || results.length) return;
+    if (q.trim()) return;
     let cancelled = false;
     (async () => {
       setSearching(true);
       try {
-        const rows = await loadDefaultPool();
+        const rows = await loadDefaultPool(listingType);
         if (cancelled) return;
         setResults(rows);
+        setHasSearched(false);
         setShowingFallback(false);
         setSourceStatus({ local: { status: rows.length ? 'ok' : 'empty', count: rows.length } });
       } catch (err) {
@@ -193,7 +200,8 @@ export default function Properties() {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadDefaultPool]);
+  }, [loadDefaultPool, listingType, q]);
+
 
 
   // Monotonic token — bumping it aborts the in-flight search: late partials
