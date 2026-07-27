@@ -1789,6 +1789,9 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
       house_number: row.house_number ?? null,
       apartment_number: row.apartment_number ?? null,
       scraped_at: new Date().toISOString(),
+      // Original "פורסם ב-" date from Yad2 (never the import date).
+      published_at: row.published_at ?? null,
+      updated_at_source: row.updated_at_source ?? null,
     },
   };
   if (existing?.id) {
