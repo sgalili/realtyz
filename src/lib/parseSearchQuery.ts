@@ -23,17 +23,20 @@ export type ParsedQuery = {
   keywords: string;
 };
 
+// NOTE: `\b` is useless next to Hebrew letters (JS treats them as non-word
+// chars), so Hebrew patterns use Unicode letter lookarounds instead.
 const PROPERTY_TYPE_MAP: Array<[RegExp, string]> = [
-  [/\bדירת?\s*גן\b/, 'garden_apartment'],
-  [/\bפנטהאוז\b|\bפנטהאוס\b/, 'penthouse'],
-  [/\bדופלקס\b/, 'duplex'],
-  [/\bוילה\b|\bקוטג'?\b/, 'house'],
-  [/\bבית\s*פרטי\b/, 'house'],
-  [/\bסטודיו\b/, 'studio'],
-  [/\bדירה\b|\bapartment\b/i, 'apartment'],
-  [/\bמגרש\b|\bקרקע\b/, 'land'],
-  [/\bמסחרי\b|\bעסק\b|\bחנות\b|\bמשרד\b/, 'commercial'],
+  [/(?<!\p{L})דירת?\s*גן(?!\p{L})/u, 'garden_apartment'],
+  [/(?<!\p{L})פנטהאו[זס](?!\p{L})/u, 'penthouse'],
+  [/(?<!\p{L})דופלקס(?!\p{L})/u, 'duplex'],
+  [/(?<!\p{L})(?:וילה|קוטג'?)(?!\p{L})/u, 'house'],
+  [/(?<!\p{L})בית\s*פרטי(?!\p{L})/u, 'house'],
+  [/(?<!\p{L})סטודיו(?!\p{L})/u, 'studio'],
+  [/(?<!\p{L})דירה(?!\p{L})|\bapartment\b/iu, 'apartment'],
+  [/(?<!\p{L})(?:מגרש|קרקע)(?!\p{L})/u, 'land'],
+  [/(?<!\p{L})(?:מסחרי|עסק|חנות|משרד)(?!\p{L})/u, 'commercial'],
 ];
+
 
 /**
  * Amenity vocabulary. `query` matches what the user typed; `match` is the
