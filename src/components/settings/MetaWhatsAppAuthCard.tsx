@@ -161,21 +161,43 @@ export function MetaWhatsAppAuthCard() {
           </Button>
         </div>
 
+        {needsPinOnly && !cfg?.authorized && (
+          <Alert>
+            <BadgeCheck className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              המספר כבר אומת מול Meta — אין צורך בקוד SMS. הזן PIN בן 6 ספרות ולחץ "השלם רישום עם PIN".
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex flex-col gap-2 rounded-lg border border-border/40 bg-muted/30 p-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-1">
             <Label className="text-xs">קוד אימות מ-Meta (6 ספרות)</Label>
             <Input dir="ltr" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="123456" />
           </div>
-          <Button
-            size="sm"
-            className="gap-2"
-            disabled={busy || code.length !== 6}
-            onClick={() => run.mutate({ action: 'verify_code', code, ...(pin.length === 6 ? { pin } : {}) })}
-          >
-            <BadgeCheck className="h-4 w-4" />
-            אמת ורשום מספר
-          </Button>
+          {needsPinOnly ? (
+            <Button
+              size="sm"
+              className="gap-2"
+              disabled={busy || pin.length !== 6}
+              onClick={() => run.mutate({ action: 'register', pin })}
+            >
+              <BadgeCheck className="h-4 w-4" />
+              השלם רישום עם PIN
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="gap-2"
+              disabled={busy || code.length !== 6}
+              onClick={() => run.mutate({ action: 'verify_code', code, ...(pin.length === 6 ? { pin } : {}) })}
+            >
+              <BadgeCheck className="h-4 w-4" />
+              אמת ורשום מספר
+            </Button>
+          )}
         </div>
+
 
         <div className="grid gap-2 text-xs sm:grid-cols-2">
           <Info label="מספר תצוגה" value={cfg?.display_phone_number} />
