@@ -1171,6 +1171,8 @@ type Scraped = {
   furniture_details?: Record<string, unknown>;
   additional_details?: Record<string, unknown>;
   price_history?: Array<{ date: string | null; price: number | null; label?: string }>;
+  published_at?: string | null;
+  updated_at_source?: string | null;
 };
 
 /**
