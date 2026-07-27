@@ -2207,11 +2207,8 @@ const LeadCRM = () => {
                       if (error) { toast.error('שגיאה בעדכון'); return; }
                       toast.success('עודכן');
                       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-                      // eslint-disable-next-line no-console
-                      console.log('Pushing Payload to Homely:', JSON.stringify({ lead_id: selectedVoter.id, patch }));
-                      // Instant background push to Homely (Open Card) with latest fields
-                      pushLeadToHomely(selectedVoter.id, true);
                     };
+
                     const savePref = (pref: Record<string, any>) =>
                       saveLead({ preferences: { ...prefs, ...pref } });
 
