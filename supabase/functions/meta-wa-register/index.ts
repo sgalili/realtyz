@@ -22,7 +22,7 @@ import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 const DEFAULT_API_VERSION = "v21.0";
 
 const BodySchema = z.object({
-  action: z.enum(["save", "status", "request_code", "verify_code", "subscribe"]),
+  action: z.enum(["save", "status", "request_code", "verify_code", "register", "subscribe"]),
   waba_id: z.string().min(3).max(64).optional(),
   phone_number_id: z.string().min(3).max(64).optional(),
   access_token: z.string().min(20).max(4000).optional(),
@@ -242,35 +242,14 @@ Deno.serve(async (req) => {
       return json({ success: true, authorized, config: publicCfg(next) });
     }
 
-    // ── request_code ────────────────────────────────────────────────────────
-    if (input.action === "request_code") {
-      const r = await graph(`/${phoneNumberId}/request_code`, accessToken, apiVersion, {
-        method: "POST",
-        body: { code_method: input.code_method ?? "SMS", language: input.language ?? "he" },
-      });
-      if (!r.ok) return await fail(hebrewError(r.error), r.error);
-      const next = await persist({
-        code_requested_at: new Date().toISOString(),
-        code_verification_status: "PENDING",
-        last_error: null,
-      });
-      return json({ success: true, config: publicCfg(next) });
-    }
+    // Meta: "You have already verified ownership of this phone number."
+    const isAlreadyVerified = (err: { code?: number; error_subcode?: number } | null) =>
+      Number(err?.code ?? 0) === 136024 || Number(err?.error_subcode ?? 0) === 2388366;
 
-    // ── verify_code (+ register + subscribe) ────────────────────────────────
-    if (input.action === "verify_code") {
-      if (!input.code) return json({ success: false, error: "חסר קוד אימות בן 6 ספרות" }, 400);
-
-      const verify = await graph(`/${phoneNumberId}/verify_code`, accessToken, apiVersion, {
-        method: "POST",
-        body: { code: input.code },
-      });
-      if (!verify.ok) return await fail(hebrewError(verify.error), verify.error);
-
-      // Register the number on the Cloud API with the 2FA PIN.
-      const pin = input.pin ?? String(cfg.pin ?? "");
+    /** Register the number on the Cloud API with the 6-digit 2FA PIN + subscribe webhooks. */
+    const registerWithPin = async (rawPin: string) => {
+      const pin = rawPin || String(cfg.pin ?? "");
       if (!/^\d{6}$/.test(pin)) {
-        await persist({ code_verification_status: "VERIFIED", last_error: null });
         return json({ success: false, error: "נדרש PIN בן 6 ספרות להשלמת הרישום", stage: "register" }, 400);
       }
       const register = await graph(`/${phoneNumberId}/register`, accessToken, apiVersion, {
@@ -279,7 +258,6 @@ Deno.serve(async (req) => {
       });
       if (!register.ok) return await fail(hebrewError(register.error), register.error);
 
-      // Subscribe the app so status/message webhooks arrive.
       let subscribed: boolean | null = null;
       if (wabaId) {
         const sub = await graph(`/${wabaId}/subscribed_apps`, accessToken, apiVersion, { method: "POST" });
@@ -300,7 +278,65 @@ Deno.serve(async (req) => {
         await admin.from("wa_providers").update({ is_active: true, is_official: true }).eq("id", existing.id);
       }
       return json({ success: true, authorized: true, config: publicCfg(next) });
+    };
+
+    // ── request_code ────────────────────────────────────────────────────────
+    if (input.action === "request_code") {
+      const r = await graph(`/${phoneNumberId}/request_code`, accessToken, apiVersion, {
+        method: "POST",
+        body: { code_method: input.code_method ?? "SMS", language: input.language ?? "he" },
+      });
+      if (!r.ok) {
+        // Already verified → not an error: skip straight to PIN registration.
+        if (isAlreadyVerified(r.error)) {
+          const next = await persist({
+            code_verification_status: "VERIFIED",
+            last_error: null,
+            last_error_at: null,
+          });
+          return json({
+            success: true,
+            already_verified: true,
+            skip_code: true,
+            message: "המספר כבר אומת מול Meta — יש להזין PIN בן 6 ספרות ולהשלים את הרישום.",
+            config: publicCfg(next),
+          });
+        }
+        return await fail(hebrewError(r.error), r.error);
+      }
+      const next = await persist({
+        code_requested_at: new Date().toISOString(),
+        code_verification_status: "PENDING",
+        last_error: null,
+      });
+      return json({ success: true, config: publicCfg(next) });
     }
+
+    // ── register (PIN only — number already verified) ────────────────────────
+    if (input.action === "register") {
+      return await registerWithPin(input.pin ?? "");
+    }
+
+    // ── verify_code (+ register + subscribe) ────────────────────────────────
+    if (input.action === "verify_code") {
+      if (!input.code) return json({ success: false, error: "חסר קוד אימות בן 6 ספרות" }, 400);
+
+      const verify = await graph(`/${phoneNumberId}/verify_code`, accessToken, apiVersion, {
+        method: "POST",
+        body: { code: input.code },
+      });
+      if (!verify.ok && !isAlreadyVerified(verify.error)) {
+        return await fail(hebrewError(verify.error), verify.error);
+      }
+
+      const pin = input.pin ?? String(cfg.pin ?? "");
+      if (!/^\d{6}$/.test(pin)) {
+        await persist({ code_verification_status: "VERIFIED", last_error: null });
+        return json({ success: false, error: "נדרש PIN בן 6 ספרות להשלמת הרישום", stage: "register" }, 400);
+      }
+      return await registerWithPin(pin);
+    }
+
 
     // ── subscribe ───────────────────────────────────────────────────────────
     if (input.action === "subscribe") {

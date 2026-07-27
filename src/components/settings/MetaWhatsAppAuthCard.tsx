@@ -32,7 +32,13 @@ async function callMeta(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('meta-wa-register', { body });
   if (error) throw new Error(error.message);
   if (data && data.success === false) throw new Error(String(data.error ?? 'שגיאה מול Meta'));
-  return data as { success: boolean; authorized?: boolean; config: MetaCfg };
+  return data as {
+    success: boolean;
+    authorized?: boolean;
+    already_verified?: boolean;
+    message?: string;
+    config: MetaCfg;
+  };
 }
 
 export function MetaWhatsAppAuthCard() {
@@ -58,23 +64,33 @@ export function MetaWhatsAppAuthCard() {
     refetchInterval: (query) => (query.state.data?.authorized ? false : 30_000),
   });
 
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
+
   const run = useMutation({
     mutationFn: (body: Record<string, unknown>) => callMeta(body),
     onSuccess: (res) => {
       queryClient.setQueryData(['meta-wa-status'], res.config);
-      toast.success(res.authorized ? 'המספר אושר ומחובר ל-Meta' : 'הפעולה הושלמה');
+      if (res.already_verified) setAlreadyVerified(true);
+      if (res.authorized) setAlreadyVerified(false);
+      toast.success(
+        res.message ?? (res.authorized ? 'המספר אושר ומחובר ל-Meta' : 'הפעולה הושלמה'),
+      );
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const needsPinOnly = alreadyVerified || (!cfg?.authorized && cfg?.code_verification_status === 'VERIFIED');
+
   const statusBadge = useMemo(() => {
     if (cfg?.authorized) return { label: 'מאושר ומחובר', className: 'bg-green-600 text-white' };
+    if (needsPinOnly) return { label: 'מאומת — נדרש PIN', className: 'bg-blue-600 text-white' };
     if (cfg?.code_verification_status === 'PENDING') return { label: 'ממתין לקוד אימות', className: 'bg-amber-500 text-white' };
     if (cfg?.phone_number_id) return { label: 'ממתין לאישור', className: 'bg-slate-500 text-white' };
     return { label: 'לא מוגדר', className: 'bg-muted text-muted-foreground' };
-  }, [cfg]);
+  }, [cfg, needsPinOnly]);
 
   const busy = run.isPending;
+
 
   return (
     <Card dir="rtl">
@@ -145,21 +161,43 @@ export function MetaWhatsAppAuthCard() {
           </Button>
         </div>
 
+        {needsPinOnly && !cfg?.authorized && (
+          <Alert>
+            <BadgeCheck className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              המספר כבר אומת מול Meta — אין צורך בקוד SMS. הזן PIN בן 6 ספרות ולחץ "השלם רישום עם PIN".
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex flex-col gap-2 rounded-lg border border-border/40 bg-muted/30 p-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-1">
             <Label className="text-xs">קוד אימות מ-Meta (6 ספרות)</Label>
             <Input dir="ltr" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="123456" />
           </div>
-          <Button
-            size="sm"
-            className="gap-2"
-            disabled={busy || code.length !== 6}
-            onClick={() => run.mutate({ action: 'verify_code', code, ...(pin.length === 6 ? { pin } : {}) })}
-          >
-            <BadgeCheck className="h-4 w-4" />
-            אמת ורשום מספר
-          </Button>
+          {needsPinOnly ? (
+            <Button
+              size="sm"
+              className="gap-2"
+              disabled={busy || pin.length !== 6}
+              onClick={() => run.mutate({ action: 'register', pin })}
+            >
+              <BadgeCheck className="h-4 w-4" />
+              השלם רישום עם PIN
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="gap-2"
+              disabled={busy || code.length !== 6}
+              onClick={() => run.mutate({ action: 'verify_code', code, ...(pin.length === 6 ? { pin } : {}) })}
+            >
+              <BadgeCheck className="h-4 w-4" />
+              אמת ורשום מספר
+            </Button>
+          )}
         </div>
+
 
         <div className="grid gap-2 text-xs sm:grid-cols-2">
           <Info label="מספר תצוגה" value={cfg?.display_phone_number} />
