@@ -23,17 +23,20 @@ export type ParsedQuery = {
   keywords: string;
 };
 
+// NOTE: `\b` is useless next to Hebrew letters (JS treats them as non-word
+// chars), so Hebrew patterns use Unicode letter lookarounds instead.
 const PROPERTY_TYPE_MAP: Array<[RegExp, string]> = [
-  [/\bדירת?\s*גן\b/, 'garden_apartment'],
-  [/\bפנטהאוז\b|\bפנטהאוס\b/, 'penthouse'],
-  [/\bדופלקס\b/, 'duplex'],
-  [/\bוילה\b|\bקוטג'?\b/, 'house'],
-  [/\bבית\s*פרטי\b/, 'house'],
-  [/\bסטודיו\b/, 'studio'],
-  [/\bדירה\b|\bapartment\b/i, 'apartment'],
-  [/\bמגרש\b|\bקרקע\b/, 'land'],
-  [/\bמסחרי\b|\bעסק\b|\bחנות\b|\bמשרד\b/, 'commercial'],
+  [/(?<!\p{L})דירת?\s*גן(?!\p{L})/u, 'garden_apartment'],
+  [/(?<!\p{L})פנטהאו[זס](?!\p{L})/u, 'penthouse'],
+  [/(?<!\p{L})דופלקס(?!\p{L})/u, 'duplex'],
+  [/(?<!\p{L})(?:וילה|קוטג'?)(?!\p{L})/u, 'house'],
+  [/(?<!\p{L})בית\s*פרטי(?!\p{L})/u, 'house'],
+  [/(?<!\p{L})סטודיו(?!\p{L})/u, 'studio'],
+  [/(?<!\p{L})דירה(?!\p{L})|\bapartment\b/iu, 'apartment'],
+  [/(?<!\p{L})(?:מגרש|קרקע)(?!\p{L})/u, 'land'],
+  [/(?<!\p{L})(?:מסחרי|עסק|חנות|משרד)(?!\p{L})/u, 'commercial'],
 ];
+
 
 /**
  * Amenity vocabulary. `query` matches what the user typed; `match` is the
@@ -85,17 +88,20 @@ function detectCityNeighborhood(text: string): { city: string | null; neighborho
   const t = normalizeCity(text);
   let matchedCity: string | null = null;
   let matchedHood: string | null = null;
+  // Hebrew glues prepositions onto place names ("בהרצליה", "לרמת השרון"),
+  // so allow an optional ב/ל/מ/ה prefix before the place name.
+  const placeRe = (name: string) =>
+    new RegExp(`(?:^|[^\\p{L}])[בלמה]?${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}])`, 'u');
   for (const { city, neighborhoods } of CURATED_SERVICE_AREAS) {
-    const cityRe = new RegExp(`(?:^|[^\\p{L}])${city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}])`, 'u');
-    if (cityRe.test(t)) matchedCity = city;
+    if (placeRe(city).test(t)) matchedCity = city;
     for (const n of neighborhoods) {
-      const hoodRe = new RegExp(`(?:^|[^\\p{L}])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}])`, 'u');
-      if (hoodRe.test(t)) {
+      if (placeRe(n).test(t)) {
         matchedHood = n;
         if (!matchedCity) matchedCity = city;
       }
     }
   }
+
   // Explicit "בשכונת X" / "שכונת X" pattern — capture user-typed hood names
   // even when they're not in the curated list.
   if (!matchedHood) {
@@ -105,15 +111,40 @@ function detectCityNeighborhood(text: string): { city: string | null; neighborho
   return { city: matchedCity, neighborhood: matchedHood };
 }
 
+// Spelled-out Hebrew numerals, e.g. "ארבעה חדרים" / "שלוש חדרים".
+const HEB_NUMBER_WORDS: Array<[RegExp, number]> = [
+  [/\b(אחד|אחת)\b/, 1],
+  [/\b(שניים|שתיים|שני|שתי)\b/, 2],
+  [/\b(שלושה|שלוש)\b/, 3],
+  [/\b(ארבעה|ארבע)\b/, 4],
+  [/\b(חמישה|חמש)\b/, 5],
+  [/\b(שישה|שש|ששה)\b/, 6],
+  [/\b(שבעה|שבע)\b/, 7],
+  [/\b(שמונה)\b/, 8],
+  [/\b(תשעה|תשע)\b/, 9],
+  [/\b(עשרה|עשר)\b/, 10],
+];
+
+const ROOMS_WORD = `(?:חדרים|חדרי|חדר|חד['׳]|ח['׳])`;
+
 function detectRooms(text: string): number | null {
   // "4 חדרים", "4 חד'", "4 ח'", "4 rooms", "חדר וחצי"
-  const m = text.match(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]|ח['׳])/);
+  const m = text.match(new RegExp(`(\\d+(?:[.,]\\d)?)\\s*${ROOMS_WORD}`));
   if (m) return Number(m[1].replace(',', '.'));
   const m2 = text.match(/(\d+(?:[.,]\d)?)\s*rooms?/i);
   if (m2) return Number(m2[1].replace(',', '.'));
   if (/חדר\s*וחצי/.test(text)) return 1.5;
+  // Spelled-out: "ארבעה חדרים" (word may come before or after the noun).
+  for (const [re, n] of HEB_NUMBER_WORDS) {
+    const word = re.source.replace(/\\b/g, '');
+    const before = new RegExp(`${word}\\s*(?:ו?חצי\\s*)?${ROOMS_WORD}`);
+    const after = new RegExp(`${ROOMS_WORD}\\s*${word}`);
+    if (before.test(text)) return /(?:ו?חצי)\s*חדר/.test(text) ? n + 0.5 : n;
+    if (after.test(text)) return n;
+  }
   return null;
 }
+
 
 function detectPropertyType(text: string): string | null {
   for (const [re, type] of PROPERTY_TYPE_MAP) if (re.test(text)) return type;
@@ -163,12 +194,17 @@ export function parseSearchQuery(input: string): ParsedQuery {
   // stripped, so external free-text search still gets meaningful residue.
   let keywords = text;
   for (const tok of [city, neighborhood]) {
-    if (tok) keywords = keywords.replace(new RegExp(tok, 'gu'), ' ');
+    if (tok) keywords = keywords.replace(new RegExp(`[בלמה]?${tok}`, 'gu'), ' ');
   }
+
   keywords = keywords
     .replace(/שכונת?/g, ' ')
     .replace(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדר|חד['׳]|ח['׳])/g, ' ')
+    .replace(new RegExp(`(?:${HEB_NUMBER_WORDS.map(([re]) => re.source.replace(/\\b/g, '')).join('|')})\\s*(?:ו?חצי\\s*)?${ROOMS_WORD}`, 'g'), ' ')
+    .replace(new RegExp(`${ROOMS_WORD}(?=\\s|$)`, 'g'), ' ')
+    
     .replace(/שכירות|להשכרה|להשכיר|השכרה|למכירה|מכירה|לקנות|רכישה/g, ' ')
+
     .replace(/(?:עד|מעל|from|above|over|under|below|max|min)\s*\d+(?:[.,]\d+)?\s*(?:מיליון|million|אלף|k|thousand)?/gi, ' ')
     .replace(/\bעם\b|\bכולל\b|\bו-/g, ' ')
     .replace(/\s+/g, ' ')

@@ -149,9 +149,11 @@ export default function Properties() {
   // (100 newest for sale + 100 newest for rent across the workspace's home
   // markets), which keeps external API quota untouched. Fresh external
   // inventory arrives through the twice-daily background sync job.
-  const defaultPoolRef = useRef<UnifiedResult[] | null>(null);
-  const loadDefaultPool = useCallback(async (): Promise<UnifiedResult[]> => {
-    if (defaultPoolRef.current) return defaultPoolRef.current;
+  const defaultPoolRef = useRef<Map<string, UnifiedResult[]>>(new Map());
+  const loadDefaultPool = useCallback(async (type: ListingType | 'all' = 'all'): Promise<UnifiedResult[]> => {
+    const cacheKey = type;
+    const hit = defaultPoolRef.current.get(cacheKey);
+    if (hit) return hit;
     const cities = DEFAULT_CITIES;
     const batches = await Promise.all(
       cities.map((c) =>
@@ -166,23 +168,28 @@ export default function Properties() {
     }
     const newestFirst = (a: UnifiedResult, b: UnifiedResult) =>
       new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
-    const sale = all.filter((r) => r.listing_type === 'sale').sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
-    const rent = all.filter((r) => r.listing_type === 'rent').sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
-    const pool = [...sale, ...rent].sort(newestFirst);
-    defaultPoolRef.current = pool;
+    const take = (t: ListingType) => all.filter((r) => r.listing_type === t).sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
+    const pool =
+      type === 'all'
+        ? [...take('sale'), ...take('rent')].sort(newestFirst)
+        : take(type);
+    defaultPoolRef.current.set(cacheKey, pool);
     return pool;
   }, []);
 
 
+  // The table is NEVER empty: whenever the query box is blank we repaint the
+  // local pool for the active transaction toggle (all / rent / sale).
   useEffect(() => {
-    if (hasSearched || results.length) return;
+    if (q.trim()) return;
     let cancelled = false;
     (async () => {
       setSearching(true);
       try {
-        const rows = await loadDefaultPool();
+        const rows = await loadDefaultPool(listingType);
         if (cancelled) return;
         setResults(rows);
+        setHasSearched(false);
         setShowingFallback(false);
         setSourceStatus({ local: { status: rows.length ? 'ok' : 'empty', count: rows.length } });
       } catch (err) {
@@ -193,7 +200,8 @@ export default function Properties() {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadDefaultPool]);
+  }, [loadDefaultPool, listingType, q]);
+
 
 
   // Monotonic token — bumping it aborts the in-flight search: late partials
@@ -294,7 +302,7 @@ export default function Properties() {
       } else {
         // Zero-result guard: fall back to the default recent pool instead of
         // ever showing an empty table.
-        const pool = await loadDefaultPool();
+        const pool = await loadDefaultPool(listingType);
         if (searchTokenRef.current !== token) return;
         setResults(pool);
         setShowingFallback(true);
@@ -328,13 +336,14 @@ export default function Properties() {
     if (searching || results.length) return;
     let cancelled = false;
     (async () => {
-      const pool = await loadDefaultPool().catch(() => [] as UnifiedResult[]);
+      const pool = await loadDefaultPool(listingType).catch(() => [] as UnifiedResult[]);
       if (cancelled || !pool.length) return;
       setResults(pool);
       setShowingFallback(true);
     })();
     return () => { cancelled = true; };
-  }, [searching, results.length, loadDefaultPool]);
+  }, [searching, results.length, loadDefaultPool, listingType]);
+
 
 
   // Abort the running fetch and immediately show the partial results found
@@ -622,48 +631,17 @@ export default function Properties() {
               title={searching ? 'בטל חיפוש' : 'חפש'}
               className="absolute left-1.5 top-1.5 h-7 gap-1.5 px-3 text-xs"
             >
-              {searching ? <X className="h-3.5 w-3.5" /> : <SearchIcon className="h-3.5 w-3.5" />}
+              {searching ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <SearchIcon className="h-3.5 w-3.5" />
+              )}
               <span>{searching ? 'בטל' : 'חפש'}</span>
             </Button>
 
           </div>
 
-          {/* Live streaming status — rendered dead-center of the viewport so
-              it is always visible while sources are answering. */}
-          {searching && (
-            <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div
-                className="pointer-events-auto w-full max-w-xs space-y-2 rounded-xl border border-border/60 bg-card/95 p-4 shadow-xl backdrop-blur"
-                dir="rtl"
-                role="status"
-                aria-live="polite"
-              >
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span>טוען תוצאות… {searchProgress?.loaded ?? results.length} נטענו</span>
-                </div>
-                {searchProgress ? (
-                  <p className="text-[11px] text-muted-foreground">
-                    {searchProgress.done}/{searchProgress.total} מקורות הושלמו
-                  </p>
-                ) : null}
-                {searchProgress?.pending?.length ? (
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    ממתין ל: {searchProgress.pending.map((p) => sourceLabel(p as any)).join(', ')}
-                  </p>
-                ) : null}
-                <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-300"
-                    style={{ width: `${Math.round(((searchProgress?.done ?? 0) / (searchProgress?.total || 3)) * 100)}%` }}
-                  />
-                </div>
-                <Button size="sm" variant="ghost" className="h-7 w-full text-xs" onClick={cancelSearch}>
-                  בטל חיפוש
-                </Button>
-              </div>
-            </div>
-          )}
+
 
         </div>
 

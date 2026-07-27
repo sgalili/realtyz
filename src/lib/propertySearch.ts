@@ -212,8 +212,12 @@ export async function searchAllSources(
       (homelyFilters.deal && homelyFilters.deal !== 'all'),
   );
 
-  const tasks: Array<Promise<{ label: PropertySource; results: UnifiedResult[] }>> = [
+  // STAGED PIPELINE (API conservation): each stage only starts after the
+  // previous one has painted. Local DB first (free, instant), Yad2 second,
+  // Homely/Webtiv last — so a cancelled search never burns external quota.
+  const localTask = () =>
     searchLocal(f)
+
       .then((r) => {
         sources.mine = { status: r.length ? 'ok' : 'empty', count: r.length };
         return { label: 'mine' as const, results: r };
@@ -222,8 +226,11 @@ export async function searchAllSources(
         console.error('[propertySearch] local source failed', e);
         sources.mine = { status: 'error', count: 0, error: String(e?.message ?? e) };
         return { label: 'mine' as const, results: [] };
-      }),
+      });
+
+  const homelyTask = () =>
     invokeExternal('homely-fetch-property', {
+
       action: homelyHasFilter ? 'searchProperties' : 'fetchAllProperties',
       filters: homelyFilters,
     })
@@ -260,12 +267,14 @@ export async function searchAllSources(
         console.error('[propertySearch] homely-fetch-property failed', e);
         sources.homely = { status: 'error', count: 0, error: String(e?.message ?? e) };
         return { label: 'homely' as const, results: [] };
-      }),
+      });
+
+  const yad2Task = () =>
     (async () => {
-      // Yad2 tab / unified search ALWAYS triggers a direct live fetch against
-      // the yad2-unlocker edge function (which talks to gw.yad2.co.il and
-      // www.yad2.co.il via Bright Data). It does NOT fall back to Homely or
-      // Webtiv — those run as independent siblings in this Promise.all.
+      // Yad2 runs as the SECOND stage — a live fetch against the
+      // yad2-unlocker edge function (gw.yad2.co.il / www.yad2.co.il via
+      // Bright Data). It never falls back to Homely or Webtiv.
+
       const queryText = [f.q, f.city && f.city !== 'כל הערים' ? f.city : null, f.neighborhood]
         .filter(Boolean)
         .join(' ')
@@ -304,13 +313,17 @@ export async function searchAllSources(
         sources.yad2 = { status: 'error', count: 0, error: msg };
         return { label: 'yad2' as const, results: [] };
       }
-    })(),
-    // NOTE: `webtiv-homely-sync` is a CONTACT sync job (buyers/sellers → Homely),
-    // not a property search endpoint. Calling it here always returned a non-2xx
-    // error and never produced listings, so the office's Webtiv inventory is
-    // served through `homely-fetch-property` above (same AutomaionJson stream,
-    // both sale AND rent).
+    })();
+
+  // NOTE: `webtiv-homely-sync` is a CONTACT sync job (buyers/sellers → Homely),
+  // not a property search endpoint, so the office's Webtiv inventory is served
+  // through `homely-fetch-property` (same AutomaionJson stream, sale AND rent).
+  const stages: Array<{ label: PropertySource; run: () => Promise<{ label: PropertySource; results: UnifiedResult[] }> }> = [
+    { label: 'mine', run: localTask },
+    { label: 'yad2', run: yad2Task },
+    { label: 'homely', run: homelyTask },
   ];
+
 
   // Merge + dedupe + text-filter a set of settled source buckets.
   const mergeSettled = (buckets: Array<{ label: PropertySource; results: UnifiedResult[] }>) => {
@@ -354,38 +367,30 @@ export async function searchAllSources(
         });
   };
 
-  // Stream: paint the table the moment EACH source answers instead of waiting
-  // for the slowest gateway. `onPartial` fires once per settled source with a
-  // running progress counter (done / total).
-  const labels: PropertySource[] = ['mine', 'homely', 'yad2'];
+  // Stream sequentially: paint after each stage completes, then move on to
+  // the next (more expensive) source. `onPartial` fires once per stage.
+  const labels: PropertySource[] = stages.map((s) => s.label);
   const collected: Array<{ label: PropertySource; results: UnifiedResult[] }> = [];
-  const total = tasks.length;
+  const total = stages.length;
   let done = 0;
 
-  await Promise.all(
-    tasks.map((t, i) =>
-      t
-        .then((s) => {
-          collected.push(s);
-          return s;
-        })
-        .catch((e) => {
-          console.error('[propertySearch] source task rejected', e);
-          const label = labels[i] ?? ('mine' as PropertySource);
-          collected.push({ label, results: [] });
-        })
-        .finally(() => {
-          done += 1;
-          const partial = mergeSettled(collected);
-          const pending = labels.filter((l) => !collected.some((c) => c.label === l));
-          onPartial?.({
-            results: partial,
-            sources: { ...sources },
-            progress: { done, total, loaded: partial.length, pending },
-          });
-        }),
-    ),
-  );
+  for (const stage of stages) {
+    try {
+      collected.push(await stage.run());
+    } catch (e) {
+      console.error('[propertySearch] source stage rejected', stage.label, e);
+      collected.push({ label: stage.label, results: [] });
+    }
+    done += 1;
+    const partial = mergeSettled(collected);
+    const pending = labels.filter((l) => !collected.some((c) => c.label === l));
+    onPartial?.({
+      results: partial,
+      sources: { ...sources },
+      progress: { done, total, loaded: partial.length, pending },
+    });
+  }
+
 
   const filtered = mergeSettled(collected);
   return {
