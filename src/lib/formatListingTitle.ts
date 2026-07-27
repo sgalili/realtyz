@@ -147,3 +147,50 @@ export function formatInternalListingTitle(input: {
 }
 
 
+
+/**
+ * INTERNAL TABLE "רחוב" COLUMN — strictly `street name, property type`.
+ * House and apartment numbers are stripped entirely (they live in their own
+ * dedicated columns). e.g. "החליל, דירה" / "בן יהודה, דופלקס".
+ */
+export function formatStreetTypeTitle(input: {
+  address?: string | null;
+  city?: string | null;
+  neighborhood?: string | null;
+  property_type?: string | null;
+  title?: string | null;
+  raw?: any;
+}): string {
+  const r = input.raw ?? {};
+  const rawMeta = r.source_metadata && typeof r.source_metadata === 'object' ? r.source_metadata : {};
+  const rawAttrs = r.attributes && typeof r.attributes === 'object' ? r.attributes : {};
+  const city = String(input.city ?? '').trim();
+  const hood = String(input.neighborhood ?? '').trim();
+
+  let street = String(
+    r.street ?? r.street_name ?? rawMeta.street ?? rawMeta.street_name ?? rawAttrs.street ?? input.address ?? '',
+  ).replace(/\s+/g, ' ').trim();
+
+  // Keep only the street segment, dropping city / neighborhood fragments.
+  street = street
+    .split(',')
+    .map((p) => p.trim())
+    .filter((p) => p && p !== city && p !== hood)[0] ?? '';
+
+  // Remove apartment markers and every numeric token.
+  street = street
+    .replace(/(?:דירה|דירת|ד['׳"]|יח["׳']|apt\.?|apartment|unit|#)\s*\d+[א-תA-Za-z]?/gi, '')
+    .replace(/\b\d+[א-תA-Za-z]?\b/g, '')
+    .replace(/[\s,\-־/]+$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  const rawType = input.property_type ??
+    rawMeta.property_type ?? rawMeta.propertyType ?? rawMeta.type ??
+    rawAttrs.property_type ?? rawAttrs.propertyType ?? rawAttrs.assetType ?? rawAttrs.subcategory ?? null;
+  const type = normalizePropertyTypeLabel(rawType == null ? null : String(rawType));
+
+  const parts = [street, type].filter(Boolean) as string[];
+  if (!parts.length) return (input.title ?? '').trim() || 'נכס';
+  return parts.join(', ');
+}
