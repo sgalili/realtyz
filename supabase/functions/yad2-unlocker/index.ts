@@ -442,6 +442,50 @@ function pickCoords(it: any): { lat: number | null; lng: number | null } {
 }
 
 /**
+ * House number (מספר בית) + apartment number (מספר דירה). Yad2 exposes these
+ * under `address.house.{number,floor,apartment}` on the item feed, and only as
+ * free text inside the street line on some legacy shapes.
+ */
+function pickAddressNumbers(it: any, addressText?: string | null): {
+  house_number: string | null;
+  apartment_number: string | null;
+} {
+  const pick = (...vals: any[]): string | null => {
+    for (const v of vals) {
+      if (v == null) continue;
+      const s = String(v).trim();
+      if (s && s !== "0" && s.toLowerCase() !== "null") return s;
+    }
+    return null;
+  };
+  const h = it?.address?.house ?? it?.house ?? {};
+  let house = pick(
+    h?.number, h?.houseNumber, h?.house_number,
+    it?.address?.houseNumber, it?.address?.house_number, it?.address?.number,
+    it?.houseNumber, it?.house_number, it?.streetNumber, it?.street_number,
+    it?.additionalDetails?.houseNumber, it?.additionalDetails?.house_number,
+  );
+  let apt = pick(
+    h?.apartment, h?.apartmentNumber, h?.apartment_number, h?.flat, h?.unit,
+    it?.address?.apartmentNumber, it?.address?.apartment_number, it?.address?.apartment,
+    it?.apartmentNumber, it?.apartment_number, it?.apartment, it?.unit, it?.unitNumber,
+    it?.additionalDetails?.apartmentNumber, it?.additionalDetails?.apartment_number,
+  );
+
+  const addr = clean(addressText ?? it?.address?.street?.text ?? it?.street ?? null) ?? "";
+  if (!apt) {
+    const marked = addr.match(/(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)\s*(\d{1,4}[א-תA-Za-z]?)/i);
+    if (marked) apt = marked[1];
+  }
+  if (!house) {
+    const head = addr.split(/(?:,|\s)+(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)/i)[0];
+    const m = head.match(/(\d{1,4}[א-תA-Za-z]?)\s*$/) || head.match(/(\d{1,4}[א-תA-Za-z]?)/);
+    if (m) house = m[1];
+  }
+  return { house_number: house, apartment_number: apt };
+}
+
+/**
  * "על הנכס" — Yad2 hides the free-text description under several different
  * keys depending on the endpoint/version (`description`, `info_text`,
  * `freeText`, `adDescription`, `metaData.longDescription`, ...). Walk the
