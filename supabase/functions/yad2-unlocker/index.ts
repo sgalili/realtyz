@@ -441,6 +441,62 @@ function pickCoords(it: any): { lat: number | null; lng: number | null } {
   return { lat: null, lng: null };
 }
 
+/**
+ * "על הנכס" — Yad2 hides the free-text description under several different
+ * keys depending on the endpoint/version (`description`, `info_text`,
+ * `freeText`, `adDescription`, `metaData.longDescription`, ...). Walk the
+ * whole payload and keep the longest human-looking text we find so the
+ * description is never lost.
+ */
+const DESC_KEY_RE = /(description|info_?text|free_?text|about|remarks|comments?|body_?text|ad_?text)/i;
+function deepDescription(obj: any, depth = 0): string | null {
+  if (!obj || depth > 6) return null;
+  let best: string | null = null;
+  const consider = (s: unknown) => {
+    const v = clean(typeof s === "string" ? s : null);
+    if (!v || v.length < 25) return;
+    if (/^https?:\/\//i.test(v)) return;
+    if (!best || v.length > best.length) best = v;
+  };
+  if (Array.isArray(obj)) {
+    for (const x of obj) {
+      const found = deepDescription(x, depth + 1);
+      consider(found);
+    }
+    return best;
+  }
+  if (typeof obj !== "object") return null;
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v === "string") {
+      if (DESC_KEY_RE.test(k)) consider(v);
+    } else if (v && typeof v === "object") {
+      consider(deepDescription(v, depth + 1));
+    }
+  }
+  return best;
+}
+
+/** HTML fallback: pull the text that sits under the "על הנכס" heading. */
+function descriptionFromHtml($: any): string | null {
+  if (!$) return null;
+  let found: string | null = null;
+  try {
+    $('h2,h3,[class*="description"],[data-testid*="description"]').each((_: number, el: any) => {
+      if (found) return;
+      const node = $(el);
+      const heading = clean(node.text());
+      if (heading && /על הנכס/.test(heading)) {
+        const body = clean(node.next().text()) || clean(node.parent().text());
+        if (body && body.length > 25) found = body.replace(/^על הנכס\s*/, "").trim();
+      } else if (!heading || heading.length > 40) {
+        const body = clean(node.text());
+        if (body && body.length > 60 && (!found || body.length > found.length)) found = body;
+      }
+    });
+  } catch { /* cheerio shape mismatch — ignore */ }
+  return found;
+}
+
 /** "פירוט הריהוט" — furniture inventory block. */
 function pickFurniture(it: any): Record<string, unknown> {
   const src =
