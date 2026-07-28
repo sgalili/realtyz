@@ -36,6 +36,8 @@ Deno.serve(async (req) => {
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge") ?? "";
     const expected =
+      Deno.env.get("WA_VERIFY_TOKEN") ??
+      Deno.env.get("VERIFY_TOKEN") ??
       Deno.env.get("META_WA_VERIFY_TOKEN") ??
       Deno.env.get("MESSENGER_VERIFY_TOKEN") ??
       "";
