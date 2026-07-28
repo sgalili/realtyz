@@ -533,7 +533,7 @@ const OmnichannelInbox = () => {
     supabase.functions
       .invoke('fetch-wa-avatars', { body: { lead_ids: [v.id] } })
       .then(({ data }) => {
-        if ((data as any)?.error === 'green_api_not_configured') {
+        if ((data as any)?.supported === false || (data as any)?.error) {
           sessionStorage.setItem(WA_AVATAR_DISABLED_KEY, '1');
           return;
         }
@@ -558,7 +558,7 @@ const OmnichannelInbox = () => {
     supabase.functions
       .invoke('fetch-wa-avatars', { body: { lead_ids: missing.slice(0, 50) } })
       .then(({ data }) => {
-        if ((data as any)?.error === 'green_api_not_configured') {
+        if ((data as any)?.supported === false || (data as any)?.error) {
           sessionStorage.setItem(WA_AVATAR_DISABLED_KEY, '1');
           return;
         }
