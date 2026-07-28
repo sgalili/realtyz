@@ -67,14 +67,9 @@ const Dashboard = () => {
           const isSmart = !!row.is_investment_opportunity;
           const title = row.property_title || row.address || 'נכס חדש';
           const city = row.city ? ` · ${row.city}` : '';
-          if (isYad2 || isSmart) {
-            toast(isSmart ? '⚡ עסקה חכמה — מציאת שוק' : '🏠 נכס חדש נקלט מהשוק', {
-              description: `${title}${city}`,
-              action: row.source_url
-                ? { label: 'מקור', onClick: () => window.open(row.source_url, '_blank') }
-                : undefined,
-            });
-          }
+          // Notification policy: no toast for routine ingestion events.
+          void isYad2; void isSmart; void title; void city;
+
           queryClient.invalidateQueries({ queryKey: ['pending-listings', user.id] });
           queryClient.invalidateQueries({ queryKey: ['kpi-active-listings', user.id] });
         },
