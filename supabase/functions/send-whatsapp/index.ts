@@ -82,6 +82,13 @@ type StdResponse = {
   details?: unknown;
 };
 
+type MetaError = {
+  code?: number;
+  error_subcode?: number;
+  message?: string;
+  type?: string;
+};
+
 const json = (body: StdResponse | { error: string }, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -115,10 +122,11 @@ async function resolveProvider(
   const tryRows = async (column: "tenant_id" | "user_id", value: string) => {
     const { data: rows } = await admin
       .from("wa_providers")
-      .select("provider_name, config, is_active")
+      .select("provider_name, config, is_active, updated_at")
       .eq(column, value)
       .eq("provider_name", "WBA")
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false });
     return (rows ?? []) as Array<{ config: Record<string, unknown> }>;
   };
 
@@ -141,14 +149,31 @@ async function resolveProvider(
   for (const id of ids) {
     const { data: prof } = await admin
       .from("profiles")
-      .select("active_workspace_owner_id")
+      .select("active_workspace_owner_id, workspace_owner_id")
       .eq("id", id)
       .maybeSingle();
-    const owner = (prof as any)?.active_workspace_owner_id as string | null;
+    const owner = ((prof as any)?.active_workspace_owner_id ?? (prof as any)?.workspace_owner_id) as string | null;
     if (owner && !ids.includes(owner)) {
       const hit = pick(await tryRows("tenant_id", owner)) ?? pick(await tryRows("user_id", owner));
       if (hit) return hit;
     }
+  }
+
+  // Cron/server-to-server paths sometimes only know the recipient phone. If the
+  // project has a single active authorized WBA row, use it instead of failing
+  // silently because no user JWT was present.
+  if (!ids.length) {
+    const { data: rows } = await admin
+      .from("wa_providers")
+      .select("provider_name, config, is_active, is_official, updated_at")
+      .eq("provider_name", "WBA")
+      .eq("is_active", true)
+      .eq("is_official", true)
+      .order("updated_at", { ascending: false })
+      .limit(5);
+    const authorized = (rows ?? []).filter((row: any) => row?.config?.authorized !== false);
+    const hit = pick((authorized.length ? authorized : rows ?? []) as Array<{ config: Record<string, unknown> }>);
+    if (hit) return hit;
   }
 
   // Project-level Meta Cloud API secrets.
@@ -185,6 +210,15 @@ async function sendViaWba(
       provider: "WBA",
       message_id: null,
       error: "WBA not configured",
+    };
+  }
+  if (phoneNumberId.startsWith("+") || /[^0-9]/.test(phoneNumberId)) {
+    return {
+      success: false,
+      provider: "WBA",
+      message_id: null,
+      error: "Invalid WBA phone_number_id",
+      details: { error: { code: 100, message: "phone_number_id must be the numeric Meta node ID, not a phone number" } },
     };
   }
   const baseUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
@@ -298,16 +332,24 @@ async function sendViaWba(
  * Translate a raw Meta failure into a short Hebrew sentence the
  * broker can act on. The raw provider payload is never shown in the UI.
  */
-function humanizeWaError(raw: string, meta: { code?: number; error_subcode?: number; message?: string } = {}): string {
+function humanizeWaError(raw: string, meta: MetaError = {}): string {
   const code = Number(meta?.code ?? 0);
+  const subcode = Number(meta?.error_subcode ?? 0);
   switch (code) {
+    case 131008:
+      return "חסר פרמטר בתבנית וואטסאפ — בדוק את משתני התבנית המאושרת";
     case 131047:
       return "חלון 24 השעות נסגר — אפשר לשלוח רק תבנית מאושרת עד שהלקוח יגיב שוב";
     case 131026:
       return "המספר אינו רשום בוואטסאפ או שאינו יכול לקבל הודעות";
+    case 132000:
+    case 132001:
+    case 132012:
+      return "תבנית הוואטסאפ אינה מאושרת או שאינה תואמת לשפה/משתנים שהוגדרו";
     case 131051:
       return "סוג ההודעה אינו נתמך על ידי וואטסאפ";
     case 100:
+      if (subcode === 33) return "Phone Number ID שגוי — יש להזין את מזהה המספר המספרי מ-Meta, לא את מספר הטלפון";
       return "פרטי החשבון שגויים — יש לוודא Phone Number ID ו-WABA ID בהגדרות";
     case 190:
       return "פג תוקף ההרשאה של Meta — יש לחבר מחדש את חשבון וואטסאפ העסקי";
@@ -322,6 +364,7 @@ function humanizeWaError(raw: string, meta: { code?: number; error_subcode?: num
     default:
       break;
   }
+  if (/phone_number_id/i.test(raw)) return "Phone Number ID שגוי — יש להזין את מזהה המספר המספרי מ-Meta, לא את מספר הטלפון";
   if (/not configured|No active WhatsApp provider/i.test(raw)) {
     return "חשבון וואטסאפ העסקי אינו מחובר — יש להתחבר בהגדרות הערוצים";
   }
@@ -392,10 +435,11 @@ Deno.serve(async (req) => {
 
     // Resolve recipient phone — either explicit, or by lead_id lookup.
     let rawPhone = parsed.data.phone_number ?? "";
+    let routingTenantId = parsed.data.tenant_id ?? null;
     if (!rawPhone && parsed.data.lead_id) {
       const { data: lead, error: leadErr } = await admin
         .from("leads")
-        .select("phone_number")
+        .select("phone_number, user_id")
         .eq("id", parsed.data.lead_id)
         .maybeSingle();
       if (leadErr || !lead?.phone_number) {
@@ -407,6 +451,14 @@ Deno.serve(async (req) => {
         }, 404);
       }
       rawPhone = lead.phone_number;
+      routingTenantId = routingTenantId ?? ((lead as any)?.user_id ?? null);
+    } else if (parsed.data.lead_id && !routingTenantId) {
+      const { data: lead } = await admin
+        .from("leads")
+        .select("user_id")
+        .eq("id", parsed.data.lead_id)
+        .maybeSingle();
+      routingTenantId = ((lead as any)?.user_id ?? null) as string | null;
     }
     const phone = normalizePhone(rawPhone);
     if (!phone) {
@@ -422,7 +474,7 @@ Deno.serve(async (req) => {
     const provider = await resolveProvider(
       admin,
       userId,
-      parsed.data.tenant_id ?? null,
+      routingTenantId,
     );
     if (!provider) {
       return json({
@@ -486,7 +538,7 @@ Deno.serve(async (req) => {
       }
       if (actorId) {
         await admin.from("audit_logs").insert({
-          actor_id: actorId,
+        actor_id: actorId,
           action: parsed.data.ai_assisted ? "ai_message_sent" : "message_sent",
           target_table: parsed.data.lead_id ? "leads" : null,
           target_id: parsed.data.lead_id ?? null,
@@ -496,6 +548,7 @@ Deno.serve(async (req) => {
             disclosure_appended: disclosureAppended,
             has_attachment: !!parsed.data.file,
             phone_last4: phone.slice(-4),
+            tenant_routed: !!routingTenantId,
           },
         });
       }
@@ -508,14 +561,22 @@ Deno.serve(async (req) => {
       result = {
         ...result,
         error: humanizeWaError(result.error ?? "", meta),
-        details: { code: meta?.code ?? null, subcode: meta?.error_subcode ?? null },
+        details: { code: meta?.code ?? null, subcode: meta?.error_subcode ?? null, type: meta?.type ?? null },
       };
       try {
         await logIntegrationError({
           integration: "whatsapp",
           functionName: "send-whatsapp",
           errorMessage: result.error ?? "שליחת וואטסאפ נכשלה",
-          context: { provider: effectiveProvider, meta_code: meta?.code ?? null, phone_last4: phone.slice(-4) },
+          context: {
+            provider: effectiveProvider,
+            meta_code: meta?.code ?? null,
+            meta_subcode: meta?.error_subcode ?? null,
+            meta_type: meta?.type ?? null,
+            phone_last4: phone.slice(-4),
+            tenant_routed: !!routingTenantId,
+            template: parsed.data.template_id ?? null,
+          },
         });
       } catch (_e) { /* best-effort */ }
     }
