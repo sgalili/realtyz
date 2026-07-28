@@ -11,9 +11,19 @@ export type MetaWaTemplate = {
   has_header_variable: boolean;
 };
 
+/** Cached (DB) approved templates — instant, zero Graph API calls. */
+async function readCachedTemplates(): Promise<MetaWaTemplate[]> {
+  const { data } = await supabase
+    .from('wa_message_templates')
+    .select('name, language, category, status, body_text, variable_count, has_header_variable')
+    .eq('status', 'APPROVED')
+    .order('name');
+  return (data ?? []) as MetaWaTemplate[];
+}
+
 /**
  * Approved Meta WhatsApp message templates for the current workspace.
- * Proactive (outside the 24h customer-service window) sends must use one.
+ * Reads the local cache first; only calls Meta when the cache is empty.
  */
 export function useMetaWaTemplates(enabled = true) {
   return useQuery({
@@ -21,6 +31,9 @@ export function useMetaWaTemplates(enabled = true) {
     enabled,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<MetaWaTemplate[]> => {
+      const cached = await readCachedTemplates();
+      if (cached.length > 0) return cached;
+
       const { data, error } = await supabase.functions.invoke('meta-wa-templates', { body: {} });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'שליפת התבניות נכשלה');
