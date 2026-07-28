@@ -15,6 +15,7 @@
 // the ad is verified 'live'.
 
 import puppeteer from 'npm:puppeteer-core@22.15.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
 const BD_WS = Deno.env.get('BRIGHTDATA_WS_ENDPOINT') ?? '';
@@ -48,6 +49,46 @@ function itemToken(u: string): string | null {
 
 type Status = 'live' | 'gone' | 'unknown';
 
+type AdDates = { published_at: string | null; updated_at: string | null };
+
+function toIso(v: unknown): string | null {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  // Hebrew dd/mm/yy(yy)
+  const dm = s.match(/(\d{1,2})[./](\d{1,2})[./](\d{2,4})/);
+  if (dm) {
+    const y = Number(dm[3].length === 2 ? `20${dm[3]}` : dm[3]);
+    const d = new Date(Date.UTC(y, Number(dm[2]) - 1, Number(dm[1])));
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  const t = new Date(s).getTime();
+  if (!Number.isFinite(t)) return null;
+  // Ignore absurd values
+  if (t < Date.UTC(2000, 0, 1)) return null;
+  return new Date(t).toISOString();
+}
+
+/** Pulls the ad's real createdAt/updatedAt out of the rendered page HTML. */
+function extractDates(html: string): AdDates {
+  const grab = (keys: string[]): string | null => {
+    for (const k of keys) {
+      const m = html.match(new RegExp(`"${k}"\\s*:\\s*"([^"]{6,40})"`));
+      const iso = m ? toIso(m[1]) : null;
+      if (iso) return iso;
+    }
+    return null;
+  };
+  let published = grab(['createdAt', 'created_at', 'publishedAt', 'published_at', 'uploadDate']);
+  const updated = grab(['updatedAt', 'updated_at', 'modifiedAt', 'lastUpdated']);
+  if (!published) {
+    // Visible fallback: "תאריך עדכון 12/07/2026" / "פורסם ב 12/07/26"
+    const m = html.match(/(?:פורסם(?:\s+ב-?)?|תאריך\s+עדכון)[^\d]{0,12}(\d{1,2}[./]\d{1,2}[./]\d{2,4})/);
+    published = m ? toIso(m[1]) : null;
+  }
+  return { published_at: published, updated_at: updated };
+}
+
 function classify(finalUrl: string, httpStatus: number, title: string, html: string): Status {
   if (httpStatus === 404 || httpStatus === 410) return 'gone';
   if (finalUrl && !/\/item\//i.test(finalUrl)) return 'gone';
@@ -75,6 +116,7 @@ Deno.serve(async (req) => {
     ).slice(0, 12);
 
     const statuses: Record<string, Status> = {};
+    const dates: Record<string, AdDates> = {};
     const probeList: string[] = [];
 
     for (const u of urls) {
@@ -116,6 +158,8 @@ Deno.serve(async (req) => {
               return;
             }
             statuses[u] = classify(finalUrl, httpStatus, pageTitle, html);
+            const d = extractDates(html);
+            if (d.published_at || d.updated_at) dates[u] = d;
             console.log(
               `[yad2-ad-status] ${u} http=${httpStatus} final=${finalUrl} title=${JSON.stringify(pageTitle)} bytes=${html.length} -> ${statuses[u]}`,
             );
@@ -147,7 +191,41 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok: true, statuses });
+    // Persist the real source dates so the table stops falling back to
+    // our own import timestamp on the next render.
+    const dateUrls = Object.keys(dates);
+    if (dateUrls.length) {
+      try {
+        const admin = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+          { auth: { persistSession: false } },
+        );
+        for (const u of dateUrls) {
+          const token = itemToken(u);
+          const { data: rows } = await admin
+            .from('listings')
+            .select('id, source_metadata')
+            .or(`source_url.eq.${u}${token ? `,external_id.eq.${token}` : ''}`)
+            .limit(5);
+          for (const row of rows ?? []) {
+            const meta = (row.source_metadata ?? {}) as Record<string, unknown>;
+            await admin.from('listings').update({
+              source_metadata: {
+                ...meta,
+                published_at: dates[u].published_at ?? (meta as any).published_at ?? null,
+                updated_at_source: dates[u].updated_at ?? (meta as any).updated_at_source ?? null,
+                published_at_source: 'yad2_item_page',
+              },
+            }).eq('id', row.id);
+          }
+        }
+      } catch (e) {
+        console.warn('[yad2-ad-status] date persist failed', (e as Error).message);
+      }
+    }
+
+    return json({ ok: true, statuses, dates });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }
