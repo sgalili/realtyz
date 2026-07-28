@@ -21,9 +21,38 @@ type ErrorLog = {
   id: string;
   integration: string;
   function_name: string | null;
+  error_code: string | null;
   error_message: string | null;
   created_at: string;
 };
+
+/** Hebrew labels for the error categories emitted by the WhatsApp gateway. */
+const ERROR_CATEGORY_LABEL: Record<string, string> = {
+  permission_scope: 'הרשאות טוקן חסרות',
+  token_expired: 'טוקן פג תוקף',
+  token_invalid: 'טוקן לא תקף',
+  config: 'שגיאת הגדרות',
+  template: 'תבנית לא תקינה',
+  session_window: 'חלון 24 שעות',
+  recipient: 'בעיית נמען',
+  rate_limit: 'חריגת מכסה',
+  account_suspended: 'חשבון מושהה',
+  network: 'תקלת רשת',
+  unknown: 'שגיאה כללית',
+};
+
+const AUTH_CATEGORIES = new Set(['permission_scope', 'token_expired', 'token_invalid']);
+
+function parseErrorCode(code: string | null): { category: string | null; label: string | null; isAuth: boolean } {
+  if (!code) return { category: null, label: null, isAuth: false };
+  const category = code.split(':')[0];
+  return {
+    category,
+    label: ERROR_CATEGORY_LABEL[category] ?? code,
+    isAuth: AUTH_CATEGORIES.has(category),
+  };
+}
+
 
 const INTEGRATION_LABEL: Record<string, string> = {
   whatsapp: 'WhatsApp',
