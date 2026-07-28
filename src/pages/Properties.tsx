@@ -231,6 +231,33 @@ export default function Properties() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadDefaultPool, listingType, q]);
 
+  // INSTANT LOCAL FILTER — from the 3rd typed character we paint matching rows
+  // straight out of our own `listings` table. Zero external calls, zero cost,
+  // no waiting: external gateways only run when the user submits the search.
+  const instantTokenRef = useRef(0);
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 3) return;
+    if (/^https?:\/\//i.test(term)) return; // URL paste → import flow
+    const token = ++instantTokenRef.current;
+    const timer = setTimeout(async () => {
+      try {
+        const rows = await searchLocalListings({
+          q: term,
+          listing_type: listingType === 'all' ? 'all' : listingType,
+        });
+        if (instantTokenRef.current !== token) return;
+        if (!rows.length) return; // never blank the table
+        setResults(rows);
+        setShowingFallback(false);
+        setSourceStatus({ mine: { status: 'ok', count: rows.length } as any });
+      } catch (e) {
+        console.warn('[Properties] instant local filter failed', e);
+      }
+    }, 180);
+    return () => { clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, listingType]);
 
 
   // Monotonic token — bumping it aborts the in-flight search: late partials
