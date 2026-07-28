@@ -1227,9 +1227,24 @@ const OmnichannelInbox = () => {
 
               {/* Input Area */}
               <div className="border-t border-border/50 bg-whatsapp-footer p-2 sm:p-3">
-                {/* Autopilot pill — holds the robot icon + the per-chat switch. */}
+                {/* Autopilot pill — the switch sits on the right (RTL start) and
+                    carries the robot icon inside its knob. */}
                 <div className="mb-2 flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-1.5 text-whatsapp-header shadow-sm">
-                  <Bot className={`h-4 w-4 shrink-0 ${chatAutopilotOn ? 'text-whatsapp-header' : 'text-muted-foreground'}`} />
+                  <Switch
+                    checked={chatAutopilotOn}
+                    disabled={!selectedVoterId}
+                    title="טייס AI לשיחה זו"
+                    aria-label="טייס AI לשיחה זו"
+                    className="group shrink-0 border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground"
+                    onCheckedChange={(v) => {
+                      setChatAutopilot(v);
+                      if (v) setManualTakeoverWarning(false);
+                    }}
+                  >
+                    <Bot
+                      className={`pointer-events-none absolute left-1 top-1/2 z-20 h-3 w-3 -translate-y-1/2 transition-transform group-data-[state=checked]:translate-x-5 ${chatAutopilotOn ? 'text-whatsapp-header' : 'text-muted-foreground'}`}
+                    />
+                  </Switch>
                   <span className="text-xs font-medium">
                     {manualTakeoverWarning
                       ? 'מצב ידני - הטייס האוטומטי מושהה לשיחה זו'
@@ -1237,17 +1252,6 @@ const OmnichannelInbox = () => {
                         ? 'טייס אוטומטי פעיל לשיחה זו - ה-AI עונה באופן אוטומטי'
                         : 'טייס אוטומטי כבוי לשיחה זו - המענה ידני'}
                   </span>
-                  <Switch
-                    checked={chatAutopilotOn}
-                    disabled={!selectedVoterId}
-                    title="טייס AI לשיחה זו"
-                    aria-label="טייס AI לשיחה זו"
-                    className="ms-auto shrink-0 border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground"
-                    onCheckedChange={(v) => {
-                      setChatAutopilot(v);
-                      if (v) setManualTakeoverWarning(false);
-                    }}
-                  />
                 </div>
                 <div className="flex items-center gap-2">
 
