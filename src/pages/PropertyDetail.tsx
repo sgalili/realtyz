@@ -296,6 +296,32 @@ export default function PropertyDetail() {
 
   const dbPhotos = property?.photos ?? [];
 
+  // ---- Owner CRM card auto-provisioning -----------------------------------
+  // Opening a property guarantees the owner exists in the global CRM using the
+  // standard profile card template: name, phone, linked properties, plus the
+  // official Meta WhatsApp Business profile picture. Runs once per listing.
+  const ownerSyncedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const listingId = data?.row?.id ? String(data.row.id) : null;
+    if (!listingId || data?.owner) return;
+    if (ownerSyncedRef.current === listingId) return;
+    ownerSyncedRef.current = listingId;
+    (async () => {
+      try {
+        const { data: res } = await supabase.functions.invoke('owner-crm-sync', {
+          body: { listing_id: listingId },
+        });
+        if (res && ((res as any).created > 0 || (res as any).linked > 0)) {
+          qc.invalidateQueries({ queryKey: ['property-detail', listingId] });
+        }
+      } catch {
+        /* silent: owner enrichment must never block the detail view */
+      }
+    })();
+  }, [data?.row?.id, data?.owner, qc]);
+
+
+
   // ---- Automatic on-view metadata hydration -------------------------------
   // When a property is opened and key Yad2 metadata is missing (ארנונה,
   // ועד בית, מספר תשלומים, or the "על הנכס" text), re-parse the source ad
