@@ -203,25 +203,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    // --- Step 4: atomic DB update with the full unique gallery ---
+    // --- Step 4: DB update. Incremental (`only`) calls APPEND to the gallery;
+    //     full runs replace it with the complete unique list. ---
     const prevMeta =
       listing.source_metadata && typeof listing.source_metadata === "object" && !Array.isArray(listing.source_metadata)
         ? (listing.source_metadata as Record<string, unknown>)
         : {};
+    let finalGallery = mirrored;
+    if (onlyUrls) {
+      const existing = Array.isArray(listing.media_photos)
+        ? (listing.media_photos as unknown[]).filter(isHttp).map((u) => u.trim())
+        : [];
+      const keys = new Set<string>();
+      finalGallery = [];
+      for (const u of [...existing, ...mirrored]) {
+        const k = photoKey(u);
+        if (keys.has(k)) continue;
+        keys.add(k);
+        finalGallery.push(u);
+      }
+    }
     const { error: upErr } = await admin
       .from("listings")
       .update({
-        media_photos: mirrored,
+        media_photos: finalGallery,
         source_metadata: {
           ...prevMeta,
-          media_urls: mirrored,
-          cached_media_urls: mirrored,
-          media_photos_count: mirrored.length,
-          media_photos_source: "manual_full_fetch",
+          media_urls: finalGallery,
+          cached_media_urls: finalGallery,
+          media_photos_count: finalGallery.length,
+          media_photos_source: onlyUrls ? "incremental_fetch" : "manual_full_fetch",
           media_last_fetched_at: new Date().toISOString(),
         },
       })
       .eq("id", listing.id);
+
     if (upErr) return json({ error: upErr.message }, 500);
 
     console.log(
