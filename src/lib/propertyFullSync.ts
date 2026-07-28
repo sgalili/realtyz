@@ -58,7 +58,24 @@ async function runFullSync(listingId: string, sourceUrl?: string | null): Promis
   } catch (e) {
     console.warn('[propertyFullSync] image mirroring failed', e);
   }
+
+  // 3. Metadata backfill (בית / דירה / שכונה / true publication date).
+  try {
+    await supabase.functions.invoke('listings-metadata-backfill', {
+      body: { listing_ids: [listingId] },
+    });
+  } catch (e) {
+    console.warn('[propertyFullSync] metadata backfill failed', e);
+  }
+
+  // 4. Owner CRM card auto-creation + WhatsApp enrichment.
+  try {
+    await supabase.functions.invoke('owner-crm-sync', { body: { listing_id: listingId } });
+  } catch (e) {
+    console.warn('[propertyFullSync] owner CRM sync failed', e);
+  }
 }
+
 
 /**
  * Ensures a listing is fully imported (metadata + all images).

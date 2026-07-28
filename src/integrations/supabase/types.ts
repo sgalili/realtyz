@@ -1535,10 +1535,12 @@ export type Database = {
           notes: string | null
           phone: string | null
           professional_info: Json
+          profile_picture_url: string | null
           profile_type: string
           social_links: Json
           source: string | null
           updated_at: string
+          whatsapp_checked_at: string | null
           workspace_owner_id: string
         }
         Insert: {
@@ -1551,10 +1553,12 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           professional_info?: Json
+          profile_picture_url?: string | null
           profile_type?: string
           social_links?: Json
           source?: string | null
           updated_at?: string
+          whatsapp_checked_at?: string | null
           workspace_owner_id: string
         }
         Update: {
@@ -1567,10 +1571,12 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           professional_info?: Json
+          profile_picture_url?: string | null
           profile_type?: string
           social_links?: Json
           source?: string | null
           updated_at?: string
+          whatsapp_checked_at?: string | null
           workspace_owner_id?: string
         }
         Relationships: []
