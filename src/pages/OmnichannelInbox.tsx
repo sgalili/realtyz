@@ -459,9 +459,39 @@ const OmnichannelInbox = () => {
       toast.error('שמירת מצב המענה האוטומטי לשיחה נכשלה');
       queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
     } else {
-      toast.success(value ? 'טייס אוטומטי הופעל לשיחה זו' : 'טייס אוטומטי כובה לשיחה זו');
     }
   };
+
+  // Effective autopilot for the open chat: the AI only answers when BOTH the
+  // global hero switch and the per-lead flag are on. The pill switch below is
+  // bi-directional with the global switch: turning it ON also turns the global
+  // one on, so the broker never flips a dead toggle.
+  const chatAutopilotOn = aiAutopilot && leadAutopilot;
+  const setChatAutopilot = async (value: boolean) => {
+    if (value && !aiAutopilot) {
+      try { await _updatePlatformSettings({ enable_ai_autopilot: true }); } catch { /* surfaced below */ }
+    }
+    if (leadAutopilot !== value) await setLeadAutopilot(value);
+  };
+
+  // Contact identity for the chat header — mirrors the CRM card exactly and
+  // never renders a bare dash placeholder.
+  const selectedLastMessage: any = selectedVoterId ? lastMessages?.get(selectedVoterId) : null;
+  const contactPhoneRaw =
+    (selectedVoter as any)?.phone_number ||
+    selectedLastMessage?.metadata?.sender_phone ||
+    (selectedVoterId?.startsWith('phone:') ? selectedVoterId.slice('phone:'.length) : '') ||
+    '';
+  const contactPhone = contactPhoneRaw ? formatPhoneDisplay(contactPhoneRaw) : '';
+  const contactName = (() => {
+    const raw = String((selectedVoter as any)?.full_name || '').trim();
+    const clean = /^[-–—\s]*$/.test(raw) ? '' : raw;
+    if (clean) return clean;
+    const pushName = String(selectedLastMessage?.metadata?.sender_name || '').trim();
+    if (pushName) return pushName;
+    return contactPhone || 'ללא שם';
+  })();
+
 
   // Fire-and-forget: fetch WhatsApp profile picture for the selected lead
   // if it's missing. The edge function updates leads.profile_picture_url
@@ -1021,13 +1051,12 @@ const OmnichannelInbox = () => {
                       className="block truncate text-sm font-semibold hover:underline text-right"
                       title="פתיחת כרטיס מתעניין"
                     >
-                      {(selectedVoter?.full_name || '').trim().replace(/^[-–—]+$/, '')
-                        || formatPhoneDisplay(selectedVoter?.phone_number || '')
-                        || 'ללא שם'}
+                      {contactName}
                     </button>
                     <p className="text-[10px] text-whatsapp-header-foreground/75" dir="ltr">
-                      {formatPhoneDisplay(selectedVoter?.phone_number || '') || 'WhatsApp Business'}
+                      {contactPhone || 'WhatsApp Business'}
                     </p>
+
                   </div>
 
                 </div>
@@ -1049,7 +1078,7 @@ const OmnichannelInbox = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-48 text-right">
                     <DropdownMenuItem onClick={() => setManualTakeoverWarning(true)}>העברה לנציג</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setLeadAutopilot(!leadAutopilot)}>{leadAutopilot ? 'כיבוי AI לשיחה זו' : 'הפעלת AI לשיחה זו'}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setChatAutopilot(!chatAutopilotOn)}>{chatAutopilotOn ? 'כיבוי AI לשיחה זו' : 'הפעלת AI לשיחה זו'}</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => toast.info('פרופיל הליד פתוח בצד')}>הצגת פרופיל מתעניין</DropdownMenuItem>
@@ -1142,21 +1171,30 @@ const OmnichannelInbox = () => {
 
               {/* Input Area */}
               <div className="border-t border-border/50 bg-whatsapp-footer p-2 sm:p-3">
-                {/* Autopilot notice — the composer below stays visible at all times. */}
-                {leadAutopilot && aiAutopilot && !manualTakeoverWarning && (
-                  <div className="mb-2 flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-1.5 text-whatsapp-header shadow-sm">
-                    <Bot className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium">טייס אוטומטי פעיל לשיחה זו - ה-AI עונה באופן אוטומטי</span>
-                  </div>
-                )}
+                {/* Autopilot pill — holds the robot icon + the per-chat switch. */}
+                <div className="mb-2 flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-1.5 text-whatsapp-header shadow-sm">
+                  <Bot className={`h-4 w-4 shrink-0 ${chatAutopilotOn ? 'text-whatsapp-header' : 'text-muted-foreground'}`} />
+                  <span className="text-xs font-medium">
+                    {manualTakeoverWarning
+                      ? 'מצב ידני - הטייס האוטומטי מושהה לשיחה זו'
+                      : chatAutopilotOn
+                        ? 'טייס אוטומטי פעיל לשיחה זו - ה-AI עונה באופן אוטומטי'
+                        : 'טייס אוטומטי כבוי לשיחה זו - המענה ידני'}
+                  </span>
+                  <Switch
+                    checked={chatAutopilotOn}
+                    disabled={!selectedVoterId}
+                    title="טייס AI לשיחה זו"
+                    aria-label="טייס AI לשיחה זו"
+                    className="ms-auto shrink-0 border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground"
+                    onCheckedChange={(v) => {
+                      setChatAutopilot(v);
+                      if (v) setManualTakeoverWarning(false);
+                    }}
+                  />
+                </div>
                 <div className="flex items-center gap-2">
-                    <div className="relative inline-flex" title={aiAutopilot ? 'טייס AI לשיחה זו' : 'הטייס הכללי כבוי (מהכותרת)'}>
-                      <Switch checked={leadAutopilot} disabled={!selectedVoterId} className="peer border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground" onCheckedChange={(v) => {
-                        setLeadAutopilot(v);
-                        if (v) setManualTakeoverWarning(false);
-                      }} />
-                      <Bot className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 transition-all peer-data-[state=checked]:left-[26px] peer-data-[state=checked]:text-whatsapp-header peer-data-[state=unchecked]:left-1.5 peer-data-[state=unchecked]:text-muted-foreground" />
-                    </div>
+
                     <input
                       ref={attachmentInputRef}
                       type="file"

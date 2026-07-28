@@ -325,7 +325,48 @@ serve(async (req) => {
       });
     }
 
+    // WhatsApp from the inbox composer must be delivered NOW through the
+    // official Meta WhatsApp Business API (send-whatsapp routes WBA/GreenAPI),
+    // not parked in the human approval queue.
+    if (channel === "whatsapp") {
+      const destinationPhone = phone_number || voter?.phone_number || "";
+      const intl = toIntlIL(destinationPhone) ?? (destinationPhone.replace(/\D/g, "") || null);
+      if (!intl) {
+        return new Response(JSON.stringify({ error: "missing_phone_number", details: "אין מספר טלפון תקין לשליחה" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const waRes = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+          apikey: serviceRoleKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ lead_id, phone_number: intl, message: finalContent, tenant_id: userData.user.id }),
+      });
+      const waText = await waRes.text();
+      let waJson: any = null; try { waJson = waText ? JSON.parse(waText) : null; } catch { /* keep raw */ }
+      if (!waRes.ok || waJson?.success === false) {
+        return new Response(JSON.stringify({
+          error: waJson?.error || "whatsapp_send_failed",
+          details: waJson?.details || waJson || waText,
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({
+        success: true,
+        sent: true,
+        provider: waJson?.provider || "WBA",
+        message_id: waJson?.message_id ?? null,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // SMS from the inbox composer must be delivered now, not queued for human
+
     // approval. Try the configured SMS gateways and persist the outbound row.
     if (channel === "sms") {
       const destinationPhone = phone_number || voter?.phone_number || "";
