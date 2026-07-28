@@ -30,6 +30,8 @@ import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatInternalListingTitle } from '@/lib/formatListingTitle';
+import { sourcePhotoCount } from '@/lib/photoCount';
+import { ProgressRing } from '@/components/ui/ProgressRing';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -125,6 +127,8 @@ export default function PropertyDetail() {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [pullingImages, setPullingImages] = useState(false);
+  // Determinate progress (0-100) for the gallery ring loader.
+  const [imageProgress, setImageProgress] = useState(0);
   const galleryPulledRef = useRef(false);
   const [form, setForm] = useState<EditableFields | null>(null);
   const [initialFormSnapshot, setInitialFormSnapshot] = useState<string>('');
@@ -296,6 +300,29 @@ export default function PropertyDetail() {
   // once, persist it server-side, and refresh the view.
   const hydratedRef = useRef<string | null>(null);
   const [hydrating, setHydrating] = useState(false);
+  // Determinate-looking progress for the metadata ring (0-100).
+  const [hydrateProgress, setHydrateProgress] = useState(0);
+  useEffect(() => {
+    if (!hydrating) return;
+    setHydrateProgress(6);
+    const timer = setInterval(() => {
+      // Ease toward 92% while the server works; the finally-block snaps to 100.
+      setHydrateProgress((p) => (p >= 92 ? 92 : p + Math.max(1, Math.round((92 - p) / 12))));
+    }, 220);
+    return () => clearInterval(timer);
+  }, [hydrating]);
+
+  // Same easing for the gallery ring.
+  useEffect(() => {
+    if (!pullingImages) return;
+    const timer = setInterval(() => {
+      setImageProgress((p) => (p >= 92 ? 92 : p + Math.max(1, Math.round((92 - p) / 10))));
+    }, 200);
+    return () => clearInterval(timer);
+  }, [pullingImages]);
+
+
+
   useEffect(() => {
     if (!id || !data) return;
     if (hydratedRef.current === id) return;
@@ -319,7 +346,10 @@ export default function PropertyDetail() {
     ensureFullPropertyImport(id, src)
       .then(() => qc.invalidateQueries({ queryKey: ['property-detail', id] }))
       .catch(() => {})
-      .finally(() => setHydrating(false));
+      .finally(() => {
+        setHydrateProgress(100);
+        setTimeout(() => setHydrating(false), 250);
+      });
   }, [id, data, qc]);
 
 
@@ -506,6 +536,11 @@ export default function PropertyDetail() {
   // no "broken" gating, no live-image fallback. If the DB has photos, they render.
   const photos = editMode && form ? form.photos : dbPhotos;
   const main = photos[activePhoto];
+  // Total images the SOURCE page advertises — shown even before mirroring.
+  const totalSourcePhotos = sourcePhotoCount(
+    { raw: { source_metadata: meta, ...(property ?? {}) } },
+    photos.length,
+  );
 
   // Prefer the raw source-provided property type verbatim (e.g. "דירה" from
   // Webtiv/Homely). Only fall back to the enum-derived Hebrew label when the
@@ -560,6 +595,7 @@ export default function PropertyDetail() {
   const pullAllImages = async () => {
     if (!property?.id || pullingImages) return;
     setPullingImages(true);
+    setImageProgress(5);
     const toastId = toast.loading('טוען את כל התמונות מהמקור…');
     try {
       const { data, error } = await supabase.functions.invoke('fetch-property-all-images', {
@@ -579,17 +615,18 @@ export default function PropertyDetail() {
     } catch (e: any) {
       toast.error('טעינת התמונות נכשלה', { id: toastId, description: e?.message ?? String(e) });
     } finally {
-      setPullingImages(false);
+      setImageProgress(100);
+      setTimeout(() => setPullingImages(false), 250);
     }
   };
 
   /**
-   * Carousel navigation. When the gallery hasn't been fully imported yet
-   * (single/no image), the first arrow click pulls the complete gallery from
-   * the source before moving.
+   * Carousel navigation. Arrows stay inert until metadata hydration finished.
+   * When the gallery hasn't been fully imported yet (single/no image), the
+   * first arrow click pulls the complete gallery from the source.
    */
   const stepPhoto = async (delta: number) => {
-    if (pullingImages) return;
+    if (pullingImages || hydrating) return;
     if (photos.length <= 1) {
       if (!galleryPulledRef.current && (sourceUrl || photos.length === 0)) {
         galleryPulledRef.current = true;
@@ -724,6 +761,13 @@ export default function PropertyDetail() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
+      {/* First-view metadata hydration: percentage-only ring, dead center. */}
+      {hydrating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-[2px]">
+          <ProgressRing value={hydrateProgress} size={96} strokeWidth={8} />
+        </div>
+      )}
+
       {/* Headline + price */}
       <header className="space-y-2">
         <div className="mb-4">
@@ -922,33 +966,35 @@ export default function PropertyDetail() {
                     <button
                       type="button"
                       onClick={() => stepPhoto(-1)}
+                      disabled={hydrating || pullingImages}
                       aria-label="התמונה הקודמת"
                       title="התמונה הקודמת"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <ChevronRight className="h-5 w-5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => stepPhoto(1)}
+                      disabled={hydrating || pullingImages}
                       aria-label="התמונה הבאה"
                       title="התמונה הבאה"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
 
-                    {/* Total images available for this listing. */}
-                    {photos.length > 0 && (
+                    {/* Total images available on the SOURCE page, even if not imported yet. */}
+                    {totalSourcePhotos > 0 && (
                       <span className="absolute top-2 right-2 rounded-full bg-black/70 px-2.5 py-1 text-xs font-bold leading-none text-white tabular-nums">
-                        {activePhoto + 1}/{photos.length}
+                        {photos.length > 0 ? `${activePhoto + 1}/${totalSourcePhotos}` : totalSourcePhotos}
                       </span>
                     )}
 
-                    {/* Text-free ring loader, dead center, while more images load. */}
+                    {/* Percentage-only ring loader, dead center, while images load. */}
                     {pullingImages && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/25">
-                        <span className="h-12 w-12 rounded-full border-4 border-white/40 border-t-white animate-spin" />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                        <ProgressRing value={imageProgress} size={80} onDark />
                       </span>
                     )}
                   </>

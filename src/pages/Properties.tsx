@@ -38,6 +38,7 @@ import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
+import { sourcePhotoCount } from '@/lib/photoCount';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle } from '@/lib/formatListingTitle';
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
@@ -230,6 +231,33 @@ export default function Properties() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadDefaultPool, listingType, q]);
 
+  // INSTANT LOCAL FILTER — from the 3rd typed character we paint matching rows
+  // straight out of our own `listings` table. Zero external calls, zero cost,
+  // no waiting: external gateways only run when the user submits the search.
+  const instantTokenRef = useRef(0);
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 3) return;
+    if (/^https?:\/\//i.test(term)) return; // URL paste → import flow
+    const token = ++instantTokenRef.current;
+    const timer = setTimeout(async () => {
+      try {
+        const rows = await searchLocalListings({
+          q: term,
+          listing_type: listingType === 'all' ? 'all' : listingType,
+        });
+        if (instantTokenRef.current !== token) return;
+        if (!rows.length) return; // never blank the table
+        setResults(rows);
+        setShowingFallback(false);
+        setSourceStatus({ mine: { status: 'ok', count: rows.length } as any });
+      } catch (e) {
+        console.warn('[Properties] instant local filter failed', e);
+      }
+    }, 180);
+    return () => { clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, listingType]);
 
 
   // Monotonic token — bumping it aborts the in-flight search: late partials
@@ -1029,13 +1057,7 @@ function ResultCard({
   const [expanded, setExpanded] = useState(false);
   // Total number of images the property has — reported by the source payload
   // even when the media was not imported into our storage yet.
-  const rawAny = (result.raw ?? {}) as any;
-  const reportedCount = Number(
-    rawAny.images_count ?? rawAny.photos_count ?? rawAny.media_count ??
-    (Array.isArray(rawAny.photos) ? rawAny.photos.length : 0) ??
-    (Array.isArray(rawAny.media_photos) ? rawAny.media_photos.length : 0),
-  );
-  const photoCount = Math.max(photos.length, Number.isFinite(reportedCount) ? reportedCount : 0);
+  const photoCount = sourcePhotoCount(result, photos.length);
   const activePhoto = hasPhotos ? photos[Math.min(index, photos.length - 1)] : null;
   const isRent = result.listing_type === 'rent';
 
@@ -1379,12 +1401,15 @@ function ResultTable({
                         <Building2 className="h-4 w-4 text-muted-foreground/50" />
                       </div>
                     )}
-                    {/* Total images available for this listing. */}
-                    {(r.photos?.length ?? 0) > 1 && (
-                      <span className="absolute top-0 right-0 rounded-bl-md bg-black/70 px-1 text-[9px] font-bold leading-[13px] text-white tabular-nums">
-                        {r.photos!.length}
-                      </span>
-                    )}
+                    {/* Total images available on the SOURCE page, even if not imported. */}
+                    {(() => {
+                      const total = sourcePhotoCount(r, r.photos?.length ?? 0);
+                      return total > 0 ? (
+                        <span className="absolute top-0 right-0 rounded-bl-md bg-black/70 px-1 text-[9px] font-bold leading-[13px] text-white tabular-nums">
+                          {total}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                 </td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
