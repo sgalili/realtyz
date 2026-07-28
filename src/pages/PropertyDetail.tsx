@@ -131,6 +131,9 @@ export default function PropertyDetail() {
   // Determinate progress (0-100) for the gallery ring loader.
   const [imageProgress, setImageProgress] = useState(0);
   const galleryPulledRef = useRef(false);
+  // Images mirrored during the current incremental pull. Rendered immediately,
+  // one by one, before the DB query has refetched.
+  const [streamPhotos, setStreamPhotos] = useState<string[]>([]);
   const [form, setForm] = useState<EditableFields | null>(null);
   const [initialFormSnapshot, setInitialFormSnapshot] = useState<string>('');
 
@@ -354,19 +357,8 @@ export default function PropertyDetail() {
     };
   }, [hydrating]);
 
-  // Same easing for the gallery ring.
-  useEffect(() => {
-    if (!pullingImages) return;
-    const started = Date.now();
-    const timer = setInterval(() => {
-      setImageProgress((p) => {
-        const elapsed = Date.now() - started;
-        const ceiling = elapsed > 10000 ? 99 : elapsed > 5000 ? 97 : 92;
-        return p >= ceiling ? ceiling : Math.min(ceiling, p + Math.max(2, Math.round((ceiling - p) / 8)));
-      });
-    }, 160);
-    return () => clearInterval(timer);
-  }, [pullingImages]);
+  // The gallery ring is fully determinate now: progress is driven by the
+  // number of images actually mirrored, so it can never hang at 99%.
 
 
 
@@ -600,7 +592,9 @@ export default function PropertyDetail() {
   const isRent = property.price < 50_000;
   // Hard-override: render straight from listing.media_photos (dbPhotos). No filtering,
   // no "broken" gating, no live-image fallback. If the DB has photos, they render.
-  const photos = editMode && form ? form.photos : dbPhotos;
+  const photos = editMode && form
+    ? form.photos
+    : Array.from(new Set([...dbPhotos, ...streamPhotos]));
   const main = photos[activePhoto];
   // Total images the SOURCE page advertises — shown even before mirroring.
   const totalSourcePhotos = sourcePhotoCount(
@@ -657,19 +651,46 @@ export default function PropertyDetail() {
     if (editMode) setPhotos((list) => list.filter((item) => item !== url));
   };
 
-  /** Manual on-demand pull of the FULL gallery from the original source. */
+  /**
+   * Incremental on-demand gallery import.
+   * 1. Discover the source candidate list (single scrape).
+   * 2. Mirror each image one by one; every finished image is appended to the
+   *    carousel + thumbnail strip immediately, and the ring advances by a real
+   *    imported/total fraction, so it always reaches 100%.
+   */
   const pullAllImages = async () => {
     if (!property?.id || pullingImages) return;
     setPullingImages(true);
-    setImageProgress(5);
+    setImageProgress(3);
     try {
-      const { data, error } = await supabase.functions.invoke('fetch-property-all-images', {
-        body: { listing_id: property.id, source_url: sourceUrl || undefined },
+      const { data: disc, error: discErr } = await supabase.functions.invoke('fetch-property-all-images', {
+        body: { listing_id: property.id, source_url: sourceUrl || undefined, discover: true },
       });
-      if (error) throw error;
-      const res = data as { ok?: boolean; count?: number; photos?: string[]; reason?: string } | null;
-      if (!res?.ok) return;
-      setActivePhoto(0);
+      if (discErr) throw discErr;
+      const known = new Set(photos.map((u) => u.split('?')[0].toLowerCase()));
+      const candidates = ((disc as { candidates?: string[] } | null)?.candidates ?? [])
+        .filter((u) => !known.has(u.split('?')[0].toLowerCase()));
+      if (!candidates.length) {
+        setImageProgress(100);
+        return;
+      }
+
+      let done = 0;
+      for (const url of candidates) {
+        try {
+          const { data: one } = await supabase.functions.invoke('fetch-property-all-images', {
+            body: { listing_id: property.id, only: [url], append: true },
+          });
+          const added = (one as { photos?: string[] } | null)?.photos ?? [];
+          if (added.length) {
+            setStreamPhotos((prev) => Array.from(new Set([...prev, ...added])));
+          }
+        } catch (e) {
+          console.warn('[gallery] image import failed', url, e);
+        }
+        done += 1;
+        setImageProgress(Math.min(99, Math.round((done / candidates.length) * 100)));
+      }
 
       await qc.refetchQueries({ queryKey: ['property-detail', id] });
       qc.invalidateQueries({ queryKey: ['properties-search'] });
@@ -678,7 +699,7 @@ export default function PropertyDetail() {
       toast.error('טעינת התמונות נכשלה', { description: e?.message ?? String(e) });
     } finally {
       setImageProgress(100);
-      setTimeout(() => setPullingImages(false), 250);
+      setPullingImages(false);
     }
   };
 
@@ -828,9 +849,7 @@ export default function PropertyDetail() {
           center of the viewport. No scrim, no blur, no scroll lock. */}
       {hydrating && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
-          <div className="pointer-events-none rounded-full bg-background/90 p-2 shadow-lg">
-            <ProgressRing value={hydrateProgress} size={96} strokeWidth={8} />
-          </div>
+          <ProgressRing value={hydrateProgress} size={96} strokeWidth={8} />
         </div>
       )}
 
