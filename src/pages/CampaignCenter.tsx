@@ -3940,6 +3940,12 @@ const PublishedFeed = () => {
           }}
         />
       )}
+      <DeletePostDialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
+        hasExternalPost={deleteTarget ? externalIdsFor(deleteTarget).length > 0 : false}
+        onConfirm={async (mode) => { if (deleteTarget) await performDelete(deleteTarget, mode); }}
+      />
     </div>
   );
 };
