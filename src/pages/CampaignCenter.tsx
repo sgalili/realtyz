@@ -3359,44 +3359,42 @@ const PublishedFeed = () => {
     toast.success('הקמפיין הועבר לארכיון');
   };
 
-  const deleteCampaign = async (r: CampaignRow) => {
-    if (!confirm('למחוק את הפוסט הזה לצמיתות (כולל מחיקה מפייסבוק)?')) return;
+  // External (social network) post ids attached to a campaign row.
+  const externalIdsFor = (r: CampaignRow) => Array.from(new Set([
+    r.provider_message_id,
+    ...((r as any).provider_response?.postIds || []).map((p: any) => p?.id ?? p?.postId).filter(Boolean),
+  ].filter(Boolean) as string[]));
 
-    // 1. Wipe the post off the native social network via Ayrshare first.
-    //    If that fails, abort so we don't end up with a local-only delete
-    //    that leaves a phantom post live on the broker's Facebook Page.
-    const externalIds = Array.from(new Set([
-      r.provider_message_id,
-      ...((r as any).provider_response?.postIds || []).map((p: any) => p?.id ?? p?.postId).filter(Boolean),
-    ].filter(Boolean) as string[]));
+  // Performs the actual deletion. `mode === 'both'` first wipes the post off
+  // the native social network (Meta Graph via ayrshare-post) and aborts on
+  // failure, so we never leave a phantom post live on the broker's Page.
+  const performDelete = async (r: CampaignRow, mode: 'db' | 'both') => {
+    const externalIds = mode === 'both' ? externalIdsFor(r) : [];
+
     if (externalIds.length > 0) {
       const { data: sess } = await supabase.auth.getSession();
       const accessToken = sess?.session?.access_token;
       const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/ayrshare-post`;
       for (const pid of externalIds) {
-        try {
-          const resp = await fetch(fnUrl, {
-            method: 'DELETE',
-            headers: {
-              Authorization: `Bearer ${accessToken ?? ''}`,
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '',
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ external_post_id: pid }),
-          });
-          if (!resp.ok) {
-            const body = await resp.json().catch(() => ({}));
-            toast.error(`מחיקה מפייסבוק נכשלה: ${body?.error ?? resp.status}`);
-            return;
-          }
-        } catch (e: any) {
-          toast.error(`מחיקה מפייסבוק נכשלה: ${e?.message ?? e}`);
-          return;
+        const resp = await fetch(fnUrl, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${accessToken ?? ''}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ external_post_id: pid }),
+        }).catch((e: any) => {
+          throw new Error(`מחיקה מפייסבוק נכשלה: ${e?.message ?? e}`);
+        });
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => ({}));
+          throw new Error(`מחיקה מפייסבוק נכשלה: ${body?.error ?? resp.status}`);
         }
       }
     }
 
-    // 2. Local cleanup of the campaign_logs group rows.
+    // Local cleanup of the campaign_logs group rows.
     const { from, to } = groupFilter(r);
     const { error, count } = await supabase
       .from('campaign_logs')
@@ -3405,7 +3403,8 @@ const PublishedFeed = () => {
       .eq('channel', r.channel)
       .gte('created_at', from)
       .lt('created_at', to);
-    if (error) { toast.error('מחיקה נכשלה: ' + error.message); return; }
+    if (error) throw new Error('מחיקה מהמערכת נכשלה: ' + error.message);
+
     setRows((prev) => {
       const next = prev?.filter((x) => x.id !== r.id) ?? prev;
       const scopeKey = workspaceOwnerId ?? userId ?? '';
@@ -3415,10 +3414,13 @@ const PublishedFeed = () => {
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     toast.success(
       externalIds.length > 0
-        ? `הפוסט נמחק בהצלחה מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`
+        ? `הפוסט נמחק מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`
         : `הפוסט נמחק מהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`,
     );
   };
+
+  const deleteCampaign = (r: CampaignRow) => setDeleteTarget(r);
+
 
   // Remove a single image from a post — permanently. The URL's dedupe key is
   // added to provider_response.removed_media_keys, which every merge path (and
