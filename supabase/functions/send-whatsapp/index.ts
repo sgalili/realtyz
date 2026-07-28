@@ -690,6 +690,14 @@ Deno.serve(async (req) => {
           },
         });
       } catch (_e) { /* best-effort */ }
+    } else {
+      console.info("send-whatsapp accepted by Meta", {
+        provider: effectiveProvider,
+        phone_last4: phone.slice(-4),
+        message_id_present: !!result.message_id,
+        tenant_routed: !!routingTenantId,
+        template: parsed.data.template_id ?? null,
+      });
     }
 
 
