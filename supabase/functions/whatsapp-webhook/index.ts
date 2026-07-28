@@ -978,6 +978,43 @@ Deno.serve(async (req) => {
   }
 
   // ================================================================
+  // META CLOUD API INBOUND — normalize the official WABA payload
+  // (entry[].changes[].value.messages[]) into the internal envelope the
+  // extractor below already understands. Status callbacks (`statuses[]`)
+  // are telemetry and are acknowledged without persisting anything.
+  // ================================================================
+  if (payload?.object === "whatsapp_business_account" || Array.isArray(payload?.entry)) {
+    const value = payload?.entry?.[0]?.changes?.[0]?.value ?? {};
+    const metaMsg = value?.messages?.[0];
+    if (!metaMsg) {
+      return jsonResponse({ ok: true, ignored: "meta_no_message" }, 200);
+    }
+    const from = String(metaMsg.from ?? "").replace(/\D/g, "");
+    const text =
+      metaMsg?.text?.body ??
+      metaMsg?.button?.text ??
+      metaMsg?.interactive?.button_reply?.title ??
+      metaMsg?.interactive?.list_reply?.title ??
+      metaMsg?.image?.caption ??
+      metaMsg?.document?.caption ??
+      "";
+    if (!from || !String(text).trim()) {
+      return jsonResponse({ ok: true, ignored: "meta_unsupported_message_type" }, 200);
+    }
+    payload = {
+      typeWebhook: "incomingMessageReceived",
+      idMessage: metaMsg.id,
+      senderData: {
+        sender: `${from}@c.us`,
+        chatId: `${from}@c.us`,
+        senderName: value?.contacts?.[0]?.profile?.name ?? undefined,
+      },
+      messageData: { textMessageData: { textMessage: String(text).trim() } },
+    };
+  }
+
+
+  // ================================================================
   // TYPE-WEBHOOK GATE — GreenAPI fires many non-conversational events
   // (stateInstanceChanged, outgoingMessageStatus, deviceInfo, …). These
   // must never be persisted into `messages` / `chat_history` — they
