@@ -128,8 +128,16 @@ Deno.serve(async (req) => {
     .select('id, user_id, owner_id, city, neighborhood, source, source_url, source_metadata')
     .order('created_at', { ascending: false })
     .limit(listingId ? 1 : limit);
-  if (listingId) q = q.eq('id', listingId);
-  else q = q.is('owner_id', null);
+  if (listingId) {
+    q = q.eq('id', listingId);
+  } else {
+    // Only rows that actually carry owner contact data — skips the empty
+    // Yad2 feed rows entirely instead of burning the batch on them.
+    q = q.is('owner_id', null).or(
+      'source_metadata->>owner_phone.neq.,source_metadata->>owner_name.neq.',
+    );
+  }
+
 
   const { data: rows, error } = await q;
   if (error) return json({ error: error.message }, 500);
