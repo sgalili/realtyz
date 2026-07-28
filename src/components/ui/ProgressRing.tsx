@@ -1,8 +1,9 @@
 /**
  * Circular determinate progress ring that renders ONLY the percentage value
- * inside the ring — no labels, no text. Used for property metadata hydration
- * and gallery loading.
+ * (e.g. `92%`) inside the ring — no labels, no extra text. Used for property
+ * metadata hydration and gallery loading.
  */
+
 interface ProgressRingProps {
   /** 0-100 */
   value: number;
@@ -63,7 +64,8 @@ export function ProgressRing({
         }`}
         style={{ fontSize: Math.round(size * 0.26) }}
       >
-        {pct}
+        {pct}%
+
       </span>
     </span>
   );

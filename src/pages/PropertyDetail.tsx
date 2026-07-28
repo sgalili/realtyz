@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ensureFullPropertyImport } from '@/lib/propertyFullSync';
+import { ensureFullPropertyImport, isListingFullyImported } from '@/lib/propertyFullSync';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -306,22 +306,42 @@ export default function PropertyDetail() {
   const [hydrateProgress, setHydrateProgress] = useState(0);
   useEffect(() => {
     if (!hydrating) return;
-    setHydrateProgress(6);
+    setHydrateProgress(8);
+    const started = Date.now();
     const timer = setInterval(() => {
-      // Ease toward 92% while the server works; the finally-block snaps to 100.
-      setHydrateProgress((p) => (p >= 92 ? 92 : p + Math.max(1, Math.round((92 - p) / 12))));
-    }, 220);
-    return () => clearInterval(timer);
+      setHydrateProgress((p) => {
+        // Hard ceiling grows over time so the ring never parks at 92%.
+        const elapsed = Date.now() - started;
+        const ceiling = elapsed > 12000 ? 99 : elapsed > 6000 ? 97 : 92;
+        if (p >= ceiling) return ceiling;
+        return Math.min(ceiling, p + Math.max(2, Math.round((ceiling - p) / 8)));
+      });
+    }, 160);
+    // Safety valve: never keep the loader up for more than 20s.
+    const bail = setTimeout(() => {
+      setHydrateProgress(100);
+      setHydrating(false);
+    }, 20000);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(bail);
+    };
   }, [hydrating]);
 
   // Same easing for the gallery ring.
   useEffect(() => {
     if (!pullingImages) return;
+    const started = Date.now();
     const timer = setInterval(() => {
-      setImageProgress((p) => (p >= 92 ? 92 : p + Math.max(1, Math.round((92 - p) / 10))));
-    }, 200);
+      setImageProgress((p) => {
+        const elapsed = Date.now() - started;
+        const ceiling = elapsed > 10000 ? 99 : elapsed > 5000 ? 97 : 92;
+        return p >= ceiling ? ceiling : Math.min(ceiling, p + Math.max(2, Math.round((ceiling - p) / 8)));
+      });
+    }, 160);
     return () => clearInterval(timer);
   }, [pullingImages]);
+
 
 
 
@@ -331,28 +351,46 @@ export default function PropertyDetail() {
     const src = data.sourceUrl;
     if (!src || !/yad2\.co\.il/i.test(src)) return;
 
-    // Full hydration on first view: pull the complete metadata + gallery once
-    // per property per session so the DB always holds the whole record.
-    const sessionKey = `realtyz:hydrated:${id}`;
+    // Once a property has been imported in full, its metadata lives in our DB
+    // forever — never scrape the source again (zero BrightData credits).
+    const doneKey = `realtyz:imported:${id}`;
     try {
-      if (window.sessionStorage.getItem(sessionKey)) {
+      if (window.localStorage.getItem(doneKey)) {
         hydratedRef.current = id;
+        galleryPulledRef.current = true;
         return;
       }
-      window.sessionStorage.setItem(sessionKey, '1');
-    } catch { /* private mode — hydrate anyway */ }
+    } catch { /* private mode — fall through to the DB check */ }
 
     hydratedRef.current = id;
-    galleryPulledRef.current = true;
-    setHydrating(true);
-    ensureFullPropertyImport(id, src)
-      .then(() => qc.invalidateQueries({ queryKey: ['property-detail', id] }))
-      .catch(() => {})
-      .finally(() => {
-        setHydrateProgress(100);
-        setTimeout(() => setHydrating(false), 250);
-      });
+    let cancelled = false;
+
+    (async () => {
+      // DB-side guard: if the row already carries the mirrored gallery and the
+      // descriptive metadata, mark it done and skip the loader entirely.
+      if (await isListingFullyImported(id)) {
+        if (cancelled) return;
+        galleryPulledRef.current = true;
+        try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
+        return;
+      }
+      if (cancelled) return;
+
+      galleryPulledRef.current = true;
+      setHydrating(true);
+      try {
+        await ensureFullPropertyImport(id, src);
+        try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
+        qc.invalidateQueries({ queryKey: ['property-detail', id] });
+      } catch { /* keep the page usable */ }
+      if (cancelled) return;
+      setHydrateProgress(100);
+      setTimeout(() => setHydrating(false), 220);
+    })();
+
+    return () => { cancelled = true; };
   }, [id, data, qc]);
+
 
 
 
@@ -763,12 +801,16 @@ export default function PropertyDetail() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* First-view metadata hydration: percentage-only ring, dead center. */}
+      {/* First-view metadata hydration: percentage-only ring, floating dead
+          center of the viewport. No scrim, no blur, no scroll lock. */}
       {hydrating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-[2px]">
-          <ProgressRing value={hydrateProgress} size={96} strokeWidth={8} />
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+          <div className="pointer-events-none rounded-full bg-background/90 p-2 shadow-lg">
+            <ProgressRing value={hydrateProgress} size={96} strokeWidth={8} />
+          </div>
         </div>
       )}
+
 
       {/* Headline + price */}
       <header className="space-y-2">
