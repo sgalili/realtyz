@@ -30,6 +30,8 @@ import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatInternalListingTitle } from '@/lib/formatListingTitle';
+import { sourcePhotoCount } from '@/lib/photoCount';
+import { ProgressRing } from '@/components/ui/ProgressRing';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
