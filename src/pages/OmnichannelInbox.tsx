@@ -1078,7 +1078,7 @@ const OmnichannelInbox = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-48 text-right">
                     <DropdownMenuItem onClick={() => setManualTakeoverWarning(true)}>העברה לנציג</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setLeadAutopilot(!leadAutopilot)}>{leadAutopilot ? 'כיבוי AI לשיחה זו' : 'הפעלת AI לשיחה זו'}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setChatAutopilot(!chatAutopilotOn)}>{chatAutopilotOn ? 'כיבוי AI לשיחה זו' : 'הפעלת AI לשיחה זו'}</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => toast.info('פרופיל הליד פתוח בצד')}>הצגת פרופיל מתעניין</DropdownMenuItem>
