@@ -108,11 +108,25 @@ Deno.serve(async (req) => {
   }
   const input = parsed.data;
 
+  // ── API settings are shared workspace-wide: always read/write the workspace
+  // owner's WBA row so every team member edits the same configuration.
+  let ownerId = userId;
+  {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("active_workspace_owner_id, workspace_owner_id")
+      .eq("id", userId)
+      .maybeSingle();
+    const owner = ((prof as any)?.active_workspace_owner_id ??
+      (prof as any)?.workspace_owner_id) as string | null;
+    if (owner) ownerId = owner;
+  }
+
   // ── Load (or create) the tenant's WBA provider row.
   const { data: existing } = await admin
     .from("wa_providers")
     .select("id, config, is_active")
-    .eq("user_id", userId)
+    .eq("user_id", ownerId)
     .eq("provider_name", "WBA")
     .maybeSingle();
 
