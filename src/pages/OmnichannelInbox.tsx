@@ -494,16 +494,23 @@ const OmnichannelInbox = () => {
 
 
   // Fire-and-forget: fetch WhatsApp profile picture for the selected lead
-  // if it's missing. The edge function updates leads.profile_picture_url
-  // and the next voters refetch will pick it up automatically.
+  // if it's missing. Avatar retrieval runs through Green API — the official
+  // Meta Cloud API exposes no endpoint for a customer's profile photo — so
+  // when Green API isn't configured we stop asking for the rest of the
+  // session instead of firing a request on every chat switch.
   useEffect(() => {
     const v = selectedVoter as any;
     if (!v?.id) return;
     if (v?.profile_picture_url) return;
     if (!v?.phone_number) return;
+    if (sessionStorage.getItem(WA_AVATAR_DISABLED_KEY)) return;
     supabase.functions
       .invoke('fetch-wa-avatars', { body: { lead_ids: [v.id] } })
-      .then(() => {
+      .then(({ data }) => {
+        if ((data as any)?.error === 'green_api_not_configured') {
+          sessionStorage.setItem(WA_AVATAR_DISABLED_KEY, '1');
+          return;
+        }
         queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
       })
       .catch(() => {});
@@ -514,6 +521,7 @@ const OmnichannelInbox = () => {
   // skips rows that already have a URL so this is safe & idempotent.
   useEffect(() => {
     if (!voters?.length) return;
+    if (sessionStorage.getItem(WA_AVATAR_DISABLED_KEY)) return;
     const missing = voters
       .filter((v: any) => !v.profile_picture_url && v.phone_number)
       .map((v: any) => v.id);
@@ -523,9 +531,16 @@ const OmnichannelInbox = () => {
     sessionStorage.setItem(flagKey, '1');
     supabase.functions
       .invoke('fetch-wa-avatars', { body: { lead_ids: missing.slice(0, 50) } })
-      .then(() => queryClient.invalidateQueries({ queryKey: ['inbox-leads'] }))
+      .then(({ data }) => {
+        if ((data as any)?.error === 'green_api_not_configured') {
+          sessionStorage.setItem(WA_AVATAR_DISABLED_KEY, '1');
+          return;
+        }
+        queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+      })
       .catch(() => {});
   }, [voters, queryClient]);
+
 
 
   // ---- Channel availability ----------------------------------------------
