@@ -93,7 +93,7 @@ export default function SystemHealth() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('integration_error_logs')
-        .select('id, integration, function_name, error_message, created_at')
+        .select('id, integration, function_name, error_code, error_message, created_at')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
