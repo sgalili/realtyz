@@ -763,12 +763,16 @@ export default function PropertyDetail() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* First-view metadata hydration: percentage-only ring, dead center. */}
+      {/* First-view metadata hydration: percentage-only ring, floating dead
+          center of the viewport. No scrim, no blur, no scroll lock. */}
       {hydrating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-[2px]">
-          <ProgressRing value={hydrateProgress} size={96} strokeWidth={8} />
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+          <div className="pointer-events-none rounded-full bg-background/90 p-2 shadow-lg">
+            <ProgressRing value={hydrateProgress} size={96} strokeWidth={8} />
+          </div>
         </div>
       )}
+
 
       {/* Headline + price */}
       <header className="space-y-2">
