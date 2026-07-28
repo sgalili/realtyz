@@ -635,7 +635,7 @@ const OmnichannelInbox = () => {
           },
         },
       });
-      if (error) throw new Error(await readFunctionError(error) || error.message);
+      if (error) throw new Error((await readFunctionError(error)) || 'שליחת ההודעה נכשלה — נסה שוב');
       // Edge function may return 200 with { success:false, code:'no_recipient_psid' }
       // when a Messenger/IG/LinkedIn DM can't be delivered — surface as an error so
       // the onError handler pivots to a WA/SMS invite instead of showing "sent".
@@ -672,8 +672,15 @@ const OmnichannelInbox = () => {
     },
     onError: (error: Error) => {
       if (error.message === 'demo-blocked') return;
-      const msg = error.message || '';
-      toast.error('שליחת ההודעה נכשלה', { description: msg, duration: 8000 });
+      const raw = (error.message || '').trim();
+      // Only ever show a short human sentence; internal codes and JSON payloads
+      // are logged to the console instead of the toast.
+      const isCode = !raw || /^[a-z0-9_.:-]+$/i.test(raw) || raw.startsWith('{') || raw.startsWith('[');
+      if (isCode) console.error('[send-message]', raw);
+      toast.error('שליחת ההודעה נכשלה', {
+        description: isCode ? 'לא הצלחנו לשלוח את ההודעה. בדוק את חיבור וואטסאפ בהגדרות הערוצים.' : raw,
+        duration: 8000,
+      });
     },
   });
 
