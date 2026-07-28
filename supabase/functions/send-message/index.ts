@@ -332,7 +332,7 @@ serve(async (req) => {
       const destinationPhone = phone_number || voter?.phone_number || "";
       const intl = toIntlIL(destinationPhone) ?? (destinationPhone.replace(/\D/g, "") || null);
       if (!intl) {
-        return new Response(JSON.stringify({ error: "missing_phone_number", details: "אין מספר טלפון תקין לשליחה" }), {
+        return new Response(JSON.stringify({ error: "אין מספר טלפון תקין לשליחה" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -349,9 +349,11 @@ serve(async (req) => {
       const waText = await waRes.text();
       let waJson: any = null; try { waJson = waText ? JSON.parse(waText) : null; } catch { /* keep raw */ }
       if (!waRes.ok || waJson?.success === false) {
+        // send-whatsapp already returns a short, human-readable Hebrew reason.
+        // Never leak the raw provider payload to the UI.
         return new Response(JSON.stringify({
-          error: waJson?.error || "whatsapp_send_failed",
-          details: waJson?.details || waJson || waText,
+          error: waJson?.error || "שליחת ההודעה בוואטסאפ נכשלה — נסה שוב",
+          code: (waJson?.details as any)?.code ?? null,
         }), {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
