@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { VoiceComposer, type VoicePayload } from '@/components/VoiceComposer';
 import { supabase } from '@/integrations/supabase/client';
+import { WaTemplatePicker, type WaTemplateSelection } from '@/components/whatsapp/WaTemplatePicker';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -380,6 +381,8 @@ export default function SmsBlastSimulator() {
   }, [navigate]);
 
   const [blastName, setBlastName] = useState('');
+  // Bulk WhatsApp is business-initiated → Meta requires an approved template.
+  const [waTemplate, setWaTemplate] = useState<WaTemplateSelection | null>(null);
   const [messageBody, setMessageBody] = useState('שלום [שם_פרטי], מזכירים לך שהקלפי שלך ב[עיר] פתוחה היום. נשמח לראות אותך ב[קלפי].');
   // Per-channel message overrides — when set, overrides the master messageBody for that channel
   const [channelMessages, setChannelMessages] = useState<Partial<Record<ChannelId, string>>>({});
@@ -826,6 +829,7 @@ export default function SmsBlastSimulator() {
           message: messageBody,
           subject: blastName || 'Realtyz AI - בדיקה',
           preview_name: user?.user_metadata?.full_name ?? user?.email ?? '',
+          wa_template: channel === 'whatsapp' ? waTemplate ?? undefined : undefined,
         },
       });
       if (error) throw error;
@@ -837,7 +841,7 @@ export default function SmsBlastSimulator() {
     } catch (e: any) {
       toast.error(`שגיאה בשליחת בדיקה: ${e?.message ?? 'לא ידוע'}`, { id: 'test-send' });
     }
-  }, [messageBody, selectedChannels, testPhone, isDemoMode, blastName]);
+  }, [messageBody, selectedChannels, testPhone, isDemoMode, blastName, waTemplate]);
 
   // Map UI channels to provider service rows in api_configs
   const channelToProvider: Partial<Record<ChannelId, string[]>> = {
@@ -1051,6 +1055,7 @@ export default function SmsBlastSimulator() {
               limit: emailSendRate === 'burst' ? 500 : (emailSendRate === 'safe' ? 200 : 100),
               email_send_rate: emailSendRate,
               prefer_resend: autoPreferResend,
+              wa_template: selectedChannels.includes('whatsapp') ? waTemplate ?? undefined : undefined,
             },
           });
           if (dispatchErr) {
@@ -1509,6 +1514,17 @@ export default function SmsBlastSimulator() {
                   <Label>שם הקמפיין</Label>
                   <Input value={blastName} onChange={(event) => setBlastName(event.target.value)} placeholder="למשל: תזכורת הצבעה אזור חיפה" maxLength={100} />
                 </div>
+
+                {selectedChannels.includes('whatsapp') && (
+                  <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
+                    <Label className="text-blue-900">תבנית WhatsApp מאושרת (חובה לשיגור המוני)</Label>
+                    <p className="text-xs text-blue-800">
+                      Meta חוסמת הודעות חופשיות ביוזמת העסק. השיגור יתבצע בתבנית מאושרת, ונמענים שביקשו הסרה
+                      (Opt-out) יידלגו אוטומטית.
+                    </p>
+                    <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>תוכן ההודעה</Label>
