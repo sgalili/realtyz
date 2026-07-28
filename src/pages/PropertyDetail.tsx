@@ -296,6 +296,18 @@ export default function PropertyDetail() {
   // once, persist it server-side, and refresh the view.
   const hydratedRef = useRef<string | null>(null);
   const [hydrating, setHydrating] = useState(false);
+  // Determinate-looking progress for the metadata ring (0-100).
+  const [hydrateProgress, setHydrateProgress] = useState(0);
+  useEffect(() => {
+    if (!hydrating) return;
+    setHydrateProgress(6);
+    const timer = setInterval(() => {
+      // Ease toward 92% while the server works; the finally-block snaps to 100.
+      setHydrateProgress((p) => (p >= 92 ? 92 : p + Math.max(1, Math.round((92 - p) / 12))));
+    }, 220);
+    return () => clearInterval(timer);
+  }, [hydrating]);
+
   useEffect(() => {
     if (!id || !data) return;
     if (hydratedRef.current === id) return;
@@ -319,7 +331,10 @@ export default function PropertyDetail() {
     ensureFullPropertyImport(id, src)
       .then(() => qc.invalidateQueries({ queryKey: ['property-detail', id] }))
       .catch(() => {})
-      .finally(() => setHydrating(false));
+      .finally(() => {
+        setHydrateProgress(100);
+        setTimeout(() => setHydrating(false), 250);
+      });
   }, [id, data, qc]);
 
 
