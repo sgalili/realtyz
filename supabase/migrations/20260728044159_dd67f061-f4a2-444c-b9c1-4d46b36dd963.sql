@@ -1,0 +1,2 @@
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS wa_opt_out boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.leads.wa_opt_out IS 'Contact asked to stop receiving proactive WhatsApp messages (Meta opt-out compliance).';

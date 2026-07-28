@@ -2785,6 +2785,7 @@ export type Database = {
           sentiment: string | null
           status: string | null
           telegram_username: string | null
+          wa_opt_out: boolean
         }
         Insert: {
           address?: string | null
@@ -2831,6 +2832,7 @@ export type Database = {
           sentiment?: string | null
           status?: string | null
           telegram_username?: string | null
+          wa_opt_out?: boolean
         }
         Update: {
           address?: string | null
@@ -2877,6 +2879,7 @@ export type Database = {
           sentiment?: string | null
           status?: string | null
           telegram_username?: string | null
+          wa_opt_out?: boolean
         }
         Relationships: [
           {
