@@ -125,6 +125,8 @@ export default function PropertyDetail() {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [pullingImages, setPullingImages] = useState(false);
+  // Determinate progress (0-100) for the gallery ring loader.
+  const [imageProgress, setImageProgress] = useState(0);
   const galleryPulledRef = useRef(false);
   const [form, setForm] = useState<EditableFields | null>(null);
   const [initialFormSnapshot, setInitialFormSnapshot] = useState<string>('');
