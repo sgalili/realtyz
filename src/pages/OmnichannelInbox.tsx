@@ -1070,29 +1070,13 @@ const OmnichannelInbox = () => {
                     <button
                       type="button"
                       onClick={() => selectedVoterId && navigate(`/lead-crm/${selectedVoterId}`)}
-                      className="block truncate text-[17px] font-semibold leading-tight hover:underline text-right"
+                      className="block truncate text-[15px] font-semibold leading-tight hover:underline text-right"
                       title="פתיחת כרטיס מתעניין"
                     >
                       {contactName}
                     </button>
-                    <p className="text-[13px] leading-tight text-whatsapp-header-foreground/75" dir="ltr">
-                      {contactPhone || 'WhatsApp Business'}
-                    </p>
-
-
                   </div>
-
                 </div>
-                {selectedVoter?.phone_number && (
-                  <a
-                    href={`tel:+${String(selectedVoter.phone_number).replace(/\D/g, '')}`}
-                    aria-label="חיוג למתעניין"
-                    title="חיוג למתעניין"
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-whatsapp-header-foreground transition-colors hover:bg-whatsapp-header-foreground/10"
-                  >
-                    <Phone className="h-4 w-4" />
-                  </a>
-                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10">
