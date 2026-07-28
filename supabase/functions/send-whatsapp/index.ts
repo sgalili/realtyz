@@ -761,21 +761,50 @@ Deno.serve(async (req) => {
 
     if (!result.success) {
       const meta = (result.details as any)?.error ?? {};
+      const rawError = result.error ?? "";
+      const classified = classifyMetaError(rawError, meta);
+      const isAuthIssue =
+        classified.category === "permission_scope" ||
+        classified.category === "token_expired" ||
+        classified.category === "token_invalid";
       result = {
         ...result,
-        error: humanizeWaError(result.error ?? "", meta),
-        details: { code: meta?.code ?? null, subcode: meta?.error_subcode ?? null, type: meta?.type ?? null },
+        error: classified.hebrew,
+        details: {
+          code: meta?.code ?? null,
+          subcode: meta?.error_subcode ?? null,
+          type: meta?.type ?? null,
+          category: classified.category,
+        },
       };
+      if (isAuthIssue) {
+        console.error("send-whatsapp Meta permission/token failure", {
+          category: classified.category,
+          meta_code: meta?.code ?? null,
+          meta_subcode: meta?.error_subcode ?? null,
+          meta_type: meta?.type ?? null,
+          meta_message: meta?.message ?? null,
+          hebrew: classified.hebrew,
+          env: envPresence(),
+        });
+      }
       try {
         await logIntegrationError({
           integration: "whatsapp",
           functionName: "send-whatsapp",
-          errorMessage: result.error ?? "שליחת וואטסאפ נכשלה",
+          errorCode: meta?.code != null
+            ? `${classified.category}:${meta.code}${meta?.error_subcode ? `/${meta.error_subcode}` : ""}`
+            : classified.category,
+          errorMessage: classified.hebrew,
           context: {
             provider: effectiveProvider,
+            category: classified.category,
+            auth_issue: isAuthIssue,
             meta_code: meta?.code ?? null,
             meta_subcode: meta?.error_subcode ?? null,
             meta_type: meta?.type ?? null,
+            meta_message: meta?.message ?? null,
+            raw_error: rawError,
             phone_last4: phone.slice(-4),
             tenant_routed: !!routingTenantId,
             template: parsed.data.template_id ?? null,
@@ -784,6 +813,7 @@ Deno.serve(async (req) => {
         });
       } catch (_e) { /* best-effort */ }
     } else {
+
       console.info("send-whatsapp accepted by Meta", {
         provider: effectiveProvider,
         phone_last4: phone.slice(-4),
