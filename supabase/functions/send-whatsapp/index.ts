@@ -286,7 +286,7 @@ async function sendViaWba(
 }
 
 /**
- * Translate a raw Meta / GreenAPI failure into a short Hebrew sentence the
+ * Translate a raw Meta failure into a short Hebrew sentence the
  * broker can act on. The raw provider payload is never shown in the UI.
  */
 function humanizeWaError(raw: string, meta: { code?: number; error_subcode?: number; message?: string } = {}): string {
@@ -334,7 +334,7 @@ Deno.serve(async (req) => {
     } catch {
       return json({
         success: false,
-        provider: "GreenAPI",
+        provider: "WBA",
         message_id: null,
         error: "Invalid JSON body",
       }, 400);
@@ -350,7 +350,7 @@ Deno.serve(async (req) => {
       console.error("send-whatsapp validation failed:", errMsg, flat);
       return json({
         success: false,
-        provider: "GreenAPI",
+        provider: "WBA",
         message_id: null,
         error: errMsg,
         details: flat,
@@ -392,7 +392,7 @@ Deno.serve(async (req) => {
       if (leadErr || !lead?.phone_number) {
         return json({
           success: false,
-          provider: "GreenAPI",
+          provider: "WBA",
           message_id: null,
           error: "Lead not found or has no phone_number",
         }, 404);
@@ -403,7 +403,7 @@ Deno.serve(async (req) => {
     if (!phone) {
       return json({
         success: false,
-        provider: "GreenAPI",
+        provider: "WBA",
         message_id: null,
         error: "Invalid phone number",
       }, 400);
@@ -522,7 +522,7 @@ Deno.serve(async (req) => {
     });
     return json({
       success: false,
-      provider: "GreenAPI",
+      provider: "WBA",
       message_id: null,
       error: "שליחת ההודעה בוואטסאפ נכשלה — נסה שוב",
     }, 500);
