@@ -37,6 +37,7 @@ import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
+import { WhatsAppTwoWayTestCard } from '@/components/settings/WhatsAppTwoWayTestCard';
 import { SocialChannelsGrid } from '@/components/social/SocialChannelsGrid';
 import { CustomGroupsManager } from '@/components/social/CustomGroupsManager';
 
