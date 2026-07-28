@@ -1,0 +1,1 @@
+update public.leads set ai_autopilot = false where id = '4f90e2ea-e6fc-40a7-9373-1fa57fc27668';
