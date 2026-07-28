@@ -252,33 +252,53 @@ export default function SystemHealth() {
                     <th className="px-3 py-2 font-medium">זמן</th>
                     <th className="px-3 py-2 font-medium">אינטגרציה</th>
                     <th className="px-3 py-2 font-medium">פונקציה</th>
+                    <th className="px-3 py-2 font-medium">סוג</th>
                     <th className="px-3 py-2 font-medium">שגיאה</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(logs ?? []).map((l) => (
-                    <tr key={l.id} className="border-t">
-                      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                        {new Date(l.created_at).toLocaleString('he-IL')}
-                      </td>
-                      <td className="px-3 py-2">
-                        {INTEGRATION_LABEL[l.integration] ?? l.integration}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {l.function_name ?? '-'}
-                      </td>
-                      <td className="px-3 py-2 text-foreground/80">
-                        <span className="line-clamp-2">{l.error_message ?? '-'}</span>
-                      </td>
-                    </tr>
-                  ))}
+                  {(logs ?? []).map((l) => {
+                    const cat = parseErrorCode(l.error_code);
+                    return (
+                      <tr key={l.id} className="border-t">
+                        <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                          {new Date(l.created_at).toLocaleString('he-IL')}
+                        </td>
+                        <td className="px-3 py-2">
+                          {INTEGRATION_LABEL[l.integration] ?? l.integration}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {l.function_name ?? '-'}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2">
+                          {cat.label ? (
+                            <span
+                              className={`rounded px-2 py-0.5 text-[11px] ${
+                                cat.isAuth
+                                  ? 'bg-destructive/10 text-destructive'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {cat.label}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className={`px-3 py-2 ${cat.isAuth ? 'text-destructive' : 'text-foreground/80'}`}>
+                          <span className="line-clamp-2">{l.error_message ?? '-'}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {(!logs || logs.length === 0) && (
                     <tr>
-                      <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                      <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
                         אין כשלים מתועדים
                       </td>
                     </tr>
                   )}
+
                 </tbody>
               </table>
             </div>
