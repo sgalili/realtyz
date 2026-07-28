@@ -927,6 +927,21 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method === "GET") {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+    // Meta Cloud API webhook verification handshake.
+    const url = new URL(req.url);
+    const mode = url.searchParams.get("hub.mode");
+    const challenge = url.searchParams.get("hub.challenge");
+    const verifyToken = url.searchParams.get("hub.verify_token");
+    if (mode === "subscribe" && challenge) {
+      const expected = Deno.env.get("META_WA_VERIFY_TOKEN") ?? "";
+      if (!expected || verifyToken === expected) {
+        return new Response(challenge, {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "text/plain" },
+        });
+      }
+      return new Response("forbidden", { status: 403, headers: corsHeaders });
+    }
     return jsonResponse({
       ok: true,
       webhook_url: `${SUPABASE_URL}/functions/v1/whatsapp-webhook`,
