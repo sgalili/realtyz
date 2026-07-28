@@ -306,22 +306,42 @@ export default function PropertyDetail() {
   const [hydrateProgress, setHydrateProgress] = useState(0);
   useEffect(() => {
     if (!hydrating) return;
-    setHydrateProgress(6);
+    setHydrateProgress(8);
+    const started = Date.now();
     const timer = setInterval(() => {
-      // Ease toward 92% while the server works; the finally-block snaps to 100.
-      setHydrateProgress((p) => (p >= 92 ? 92 : p + Math.max(1, Math.round((92 - p) / 12))));
-    }, 220);
-    return () => clearInterval(timer);
+      setHydrateProgress((p) => {
+        // Hard ceiling grows over time so the ring never parks at 92%.
+        const elapsed = Date.now() - started;
+        const ceiling = elapsed > 12000 ? 99 : elapsed > 6000 ? 97 : 92;
+        if (p >= ceiling) return ceiling;
+        return Math.min(ceiling, p + Math.max(2, Math.round((ceiling - p) / 8)));
+      });
+    }, 160);
+    // Safety valve: never keep the loader up for more than 20s.
+    const bail = setTimeout(() => {
+      setHydrateProgress(100);
+      setHydrating(false);
+    }, 20000);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(bail);
+    };
   }, [hydrating]);
 
   // Same easing for the gallery ring.
   useEffect(() => {
     if (!pullingImages) return;
+    const started = Date.now();
     const timer = setInterval(() => {
-      setImageProgress((p) => (p >= 92 ? 92 : p + Math.max(1, Math.round((92 - p) / 10))));
-    }, 200);
+      setImageProgress((p) => {
+        const elapsed = Date.now() - started;
+        const ceiling = elapsed > 10000 ? 99 : elapsed > 5000 ? 97 : 92;
+        return p >= ceiling ? ceiling : Math.min(ceiling, p + Math.max(2, Math.round((ceiling - p) / 8)));
+      });
+    }, 160);
     return () => clearInterval(timer);
   }, [pullingImages]);
+
 
 
 
