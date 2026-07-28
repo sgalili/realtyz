@@ -175,6 +175,21 @@ const OmnichannelInbox = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Agent identity for outbound chat bubbles (circular avatar next to each one).
+  const { data: agentProfile } = useQuery({
+    queryKey: ['inbox-agent-profile', user?.id],
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user!.id)
+        .maybeSingle();
+      return (data as any) ?? null;
+    },
+  });
+
   // Auto-sync inbound Messenger/Instagram DMs on mount + every 60s, since
   // Ayrshare's push webhook isn't always reliable.
   useEffect(() => {
