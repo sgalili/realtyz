@@ -48,6 +48,7 @@ import { sourceYad2Url } from '@/lib/yad2Ad';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
 import { formatListingDate, listingActivityAt } from '@/lib/listingDates';
+import { ListingDateCell } from '@/components/properties/ListingDateCell';
 import { listingPublishedAt } from '@/lib/listingFreshness';
 
 
@@ -1445,7 +1446,7 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">{formatListingDate(r)}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground"><ListingDateCell row={r} /></td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
                   <div className="inline-flex items-center gap-1.5">
                     {/* Yad2 ad first, campaign second (swapped per workspace spec). */}

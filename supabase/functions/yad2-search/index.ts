@@ -44,6 +44,14 @@ function yad2CityConfig(value: unknown) {
   return YAD2_CITY_CODES[city] ?? null;
 }
 
+/** Yad2 feed dates -> ISO string, ignoring junk values. */
+function isoOrNull(v: unknown): string | null {
+  if (!v) return null;
+  const t = new Date(String(v)).getTime();
+  if (!Number.isFinite(t) || t < Date.UTC(2000, 0, 1)) return null;
+  return new Date(t).toISOString();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -156,6 +164,12 @@ Deno.serve(async (req) => {
             floor: Number(it?.floor ?? it?.address?.house?.floor ?? 0) || null,
             photos: Array.isArray(it?.images) ? it.images.map((p: any) => p?.src || p).filter(Boolean) : [],
             url: it?.link_url || (it?.id ? `https://www.yad2.co.il/realestate/item/${it.id}` : null),
+            published_at: isoOrNull(
+              it?.dates?.createdAt ?? it?.dates?.published_at ?? it?.createdAt ?? it?.publishedAt ?? it?.uploadDate ?? null,
+            ),
+            updated_at_source: isoOrNull(
+              it?.dates?.updatedAt ?? it?.dates?.modifiedAt ?? it?.updatedAt ?? it?.date_modified ?? null,
+            ),
             features: [],
             listing_type: dealType,
           });
@@ -190,7 +204,7 @@ Deno.serve(async (req) => {
           is_published: true,
           deal_type: dealType,
           media_photos: r.photos,
-          source_metadata: { photos: r.photos, floor: r.floor, url: r.url, source_url: r.url, source_origin: "yad2", cities: targetCities, listing_type: dealType },
+          source_metadata: { published_at: r.published_at ?? null, updated_at_source: r.updated_at_source ?? null, photos: r.photos, floor: r.floor, url: r.url, source_url: r.url, source_origin: "yad2", cities: targetCities, listing_type: dealType },
           house_number: nums.house_number,
           apartment_number: nums.apartment_number,
           updated_at: new Date().toISOString(),
