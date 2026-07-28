@@ -2616,6 +2616,7 @@ const PublishedFeed = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
   const [editRepostRow, setEditRepostRow] = useState<CampaignRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CampaignRow | null>(null);
   // Optimistic rows for immediate publish — prepended to the feed with a
   // countdown pill while Ayrshare finishes verifying the FB publish.
   const [optimisticRows, setOptimisticRows] = useState<Array<CampaignRow & { _optimistic: true; _eta_ms: number; _scheduled_at?: string | null }>>([]);
