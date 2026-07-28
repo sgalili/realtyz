@@ -127,13 +127,88 @@ Deno.serve(async (req) => {
     if (upErr) failures.push({ id: row.id, error: upErr.message });
     else updated++;
   }
+  // ---------------------------------------------------------------------
+  // Optional DEEP pass: Yad2 search feeds never expose `בית` / `דירה`, only
+  // the item page does. This costs BrightData credits, so it is opt-in
+  // ({ deep: true, deep_limit: n }) and hard-capped.
+  // ---------------------------------------------------------------------
+  const deep = Boolean(body?.deep);
+  const deepLimit = Math.min(25, Math.max(1, Number(body?.deep_limit) || 10));
+  let deepScraped = 0;
+  let deepFilled = 0;
+
+  if (deep) {
+    const { data: deepRows } = await admin
+      .from('listings')
+      .select('id, address, source_url, source_metadata')
+      .eq('source', 'yad2')
+      .is('house_number', null)
+      .not('source_url', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(deepLimit);
+
+    for (const row of deepRows ?? []) {
+      if (Date.now() - started > BUDGET_MS) break;
+      const url = String(row.source_url ?? '');
+      if (!/yad2\.co\.il\/realestate\/item\//i.test(url)) continue;
+      try {
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/yad2-unlocker`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${SERVICE_KEY}`,
+            apikey: SERVICE_KEY,
+          },
+          body: JSON.stringify({ url, limit: 1 }),
+        });
+        if (!r.ok) {
+          failures.push({ id: row.id, error: `yad2-unlocker ${r.status}: ${(await r.text()).slice(0, 160)}` });
+          continue;
+        }
+        await r.text();
+        deepScraped++;
+      } catch (e) {
+        failures.push({ id: row.id, error: String((e as Error)?.message ?? e) });
+        continue;
+      }
+
+      // Re-derive from whatever the scrape just stored.
+      const { data: fresh } = await admin
+        .from('listings')
+        .select('id, address, house_number, apartment_number, neighborhood, source_metadata')
+        .eq('id', row.id)
+        .maybeSingle();
+      if (!fresh) continue;
+      const fMeta = (fresh.source_metadata ?? {}) as Record<string, any>;
+      const fParsed = parseHebrewAddress(fresh.address);
+      const patch: Record<string, unknown> = {};
+      const house = firstText(fresh.house_number, fMeta.house_number, fParsed.house_number);
+      const apt = firstText(fresh.apartment_number, fMeta.apartment_number, fParsed.apartment_number);
+      const hood = firstText(fresh.neighborhood, fMeta.neighborhood);
+      if (house && house !== fresh.house_number) patch.house_number = house;
+      if (apt && apt !== fresh.apartment_number) patch.apartment_number = apt;
+      if (hood && hood !== fresh.neighborhood) patch.neighborhood = hood;
+      const pub = toIsoDate(fMeta.published_at) ?? extractPublishedAt(fMeta);
+      if (pub && pub !== toIsoDate(fMeta.published_at)) {
+        patch.source_metadata = { ...fMeta, published_at: pub };
+      }
+      if (Object.keys(patch).length) {
+        const { error: upErr } = await admin.from('listings').update(patch).eq('id', row.id);
+        if (!upErr) deepFilled++;
+      }
+    }
+  }
 
   return json({
     ok: true,
     scanned,
     updated,
     fields,
+    deep,
+    deep_scraped: deepScraped,
+    deep_filled: deepFilled,
     failures: failures.slice(0, 20),
     duration_ms: Date.now() - started,
   });
 });
+
