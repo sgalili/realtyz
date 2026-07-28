@@ -14,7 +14,7 @@ const cachedIds = new Set<string>();
  * gallery + the descriptive metadata. In that case we skip BrightData
  * entirely, which is what keeps the scraping credits alive.
  */
-async function isFullyCached(listingId: string): Promise<boolean> {
+export async function isListingFullyImported(listingId: string): Promise<boolean> {
   if (cachedIds.has(listingId)) return true;
   const { data } = await supabase
     .from('listings')
@@ -36,7 +36,7 @@ async function isFullyCached(listingId: string): Promise<boolean> {
 
 async function runFullSync(listingId: string, sourceUrl?: string | null): Promise<void> {
   // 0. Cache-first: a listing we already mirrored never hits the scraper again.
-  if (await isFullyCached(listingId)) return;
+  if (await isListingFullyImported(listingId)) return;
 
   // 1. Deep metadata re-scrape for source-backed listings (Yad2 item feed).
   if (sourceUrl && /yad2\.co\.il/i.test(sourceUrl)) {
@@ -59,21 +59,12 @@ async function runFullSync(listingId: string, sourceUrl?: string | null): Promis
     console.warn('[propertyFullSync] image mirroring failed', e);
   }
 
-  // 3. Metadata backfill (בית / דירה / שכונה / true publication date).
-  try {
-    await supabase.functions.invoke('listings-metadata-backfill', {
-      body: { listing_ids: [listingId] },
-    });
-  } catch (e) {
-    console.warn('[propertyFullSync] metadata backfill failed', e);
-  }
-
-  // 4. Owner CRM card auto-creation + WhatsApp enrichment.
-  try {
-    await supabase.functions.invoke('owner-crm-sync', { body: { listing_id: listingId } });
-  } catch (e) {
-    console.warn('[propertyFullSync] owner CRM sync failed', e);
-  }
+  // 3+4. Metadata backfill (בית / דירה / שכונה / publication date) and owner
+  // CRM creation run in parallel — neither blocks the other.
+  await Promise.allSettled([
+    supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } }),
+    supabase.functions.invoke('owner-crm-sync', { body: { listing_id: listingId } }),
+  ]);
 }
 
 
