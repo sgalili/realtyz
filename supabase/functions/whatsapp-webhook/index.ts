@@ -253,7 +253,7 @@ async function persistRawRecoveryMessage(
       direction: "inbound",
       sender_type: "voter",
       metadata: {
-        provider: "GreenAPI",
+        provider: "WBA",
         inbound_via: "whatsapp-webhook",
         recovery: true,
         recovery_reason: reason,
@@ -693,19 +693,8 @@ async function handleLeadInboxInbound(
       if (createErr) console.warn("auto lead create soft-fail:", createErr.message);
       else {
         lead = created as any;
-        // Fire-and-forget: pull the WhatsApp avatar via fetch-wa-avatars so
-        // the new lead shows their real profile picture across the dashboard.
-        try {
-          const fnUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/fetch-wa-avatars`;
-          fetch(fnUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-            },
-            body: JSON.stringify({ lead_ids: [(created as any).id], force: true }),
-          }).catch(() => { /* swallow */ });
-        } catch { /* swallow */ }
+        // Note: the official Meta WhatsApp Business API does not expose contact
+        // profile photos, so no avatar fetch is performed here.
       }
     } catch (e) {
       console.warn("auto lead create threw:", e instanceof Error ? e.message : e);
@@ -763,7 +752,7 @@ async function handleLeadInboxInbound(
 
   const now = new Date().toISOString();
   const metadata = {
-    provider: "GreenAPI",
+    provider: "WBA",
     message_id: messageId ?? null,
     inbound_via: "whatsapp-webhook",
     sender_phone: senderPhone,

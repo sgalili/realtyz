@@ -1,7 +1,7 @@
 // super-admin-create-user
 // ─────────────────────────
 // Creates a new auth user, sets up their own workspace with 1000 NIS balance,
-// unlimited plan, and (optionally) sends WhatsApp credentials via GreenAPI.
+// unlimited plan, and (optionally) sends WhatsApp credentials via the Meta WhatsApp Business API.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
       details: { email, phone_e164: normalizedPhone, initial_balance_agorot, send_whatsapp: !!send_whatsapp },
     });
 
-    // Optional: send WhatsApp credentials via GreenAPI (using super admin's wa_providers)
+    // Optional: send WhatsApp credentials via the Meta WhatsApp Business API (using super admin's wa_providers)
     let wa_status: "skipped" | "sent" | "failed" = "skipped";
     let wa_error: string | null = null;
     if (send_whatsapp && phone_e164) {
@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
             Authorization: auth,
             apikey: ANON_KEY,
           },
-          body: JSON.stringify({ phone_number: phone_e164, message: msg, force_provider: "GreenAPI" }),
+          body: JSON.stringify({ phone_number: phone_e164, message: msg }),
         });
         const body = await r.json().catch(() => ({}));
         if (r.ok && body?.success) wa_status = "sent";
