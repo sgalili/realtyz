@@ -733,7 +733,7 @@ Deno.serve(async (req) => {
       success: false,
       provider: "GreenAPI",
       message_id: null,
-      error: e instanceof Error ? e.message : "Internal error",
+      error: "שליחת ההודעה בוואטסאפ נכשלה — נסה שוב",
     }, 500);
   }
 });
