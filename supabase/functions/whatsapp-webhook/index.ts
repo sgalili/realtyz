@@ -3,7 +3,8 @@
 // ------------------------------------------------------------
 // Incoming WhatsApp pipeline → Strategy Bank.
 //
-// Accepts inbound webhooks from GreenAPI (https://greenapi.com/en/docs/api/receiving/notifications-format/).
+// Accepts inbound webhooks from the official Meta WhatsApp Business Cloud API
+// (entry[].changes[].value.messages[]) and legacy provider envelopes.
 // Pipeline:
 //   1. Authenticate the sender by phone against `kb_whitelist`.
 //   2. For TEXT  → ingest directly into the Strategy Bank.
