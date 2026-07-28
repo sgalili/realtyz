@@ -1178,7 +1178,14 @@ const OmnichannelInbox = () => {
                           </div>
                         )}
                         <div className={`flex min-w-0 items-end gap-2 ${isOutbound ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
-                          {!isOutbound && (
+                          {isOutbound ? (
+                            <VoterAvatar
+                              fullName={agentProfile?.full_name ?? 'סוכן'}
+                              profilePictureUrl={agentProfile?.avatar_url ?? null}
+                              className="h-7 w-7 shrink-0"
+                              textClassName="text-[10px]"
+                            />
+                          ) : (
                             <VoterAvatar
                               fullName={selectedVoter?.full_name}
                               profilePictureUrl={(selectedVoter as any)?.profile_picture_url}
