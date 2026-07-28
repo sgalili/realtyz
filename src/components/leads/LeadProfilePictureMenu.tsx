@@ -118,39 +118,29 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
     }
   };
 
+  // Avatar retrieval runs through the auxiliary Green API helper (Meta's Cloud
+  // API exposes no contact-photo endpoint). Every failure path is SILENT: we
+  // just dismiss the spinner and let the initials avatar stand.
   const fetchFromWA = async () => {
-    if (!phone) { toast.error('אין מספר טלפון', { description: 'הוסף מספר טלפון לפני משיכה מוואטסאפ' }); return; }
+    if (!phone) return;
     setBusy('whatsapp');
     const toastId = toast.loading('מושך תמונה מוואטסאפ...');
     try {
       const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', { body: { lead_ids: [leadId], force: true } });
-      const errorData = error ? await readFunctionError(error) : null;
-      if (error) { explainError(BRAND.whatsapp.label, error, errorData || data, toastId); return; }
       const d = (data as any) || {};
-      // Meta's official WhatsApp Business API does not expose contact photos.
-      if (d.supported === false) {
-        toast.dismiss(toastId);
-        toast.info('משיכת תמונה מוואטסאפ אינה נתמכת', {
-          description: d.reason || 'ממשק WhatsApp Business הרשמי אינו מספק תמונות פרופיל של אנשי קשר',
-          duration: 7000,
-        });
+      if (!error && (d.updated ?? 0) > 0) {
+        toast.success('תמונה עודכנה מוואטסאפ', { id: toastId });
+        onUpdated?.();
         return;
       }
-      if (d.success === false || d.error) { explainError(BRAND.whatsapp.label, null, d, toastId); return; }
-      if ((d.updated ?? 0) > 0) { toast.success('תמונה עודכנה מוואטסאפ', { id: toastId }); onUpdated?.(); return; }
-      if ((d.failed ?? 0) > 0 || (Array.isArray(d.errors) && d.errors.length)) { explainError(BRAND.whatsapp.label, null, d, toastId); return; }
-      // scanned but nothing to update — either no avatar on WA or phone not on WA.
       toast.dismiss(toastId);
-      toast.warning('לא נמצאה תמונת פרופיל פעילה בוואטסאפ', {
-        description: 'המספר עשוי לא להיות רשום, או שהגדרות הפרטיות ב-WhatsApp מסתירות את התמונה',
-        duration: 9000,
-      });
-    } catch (e: any) {
-      explainError(BRAND.whatsapp.label, e, null, toastId);
+    } catch {
+      toast.dismiss(toastId);
     } finally {
       setBusy(null);
     }
   };
+
 
   const fetchFromChannel = async (channel: SocialChannel, handle: string) => {
     setBusy(channel);
