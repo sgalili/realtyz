@@ -131,11 +131,52 @@ Deno.serve(async (req) => {
 
     const approved = templates.filter((t) => t.status.toUpperCase() === "APPROVED");
 
+    // Persist to the workspace-shared cache so chats/campaigns can pick
+    // templates instantly without hitting the Graph API every time.
+    let synced = 0;
+    try {
+      if (templates.length > 0) {
+        const rows = templates.map((t) => ({
+          owner_user_id: ownerId,
+          name: t.name,
+          language: t.language,
+          category: t.category,
+          status: t.status.toUpperCase(),
+          body_text: t.body_text,
+          variable_count: t.variable_count,
+          has_header_variable: t.has_header_variable,
+          synced_at: new Date().toISOString(),
+        }));
+        const { error: upErr } = await admin
+          .from("wa_message_templates")
+          .upsert(rows, { onConflict: "owner_user_id,name,language" });
+        if (!upErr) {
+          synced = rows.length;
+          // Drop cached rows Meta no longer returns (deleted templates).
+          const keep = rows.map((r) => `${r.name}|${r.language}`);
+          const { data: cached } = await admin
+            .from("wa_message_templates")
+            .select("id, name, language")
+            .eq("owner_user_id", ownerId);
+          const stale = (cached ?? [])
+            .filter((c: any) => !keep.includes(`${c.name}|${c.language}`))
+            .map((c: any) => c.id);
+          if (stale.length > 0) {
+            await admin.from("wa_message_templates").delete().in("id", stale);
+          }
+        }
+      }
+    } catch (_) {
+      // Cache write is best-effort; the live list is still returned below.
+    }
+
     return json({
       success: true,
       templates: approved,
+      all_templates: templates,
       all_count: templates.length,
       approved_count: approved.length,
+      synced,
     });
   } catch (e) {
     return json({
