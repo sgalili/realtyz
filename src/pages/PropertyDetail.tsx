@@ -1192,6 +1192,7 @@ export default function PropertyDetail() {
           {!editMode && data?.rich && (
             <PropertyRichDetailsCard
               aboutText={data.rich.about}
+              aboutBlocks={data.rich.aboutBlocks}
               furniture={data.rich.furniture}
               additional={data.rich.additional}
               amenities={data.rich.amenities}
