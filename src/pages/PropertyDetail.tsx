@@ -690,7 +690,7 @@ export default function PropertyDetail() {
    */
   const stepPhoto = async (delta: number) => {
     if (pullingImages || hydrating) return;
-    if (!galleryPulledRef.current && sourceUrl) {
+    if (!galleryPulledRef.current && sourceUrl && photos.length < Math.max(2, totalSourcePhotos)) {
       galleryPulledRef.current = true;
       await pullAllImages();
       return;
