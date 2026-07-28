@@ -172,6 +172,12 @@ Deno.serve(async (req) => {
       });
       if (insertError) throw insertError;
 
+      console.info("whatsapp-auth OTP accepted by WhatsApp", {
+        phone_last4: phone.slice(-4),
+        template: template?.name ?? null,
+        message_id_present: !!sendPayload?.message_id,
+      });
+
       return json({ success: true });
     }
 
