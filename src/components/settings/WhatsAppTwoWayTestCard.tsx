@@ -175,7 +175,7 @@ export function WhatsAppTwoWayTestCard() {
                 <>
                   <div>{result.error}</div>
                   {result.details && (
-                    <pre dir="ltr" className="max-h-40 overflow-auto rounded bg-muted/50 p-2 text-[10px]">
+                    <pre dir="ltr" className="max-h-40 overflow-auto rounded bg-blue-50 p-2 text-[10px]">
                       {result.details}
                     </pre>
                   )}
@@ -185,7 +185,7 @@ export function WhatsAppTwoWayTestCard() {
           </Alert>
         )}
 
-        <div className="space-y-2 rounded-lg border border-border/40 bg-muted/30 p-3">
+        <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
           <p className="text-xs font-medium">הודעות נכנסות אחרונות (אימות דו-כיווניות)</p>
           {replies.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">

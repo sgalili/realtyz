@@ -86,7 +86,7 @@ export function MetaWhatsAppAuthCard() {
     if (needsPinOnly) return { label: 'מאומת — נדרש PIN', className: 'bg-blue-600 text-white' };
     if (cfg?.code_verification_status === 'PENDING') return { label: 'ממתין לקוד אימות', className: 'bg-amber-500 text-white' };
     if (cfg?.phone_number_id) return { label: 'ממתין לאישור', className: 'bg-slate-500 text-white' };
-    return { label: 'לא מוגדר', className: 'bg-muted text-muted-foreground' };
+    return { label: 'לא מוגדר', className: 'bg-blue-50 text-blue-700 border border-blue-200' };
   }, [cfg, needsPinOnly]);
 
   const busy = run.isPending;
@@ -170,7 +170,7 @@ export function MetaWhatsAppAuthCard() {
           </Alert>
         )}
 
-        <div className="flex flex-col gap-2 rounded-lg border border-border/40 bg-muted/30 p-3 sm:flex-row sm:items-end">
+        <div className="flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-1">
             <Label className="text-xs">קוד אימות מ-Meta (6 ספרות)</Label>
             <Input dir="ltr" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="123456" />
@@ -208,7 +208,7 @@ export function MetaWhatsAppAuthCard() {
           <Info label="Webhook מנוי" value={cfg?.webhook_subscribed == null ? null : cfg.webhook_subscribed ? 'פעיל' : 'לא פעיל'} />
         </div>
 
-        <div className="space-y-2 rounded-lg border border-border/40 bg-muted/30 p-3">
+        <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-medium">Meta Webhook Callback URL</p>
             <Button
@@ -225,7 +225,7 @@ export function MetaWhatsAppAuthCard() {
               העתק
             </Button>
           </div>
-          <div dir="ltr" className="rounded-md border border-border/40 bg-background/70 px-3 py-2 text-left font-mono text-[11px] break-all">
+          <div dir="ltr" className="rounded-md border border-blue-200 bg-blue-50/70 px-3 py-2 text-left font-mono text-[11px] break-all">
             {webhookUrl}
           </div>
           <p className="text-[11px] text-muted-foreground">
@@ -239,7 +239,7 @@ export function MetaWhatsAppAuthCard() {
 
 function Info({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="flex items-center justify-between rounded-md border border-border/30 bg-background/60 px-3 py-2">
+    <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50/60 px-3 py-2">
       <span className="text-muted-foreground">{label}</span>
       <span dir="ltr" className="font-mono text-[11px]">{value ?? '—'}</span>
     </div>
