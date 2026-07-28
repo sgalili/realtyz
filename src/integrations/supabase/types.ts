@@ -4732,6 +4732,48 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_message_templates: {
+        Row: {
+          body_text: string
+          category: string | null
+          created_at: string
+          has_header_variable: boolean
+          id: string
+          language: string
+          name: string
+          owner_user_id: string
+          status: string
+          synced_at: string
+          variable_count: number
+        }
+        Insert: {
+          body_text?: string
+          category?: string | null
+          created_at?: string
+          has_header_variable?: boolean
+          id?: string
+          language: string
+          name: string
+          owner_user_id: string
+          status?: string
+          synced_at?: string
+          variable_count?: number
+        }
+        Update: {
+          body_text?: string
+          category?: string | null
+          created_at?: string
+          has_header_variable?: boolean
+          id?: string
+          language?: string
+          name?: string
+          owner_user_id?: string
+          status?: string
+          synced_at?: string
+          variable_count?: number
+        }
+        Relationships: []
+      }
       wa_providers: {
         Row: {
           config: Json
