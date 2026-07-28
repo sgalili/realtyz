@@ -24,11 +24,33 @@ export function listingActivityAt(r: any): number | null {
   return listingPublishedAt(r);
 }
 
-/** dd/MM/yyyy for the table cell — the original "פורסם ב-" date from the source. */
-export function formatListingDate(r: any): string {
-  const t = listingSourcePublishedAt(r) ?? listingPublishedAt(r) ?? listingActivityAt(r);
-  if (!t) return '—';
+function fmt(t: number): string {
   const d = new Date(t);
   const p = (n: number) => String(n).padStart(2, '0');
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
+
+/**
+ * dd/MM/yyyy of the ORIGINAL source publication date only.
+ * Returns null when we never captured a real source date — we must never
+ * present our own import timestamp as the ad's publication date.
+ */
+export function formatSourceDate(r: any): string | null {
+  const t = listingSourcePublishedAt(r);
+  return t ? fmt(t) : null;
+}
+
+/** dd/MM/yyyy for the table cell — the original "פורסם ב-" date from the source. */
+export function formatListingDate(r: any): string {
+  const t = listingSourcePublishedAt(r) ?? listingPublishedAt(r) ?? listingActivityAt(r);
+  if (!t) return '—';
+  return fmt(t);
+}
+
+/** dd/MM/yyyy from an ISO string (used for live-probed Yad2 dates). */
+export function formatIsoDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) ? fmt(t) : null;
+}
+
