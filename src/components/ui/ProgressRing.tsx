@@ -63,7 +63,8 @@ export function ProgressRing({
         }`}
         style={{ fontSize: Math.round(size * 0.26) }}
       >
-        {pct}
+        {pct}%
+
       </span>
     </span>
   );
