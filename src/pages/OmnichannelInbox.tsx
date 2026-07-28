@@ -445,7 +445,12 @@ const OmnichannelInbox = () => {
     return dbChatMessages ?? [];
   }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages]);
 
-  const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
+  // `voters` only contains threads that already have messages. When the broker
+  // opens a contact straight from search (no messages yet), fall back to the
+  // full CRM list so the header shows the real name + phone immediately.
+  const selectedVoter =
+    voters?.find((v) => v.id === selectedVoterId) ??
+    (dbVoters as any[] | undefined)?.find((v: any) => v.id === selectedVoterId);
   // Per-contact autopilot: independent from the global hero switch.
   // Defaults ON when the column is null/undefined (matches backend behavior).
   const leadAutopilot = (selectedVoter as any)?.ai_autopilot !== false;
