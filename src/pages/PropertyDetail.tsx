@@ -312,6 +312,17 @@ export default function PropertyDetail() {
     return () => clearInterval(timer);
   }, [hydrating]);
 
+  // Same easing for the gallery ring.
+  useEffect(() => {
+    if (!pullingImages) return;
+    const timer = setInterval(() => {
+      setImageProgress((p) => (p >= 92 ? 92 : p + Math.max(1, Math.round((92 - p) / 10))));
+    }, 200);
+    return () => clearInterval(timer);
+  }, [pullingImages]);
+
+
+
   useEffect(() => {
     if (!id || !data) return;
     if (hydratedRef.current === id) return;
