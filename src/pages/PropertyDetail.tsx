@@ -983,48 +983,8 @@ export default function PropertyDetail() {
               </>
             )}
           </div>
-
-          <div className="flex items-baseline gap-3 flex-wrap order-1">
-            {editMode && form ? (
-              <Input
-                type="number"
-                value={form.price}
-                onChange={(e) => setField('price', e.target.value)}
-                className="max-w-xs"
-                placeholder="מחיר"
-              />
-            ) : (
-              <>
-                {property.price > 0 ? (
-                  <>
-                    {/* 48px → 38px per workspace spec */}
-                    <span className="text-[38px] leading-none font-extrabold text-success tabular-nums">
-                      {formatPrice(property.price)}
-                      {isRent && <span className="text-xl font-normal text-muted-foreground"> /חודש</span>}
-                    </span>
-                    {pricePerMeter ? (
-                      <span className="text-lg text-muted-foreground font-normal">
-                        ({pricePerMeter} ₪ למ"ר)
-                      </span>
-                    ) : null}
-                  </>
-                ) : (
-                  <span className="text-3xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
-                )}
-                {/* Owner sits on the same row as the action buttons, opposite side. */}
-                {data?.owner && (
-                  <Link
-                    to={`/crm/profile/${data.owner.id}`}
-                    className="text-[16px] font-semibold text-primary hover:underline"
-                    title="פתיחת כרטיס הלקוח"
-                  >
-                    {data.owner.full_name}
-                  </Link>
-                )}
-              </>
-            )}
-          </div>
         </div>
+
       </header>
 
       {/* Gallery + sidebar */}
