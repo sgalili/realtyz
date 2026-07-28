@@ -176,14 +176,9 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
         )}
 
 
-        {property.description && (
-          <Card className="p-4 sm:p-5">
-            <p className="text-xl leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
-          </Card>
-        )}
-
         <PropertyRichDetailsCard
-          aboutText={firstString((property as any).long_description, (property as any).short_description)}
+          aboutBlocks={buildDescriptionBlocks(property)}
+          aboutText={firstString((property as any).long_description, (property as any).short_description, property.description)}
           furniture={asRecord((property as any).furniture_details)}
           additional={asRecord((property as any).additional_details)}
           amenities={asRecord((property as any).attributes)}
@@ -192,6 +187,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           longitude={(property as any).longitude != null ? Number((property as any).longitude) : null}
           addressLabel={[stripAddressNumbers(property.address), property.city].filter(Boolean).join(', ')}
         />
+
 
 
         {financialEntries.length > 0 && (
