@@ -785,7 +785,12 @@ const OmnichannelInbox = () => {
     const base = (voters ?? []).filter((v) => {
       if (!matchesLeadSearch(v, search)) return false;
       const m: any = lastMessages?.get(v.id);
-      if (channelFilter.size > 0 && !channelFilter.has(String(m?.channel || ''))) return false;
+      if (channelFilter.size > 0) {
+        const known = leadChannels?.get(v.id);
+        const lastCh = String(m?.channel || m?.platform || '').toLowerCase();
+        const hit = Array.from(channelFilter).some((c) => (known?.has(c) ?? false) || lastCh === c);
+        if (!hit) return false;
+      }
       if (activeTab === 'waiting') return m?.direction === 'inbound';
       if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
       if (bookmarkedOnly) return (v as any).is_bookmarked === true;
