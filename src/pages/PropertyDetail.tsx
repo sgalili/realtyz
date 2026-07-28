@@ -198,7 +198,7 @@ export default function PropertyDetail() {
         id: String(row.id),
         source: 'listings',
         title: row.property_title || 'נכס',
-        description: row.description || '',
+        description: sanitizeDescription(row.description) || '',
         price: priceNum,
         currency: '₪',
         city: row.city || (meta.city as string) || '',
