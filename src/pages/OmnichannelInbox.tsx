@@ -454,13 +454,14 @@ const OmnichannelInbox = () => {
   }, [isDemoMode, dbLastMessages, voters, demoMessages, orphanThreads]);
 
   const chatMessages = useMemo(() => {
-    if (isDemoMode && selectedVoterId?.startsWith('demo-lead-')) {
-      return demoMessages.filter(m => m.lead_id === selectedVoterId).sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      );
-    }
-    return dbChatMessages ?? [];
-  }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages]);
+    const base = (isDemoMode && selectedVoterId?.startsWith('demo-lead-'))
+      ? demoMessages.filter(m => m.lead_id === selectedVoterId).sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+      : (dbChatMessages ?? []);
+    if (channelFilter.size === 0) return base;
+    return base.filter((m: any) => channelFilter.has(String(m?.channel || '')));
+  }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages, channelFilter]);
 
   // `voters` only contains threads that already have messages. When the broker
   // opens a contact straight from search (no messages yet), fall back to the
