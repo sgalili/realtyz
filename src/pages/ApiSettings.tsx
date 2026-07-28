@@ -39,6 +39,7 @@ import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
 import { MetaWabaHealthCard } from '@/components/settings/MetaWabaHealthCard';
 import { WhatsAppTwoWayTestCard } from '@/components/settings/WhatsAppTwoWayTestCard';
+import { WaTemplatesSyncCard } from '@/components/settings/WaTemplatesSyncCard';
 import { SocialChannelsGrid } from '@/components/social/SocialChannelsGrid';
 import { CustomGroupsManager } from '@/components/social/CustomGroupsManager';
 
@@ -1274,6 +1275,10 @@ const ApiSettings = () => {
 
       <div className="mb-4">
         <MetaWabaHealthCard />
+      </div>
+
+      <div className="mb-4">
+        <WaTemplatesSyncCard />
       </div>
 
       <div className="mb-4">
