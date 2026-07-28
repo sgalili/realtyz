@@ -21,9 +21,38 @@ type ErrorLog = {
   id: string;
   integration: string;
   function_name: string | null;
+  error_code: string | null;
   error_message: string | null;
   created_at: string;
 };
+
+/** Hebrew labels for the error categories emitted by the WhatsApp gateway. */
+const ERROR_CATEGORY_LABEL: Record<string, string> = {
+  permission_scope: 'הרשאות טוקן חסרות',
+  token_expired: 'טוקן פג תוקף',
+  token_invalid: 'טוקן לא תקף',
+  config: 'שגיאת הגדרות',
+  template: 'תבנית לא תקינה',
+  session_window: 'חלון 24 שעות',
+  recipient: 'בעיית נמען',
+  rate_limit: 'חריגת מכסה',
+  account_suspended: 'חשבון מושהה',
+  network: 'תקלת רשת',
+  unknown: 'שגיאה כללית',
+};
+
+const AUTH_CATEGORIES = new Set(['permission_scope', 'token_expired', 'token_invalid']);
+
+function parseErrorCode(code: string | null): { category: string | null; label: string | null; isAuth: boolean } {
+  if (!code) return { category: null, label: null, isAuth: false };
+  const category = code.split(':')[0];
+  return {
+    category,
+    label: ERROR_CATEGORY_LABEL[category] ?? code,
+    isAuth: AUTH_CATEGORIES.has(category),
+  };
+}
+
 
 const INTEGRATION_LABEL: Record<string, string> = {
   whatsapp: 'WhatsApp',
@@ -64,7 +93,7 @@ export default function SystemHealth() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('integration_error_logs')
-        .select('id, integration, function_name, error_message, created_at')
+        .select('id, integration, function_name, error_code, error_message, created_at')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -223,33 +252,53 @@ export default function SystemHealth() {
                     <th className="px-3 py-2 font-medium">זמן</th>
                     <th className="px-3 py-2 font-medium">אינטגרציה</th>
                     <th className="px-3 py-2 font-medium">פונקציה</th>
+                    <th className="px-3 py-2 font-medium">סוג</th>
                     <th className="px-3 py-2 font-medium">שגיאה</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(logs ?? []).map((l) => (
-                    <tr key={l.id} className="border-t">
-                      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                        {new Date(l.created_at).toLocaleString('he-IL')}
-                      </td>
-                      <td className="px-3 py-2">
-                        {INTEGRATION_LABEL[l.integration] ?? l.integration}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {l.function_name ?? '-'}
-                      </td>
-                      <td className="px-3 py-2 text-foreground/80">
-                        <span className="line-clamp-2">{l.error_message ?? '-'}</span>
-                      </td>
-                    </tr>
-                  ))}
+                  {(logs ?? []).map((l) => {
+                    const cat = parseErrorCode(l.error_code);
+                    return (
+                      <tr key={l.id} className="border-t">
+                        <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                          {new Date(l.created_at).toLocaleString('he-IL')}
+                        </td>
+                        <td className="px-3 py-2">
+                          {INTEGRATION_LABEL[l.integration] ?? l.integration}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {l.function_name ?? '-'}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2">
+                          {cat.label ? (
+                            <span
+                              className={`rounded px-2 py-0.5 text-[11px] ${
+                                cat.isAuth
+                                  ? 'bg-destructive/10 text-destructive'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {cat.label}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className={`px-3 py-2 ${cat.isAuth ? 'text-destructive' : 'text-foreground/80'}`}>
+                          <span className="line-clamp-2">{l.error_message ?? '-'}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {(!logs || logs.length === 0) && (
                     <tr>
-                      <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                      <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
                         אין כשלים מתועדים
                       </td>
                     </tr>
                   )}
+
                 </tbody>
               </table>
             </div>

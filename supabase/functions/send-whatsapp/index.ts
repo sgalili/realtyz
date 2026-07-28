@@ -421,49 +421,142 @@ async function sendViaWba(
 }
 
 /**
+ * Classify a Meta failure into an actionable category so permission /
+ * token-scope problems are never buried inside a generic "send failed".
+ */
+type WaErrorCategory =
+  | "permission_scope"
+  | "token_expired"
+  | "token_invalid"
+  | "config"
+  | "template"
+  | "session_window"
+  | "recipient"
+  | "rate_limit"
+  | "account_suspended"
+  | "network"
+  | "unknown";
+
+function classifyMetaError(
+  raw: string,
+  meta: MetaError = {},
+): { category: WaErrorCategory; hebrew: string } {
+  const code = Number(meta?.code ?? 0);
+  const subcode = Number(meta?.error_subcode ?? 0);
+  const msg = `${meta?.message ?? ""} ${raw ?? ""}`;
+
+  // ── Token scope / permission failures ──────────────────────────────
+  if (/whatsapp_business_messaging/i.test(msg)) {
+    return {
+      category: "permission_scope",
+      hebrew:
+        "חסרה ההרשאה whatsapp_business_messaging לטוקן של Meta — יש להוסיף את ההרשאה לאפליקציה ולהנפיק טוקן חדש",
+    };
+  }
+  if (/whatsapp_business_management/i.test(msg)) {
+    return {
+      category: "permission_scope",
+      hebrew:
+        "חסרה ההרשאה whatsapp_business_management לטוקן של Meta — יש להוסיף את ההרשאה בהגדרות האפליקציה ולחבר מחדש",
+    };
+  }
+  if (code === 190) {
+    if (subcode === 463 || /expired/i.test(msg)) {
+      return {
+        category: "token_expired",
+        hebrew:
+          "טוקן הגישה של Meta פג תוקף (ככל הנראה טוקן בדיקה זמני) — יש להנפיק טוקן קבוע (System User) ולחבר מחדש בהגדרות",
+      };
+    }
+    if (subcode === 467) {
+      return {
+        category: "token_invalid",
+        hebrew: "טוקן הגישה של Meta אינו תקף יותר — יש לחבר מחדש את חשבון וואטסאפ העסקי",
+      };
+    }
+    return {
+      category: "token_expired",
+      hebrew: "פג תוקף ההרשאה של Meta — יש לחבר מחדש את חשבון וואטסאפ העסקי",
+    };
+  }
+  if (code === 200 || code === 299 || code === 10 || code === 3 || code === 4001) {
+    return {
+      category: "permission_scope",
+      hebrew:
+        "לטוקן של Meta אין הרשאה לשלוח מהמספר הזה — יש לוודא שהמשתמש/האפליקציה מורשים ל-WABA ושכל ההרשאות (whatsapp_business_messaging) אושרו",
+    };
+  }
+  if (code === 100 && (subcode === 33 || /does not exist|cannot be loaded|permission/i.test(msg))) {
+    return {
+      category: subcode === 33 ? "config" : "permission_scope",
+      hebrew:
+        subcode === 33
+          ? "Phone Number ID שגוי — יש להזין את מזהה המספר המספרי מ-Meta, לא את מספר הטלפון"
+          : "אין גישה למשאב הזה ב-Meta — הטוקן אינו מורשה ל-Phone Number ID / WABA שהוגדרו",
+    };
+  }
+
+  switch (code) {
+    case 131008:
+      return { category: "template", hebrew: "חסר פרמטר בתבנית וואטסאפ — בדוק את משתני התבנית המאושרת" };
+    case 131047:
+      return {
+        category: "session_window",
+        hebrew: "חלון 24 השעות נסגר — אפשר לשלוח רק תבנית מאושרת עד שהלקוח יגיב שוב",
+      };
+    case 131026:
+      return { category: "recipient", hebrew: "המספר אינו רשום בוואטסאפ או שאינו יכול לקבל הודעות" };
+    case 132000:
+    case 132001:
+    case 132012:
+      return { category: "template", hebrew: "תבנית הוואטסאפ אינה מאושרת או שאינה תואמת לשפה/משתנים שהוגדרו" };
+    case 131051:
+      return { category: "unknown", hebrew: "סוג ההודעה אינו נתמך על ידי וואטסאפ" };
+    case 100:
+      return { category: "config", hebrew: "פרטי החשבון שגויים — יש לוודא Phone Number ID ו-WABA ID בהגדרות" };
+    case 80007:
+    case 130429:
+      return { category: "rate_limit", hebrew: "חריגה ממכסת השליחה של Meta — נסה שוב בעוד מספר דקות" };
+    case 131031:
+      return { category: "account_suspended", hebrew: "חשבון וואטסאפ העסקי מושהה על ידי Meta" };
+    default:
+      break;
+  }
+
+  if (/OAuth|access token|token scope|permission/i.test(msg)) {
+    return {
+      category: "permission_scope",
+      hebrew: "בעיית הרשאות בטוקן של Meta — יש לבדוק את ההרשאות ולהנפיק טוקן חדש",
+    };
+  }
+  if (/phone_number_id/i.test(raw)) {
+    return {
+      category: "config",
+      hebrew: "Phone Number ID שגוי — יש להזין את מזהה המספר המספרי מ-Meta, לא את מספר הטלפון",
+    };
+  }
+  if (/not configured|No active WhatsApp provider/i.test(raw)) {
+    return {
+      category: "config",
+      hebrew: "חשבון וואטסאפ העסקי אינו מחובר — יש להתחבר בהגדרות הערוצים",
+    };
+  }
+  if (/network request failed/i.test(raw)) {
+    return { category: "network", hebrew: "השרת של Meta לא זמין כרגע — נסה שוב בעוד רגע" };
+  }
+  if (/Invalid phone number/i.test(raw)) return { category: "recipient", hebrew: "מספר טלפון לא תקין" };
+  if (/Lead not found/i.test(raw)) return { category: "recipient", hebrew: "לא נמצא מספר טלפון למתעניין הזה" };
+  return { category: "unknown", hebrew: "שליחת ההודעה בוואטסאפ נכשלה — נסה שוב" };
+}
+
+/**
  * Translate a raw Meta failure into a short Hebrew sentence the
  * broker can act on. The raw provider payload is never shown in the UI.
  */
 function humanizeWaError(raw: string, meta: MetaError = {}): string {
-  const code = Number(meta?.code ?? 0);
-  const subcode = Number(meta?.error_subcode ?? 0);
-  switch (code) {
-    case 131008:
-      return "חסר פרמטר בתבנית וואטסאפ — בדוק את משתני התבנית המאושרת";
-    case 131047:
-      return "חלון 24 השעות נסגר — אפשר לשלוח רק תבנית מאושרת עד שהלקוח יגיב שוב";
-    case 131026:
-      return "המספר אינו רשום בוואטסאפ או שאינו יכול לקבל הודעות";
-    case 132000:
-    case 132001:
-    case 132012:
-      return "תבנית הוואטסאפ אינה מאושרת או שאינה תואמת לשפה/משתנים שהוגדרו";
-    case 131051:
-      return "סוג ההודעה אינו נתמך על ידי וואטסאפ";
-    case 100:
-      if (subcode === 33) return "Phone Number ID שגוי — יש להזין את מזהה המספר המספרי מ-Meta, לא את מספר הטלפון";
-      return "פרטי החשבון שגויים — יש לוודא Phone Number ID ו-WABA ID בהגדרות";
-    case 190:
-      return "פג תוקף ההרשאה של Meta — יש לחבר מחדש את חשבון וואטסאפ העסקי";
-    case 10:
-    case 200:
-      return "אין הרשאה לשלוח מהמספר הזה — יש לאשר את ההרשאות בחשבון Meta";
-    case 80007:
-    case 130429:
-      return "חריגה ממכסת השליחה של Meta — נסה שוב בעוד מספר דקות";
-    case 131031:
-      return "חשבון וואטסאפ העסקי מושהה על ידי Meta";
-    default:
-      break;
-  }
-  if (/phone_number_id/i.test(raw)) return "Phone Number ID שגוי — יש להזין את מזהה המספר המספרי מ-Meta, לא את מספר הטלפון";
-  if (/not configured|No active WhatsApp provider/i.test(raw)) {
-    return "חשבון וואטסאפ העסקי אינו מחובר — יש להתחבר בהגדרות הערוצים";
-  }
-  if (/Invalid phone number/i.test(raw)) return "מספר טלפון לא תקין";
-  if (/Lead not found/i.test(raw)) return "לא נמצא מספר טלפון למתעניין הזה";
-  return "שליחת ההודעה בוואטסאפ נכשלה — נסה שוב";
+  return classifyMetaError(raw, meta).hebrew;
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -668,21 +761,50 @@ Deno.serve(async (req) => {
 
     if (!result.success) {
       const meta = (result.details as any)?.error ?? {};
+      const rawError = result.error ?? "";
+      const classified = classifyMetaError(rawError, meta);
+      const isAuthIssue =
+        classified.category === "permission_scope" ||
+        classified.category === "token_expired" ||
+        classified.category === "token_invalid";
       result = {
         ...result,
-        error: humanizeWaError(result.error ?? "", meta),
-        details: { code: meta?.code ?? null, subcode: meta?.error_subcode ?? null, type: meta?.type ?? null },
+        error: classified.hebrew,
+        details: {
+          code: meta?.code ?? null,
+          subcode: meta?.error_subcode ?? null,
+          type: meta?.type ?? null,
+          category: classified.category,
+        },
       };
+      if (isAuthIssue) {
+        console.error("send-whatsapp Meta permission/token failure", {
+          category: classified.category,
+          meta_code: meta?.code ?? null,
+          meta_subcode: meta?.error_subcode ?? null,
+          meta_type: meta?.type ?? null,
+          meta_message: meta?.message ?? null,
+          hebrew: classified.hebrew,
+          env: envPresence(),
+        });
+      }
       try {
         await logIntegrationError({
           integration: "whatsapp",
           functionName: "send-whatsapp",
-          errorMessage: result.error ?? "שליחת וואטסאפ נכשלה",
+          errorCode: meta?.code != null
+            ? `${classified.category}:${meta.code}${meta?.error_subcode ? `/${meta.error_subcode}` : ""}`
+            : classified.category,
+          errorMessage: classified.hebrew,
           context: {
             provider: effectiveProvider,
+            category: classified.category,
+            auth_issue: isAuthIssue,
             meta_code: meta?.code ?? null,
             meta_subcode: meta?.error_subcode ?? null,
             meta_type: meta?.type ?? null,
+            meta_message: meta?.message ?? null,
+            raw_error: rawError,
             phone_last4: phone.slice(-4),
             tenant_routed: !!routingTenantId,
             template: parsed.data.template_id ?? null,
@@ -691,6 +813,7 @@ Deno.serve(async (req) => {
         });
       } catch (_e) { /* best-effort */ }
     } else {
+
       console.info("send-whatsapp accepted by Meta", {
         provider: effectiveProvider,
         phone_last4: phone.slice(-4),
