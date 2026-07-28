@@ -523,6 +523,11 @@ export default function PropertyDetail() {
   // no "broken" gating, no live-image fallback. If the DB has photos, they render.
   const photos = editMode && form ? form.photos : dbPhotos;
   const main = photos[activePhoto];
+  // Total images the SOURCE page advertises — shown even before mirroring.
+  const totalSourcePhotos = sourcePhotoCount(
+    { raw: { source_metadata: meta, ...(property ?? {}) } },
+    photos.length,
+  );
 
   // Prefer the raw source-provided property type verbatim (e.g. "דירה" from
   // Webtiv/Homely). Only fall back to the enum-derived Hebrew label when the
