@@ -145,11 +145,18 @@ async function resolveProvider(
   if (tenantId) {
     const hit = pick(await tryRows("tenant_id", tenantId));
     if (hit) return hit;
+    // Realtyz stores the workspace's provider row keyed by the OWNER's user id
+    // with tenant_id NULL. Server-to-server callers (send-message, autopilot)
+    // pass that owner id as `tenant_id`, so fall back to a user_id match before
+    // giving up — otherwise a fully configured WBA account looks unconfigured.
+    const ownerHit = pick(await tryRows("user_id", tenantId));
+    if (ownerHit) return ownerHit;
   }
   if (userId) {
     const hit = pick(await tryRows("user_id", userId));
     if (hit) return hit;
   }
+
 
   // 2. Legacy fallback — preserve existing Realtyz GreenAPI behavior.
   if (!force || force === "GreenAPI") {
