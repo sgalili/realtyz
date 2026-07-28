@@ -37,6 +37,7 @@ import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
+import { MetaWabaHealthCard } from '@/components/settings/MetaWabaHealthCard';
 import { WhatsAppTwoWayTestCard } from '@/components/settings/WhatsAppTwoWayTestCard';
 import { SocialChannelsGrid } from '@/components/social/SocialChannelsGrid';
 import { CustomGroupsManager } from '@/components/social/CustomGroupsManager';
@@ -1272,8 +1273,13 @@ const ApiSettings = () => {
       </div>
 
       <div className="mb-4">
+        <MetaWabaHealthCard />
+      </div>
+
+      <div className="mb-4">
         <WhatsAppTwoWayTestCard />
       </div>
+
 
 
       <ServiceCard
