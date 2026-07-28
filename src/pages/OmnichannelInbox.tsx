@@ -1066,7 +1066,7 @@ const OmnichannelInbox = () => {
           ) : (
             <>
               {/* Chat Header */}
-              <div className="h-14 border-b border-whatsapp-header/20 bg-whatsapp-header text-whatsapp-header-foreground flex items-center justify-between px-3 sm:px-4 shrink-0">
+              <div className="h-16 border-b border-whatsapp-header/20 bg-whatsapp-header text-whatsapp-header-foreground flex items-center justify-between px-3 sm:px-4 shrink-0">
                 <div className="flex min-w-0 items-center gap-3">
                   <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10 lg:hidden" onClick={() => setSelectedVoterId(null)}>
                     <span className="text-xl leading-none scale-x-[-1]">›</span>
@@ -1078,20 +1078,21 @@ const OmnichannelInbox = () => {
                     title="פתיחת כרטיס מתעניין"
                     aria-label="פתיחת כרטיס מתעניין"
                   >
-                    <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
+                    <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-10 w-10" textClassName="text-xs" />
                   </button>
                   <div className="min-w-0">
                     <button
                       type="button"
                       onClick={() => selectedVoterId && navigate(`/lead-crm/${selectedVoterId}`)}
-                      className="block truncate text-sm font-semibold hover:underline text-right"
+                      className="block truncate text-[17px] font-semibold leading-tight hover:underline text-right"
                       title="פתיחת כרטיס מתעניין"
                     >
                       {contactName}
                     </button>
-                    <p className="text-[10px] text-whatsapp-header-foreground/75" dir="ltr">
+                    <p className="text-[13px] leading-tight text-whatsapp-header-foreground/75" dir="ltr">
                       {contactPhone || 'WhatsApp Business'}
                     </p>
+
 
                   </div>
 
