@@ -630,8 +630,12 @@ Deno.serve(async (req) => {
     }
 
     // Compliance audit + message-row logging. Best-effort; never blocks the send.
+    const effectiveProvider = result.provider ?? provider?.name ?? "WBA";
+    const actorId = userId ?? parsed.data.tenant_id ?? null;
     try {
-      if (parsed.data.lead_id && outboundMessage) {
+      // Only persist the chat bubble when the gateway actually accepted the
+      // message — a failed send must never look delivered in the inbox.
+      if (result.success && parsed.data.lead_id && outboundMessage) {
         await admin.from("messages").insert({
           lead_id: parsed.data.lead_id,
           channel: "whatsapp",
@@ -641,17 +645,17 @@ Deno.serve(async (req) => {
           sender_type: parsed.data.ai_assisted ? "ai" : "agent",
           ai_assisted: !!parsed.data.ai_assisted,
           disclosure_appended: disclosureAppended,
-          metadata: { provider: provider.name, message_id: result.message_id },
+          metadata: { provider: effectiveProvider, message_id: result.message_id, status: "sent" },
         });
       }
-      if (userId) {
+      if (actorId) {
         await admin.from("audit_logs").insert({
-          actor_id: userId,
+          actor_id: actorId,
           action: parsed.data.ai_assisted ? "ai_message_sent" : "message_sent",
           target_table: parsed.data.lead_id ? "leads" : null,
           target_id: parsed.data.lead_id ?? null,
           details: {
-            provider: provider.name,
+            provider: effectiveProvider,
             success: result.success,
             disclosure_appended: disclosureAppended,
             has_attachment: !!parsed.data.file,
@@ -662,6 +666,24 @@ Deno.serve(async (req) => {
     } catch (logErr) {
       console.warn("send-whatsapp audit/log failed:", logErr);
     }
+
+    if (!result.success) {
+      const meta = (result.details as any)?.error ?? {};
+      result = {
+        ...result,
+        error: humanizeWaError(result.error ?? "", meta),
+        details: { code: meta?.code ?? null, subcode: meta?.error_subcode ?? null },
+      };
+      try {
+        await logIntegrationError({
+          integration: "whatsapp",
+          functionName: "send-whatsapp",
+          errorMessage: result.error ?? "שליחת וואטסאפ נכשלה",
+          context: { provider: effectiveProvider, meta_code: meta?.code ?? null, phone_last4: phone.slice(-4) },
+        });
+      } catch (_e) { /* best-effort */ }
+    }
+
 
     return json(result, result.success ? 200 : 502);
   } catch (e) {
