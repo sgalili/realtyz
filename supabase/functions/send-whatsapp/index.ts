@@ -431,6 +431,42 @@ async function sendViaWba(
   };
 }
 
+/**
+ * Translate a raw Meta / GreenAPI failure into a short Hebrew sentence the
+ * broker can act on. The raw provider payload is never shown in the UI.
+ */
+function humanizeWaError(raw: string, meta: { code?: number; error_subcode?: number; message?: string } = {}): string {
+  const code = Number(meta?.code ?? 0);
+  switch (code) {
+    case 131047:
+      return "חלון 24 השעות נסגר — אפשר לשלוח רק תבנית מאושרת עד שהלקוח יגיב שוב";
+    case 131026:
+      return "המספר אינו רשום בוואטסאפ או שאינו יכול לקבל הודעות";
+    case 131051:
+      return "סוג ההודעה אינו נתמך על ידי וואטסאפ";
+    case 100:
+      return "פרטי החשבון שגויים — יש לוודא Phone Number ID ו-WABA ID בהגדרות";
+    case 190:
+      return "פג תוקף ההרשאה של Meta — יש לחבר מחדש את חשבון וואטסאפ העסקי";
+    case 10:
+    case 200:
+      return "אין הרשאה לשלוח מהמספר הזה — יש לאשר את ההרשאות בחשבון Meta";
+    case 80007:
+    case 130429:
+      return "חריגה ממכסת השליחה של Meta — נסה שוב בעוד מספר דקות";
+    case 131031:
+      return "חשבון וואטסאפ העסקי מושהה על ידי Meta";
+    default:
+      break;
+  }
+  if (/not configured|No active WhatsApp provider/i.test(raw)) {
+    return "חשבון וואטסאפ העסקי אינו מחובר — יש להתחבר בהגדרות הערוצים";
+  }
+  if (/Invalid phone number/i.test(raw)) return "מספר טלפון לא תקין";
+  if (/Lead not found/i.test(raw)) return "לא נמצא מספר טלפון למתעניין הזה";
+  return "שליחת ההודעה בוואטסאפ נכשלה — נסה שוב";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
@@ -544,7 +580,7 @@ Deno.serve(async (req) => {
         success: false,
         provider: "GreenAPI",
         message_id: null,
-        error: "No active WhatsApp provider configured",
+        error: humanizeWaError("No active WhatsApp provider configured"),
       }, 500);
     }
 
@@ -625,7 +661,7 @@ Deno.serve(async (req) => {
         success: false,
         provider: "GreenAPI",
         message_id: null,
-        error: "No active WhatsApp provider configured",
+        error: humanizeWaError("No active WhatsApp provider configured"),
       }, 500);
     }
 
