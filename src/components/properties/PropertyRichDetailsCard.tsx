@@ -20,6 +20,8 @@ export type PricePoint = { date: string | null; price: number | null; label?: st
 
 type Props = {
   aboutText?: string | null;
+  /** Descriptions from multiple sources, rendered stacked as `Source:` + text. */
+  aboutBlocks?: { source: string; text: string }[] | null;
   furniture?: Record<string, unknown> | null;
   additional?: Record<string, unknown> | null;
   amenities?: Record<string, unknown> | null;
