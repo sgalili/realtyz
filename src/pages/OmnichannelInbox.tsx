@@ -851,7 +851,7 @@ const OmnichannelInbox = () => {
         <div className="flex flex-1 flex-row-reverse items-center gap-2 overflow-x-auto">
           <button
             type="button"
-            onClick={() => setActiveTab('handling')}
+            onClick={() => { setActiveTab('handling'); setSelectedVoterId(null); }}
             className={`h-10 inline-flex items-center gap-1 rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'handling' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
           >
             <Bot className="h-3.5 w-3.5" />
@@ -859,14 +859,14 @@ const OmnichannelInbox = () => {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('waiting')}
+            onClick={() => { setActiveTab('waiting'); setSelectedVoterId(null); }}
             className={`h-10 inline-flex items-center rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'waiting' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
           >
             מחכות למענה ({waitingCount})
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('all')}
+            onClick={() => { setActiveTab('all'); setSelectedVoterId(null); }}
             className={`h-10 inline-flex items-center rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
           >
             כל השיחות ({totalCount})
@@ -874,7 +874,7 @@ const OmnichannelInbox = () => {
         </div>
         <button
           type="button"
-          onClick={() => setBookmarkedOnly((v) => !v)}
+          onClick={() => { setBookmarkedOnly((v) => !v); setSelectedVoterId(null); }}
           aria-label="סימניות"
           className={`h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-lg border ${bookmarkedOnly ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:bg-muted/50'}`}
         >
