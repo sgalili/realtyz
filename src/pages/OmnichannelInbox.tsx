@@ -921,7 +921,7 @@ const OmnichannelInbox = () => {
                 aria-label={c.label}
                 title={c.label}
                 aria-pressed={active}
-                className={`h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-full transition-opacity ${active ? 'opacity-100 ring-2 ring-primary/60' : hasChats ? 'opacity-90 hover:opacity-100' : 'opacity-40 grayscale hover:opacity-80'}`}
+                className={`h-9 w-9 shrink-0 inline-flex items-center justify-center bg-transparent border-0 p-0 transition-all ${active ? 'opacity-100 scale-110' : hasChats ? 'opacity-70 hover:opacity-100' : 'opacity-35 grayscale hover:opacity-70'}`}
               >
                 <ChannelIcon channel={c.key} size="md" />
               </button>
