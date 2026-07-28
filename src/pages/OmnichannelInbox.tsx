@@ -933,15 +933,22 @@ const OmnichannelInbox = () => {
           ] as const).map((c) => {
             const active = channelFilter.has(c.key);
             const hasChats = channelsInList.has(c.key);
-            const handleClick = () => {
+            const handleClick = (e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              let selected = false;
               setChannelFilter((prev) => {
                 const next = new Set(prev);
-                if (next.has(c.key)) next.delete(c.key);
-                else next.add(c.key);
+                if (next.has(c.key)) {
+                  next.delete(c.key);
+                } else {
+                  next.add(c.key);
+                  selected = true;
+                }
                 return next;
               });
-              if (!selectedVoterId) return;
-              setSendChannel(c.key);
+              // Only switch the composer channel when the button was turned ON.
+              if (selected && selectedVoterId) setSendChannel(c.key);
             };
             return (
               <button
