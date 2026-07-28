@@ -72,6 +72,10 @@ const senderBadge: Record<string, { label: string; className: string }> = {
 };
 
 
+// Session flag: set once the avatar service reports it isn't configured, so
+// we stop re-requesting WhatsApp profile photos on every render pass.
+const WA_AVATAR_DISABLED_KEY = 'wa-avatar-disabled';
+
 const channelConfig: Record<string, { brand?: string; icon?: ReactElement; label: string; bgClass: string; textClass: string }> = {
   whatsapp: { brand: 'whatsapp', label: 'WhatsApp', bgClass: 'bg-social-whatsapp', textClass: 'text-social-whatsapp' },
   sms: { icon: <MessageSquare />, label: 'SMS', bgClass: 'bg-social-sms', textClass: 'text-social-sms' },
