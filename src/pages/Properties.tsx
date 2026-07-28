@@ -1029,13 +1029,7 @@ function ResultCard({
   const [expanded, setExpanded] = useState(false);
   // Total number of images the property has — reported by the source payload
   // even when the media was not imported into our storage yet.
-  const rawAny = (result.raw ?? {}) as any;
-  const reportedCount = Number(
-    rawAny.images_count ?? rawAny.photos_count ?? rawAny.media_count ??
-    (Array.isArray(rawAny.photos) ? rawAny.photos.length : 0) ??
-    (Array.isArray(rawAny.media_photos) ? rawAny.media_photos.length : 0),
-  );
-  const photoCount = Math.max(photos.length, Number.isFinite(reportedCount) ? reportedCount : 0);
+  const photoCount = sourcePhotoCount(result, photos.length);
   const activePhoto = hasPhotos ? photos[Math.min(index, photos.length - 1)] : null;
   const isRent = result.listing_type === 'rent';
 
