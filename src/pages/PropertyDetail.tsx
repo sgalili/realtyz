@@ -673,13 +673,12 @@ export default function PropertyDetail() {
         toast.error('לא נמצאו תמונות נוספות', { id: toastId, description: res?.reason ?? undefined });
         return;
       }
-      toast.success(`${res.count} תמונות נטענו ונשמרו`, { id: toastId });
       setActivePhoto(0);
-      await qc.invalidateQueries({ queryKey: ['property-detail', id] });
+      await qc.refetchQueries({ queryKey: ['property-detail', id] });
       qc.invalidateQueries({ queryKey: ['properties-search'] });
       qc.invalidateQueries({ queryKey: ['listings'] });
     } catch (e: any) {
-      toast.error('טעינת התמונות נכשלה', { id: toastId, description: e?.message ?? String(e) });
+      toast.error('טעינת התמונות נכשלה', { description: e?.message ?? String(e) });
     } finally {
       setImageProgress(100);
       setTimeout(() => setPullingImages(false), 250);
@@ -687,21 +686,22 @@ export default function PropertyDetail() {
   };
 
   /**
-   * Carousel navigation. Arrows stay inert until metadata hydration finished.
-   * When the gallery hasn't been fully imported yet (single/no image), the
-   * first arrow click pulls the complete gallery from the source.
+   * Carousel navigation — the ONLY entry point for image loading.
+   * Nothing is fetched when the page opens; the first arrow click pulls the
+   * full gallery from the source (ring loader over the main image), and later
+   * clicks just move between the already-loaded photos.
    */
   const stepPhoto = async (delta: number) => {
     if (pullingImages || hydrating) return;
-    if (photos.length <= 1) {
-      if (!galleryPulledRef.current && (sourceUrl || photos.length === 0)) {
-        galleryPulledRef.current = true;
-        await pullAllImages();
-      }
+    if (!galleryPulledRef.current && sourceUrl) {
+      galleryPulledRef.current = true;
+      await pullAllImages();
       return;
     }
+    if (photos.length <= 1) return;
     setActivePhoto((i) => (i + delta + photos.length) % photos.length);
   };
+
 
 
 
