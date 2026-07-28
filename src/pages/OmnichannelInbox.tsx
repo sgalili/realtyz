@@ -1142,21 +1142,30 @@ const OmnichannelInbox = () => {
 
               {/* Input Area */}
               <div className="border-t border-border/50 bg-whatsapp-footer p-2 sm:p-3">
-                {/* Autopilot notice — the composer below stays visible at all times. */}
-                {leadAutopilot && aiAutopilot && !manualTakeoverWarning && (
-                  <div className="mb-2 flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-1.5 text-whatsapp-header shadow-sm">
-                    <Bot className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium">טייס אוטומטי פעיל לשיחה זו - ה-AI עונה באופן אוטומטי</span>
-                  </div>
-                )}
+                {/* Autopilot pill — holds the robot icon + the per-chat switch. */}
+                <div className="mb-2 flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-1.5 text-whatsapp-header shadow-sm">
+                  <Bot className={`h-4 w-4 shrink-0 ${chatAutopilotOn ? 'text-whatsapp-header' : 'text-muted-foreground'}`} />
+                  <span className="text-xs font-medium">
+                    {manualTakeoverWarning
+                      ? 'מצב ידני - הטייס האוטומטי מושהה לשיחה זו'
+                      : chatAutopilotOn
+                        ? 'טייס אוטומטי פעיל לשיחה זו - ה-AI עונה באופן אוטומטי'
+                        : 'טייס אוטומטי כבוי לשיחה זו - המענה ידני'}
+                  </span>
+                  <Switch
+                    checked={chatAutopilotOn}
+                    disabled={!selectedVoterId}
+                    title="טייס AI לשיחה זו"
+                    aria-label="טייס AI לשיחה זו"
+                    className="ms-auto shrink-0 border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground"
+                    onCheckedChange={(v) => {
+                      setChatAutopilot(v);
+                      if (v) setManualTakeoverWarning(false);
+                    }}
+                  />
+                </div>
                 <div className="flex items-center gap-2">
-                    <div className="relative inline-flex" title={aiAutopilot ? 'טייס AI לשיחה זו' : 'הטייס הכללי כבוי (מהכותרת)'}>
-                      <Switch checked={leadAutopilot} disabled={!selectedVoterId} className="peer border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground" onCheckedChange={(v) => {
-                        setLeadAutopilot(v);
-                        if (v) setManualTakeoverWarning(false);
-                      }} />
-                      <Bot className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 transition-all peer-data-[state=checked]:left-[26px] peer-data-[state=checked]:text-whatsapp-header peer-data-[state=unchecked]:left-1.5 peer-data-[state=unchecked]:text-muted-foreground" />
-                    </div>
+
                     <input
                       ref={attachmentInputRef}
                       type="file"
