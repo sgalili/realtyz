@@ -1270,6 +1270,11 @@ const ApiSettings = () => {
         <MetaWhatsAppAuthCard />
       </div>
 
+      <div className="mb-4">
+        <WhatsAppTwoWayTestCard />
+      </div>
+
+
       <ServiceCard
         title="שער WhatsApp"
         icon={MessageCircle}
