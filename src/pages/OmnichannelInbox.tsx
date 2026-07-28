@@ -1033,7 +1033,7 @@ const OmnichannelInbox = () => {
             </AnimatePresence>
             {filteredVoters?.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">
-                {search.trim() ? 'לא נמצאו תוצאות ב-CRM' : (channelFilter === 'all' ? 'אין שיחות' : 'אין הודעות בערוץ זה')}
+                {search.trim() ? 'לא נמצאו תוצאות ב-CRM' : (channelFilter.size === 0 ? 'אין שיחות' : 'אין הודעות בערוצים אלה')}
               </p>
             )}
           </ScrollArea>
