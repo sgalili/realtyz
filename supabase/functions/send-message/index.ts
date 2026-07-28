@@ -262,7 +262,7 @@ serve(async (req) => {
             apikey: serviceRoleKey,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ lead_id, phone_number: intl, message: finalContent, tenant_id: userData.user.id }),
+          body: JSON.stringify({ lead_id, phone_number: intl, message: finalContent, tenant_id: workspaceOwnerId }),
         });
         const waText = await waRes.text();
         let waJson: any = null; try { waJson = waText ? JSON.parse(waText) : null; } catch { /* keep */ }
@@ -358,7 +358,7 @@ serve(async (req) => {
           apikey: serviceRoleKey,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ lead_id, phone_number: intl, message: finalContent, tenant_id: userData.user.id }),
+        body: JSON.stringify({ lead_id, phone_number: intl, message: finalContent, tenant_id: workspaceOwnerId }),
       });
       const waText = await waRes.text();
       let waJson: any = null; try { waJson = waText ? JSON.parse(waText) : null; } catch { /* keep raw */ }
