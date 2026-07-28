@@ -34,6 +34,74 @@ export async function isListingFullyImported(listingId: string): Promise<boolean
   return ok;
 }
 
+/** Listings whose textual/structural metadata is proven complete this session. */
+const metaCachedIds = new Set<string>();
+
+/**
+ * Metadata-only completeness check (images intentionally ignored).
+ * A row counts as hydrated once it carries the descriptive text plus the
+ * parsed structural fields (neighborhood / house / apartment) and a recorded
+ * original publication date.
+ */
+export async function isListingMetadataImported(listingId: string): Promise<boolean> {
+  if (metaCachedIds.has(listingId) || cachedIds.has(listingId)) return true;
+  const { data } = await supabase
+    .from('listings')
+    .select('description, long_description, neighborhood, house_number, apartment_number, rooms, sqm, asking_price, source_metadata')
+    .eq('id', listingId)
+    .maybeSingle();
+  if (!data) return false;
+  const meta = (data.source_metadata ?? {}) as any;
+  const hasText = Boolean(
+    (data.long_description && String(data.long_description).trim()) ||
+    (data.description && String(data.description).trim()),
+  );
+  const hasStructure = Boolean(data.neighborhood || data.house_number || data.apartment_number);
+  const hasDate = Boolean(meta.published_at || meta.original_published_at || meta.date_added);
+  const ok = hasText && hasStructure && hasDate;
+  if (ok) metaCachedIds.add(listingId);
+  return ok;
+}
+
+/**
+ * Metadata-only hydration: re-parses the source ad for text/structure and runs
+ * the backfill + owner CRM sync. Deliberately does NOT touch the image
+ * pipeline — galleries are pulled lazily, only when the user asks for them.
+ */
+async function runMetadataSync(listingId: string, sourceUrl?: string | null): Promise<void> {
+  if (await isListingMetadataImported(listingId)) return;
+
+  if (sourceUrl && /yad2\.co\.il/i.test(sourceUrl)) {
+    try {
+      await supabase.functions.invoke('yad2-unlocker', { body: { url: sourceUrl, limit: 1 } });
+    } catch (e) {
+      console.warn('[propertyFullSync] metadata scrape failed', e);
+    }
+  }
+
+  await Promise.allSettled([
+    supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } }),
+    supabase.functions.invoke('owner-crm-sync', { body: { listing_id: listingId } }),
+  ]);
+  metaCachedIds.add(listingId);
+}
+
+const metaInFlight = new Map<string, Promise<void>>();
+
+/** De-duplicated metadata-only hydration for the detail page. */
+export function ensureMetadataImport(
+  listingId: string | null | undefined,
+  sourceUrl?: string | null,
+): Promise<void> {
+  if (!listingId) return Promise.resolve();
+  const existing = metaInFlight.get(listingId);
+  if (existing) return existing;
+  const p = runMetadataSync(listingId, sourceUrl).finally(() => metaInFlight.delete(listingId));
+  metaInFlight.set(listingId, p);
+  return p;
+}
+
+
 async function runFullSync(listingId: string, sourceUrl?: string | null): Promise<void> {
   // 0. Cache-first: a listing we already mirrored never hits the scraper again.
   if (await isListingFullyImported(listingId)) return;
