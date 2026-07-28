@@ -592,6 +592,8 @@ const OmnichannelInbox = () => {
     return null;
   }, [chatMessages]);
 
+  // Edge functions return a short, already-humanized Hebrew reason in `error`.
+  // Prefer it over raw provider payloads so the broker never sees JSON blobs.
   const readFunctionError = async (err: any) => {
     const ctx = err?.context;
     if (!ctx || typeof ctx.text !== 'function') return err?.message || '';
@@ -599,14 +601,17 @@ const OmnichannelInbox = () => {
       const text = await ctx.text();
       try {
         const parsed = JSON.parse(text);
-        return parsed?.details || parsed?.reason || parsed?.message || parsed?.error || text;
+        const pick = parsed?.error || parsed?.reason || parsed?.message || parsed?.details;
+        if (!pick) return '';
+        return typeof pick === 'string' ? pick : '';
       } catch {
-        return text;
+        return /[{[<]/.test(text) ? '' : text;
       }
     } catch {
       return err?.message || '';
     }
   };
+
 
   const sendMessage = useMutation({
     mutationFn: async ({ content, file, original }: { content: string; file: File | null; original: string }) => {
