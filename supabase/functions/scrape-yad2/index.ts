@@ -14,6 +14,7 @@
 
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { parseHebrewAddress } from "../_shared/addressParse.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -249,7 +250,12 @@ Deno.serve(async (req) => {
         .eq("source_url", row.source_url)
         .maybeSingle();
 
+      // `בית` / `דירה` are parsed during the discovery sync itself, so the
+      // results table renders them by default for every scraped listing.
+      const nums = parseHebrewAddress(row.address);
       const payload: Record<string, unknown> = {
+        house_number: nums.house_number,
+        apartment_number: nums.apartment_number,
         property_title: row.title,
         title: row.title,
         price: row.price,

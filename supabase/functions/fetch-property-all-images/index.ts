@@ -93,7 +93,15 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const listingId = typeof body.listing_id === "string" ? body.listing_id : null;
     const sourceUrlIn = typeof body.source_url === "string" ? body.source_url : null;
+    // Incremental pipeline:
+    //   { discover: true }        -> list source candidates, no mirroring, no DB write
+    //   { only: [url], append:1 } -> mirror just these URLs and APPEND them to the gallery
+    const discover = body.discover === true;
+    const onlyUrls = Array.isArray(body.only)
+      ? (body.only as unknown[]).filter(isHttp).map((u) => u.trim())
+      : null;
     if (!listingId && !sourceUrlIn) return json({ error: "listing_id or source_url is required" }, 400);
+
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
@@ -116,8 +124,10 @@ Deno.serve(async (req) => {
     const source = String(listing.source || "").toLowerCase();
 
     // --- Step 1: re-scrape the original source so we get the FULL gallery ---
+    // Skipped entirely in per-image (`only`) mode: the candidate list was
+    // already discovered, so re-scraping would burn credits on every image.
     let rescrape: string | null = null;
-    if (/yad2/.test(source) || /yad2\.co\.il/i.test(sourceUrl)) {
+    if (!onlyUrls && (/yad2/.test(source) || /yad2\.co\.il/i.test(sourceUrl))) {
       try {
         const r = await userClient.functions.invoke("yad2-unlocker", {
           body: { url: sourceUrl, limit: 1 },
@@ -131,13 +141,17 @@ Deno.serve(async (req) => {
 
     // --- Step 2: gather every candidate URL we know about ---
     const candidates: string[] = [];
-    if (Array.isArray(listing.media_photos)) {
-      for (const p of listing.media_photos as unknown[]) {
-        if (isHttp(p)) candidates.push(p.trim());
-        else if (p && typeof p === "object") harvestUrls(p, candidates);
+    if (onlyUrls) {
+      candidates.push(...onlyUrls);
+    } else {
+      if (Array.isArray(listing.media_photos)) {
+        for (const p of listing.media_photos as unknown[]) {
+          if (isHttp(p)) candidates.push(p.trim());
+          else if (p && typeof p === "object") harvestUrls(p, candidates);
+        }
       }
+      harvestUrls(listing.source_metadata, candidates);
     }
-    harvestUrls(listing.source_metadata, candidates);
 
     const unique: string[] = [];
     const seen = new Set<string>();
@@ -150,6 +164,18 @@ Deno.serve(async (req) => {
       unique.push(u);
       if (unique.length >= MAX_IMAGES) break;
     }
+
+    // --- Discovery mode: return the candidate list, mirror nothing ---
+    if (discover) {
+      return json({
+        ok: unique.length > 0,
+        listing_id: listing.id,
+        candidates: unique,
+        count: unique.length,
+        rescrape,
+      });
+    }
+
 
     // --- Step 3: mirror everything permanently into storage ---
     const referer = /yad2/.test(source) ? "https://www.yad2.co.il/" : (sourceUrl || SUPABASE_URL);
@@ -177,25 +203,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    // --- Step 4: atomic DB update with the full unique gallery ---
+    // --- Step 4: DB update. Incremental (`only`) calls APPEND to the gallery;
+    //     full runs replace it with the complete unique list. ---
     const prevMeta =
       listing.source_metadata && typeof listing.source_metadata === "object" && !Array.isArray(listing.source_metadata)
         ? (listing.source_metadata as Record<string, unknown>)
         : {};
+    let finalGallery = mirrored;
+    if (onlyUrls) {
+      const existing = Array.isArray(listing.media_photos)
+        ? (listing.media_photos as unknown[]).filter(isHttp).map((u) => u.trim())
+        : [];
+      const keys = new Set<string>();
+      finalGallery = [];
+      for (const u of [...existing, ...mirrored]) {
+        const k = photoKey(u);
+        if (keys.has(k)) continue;
+        keys.add(k);
+        finalGallery.push(u);
+      }
+    }
     const { error: upErr } = await admin
       .from("listings")
       .update({
-        media_photos: mirrored,
+        media_photos: finalGallery,
         source_metadata: {
           ...prevMeta,
-          media_urls: mirrored,
-          cached_media_urls: mirrored,
-          media_photos_count: mirrored.length,
-          media_photos_source: "manual_full_fetch",
+          media_urls: finalGallery,
+          cached_media_urls: finalGallery,
+          media_photos_count: finalGallery.length,
+          media_photos_source: onlyUrls ? "incremental_fetch" : "manual_full_fetch",
           media_last_fetched_at: new Date().toISOString(),
         },
       })
       .eq("id", listing.id);
+
     if (upErr) return json({ error: upErr.message }, 500);
 
     console.log(
@@ -206,10 +248,12 @@ Deno.serve(async (req) => {
       ok: true,
       listing_id: listing.id,
       photos: mirrored,
+      gallery: finalGallery,
       count: mirrored.length,
       failed,
       rescrape,
     });
+
   } catch (e) {
     console.error("[fetch-property-all-images]", e);
     return json({ error: String((e as Error)?.message ?? e) }, 500);

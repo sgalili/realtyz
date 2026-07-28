@@ -6,6 +6,7 @@
 // up the UI.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { parseHebrewAddress } from "../_shared/addressParse.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -169,7 +170,11 @@ Deno.serve(async (req) => {
     // even when the live feed is temporarily down.
     if (allResults.length > 0) {
       try {
-        const upserts = allResults.slice(0, 50).map((r) => ({
+        const upserts = allResults.slice(0, 50).map((r) => {
+          // Parse `בית` / `דירה` at discovery time so the results table shows
+          // them by default, without anyone opening the details page.
+          const nums = parseHebrewAddress(r.address);
+          return ({
           user_id: user.id,
           source: "yad2",
           external_id: r.id,
@@ -186,8 +191,11 @@ Deno.serve(async (req) => {
           deal_type: dealType,
           media_photos: r.photos,
           source_metadata: { photos: r.photos, floor: r.floor, url: r.url, source_url: r.url, source_origin: "yad2", cities: targetCities, listing_type: dealType },
+          house_number: nums.house_number,
+          apartment_number: nums.apartment_number,
           updated_at: new Date().toISOString(),
-        }));
+        });
+        });
         await admin
           .from("listings")
           .upsert(upserts as any, { onConflict: "source,external_id" });
