@@ -377,13 +377,12 @@ export default function PropertyDetail() {
     const src = data.sourceUrl;
     if (!src || !/yad2\.co\.il/i.test(src)) return;
 
-    // Once a property has been imported in full, its metadata lives in our DB
-    // forever — never scrape the source again (zero BrightData credits).
-    const doneKey = `realtyz:imported:${id}`;
+    // Once a property's metadata has been hydrated it lives in our DB forever —
+    // never scrape the source again (zero BrightData credits).
+    const doneKey = `realtyz:meta:${id}`;
     try {
-      if (window.localStorage.getItem(doneKey)) {
+      if (window.localStorage.getItem(doneKey) || window.localStorage.getItem(`realtyz:imported:${id}`)) {
         hydratedRef.current = id;
-        galleryPulledRef.current = true;
         return;
       }
     } catch { /* private mode — fall through to the DB check */ }
@@ -392,30 +391,31 @@ export default function PropertyDetail() {
     let cancelled = false;
 
     (async () => {
-      // DB-side guard: if the row already carries the mirrored gallery and the
-      // descriptive metadata, mark it done and skip the loader entirely.
-      if (await isListingFullyImported(id)) {
+      // DB-side guard: pre-hydrated rows render instantly, no loader at all.
+      if (await isListingMetadataImported(id)) {
         if (cancelled) return;
-        galleryPulledRef.current = true;
         try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
         return;
       }
       if (cancelled) return;
 
-      galleryPulledRef.current = true;
       setHydrating(true);
       try {
-        await ensureFullPropertyImport(id, src);
+        // Metadata only — images stay lazy until the user clicks an arrow.
+        await ensureMetadataImport(id, src);
         try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
-        qc.invalidateQueries({ queryKey: ['property-detail', id] });
+        // Refetch BEFORE closing the ring so the fresh values are on screen
+        // the moment the loader disappears (no hard refresh needed).
+        await qc.refetchQueries({ queryKey: ['property-detail', id] });
       } catch { /* keep the page usable */ }
       if (cancelled) return;
       setHydrateProgress(100);
-      setTimeout(() => setHydrating(false), 220);
+      setTimeout(() => { if (!cancelled) setHydrating(false); }, 200);
     })();
 
     return () => { cancelled = true; };
   }, [id, data, qc]);
+
 
 
 
