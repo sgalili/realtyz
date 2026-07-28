@@ -296,6 +296,27 @@ const OmnichannelInbox = () => {
     },
   });
 
+  // Every channel a lead has ever been reached on — used by the horizontal
+  // channel filter so a conversation stays visible even when its most recent
+  // message arrived on a different channel.
+  const { data: leadChannels } = useQuery({
+    queryKey: ['lead-channels'],
+    enabled: !isDemoMode,
+    refetchInterval: 15000,
+    queryFn: async () => {
+      const { data } = await supabase.from('messages').select('lead_id, channel, platform');
+      const map = new Map<string, Set<string>>();
+      (data ?? []).forEach((m: any) => {
+        if (!m?.lead_id) return;
+        const key = String(m.channel || m.platform || '').toLowerCase();
+        if (!key) return;
+        if (!map.has(m.lead_id)) map.set(m.lead_id, new Set());
+        map.get(m.lead_id)!.add(key);
+      });
+      return map;
+    },
+  });
+
   // === PHONE-ANCHORED FALLBACK ===
   // Messages whose lead_id is null (or whose lead row is hidden by RLS) would
   // otherwise vanish from the inbox. Surface them grouped by sender_phone so
