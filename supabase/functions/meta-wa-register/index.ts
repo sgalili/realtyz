@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
       await admin.from("wa_providers").update({ config: next }).eq("id", existing.id);
     } else {
       await admin.from("wa_providers").insert({
-        user_id: userId,
+        user_id: ownerId,
         provider_name: "WBA",
         is_official: true,
         is_active: true,
