@@ -9,6 +9,7 @@ import { useVisibleImageUrls } from '@/lib/imageHealth';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
 import { formatInternalListingTitle } from '@/lib/formatListingTitle';
+import { buildDescriptionBlocks } from '@/lib/descriptionBlocks';
 
 type JsonRecord = Record<string, unknown>;
 
