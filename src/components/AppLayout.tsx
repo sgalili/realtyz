@@ -469,12 +469,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="h-10 w-10 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => window.dispatchEvent(new Event('open-ai-drawer'))}
                 aria-label="פתח עוזר AI"
               >
-                <Bot className="h-4 w-4" />
+                <Bot className="h-5 w-5" />
               </Button>
+
             </div>
           </header>
           <PageHero />

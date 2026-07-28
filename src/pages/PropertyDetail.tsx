@@ -296,6 +296,32 @@ export default function PropertyDetail() {
 
   const dbPhotos = property?.photos ?? [];
 
+  // ---- Owner CRM card auto-provisioning -----------------------------------
+  // Opening a property guarantees the owner exists in the global CRM using the
+  // standard profile card template: name, phone, linked properties, plus the
+  // official Meta WhatsApp Business profile picture. Runs once per listing.
+  const ownerSyncedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const listingId = data?.row?.id ? String(data.row.id) : null;
+    if (!listingId || data?.owner) return;
+    if (ownerSyncedRef.current === listingId) return;
+    ownerSyncedRef.current = listingId;
+    (async () => {
+      try {
+        const { data: res } = await supabase.functions.invoke('owner-crm-sync', {
+          body: { listing_id: listingId },
+        });
+        if (res && ((res as any).created > 0 || (res as any).linked > 0)) {
+          qc.invalidateQueries({ queryKey: ['property-detail', listingId] });
+        }
+      } catch {
+        /* silent: owner enrichment must never block the detail view */
+      }
+    })();
+  }, [data?.row?.id, data?.owner, qc]);
+
+
+
   // ---- Automatic on-view metadata hydration -------------------------------
   // When a property is opened and key Yad2 metadata is missing (ארנונה,
   // ועד בית, מספר תשלומים, or the "על הנכס" text), re-parse the source ad
@@ -812,24 +838,66 @@ export default function PropertyDetail() {
       )}
 
 
-      {/* Headline + price */}
+      {/* Headline · neighborhood · price · actions row */}
       <header className="space-y-2">
-        <div className="mb-4">
+        <div>
           <div
             role="heading"
             aria-level={1}
             className="text-3xl font-bold text-right text-slate-900 block leading-snug"
           >
-            {/* Neighborhood is part of the internal headline. */}
-            {neighborhood && !dynamicHeadline.includes(neighborhood)
-              ? `${dynamicHeadline}, ${neighborhood}`
-              : dynamicHeadline}
+            {dynamicHeadline}
           </div>
+          {/* Neighborhood sits directly under the title, above the price. */}
+          {neighborhood && (
+            <div className="mt-1 text-lg font-medium text-slate-600">{neighborhood}</div>
+          )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          {/* Edit pencil + external link — far top-left of price row */}
-          <div className="order-2 flex items-center gap-3">
+        {/* Price */}
+        <div className="flex items-baseline gap-3 flex-wrap pt-1">
+          {editMode && form ? (
+            <Input
+              type="number"
+              value={form.price}
+              onChange={(e) => setField('price', e.target.value)}
+              className="max-w-xs"
+              placeholder="מחיר"
+            />
+          ) : property.price > 0 ? (
+            <>
+              {/* 48px → 38px per workspace spec */}
+              <span className="text-[38px] leading-none font-extrabold text-success tabular-nums">
+                {formatPrice(property.price)}
+                {isRent && <span className="text-xl font-normal text-muted-foreground"> /חודש</span>}
+              </span>
+              {pricePerMeter ? (
+                <span className="text-lg text-muted-foreground font-normal">
+                  ({pricePerMeter} ₪ למ"ר)
+                </span>
+              ) : null}
+            </>
+          ) : (
+            <span className="text-3xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
+          )}
+        </div>
+
+        {/* Owner (visual right, RTL start) + action buttons (visual left) */}
+        <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
+          {data?.owner ? (
+            <Link
+              to={`/crm/profile/${data.owner.id}`}
+              className="text-[16px] font-semibold text-primary hover:underline"
+              title="פתיחת כרטיס הלקוח"
+            >
+              {data.owner.full_name}
+            </Link>
+          ) : (
+            <span />
+          )}
+
+          <div className="flex items-center gap-3">
+
             {!editMode ? (
               <>
 
@@ -941,48 +1009,8 @@ export default function PropertyDetail() {
               </>
             )}
           </div>
-
-          <div className="flex items-baseline gap-3 flex-wrap order-1">
-            {editMode && form ? (
-              <Input
-                type="number"
-                value={form.price}
-                onChange={(e) => setField('price', e.target.value)}
-                className="max-w-xs"
-                placeholder="מחיר"
-              />
-            ) : (
-              <>
-                {property.price > 0 ? (
-                  <>
-                    {/* 48px → 38px per workspace spec */}
-                    <span className="text-[38px] leading-none font-extrabold text-success tabular-nums">
-                      {formatPrice(property.price)}
-                      {isRent && <span className="text-xl font-normal text-muted-foreground"> /חודש</span>}
-                    </span>
-                    {pricePerMeter ? (
-                      <span className="text-lg text-muted-foreground font-normal">
-                        ({pricePerMeter} ₪ למ"ר)
-                      </span>
-                    ) : null}
-                  </>
-                ) : (
-                  <span className="text-3xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
-                )}
-                {/* Owner sits on the same row as the action buttons, opposite side. */}
-                {data?.owner && (
-                  <Link
-                    to={`/crm/profile/${data.owner.id}`}
-                    className="text-[16px] font-semibold text-primary hover:underline"
-                    title="פתיחת כרטיס הלקוח"
-                  >
-                    {data.owner.full_name}
-                  </Link>
-                )}
-              </>
-            )}
-          </div>
         </div>
+
       </header>
 
       {/* Gallery + sidebar */}

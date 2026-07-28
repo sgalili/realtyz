@@ -137,6 +137,12 @@ type Toast = Omit<ToasterToast, "id">;
 function toast({ ...props }: Toast) {
   const id = genId();
 
+  // Global policy: only critical failures are surfaced to the user.
+  if (props.variant !== "destructive") {
+    return { id, dismiss: () => {}, update: () => {} };
+  }
+
+
   const update = (props: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",
