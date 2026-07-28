@@ -127,9 +127,18 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
       const errorData = error ? await readFunctionError(error) : null;
       if (error) { explainError(BRAND.whatsapp.label, error, errorData || data, toastId); return; }
       const d = (data as any) || {};
+      // Meta's official WhatsApp Business API does not expose contact photos.
+      if (d.supported === false) {
+        toast.dismiss(toastId);
+        toast.info('משיכת תמונה מוואטסאפ אינה נתמכת', {
+          description: d.reason || 'ממשק WhatsApp Business הרשמי אינו מספק תמונות פרופיל של אנשי קשר',
+          duration: 7000,
+        });
+        return;
+      }
       if (d.success === false || d.error) { explainError(BRAND.whatsapp.label, null, d, toastId); return; }
       if ((d.updated ?? 0) > 0) { toast.success('תמונה עודכנה מוואטסאפ', { id: toastId }); onUpdated?.(); return; }
-      if ((d.failed ?? 0) > 0 || d.reason || (Array.isArray(d.errors) && d.errors.length)) { explainError(BRAND.whatsapp.label, null, d, toastId); return; }
+      if ((d.failed ?? 0) > 0 || (Array.isArray(d.errors) && d.errors.length)) { explainError(BRAND.whatsapp.label, null, d, toastId); return; }
       // scanned but nothing to update — either no avatar on WA or phone not on WA.
       toast.dismiss(toastId);
       toast.warning('לא נמצאה תמונת פרופיל פעילה בוואטסאפ', {
