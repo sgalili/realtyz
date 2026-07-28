@@ -200,6 +200,20 @@ serve(async (req) => {
       });
     }
 
+    // Channel credentials (WhatsApp Business, SMS, ...) belong to the WORKSPACE
+    // OWNER, not to each team member. Resolve the active workspace owner so a
+    // collaborator's send is routed through the owner's authorized Meta number.
+    let workspaceOwnerId = userData.user.id;
+    try {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("active_workspace_owner_id")
+        .eq("id", userData.user.id)
+        .maybeSingle();
+      const owner = (prof as any)?.active_workspace_owner_id;
+      if (owner) workspaceOwnerId = owner as string;
+    } catch (_e) { /* fall back to self */ }
+
     const { data: voter } = lead_id
       ? await supabase
         .from("leads")
@@ -248,7 +262,7 @@ serve(async (req) => {
             apikey: serviceRoleKey,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ lead_id, phone_number: intl, message: finalContent, tenant_id: userData.user.id }),
+          body: JSON.stringify({ lead_id, phone_number: intl, message: finalContent, tenant_id: workspaceOwnerId }),
         });
         const waText = await waRes.text();
         let waJson: any = null; try { waJson = waText ? JSON.parse(waText) : null; } catch { /* keep */ }
@@ -344,7 +358,7 @@ serve(async (req) => {
           apikey: serviceRoleKey,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ lead_id, phone_number: intl, message: finalContent, tenant_id: userData.user.id }),
+        body: JSON.stringify({ lead_id, phone_number: intl, message: finalContent, tenant_id: workspaceOwnerId }),
       });
       const waText = await waRes.text();
       let waJson: any = null; try { waJson = waText ? JSON.parse(waText) : null; } catch { /* keep raw */ }

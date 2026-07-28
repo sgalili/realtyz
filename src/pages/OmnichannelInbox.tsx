@@ -296,6 +296,27 @@ const OmnichannelInbox = () => {
     },
   });
 
+  // Every channel a lead has ever been reached on — used by the horizontal
+  // channel filter so a conversation stays visible even when its most recent
+  // message arrived on a different channel.
+  const { data: leadChannels } = useQuery({
+    queryKey: ['lead-channels'],
+    enabled: !isDemoMode,
+    refetchInterval: 15000,
+    queryFn: async () => {
+      const { data } = await supabase.from('messages').select('lead_id, channel, platform');
+      const map = new Map<string, Set<string>>();
+      (data ?? []).forEach((m: any) => {
+        if (!m?.lead_id) return;
+        const key = String(m.channel || m.platform || '').toLowerCase();
+        if (!key) return;
+        if (!map.has(m.lead_id)) map.set(m.lead_id, new Set());
+        map.get(m.lead_id)!.add(key);
+      });
+      return map;
+    },
+  });
+
   // === PHONE-ANCHORED FALLBACK ===
   // Messages whose lead_id is null (or whose lead row is hidden by RLS) would
   // otherwise vanish from the inbox. Surface them grouped by sender_phone so
@@ -764,7 +785,12 @@ const OmnichannelInbox = () => {
     const base = (voters ?? []).filter((v) => {
       if (!matchesLeadSearch(v, search)) return false;
       const m: any = lastMessages?.get(v.id);
-      if (channelFilter.size > 0 && !channelFilter.has(String(m?.channel || ''))) return false;
+      if (channelFilter.size > 0) {
+        const known = leadChannels?.get(v.id);
+        const lastCh = String(m?.channel || m?.platform || '').toLowerCase();
+        const hit = Array.from(channelFilter).some((c) => (known?.has(c) ?? false) || lastCh === c);
+        if (!hit) return false;
+      }
       if (activeTab === 'waiting') return m?.direction === 'inbound';
       if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
       if (bookmarkedOnly) return (v as any).is_bookmarked === true;
@@ -887,8 +913,11 @@ const OmnichannelInbox = () => {
       <div className="flex items-center gap-2 overflow-x-auto">
         {(() => {
           const channelsInList = new Set<string>();
+          (leadChannels instanceof Map ? Array.from(leadChannels.values()) : []).forEach((set: Set<string>) => {
+            set.forEach((c) => channelsInList.add(c));
+          });
           (lastMessages instanceof Map ? Array.from(lastMessages.values()) : []).forEach((m: any) => {
-            if (m?.channel) channelsInList.add(String(m.channel));
+            if (m?.channel) channelsInList.add(String(m.channel).toLowerCase());
           });
           return ([
             { key: 'whatsapp', label: 'WhatsApp' },
@@ -904,15 +933,22 @@ const OmnichannelInbox = () => {
           ] as const).map((c) => {
             const active = channelFilter.has(c.key);
             const hasChats = channelsInList.has(c.key);
-            const handleClick = () => {
+            const handleClick = (e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              let selected = false;
               setChannelFilter((prev) => {
                 const next = new Set(prev);
-                if (next.has(c.key)) next.delete(c.key);
-                else next.add(c.key);
+                if (next.has(c.key)) {
+                  next.delete(c.key);
+                } else {
+                  next.add(c.key);
+                  selected = true;
+                }
                 return next;
               });
-              if (!selectedVoterId) return;
-              setSendChannel(c.key);
+              // Only switch the composer channel when the button was turned ON.
+              if (selected && selectedVoterId) setSendChannel(c.key);
             };
             return (
               <button
@@ -938,7 +974,7 @@ const OmnichannelInbox = () => {
 
       <div className="grid h-[calc(100svh-300px)] min-h-[480px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-340px)] lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
         {/* Right panel - Contact List */}
-        <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-w-0 flex-col border-l bg-card`}>
+        <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden border-l bg-card`}>
           <div className="p-3 border-b">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -950,7 +986,7 @@ const OmnichannelInbox = () => {
               />
             </div>
           </div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="min-h-0 flex-1 overflow-y-auto">
             {searchedPhone && !phoneAlreadyKnown && (
               <button
                 type="button"
