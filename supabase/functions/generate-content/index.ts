@@ -202,7 +202,9 @@ LISTING-FOCUS MODE — EXACT MASTER TEMPLATE (mandatory, no deviation, blank lin
 4. Lifestyle line: "💫 <lifestyle benefit>" — one short sentence.
 5. Price + CTA COMBINED on ONE line, verbatim format: "מחיר מבוקש: <price>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" (price taken verbatim from [PROMOTED LISTING]; do not split across two lines; do not vary the CTA wording).
 - FORBIDDEN: long broker-intro paragraphs, "אני אודי", "כמתווך", "בתור מתווך", "יש לי הכבוד", "אני שמח להציג", "אני גאה להציג", any self-branding preface, ✅ bullets, 📍 / 💰 lines, keyword pipe-line, hashtags, feature-list dumps.
-- Ground every concrete detail (address, rooms, sqm, floor, price, features, area perks) in [PROMOTED LISTING]. Do NOT invent details.
+- Ground every concrete detail (address, rooms, sqm, floor, price, features) in [PROMOTED LISTING]. Do NOT invent details.
+- FORBIDDEN: market statistics, transaction/comparable data, average prices per sqm, "נתוני שוק", "עסקאות אחרונות", neighborhood research or any data not belonging to this listing.
+
 - DO NOT copy the property's long free-text description into the post — it belongs to the FIRST COMMENT only.
 - STREET-NUMBER RULE (HARD): every address token must be street name only, never with house number, apartment number, or entrance number. "רחוב X 12" → "רחוב X". This applies to hook, description, location line, everywhere.
 - ABSOLUTELY FORBIDDEN: bracketed placeholders ("[insert license]", "[מספר טלפון]", "[TBD]", "[Real License Number]"), square-bracket tokens, or parenthetical instructions.
