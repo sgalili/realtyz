@@ -178,9 +178,8 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
             ? `מאפיינים בולטים: ${promotedFeatures.slice(0, 8).join(", ")}`
             : null,
           // NOTE: The full free-text description is INTENTIONALLY excluded from the main post prompt.
-
-          // NOTE: The full free-text description is INTENTIONALLY excluded from the main post prompt.
           // It belongs in the FIRST COMMENT box (handled client-side), not in the main post body.
+
 
         ].filter(Boolean).join("\n")
       : "";
