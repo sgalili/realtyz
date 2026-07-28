@@ -64,6 +64,106 @@ Deno.serve(async (req) => {
       for (const change of changes) {
         const field = String(change?.field ?? "");
         const value = change?.value ?? {};
+
+        // ── Inbound messages (field = "messages") ────────────────────────────
+        if (field === "messages") {
+          const phoneNumberId = String(value?.metadata?.phone_number_id ?? "");
+          const contacts = Array.isArray(value?.contacts) ? value.contacts : [];
+          const msgs = Array.isArray(value?.messages) ? value.messages : [];
+          if (!msgs.length) continue;
+
+          // Resolve workspace owner from the receiving phone number id / WABA id.
+          let ownerId: string | null = null;
+          const { data: provRows } = await admin
+            .from("wa_providers")
+            .select("user_id, config")
+            .eq("provider_name", "WBA");
+          const prov = (provRows ?? []).find((row: { config: Cfg }) => {
+            const cfg = (row.config ?? {}) as Cfg;
+            return (
+              (phoneNumberId && String(cfg.phone_number_id ?? "") === phoneNumberId) ||
+              (wabaId && String(cfg.waba_id ?? "") === wabaId)
+            );
+          }) as { user_id: string } | undefined;
+          ownerId = prov?.user_id ?? null;
+
+          for (const m of msgs) {
+            try {
+              const from = String(m?.from ?? "").replace(/\D/g, "");
+              if (!from) continue;
+              const contact = contacts.find(
+                (c: any) => String(c?.wa_id ?? "").replace(/\D/g, "") === from,
+              );
+              const profileName = contact?.profile?.name ?? null;
+
+              const type = String(m?.type ?? "text");
+              const content =
+                m?.text?.body ??
+                m?.button?.text ??
+                m?.interactive?.button_reply?.title ??
+                m?.interactive?.list_reply?.title ??
+                m?.image?.caption ??
+                m?.video?.caption ??
+                m?.document?.filename ??
+                (type === "image"
+                  ? "[תמונה]"
+                  : type === "audio"
+                  ? "[הודעה קולית]"
+                  : type === "video"
+                  ? "[וידאו]"
+                  : type === "document"
+                  ? "[מסמך]"
+                  : type === "location"
+                  ? "[מיקום]"
+                  : "[הודעת WhatsApp]");
+
+              // 1. Ensure a CRM lead exists for this sender.
+              const { data: leadId, error: leadErr } = await admin.rpc(
+                "upsert_lead_from_interaction",
+                {
+                  _platform: "whatsapp",
+                  _handle: from,
+                  _external_id: from,
+                  _full_name: profileName,
+                  _phone: from,
+                  _email: null,
+                  _avatar: null,
+                  _owner: ownerId,
+                },
+              );
+              if (leadErr) console.error("[meta-wa-webhook] upsert lead failed", leadErr);
+
+              // 2. Mirror into the unified omni-channel chat feed.
+              const ts = m?.timestamp
+                ? new Date(Number(m.timestamp) * 1000).toISOString()
+                : new Date().toISOString();
+              const { error: msgErr } = await admin.rpc("record_interaction_message", {
+                _lead_id: leadId ?? null,
+                _platform: "whatsapp",
+                _direction: "inbound",
+                _sender_type: "voter",
+                _content: String(content),
+                _external_id: String(m?.id ?? ""),
+                _created_at: ts,
+                _metadata: {
+                  source: "meta_wa_webhook",
+                  owner_id: ownerId,
+                  phone_number_id: phoneNumberId,
+                  waba_id: wabaId,
+                  wa_from: from,
+                  profile_name: profileName,
+                  message_type: type,
+                  raw: m,
+                },
+              });
+              if (msgErr) console.error("[meta-wa-webhook] record message failed", msgErr);
+            } catch (inner) {
+              console.error("[meta-wa-webhook] message handling error", inner);
+            }
+          }
+          continue;
+        }
+
         if (
           ![
             "account_update",
