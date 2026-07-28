@@ -913,8 +913,11 @@ const OmnichannelInbox = () => {
       <div className="flex items-center gap-2 overflow-x-auto">
         {(() => {
           const channelsInList = new Set<string>();
+          (leadChannels instanceof Map ? Array.from(leadChannels.values()) : []).forEach((set: Set<string>) => {
+            set.forEach((c) => channelsInList.add(c));
+          });
           (lastMessages instanceof Map ? Array.from(lastMessages.values()) : []).forEach((m: any) => {
-            if (m?.channel) channelsInList.add(String(m.channel));
+            if (m?.channel) channelsInList.add(String(m.channel).toLowerCase());
           });
           return ([
             { key: 'whatsapp', label: 'WhatsApp' },
