@@ -1374,12 +1374,15 @@ function ResultTable({
                         <Building2 className="h-4 w-4 text-muted-foreground/50" />
                       </div>
                     )}
-                    {/* Total images available for this listing. */}
-                    {(r.photos?.length ?? 0) > 1 && (
-                      <span className="absolute top-0 right-0 rounded-bl-md bg-black/70 px-1 text-[9px] font-bold leading-[13px] text-white tabular-nums">
-                        {r.photos!.length}
-                      </span>
-                    )}
+                    {/* Total images available on the SOURCE page, even if not imported. */}
+                    {(() => {
+                      const total = sourcePhotoCount(r, r.photos?.length ?? 0);
+                      return total > 0 ? (
+                        <span className="absolute top-0 right-0 rounded-bl-md bg-black/70 px-1 text-[9px] font-bold leading-[13px] text-white tabular-nums">
+                          {total}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                 </td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
