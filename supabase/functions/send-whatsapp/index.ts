@@ -9,6 +9,7 @@
  * Credentials are resolved from (in order):
  *   1. `wa_providers` row with provider_name='WBA' scoped by tenant_id/user_id
  *   2. META_WA_PHONE_NUMBER_ID / META_WA_ACCESS_TOKEN environment secrets
+ *      (legacy aliases META_PHONE_NUMBER_ID / META_WHATSAPP_TOKEN also work)
  *
  * There is NO unofficial/legacy provider fallback.
  *
@@ -32,6 +33,22 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+const safeErrorDetails = (error: unknown) => ({
+  name: error instanceof Error ? error.name : typeof error,
+  message: error instanceof Error ? error.message : String(error),
+  stack: error instanceof Error ? error.stack?.slice(0, 4000) : undefined,
+});
+
+const envPresence = () => ({
+  has_meta_wa_access_token: !!Deno.env.get("META_WA_ACCESS_TOKEN"),
+  has_meta_whatsapp_token: !!Deno.env.get("META_WHATSAPP_TOKEN"),
+  has_meta_wa_phone_number_id: !!Deno.env.get("META_WA_PHONE_NUMBER_ID"),
+  has_meta_phone_number_id: !!Deno.env.get("META_PHONE_NUMBER_ID"),
+  meta_wa_api_version: Deno.env.get("META_WA_API_VERSION") ?? null,
+  meta_api_version: Deno.env.get("META_API_VERSION") ?? null,
+  whatsapp_api_version: Deno.env.get("WHATSAPP_API_VERSION") ?? null,
+});
 
 const BodySchema = z
   .object({
@@ -177,8 +194,8 @@ async function resolveProvider(
   }
 
   // Project-level Meta Cloud API secrets.
-  const phoneNumberId = Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? "";
-  const accessToken = Deno.env.get("META_WA_ACCESS_TOKEN") ?? "";
+  const phoneNumberId = Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? Deno.env.get("META_PHONE_NUMBER_ID") ?? "";
+  const accessToken = Deno.env.get("META_WA_ACCESS_TOKEN") ?? Deno.env.get("META_WHATSAPP_TOKEN") ?? "";
   if (phoneNumberId && accessToken) {
     return {
       name: "WBA",
@@ -186,7 +203,7 @@ async function resolveProvider(
       config: {
         phone_number_id: phoneNumberId,
         access_token: accessToken,
-        api_version: Deno.env.get("META_WA_API_VERSION") ?? "v20.0",
+        api_version: Deno.env.get("META_WA_API_VERSION") ?? Deno.env.get("META_API_VERSION") ?? Deno.env.get("WHATSAPP_API_VERSION") ?? "v20.0",
       },
     };
   }
@@ -242,16 +259,41 @@ async function sendViaWba(
         text: { body: message ?? "" },
       };
 
-  const textRes = await fetch(baseUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  const textJson = await textRes.json().catch(() => ({}));
+  let textRes: Response;
+  let textJson: any = {};
+  try {
+    textRes = await fetch(baseUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    textJson = await textRes.json().catch(() => ({}));
+  } catch (error) {
+    console.error("send-whatsapp Meta text request threw", {
+      phone_number_id_last4: phoneNumberId.slice(-4),
+      phone_last4: phone.slice(-4),
+      api_version: apiVersion,
+      error: safeErrorDetails(error),
+    });
+    return {
+      success: false,
+      provider: "WBA",
+      message_id: null,
+      error: "WBA network request failed",
+      details: { error: safeErrorDetails(error) },
+    };
+  }
   if (!textRes.ok) {
+    console.error("send-whatsapp Meta text rejected", {
+      status: textRes.status,
+      phone_number_id_last4: phoneNumberId.slice(-4),
+      phone_last4: phone.slice(-4),
+      api_version: apiVersion,
+      meta_error: textJson?.error ?? textJson,
+    });
     return {
       success: false,
       provider: "WBA",
@@ -274,16 +316,41 @@ async function sendViaWba(
   uploadForm.append("type", mime);
   uploadForm.append("file", new Blob([bytes], { type: mime }), file.file_name);
 
-  const upRes = await fetch(
-    `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/media`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
-      body: uploadForm,
-    },
-  );
-  const upJson = await upRes.json().catch(() => ({}));
+  let upRes: Response;
+  let upJson: any = {};
+  try {
+    upRes = await fetch(
+      `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/media`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: uploadForm,
+      },
+    );
+    upJson = await upRes.json().catch(() => ({}));
+  } catch (error) {
+    console.error("send-whatsapp Meta media upload threw", {
+      phone_number_id_last4: phoneNumberId.slice(-4),
+      phone_last4: phone.slice(-4),
+      api_version: apiVersion,
+      error: safeErrorDetails(error),
+    });
+    return {
+      success: false,
+      provider: "WBA",
+      message_id: textMsgId,
+      error: "WBA media upload network request failed",
+      details: { error: safeErrorDetails(error) },
+    };
+  }
   if (!upRes.ok || !upJson?.id) {
+    console.error("send-whatsapp Meta media upload rejected", {
+      status: upRes.status,
+      phone_number_id_last4: phoneNumberId.slice(-4),
+      phone_last4: phone.slice(-4),
+      api_version: apiVersion,
+      meta_error: upJson?.error ?? upJson,
+    });
     return {
       success: false,
       provider: "WBA",
@@ -293,25 +360,50 @@ async function sendViaWba(
     };
   }
 
-  const docRes = await fetch(baseUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: phone,
-      type: "document",
-      document: {
-        id: upJson.id,
-        filename: file.file_name,
-        caption: file.caption ?? undefined,
+  let docRes: Response;
+  let docJson: any = {};
+  try {
+    docRes = await fetch(baseUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
       },
-    }),
-  });
-  const docJson = await docRes.json().catch(() => ({}));
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: phone,
+        type: "document",
+        document: {
+          id: upJson.id,
+          filename: file.file_name,
+          caption: file.caption ?? undefined,
+        },
+      }),
+    });
+    docJson = await docRes.json().catch(() => ({}));
+  } catch (error) {
+    console.error("send-whatsapp Meta document request threw", {
+      phone_number_id_last4: phoneNumberId.slice(-4),
+      phone_last4: phone.slice(-4),
+      api_version: apiVersion,
+      error: safeErrorDetails(error),
+    });
+    return {
+      success: false,
+      provider: "WBA",
+      message_id: textMsgId,
+      error: "WBA document network request failed",
+      details: { error: safeErrorDetails(error) },
+    };
+  }
   if (!docRes.ok) {
+    console.error("send-whatsapp Meta document rejected", {
+      status: docRes.status,
+      phone_number_id_last4: phoneNumberId.slice(-4),
+      phone_last4: phone.slice(-4),
+      api_version: apiVersion,
+      meta_error: docJson?.error ?? docJson,
+    });
     return {
       success: false,
       provider: "WBA",
@@ -409,9 +501,22 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !ANON_KEY) {
+      console.error("send-whatsapp missing backend env", {
+        has_supabase_url: !!SUPABASE_URL,
+        has_service_role_key: !!SERVICE_ROLE_KEY,
+        has_anon_key: !!ANON_KEY,
+      });
+      return json({
+        success: false,
+        provider: "WBA",
+        message_id: null,
+        error: "Backend environment is not configured",
+      }, 500);
+    }
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     // Caller identification:
@@ -477,6 +582,11 @@ Deno.serve(async (req) => {
       routingTenantId,
     );
     if (!provider) {
+      console.error("send-whatsapp no active WBA provider", {
+        user_routed: !!userId,
+        tenant_routed: !!routingTenantId,
+        env: envPresence(),
+      });
       return json({
         success: false,
         provider: "WBA",
@@ -576,6 +686,7 @@ Deno.serve(async (req) => {
             phone_last4: phone.slice(-4),
             tenant_routed: !!routingTenantId,
             template: parsed.data.template_id ?? null,
+            env: envPresence(),
           },
         });
       } catch (_e) { /* best-effort */ }
@@ -584,17 +695,18 @@ Deno.serve(async (req) => {
 
     return json(result, result.success ? 200 : 502);
   } catch (e) {
-    console.error("send-whatsapp error", e);
+    console.error("send-whatsapp unhandled error", safeErrorDetails(e));
     await logIntegrationError({
       integration: "whatsapp",
       functionName: "send-whatsapp",
       errorMessage: e instanceof Error ? e.message : "Internal error",
+      context: { error: safeErrorDetails(e), env: envPresence() },
     });
     return json({
       success: false,
       provider: "WBA",
       message_id: null,
-      error: "שליחת ההודעה בוואטסאפ נכשלה — נסה שוב",
+      error: e instanceof Error ? `שליחת ההודעה בוואטסאפ נכשלה: ${e.message}` : "שליחת ההודעה בוואטסאפ נכשלה — נסה שוב",
     }, 500);
   }
 });
