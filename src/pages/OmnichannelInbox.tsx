@@ -175,6 +175,21 @@ const OmnichannelInbox = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Agent identity for outbound chat bubbles (circular avatar next to each one).
+  const { data: agentProfile } = useQuery({
+    queryKey: ['inbox-agent-profile', user?.id],
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user!.id)
+        .maybeSingle();
+      return (data as any) ?? null;
+    },
+  });
+
   // Auto-sync inbound Messenger/Instagram DMs on mount + every 60s, since
   // Ayrshare's push webhook isn't always reliable.
   useEffect(() => {
@@ -445,7 +460,12 @@ const OmnichannelInbox = () => {
     return dbChatMessages ?? [];
   }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages]);
 
-  const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
+  // `voters` only contains threads that already have messages. When the broker
+  // opens a contact straight from search (no messages yet), fall back to the
+  // full CRM list so the header shows the real name + phone immediately.
+  const selectedVoter =
+    voters?.find((v) => v.id === selectedVoterId) ??
+    (dbVoters as any[] | undefined)?.find((v: any) => v.id === selectedVoterId);
   // Per-contact autopilot: independent from the global hero switch.
   // Defaults ON when the column is null/undefined (matches backend behavior).
   const leadAutopilot = (selectedVoter as any)?.ai_autopilot !== false;
@@ -1005,12 +1025,14 @@ const OmnichannelInbox = () => {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
+                    {/* Clicking a result (avatar or name) only opens the chat —
+                        it never navigates to the CRM profile page. */}
                     <button
                       type="button"
-                      onClick={(event) => { event.stopPropagation(); navigate(`/lead-crm/${voter.id}`); }}
+                      onClick={(event) => { event.stopPropagation(); setSelectedVoterId(voter.id); }}
                       className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      title="פתיחת כרטיס מתעניין"
-                      aria-label="פתיחת כרטיס מתעניין"
+                      title="פתיחת השיחה"
+                      aria-label="פתיחת השיחה"
                     >
                       <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
                     </button>
@@ -1018,9 +1040,9 @@ const OmnichannelInbox = () => {
                       <div className="flex min-w-0 flex-row-reverse items-center justify-between gap-2">
                         <button
                           type="button"
-                          onClick={(event) => { event.stopPropagation(); navigate(`/lead-crm/${voter.id}`); }}
-                          className="text-sm font-medium truncate min-w-0 hover:underline text-right"
-                          title="פתיחת כרטיס מתעניין"
+                          onClick={(event) => { event.stopPropagation(); setSelectedVoterId(voter.id); }}
+                          className="text-sm font-medium truncate min-w-0 text-right"
+                          title="פתיחת השיחה"
                         >
                           {voter.full_name || formatPhoneDisplay(voter.phone_number)}
                         </button>
@@ -1061,7 +1083,7 @@ const OmnichannelInbox = () => {
           ) : (
             <>
               {/* Chat Header */}
-              <div className="h-14 border-b border-whatsapp-header/20 bg-whatsapp-header text-whatsapp-header-foreground flex items-center justify-between px-3 sm:px-4 shrink-0">
+              <div className="h-16 border-b border-whatsapp-header/20 bg-whatsapp-header text-whatsapp-header-foreground flex items-center justify-between px-3 sm:px-4 shrink-0">
                 <div className="flex min-w-0 items-center gap-3">
                   <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10 lg:hidden" onClick={() => setSelectedVoterId(null)}>
                     <span className="text-xl leading-none scale-x-[-1]">›</span>
@@ -1073,20 +1095,21 @@ const OmnichannelInbox = () => {
                     title="פתיחת כרטיס מתעניין"
                     aria-label="פתיחת כרטיס מתעניין"
                   >
-                    <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
+                    <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-10 w-10" textClassName="text-xs" />
                   </button>
                   <div className="min-w-0">
                     <button
                       type="button"
                       onClick={() => selectedVoterId && navigate(`/lead-crm/${selectedVoterId}`)}
-                      className="block truncate text-sm font-semibold hover:underline text-right"
+                      className="block truncate text-[17px] font-semibold leading-tight hover:underline text-right"
                       title="פתיחת כרטיס מתעניין"
                     >
                       {contactName}
                     </button>
-                    <p className="text-[10px] text-whatsapp-header-foreground/75" dir="ltr">
+                    <p className="text-[13px] leading-tight text-whatsapp-header-foreground/75" dir="ltr">
                       {contactPhone || 'WhatsApp Business'}
                     </p>
+
 
                   </div>
 
@@ -1157,7 +1180,14 @@ const OmnichannelInbox = () => {
                           </div>
                         )}
                         <div className={`flex min-w-0 items-end gap-2 ${isOutbound ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
-                          {!isOutbound && (
+                          {isOutbound ? (
+                            <VoterAvatar
+                              fullName={agentProfile?.full_name ?? 'סוכן'}
+                              profilePictureUrl={agentProfile?.avatar_url ?? null}
+                              className="h-7 w-7 shrink-0"
+                              textClassName="text-[10px]"
+                            />
+                          ) : (
                             <VoterAvatar
                               fullName={selectedVoter?.full_name}
                               profilePictureUrl={(selectedVoter as any)?.profile_picture_url}
@@ -1181,9 +1211,6 @@ const OmnichannelInbox = () => {
                               />
                             )}
                             <div className="mb-1 flex items-center justify-end gap-1.5">
-                              <Badge variant="outline" className={`px-1 py-0 text-[9px] border ${badge.className}`}>
-                                {badge.label}
-                              </Badge>
                               <ChannelIcon channel={msg.channel} />
                             </div>
                             <p className="max-w-full overflow-hidden whitespace-pre-wrap break-all text-sm leading-relaxed">{msg.content}</p>
@@ -1202,9 +1229,24 @@ const OmnichannelInbox = () => {
 
               {/* Input Area */}
               <div className="border-t border-border/50 bg-whatsapp-footer p-2 sm:p-3">
-                {/* Autopilot pill — holds the robot icon + the per-chat switch. */}
+                {/* Autopilot pill — the switch sits on the right (RTL start) and
+                    carries the robot icon inside its knob. */}
                 <div className="mb-2 flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-1.5 text-whatsapp-header shadow-sm">
-                  <Bot className={`h-4 w-4 shrink-0 ${chatAutopilotOn ? 'text-whatsapp-header' : 'text-muted-foreground'}`} />
+                  <Switch
+                    checked={chatAutopilotOn}
+                    disabled={!selectedVoterId}
+                    title="טייס AI לשיחה זו"
+                    aria-label="טייס AI לשיחה זו"
+                    className="group shrink-0 border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground"
+                    onCheckedChange={(v) => {
+                      setChatAutopilot(v);
+                      if (v) setManualTakeoverWarning(false);
+                    }}
+                  >
+                    <Bot
+                      className={`pointer-events-none absolute left-1 top-1/2 z-20 h-3 w-3 -translate-y-1/2 transition-transform group-data-[state=checked]:translate-x-5 ${chatAutopilotOn ? 'text-whatsapp-header' : 'text-muted-foreground'}`}
+                    />
+                  </Switch>
                   <span className="text-xs font-medium">
                     {manualTakeoverWarning
                       ? 'מצב ידני - הטייס האוטומטי מושהה לשיחה זו'
@@ -1212,17 +1254,6 @@ const OmnichannelInbox = () => {
                         ? 'טייס אוטומטי פעיל לשיחה זו - ה-AI עונה באופן אוטומטי'
                         : 'טייס אוטומטי כבוי לשיחה זו - המענה ידני'}
                   </span>
-                  <Switch
-                    checked={chatAutopilotOn}
-                    disabled={!selectedVoterId}
-                    title="טייס AI לשיחה זו"
-                    aria-label="טייס AI לשיחה זו"
-                    className="ms-auto shrink-0 border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground"
-                    onCheckedChange={(v) => {
-                      setChatAutopilot(v);
-                      if (v) setManualTakeoverWarning(false);
-                    }}
-                  />
                 </div>
                 <div className="flex items-center gap-2">
 
