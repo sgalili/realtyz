@@ -5,3 +5,7 @@ verify_jwt = false
 
 [functions.ayrshare-webhook]
 verify_jwt = false
+
+[functions.meta-wa-webhook]
+verify_jwt = false
+
