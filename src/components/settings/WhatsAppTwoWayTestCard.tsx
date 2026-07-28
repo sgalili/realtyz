@@ -15,6 +15,7 @@ type SendResult = {
   messageId?: string | null;
   error?: string;
   details?: string;
+  mode?: 'template' | 'text';
 };
 
 type InboundRow = {
@@ -36,6 +37,9 @@ function normalizePhone(raw: string): string {
 
 export function WhatsAppTwoWayTestCard() {
   const [phone, setPhone] = useState('');
+  const [mode, setMode] = useState<'template' | 'text'>('template');
+  const [templateName, setTemplateName] = useState('hello_world');
+  const [templateLang, setTemplateLang] = useState('en_US');
   const [body, setBody] = useState('בדיקת חיבור WhatsApp מ-Realtyz AI+ ✅ אנא השב/י בהודעה כלשהי כדי לאמת תקשורת דו-כיוונית.');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
@@ -44,6 +48,7 @@ export function WhatsAppTwoWayTestCard() {
 
   const normalized = useMemo(() => normalizePhone(phone), [phone]);
   const valid = normalized.length >= 10 && normalized.length <= 15;
+  const canSend = mode === 'template' ? !!templateName.trim() && !!templateLang.trim() : !!body.trim();
 
   // Live webhook listener: polls for inbound WhatsApp messages since the test send.
   const { data: inbound, isFetching: polling } = useQuery({
@@ -75,24 +80,32 @@ export function WhatsAppTwoWayTestCard() {
     setResult(null);
     const startedAt = new Date().toISOString();
     try {
-      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-        body: { phone_number: normalized, message: body.trim() },
-      });
+      const payload =
+        mode === 'template'
+          ? {
+              phone_number: normalized,
+              template_id: templateName.trim(),
+              template_language: templateLang.trim(),
+            }
+          : { phone_number: normalized, message: body.trim() };
+
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', { body: payload });
       if (error) throw new Error(error.message);
       const res = data as { success?: boolean; message_id?: string | null; error?: string; details?: unknown };
       if (res?.success) {
-        setResult({ ok: true, messageId: res.message_id ?? null });
+        setResult({ ok: true, messageId: res.message_id ?? null, mode });
         setSentAt(startedAt);
         setListening(true);
       } else {
         setResult({
           ok: false,
+          mode,
           error: res?.error ?? 'שליחה נכשלה מול Meta Cloud API',
           details: res?.details ? JSON.stringify(res.details, null, 2) : undefined,
         });
       }
     } catch (e) {
-      setResult({ ok: false, error: e instanceof Error ? e.message : 'שגיאה לא ידועה' });
+      setResult({ ok: false, mode, error: e instanceof Error ? e.message : 'שגיאה לא ידועה' });
     } finally {
       setSending(false);
     }
@@ -108,7 +121,7 @@ export function WhatsAppTwoWayTestCard() {
           בדיקת WhatsApp דו-כיוונית
         </CardTitle>
         <CardDescription>
-          שליחת הודעת בדיקה דרך Meta WABA Cloud API והאזנה חיה לתשובה נכנסת דרך ה-Webhook.
+          שליחת הודעת בדיקה יזומה באמצעות תבנית מאושרת של Meta (Template) והאזנה חיה לתשובה נכנסת דרך ה-Webhook.
         </CardDescription>
       </CardHeader>
 
@@ -128,17 +141,67 @@ export function WhatsAppTwoWayTestCard() {
               </p>
             )}
           </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">סוג שליחה</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === 'template' ? 'default' : 'outline'}
+                className={mode === 'template' ? '' : 'border-blue-200 text-blue-700'}
+                onClick={() => setMode('template')}
+              >
+                תבנית מאושרת
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === 'text' ? 'default' : 'outline'}
+                className={mode === 'text' ? '' : 'border-blue-200 text-blue-700'}
+                onClick={() => setMode('text')}
+              >
+                טקסט חופשי
+              </Button>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <Label className="text-xs">גוף ההודעה</Label>
-          <Textarea rows={3} value={body} onChange={(e) => setBody(e.target.value)} />
-        </div>
+        {mode === 'template' ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">שם התבנית (Template Name)</Label>
+              <Input
+                dir="ltr"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="hello_world"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">שפת התבנית (Language Code)</Label>
+              <Input
+                dir="ltr"
+                value={templateLang}
+                onChange={(e) => setTemplateLang(e.target.value)}
+                placeholder="en_US / he"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                עבור hello_world יש להשתמש ב-en_US. לתבנית Utility בעברית — he.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <Label className="text-xs">גוף ההודעה</Label>
+            <Textarea rows={3} value={body} onChange={(e) => setBody(e.target.value)} />
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" className="gap-2" disabled={sending || !valid || !body.trim()} onClick={send}>
+          <Button size="sm" className="gap-2" disabled={sending || !valid || !canSend} onClick={send}>
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            שלח הודעת בדיקה
+            {mode === 'template' ? 'שלח תבנית בדיקה' : 'שלח הודעת בדיקה'}
           </Button>
 
           <Badge
@@ -163,11 +226,15 @@ export function WhatsAppTwoWayTestCard() {
         </div>
 
         <Alert className="border-blue-200 bg-blue-50 text-blue-900">
-          <AlertDescription className="text-[11px] leading-relaxed">
-            שים לב: אם Meta מחזירה Message ID של הצלחה אך ההודעה לא מתקבלת במכשיר — סימן שהמספר אינו
-            רשום כ-Test Recipient פעיל. יש להוסיף את מספר היעד תחת
-            WhatsApp → API Setup → To (Manage phone number list) בלוח הבקרה של Meta App, ולאשר את
-            קוד האימות שנשלח למספר. במצב Test Mode ניתן לשלוח רק למספרים מאומתים ברשימה זו.
+          <AlertDescription className="space-y-1 text-[11px] leading-relaxed">
+            <p>
+              הודעה יזומה (מחוץ לחלון 24 השעות) חייבת להישלח כתבנית מאושרת. טקסט חופשי ייחסם על ידי
+              Meta בשגיאה 131047 אם הלקוח לא כתב לך ב-24 השעות האחרונות.
+            </p>
+            <p>
+              אם Meta מחזירה Message ID של הצלחה אך ההודעה לא מתקבלת — יש לוודא שהמספר רשום כ-Test
+              Recipient פעיל תחת WhatsApp → API Setup → To בלוח הבקרה של Meta App.
+            </p>
           </AlertDescription>
         </Alert>
 
@@ -181,23 +248,24 @@ export function WhatsAppTwoWayTestCard() {
               {result.ok ? (
                 <div className="space-y-1">
                   <span>
-                    ההודעה נשלחה בהצלחה
+                    {result.mode === 'template' ? 'התבנית נשלחה בהצלחה' : 'ההודעה נשלחה בהצלחה'}
                     {result.messageId ? ` · Message ID: ${result.messageId}` : ''}
                   </span>
                   <p className="text-[11px] text-blue-800">
                     לא קיבלת את ההודעה בטלפון? ה-ID מעיד רק שהבקשה התקבלה אצל Meta. ודא שמספר היעד
-                    מופיע כ-Test Recipient מאומת ברשימת המספרים של האפליקציה ב-Meta App Dashboard.
+                    מופיע כ-Test Recipient מאומת וששם/שפת התבנית תואמים לתבנית המאושרת.
                   </p>
                 </div>
               ) : (
-                <>
-                  <div>{result.error}</div>
-                  {result.details && (
-                    <pre dir="ltr" className="max-h-40 overflow-auto rounded bg-blue-50 p-2 text-[10px]">
-                      {result.details}
-                    </pre>
-                  )}
-                </>
+                <div className="space-y-1">
+                  <div className="font-medium">{result.error}</div>
+                  <p className="text-[11px]">
+                    תגובת השגיאה המלאה של Meta API:
+                  </p>
+                  <pre dir="ltr" className="max-h-48 overflow-auto rounded bg-background/70 p-2 text-[10px]">
+                    {result.details ?? 'אין פירוט נוסף מ-Meta'}
+                  </pre>
+                </div>
               )}
             </AlertDescription>
           </Alert>
@@ -207,7 +275,7 @@ export function WhatsAppTwoWayTestCard() {
           <p className="text-xs font-medium">הודעות נכנסות אחרונות (אימות דו-כיווניות)</p>
           {replies.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">
-              עדיין לא התקבלו תשובות. שלח הודעת בדיקה והשב עליה מהטלפון כדי לוודא שה-Webhook פעיל.
+              עדיין לא התקבלו תשובות. שלח תבנית בדיקה והשב עליה מהטלפון כדי לוודא שה-Webhook פעיל.
             </p>
           ) : (
             <ul className="space-y-1">

@@ -775,6 +775,9 @@ Deno.serve(async (req) => {
           subcode: meta?.error_subcode ?? null,
           type: meta?.type ?? null,
           category: classified.category,
+          meta_message: meta?.message ?? null,
+          meta_details: meta?.error_data?.details ?? null,
+          raw_error: rawError || null,
         },
       };
       if (isAuthIssue) {
