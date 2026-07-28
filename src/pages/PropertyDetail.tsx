@@ -1013,7 +1013,10 @@ export default function PropertyDetail() {
       {/* Gallery + sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-3">
-          {(main || editMode) && (
+          {/* The frame always renders when a source exists, so the arrows are
+              available to trigger the lazy gallery pull. */}
+          {(main || editMode || sourceUrl) && (
+
             <Card className="overflow-hidden">
               <div className="aspect-[16/10] bg-muted relative">
                 {main ? (
