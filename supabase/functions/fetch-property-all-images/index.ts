@@ -248,10 +248,12 @@ Deno.serve(async (req) => {
       ok: true,
       listing_id: listing.id,
       photos: mirrored,
+      gallery: finalGallery,
       count: mirrored.length,
       failed,
       rescrape,
     });
+
   } catch (e) {
     console.error("[fetch-property-all-images]", e);
     return json({ error: String((e as Error)?.message ?? e) }, 500);
