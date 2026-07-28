@@ -900,14 +900,16 @@ const OmnichannelInbox = () => {
             { key: 'linkedin', label: 'LinkedIn' },
             { key: 'x', label: 'X' },
             { key: 'tiktok', label: 'TikTok' },
-            { key: 'all', label: 'הכל' },
           ] as const).map((c) => {
-            const active = channelFilter === c.key;
-            const hasChats = c.key === 'all' ? true : channelsInList.has(c.key);
-            const isAvail = c.key === 'all' ? true : !!availableChannels[c.key];
+            const active = channelFilter.has(c.key);
+            const hasChats = channelsInList.has(c.key);
             const handleClick = () => {
-              setChannelFilter(c.key);
-              if (c.key === 'all') return;
+              setChannelFilter((prev) => {
+                const next = new Set(prev);
+                if (next.has(c.key)) next.delete(c.key);
+                else next.add(c.key);
+                return next;
+              });
               if (!selectedVoterId) return;
               setSendChannel(c.key);
             };
@@ -919,51 +921,15 @@ const OmnichannelInbox = () => {
                 aria-label={c.label}
                 title={c.label}
                 aria-pressed={active}
-                className={`h-9 shrink-0 inline-flex items-center justify-center transition-opacity ${c.key === 'all' ? 'px-2' : 'w-9'} ${active ? 'opacity-100' : hasChats ? 'opacity-90 hover:opacity-100' : 'opacity-40 grayscale hover:opacity-80'}`}
+                className={`h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-full transition-opacity ${active ? 'opacity-100 ring-2 ring-primary/60' : hasChats ? 'opacity-90 hover:opacity-100' : 'opacity-40 grayscale hover:opacity-80'}`}
               >
-                {c.key === 'all'
-                  ? <span className={`text-sm font-semibold ${active ? 'text-primary' : 'text-foreground'}`}>הכל</span>
-                  : <ChannelIcon channel={c.key} size="md" />}
+                <ChannelIcon channel={c.key} size="md" />
               </button>
             );
           });
         })()}
-        <div className="ms-auto" />
-        <button
-          type="button"
-          onClick={async () => {
-            const t = toast.loading('מסנכרן הודעות מסנג׳ר...');
-            const { data, error } = await supabase.functions.invoke('ayrshare-fetch-dms', { body: {} });
-            toast.dismiss(t);
-            if (error) { toast.error('סנכרון נכשל', { description: error.message }); return; }
-            const s = (data as any)?.summary || {};
-            const syncError = s.facebook?.error || s.instagram?.error;
-            if (syncError) {
-              toast.error('נדרש חיבור מחדש למסנג׳ר', { description: String(syncError).slice(0, 180), duration: 9000 });
-              return;
-            }
-            const total = (s.facebook?.inserted || 0) + (s.instagram?.inserted || 0);
-            toast.success(total > 0 ? `נמשכו ${total} הודעות חדשות` : 'אין הודעות חדשות');
-            queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
-            queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedVoterId] });
-            queryClient.invalidateQueries({ queryKey: ['last-messages'] });
-          }}
-          aria-label="סנכרון הודעות מסנג׳ר"
-          title="סנכרון הודעות מסנג׳ר"
-          className="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50"
-        >
-          <RefreshCw className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/api-settings')}
-          aria-label="הגדרות חיבור ערוצים"
-          title="הגדרות חיבור ערוצים"
-          className="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50"
-        >
-          <Plug className="h-5 w-5" />
-        </button>
       </div>
+
 
 
 
