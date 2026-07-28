@@ -1021,10 +1021,15 @@ const OmnichannelInbox = () => {
                       className="block truncate text-sm font-semibold hover:underline text-right"
                       title="פתיחת כרטיס מתעניין"
                     >
-                      {selectedVoter?.full_name || formatPhoneDisplay(selectedVoter?.phone_number || '')}
+                      {(selectedVoter?.full_name || '').trim().replace(/^[-–—]+$/, '')
+                        || formatPhoneDisplay(selectedVoter?.phone_number || '')
+                        || 'ללא שם'}
                     </button>
-                    <p className="text-[10px] text-whatsapp-header-foreground/75">{selectedVoter?.city || 'WhatsApp Business'}</p>
+                    <p className="text-[10px] text-whatsapp-header-foreground/75" dir="ltr">
+                      {formatPhoneDisplay(selectedVoter?.phone_number || '') || 'WhatsApp Business'}
+                    </p>
                   </div>
+
                 </div>
                 {selectedVoter?.phone_number && (
                   <a
