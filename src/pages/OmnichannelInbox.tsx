@@ -459,9 +459,39 @@ const OmnichannelInbox = () => {
       toast.error('שמירת מצב המענה האוטומטי לשיחה נכשלה');
       queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
     } else {
-      toast.success(value ? 'טייס אוטומטי הופעל לשיחה זו' : 'טייס אוטומטי כובה לשיחה זו');
     }
   };
+
+  // Effective autopilot for the open chat: the AI only answers when BOTH the
+  // global hero switch and the per-lead flag are on. The pill switch below is
+  // bi-directional with the global switch: turning it ON also turns the global
+  // one on, so the broker never flips a dead toggle.
+  const chatAutopilotOn = aiAutopilot && leadAutopilot;
+  const setChatAutopilot = async (value: boolean) => {
+    if (value && !aiAutopilot) {
+      try { await _updatePlatformSettings({ enable_ai_autopilot: true }); } catch { /* surfaced below */ }
+    }
+    if (leadAutopilot !== value) await setLeadAutopilot(value);
+  };
+
+  // Contact identity for the chat header — mirrors the CRM card exactly and
+  // never renders a bare dash placeholder.
+  const selectedLastMessage: any = selectedVoterId ? lastMessages?.get(selectedVoterId) : null;
+  const contactPhoneRaw =
+    (selectedVoter as any)?.phone_number ||
+    selectedLastMessage?.metadata?.sender_phone ||
+    (selectedVoterId?.startsWith('phone:') ? selectedVoterId.slice('phone:'.length) : '') ||
+    '';
+  const contactPhone = contactPhoneRaw ? formatPhoneDisplay(contactPhoneRaw) : '';
+  const contactName = (() => {
+    const raw = String((selectedVoter as any)?.full_name || '').trim();
+    const clean = /^[-–—\s]*$/.test(raw) ? '' : raw;
+    if (clean) return clean;
+    const pushName = String(selectedLastMessage?.metadata?.sender_name || '').trim();
+    if (pushName) return pushName;
+    return contactPhone || 'ללא שם';
+  })();
+
 
   // Fire-and-forget: fetch WhatsApp profile picture for the selected lead
   // if it's missing. The edge function updates leads.profile_picture_url
