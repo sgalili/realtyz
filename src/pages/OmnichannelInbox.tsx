@@ -1025,12 +1025,14 @@ const OmnichannelInbox = () => {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
+                    {/* Clicking a result (avatar or name) only opens the chat —
+                        it never navigates to the CRM profile page. */}
                     <button
                       type="button"
-                      onClick={(event) => { event.stopPropagation(); navigate(`/lead-crm/${voter.id}`); }}
+                      onClick={(event) => { event.stopPropagation(); setSelectedVoterId(voter.id); }}
                       className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      title="פתיחת כרטיס מתעניין"
-                      aria-label="פתיחת כרטיס מתעניין"
+                      title="פתיחת השיחה"
+                      aria-label="פתיחת השיחה"
                     >
                       <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
                     </button>
@@ -1038,9 +1040,9 @@ const OmnichannelInbox = () => {
                       <div className="flex min-w-0 flex-row-reverse items-center justify-between gap-2">
                         <button
                           type="button"
-                          onClick={(event) => { event.stopPropagation(); navigate(`/lead-crm/${voter.id}`); }}
-                          className="text-sm font-medium truncate min-w-0 hover:underline text-right"
-                          title="פתיחת כרטיס מתעניין"
+                          onClick={(event) => { event.stopPropagation(); setSelectedVoterId(voter.id); }}
+                          className="text-sm font-medium truncate min-w-0 text-right"
+                          title="פתיחת השיחה"
                         >
                           {voter.full_name || formatPhoneDisplay(voter.phone_number)}
                         </button>
