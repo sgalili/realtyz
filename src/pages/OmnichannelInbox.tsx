@@ -72,6 +72,10 @@ const senderBadge: Record<string, { label: string; className: string }> = {
 };
 
 
+// Session flag: set once the avatar service reports it isn't configured, so
+// we stop re-requesting WhatsApp profile photos on every render pass.
+const WA_AVATAR_DISABLED_KEY = 'wa-avatar-disabled';
+
 const channelConfig: Record<string, { brand?: string; icon?: ReactElement; label: string; bgClass: string; textClass: string }> = {
   whatsapp: { brand: 'whatsapp', label: 'WhatsApp', bgClass: 'bg-social-whatsapp', textClass: 'text-social-whatsapp' },
   sms: { icon: <MessageSquare />, label: 'SMS', bgClass: 'bg-social-sms', textClass: 'text-social-sms' },
@@ -494,16 +498,23 @@ const OmnichannelInbox = () => {
 
 
   // Fire-and-forget: fetch WhatsApp profile picture for the selected lead
-  // if it's missing. The edge function updates leads.profile_picture_url
-  // and the next voters refetch will pick it up automatically.
+  // if it's missing. Avatar retrieval runs through Green API — the official
+  // Meta Cloud API exposes no endpoint for a customer's profile photo — so
+  // when Green API isn't configured we stop asking for the rest of the
+  // session instead of firing a request on every chat switch.
   useEffect(() => {
     const v = selectedVoter as any;
     if (!v?.id) return;
     if (v?.profile_picture_url) return;
     if (!v?.phone_number) return;
+    if (sessionStorage.getItem(WA_AVATAR_DISABLED_KEY)) return;
     supabase.functions
       .invoke('fetch-wa-avatars', { body: { lead_ids: [v.id] } })
-      .then(() => {
+      .then(({ data }) => {
+        if ((data as any)?.error === 'green_api_not_configured') {
+          sessionStorage.setItem(WA_AVATAR_DISABLED_KEY, '1');
+          return;
+        }
         queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
       })
       .catch(() => {});
@@ -514,6 +525,7 @@ const OmnichannelInbox = () => {
   // skips rows that already have a URL so this is safe & idempotent.
   useEffect(() => {
     if (!voters?.length) return;
+    if (sessionStorage.getItem(WA_AVATAR_DISABLED_KEY)) return;
     const missing = voters
       .filter((v: any) => !v.profile_picture_url && v.phone_number)
       .map((v: any) => v.id);
@@ -523,9 +535,16 @@ const OmnichannelInbox = () => {
     sessionStorage.setItem(flagKey, '1');
     supabase.functions
       .invoke('fetch-wa-avatars', { body: { lead_ids: missing.slice(0, 50) } })
-      .then(() => queryClient.invalidateQueries({ queryKey: ['inbox-leads'] }))
+      .then(({ data }) => {
+        if ((data as any)?.error === 'green_api_not_configured') {
+          sessionStorage.setItem(WA_AVATAR_DISABLED_KEY, '1');
+          return;
+        }
+        queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+      })
       .catch(() => {});
   }, [voters, queryClient]);
+
 
 
   // ---- Channel availability ----------------------------------------------
@@ -592,6 +611,8 @@ const OmnichannelInbox = () => {
     return null;
   }, [chatMessages]);
 
+  // Edge functions return a short, already-humanized Hebrew reason in `error`.
+  // Prefer it over raw provider payloads so the broker never sees JSON blobs.
   const readFunctionError = async (err: any) => {
     const ctx = err?.context;
     if (!ctx || typeof ctx.text !== 'function') return err?.message || '';
@@ -599,14 +620,17 @@ const OmnichannelInbox = () => {
       const text = await ctx.text();
       try {
         const parsed = JSON.parse(text);
-        return parsed?.details || parsed?.reason || parsed?.message || parsed?.error || text;
+        const pick = parsed?.error || parsed?.reason || parsed?.message || parsed?.details;
+        if (!pick) return '';
+        return typeof pick === 'string' ? pick : '';
       } catch {
-        return text;
+        return /[{[<]/.test(text) ? '' : text;
       }
     } catch {
       return err?.message || '';
     }
   };
+
 
   const sendMessage = useMutation({
     mutationFn: async ({ content, file, original }: { content: string; file: File | null; original: string }) => {
@@ -630,7 +654,7 @@ const OmnichannelInbox = () => {
           },
         },
       });
-      if (error) throw new Error(await readFunctionError(error) || error.message);
+      if (error) throw new Error((await readFunctionError(error)) || 'שליחת ההודעה נכשלה — נסה שוב');
       // Edge function may return 200 with { success:false, code:'no_recipient_psid' }
       // when a Messenger/IG/LinkedIn DM can't be delivered — surface as an error so
       // the onError handler pivots to a WA/SMS invite instead of showing "sent".
@@ -667,8 +691,15 @@ const OmnichannelInbox = () => {
     },
     onError: (error: Error) => {
       if (error.message === 'demo-blocked') return;
-      const msg = error.message || '';
-      toast.error('שליחת ההודעה נכשלה', { description: msg, duration: 8000 });
+      const raw = (error.message || '').trim();
+      // Only ever show a short human sentence; internal codes and JSON payloads
+      // are logged to the console instead of the toast.
+      const isCode = !raw || /^[a-z0-9_.:-]+$/i.test(raw) || raw.startsWith('{') || raw.startsWith('[');
+      if (isCode) console.error('[send-message]', raw);
+      toast.error('שליחת ההודעה נכשלה', {
+        description: isCode ? 'לא הצלחנו לשלוח את ההודעה. בדוק את חיבור וואטסאפ בהגדרות הערוצים.' : raw,
+        duration: 8000,
+      });
     },
   });
 

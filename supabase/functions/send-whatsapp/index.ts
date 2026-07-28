@@ -145,11 +145,18 @@ async function resolveProvider(
   if (tenantId) {
     const hit = pick(await tryRows("tenant_id", tenantId));
     if (hit) return hit;
+    // Realtyz stores the workspace's provider row keyed by the OWNER's user id
+    // with tenant_id NULL. Server-to-server callers (send-message, autopilot)
+    // pass that owner id as `tenant_id`, so fall back to a user_id match before
+    // giving up — otherwise a fully configured WBA account looks unconfigured.
+    const ownerHit = pick(await tryRows("user_id", tenantId));
+    if (ownerHit) return ownerHit;
   }
   if (userId) {
     const hit = pick(await tryRows("user_id", userId));
     if (hit) return hit;
   }
+
 
   // 2. Legacy fallback — preserve existing Realtyz GreenAPI behavior.
   if (!force || force === "GreenAPI") {
@@ -424,6 +431,42 @@ async function sendViaWba(
   };
 }
 
+/**
+ * Translate a raw Meta / GreenAPI failure into a short Hebrew sentence the
+ * broker can act on. The raw provider payload is never shown in the UI.
+ */
+function humanizeWaError(raw: string, meta: { code?: number; error_subcode?: number; message?: string } = {}): string {
+  const code = Number(meta?.code ?? 0);
+  switch (code) {
+    case 131047:
+      return "חלון 24 השעות נסגר — אפשר לשלוח רק תבנית מאושרת עד שהלקוח יגיב שוב";
+    case 131026:
+      return "המספר אינו רשום בוואטסאפ או שאינו יכול לקבל הודעות";
+    case 131051:
+      return "סוג ההודעה אינו נתמך על ידי וואטסאפ";
+    case 100:
+      return "פרטי החשבון שגויים — יש לוודא Phone Number ID ו-WABA ID בהגדרות";
+    case 190:
+      return "פג תוקף ההרשאה של Meta — יש לחבר מחדש את חשבון וואטסאפ העסקי";
+    case 10:
+    case 200:
+      return "אין הרשאה לשלוח מהמספר הזה — יש לאשר את ההרשאות בחשבון Meta";
+    case 80007:
+    case 130429:
+      return "חריגה ממכסת השליחה של Meta — נסה שוב בעוד מספר דקות";
+    case 131031:
+      return "חשבון וואטסאפ העסקי מושהה על ידי Meta";
+    default:
+      break;
+  }
+  if (/not configured|No active WhatsApp provider/i.test(raw)) {
+    return "חשבון וואטסאפ העסקי אינו מחובר — יש להתחבר בהגדרות הערוצים";
+  }
+  if (/Invalid phone number/i.test(raw)) return "מספר טלפון לא תקין";
+  if (/Lead not found/i.test(raw)) return "לא נמצא מספר טלפון למתעניין הזה";
+  return "שליחת ההודעה בוואטסאפ נכשלה — נסה שוב";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
@@ -537,7 +580,7 @@ Deno.serve(async (req) => {
         success: false,
         provider: "GreenAPI",
         message_id: null,
-        error: "No active WhatsApp provider configured",
+        error: humanizeWaError("No active WhatsApp provider configured"),
       }, 500);
     }
 
@@ -618,13 +661,17 @@ Deno.serve(async (req) => {
         success: false,
         provider: "GreenAPI",
         message_id: null,
-        error: "No active WhatsApp provider configured",
+        error: humanizeWaError("No active WhatsApp provider configured"),
       }, 500);
     }
 
     // Compliance audit + message-row logging. Best-effort; never blocks the send.
+    const effectiveProvider = result.provider ?? provider?.name ?? "WBA";
+    const actorId = userId ?? parsed.data.tenant_id ?? null;
     try {
-      if (parsed.data.lead_id && outboundMessage) {
+      // Only persist the chat bubble when the gateway actually accepted the
+      // message — a failed send must never look delivered in the inbox.
+      if (result.success && parsed.data.lead_id && outboundMessage) {
         await admin.from("messages").insert({
           lead_id: parsed.data.lead_id,
           channel: "whatsapp",
@@ -634,17 +681,17 @@ Deno.serve(async (req) => {
           sender_type: parsed.data.ai_assisted ? "ai" : "agent",
           ai_assisted: !!parsed.data.ai_assisted,
           disclosure_appended: disclosureAppended,
-          metadata: { provider: provider.name, message_id: result.message_id },
+          metadata: { provider: effectiveProvider, message_id: result.message_id, status: "sent" },
         });
       }
-      if (userId) {
+      if (actorId) {
         await admin.from("audit_logs").insert({
-          actor_id: userId,
+          actor_id: actorId,
           action: parsed.data.ai_assisted ? "ai_message_sent" : "message_sent",
           target_table: parsed.data.lead_id ? "leads" : null,
           target_id: parsed.data.lead_id ?? null,
           details: {
-            provider: provider.name,
+            provider: effectiveProvider,
             success: result.success,
             disclosure_appended: disclosureAppended,
             has_attachment: !!parsed.data.file,
@@ -655,6 +702,24 @@ Deno.serve(async (req) => {
     } catch (logErr) {
       console.warn("send-whatsapp audit/log failed:", logErr);
     }
+
+    if (!result.success) {
+      const meta = (result.details as any)?.error ?? {};
+      result = {
+        ...result,
+        error: humanizeWaError(result.error ?? "", meta),
+        details: { code: meta?.code ?? null, subcode: meta?.error_subcode ?? null },
+      };
+      try {
+        await logIntegrationError({
+          integration: "whatsapp",
+          functionName: "send-whatsapp",
+          errorMessage: result.error ?? "שליחת וואטסאפ נכשלה",
+          context: { provider: effectiveProvider, meta_code: meta?.code ?? null, phone_last4: phone.slice(-4) },
+        });
+      } catch (_e) { /* best-effort */ }
+    }
+
 
     return json(result, result.success ? 200 : 502);
   } catch (e) {
@@ -668,7 +733,7 @@ Deno.serve(async (req) => {
       success: false,
       provider: "GreenAPI",
       message_id: null,
-      error: e instanceof Error ? e.message : "Internal error",
+      error: "שליחת ההודעה בוואטסאפ נכשלה — נסה שוב",
     }, 500);
   }
 });
