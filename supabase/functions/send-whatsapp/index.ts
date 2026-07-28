@@ -130,16 +130,25 @@ async function resolveProvider(
     return { name: "WBA", is_official: true, config: cfg };
   };
 
-  if (tenantId) {
-    // Realtyz stores the workspace's provider row keyed by the OWNER's user id
-    // with tenant_id NULL. Server-to-server callers pass that owner id as
-    // `tenant_id`, so check both columns.
-    const hit = pick(await tryRows("tenant_id", tenantId)) ?? pick(await tryRows("user_id", tenantId));
+  const ids = [tenantId, userId].filter(Boolean) as string[];
+  for (const id of ids) {
+    const hit = pick(await tryRows("tenant_id", id)) ?? pick(await tryRows("user_id", id));
     if (hit) return hit;
   }
-  if (userId) {
-    const hit = pick(await tryRows("user_id", userId));
-    if (hit) return hit;
+
+  // Team members don't own the WhatsApp Business number — fall back to the
+  // workspace owner's credentials.
+  for (const id of ids) {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("active_workspace_owner_id")
+      .eq("id", id)
+      .maybeSingle();
+    const owner = (prof as any)?.active_workspace_owner_id as string | null;
+    if (owner && !ids.includes(owner)) {
+      const hit = pick(await tryRows("tenant_id", owner)) ?? pick(await tryRows("user_id", owner));
+      if (hit) return hit;
+    }
   }
 
   // Project-level Meta Cloud API secrets.
