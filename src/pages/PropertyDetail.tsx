@@ -662,18 +662,15 @@ export default function PropertyDetail() {
     if (!property?.id || pullingImages) return;
     setPullingImages(true);
     setImageProgress(5);
-    const toastId = toast.loading('טוען את כל התמונות מהמקור…');
     try {
       const { data, error } = await supabase.functions.invoke('fetch-property-all-images', {
         body: { listing_id: property.id, source_url: sourceUrl || undefined },
       });
       if (error) throw error;
       const res = data as { ok?: boolean; count?: number; photos?: string[]; reason?: string } | null;
-      if (!res?.ok) {
-        toast.error('לא נמצאו תמונות נוספות', { id: toastId, description: res?.reason ?? undefined });
-        return;
-      }
+      if (!res?.ok) return;
       setActivePhoto(0);
+
       await qc.refetchQueries({ queryKey: ['property-detail', id] });
       qc.invalidateQueries({ queryKey: ['properties-search'] });
       qc.invalidateQueries({ queryKey: ['listings'] });
