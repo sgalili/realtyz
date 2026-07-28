@@ -575,6 +575,7 @@ export default function PropertyDetail() {
   const pullAllImages = async () => {
     if (!property?.id || pullingImages) return;
     setPullingImages(true);
+    setImageProgress(5);
     const toastId = toast.loading('טוען את כל התמונות מהמקור…');
     try {
       const { data, error } = await supabase.functions.invoke('fetch-property-all-images', {
@@ -594,17 +595,18 @@ export default function PropertyDetail() {
     } catch (e: any) {
       toast.error('טעינת התמונות נכשלה', { id: toastId, description: e?.message ?? String(e) });
     } finally {
-      setPullingImages(false);
+      setImageProgress(100);
+      setTimeout(() => setPullingImages(false), 250);
     }
   };
 
   /**
-   * Carousel navigation. When the gallery hasn't been fully imported yet
-   * (single/no image), the first arrow click pulls the complete gallery from
-   * the source before moving.
+   * Carousel navigation. Arrows stay inert until metadata hydration finished.
+   * When the gallery hasn't been fully imported yet (single/no image), the
+   * first arrow click pulls the complete gallery from the source.
    */
   const stepPhoto = async (delta: number) => {
-    if (pullingImages) return;
+    if (pullingImages || hydrating) return;
     if (photos.length <= 1) {
       if (!galleryPulledRef.current && (sourceUrl || photos.length === 0)) {
         galleryPulledRef.current = true;
