@@ -975,7 +975,7 @@ const OmnichannelInbox = () => {
       <div className="grid h-[calc(100svh-300px)] min-h-[480px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-340px)] lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden border-l bg-card`}>
-          <div className="p-3 border-b">
+          <div className="p-3 border-b space-y-2">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -985,7 +985,17 @@ const OmnichannelInbox = () => {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-9 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              onClick={() => setNewChatOpen(true)}
+            >
+              <BrandIcon name="whatsapp" className="ml-2 h-4 w-4" />
+              שיחת WhatsApp חדשה
+            </Button>
           </div>
+
           <ScrollArea className="min-h-0 flex-1 overflow-y-auto">
             {searchedPhone && !phoneAlreadyKnown && (
               <button
