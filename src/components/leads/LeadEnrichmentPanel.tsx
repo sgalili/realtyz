@@ -40,11 +40,28 @@ const PLATFORM_META: Record<SocialPlatform, { label: string; icon: JSX.Element }
 
 interface SocialEntry { platform: SocialPlatform; handle: string; }
 
+function knownFacebookLink(lead: any, prefs: Record<string, any>): string | null {
+  const raw =
+    prefs.facebook_url ||
+    lead.facebook_handle ||
+    lead.facebook_page_url ||
+    lead.facebook_user_id ||
+    lead.messenger_id ||
+    null;
+  if (!raw) return null;
+  const val = String(raw).trim();
+  if (!val) return null;
+  if (/^https?:\/\//i.test(val)) return val;
+  return `https://facebook.com/${val.replace(/^@/, '')}`;
+}
+
 function buildInitialSocials(lead: any, prefs: Record<string, any>): SocialEntry[] {
   const list: SocialEntry[] = Array.isArray(prefs.socials) ? [...prefs.socials] : [];
+  const fb = knownFacebookLink(lead, prefs);
+  const hasFb = list.some((s) => String(s?.platform).toLowerCase() === 'facebook' && String(s?.handle || '').trim());
+  if (fb && !hasFb) list.push({ platform: 'facebook', handle: fb });
   if (list.length) return list;
   const seeded: SocialEntry[] = [];
-  if (prefs.facebook_url)            seeded.push({ platform: 'facebook',  handle: prefs.facebook_url });
   if (lead.instagram_handle)         seeded.push({ platform: 'instagram', handle: lead.instagram_handle });
   if (prefs.tiktok_handle)           seeded.push({ platform: 'tiktok',    handle: prefs.tiktok_handle });
   if (prefs.linkedin_url)            seeded.push({ platform: 'linkedin',  handle: prefs.linkedin_url });

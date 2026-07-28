@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark, Trash2, Mail, Plug, Inbox as InboxIcon, RefreshCw } from 'lucide-react';
+import { Search, Send, Bot, MessageSquare, MessageCircle, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark, Trash2, Mail, Plug, Inbox as InboxIcon, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -454,13 +454,14 @@ const OmnichannelInbox = () => {
   }, [isDemoMode, dbLastMessages, voters, demoMessages, orphanThreads]);
 
   const chatMessages = useMemo(() => {
-    if (isDemoMode && selectedVoterId?.startsWith('demo-lead-')) {
-      return demoMessages.filter(m => m.lead_id === selectedVoterId).sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      );
-    }
-    return dbChatMessages ?? [];
-  }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages]);
+    const base = (isDemoMode && selectedVoterId?.startsWith('demo-lead-'))
+      ? demoMessages.filter(m => m.lead_id === selectedVoterId).sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+      : (dbChatMessages ?? []);
+    if (channelFilter.size === 0) return base;
+    return base.filter((m: any) => channelFilter.has(String(m?.channel || '')));
+  }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages, channelFilter]);
 
   // `voters` only contains threads that already have messages. When the broker
   // opens a contact straight from search (no messages yet), fall back to the
@@ -851,7 +852,7 @@ const OmnichannelInbox = () => {
         <div className="flex flex-1 flex-row-reverse items-center gap-2 overflow-x-auto">
           <button
             type="button"
-            onClick={() => setActiveTab('handling')}
+            onClick={() => { setActiveTab('handling'); setSelectedVoterId(null); }}
             className={`h-10 inline-flex items-center gap-1 rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'handling' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
           >
             <Bot className="h-3.5 w-3.5" />
@@ -859,14 +860,14 @@ const OmnichannelInbox = () => {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('waiting')}
+            onClick={() => { setActiveTab('waiting'); setSelectedVoterId(null); }}
             className={`h-10 inline-flex items-center rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'waiting' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
           >
             מחכות למענה ({waitingCount})
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('all')}
+            onClick={() => { setActiveTab('all'); setSelectedVoterId(null); }}
             className={`h-10 inline-flex items-center rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
           >
             כל השיחות ({totalCount})
@@ -874,7 +875,7 @@ const OmnichannelInbox = () => {
         </div>
         <button
           type="button"
-          onClick={() => setBookmarkedOnly((v) => !v)}
+          onClick={() => { setBookmarkedOnly((v) => !v); setSelectedVoterId(null); }}
           aria-label="סימניות"
           className={`h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-lg border ${bookmarkedOnly ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:bg-muted/50'}`}
         >
@@ -921,7 +922,7 @@ const OmnichannelInbox = () => {
                 aria-label={c.label}
                 title={c.label}
                 aria-pressed={active}
-                className={`h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-full transition-opacity ${active ? 'opacity-100 ring-2 ring-primary/60' : hasChats ? 'opacity-90 hover:opacity-100' : 'opacity-40 grayscale hover:opacity-80'}`}
+                className={`h-9 w-9 shrink-0 inline-flex items-center justify-center bg-transparent border-0 p-0 transition-all ${active ? 'opacity-100 scale-110' : hasChats ? 'opacity-70 hover:opacity-100' : 'opacity-35 grayscale hover:opacity-70'}`}
               >
                 <ChannelIcon channel={c.key} size="md" />
               </button>
@@ -1069,29 +1070,13 @@ const OmnichannelInbox = () => {
                     <button
                       type="button"
                       onClick={() => selectedVoterId && navigate(`/lead-crm/${selectedVoterId}`)}
-                      className="block truncate text-[17px] font-semibold leading-tight hover:underline text-right"
+                      className="block truncate text-[15px] font-semibold leading-tight hover:underline text-right"
                       title="פתיחת כרטיס מתעניין"
                     >
                       {contactName}
                     </button>
-                    <p className="text-[13px] leading-tight text-whatsapp-header-foreground/75" dir="ltr">
-                      {contactPhone || 'WhatsApp Business'}
-                    </p>
-
-
                   </div>
-
                 </div>
-                {selectedVoter?.phone_number && (
-                  <a
-                    href={`tel:+${String(selectedVoter.phone_number).replace(/\D/g, '')}`}
-                    aria-label="חיוג למתעניין"
-                    title="חיוג למתעניין"
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-whatsapp-header-foreground transition-colors hover:bg-whatsapp-header-foreground/10"
-                  >
-                    <Phone className="h-4 w-4" />
-                  </a>
-                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10">
