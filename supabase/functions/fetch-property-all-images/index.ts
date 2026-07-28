@@ -124,8 +124,10 @@ Deno.serve(async (req) => {
     const source = String(listing.source || "").toLowerCase();
 
     // --- Step 1: re-scrape the original source so we get the FULL gallery ---
+    // Skipped entirely in per-image (`only`) mode: the candidate list was
+    // already discovered, so re-scraping would burn credits on every image.
     let rescrape: string | null = null;
-    if (/yad2/.test(source) || /yad2\.co\.il/i.test(sourceUrl)) {
+    if (!onlyUrls && (/yad2/.test(source) || /yad2\.co\.il/i.test(sourceUrl))) {
       try {
         const r = await userClient.functions.invoke("yad2-unlocker", {
           body: { url: sourceUrl, limit: 1 },
@@ -139,13 +141,17 @@ Deno.serve(async (req) => {
 
     // --- Step 2: gather every candidate URL we know about ---
     const candidates: string[] = [];
-    if (Array.isArray(listing.media_photos)) {
-      for (const p of listing.media_photos as unknown[]) {
-        if (isHttp(p)) candidates.push(p.trim());
-        else if (p && typeof p === "object") harvestUrls(p, candidates);
+    if (onlyUrls) {
+      candidates.push(...onlyUrls);
+    } else {
+      if (Array.isArray(listing.media_photos)) {
+        for (const p of listing.media_photos as unknown[]) {
+          if (isHttp(p)) candidates.push(p.trim());
+          else if (p && typeof p === "object") harvestUrls(p, candidates);
+        }
       }
+      harvestUrls(listing.source_metadata, candidates);
     }
-    harvestUrls(listing.source_metadata, candidates);
 
     const unique: string[] = [];
     const seen = new Set<string>();
@@ -158,6 +164,18 @@ Deno.serve(async (req) => {
       unique.push(u);
       if (unique.length >= MAX_IMAGES) break;
     }
+
+    // --- Discovery mode: return the candidate list, mirror nothing ---
+    if (discover) {
+      return json({
+        ok: unique.length > 0,
+        listing_id: listing.id,
+        candidates: unique,
+        count: unique.length,
+        rescrape,
+      });
+    }
+
 
     // --- Step 3: mirror everything permanently into storage ---
     const referer = /yad2/.test(source) ? "https://www.yad2.co.il/" : (sourceUrl || SUPABASE_URL);
