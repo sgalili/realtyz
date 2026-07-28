@@ -137,17 +137,9 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
     const promotedFeatures = promotedListing ? featureLabels(promotedListing.features) : [];
     const publicListingAddress = promotedListing?.address ? stripAddressNumbers(promotedListing.address) : null;
     const promotedListingType = promotedListing ? listingTypeFromFeatures(promotedListing.features) : null;
-    const promotedAreaPerks: string[] = Array.isArray(promotedListing?.area_perks?.perks)
-      ? promotedListing.area_perks.perks.slice(0, 6)
-      : [];
-    // Fire-and-forget enrichment when missing so next post has nearby-area perks.
-    if (promotedListing?.id && promotedAreaPerks.length === 0) {
-      try {
-        admin.functions.invoke("neighborhood-perks", {
-          body: { listing_id: promotedListing.id },
-        }).catch(() => { /* background */ });
-      } catch { /* background */ }
-    }
+    // Area-perks / neighborhood enrichment intentionally NOT used in posts.
+    // Posts stay focused on the property's own selling/renting features.
+
 
     const dealTypeLabel = (() => {
       const dt = String(promotedListing?.deal_type || promotedListingType || "").toLowerCase();
