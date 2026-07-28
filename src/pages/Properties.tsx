@@ -38,6 +38,7 @@ import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
+import { sourcePhotoCount } from '@/lib/photoCount';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle } from '@/lib/formatListingTitle';
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
