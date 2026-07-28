@@ -1272,8 +1272,13 @@ const ApiSettings = () => {
       </div>
 
       <div className="mb-4">
+        <MetaWabaHealthCard />
+      </div>
+
+      <div className="mb-4">
         <WhatsAppTwoWayTestCard />
       </div>
+
 
 
       <ServiceCard
