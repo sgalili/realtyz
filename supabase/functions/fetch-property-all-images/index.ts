@@ -93,7 +93,15 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const listingId = typeof body.listing_id === "string" ? body.listing_id : null;
     const sourceUrlIn = typeof body.source_url === "string" ? body.source_url : null;
+    // Incremental pipeline:
+    //   { discover: true }        -> list source candidates, no mirroring, no DB write
+    //   { only: [url], append:1 } -> mirror just these URLs and APPEND them to the gallery
+    const discover = body.discover === true;
+    const onlyUrls = Array.isArray(body.only)
+      ? (body.only as unknown[]).filter(isHttp).map((u) => u.trim())
+      : null;
     if (!listingId && !sourceUrlIn) return json({ error: "listing_id or source_url is required" }, 400);
+
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
