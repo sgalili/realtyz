@@ -144,6 +144,68 @@ async function sendWhatsAppGreen(
   }
 }
 
+type WaTemplateSpec = {
+  name: string;
+  language: string;
+  /** Body variable values; may contain [שם_פרטי] / [עיר] / [קלפי] tokens. */
+  body_params: string[];
+};
+
+function parseWaTemplate(raw: unknown): WaTemplateSpec | null {
+  if (!raw || typeof raw !== "object") return null;
+  const t = raw as Record<string, unknown>;
+  const name = String(t.name ?? t.template_id ?? "").trim();
+  if (!name) return null;
+  const language = String(t.language ?? t.template_language ?? "he").trim() || "he";
+  const params = Array.isArray(t.body_params) ? t.body_params.map((v) => String(v ?? "")) : [];
+  return { name, language, body_params: params };
+}
+
+/**
+ * Proactive (out-of-24h-window) WhatsApp sends MUST use an approved Meta
+ * template. Variables are personalized per recipient before dispatch.
+ */
+async function sendWhatsAppTemplate(
+  intlPhone: string,
+  template: WaTemplateSpec,
+  ctx: { full_name?: string | null; city?: string | null; booth?: string | null },
+  routerCtx: { supabaseUrl: string; serviceRoleKey: string; userId: string | null },
+  previewText: string,
+): Promise<SendResult> {
+  const params = template.body_params.map((v) => personalize(v, ctx));
+  const components = params.length > 0
+    ? [{ type: "body", parameters: params.map((text) => ({ type: "text", text })) }]
+    : [];
+  try {
+    const res = await fetch(`${routerCtx.supabaseUrl}/functions/v1/send-whatsapp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${routerCtx.serviceRoleKey}`,
+        apikey: routerCtx.serviceRoleKey,
+      },
+      body: JSON.stringify({
+        phone_number: intlPhone,
+        message: previewText || undefined,
+        template_id: template.name,
+        template_language: template.language,
+        template_components: components,
+        tenant_id: routerCtx.userId ?? undefined,
+      }),
+    });
+    const json = await res.json().catch(() => ({} as any));
+    if (res.ok && json?.success) {
+      return { ok: true, provider_message_id: json.message_id ?? null };
+    }
+    return {
+      ok: false,
+      failure_reason: json?.error ?? `send-whatsapp HTTP ${res.status}`,
+    };
+  } catch (e: any) {
+    return { ok: false, failure_reason: `send-whatsapp network: ${e?.message ?? e}` };
+  }
+}
+
 // Resend removed - email sending now goes through the user's connected Gmail (OAuth via /social-connect).
 
 // Load the user's per-user Green API (WhatsApp) credentials from social_connections.
@@ -652,12 +714,21 @@ Deno.serve(async (req) => {
           );
       } else if (channel === "whatsapp") {
         const intl = toIntlIL(recipient);
+        const testTemplate = parseWaTemplate(body.wa_template);
         if (!intl) result = { ok: false, failure_reason: "מספר טלפון לא תקין" };
-        else if (!waSession)
+        else if (testTemplate) {
+          result = await sendWhatsAppTemplate(
+            intl,
+            testTemplate,
+            ctx,
+            { supabaseUrl, serviceRoleKey: serviceKey, userId: ownerUserId },
+            personalized,
+          );
+        } else if (!waSession)
           result = {
             ok: false,
             failure_reason:
-              "WhatsApp לא מחובר. יש להתחבר Green API בדף Social Connect לפני שליחת קמפיין",
+              "WhatsApp לא מחובר. יש להתחבר בהגדרות WhatsApp Business API לפני שליחת קמפיין",
           };
         else
           result = await sendWhatsAppGreen(
@@ -741,13 +812,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch voter context (city, booth) in one batch so we can personalize.
+    // Bulk WhatsApp is always proactive → it must ride on an approved Meta template.
+    const campaignWaTemplate = parseWaTemplate(body.wa_template);
+
+    // Fetch voter context (city, booth) in one batch so we can personalize,
+    // plus the WhatsApp opt-out flag so we never message an opted-out contact.
     const voterIds = Array.from(new Set(rows.map((r: any) => r.lead_id).filter(Boolean)));
     const voterCtx = new Map<string, { city: string | null; booth: string | null; full_name: string | null }>();
+    const waOptedOut = new Set<string>();
     if (voterIds.length > 0) {
       const { data: voters } = await admin
         .from("leads")
-        .select("id, full_name, city")
+        .select("id, full_name, city, wa_opt_out")
         .in("id", voterIds);
       for (const v of voters ?? []) {
         voterCtx.set(v.id, {
@@ -755,6 +831,7 @@ Deno.serve(async (req) => {
           city: v.city ?? null,
           booth: null,
         });
+        if ((v as any).wa_opt_out === true) waOptedOut.add(v.id);
       }
     }
 
@@ -822,20 +899,26 @@ Deno.serve(async (req) => {
       } else if (channel === "whatsapp") {
         const intl = toIntlIL(row.recipient_phone);
         if (!intl) result = { ok: false, failure_reason: "missing_phone" };
-        else if (!waSession)
+        else if (row.lead_id && waOptedOut.has(row.lead_id)) {
+          result = {
+            ok: false,
+            failure_reason: "opt_out — הנמען ביקש להסיר את עצמו מהודעות WhatsApp",
+          };
+        } else if (!campaignWaTemplate) {
           result = {
             ok: false,
             failure_reason:
-              "WhatsApp לא מחובר. יש להתחבר Green API בדף Social Connect לפני שליחת קמפיין",
+              "שליחה המונית בוואטסאפ מחייבת תבנית מאושרת של Meta (Template) — בחר תבנית לפני השיגור",
           };
-        else
-          result = await sendWhatsAppGreen(
-            waSession.instanceId,
-            waSession.apiToken,
+        } else {
+          result = await sendWhatsAppTemplate(
             intl,
-            message,
+            campaignWaTemplate,
+            ctx,
             { supabaseUrl, serviceRoleKey: serviceKey, userId },
+            message,
           );
+        }
       } else if (channel === "email") {
         const emailAddr = (row as any).recipient_email as string | null;
         if (!emailAddr || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddr)) {
@@ -909,7 +992,11 @@ Deno.serve(async (req) => {
       // Source account labeling for non-email channels (email already set above).
       if (!sourceAccount) {
         if (channel === "sms") sourceAccount = sms019Creds?.[0] ? `019 / ${sms019Creds[0]}` : "019 SMS";
-        else if (channel === "whatsapp") sourceAccount = waSession?.accountName ? `Green API / ${waSession.accountName}` : (waSession ? `Green API / ${waSession.instanceId}` : null);
+        else if (channel === "whatsapp") {
+          sourceAccount = campaignWaTemplate
+            ? `Meta WABA / template:${campaignWaTemplate.name}`
+            : (waSession?.accountName ? `Green API / ${waSession.accountName}` : (waSession ? `Green API / ${waSession.instanceId}` : null));
+        }
       }
 
       const update = {
