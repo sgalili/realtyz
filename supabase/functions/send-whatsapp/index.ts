@@ -1,18 +1,21 @@
 /**
  * send-whatsapp
  * ─────────────
- * Unified WhatsApp gateway. Routes per-tenant to either:
- *   - WBA (Official WhatsApp Business API) — if the tenant has an active
- *     `wa_providers` row with provider_name='WBA' and is_official=true.
- *   - GreenAPI (unofficial) — otherwise. Reads credentials from
- *     `wa_providers` (provider_name='GreenAPI') OR falls back to legacy
- *     `api_configs` ("Green API") / `social_connections` rows so existing
- *     Realtyz tenants keep working without re-configuration.
+ * Official Meta WhatsApp Business Cloud API gateway (WBA only).
+ * Every outbound message is dispatched with
+ *   POST https://graph.facebook.com/{version}/{phone-number-id}/messages
+ * using the workspace's authorized WABA access token + phone number ID.
  *
- * Standardized response shape (UI never needs to know which provider ran):
+ * Credentials are resolved from (in order):
+ *   1. `wa_providers` row with provider_name='WBA' scoped by tenant_id/user_id
+ *   2. META_WA_PHONE_NUMBER_ID / META_WA_ACCESS_TOKEN environment secrets
+ *
+ * There is NO unofficial/legacy provider fallback.
+ *
+ * Standardized response shape:
  * {
  *   success: boolean,
- *   provider: 'WBA' | 'GreenAPI',
+ *   provider: 'WBA',
  *   message_id: string | null,
  *   error?: string,
  *   details?: unknown
@@ -39,8 +42,8 @@ const BodySchema = z
     message: z.string().min(1).max(4096).optional(),
     // Backward-compatible alias used by older UI callsites.
     body: z.string().min(1).max(4096).optional(),
-    // WBA-only template id. When provided AND provider is WBA, sends a template message
-    // using { template_id, language, components? }. Ignored by GreenAPI (falls back to text).
+    // Template id. When provided, sends a template message using
+    // { template_id, language, components? } instead of free text.
     template_id: z.string().min(1).max(120).optional(),
     template_language: z.string().min(2).max(20).optional(),
     template_components: z.array(z.unknown()).optional(),
@@ -55,8 +58,9 @@ const BodySchema = z
         mime_type: z.string().optional(),
       })
       .optional(),
-    // Optional explicit override; otherwise auto-routed by tenant config.
-    force_provider: z.enum(["WBA", "GreenAPI"]).optional(),
+    // Accepted for backward compatibility with older callers; only "WBA" is
+    // ever honored because Meta Cloud API is the sole supported gateway.
+    force_provider: z.literal("WBA").optional(),
     // Compliance: when true, the message was AI-drafted. We append a subtle
     // "תוכן בסיוע AI" footer to the outbound text and log it on the message
     // row + audit_logs so the agent can prove disclosure.
@@ -72,7 +76,7 @@ const BodySchema = z
 
 type StdResponse = {
   success: boolean;
-  provider: "WBA" | "GreenAPI";
+  provider: "WBA";
   message_id: string | null;
   error?: string;
   details?: unknown;
@@ -93,217 +97,67 @@ function normalizePhone(value: string): string | null {
 }
 
 interface ResolvedProvider {
-  name: "WBA" | "GreenAPI";
-  is_official: boolean;
+  name: "WBA";
+  is_official: true;
   config: Record<string, unknown>;
 }
 
+/**
+ * Resolve the official Meta WBA credentials for this workspace.
+ * Only `wa_providers` rows with provider_name='WBA' are considered; if none
+ * exist we fall back to the project-level Meta env secrets.
+ */
 async function resolveProvider(
   admin: ReturnType<typeof createClient>,
   userId: string | null,
   tenantId: string | null,
-  force?: "WBA" | "GreenAPI",
 ): Promise<ResolvedProvider | null> {
-  // 1a. Tenant-scoped rows in wa_providers (highest priority when tenant_id is supplied).
-  const tryRows = async (
-    column: "tenant_id" | "user_id",
-    value: string,
-  ) => {
+  const tryRows = async (column: "tenant_id" | "user_id", value: string) => {
     const { data: rows } = await admin
       .from("wa_providers")
-      .select("provider_name, config, is_official, is_active")
+      .select("provider_name, config, is_active")
       .eq(column, value)
+      .eq("provider_name", "WBA")
       .eq("is_active", true);
-    return (rows ?? []) as Array<{
-      provider_name: "WBA" | "GreenAPI";
-      config: Record<string, unknown>;
-      is_official: boolean;
-    }>;
+    return (rows ?? []) as Array<{ config: Record<string, unknown> }>;
   };
 
-  const pick = (
-    list: Array<{
-      provider_name: "WBA" | "GreenAPI";
-      config: Record<string, unknown>;
-      is_official: boolean;
-    }>,
-  ): ResolvedProvider | null => {
-    if (force) {
-      const m = list.find((r) => r.provider_name === force);
-      return m
-        ? { name: m.provider_name, is_official: m.is_official, config: m.config ?? {} }
-        : null;
-    }
-    // Routing rule: official WBA wins if connected.
-    const wba = list.find((r) => r.provider_name === "WBA" && r.is_official === true);
-    if (wba) return { name: "WBA", is_official: true, config: wba.config ?? {} };
-    const green = list.find((r) => r.provider_name === "GreenAPI");
-    if (green) return { name: "GreenAPI", is_official: false, config: green.config ?? {} };
-    return null;
+  const pick = (list: Array<{ config: Record<string, unknown> }>): ResolvedProvider | null => {
+    const row = list[0];
+    if (!row) return null;
+    const cfg = row.config ?? {};
+    if (!cfg.phone_number_id || !cfg.access_token) return null;
+    return { name: "WBA", is_official: true, config: cfg };
   };
 
   if (tenantId) {
-    const hit = pick(await tryRows("tenant_id", tenantId));
-    if (hit) return hit;
     // Realtyz stores the workspace's provider row keyed by the OWNER's user id
-    // with tenant_id NULL. Server-to-server callers (send-message, autopilot)
-    // pass that owner id as `tenant_id`, so fall back to a user_id match before
-    // giving up — otherwise a fully configured WBA account looks unconfigured.
-    const ownerHit = pick(await tryRows("user_id", tenantId));
-    if (ownerHit) return ownerHit;
+    // with tenant_id NULL. Server-to-server callers pass that owner id as
+    // `tenant_id`, so check both columns.
+    const hit = pick(await tryRows("tenant_id", tenantId)) ?? pick(await tryRows("user_id", tenantId));
+    if (hit) return hit;
   }
   if (userId) {
     const hit = pick(await tryRows("user_id", userId));
     if (hit) return hit;
   }
 
-
-  // 2. Legacy fallback — preserve existing Realtyz GreenAPI behavior.
-  if (!force || force === "GreenAPI") {
-    const { data: legacy } = await admin
-      .from("api_configs")
-      .select("api_key")
-      .eq("service_name", "Green API")
-      .eq("is_active", true)
-      .maybeSingle();
-    if (legacy?.api_key) {
-      const [instance_id, ...tokenParts] = String(legacy.api_key).split(":");
-      const token = tokenParts.join(":");
-      if (instance_id && token) {
-        return {
-          name: "GreenAPI",
-          is_official: false,
-          config: { instance_id, token },
-        };
-      }
-    }
-
-    const { data: socialRow } = await admin
-      .from("social_connections")
-      .select("credentials")
-      .eq("platform", "whatsapp_green")
-      .eq("is_connected", true)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const creds = (socialRow?.credentials ?? {}) as {
-      instance_id?: string;
-      token?: string;
-      api_token?: string;
+  // Project-level Meta Cloud API secrets.
+  const phoneNumberId = Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? "";
+  const accessToken = Deno.env.get("META_WA_ACCESS_TOKEN") ?? "";
+  if (phoneNumberId && accessToken) {
+    return {
+      name: "WBA",
+      is_official: true,
+      config: {
+        phone_number_id: phoneNumberId,
+        access_token: accessToken,
+        api_version: Deno.env.get("META_WA_API_VERSION") ?? "v20.0",
+      },
     };
-    const instance_id = String(creds.instance_id ?? "");
-    const token = String(creds.token ?? creds.api_token ?? "");
-    if (instance_id && token) {
-      return { name: "GreenAPI", is_official: false, config: { instance_id, token } };
-    }
   }
 
   return null;
-}
-
-async function sendViaGreenApi(
-  cfg: Record<string, unknown>,
-  phone: string,
-  message: string,
-  file?: { base64: string; file_name: string; caption?: string },
-): Promise<StdResponse> {
-  const instanceId = String(cfg.instance_id ?? "");
-  const token = String(cfg.token ?? "");
-  if (!instanceId || !token) {
-    return {
-      success: false,
-      provider: "GreenAPI",
-      message_id: null,
-      error: "GreenAPI not configured",
-    };
-  }
-  const chatId = `${phone}@c.us`;
-
-  // Anti-ban humanization: set "composing" (typing...) state, then sleep a
-  // human-like duration proportional to message length before sending.
-  try {
-    await fetch(
-      `https://api.green-api.com/waInstance${instanceId}/sendChatStateTyping/${token}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId }),
-      },
-    );
-  } catch (_e) {
-    // Non-fatal — typing indicator is best-effort.
-  }
-
-  const charDelay = Math.min(message.length * 15, 6000);
-  const jitter = 3000 + Math.floor(Math.random() * 3000); // 3000–6000ms
-  const humanDelayMs = Math.max(charDelay, jitter);
-  await new Promise((r) => setTimeout(r, humanDelayMs));
-
-  try {
-    await fetch(
-      `https://api.green-api.com/waInstance${instanceId}/sendChatStatePause/${token}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId }),
-      },
-    );
-  } catch (_e) { /* ignore */ }
-
-  // Text first.
-  const textRes = await fetch(
-    `https://api.green-api.com/waInstance${instanceId}/sendMessage/${token}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chatId, message }),
-    },
-  );
-
-  const textJson = await textRes.json().catch(() => ({}));
-  if (!textRes.ok || !textJson?.idMessage) {
-    return {
-      success: false,
-      provider: "GreenAPI",
-      message_id: null,
-      error: `GreenAPI send failed (${textRes.status})`,
-      details: textJson,
-    };
-  }
-
-  let fileMessageId: string | null = null;
-  if (file) {
-    const bytes = Uint8Array.from(atob(file.base64), (c) => c.charCodeAt(0));
-    const form = new FormData();
-    form.append("chatId", chatId);
-    if (file.caption) form.append("caption", file.caption);
-    form.append(
-      "file",
-      new Blob([bytes], { type: "application/octet-stream" }),
-      file.file_name,
-    );
-    const fr = await fetch(
-      `https://api.green-api.com/waInstance${instanceId}/sendFileByUpload/${token}`,
-      { method: "POST", body: form },
-    );
-    const fj = await fr.json().catch(() => ({}));
-    if (!fr.ok) {
-      return {
-        success: false,
-        provider: "GreenAPI",
-        message_id: textJson.idMessage,
-        error: `GreenAPI file send failed (${fr.status})`,
-        details: fj,
-      };
-    }
-    fileMessageId = fj?.idMessage ?? null;
-  }
-
-  return {
-    success: true,
-    provider: "GreenAPI",
-    message_id: fileMessageId ?? textJson.idMessage,
-  };
 }
 
 async function sendViaWba(
