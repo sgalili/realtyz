@@ -53,4 +53,30 @@ export function liveYad2Url(row: {
 
 }
 
+// Loose resolver used by the results table so the Yad2 button matches the
+// property details view exactly: any validated Yad2 listing URL shows the
+// button, regardless of whether the ad was imported into our DB.
+export function sourceYad2Url(row: {
+  url?: string | null;
+  source?: string | null;
+  sources?: string[] | null;
+  raw?: any;
+}): string {
+  const raw = row.raw ?? {};
+  const meta = raw.source_metadata && typeof raw.source_metadata === 'object' ? raw.source_metadata : {};
+
+  const url = String(
+    row.url ?? pick(raw, ['source_url', 'url', 'ad_url', 'link']) ?? pick(meta, ['source_url', 'url', 'ad_url', 'link']) ?? '',
+  ).trim();
+  if (!url || !/^https?:\/\//i.test(url)) return '';
+
+  const origin = String(row.source ?? pick(raw, ['source_origin', 'source']) ?? pick(meta, ['source_origin', 'source']) ?? '').toLowerCase();
+  const isYad2 =
+    origin.includes('yad2') ||
+    (row.sources ?? []).some((s) => String(s).toLowerCase().includes('yad2')) ||
+    /yad2\.co\.il/i.test(url);
+
+  return isYad2 ? url : '';
+}
+
 export default liveYad2Url;

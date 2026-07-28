@@ -44,7 +44,7 @@ import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle }
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
 import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/propertyFullSync';
 import { isNewListing } from '@/lib/listingFreshness';
-import { liveYad2Url } from '@/lib/yad2Ad';
+import { sourceYad2Url } from '@/lib/yad2Ad';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
 import { formatListingDate, listingActivityAt } from '@/lib/listingDates';
@@ -1450,7 +1450,7 @@ function ResultTable({
                   <div className="inline-flex items-center gap-1.5">
                     {/* Yad2 ad first, campaign second (swapped per workspace spec). */}
                     {(() => {
-                      const live = liveYad2Url(r);
+                      const live = sourceYad2Url(r);
                       if (!live) return null;
                       return <Yad2AdButton url={live} />;
                     })()}
