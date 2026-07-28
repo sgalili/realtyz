@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { useState, useRef, useEffect, useMemo, cloneElement, type ReactElement } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { NewWhatsAppChatDialog } from '@/components/whatsapp/NewWhatsAppChatDialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -823,6 +824,7 @@ const OmnichannelInbox = () => {
     (v: any) => (v?.phone_number || '').replace(/\D/g, '') === searchedPhone,
   );
   const [creatingLead, setCreatingLead] = useState(false);
+  const [newChatOpen, setNewChatOpen] = useState(false);
   const startChatWithPhone = async () => {
     if (!searchedPhone || creatingLead) return;
     setCreatingLead(true);
@@ -873,6 +875,16 @@ const OmnichannelInbox = () => {
 
   return (
     <div dir="rtl" className="space-y-3">
+      <NewWhatsAppChatDialog
+        open={newChatOpen}
+        onOpenChange={setNewChatOpen}
+        currentUserId={user?.id}
+        onStarted={(leadId) => {
+          queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+          setSendChannel('whatsapp');
+          setSelectedVoterId(leadId);
+        }}
+      />
       {/* Filter pills + bookmark */}
       <div className="flex items-center gap-2">
         <div className="flex flex-1 flex-row-reverse items-center gap-2 overflow-x-auto">
