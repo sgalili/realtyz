@@ -162,20 +162,38 @@ export function WhatsAppTwoWayTestCard() {
           )}
         </div>
 
+        <Alert className="border-blue-200 bg-blue-50 text-blue-900">
+          <AlertDescription className="text-[11px] leading-relaxed">
+            שים לב: אם Meta מחזירה Message ID של הצלחה אך ההודעה לא מתקבלת במכשיר — סימן שהמספר אינו
+            רשום כ-Test Recipient פעיל. יש להוסיף את מספר היעד תחת
+            WhatsApp → API Setup → To (Manage phone number list) בלוח הבקרה של Meta App, ולאשר את
+            קוד האימות שנשלח למספר. במצב Test Mode ניתן לשלוח רק למספרים מאומתים ברשימה זו.
+          </AlertDescription>
+        </Alert>
+
         {result && (
-          <Alert variant={result.ok ? 'default' : 'destructive'}>
+          <Alert
+            variant={result.ok ? 'default' : 'destructive'}
+            className={result.ok ? 'border-blue-200 bg-blue-50' : undefined}
+          >
             {result.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
             <AlertDescription className="space-y-1 text-xs">
               {result.ok ? (
-                <span>
-                  ההודעה נשלחה בהצלחה
-                  {result.messageId ? ` · Message ID: ${result.messageId}` : ''}
-                </span>
+                <div className="space-y-1">
+                  <span>
+                    ההודעה נשלחה בהצלחה
+                    {result.messageId ? ` · Message ID: ${result.messageId}` : ''}
+                  </span>
+                  <p className="text-[11px] text-blue-800">
+                    לא קיבלת את ההודעה בטלפון? ה-ID מעיד רק שהבקשה התקבלה אצל Meta. ודא שמספר היעד
+                    מופיע כ-Test Recipient מאומת ברשימת המספרים של האפליקציה ב-Meta App Dashboard.
+                  </p>
+                </div>
               ) : (
                 <>
                   <div>{result.error}</div>
                   {result.details && (
-                    <pre dir="ltr" className="max-h-40 overflow-auto rounded bg-muted/50 p-2 text-[10px]">
+                    <pre dir="ltr" className="max-h-40 overflow-auto rounded bg-blue-50 p-2 text-[10px]">
                       {result.details}
                     </pre>
                   )}
@@ -185,7 +203,7 @@ export function WhatsAppTwoWayTestCard() {
           </Alert>
         )}
 
-        <div className="space-y-2 rounded-lg border border-border/40 bg-muted/30 p-3">
+        <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
           <p className="text-xs font-medium">הודעות נכנסות אחרונות (אימות דו-כיווניות)</p>
           {replies.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">

@@ -97,7 +97,7 @@ export function MetaWabaHealthCard() {
         {result?.summary && <p className="text-sm text-muted-foreground">{result.summary}</p>}
 
         {(result?.checks ?? []).map((c) => (
-          <div key={c.id} className="flex items-start gap-3 rounded-md border p-3">
+          <div key={c.id} className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 p-3">
             <div className="mt-0.5 shrink-0">{STATUS_ICON[c.status]}</div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">{c.label}</p>
