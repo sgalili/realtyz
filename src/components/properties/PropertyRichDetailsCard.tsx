@@ -230,6 +230,7 @@ function entriesOf(obj: Record<string, unknown> | null | undefined): Entry[] {
 
 export function PropertyRichDetailsCard({
   aboutText,
+  aboutBlocks,
   furniture,
   additional,
   amenities,
