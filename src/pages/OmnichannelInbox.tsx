@@ -1209,9 +1209,6 @@ const OmnichannelInbox = () => {
                               />
                             )}
                             <div className="mb-1 flex items-center justify-end gap-1.5">
-                              <Badge variant="outline" className={`px-1 py-0 text-[9px] border ${badge.className}`}>
-                                {badge.label}
-                              </Badge>
                               <ChannelIcon channel={msg.channel} />
                             </div>
                             <p className="max-w-full overflow-hidden whitespace-pre-wrap break-all text-sm leading-relaxed">{msg.content}</p>
