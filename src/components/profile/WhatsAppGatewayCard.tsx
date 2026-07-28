@@ -178,18 +178,19 @@ export function WhatsAppGatewayCard() {
       const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', {
         body: { force, limit: 500 },
       });
-      if (error) throw error;
-      const r = data as { scanned: number; updated: number; skipped: number; failed: number };
+      const r = (data as any) || {};
+      // Silent circuit-breaker: unconfigured/expired instance → no error toast.
+      if (error || r.supported === false) return;
       toast.success(
-        `סונכרנו תמונות פרופיל מ-WhatsApp · עודכנו ${r.updated} מתוך ${r.scanned}` +
-          (r.failed > 0 ? ` · ${r.failed} כשלונות` : ''),
+        `סונכרנו תמונות פרופיל מוואטסאפ · עודכנו ${r.updated ?? 0} מתוך ${r.scanned ?? 0}`,
       );
-    } catch (e: any) {
-      toast.error(`סנכרון תמונות נכשל: ${e?.message ?? e}`);
+    } catch {
+      /* silent — initials avatars remain */
     } finally {
       setSyncingAvatars(false);
     }
   };
+
 
   return (
     <Card>
