@@ -32,6 +32,7 @@ import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { sourcePhotoCount } from '@/lib/photoCount';
 import { ProgressRing } from '@/components/ui/ProgressRing';
+import { buildDescriptionBlocks, sanitizeDescription } from '@/lib/descriptionBlocks';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
