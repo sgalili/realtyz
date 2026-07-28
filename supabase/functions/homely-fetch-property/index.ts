@@ -11,6 +11,7 @@
 //   /api/report/getRounds/{hash}
 //   /api/hashData/getAllKeys/{hash}                              (POST)
 import { load } from "https://esm.sh/cheerio@1.0.0-rc.12";
+import { sanitizeDescription } from "../_shared/descriptionFilter.ts";
 
 type ImageCandidate = {
   url: string;
@@ -1344,10 +1345,11 @@ function mapStreamProperty(it: any, idx: number) {
     "תיאור",
     "הערות",
   ]);
+  const cleanDescription = sanitizeDescription(description, 1);
   return {
     homely_id: serial,
     title: title || `נכס ${serial}`,
-    description: description || notes,
+    description: cleanDescription || notes,
     office_notes,
 
     price: Number(it?.priceshekel ?? 0) || 0,
