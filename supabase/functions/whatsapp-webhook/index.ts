@@ -3,7 +3,8 @@
 // ------------------------------------------------------------
 // Incoming WhatsApp pipeline → Strategy Bank.
 //
-// Accepts inbound webhooks from GreenAPI (https://greenapi.com/en/docs/api/receiving/notifications-format/).
+// Accepts inbound webhooks from the official Meta WhatsApp Business Cloud API
+// (entry[].changes[].value.messages[]) and legacy provider envelopes.
 // Pipeline:
 //   1. Authenticate the sender by phone against `kb_whitelist`.
 //   2. For TEXT  → ingest directly into the Strategy Bank.
@@ -253,7 +254,7 @@ async function persistRawRecoveryMessage(
       direction: "inbound",
       sender_type: "voter",
       metadata: {
-        provider: "GreenAPI",
+        provider: "WBA",
         inbound_via: "whatsapp-webhook",
         recovery: true,
         recovery_reason: reason,
@@ -693,19 +694,8 @@ async function handleLeadInboxInbound(
       if (createErr) console.warn("auto lead create soft-fail:", createErr.message);
       else {
         lead = created as any;
-        // Fire-and-forget: pull the WhatsApp avatar via fetch-wa-avatars so
-        // the new lead shows their real profile picture across the dashboard.
-        try {
-          const fnUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/fetch-wa-avatars`;
-          fetch(fnUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-            },
-            body: JSON.stringify({ lead_ids: [(created as any).id], force: true }),
-          }).catch(() => { /* swallow */ });
-        } catch { /* swallow */ }
+        // Note: the official Meta WhatsApp Business API does not expose contact
+        // profile photos, so no avatar fetch is performed here.
       }
     } catch (e) {
       console.warn("auto lead create threw:", e instanceof Error ? e.message : e);
@@ -763,7 +753,7 @@ async function handleLeadInboxInbound(
 
   const now = new Date().toISOString();
   const metadata = {
-    provider: "GreenAPI",
+    provider: "WBA",
     message_id: messageId ?? null,
     inbound_via: "whatsapp-webhook",
     sender_phone: senderPhone,
@@ -938,6 +928,21 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method === "GET") {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+    // Meta Cloud API webhook verification handshake.
+    const url = new URL(req.url);
+    const mode = url.searchParams.get("hub.mode");
+    const challenge = url.searchParams.get("hub.challenge");
+    const verifyToken = url.searchParams.get("hub.verify_token");
+    if (mode === "subscribe" && challenge) {
+      const expected = Deno.env.get("META_WA_VERIFY_TOKEN") ?? "";
+      if (!expected || verifyToken === expected) {
+        return new Response(challenge, {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "text/plain" },
+        });
+      }
+      return new Response("forbidden", { status: 403, headers: corsHeaders });
+    }
     return jsonResponse({
       ok: true,
       webhook_url: `${SUPABASE_URL}/functions/v1/whatsapp-webhook`,
@@ -972,6 +977,43 @@ Deno.serve(async (req) => {
     console.warn("whatsapp-webhook: unparseable payload, raw preview:", previewRawBody(rawBody));
     return jsonResponse({ ok: true, ignored: "unparseable_payload" }, 200);
   }
+
+  // ================================================================
+  // META CLOUD API INBOUND — normalize the official WABA payload
+  // (entry[].changes[].value.messages[]) into the internal envelope the
+  // extractor below already understands. Status callbacks (`statuses[]`)
+  // are telemetry and are acknowledged without persisting anything.
+  // ================================================================
+  if (payload?.object === "whatsapp_business_account" || Array.isArray(payload?.entry)) {
+    const value = payload?.entry?.[0]?.changes?.[0]?.value ?? {};
+    const metaMsg = value?.messages?.[0];
+    if (!metaMsg) {
+      return jsonResponse({ ok: true, ignored: "meta_no_message" }, 200);
+    }
+    const from = String(metaMsg.from ?? "").replace(/\D/g, "");
+    const text =
+      metaMsg?.text?.body ??
+      metaMsg?.button?.text ??
+      metaMsg?.interactive?.button_reply?.title ??
+      metaMsg?.interactive?.list_reply?.title ??
+      metaMsg?.image?.caption ??
+      metaMsg?.document?.caption ??
+      "";
+    if (!from || !String(text).trim()) {
+      return jsonResponse({ ok: true, ignored: "meta_unsupported_message_type" }, 200);
+    }
+    payload = {
+      typeWebhook: "incomingMessageReceived",
+      idMessage: metaMsg.id,
+      senderData: {
+        sender: `${from}@c.us`,
+        chatId: `${from}@c.us`,
+        senderName: value?.contacts?.[0]?.profile?.name ?? undefined,
+      },
+      messageData: { textMessageData: { textMessage: String(text).trim() } },
+    };
+  }
+
 
   // ================================================================
   // TYPE-WEBHOOK GATE — GreenAPI fires many non-conversational events
