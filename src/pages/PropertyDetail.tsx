@@ -253,10 +253,11 @@ export default function PropertyDetail() {
         documents,
         owner,
         rich: {
+          aboutBlocks: buildDescriptionBlocks(r),
           about:
-            (r.long_description as string | null) ||
-            (r.short_description as string | null) ||
-            (row.description as string | null) ||
+            sanitizeDescription(r.long_description as string | null) ||
+            sanitizeDescription(r.short_description as string | null) ||
+            sanitizeDescription(row.description as string | null) ||
             null,
           furniture: (r.furniture_details as Record<string, unknown> | null) ?? null,
           additional: (() => {
