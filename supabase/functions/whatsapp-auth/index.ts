@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const OTP_TTL_MINUTES = 10;
 const MAX_ATTEMPTS = 5;
@@ -24,6 +25,24 @@ const hashCode = async (phone: string, code: string) => {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 };
 
+const otpTemplate = (code: string) => {
+  const name = Deno.env.get("META_WA_OTP_TEMPLATE_NAME") ?? Deno.env.get("WHATSAPP_OTP_TEMPLATE_NAME") ?? "";
+  if (!name) return null;
+  const language = Deno.env.get("META_WA_OTP_TEMPLATE_LANGUAGE") ?? Deno.env.get("WHATSAPP_OTP_TEMPLATE_LANGUAGE") ?? "he";
+  const components: unknown[] = [
+    { type: "body", parameters: [{ type: "text", text: code }] },
+  ];
+  if ((Deno.env.get("META_WA_OTP_COPY_CODE_BUTTON") ?? "").toLowerCase() === "true") {
+    components.push({
+      type: "button",
+      sub_type: "copy_code",
+      index: "0",
+      parameters: [{ type: "coupon_code", coupon_code: code }],
+    });
+  }
+  return { name, language, components };
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -40,61 +59,48 @@ Deno.serve(async (req) => {
 
     if (action === "send") {
       await admin.rpc("cleanup_expired_whatsapp_login_otps");
-
-      // Resolve Green API credentials from either api_configs (legacy "instanceId:token") or social_connections JSON.
-      let instanceId = "";
-      let token = "";
-      const { data: legacyConfig } = await admin
-        .from("api_configs")
-        .select("api_key")
-        .eq("service_name", "Green API")
-        .eq("is_active", true)
-        .maybeSingle();
-      if (legacyConfig?.api_key) {
-        const [id, ...rest] = String(legacyConfig.api_key).split(":");
-        instanceId = id ?? "";
-        token = rest.join(":");
-      }
-      if (!instanceId || !token) {
-        const { data: socialRow } = await admin
-          .from("social_connections")
-          .select("credentials")
-          .eq("platform", "whatsapp_green")
-          .eq("is_connected", true)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const creds = (socialRow?.credentials ?? {}) as { instance_id?: string; token?: string; api_token?: string };
-        instanceId = instanceId || String(creds.instance_id ?? "");
-        token = token || String(creds.api_token ?? creds.token ?? "");
-      }
-      if (!instanceId || !token) return json({ error: "Green API לא מוגדר" }, 500);
-
       const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0");
       const codeHash = await hashCode(phone, code);
       const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
 
-      const sendResponse = await fetch(`https://api.green-api.com/waInstance${instanceId}/sendMessage/${token}`, {
+      const template = otpTemplate(code);
+      const payload: Record<string, unknown> = template
+        ? {
+            phone_number: phone,
+            template_id: template.name,
+            template_language: template.language,
+            template_components: template.components,
+          }
+        : {
+            phone_number: phone,
+            message: `קוד האימות שלך ל-Realtyz: ${code}`,
+          };
+
+      const sendResponse = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chatId: `${phone}@c.us`,
-          message: `קוד האימות שלך ל-Realtyz: ${code}`,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceRoleKey}`,
+          apikey: serviceRoleKey,
+        },
+        body: JSON.stringify(payload),
       });
-
-      if (!sendResponse.ok) {
-        const details = await sendResponse.text();
-        console.error("Green API send failed", sendResponse.status, details);
-        return json({ error: "שליחת קוד WhatsApp נכשלה" }, 502);
-      }
-
-      // Confirm GreenAPI accepted the message (idMessage present) before persisting OTP.
-      let sendPayload: { idMessage?: string } = {};
-      try { sendPayload = await sendResponse.json(); } catch { sendPayload = {}; }
-      if (!sendPayload?.idMessage) {
-        console.error("Green API send returned no idMessage", sendPayload);
-        return json({ error: "שליחת קוד WhatsApp נכשלה" }, 502);
+      const sendPayload = await sendResponse.json().catch(() => ({}));
+      if (!sendResponse.ok || sendPayload?.success === false || !sendPayload?.message_id) {
+        await logIntegrationError({
+          integration: "whatsapp",
+          functionName: "whatsapp-auth",
+          errorMessage: String(sendPayload?.error ?? "WhatsApp OTP send failed"),
+          context: {
+            status: sendResponse.status,
+            code: sendPayload?.details?.code ?? null,
+            subcode: sendPayload?.details?.subcode ?? null,
+            phone_last4: phone.slice(-4),
+            template: template?.name ?? null,
+          },
+        });
+        const templateHint = template ? "תבנית קוד האימות ב-Meta נכשלה" : "נדרשת תבנית אימות מאושרת ב-Meta לשליחת קוד כניסה";
+        return json({ error: sendPayload?.error ?? templateHint }, 502);
       }
 
       const { error: insertError } = await admin.from("whatsapp_login_otps").insert({
@@ -166,7 +172,7 @@ Deno.serve(async (req) => {
           phone: `+${phone}`,
           email_confirm: true,
           phone_confirm: true,
-          user_metadata: { provider: "whatsapp_green", phone_number: phone },
+        user_metadata: { provider: "whatsapp_wba", phone_number: phone },
         });
         if (createError && !/already|registered|exists/i.test(createError.message)) throw createError;
         targetEmail = syntheticEmail;
