@@ -13,6 +13,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import puppeteer from "npm:puppeteer-core@22.15.0";
+import { isBoilerplateDescription } from "../_shared/descriptionFilter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -710,6 +711,7 @@ function deepDescription(obj: any, depth = 0): string | null {
     if (!v || v.length < 25) return;
     if (/^https?:\/\//i.test(v)) return;
     if (DESC_VALUE_DENY_RE.test(v)) return;
+    if (isBoilerplateDescription(v)) return; // cookie banners / legal boilerplate
     if (looksLikeLocationString(v)) return;
     if (!best || v.length > best.length) best = v;
   };
@@ -739,6 +741,7 @@ function descriptionFromHtml($: any): string | null {
     const v = clean(s ?? null);
     if (!v || v.length < min) return null;
     if (DESC_VALUE_DENY_RE.test(v)) return null;
+    if (isBoilerplateDescription(v)) return null; // cookie banners / legal boilerplate
     if (looksLikeLocationString(v)) return null;
     return v.replace(/^על הנכס\s*/, "").trim() || null;
   };

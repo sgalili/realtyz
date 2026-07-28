@@ -20,6 +20,8 @@ export type PricePoint = { date: string | null; price: number | null; label?: st
 
 type Props = {
   aboutText?: string | null;
+  /** Descriptions from multiple sources, rendered stacked as `Source:` + text. */
+  aboutBlocks?: { source: string; text: string }[] | null;
   furniture?: Record<string, unknown> | null;
   additional?: Record<string, unknown> | null;
   amenities?: Record<string, unknown> | null;
@@ -228,6 +230,7 @@ function entriesOf(obj: Record<string, unknown> | null | undefined): Entry[] {
 
 export function PropertyRichDetailsCard({
   aboutText,
+  aboutBlocks,
   furniture,
   additional,
   amenities,
@@ -271,8 +274,11 @@ export function PropertyRichDetailsCard({
   const points = (priceHistory ?? []).filter((p) => p && p.price != null);
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
 
+  const blocks = (aboutBlocks ?? []).filter((b) => b && b.text);
+  const hasAbout = blocks.length > 0 || !!aboutText;
+
   if (
-    !aboutText &&
+    !hasAbout &&
     !furnitureEntries.length &&
     !detailRows.length &&
     !featureFlags.length &&
@@ -293,11 +299,21 @@ export function PropertyRichDetailsCard({
 
   return (
     <Card className="p-4 sm:p-6 space-y-8" dir="rtl">
-      {aboutText && (
-        <section>
-          <p className="text-lg leading-8 text-foreground/80 whitespace-pre-line">{aboutText}</p>
+      {hasAbout && (
+        <section className="space-y-4">
+          {blocks.length > 0 ? (
+            blocks.map((b, i) => (
+              <div key={`${b.source}-${i}`}>
+                <p className="text-lg font-bold text-foreground">{b.source}:</p>
+                <p className="text-lg leading-8 text-foreground/80 whitespace-pre-line">{b.text}</p>
+              </div>
+            ))
+          ) : (
+            <p className="text-lg leading-8 text-foreground/80 whitespace-pre-line">{aboutText}</p>
+          )}
         </section>
       )}
+
 
       {furnitureEntries.length > 0 && (
         <section>

@@ -32,6 +32,7 @@ import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { sourcePhotoCount } from '@/lib/photoCount';
 import { ProgressRing } from '@/components/ui/ProgressRing';
+import { buildDescriptionBlocks, sanitizeDescription } from '@/lib/descriptionBlocks';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -197,7 +198,7 @@ export default function PropertyDetail() {
         id: String(row.id),
         source: 'listings',
         title: row.property_title || 'נכס',
-        description: row.description || '',
+        description: sanitizeDescription(row.description) || '',
         price: priceNum,
         currency: '₪',
         city: row.city || (meta.city as string) || '',
@@ -253,10 +254,11 @@ export default function PropertyDetail() {
         documents,
         owner,
         rich: {
+          aboutBlocks: buildDescriptionBlocks(r),
           about:
-            (r.long_description as string | null) ||
-            (r.short_description as string | null) ||
-            (row.description as string | null) ||
+            sanitizeDescription(r.long_description as string | null) ||
+            sanitizeDescription(r.short_description as string | null) ||
+            sanitizeDescription(row.description as string | null) ||
             null,
           furniture: (r.furniture_details as Record<string, unknown> | null) ?? null,
           additional: (() => {
@@ -1192,6 +1194,7 @@ export default function PropertyDetail() {
           {!editMode && data?.rich && (
             <PropertyRichDetailsCard
               aboutText={data.rich.about}
+              aboutBlocks={data.rich.aboutBlocks}
               furniture={data.rich.furniture}
               additional={data.rich.additional}
               amenities={data.rich.amenities}
