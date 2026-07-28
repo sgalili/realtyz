@@ -35,12 +35,16 @@ Deno.serve(async (req) => {
     const mode = url.searchParams.get("hub.mode");
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge") ?? "";
-    const expected = Deno.env.get("MESSENGER_VERIFY_TOKEN") ?? "";
+    const expected =
+      Deno.env.get("META_WA_VERIFY_TOKEN") ??
+      Deno.env.get("MESSENGER_VERIFY_TOKEN") ??
+      "";
     if (mode === "subscribe" && expected && token === expected) {
       return new Response(challenge, { status: 200, headers: { ...corsHeaders, "Content-Type": "text/plain" } });
     }
     return new Response("Forbidden", { status: 403, headers: corsHeaders });
   }
+
 
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
