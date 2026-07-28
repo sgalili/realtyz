@@ -1450,7 +1450,7 @@ function ResultTable({
                   <div className="inline-flex items-center gap-1.5">
                     {/* Yad2 ad first, campaign second (swapped per workspace spec). */}
                     {(() => {
-                      const live = liveYad2Url(r);
+                      const live = sourceYad2Url(r);
                       if (!live) return null;
                       return <Yad2AdButton url={live} />;
                     })()}
