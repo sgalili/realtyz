@@ -152,7 +152,9 @@ const OmnichannelInbox = () => {
   // Global autopilot lives in the page hero (affects ALL chats). It's read-only here.
   const aiAutopilot = _platformSettings.enable_ai_autopilot === true;
   const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'handling'>('all');
-  const [channelFilter, setChannelFilter] = useState<'all' | 'whatsapp' | 'telegram' | 'messenger' | 'facebook' | 'instagram' | 'linkedin' | 'x' | 'tiktok' | 'sms' | 'email'>('all');
+  // Empty set = no channel filter (show everything). Multiple channels can be
+  // toggled on at once.
+  const [channelFilter, setChannelFilter] = useState<Set<string>>(new Set());
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   // Tracks the last AI-generated draft (e.g. from Undo & Regenerate) so manual
