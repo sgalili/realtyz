@@ -5,6 +5,23 @@ import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 const OTP_TTL_MINUTES = 10;
 const MAX_ATTEMPTS = 5;
 
+const safeErrorDetails = (error: unknown) => ({
+  name: error instanceof Error ? error.name : typeof error,
+  message: error instanceof Error ? error.message : String(error),
+  stack: error instanceof Error ? error.stack?.slice(0, 4000) : undefined,
+});
+
+const envPresence = () => ({
+  has_meta_wa_otp_template_name: !!Deno.env.get("META_WA_OTP_TEMPLATE_NAME"),
+  has_whatsapp_otp_template_name: !!Deno.env.get("WHATSAPP_OTP_TEMPLATE_NAME"),
+  meta_wa_otp_template_language: Deno.env.get("META_WA_OTP_TEMPLATE_LANGUAGE") ?? null,
+  whatsapp_otp_template_language: Deno.env.get("WHATSAPP_OTP_TEMPLATE_LANGUAGE") ?? null,
+  has_meta_wa_access_token: !!Deno.env.get("META_WA_ACCESS_TOKEN"),
+  has_meta_whatsapp_token: !!Deno.env.get("META_WHATSAPP_TOKEN"),
+  has_meta_wa_phone_number_id: !!Deno.env.get("META_WA_PHONE_NUMBER_ID"),
+  has_meta_phone_number_id: !!Deno.env.get("META_PHONE_NUMBER_ID"),
+});
+
 const json = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -48,16 +65,34 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch (error) {
+      console.error("whatsapp-auth invalid JSON body", safeErrorDetails(error));
+      return json({ error: "Invalid JSON body" }, 400);
+    }
     const action = String(body.action ?? "send");
     const phone = normalizeIsraeliPhone(String(body.phone ?? ""));
-    if (!phone) return json({ error: "מספר WhatsApp לא תקין" }, 400);
+    if (!phone) {
+      console.warn("whatsapp-auth rejected invalid phone", { action });
+      return json({ error: "מספר WhatsApp לא תקין" }, 400);
+    }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("whatsapp-auth missing backend env", {
+        has_supabase_url: !!supabaseUrl,
+        has_service_role_key: !!serviceRoleKey,
+        env: envPresence(),
+      });
+      return json({ error: "Backend environment is not configured" }, 500);
+    }
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     if (action === "send") {
+      console.info("whatsapp-auth OTP send requested", { phone_last4: phone.slice(-4), env: envPresence() });
       await admin.rpc("cleanup_expired_whatsapp_login_otps");
       const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0");
       const codeHash = await hashCode(phone, code);
@@ -76,17 +111,43 @@ Deno.serve(async (req) => {
             message: `קוד האימות שלך ל-Realtyz: ${code}`,
           };
 
-      const sendResponse = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRoleKey}`,
-          apikey: serviceRoleKey,
-        },
-        body: JSON.stringify(payload),
-      });
-      const sendPayload = await sendResponse.json().catch(() => ({}));
+      let sendResponse: Response;
+      let sendPayload: any = {};
+      try {
+        sendResponse = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+            apikey: serviceRoleKey,
+          },
+          body: JSON.stringify(payload),
+        });
+        sendPayload = await sendResponse.json().catch(() => ({}));
+      } catch (error) {
+        console.error("whatsapp-auth internal send-whatsapp request threw", {
+          phone_last4: phone.slice(-4),
+          template: template?.name ?? null,
+          error: safeErrorDetails(error),
+          env: envPresence(),
+        });
+        await logIntegrationError({
+          integration: "whatsapp",
+          functionName: "whatsapp-auth",
+          errorMessage: error instanceof Error ? error.message : "send-whatsapp network request failed",
+          context: { phone_last4: phone.slice(-4), template: template?.name ?? null, error: safeErrorDetails(error), env: envPresence() },
+        });
+        return json({ error: error instanceof Error ? error.message : "שליחת קוד האימות נכשלה" }, 502);
+      }
       if (!sendResponse.ok || sendPayload?.success === false || !sendPayload?.message_id) {
+        console.error("whatsapp-auth OTP send failed", {
+          status: sendResponse.status,
+          phone_last4: phone.slice(-4),
+          template: template?.name ?? null,
+          response_error: sendPayload?.error ?? null,
+          response_details: sendPayload?.details ?? null,
+          env: envPresence(),
+        });
         await logIntegrationError({
           integration: "whatsapp",
           functionName: "whatsapp-auth",
@@ -97,6 +158,7 @@ Deno.serve(async (req) => {
             subcode: sendPayload?.details?.subcode ?? null,
             phone_last4: phone.slice(-4),
             template: template?.name ?? null,
+            env: envPresence(),
           },
         });
         const templateHint = template ? "תבנית קוד האימות ב-Meta נכשלה" : "נדרשת תבנית אימות מאושרת ב-Meta לשליחת קוד כניסה";
@@ -193,7 +255,13 @@ Deno.serve(async (req) => {
 
     return json({ error: "פעולה לא נתמכת" }, 400);
   } catch (error) {
-    console.error("whatsapp-auth error", error);
-    return json({ error: error instanceof Error ? error.message : "שגיאת שרת" }, 500);
+    console.error("whatsapp-auth unhandled error", safeErrorDetails(error));
+    await logIntegrationError({
+      integration: "whatsapp",
+      functionName: "whatsapp-auth",
+      errorMessage: error instanceof Error ? error.message : "Unhandled whatsapp-auth error",
+      context: { error: safeErrorDetails(error), env: envPresence() },
+    });
+    return json({ error: error instanceof Error ? `שגיאת שרת: ${error.message}` : "שגיאת שרת" }, 500);
   }
 });
