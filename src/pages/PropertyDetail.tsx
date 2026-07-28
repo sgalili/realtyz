@@ -351,28 +351,46 @@ export default function PropertyDetail() {
     const src = data.sourceUrl;
     if (!src || !/yad2\.co\.il/i.test(src)) return;
 
-    // Full hydration on first view: pull the complete metadata + gallery once
-    // per property per session so the DB always holds the whole record.
-    const sessionKey = `realtyz:hydrated:${id}`;
+    // Once a property has been imported in full, its metadata lives in our DB
+    // forever — never scrape the source again (zero BrightData credits).
+    const doneKey = `realtyz:imported:${id}`;
     try {
-      if (window.sessionStorage.getItem(sessionKey)) {
+      if (window.localStorage.getItem(doneKey)) {
         hydratedRef.current = id;
+        galleryPulledRef.current = true;
         return;
       }
-      window.sessionStorage.setItem(sessionKey, '1');
-    } catch { /* private mode — hydrate anyway */ }
+    } catch { /* private mode — fall through to the DB check */ }
 
     hydratedRef.current = id;
-    galleryPulledRef.current = true;
-    setHydrating(true);
-    ensureFullPropertyImport(id, src)
-      .then(() => qc.invalidateQueries({ queryKey: ['property-detail', id] }))
-      .catch(() => {})
-      .finally(() => {
-        setHydrateProgress(100);
-        setTimeout(() => setHydrating(false), 250);
-      });
+    let cancelled = false;
+
+    (async () => {
+      // DB-side guard: if the row already carries the mirrored gallery and the
+      // descriptive metadata, mark it done and skip the loader entirely.
+      if (await isListingFullyImported(id)) {
+        if (cancelled) return;
+        galleryPulledRef.current = true;
+        try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
+        return;
+      }
+      if (cancelled) return;
+
+      galleryPulledRef.current = true;
+      setHydrating(true);
+      try {
+        await ensureFullPropertyImport(id, src);
+        try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
+        qc.invalidateQueries({ queryKey: ['property-detail', id] });
+      } catch { /* keep the page usable */ }
+      if (cancelled) return;
+      setHydrateProgress(100);
+      setTimeout(() => setHydrating(false), 220);
+    })();
+
+    return () => { cancelled = true; };
   }, [id, data, qc]);
+
 
 
 
