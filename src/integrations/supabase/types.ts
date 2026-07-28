@@ -5243,6 +5243,19 @@ export type Database = {
           read_ct: number
         }[]
       }
+      record_interaction_message: {
+        Args: {
+          _content: string
+          _created_at?: string
+          _direction: string
+          _external_id?: string
+          _lead_id: string
+          _metadata?: Json
+          _platform: string
+          _sender_type: string
+        }
+        Returns: string
+      }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
       seed_demo_data: { Args: never; Returns: Json }
       set_active_workspace: { Args: { _owner: string }; Returns: undefined }
@@ -5273,6 +5286,19 @@ export type Database = {
           _phone?: string
           _profile_picture_url?: string
           _telegram_username?: string
+        }
+        Returns: string
+      }
+      upsert_lead_from_interaction: {
+        Args: {
+          _avatar?: string
+          _email?: string
+          _external_id?: string
+          _full_name?: string
+          _handle?: string
+          _owner?: string
+          _phone?: string
+          _platform: string
         }
         Returns: string
       }
