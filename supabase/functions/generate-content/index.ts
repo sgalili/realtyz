@@ -137,17 +137,9 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
     const promotedFeatures = promotedListing ? featureLabels(promotedListing.features) : [];
     const publicListingAddress = promotedListing?.address ? stripAddressNumbers(promotedListing.address) : null;
     const promotedListingType = promotedListing ? listingTypeFromFeatures(promotedListing.features) : null;
-    const promotedAreaPerks: string[] = Array.isArray(promotedListing?.area_perks?.perks)
-      ? promotedListing.area_perks.perks.slice(0, 6)
-      : [];
-    // Fire-and-forget enrichment when missing so next post has nearby-area perks.
-    if (promotedListing?.id && promotedAreaPerks.length === 0) {
-      try {
-        admin.functions.invoke("neighborhood-perks", {
-          body: { listing_id: promotedListing.id },
-        }).catch(() => { /* background */ });
-      } catch { /* background */ }
-    }
+    // Area-perks / neighborhood enrichment intentionally NOT used in posts.
+    // Posts stay focused on the property's own selling/renting features.
+
 
     const dealTypeLabel = (() => {
       const dt = String(promotedListing?.deal_type || promotedListingType || "").toLowerCase();
@@ -155,52 +147,9 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
       if (dt === "sale" || dt === "מכירה") return "למכירה";
       return null;
     })();
-    // Real local market facts (last 5 years) for the promoted property's city,
-    // strictly matched to the transaction type so a rental post never quotes
-    // sale prices and vice versa.
-    let marketFactsLine: string | null = null;
-    if (promotedListing?.city) {
-      try {
-        const since = new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000).toISOString();
-        const { data: comps } = await admin
-          .from("listings")
-          .select("asking_price, sqm, deal_type, neighborhood")
-          .eq("city", promotedListing.city)
-          .gte("created_at", since)
-          .limit(1000);
-        const wantRent = dealTypeLabel === "להשכרה";
-        let rows = (comps ?? []).filter((r: any) => {
-          const price = Number(r.asking_price);
-          if (!(price > 0)) return false;
-          const isRent = r.deal_type ? String(r.deal_type) === "rent" : price < 50_000;
-          return wantRent ? isRent : !isRent;
-        });
-        if (promotedListing.neighborhood) {
-          const local = rows.filter((r: any) => r.neighborhood === promotedListing.neighborhood);
-          if (local.length >= 4) rows = local;
-        }
-        if (rows.length >= 3) {
-          const prices = rows.map((r: any) => Number(r.asking_price));
-          const avgPrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
-          const sqmRows = rows.filter((r: any) => Number(r.sqm) > 0);
-          const avgSqm = sqmRows.length
-            ? Math.round(
-                sqmRows.reduce((a: number, r: any) => a + Number(r.asking_price) / Number(r.sqm), 0) /
-                  sqmRows.length,
-              )
-            : null;
-          const area = promotedListing.neighborhood || promotedListing.city;
-          marketFactsLine = [
-            `נתוני שוק אמיתיים ב${area} (5 שנים אחרונות, ${wantRent ? "שכירות" : "מכירה"}):`,
-            `${rows.length} עסקאות`,
-            `ממוצע ${avgPrice.toLocaleString("he-IL")} ש"ח${wantRent ? " לחודש" : ""}`,
-            avgSqm && !wantRent ? `ממוצע ${avgSqm.toLocaleString("he-IL")} ש"ח למ"ר` : null,
-          ].filter(Boolean).join(" · ");
-        }
-      } catch (e) {
-        console.error("[generate-content] market facts failed", e);
-      }
-    }
+    // Market research / comparable-sales statistics intentionally removed —
+    // posts must stay on the property's own selling/renting story.
+
 
     const propertyTypeLabel = (() => {
       const sm = promotedListing?.source_metadata;
@@ -228,14 +177,9 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
           promotedFeatures.length
             ? `מאפיינים בולטים: ${promotedFeatures.slice(0, 8).join(", ")}`
             : null,
-          promotedAreaPerks.length
-            ? `יתרונות סביבה קרובה (השתמש בקצרה, מקסימום 2 פריטים בשורה אחת): ${promotedAreaPerks.join(" · ")}`
-            : null,
-          marketFactsLine
-            ? `${marketFactsLine}\nשלב עובדת שוק אחת קצרה מהנתונים האלה בגוף הפוסט, וכן הדגש יתרון מקומי אמיתי של האזור. אל תמציא נתונים שלא מופיעים כאן.`
-            : null,
           // NOTE: The full free-text description is INTENTIONALLY excluded from the main post prompt.
           // It belongs in the FIRST COMMENT box (handled client-side), not in the main post body.
+
 
         ].filter(Boolean).join("\n")
       : "";
@@ -258,7 +202,9 @@ LISTING-FOCUS MODE — EXACT MASTER TEMPLATE (mandatory, no deviation, blank lin
 4. Lifestyle line: "💫 <lifestyle benefit>" — one short sentence.
 5. Price + CTA COMBINED on ONE line, verbatim format: "מחיר מבוקש: <price>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" (price taken verbatim from [PROMOTED LISTING]; do not split across two lines; do not vary the CTA wording).
 - FORBIDDEN: long broker-intro paragraphs, "אני אודי", "כמתווך", "בתור מתווך", "יש לי הכבוד", "אני שמח להציג", "אני גאה להציג", any self-branding preface, ✅ bullets, 📍 / 💰 lines, keyword pipe-line, hashtags, feature-list dumps.
-- Ground every concrete detail (address, rooms, sqm, floor, price, features, area perks) in [PROMOTED LISTING]. Do NOT invent details.
+- Ground every concrete detail (address, rooms, sqm, floor, price, features) in [PROMOTED LISTING]. Do NOT invent details.
+- FORBIDDEN: market statistics, transaction/comparable data, average prices per sqm, "נתוני שוק", "עסקאות אחרונות", neighborhood research or any data not belonging to this listing.
+
 - DO NOT copy the property's long free-text description into the post — it belongs to the FIRST COMMENT only.
 - STREET-NUMBER RULE (HARD): every address token must be street name only, never with house number, apartment number, or entrance number. "רחוב X 12" → "רחוב X". This applies to hook, description, location line, everywhere.
 - ABSOLUTELY FORBIDDEN: bracketed placeholders ("[insert license]", "[מספר טלפון]", "[TBD]", "[Real License Number]"), square-bracket tokens, or parenthetical instructions.
