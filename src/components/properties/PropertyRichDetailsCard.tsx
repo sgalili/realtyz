@@ -287,6 +287,7 @@ export function PropertyRichDetailsCard({
   const hasAbout = blocks.length > 0 || !!aboutText;
 
   if (
+    !pending &&
     !hasAbout &&
     !furnitureEntries.length &&
     !detailRows.length &&
@@ -296,6 +297,13 @@ export function PropertyRichDetailsCard({
   ) {
     return null;
   }
+
+  // While hydrating, keep the structure on screen with empty value rows.
+  const displayRows = detailRows.length
+    ? detailRows
+    : pending
+      ? SKELETON_ROWS.map((name) => ({ key: name, name, value: '' }))
+      : [];
 
   const chartData = points.map((p, i) => ({
     name: p.date || p.label || `#${i + 1}`,
