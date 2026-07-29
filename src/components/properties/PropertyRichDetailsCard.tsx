@@ -29,7 +29,15 @@ type Props = {
   latitude?: number | null;
   longitude?: number | null;
   addressLabel?: string | null;
+  /**
+   * Metadata is still hydrating: render the full section structure with
+   * placeholder rows instead of hiding the card, so the layout never shifts.
+   */
+  pending?: boolean;
 };
+
+/** Fields we always show a row for, even before the values arrive. */
+const SKELETON_ROWS = ['סוג הנכס', 'חדרים', 'קומה', 'מ"ר', 'חניות', 'תאריך כניסה'];
 
 /** Keys that are internal identifiers / noise — never rendered. */
 const HIDDEN_KEYS = new Set([
