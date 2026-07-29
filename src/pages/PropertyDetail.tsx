@@ -688,20 +688,27 @@ export default function PropertyDetail() {
   const pullAllImages = async () => {
     if (!property?.id || pullingImages) return;
     setPullingImages(true);
-    setImageProgress(3);
+    setImageProgress(2);
+    // Discovery is a single slow scrape with no measurable sub-steps, so the
+    // ring eases towards 25% while it runs instead of freezing on 3%.
+    let discoveryTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
+      setImageProgress((p) => (p >= 25 ? p : Math.min(25, p + Math.max(0.5, (25 - p) * 0.08))));
+    }, 90);
+    const stopDiscoveryCreep = () => {
+      if (discoveryTimer) { clearInterval(discoveryTimer); discoveryTimer = null; }
+    };
     try {
       const { data: disc, error: discErr } = await supabase.functions.invoke('fetch-property-all-images', {
         body: { listing_id: property.id, source_url: sourceUrl || undefined, discover: true },
       });
+      stopDiscoveryCreep();
       if (discErr) throw discErr;
       const known = new Set(photos.map((u) => u.split('?')[0].toLowerCase()));
       const candidates = ((disc as { candidates?: string[] } | null)?.candidates ?? [])
         .filter((u) => !known.has(u.split('?')[0].toLowerCase()));
-      if (!candidates.length) {
-        setImageProgress(100);
-        return;
-      }
+      if (!candidates.length) return;
 
+      setImageProgress(30);
       let done = 0;
       for (const url of candidates) {
         try {
@@ -716,7 +723,8 @@ export default function PropertyDetail() {
           console.warn('[gallery] image import failed', url, e);
         }
         done += 1;
-        setImageProgress(Math.min(99, Math.round((done / candidates.length) * 100)));
+        // Map the real imported/total fraction onto the 30-98 band.
+        setImageProgress(30 + Math.round((done / candidates.length) * 68));
       }
 
       await qc.refetchQueries({ queryKey: ['property-detail', id] });
@@ -725,6 +733,8 @@ export default function PropertyDetail() {
     } catch (e: any) {
       toast.error('טעינת התמונות נכשלה', { description: e?.message ?? String(e) });
     } finally {
+      // Counter stops the moment the work is done — no trailing animation.
+      stopDiscoveryCreep();
       setImageProgress(100);
       setPullingImages(false);
       // Cache the "gallery already mirrored" flag so re-entering the page
@@ -732,6 +742,7 @@ export default function PropertyDetail() {
       try { window.localStorage.setItem(`realtyz:gallery:${property.id}`, '1'); } catch { /* ignore */ }
     }
   };
+
 
   /**
    * Lazy gallery entry point — triggered by the arrows OR by clicking the main
