@@ -130,7 +130,17 @@ export default function PropertyDetail() {
   const [pullingImages, setPullingImages] = useState(false);
   // Determinate progress (0-100) for the gallery ring loader.
   const [imageProgress, setImageProgress] = useState(0);
+  // Seeded from the local cache: a gallery mirrored once is never re-pulled.
   const galleryPulledRef = useRef(false);
+  useEffect(() => {
+    setStreamPhotos([]);
+    try {
+      galleryPulledRef.current = Boolean(
+        id && (window.localStorage.getItem(`realtyz:gallery:${id}`) || window.localStorage.getItem(`realtyz:imported:${id}`)),
+      );
+    } catch { galleryPulledRef.current = false; }
+  }, [id]);
+
   // Images mirrored during the current incremental pull. Rendered immediately,
   // one by one, before the DB query has refetched.
   const [streamPhotos, setStreamPhotos] = useState<string[]>([]);
@@ -333,19 +343,15 @@ export default function PropertyDetail() {
   const [hydrating, setHydrating] = useState(false);
   // Determinate-looking progress for the metadata ring (0-100).
   const [hydrateProgress, setHydrateProgress] = useState(0);
+  // The ring is driven by REAL hydration milestones (see `ensureMetadataImport`).
+  // A light easing timer only closes the visual gap between two milestones so
+  // the ring never jumps — it can never overtake the real reported value.
+  const metaTargetRef = useRef(0);
   useEffect(() => {
     if (!hydrating) return;
-    setHydrateProgress(8);
-    const started = Date.now();
     const timer = setInterval(() => {
-      setHydrateProgress((p) => {
-        // Hard ceiling grows over time so the ring never parks at 92%.
-        const elapsed = Date.now() - started;
-        const ceiling = elapsed > 12000 ? 99 : elapsed > 6000 ? 97 : 92;
-        if (p >= ceiling) return ceiling;
-        return Math.min(ceiling, p + Math.max(2, Math.round((ceiling - p) / 8)));
-      });
-    }, 160);
+      setHydrateProgress((p) => (p >= metaTargetRef.current ? p : Math.min(metaTargetRef.current, p + 1)));
+    }, 40);
     // Safety valve: never keep the loader up for more than 20s.
     const bail = setTimeout(() => {
       setHydrateProgress(100);
@@ -356,6 +362,7 @@ export default function PropertyDetail() {
       clearTimeout(bail);
     };
   }, [hydrating]);
+
 
   // The gallery ring is fully determinate now: progress is driven by the
   // number of images actually mirrored, so it can never hang at 99%.
@@ -391,18 +398,26 @@ export default function PropertyDetail() {
       }
       if (cancelled) return;
 
+      metaTargetRef.current = 0;
+      setHydrateProgress(0);
       setHydrating(true);
       try {
-        // Metadata only — images stay lazy until the user clicks an arrow.
-        await ensureMetadataImport(id, src);
+        // Metadata only — images stay lazy until the user touches the gallery.
+        // Progress comes from real hydration milestones, capped at 95 until the
+        // refreshed row is actually on screen.
+        await ensureMetadataImport(id, src, (p) => {
+          metaTargetRef.current = Math.max(metaTargetRef.current, Math.min(95, p));
+        });
         try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
         // Refetch BEFORE closing the ring so the fresh values are on screen
         // the moment the loader disappears (no hard refresh needed).
         await qc.refetchQueries({ queryKey: ['property-detail', id] });
       } catch { /* keep the page usable */ }
       if (cancelled) return;
+      metaTargetRef.current = 100;
       setHydrateProgress(100);
       setTimeout(() => { if (!cancelled) setHydrating(false); }, 200);
+
     })();
 
     return () => { cancelled = true; };
@@ -700,24 +715,32 @@ export default function PropertyDetail() {
     } finally {
       setImageProgress(100);
       setPullingImages(false);
+      // Cache the "gallery already mirrored" flag so re-entering the page
+      // never repeats the network work — photos come straight from the DB.
+      try { window.localStorage.setItem(`realtyz:gallery:${property.id}`, '1'); } catch { /* ignore */ }
     }
   };
 
   /**
-   * Carousel navigation — the ONLY entry point for image loading.
-   * Nothing is fetched when the page opens; the first arrow click pulls the
-   * full gallery from the source (ring loader over the main image), and later
-   * clicks just move between the already-loaded photos.
+   * Lazy gallery entry point — triggered by the arrows OR by clicking the main
+   * image. Nothing is fetched when the page opens; the first interaction pulls
+   * the full gallery from the source (ring loader over the main image), and
+   * every later interaction just moves between already-loaded photos.
    */
+  const ensureGalleryLoaded = async (): Promise<boolean> => {
+    if (galleryPulledRef.current || pullingImages || hydrating) return false;
+    if (!sourceUrl || photos.length >= Math.max(2, totalSourcePhotos)) return false;
+    galleryPulledRef.current = true;
+    await pullAllImages();
+    return true;
+  };
+
   const stepPhoto = async (delta: number) => {
     if (pullingImages || hydrating) return;
-    if (!galleryPulledRef.current && sourceUrl && photos.length < Math.max(2, totalSourcePhotos)) {
-      galleryPulledRef.current = true;
-      await pullAllImages();
-      return;
-    }
+    if (await ensureGalleryLoaded()) return;
     if (photos.length <= 1) return;
     setActivePhoto((i) => (i + delta + photos.length) % photos.length);
+
   };
 
 
@@ -1037,7 +1060,13 @@ export default function PropertyDetail() {
           {(main || editMode || sourceUrl) && (
 
             <Card className="overflow-hidden">
-              <div className="aspect-[16/10] bg-muted relative">
+              <div
+                className="aspect-[16/10] bg-muted relative"
+                onClick={editMode ? undefined : () => { void ensureGalleryLoaded(); }}
+                role={editMode ? undefined : 'button'}
+                tabIndex={editMode ? undefined : 0}
+                onKeyDown={editMode ? undefined : (e) => { if (e.key === 'Enter') void ensureGalleryLoaded(); }}
+              >
                 {main ? (
                   <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
                 ) : (meta as any)?.media_status === 'images_unavailable' ? (
@@ -1051,6 +1080,7 @@ export default function PropertyDetail() {
                     <ImageIcon className="h-10 w-10" />
                   </div>
                 )}
+
 
                 {!editMode && (
                   <>
