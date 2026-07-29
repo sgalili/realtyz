@@ -1450,7 +1450,24 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">
+                  {(() => {
+                    // Total images on the SOURCE ad, even before any import.
+                    const total = sourcePhotoCount(r, r.photos?.length ?? 0);
+                    if (!total) return <span className="text-muted-foreground">—</span>;
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground/80"
+                        title={`${total} תמונות במודעת המקור`}
+                      >
+                        <ImageIcon className="h-3.5 w-3.5 opacity-70" />
+                        {total}
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground"><ListingDateCell row={r} /></td>
+
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
                   <div className="inline-flex items-center gap-1.5">
                     {/* Yad2 ad first, campaign second (swapped per workspace spec). */}
