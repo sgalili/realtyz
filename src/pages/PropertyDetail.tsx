@@ -705,24 +705,32 @@ export default function PropertyDetail() {
     } finally {
       setImageProgress(100);
       setPullingImages(false);
+      // Cache the "gallery already mirrored" flag so re-entering the page
+      // never repeats the network work — photos come straight from the DB.
+      try { window.localStorage.setItem(`realtyz:gallery:${property.id}`, '1'); } catch { /* ignore */ }
     }
   };
 
   /**
-   * Carousel navigation — the ONLY entry point for image loading.
-   * Nothing is fetched when the page opens; the first arrow click pulls the
-   * full gallery from the source (ring loader over the main image), and later
-   * clicks just move between the already-loaded photos.
+   * Lazy gallery entry point — triggered by the arrows OR by clicking the main
+   * image. Nothing is fetched when the page opens; the first interaction pulls
+   * the full gallery from the source (ring loader over the main image), and
+   * every later interaction just moves between already-loaded photos.
    */
+  const ensureGalleryLoaded = async (): Promise<boolean> => {
+    if (galleryPulledRef.current || pullingImages || hydrating) return false;
+    if (!sourceUrl || photos.length >= Math.max(2, totalSourcePhotos)) return false;
+    galleryPulledRef.current = true;
+    await pullAllImages();
+    return true;
+  };
+
   const stepPhoto = async (delta: number) => {
     if (pullingImages || hydrating) return;
-    if (!galleryPulledRef.current && sourceUrl && photos.length < Math.max(2, totalSourcePhotos)) {
-      galleryPulledRef.current = true;
-      await pullAllImages();
-      return;
-    }
+    if (await ensureGalleryLoaded()) return;
     if (photos.length <= 1) return;
     setActivePhoto((i) => (i + delta + photos.length) % photos.length);
+
   };
 
 
