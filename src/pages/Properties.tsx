@@ -1264,7 +1264,7 @@ function neighborhoodOf(r: UnifiedResult): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-type SortCol = 'name' | 'neighborhood' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'published';
+type SortCol = 'name' | 'neighborhood' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'photos' | 'published';
 
 /** Official Yad2 button — rendered only after the ad is verified as still live. */
 function Yad2AdButton({ url }: { url: string }) {
@@ -1326,7 +1326,9 @@ function ResultTable({
         case 'address': return stripAddressNumbers(r.address ?? '') || '';
         case 'rooms': return typeof r.rooms === 'number' ? r.rooms : (r.rooms ? Number(r.rooms) : null);
         case 'size_sqm': return typeof r.size_sqm === 'number' ? r.size_sqm : (r.size_sqm ? Number(r.size_sqm) : null);
+        case 'photos': return sourcePhotoCount(r, r.photos?.length ?? 0) || null;
         case 'published': return listingPublishedAt(r) ?? listingActivityAt(r);
+
 
       }
     };
@@ -1377,8 +1379,10 @@ function ResultTable({
             <HeaderCell col="city" label="עיר" />
             <HeaderCell col="rooms" label="חדרים" />
             <HeaderCell col="size_sqm" label='מ"ר' />
+            <HeaderCell col="photos" label="תמונות" />
             <HeaderCell col="published" label="תאריך פרסום/עדכון" />
             <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th>
+
 
           </tr>
         </thead>
@@ -1446,7 +1450,24 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">
+                  {(() => {
+                    // Total images on the SOURCE ad, even before any import.
+                    const total = sourcePhotoCount(r, r.photos?.length ?? 0);
+                    if (!total) return <span className="text-muted-foreground">—</span>;
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground/80"
+                        title={`${total} תמונות במודעת המקור`}
+                      >
+                        <ImageIcon className="h-3.5 w-3.5 opacity-70" />
+                        {total}
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground"><ListingDateCell row={r} /></td>
+
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
                   <div className="inline-flex items-center gap-1.5">
                     {/* Yad2 ad first, campaign second (swapped per workspace spec). */}
