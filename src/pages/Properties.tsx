@@ -1379,8 +1379,10 @@ function ResultTable({
             <HeaderCell col="city" label="עיר" />
             <HeaderCell col="rooms" label="חדרים" />
             <HeaderCell col="size_sqm" label='מ"ר' />
+            <HeaderCell col="photos" label="תמונות" />
             <HeaderCell col="published" label="תאריך פרסום/עדכון" />
             <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th>
+
 
           </tr>
         </thead>
