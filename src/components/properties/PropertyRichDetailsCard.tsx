@@ -246,6 +246,7 @@ export function PropertyRichDetailsCard({
   latitude,
   longitude,
   addressLabel,
+  pending = false,
 }: Props) {
   // Only keys we can present with a real Hebrew label are rendered — raw
   // English field names must never reach the UI.
