@@ -130,7 +130,17 @@ export default function PropertyDetail() {
   const [pullingImages, setPullingImages] = useState(false);
   // Determinate progress (0-100) for the gallery ring loader.
   const [imageProgress, setImageProgress] = useState(0);
+  // Seeded from the local cache: a gallery mirrored once is never re-pulled.
   const galleryPulledRef = useRef(false);
+  useEffect(() => {
+    setStreamPhotos([]);
+    try {
+      galleryPulledRef.current = Boolean(
+        id && (window.localStorage.getItem(`realtyz:gallery:${id}`) || window.localStorage.getItem(`realtyz:imported:${id}`)),
+      );
+    } catch { galleryPulledRef.current = false; }
+  }, [id]);
+
   // Images mirrored during the current incremental pull. Rendered immediately,
   // one by one, before the DB query has refetched.
   const [streamPhotos, setStreamPhotos] = useState<string[]>([]);
