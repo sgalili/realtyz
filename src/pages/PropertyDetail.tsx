@@ -388,18 +388,26 @@ export default function PropertyDetail() {
       }
       if (cancelled) return;
 
+      metaTargetRef.current = 0;
+      setHydrateProgress(0);
       setHydrating(true);
       try {
-        // Metadata only — images stay lazy until the user clicks an arrow.
-        await ensureMetadataImport(id, src);
+        // Metadata only — images stay lazy until the user touches the gallery.
+        // Progress comes from real hydration milestones, capped at 95 until the
+        // refreshed row is actually on screen.
+        await ensureMetadataImport(id, src, (p) => {
+          metaTargetRef.current = Math.max(metaTargetRef.current, Math.min(95, p));
+        });
         try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
         // Refetch BEFORE closing the ring so the fresh values are on screen
         // the moment the loader disappears (no hard refresh needed).
         await qc.refetchQueries({ queryKey: ['property-detail', id] });
       } catch { /* keep the page usable */ }
       if (cancelled) return;
+      metaTargetRef.current = 100;
       setHydrateProgress(100);
       setTimeout(() => { if (!cancelled) setHydrating(false); }, 200);
+
     })();
 
     return () => { cancelled = true; };
