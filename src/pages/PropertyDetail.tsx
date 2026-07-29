@@ -1321,6 +1321,7 @@ export default function PropertyDetail() {
               latitude={data.rich.latitude}
               longitude={data.rich.longitude}
               addressLabel={[property.address, property.city].filter(Boolean).join(', ')}
+              pending={hydrating}
             />
           )}
 
