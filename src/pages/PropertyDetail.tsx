@@ -333,19 +333,15 @@ export default function PropertyDetail() {
   const [hydrating, setHydrating] = useState(false);
   // Determinate-looking progress for the metadata ring (0-100).
   const [hydrateProgress, setHydrateProgress] = useState(0);
+  // The ring is driven by REAL hydration milestones (see `ensureMetadataImport`).
+  // A light easing timer only closes the visual gap between two milestones so
+  // the ring never jumps — it can never overtake the real reported value.
+  const metaTargetRef = useRef(0);
   useEffect(() => {
     if (!hydrating) return;
-    setHydrateProgress(8);
-    const started = Date.now();
     const timer = setInterval(() => {
-      setHydrateProgress((p) => {
-        // Hard ceiling grows over time so the ring never parks at 92%.
-        const elapsed = Date.now() - started;
-        const ceiling = elapsed > 12000 ? 99 : elapsed > 6000 ? 97 : 92;
-        if (p >= ceiling) return ceiling;
-        return Math.min(ceiling, p + Math.max(2, Math.round((ceiling - p) / 8)));
-      });
-    }, 160);
+      setHydrateProgress((p) => (p >= metaTargetRef.current ? p : Math.min(metaTargetRef.current, p + 1)));
+    }, 40);
     // Safety valve: never keep the loader up for more than 20s.
     const bail = setTimeout(() => {
       setHydrateProgress(100);
@@ -356,6 +352,7 @@ export default function PropertyDetail() {
       clearTimeout(bail);
     };
   }, [hydrating]);
+
 
   // The gallery ring is fully determinate now: progress is driven by the
   // number of images actually mirrored, so it can never hang at 99%.
