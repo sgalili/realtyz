@@ -29,7 +29,15 @@ type Props = {
   latitude?: number | null;
   longitude?: number | null;
   addressLabel?: string | null;
+  /**
+   * Metadata is still hydrating: render the full section structure with
+   * placeholder rows instead of hiding the card, so the layout never shifts.
+   */
+  pending?: boolean;
 };
+
+/** Fields we always show a row for, even before the values arrive. */
+const SKELETON_ROWS = ['סוג הנכס', 'חדרים', 'קומה', 'מ"ר', 'חניות', 'תאריך כניסה'];
 
 /** Keys that are internal identifiers / noise — never rendered. */
 const HIDDEN_KEYS = new Set([
@@ -238,6 +246,7 @@ export function PropertyRichDetailsCard({
   latitude,
   longitude,
   addressLabel,
+  pending = false,
 }: Props) {
   // Only keys we can present with a real Hebrew label are rendered — raw
   // English field names must never reach the UI.
@@ -278,6 +287,7 @@ export function PropertyRichDetailsCard({
   const hasAbout = blocks.length > 0 || !!aboutText;
 
   if (
+    !pending &&
     !hasAbout &&
     !furnitureEntries.length &&
     !detailRows.length &&
@@ -287,6 +297,13 @@ export function PropertyRichDetailsCard({
   ) {
     return null;
   }
+
+  // While hydrating, keep the structure on screen with empty value rows.
+  const displayRows = detailRows.length
+    ? detailRows
+    : pending
+      ? SKELETON_ROWS.map((name) => ({ key: name, name, value: '' }))
+      : [];
 
   const chartData = points.map((p, i) => ({
     name: p.date || p.label || `#${i + 1}`,
@@ -331,18 +348,21 @@ export function PropertyRichDetailsCard({
         </section>
       )}
 
-      {detailRows.length > 0 && (
+      {displayRows.length > 0 && (
         <section>
           <dl className="divide-y divide-border/60">
-            {detailRows.map(({ key, name, value }) => (
+            {displayRows.map(({ key, name, value }) => (
               <div key={key} className="flex items-start justify-between gap-6 py-2.5">
                 <dt className="text-lg text-muted-foreground">{name}</dt>
-                <dd className="text-lg font-medium text-foreground text-left">{renderValue(value)}</dd>
+                <dd className="text-lg font-medium text-foreground text-left">
+                  {renderValue(value) || <span className="text-muted-foreground/50">—</span>}
+                </dd>
               </div>
             ))}
           </dl>
         </section>
       )}
+
 
       {featureFlags.length > 0 && (
         <section>
