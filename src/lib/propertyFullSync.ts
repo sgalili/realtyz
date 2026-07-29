@@ -67,9 +67,20 @@ export async function isListingMetadataImported(listingId: string): Promise<bool
  * Metadata-only hydration: re-parses the source ad for text/structure and runs
  * the backfill + owner CRM sync. Deliberately does NOT touch the image
  * pipeline — galleries are pulled lazily, only when the user asks for them.
+ * `onProgress` reports REAL step completion (0-100) so the UI ring is
+ * determinate instead of animated guesswork.
  */
-async function runMetadataSync(listingId: string, sourceUrl?: string | null): Promise<void> {
-  if (await isListingMetadataImported(listingId)) return;
+type ProgressFn = (percent: number) => void;
+
+async function runMetadataSync(
+  listingId: string,
+  sourceUrl?: string | null,
+  onProgress?: ProgressFn,
+): Promise<void> {
+  const step = (p: number) => { try { onProgress?.(p); } catch { /* ignore */ } };
+  step(5);
+  if (await isListingMetadataImported(listingId)) { step(100); return; }
+  step(20);
 
   if (sourceUrl && /yad2\.co\.il/i.test(sourceUrl)) {
     try {
@@ -78,12 +89,16 @@ async function runMetadataSync(listingId: string, sourceUrl?: string | null): Pr
       console.warn('[propertyFullSync] metadata scrape failed', e);
     }
   }
+  step(55);
 
+  let settled = 0;
+  const tick = () => { settled += 1; step(55 + Math.round((settled / 2) * 40)); };
   await Promise.allSettled([
-    supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } }),
-    supabase.functions.invoke('owner-crm-sync', { body: { listing_id: listingId } }),
+    supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } }).finally(tick),
+    supabase.functions.invoke('owner-crm-sync', { body: { listing_id: listingId } }).finally(tick),
   ]);
   metaCachedIds.add(listingId);
+  step(100);
 }
 
 const metaInFlight = new Map<string, Promise<void>>();
@@ -92,14 +107,16 @@ const metaInFlight = new Map<string, Promise<void>>();
 export function ensureMetadataImport(
   listingId: string | null | undefined,
   sourceUrl?: string | null,
+  onProgress?: ProgressFn,
 ): Promise<void> {
   if (!listingId) return Promise.resolve();
   const existing = metaInFlight.get(listingId);
   if (existing) return existing;
-  const p = runMetadataSync(listingId, sourceUrl).finally(() => metaInFlight.delete(listingId));
+  const p = runMetadataSync(listingId, sourceUrl, onProgress).finally(() => metaInFlight.delete(listingId));
   metaInFlight.set(listingId, p);
   return p;
 }
+
 
 
 async function runFullSync(listingId: string, sourceUrl?: string | null): Promise<void> {
