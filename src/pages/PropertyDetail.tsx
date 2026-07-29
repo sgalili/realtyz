@@ -1060,7 +1060,13 @@ export default function PropertyDetail() {
           {(main || editMode || sourceUrl) && (
 
             <Card className="overflow-hidden">
-              <div className="aspect-[16/10] bg-muted relative">
+              <div
+                className="aspect-[16/10] bg-muted relative"
+                onClick={editMode ? undefined : () => { void ensureGalleryLoaded(); }}
+                role={editMode ? undefined : 'button'}
+                tabIndex={editMode ? undefined : 0}
+                onKeyDown={editMode ? undefined : (e) => { if (e.key === 'Enter') void ensureGalleryLoaded(); }}
+              >
                 {main ? (
                   <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
                 ) : (meta as any)?.media_status === 'images_unavailable' ? (
@@ -1074,6 +1080,7 @@ export default function PropertyDetail() {
                     <ImageIcon className="h-10 w-10" />
                   </div>
                 )}
+
 
                 {!editMode && (
                   <>
