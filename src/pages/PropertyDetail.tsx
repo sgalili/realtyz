@@ -343,17 +343,28 @@ export default function PropertyDetail() {
   const [hydrating, setHydrating] = useState(false);
   // Determinate-looking progress for the metadata ring (0-100).
   const [hydrateProgress, setHydrateProgress] = useState(0);
-  // The ring is driven by REAL hydration milestones (see `ensureMetadataImport`).
-  // A light easing timer only closes the visual gap between two milestones so
-  // the ring never jumps — it can never overtake the real reported value.
+  // The ring is driven by REAL hydration milestones (see `ensureMetadataImport`),
+  // but between two milestones it eases forward asymptotically towards a soft
+  // ceiling slightly ahead of the last reported value, so it can never sit
+  // frozen on a low number (the old "stuck at 3%" behaviour) while a slow
+  // scrape is running. It stops the instant hydration completes.
   const metaTargetRef = useRef(0);
   useEffect(() => {
     if (!hydrating) return;
     const timer = setInterval(() => {
-      setHydrateProgress((p) => (p >= metaTargetRef.current ? p : Math.min(metaTargetRef.current, p + 1)));
-    }, 40);
+      setHydrateProgress((p) => {
+        const target = metaTargetRef.current;
+        if (target >= 100) return 100;
+        // Soft ceiling: always some headroom ahead of the confirmed milestone.
+        const ceiling = Math.min(96, Math.max(target, target + 18));
+        if (p >= ceiling) return p;
+        const stepSize = Math.max(0.6, (ceiling - p) * 0.06);
+        return Math.min(ceiling, p + stepSize);
+      });
+    }, 90);
     // Safety valve: never keep the loader up for more than 20s.
     const bail = setTimeout(() => {
+      metaTargetRef.current = 100;
       setHydrateProgress(100);
       setHydrating(false);
     }, 20000);
@@ -362,6 +373,7 @@ export default function PropertyDetail() {
       clearTimeout(bail);
     };
   }, [hydrating]);
+
 
 
   // The gallery ring is fully determinate now: progress is driven by the
