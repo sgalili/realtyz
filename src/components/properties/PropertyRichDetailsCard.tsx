@@ -348,18 +348,21 @@ export function PropertyRichDetailsCard({
         </section>
       )}
 
-      {detailRows.length > 0 && (
+      {displayRows.length > 0 && (
         <section>
           <dl className="divide-y divide-border/60">
-            {detailRows.map(({ key, name, value }) => (
+            {displayRows.map(({ key, name, value }) => (
               <div key={key} className="flex items-start justify-between gap-6 py-2.5">
                 <dt className="text-lg text-muted-foreground">{name}</dt>
-                <dd className="text-lg font-medium text-foreground text-left">{renderValue(value)}</dd>
+                <dd className="text-lg font-medium text-foreground text-left">
+                  {renderValue(value) || <span className="text-muted-foreground/50">—</span>}
+                </dd>
               </div>
             ))}
           </dl>
         </section>
       )}
+
 
       {featureFlags.length > 0 && (
         <section>
