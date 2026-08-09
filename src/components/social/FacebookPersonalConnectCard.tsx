@@ -120,14 +120,11 @@ export const FacebookPersonalConnectCard = () => {
         return;
       }
       try {
-        const { data: res, error } = await supabase.functions.invoke('fb-personal-connect', {
-          body: {
-            action: 'exchange',
-            code: m.code,
-            redirect_uri: `${window.location.origin}/oauth/callback`,
-          },
+        const res = await callFbPersonal<any>({
+          action: 'exchange',
+          code: m.code,
+          redirect_uri: `${window.location.origin}/oauth/callback`,
         });
-        if (error || (res as any)?.error) throw new Error((res as any)?.error || error?.message);
         toast.success('פרופיל פייסבוק אישי חובר', {
           description: (res as any)?.identity?.fb_user_name ?? undefined,
         });
@@ -147,10 +144,10 @@ export const FacebookPersonalConnectCard = () => {
   const connect = async () => {
     setConnecting(true);
     try {
-      const { data: res, error } = await supabase.functions.invoke('fb-personal-connect', {
-        body: { action: 'start', redirect_uri: `${window.location.origin}/oauth/callback` },
+      const res = await callFbPersonal<any>({
+        action: 'start',
+        redirect_uri: `${window.location.origin}/oauth/callback`,
       });
-      if (error || (res as any)?.error) throw new Error((res as any)?.error || error?.message);
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       window.open(url, 'realtyz-fb-personal-oauth', 'width=560,height=680');
@@ -162,7 +159,7 @@ export const FacebookPersonalConnectCard = () => {
 
   const disconnect = async () => {
     try {
-      await supabase.functions.invoke('fb-personal-connect', { body: { action: 'disconnect' } });
+      await callFbPersonal({ action: 'disconnect' });
       toast.success('פרופיל הפייסבוק נותק');
       qc.invalidateQueries({ queryKey: ['fb-user-groups'] });
       refetch();
