@@ -102,6 +102,20 @@ export default function SharedProperty() {
     return Array.from(new Set(all));
   }, [p]);
 
+  // Horizontal slideshow state for the public gallery.
+  const [slide, setSlide] = useState(0);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const goToSlide = (next: number) => {
+    const total = photos.length;
+    if (total === 0) return;
+    const target = ((next % total) + total) % total;
+    setSlide(target);
+    const el = trackRef.current;
+    if (el) el.scrollTo({ left: target * el.clientWidth * (el.scrollWidth < 0 ? -1 : 1), behavior: 'smooth' });
+  };
+
+
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background" dir="rtl">
