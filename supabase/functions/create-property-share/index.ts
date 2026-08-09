@@ -16,20 +16,21 @@ Deno.serve(async (req) => {
       });
     }
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const userClient = createClient(SUPABASE_URL, ANON, {
-      global: { headers: { Authorization: authHeader } },
-    });
     const admin = createClient(SUPABASE_URL, SERVICE);
 
-    const { data: uRes } = await userClient.auth.getUser();
+    const token_jwt = authHeader.replace("Bearer ", "").trim();
+    // Validate the caller's JWT server-side (works even if the client's
+    // local session copy is stale, and avoids anon-key edge cases).
+    const { data: uRes, error: authErr } = await admin.auth.getUser(token_jwt);
     const uid = uRes?.user?.id;
     if (!uid) {
-      return new Response(JSON.stringify({ error: "invalid session" }), {
+      console.error("[create-property-share] auth failed", authErr?.message);
+      return new Response(JSON.stringify({ error: "invalid session", detail: authErr?.message ?? null }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const body = await req.json().catch(() => ({}));
     const listing_id: string | null = body?.listing_id ?? null;
