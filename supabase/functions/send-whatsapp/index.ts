@@ -265,7 +265,7 @@ async function sendViaWba(
     textRes = await fetch(baseUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(payload),
@@ -366,7 +366,7 @@ async function sendViaWba(
     docRes = await fetch(baseUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
