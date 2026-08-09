@@ -64,14 +64,13 @@ export const FacebookPersonalConnectCard = () => {
 
   const { data, refetch, isLoading } = useQuery({
     queryKey: ['fb-personal-connection'],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('fb-personal-connect', {
-        body: { action: 'status' },
-      });
-      if (error) throw error;
-      return data as { connected: boolean; identity: Identity | null; groups_count: number };
-    },
+    retry: 1,
+    queryFn: async () =>
+      await callFbPersonal<{ connected: boolean; identity: Identity | null; groups_count: number }>({
+        action: 'status',
+      }),
   });
+
 
   const { data: groups } = useQuery({
     queryKey: ['fb-user-groups'],
