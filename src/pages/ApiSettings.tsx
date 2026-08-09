@@ -42,6 +42,7 @@ import { WhatsAppTwoWayTestCard } from '@/components/settings/WhatsAppTwoWayTest
 import { WaTemplatesSyncCard } from '@/components/settings/WaTemplatesSyncCard';
 import { SocialChannelsGrid } from '@/components/social/SocialChannelsGrid';
 import { CustomGroupsManager } from '@/components/social/CustomGroupsManager';
+import { FacebookPersonalConnectCard } from '@/components/social/FacebookPersonalConnectCard';
 
 interface ApiConfig {
   id: string;
@@ -906,6 +907,7 @@ const ApiSettings = () => {
       </SectionShell>
 
       <SectionShell title="רשתות חברתיות" subtitle="Ayrshare, קטלוג ערוצים חי וקבוצות מותאמות">
+        <FacebookPersonalConnectCard />
         <SocialChannelsGrid />
         <CustomGroupsManager />
       </SectionShell>

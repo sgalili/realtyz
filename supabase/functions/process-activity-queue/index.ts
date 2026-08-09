@@ -118,13 +118,51 @@ Deno.serve(async (req) => {
         chosen_body: body,
       };
 
-      const isManual =
-        locked.activity_type === "manual_share" ||
-        locked.activity_type === "fb_group_post";
-      const nextStatus = isManual ? "ready" : "completed";
-      const nextPublication = isManual
+      // Facebook group posts are published automatically through the
+      // workspace's connected PERSONAL Facebook profile (official Graph API).
+      // If no profile is connected, or Facebook rejects the post, the row
+      // falls back to the manual "ready" flow instead of failing outright.
+      let nextStatus: string = locked.activity_type === "manual_share" ? "ready" : "completed";
+      let nextPublication: string = nextStatus === "ready"
         ? "ready_awaiting_whatsapp_auth"
         : "published";
+      let publishError: string | null = null;
+
+      if (locked.activity_type === "fb_group_post") {
+        nextStatus = "ready";
+        nextPublication = "ready_awaiting_whatsapp_auth";
+        try {
+          const pubRes = await fetch(`${SUPABASE_URL}/functions/v1/fb-group-publish`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SERVICE_KEY}`,
+              apikey: SERVICE_KEY,
+            },
+            body: JSON.stringify({
+              workspace_owner_id: ws,
+              group_id: locked.target_ref,
+              message: compliant,
+              link: (locked.payload ?? {}).link ?? null,
+              image_url: (locked.payload ?? {}).image_url ?? null,
+              queue_id: locked.id,
+            }),
+          });
+          const pub = await pubRes.json().catch(() => ({}));
+          if (pub?.ok && pub?.post_id) {
+            nextStatus = "completed";
+            nextPublication = "published";
+            (newPayload as any).fb_post_id = pub.post_id;
+            (newPayload as any).published_via = "fb_personal_profile";
+          } else {
+            publishError = String(pub?.reason ?? "פרסום אוטומטי לקבוצה נכשל");
+            (newPayload as any).publish_error = publishError;
+          }
+        } catch (pubErr: any) {
+          publishError = String(pubErr?.message ?? pubErr);
+          (newPayload as any).publish_error = publishError;
+        }
+      }
 
       await admin
         .from("campaign_activity_queue")
@@ -132,6 +170,7 @@ Deno.serve(async (req) => {
           status: nextStatus,
           publication_status: nextPublication,
           payload: newPayload,
+          last_error: publishError,
           variation_index:
             typeof locked.variation_index === "number"
               ? locked.variation_index
@@ -142,7 +181,8 @@ Deno.serve(async (req) => {
 
       perWsCount.set(ws, used + 1);
       touchedWorkspaces.add(ws);
-      results.push({ id: locked.id, status: nextStatus, workspace: ws });
+      results.push({ id: locked.id, status: nextStatus, workspace: ws, publish_error: publishError });
+
     } catch (e: any) {
       await admin
         .from("campaign_activity_queue")

@@ -2296,6 +2296,99 @@ export type Database = {
         }
         Relationships: []
       }
+      fb_personal_connections: {
+        Row: {
+          access_token: string | null
+          connected_at: string | null
+          connected_by: string | null
+          created_at: string
+          fb_avatar_url: string | null
+          fb_user_id: string | null
+          fb_user_name: string | null
+          last_error: string | null
+          last_import_at: string | null
+          scopes: string[]
+          token_expires_at: string | null
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          connected_at?: string | null
+          connected_by?: string | null
+          created_at?: string
+          fb_avatar_url?: string | null
+          fb_user_id?: string | null
+          fb_user_name?: string | null
+          last_error?: string | null
+          last_import_at?: string | null
+          scopes?: string[]
+          token_expires_at?: string | null
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          access_token?: string | null
+          connected_at?: string | null
+          connected_by?: string | null
+          created_at?: string
+          fb_avatar_url?: string | null
+          fb_user_id?: string | null
+          fb_user_name?: string | null
+          last_error?: string | null
+          last_import_at?: string | null
+          scopes?: string[]
+          token_expires_at?: string | null
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
+      fb_user_groups: {
+        Row: {
+          created_at: string
+          group_icon: string | null
+          group_id: string
+          group_name: string
+          group_url: string | null
+          id: string
+          imported_at: string
+          is_administrator: boolean
+          member_count: number | null
+          privacy: string | null
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_icon?: string | null
+          group_id: string
+          group_name: string
+          group_url?: string | null
+          id?: string
+          imported_at?: string
+          is_administrator?: boolean
+          member_count?: number | null
+          privacy?: string | null
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          group_icon?: string | null
+          group_id?: string
+          group_name?: string
+          group_url?: string | null
+          id?: string
+          imported_at?: string
+          is_administrator?: boolean
+          member_count?: number | null
+          privacy?: string | null
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       feedback_logs: {
         Row: {
           ai_message: string
