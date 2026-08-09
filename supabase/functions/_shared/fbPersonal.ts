@@ -60,17 +60,37 @@ export async function fbAppCredentials(admin: SupabaseClient): Promise<{
   clientId: string | null;
   clientSecret: string | null;
 }> {
-  const { data } = await admin
-    .from("platform_oauth_apps")
-    .select("client_id, client_secret")
-    .eq("platform", "facebook")
-    .maybeSingle();
+  let row: any = null;
+  try {
+    const { data } = await admin
+      .from("platform_oauth_apps")
+      .select("client_id, client_secret")
+      .eq("platform", "facebook")
+      .maybeSingle();
+    row = data;
+  } catch (_e) {
+    row = null;
+  }
+  const env = (k: string) => {
+    const v = Deno.env.get(k);
+    return v && v.trim() ? v.trim() : null;
+  };
   return {
-    clientId: (data as any)?.client_id || Deno.env.get("FACEBOOK_APP_ID") || null,
+    clientId:
+      row?.client_id ||
+      env("FACEBOOK_APP_ID") ||
+      env("META_APP_ID") ||
+      env("FB_APP_ID") ||
+      null,
     clientSecret:
-      (data as any)?.client_secret || Deno.env.get("FACEBOOK_APP_SECRET") || null,
+      row?.client_secret ||
+      env("FACEBOOK_APP_SECRET") ||
+      env("META_APP_SECRET") ||
+      env("FB_APP_SECRET") ||
+      null,
   };
 }
+
 
 /** Load the workspace's stored personal-profile token. */
 export async function loadConnection(

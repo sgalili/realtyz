@@ -22,6 +22,34 @@ type Identity = {
 const STATE_PREFIX = 'facebook_personal:';
 
 /**
+ * Invoke the fb-personal-connect edge function with resilient error handling.
+ * Network-level failures (function cold start / not reachable) surface as a
+ * readable Hebrew message instead of "Failed to send a request".
+ */
+async function callFbPersonal<T = any>(body: Record<string, unknown>): Promise<T> {
+  let res: any = null;
+  let err: any = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const out = await supabase.functions.invoke('fb-personal-connect', { body });
+    res = out.data;
+    err = out.error;
+    if (!err) break;
+    await new Promise((r) => setTimeout(r, 600));
+  }
+  if (err) {
+    const raw = String(err?.message ?? err);
+    throw new Error(
+      /failed to (send|fetch)/i.test(raw)
+        ? 'לא ניתן להגיע לשירות החיבור לפייסבוק. נסה/י שוב בעוד רגע.'
+        : raw,
+    );
+  }
+  if (res && (res as any).error) throw new Error(String((res as any).error));
+  return res as T;
+}
+
+
+/**
  * FacebookPersonalConnectCard — connects the workspace owner's PERSONAL
  * Facebook profile through the official Facebook Login flow, then imports the
  * groups they are a member of so campaigns can target them.
@@ -36,14 +64,13 @@ export const FacebookPersonalConnectCard = () => {
 
   const { data, refetch, isLoading } = useQuery({
     queryKey: ['fb-personal-connection'],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('fb-personal-connect', {
-        body: { action: 'status' },
-      });
-      if (error) throw error;
-      return data as { connected: boolean; identity: Identity | null; groups_count: number };
-    },
+    retry: 1,
+    queryFn: async () =>
+      await callFbPersonal<{ connected: boolean; identity: Identity | null; groups_count: number }>({
+        action: 'status',
+      }),
   });
+
 
   const { data: groups } = useQuery({
     queryKey: ['fb-user-groups'],
@@ -93,14 +120,11 @@ export const FacebookPersonalConnectCard = () => {
         return;
       }
       try {
-        const { data: res, error } = await supabase.functions.invoke('fb-personal-connect', {
-          body: {
-            action: 'exchange',
-            code: m.code,
-            redirect_uri: `${window.location.origin}/oauth/callback`,
-          },
+        const res = await callFbPersonal<any>({
+          action: 'exchange',
+          code: m.code,
+          redirect_uri: `${window.location.origin}/oauth/callback`,
         });
-        if (error || (res as any)?.error) throw new Error((res as any)?.error || error?.message);
         toast.success('פרופיל פייסבוק אישי חובר', {
           description: (res as any)?.identity?.fb_user_name ?? undefined,
         });
@@ -120,10 +144,10 @@ export const FacebookPersonalConnectCard = () => {
   const connect = async () => {
     setConnecting(true);
     try {
-      const { data: res, error } = await supabase.functions.invoke('fb-personal-connect', {
-        body: { action: 'start', redirect_uri: `${window.location.origin}/oauth/callback` },
+      const res = await callFbPersonal<any>({
+        action: 'start',
+        redirect_uri: `${window.location.origin}/oauth/callback`,
       });
-      if (error || (res as any)?.error) throw new Error((res as any)?.error || error?.message);
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       window.open(url, 'realtyz-fb-personal-oauth', 'width=560,height=680');
@@ -135,7 +159,7 @@ export const FacebookPersonalConnectCard = () => {
 
   const disconnect = async () => {
     try {
-      await supabase.functions.invoke('fb-personal-connect', { body: { action: 'disconnect' } });
+      await callFbPersonal({ action: 'disconnect' });
       toast.success('פרופיל הפייסבוק נותק');
       qc.invalidateQueries({ queryKey: ['fb-user-groups'] });
       refetch();
