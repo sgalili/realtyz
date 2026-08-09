@@ -178,17 +178,20 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       });
       setCustomUserGroups(mergedManual);
 
-      // 1) Live Ayrshare pull via active workspace profile key
-      let list = await fetchFromAyrshare();
-      // 2) Meta direct bypass
+      // 1) Groups imported from the connected personal Facebook profile
+      let list = await fetchPersonalGroups();
+      // 2) Live Ayrshare pull via active workspace profile key
+      if (list.length === 0) list = await fetchFromAyrshare();
+      // 3) Meta direct bypass
       if (list.length === 0) {
         const { data } = await supabase.functions.invoke("facebook-groups-fetch", { body: {} });
         list = Array.isArray((data as any)?.groups) ? (data as any).groups : [];
       }
-      // 3) Previously synchronized group rows in our DB
+      // 4) Previously synchronized group rows in our DB
       if (list.length === 0) {
         list = await fetchSyncedGroups();
       }
+
       // De-dupe API list against manual entries
       const manualIds = new Set(mergedManual.map((g) => g.group_id));
       const apiList = list.filter((g) => !manualIds.has(g.group_id));
