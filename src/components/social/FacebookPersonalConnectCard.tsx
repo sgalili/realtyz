@@ -22,6 +22,34 @@ type Identity = {
 const STATE_PREFIX = 'facebook_personal:';
 
 /**
+ * Invoke the fb-personal-connect edge function with resilient error handling.
+ * Network-level failures (function cold start / not reachable) surface as a
+ * readable Hebrew message instead of "Failed to send a request".
+ */
+async function callFbPersonal<T = any>(body: Record<string, unknown>): Promise<T> {
+  let res: any = null;
+  let err: any = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const out = await supabase.functions.invoke('fb-personal-connect', { body });
+    res = out.data;
+    err = out.error;
+    if (!err) break;
+    await new Promise((r) => setTimeout(r, 600));
+  }
+  if (err) {
+    const raw = String(err?.message ?? err);
+    throw new Error(
+      /failed to (send|fetch)/i.test(raw)
+        ? 'לא ניתן להגיע לשירות החיבור לפייסבוק. נסה/י שוב בעוד רגע.'
+        : raw,
+    );
+  }
+  if (res && (res as any).error) throw new Error(String((res as any).error));
+  return res as T;
+}
+
+
+/**
  * FacebookPersonalConnectCard — connects the workspace owner's PERSONAL
  * Facebook profile through the official Facebook Login flow, then imports the
  * groups they are a member of so campaigns can target them.
