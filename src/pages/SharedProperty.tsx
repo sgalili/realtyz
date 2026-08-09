@@ -7,7 +7,7 @@
  * such as house / apartment numbers.
  * Route: /share/property/:token
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,7 @@ import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetails
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
 import {
   Loader2, MapPin, Home, Ruler, Bed, Building2, Car,
-  ArrowUpCircle, Sun, Wind, Shield, ImageIcon,
+  ArrowUpCircle, Sun, Wind, Shield, ImageIcon, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 type SharedPayload = {
