@@ -7,7 +7,7 @@
  * such as house / apartment numbers.
  * Route: /share/property/:token
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,7 @@ import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetails
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
 import {
   Loader2, MapPin, Home, Ruler, Bed, Building2, Car,
-  ArrowUpCircle, Sun, Wind, Shield, ImageIcon,
+  ArrowUpCircle, Sun, Wind, Shield, ImageIcon, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 type SharedPayload = {
@@ -101,6 +101,21 @@ export default function SharedProperty() {
       .filter((s: any) => typeof s === 'string' && s);
     return Array.from(new Set(all));
   }, [p]);
+
+  // Horizontal slideshow state for the public gallery.
+  const [slide, setSlide] = useState(0);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const goToSlide = (next: number) => {
+    const total = photos.length;
+    if (total === 0) return;
+    const target = ((next % total) + total) % total;
+    setSlide(target);
+    const el = trackRef.current;
+    const child = el?.children?.[target] as HTMLElement | undefined;
+    if (child) child.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  };
+
+
 
   if (loading) {
     return (
@@ -211,27 +226,76 @@ export default function SharedProperty() {
 
         {photos.length > 0 ? (
           <section className="space-y-2">
-            <button
-              type="button"
-              onClick={() => setLightbox(photos[0])}
-              className="block w-full overflow-hidden rounded-xl"
-            >
-              <img
-                src={photos[0]}
-                alt={displayTitle}
-                className="h-80 w-full object-cover transition hover:scale-[1.01]"
-                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
-              />
-            </button>
+            <div className="relative overflow-hidden rounded-xl bg-muted">
+              <div
+                className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth"
+                style={{ scrollbarWidth: 'none' }}
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  const idx = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
+                  setSlide(Math.min(photos.length - 1, Math.max(0, Math.abs(idx))));
+                }}
+                ref={trackRef}
+              >
+                {photos.map((src, i) => (
+                  <button
+                    key={`${src}-${i}`}
+                    type="button"
+                    onClick={() => setLightbox(src)}
+                    className="min-w-full shrink-0 snap-center"
+                  >
+                    <img
+                      src={src}
+                      alt={i === 0 ? displayTitle : ''}
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                      className="h-80 w-full object-cover"
+                      onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+                    />
+                  </button>
+                ))}
+              </div>
+
+              {photos.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    aria-label="התמונה הקודמת"
+                    onClick={() => goToSlide(slide - 1)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-2 text-slate-900 shadow-md transition hover:bg-white"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="התמונה הבאה"
+                    onClick={() => goToSlide(slide + 1)}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-2 text-slate-900 shadow-md transition hover:bg-white"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[12px] font-semibold text-white tabular-nums">
+                    {slide + 1} / {photos.length}
+                  </div>
+                </>
+              ) : null}
+            </div>
+
             {photos.length > 1 && (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {photos.slice(1).map((src, i) => (
-                  <button key={i} type="button" onClick={() => setLightbox(src)} className="overflow-hidden rounded-lg">
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {photos.map((src, i) => (
+                  <button
+                    key={`thumb-${i}`}
+                    type="button"
+                    onClick={() => goToSlide(i)}
+                    className={`h-20 w-28 shrink-0 overflow-hidden rounded-lg border-2 transition ${
+                      i === slide ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'
+                    }`}
+                  >
                     <img
                       src={src}
                       alt=""
                       loading="lazy"
-                      className="h-28 w-full object-cover transition hover:opacity-90"
+                      className="h-full w-full object-cover"
                       onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
                     />
                   </button>
@@ -243,6 +307,7 @@ export default function SharedProperty() {
             </p>
           </section>
         ) : null}
+
 
 
         <PropertyRichDetailsCard

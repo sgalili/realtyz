@@ -12,10 +12,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "Assistant", "Heebo", "Inter", "system-ui", "sans-serif"],
-        heading: ["Playfair Display", "Assistant", "Heebo", "Inter", "system-ui", "serif"],
-        display: ["Playfair Display", "Assistant", "Heebo", "Inter", "system-ui", "serif"],
-        hebrew: ["Assistant", "Heebo", "Plus Jakarta Sans", "system-ui", "sans-serif"],
+        sans: ["Plus Jakarta Sans", "Assistant", "Heebo", "Inter", "system-ui", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "sans-serif"],
+        heading: ["Playfair Display", "Assistant", "Heebo", "Inter", "system-ui", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "serif"],
+        display: ["Playfair Display", "Assistant", "Heebo", "Inter", "system-ui", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "serif"],
+        hebrew: ["Assistant", "Heebo", "Plus Jakarta Sans", "system-ui", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "sans-serif"],
         serif: ["Playfair Display", "Georgia", "serif"],
       },
       colors: {

@@ -135,14 +135,14 @@
       radial-gradient(900px 360px at 100% 0%, hsl(var(--brand-navy) / 0.04), transparent 60%),
       linear-gradient(180deg, hsl(var(--brand-cream)) 0%, hsl(0 0% 100%) 40%, hsl(var(--brand-cream)) 100%);
     background-attachment: fixed;
-    font-family: 'Plus Jakarta Sans', 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Assistant', 'Heebo', 'Inter', system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     font-weight: 400;
     letter-spacing: -0.005em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', 'Assistant', 'Heebo', 'Inter', system-ui, serif;
+    font-family: 'Playfair Display', 'Assistant', 'Heebo', 'Inter', system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", serif;
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1.15;
@@ -150,11 +150,11 @@
   /* Hebrew script keeps its dedicated humanist sans for legibility */
   :lang(he) h1, :lang(he) h2, :lang(he) h3, :lang(he) h4, :lang(he) h5, :lang(he) h6,
   [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
-    font-family: 'Assistant', 'Heebo', 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-family: 'Assistant', 'Heebo', 'Plus Jakarta Sans', system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     font-weight: 700;
   }
   :lang(he), [dir="rtl"] body, [dir="rtl"] {
-    font-family: 'Assistant', 'Heebo', 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    font-family: 'Assistant', 'Heebo', 'Plus Jakarta Sans', 'Inter', system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
   }
 }
 
@@ -174,7 +174,7 @@
     @apply text-primary;
   }
   .heading-display {
-    font-family: 'Assistant', 'Heebo', sans-serif;
+    font-family: 'Assistant', 'Heebo', "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     font-weight: 800;
     letter-spacing: -0.02em;
     line-height: 1.1;
@@ -357,7 +357,7 @@
   .bg-green-500\/10 > svg.lucide { color: #1f7a3a !important; }
 
   .realtyz-logo {
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     font-size: 1.5rem;
     font-weight: 900 !important;
     letter-spacing: -0.025em;
@@ -426,7 +426,7 @@
   }
 
   .auth-header-ticker-line {
-    font-family: 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
+    font-family: 'Assistant', 'Heebo', 'Inter', system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     font-size: calc(clamp(0.75rem, 1.25vw, 0.95rem) + 2px);
     font-weight: 400;
     line-height: 1.15;
@@ -476,7 +476,7 @@
 
   .auth-hero-title {
     color: hsl(var(--primary-foreground));
-    font-family: 'Assistant', 'Heebo', sans-serif;
+    font-family: 'Assistant', 'Heebo', "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     font-size: clamp(3rem, 8.5vw, 6.9rem);
     font-weight: 900;
     line-height: 1.05;
@@ -499,7 +499,7 @@
     background: linear-gradient(135deg, hsl(var(--sidebar-ring)) 0%, hsl(46 78% 72%) 48%, hsl(var(--sidebar-ring)) 100%);
     background-clip: text;
     -webkit-background-clip: text;
-    font-family: 'Assistant', 'Heebo', sans-serif;
+    font-family: 'Assistant', 'Heebo', "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     font-size: clamp(1.3rem, 2.3vw, 1.7rem);
     font-weight: 500;
     letter-spacing: 0;
@@ -1112,7 +1112,7 @@
   }
 
   .realtyz-sidebar-logo-letter {
-    font-family: 'Heebo', 'Assistant', sans-serif;
+    font-family: 'Heebo', 'Assistant', "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     font-size: 1.75rem;
     line-height: 1;
     font-weight: 900;
