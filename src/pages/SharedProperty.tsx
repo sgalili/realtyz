@@ -111,7 +111,8 @@ export default function SharedProperty() {
     const target = ((next % total) + total) % total;
     setSlide(target);
     const el = trackRef.current;
-    if (el) el.scrollTo({ left: target * el.clientWidth * (el.scrollWidth < 0 ? -1 : 1), behavior: 'smooth' });
+    const child = el?.children?.[target] as HTMLElement | undefined;
+    if (child) child.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   };
 
 
