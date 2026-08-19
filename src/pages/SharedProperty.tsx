@@ -206,24 +206,8 @@ export default function SharedProperty() {
   );
   const waHref = wa ? `https://wa.me/${wa}?text=${waMsg}` : null;
 
-  const WaButton = ({ compact }: { compact?: boolean }) =>
-    waHref ? (
-      <a
-        href={waHref}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="שיחת WhatsApp"
-        style={{ backgroundColor: '#25D366' }}
-        className={
-          compact
-            ? 'inline-flex items-center gap-2 rounded-full px-3 py-2 text-[14px] font-semibold text-white shadow-sm transition hover:brightness-95'
-            : 'flex h-14 w-full items-center justify-center gap-2 rounded-xl text-[18px] font-bold text-white shadow-lg transition hover:brightness-95'
-        }
-      >
-        <WhatsAppIcon className={compact ? 'h-5 w-5' : 'h-6 w-6'} />
-        {compact ? <span className="hidden sm:inline">WhatsApp</span> : 'שלחו לי פרטים ב-WhatsApp'}
-      </a>
-    ) : null;
+
+
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
