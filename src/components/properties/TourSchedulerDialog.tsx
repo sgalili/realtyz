@@ -99,18 +99,18 @@ export default function TourSchedulerDialog({ open, onOpenChange, token, propert
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="tour-name">שם מלא</Label>
-              <Input id="tour-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="ישראל ישראלי" />
+              <Input id="tour-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
               {nameError && <p className="text-[12px] text-destructive">{nameError}</p>}
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="tour-phone">טלפון (וואטסאפ)</Label>
-              <Input id="tour-phone" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" maxLength={20} placeholder="052-1234567" />
+              <Input id="tour-phone" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" maxLength={20} />
               {phoneError && <p className="text-[12px] text-destructive">{phoneError}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="tour-email">אימייל (אופציונלי)</Label>
+              <Label htmlFor="tour-email">אימייל</Label>
               <Input id="tour-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={255} />
             </div>
 
