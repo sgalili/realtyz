@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Bell, AlertTriangle, ExternalLink, Wallet } from 'lucide-react';
+import { Bell, AlertTriangle, ExternalLink, Wallet, MessageCircle, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { toast } from 'sonner';
+
 
 const ALERT_KEYWORDS = ['עצבני', 'שקר', 'תפסיקו', 'כועס', 'מתנגד', 'עזבו', 'נמאס'];
 
@@ -102,9 +104,86 @@ export default function NotificationCenter() {
     enabled: voterIds.length > 0,
   });
 
+  // ---- Inbound WhatsApp / client messages (near real-time via short polling;
+  // Realtime stays disabled on `messages` for privacy) ----
+  const { data: inbound = [] } = useQuery({
+    queryKey: ['notif-inbound-messages', user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 15_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id, content, created_at, lead_id, channel, platform, sender_type, leads!inner(id, full_name, user_id)')
+        .eq('sender_type', 'voter')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  // ---- New property tour bookings (Realtime enabled on property_tours) ----
+  const { data: tours = [] } = useQuery({
+    queryKey: ['notif-tours', user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('property_tours')
+        .select('id, client_name, client_phone, property_title, scheduled_at, created_at, status')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel('notif-tours-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'property_tours' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['notif-tours', user.id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, queryClient]);
+
+  // Toast on genuinely new items (skip the first load so we don't spam on mount)
+  const seenRef = useRef<{ ready: boolean; ids: Set<string> }>({ ready: false, ids: new Set() });
+  useEffect(() => {
+    const items = [
+      ...inbound.map((m: any) => ({ id: m.id, msg: `הודעה חדשה מ${m.leads?.full_name || 'מתעניין'}` })),
+      ...tours.map((t: any) => ({ id: t.id, msg: `סיור חדש נקבע: ${t.client_name || 'לקוח'}` })),
+    ];
+    if (!seenRef.current.ready) {
+      seenRef.current = { ready: true, ids: new Set(items.map(i => i.id)) };
+      return;
+    }
+    items.forEach(i => {
+      if (!seenRef.current.ids.has(i.id)) {
+        seenRef.current.ids.add(i.id);
+        toast(i.msg);
+      }
+    });
+  }, [inbound, tours]);
+
   const unviewedAlerts = alerts.filter(a => !viewedIds.has(a.id));
+  const unviewedInbound = inbound.filter((m: any) => !viewedIds.has(m.id));
+  const unviewedTours = tours.filter((t: any) => !viewedIds.has(t.id));
   const activeBudgetAlerts = budgetAlerts.filter(b => !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
-  const badgeCount = unviewedAlerts.length + activeBudgetAlerts.length;
+  const badgeCount = unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + activeBudgetAlerts.length;
+
+  const markViewed = (id: string) => {
+    const next = new Set(viewedIds);
+    next.add(id);
+    setViewedIds(next);
+    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
+  };
 
   const dismissBudget = (service: string) => {
     const key = `${service}-${new Date().getMonth()}`;
@@ -116,16 +195,18 @@ export default function NotificationCenter() {
 
   const handleClick = (voterId: string | null, id: string) => {
     if (!voterId) return;
-    const next = new Set(viewedIds);
-    next.add(id);
-    setViewedIds(next);
-    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
+    markViewed(id);
     setOpen(false);
     navigate(`/live-conversations?lead=${voterId}`);
   };
 
   const markAllRead = () => {
-    const next = new Set([...viewedIds, ...alerts.map(a => a.id)]);
+    const next = new Set([
+      ...viewedIds,
+      ...alerts.map(a => a.id),
+      ...inbound.map((m: any) => m.id),
+      ...tours.map((t: any) => t.id),
+    ]);
     setViewedIds(next);
     localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
   };
@@ -133,9 +214,6 @@ export default function NotificationCenter() {
   const getMatchedKeyword = (content: string) =>
     ALERT_KEYWORDS.find(kw => content.includes(kw)) || '';
 
-  // Only render the bell when there's something to notify about — keeps the
-  // header clean when the user is fully caught up.
-  if (badgeCount === 0) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -144,12 +222,14 @@ export default function NotificationCenter() {
           variant="ghost"
           size="icon"
           aria-label="מרכז התראות"
-          className="relative h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          className={`relative h-9 w-9 p-0 ${badgeCount > 0 ? 'text-destructive hover:bg-destructive/10 hover:text-destructive' : 'text-muted-foreground hover:text-primary'}`}
         >
           <Bell className="h-4 w-4" />
-          <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-            {badgeCount > 9 ? '9+' : badgeCount}
-          </span>
+          {badgeCount > 0 && (
+            <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+              {badgeCount > 9 ? '9+' : badgeCount}
+            </span>
+          )}
         </Button>
       </PopoverTrigger>
 
@@ -157,13 +237,14 @@ export default function NotificationCenter() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-primary/15">
           <h4 className="text-sm font-semibold text-primary">מרכז התראות</h4>
           <div className="flex items-center gap-1">
-            {unviewedAlerts.length > 0 && (
+            {badgeCount > 0 && (
               <Button variant="ghost" size="sm" className="text-xs h-6 px-2" onClick={markAllRead}>
                 סמן הכל כנקרא
               </Button>
             )}
           </div>
         </div>
+
         <ScrollArea className="h-[min(70vh,28rem)] max-h-[calc(100vh-8rem)]">
           {activeBudgetAlerts.map(b => (
             <div
@@ -209,9 +290,55 @@ export default function NotificationCenter() {
             </div>
           ))}
 
-          {alerts.length === 0 && activeBudgetAlerts.length === 0 ? (
+          {tours.map((t: any) => {
+            const isUnread = !viewedIds.has(t.id);
+            return (
+              <button
+                key={t.id}
+                onClick={() => { markViewed(t.id); setOpen(false); navigate('/dashboard#tours'); }}
+                className={`w-full text-right px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors flex gap-3 items-start ${isUnread ? 'bg-primary/5' : ''}`}
+              >
+                <CalendarClock className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">סיור חדש: {t.client_name || 'לקוח'}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {t.property_title || 'נכס'}
+                    {t.scheduled_at ? ` · ${new Date(t.scheduled_at).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">
+                    {t.created_at ? formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: he }) : ''}
+                  </p>
+                </div>
+                <ExternalLink className="h-3 w-3 text-muted-foreground/40 mt-1 shrink-0" />
+              </button>
+            );
+          })}
+
+          {inbound.map((m: any) => {
+            const isUnread = !viewedIds.has(m.id);
+            return (
+              <button
+                key={m.id}
+                onClick={() => handleClick(m.lead_id, m.id)}
+                className={`w-full text-right px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors flex gap-3 items-start ${isUnread ? 'bg-primary/5' : ''}`}
+              >
+                <MessageCircle className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{m.leads?.full_name || 'מתעניין'}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{(m.content || '').slice(0, 70)}</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">
+                    {m.created_at ? formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: he }) : ''}
+                  </p>
+                </div>
+                <ExternalLink className="h-3 w-3 text-muted-foreground/40 mt-1 shrink-0" />
+              </button>
+            );
+          })}
+
+          {alerts.length === 0 && activeBudgetAlerts.length === 0 && inbound.length === 0 && tours.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">אין התראות</p>
           ) : (
+
             alerts.map(a => {
               const isUnread = !viewedIds.has(a.id);
               const keyword = a.content ? getMatchedKeyword(a.content) : '';
