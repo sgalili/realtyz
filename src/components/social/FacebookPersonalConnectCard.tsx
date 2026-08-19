@@ -66,10 +66,17 @@ export const FacebookPersonalConnectCard = () => {
     queryKey: ['fb-personal-connection'],
     retry: 1,
     queryFn: async () =>
-      await callFbPersonal<{ connected: boolean; identity: Identity | null; groups_count: number }>({
+      await callFbPersonal<{
+        connected: boolean;
+        identity: Identity | null;
+        groups_count: number;
+        missing_scopes?: string[];
+        scope_advisory?: string | null;
+      }>({
         action: 'status',
       }),
   });
+
 
 
   const { data: groups } = useQuery({
@@ -223,6 +230,25 @@ export const FacebookPersonalConnectCard = () => {
             התחברות מאובטחת דרך פייסבוק. אנחנו שומרים אך ורק את אסימון ההרשאה הרשמי (Access Token) בצד השרת,
             לעולם לא סיסמאות או קובצי Session.
           </p>
+        )}
+
+        {(data?.missing_scopes?.length ?? 0) > 0 && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5">
+            <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-[11px] text-red-800">
+                {data?.scope_advisory ||
+                  'פייסבוק לא אישר את כל הרשאות הקבוצות הנדרשות. יש להשלים App Review ב-Meta Developer Console.'}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {data!.missing_scopes!.map((s) => (
+                  <Badge key={s} variant="outline" className="text-[9px] border-red-300 text-red-700" dir="ltr">
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
 
         {identity?.last_error && (

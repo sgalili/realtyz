@@ -24,6 +24,28 @@ export const FB_PERSONAL_SCOPES = (
   .map((s) => s.trim())
   .filter(Boolean);
 
+/** Scopes that MUST be granted for group import + group publishing to work. */
+export const FB_GROUP_REQUIRED_SCOPES = [
+  "public_profile",
+  "user_managed_groups",
+  "groups_access_member_info",
+  "publish_to_groups",
+];
+
+/** Which required scopes Meta did NOT grant. */
+export function missingScopes(granted: string[] | null | undefined): string[] {
+  const set = new Set((granted ?? []).map((s) => String(s)));
+  return FB_GROUP_REQUIRED_SCOPES.filter((s) => !set.has(s));
+}
+
+/** Advisory shown when Meta withholds the group permissions. */
+export function scopeAdvisory(missing: string[]): string {
+  return `פייסבוק לא אישר את ההרשאות הנדרשות לקבוצות (${missing.join(", ")}). ` +
+    `יש להשלים App Review באפליקציית Meta (Meta Developer Console > App Review > Permissions and Features) ` +
+    `ולוודא שהאפליקציה מותקנת בקבוצות היעד, ואז להתחבר מחדש.`;
+}
+
+
 export function adminClient(): SupabaseClient {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -128,8 +150,8 @@ export function humanizeGraphError(body: any): string {
   if (code === 190 || sub === 463 || sub === 467) {
     return "החיבור לפרופיל הפייסבוק פג. יש להתחבר מחדש בעמוד החיבורים.";
   }
-  if (code === 200 || code === 3 || code === 10) {
-    return "לפייסבוק אין הרשאה לפרסם בקבוצה הזו עבור האפליקציה. יש לוודא שהאפליקציה מותקנת בקבוצה ושהיא אושרה להרשאות קבוצות.";
+  if (code === 200 || code === 3 || code === 10 || /permission|scope/i.test(msg)) {
+    return "לפייסבוק אין הרשאה לפרסם בקבוצה הזו עבור האפליקציה. יש להשלים App Review להרשאות הקבוצות ב-Meta Developer Console (App Review > Permissions and Features) ולוודא שהאפליקציה מותקנת בקבוצה.";
   }
   if (code === 4 || code === 17 || code === 32 || code === 613) {
     return "פייסבוק הגביל את קצב הבקשות. הפרסום ינסה שוב מאוחר יותר.";
