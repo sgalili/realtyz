@@ -14,6 +14,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetailsCard';
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
+import TourSchedulerDialog from '@/components/properties/TourSchedulerDialog';
+import { Button } from '@/components/ui/button';
+import { CalendarClock } from 'lucide-react';
+
 import {
   Loader2, MapPin, Home, Ruler, Bed, Building2, Car,
   ArrowUpCircle, Sun, Wind, Shield, ImageIcon, ChevronLeft, ChevronRight,
