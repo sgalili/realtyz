@@ -50,7 +50,7 @@ const HIDDEN_KEYS = new Set([
  * (lowercase, `is`/`include`/`has` prefixes stripped, non-alphanumerics gone).
  * This is what turns `isRenovated` / `includeBars` into Yad2's own wording.
  */
-const LABELS: Record<string, string> = {
+export const LABELS: Record<string, string> = {
   text: 'סוג נכס',
   propertytype: 'סוג נכס',
   assettype: 'סוג נכס',
@@ -159,7 +159,7 @@ const LABELS: Record<string, string> = {
 };
 
 /** Yad2-style icons for the "מה יש בנכס?" grid. */
-const ICONS: Record<string, LucideIcon> = {
+export const ICONS: Record<string, LucideIcon> = {
   מעלית: ArrowUpCircle,
   מיזוג: Wind,
   'מזגן טורנדו': Fan,
@@ -181,7 +181,7 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 
-function normalizeKey(key: string) {
+export function normalizeKey(key: string) {
   return String(key)
     .replace(/^(is|include|includes|has|in|num_?of|number_?of|total)(?=[A-Z_])/, '')
     .replace(/[^A-Za-z\u0590-\u05FF0-9]/g, '')
