@@ -401,8 +401,10 @@ const Dashboard = () => {
 
       {/* AI-detected pending listings */}
       <PendingListingsCard />
+      <ScheduledToursCard />
       <MatchProgressCard />
       <ListingVisibilityManagerCard />
+
 
       {/* Market Alerts */}
       <Card>

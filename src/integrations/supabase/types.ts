@@ -4022,6 +4022,66 @@ export type Database = {
           },
         ]
       }
+      property_tours: {
+        Row: {
+          client_email: string | null
+          client_name: string
+          client_phone: string
+          created_at: string
+          id: string
+          listing_id: string | null
+          metadata: Json
+          notes: string | null
+          owner_id: string
+          property_address: string | null
+          property_title: string | null
+          scheduled_at: string
+          share_token: string | null
+          status: string
+          timezone: string
+          updated_at: string
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          client_email?: string | null
+          client_name: string
+          client_phone: string
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          metadata?: Json
+          notes?: string | null
+          owner_id: string
+          property_address?: string | null
+          property_title?: string | null
+          scheduled_at: string
+          share_token?: string | null
+          status?: string
+          timezone?: string
+          updated_at?: string
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          client_email?: string | null
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          metadata?: Json
+          notes?: string | null
+          owner_id?: string
+          property_address?: string | null
+          property_title?: string | null
+          scheduled_at?: string
+          share_token?: string | null
+          status?: string
+          timezone?: string
+          updated_at?: string
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
       scheduled_items: {
         Row: {
           approval_queue_id: string | null
