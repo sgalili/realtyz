@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CalendarClock, Loader2, MapPin, Phone, User } from 'lucide-react';
-import { formatPhoneForDisplay } from '@/lib/formatPhone';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 type Tour = {
   id: string;
@@ -117,7 +117,7 @@ export function ScheduledToursCard() {
                 )}
                 <p className="flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5" />
-                  <a href={`tel:${t.client_phone}`} className="hover:underline">{formatPhoneForDisplay(t.client_phone)}</a>
+                  <a href={`tel:${t.client_phone}`} className="hover:underline">{formatPhoneDisplay(t.client_phone)}</a>
                   {t.whatsapp_sent_at ? <span className="text-emerald-600">· אישור נשלח</span> : null}
                 </p>
                 {t.notes ? <p className="text-[12px]">{t.notes}</p> : null}
