@@ -96,29 +96,46 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
-  // Ayrshare profile-key sentinel: if the shared workspace_social_profile has
-  // no key we surface a "Reconnect Social Profile" toast (one-shot) so brokers
-  // aren't left wondering why outbound replies/DMs silently fail with 500.
+  // Social-connection sentinel. Only warns when EVERY signal says there is no
+  // usable connection (Ayrshare profile key, linked social accounts, or a
+  // personal Facebook token). Any read error is treated as "healthy" so RLS
+  // hiccups never produce a false-positive banner. Dismissed for the session
+  // once shown.
   const relinkWarnedRef = useRef(false);
   useEffect(() => {
     if (!user || loading) return;
     if (relinkWarnedRef.current) return;
+    if (window.sessionStorage.getItem('social_relink_dismissed') === '1') {
+      relinkWarnedRef.current = true;
+      return;
+    }
     (async () => {
-      const { data } = await supabase
-        .from('workspace_social_profile')
-        .select('ayrshare_profile_key')
-        .maybeSingle();
-      const key = (data as any)?.ayrshare_profile_key?.toString().trim();
-      if (!key) {
-        relinkWarnedRef.current = true;
-        toast.error('חיבור הרשתות החברתיות אינו תקין — יש לחדש חיבור בהגדרות', {
-          duration: 8000,
-          action: {
-            label: 'חבר מחדש',
-            onClick: () => { window.location.href = '/settings/social'; },
-          },
-        });
-      }
+      const [profileRes, accountsRes, personalRes] = await Promise.all([
+        supabase.from('workspace_social_profile').select('ayrshare_profile_key').maybeSingle(),
+        supabase.from('ayrshare_social_accounts').select('id').limit(1),
+        supabase.from('fb_personal_connections').select('id, access_token, expires_at').limit(1),
+      ]);
+
+      // Errors == unknown state, not broken state.
+      if (profileRes.error || accountsRes.error || personalRes.error) return;
+
+      const hasKey = !!(profileRes.data as any)?.ayrshare_profile_key?.toString().trim();
+      const hasAccounts = (accountsRes.data?.length ?? 0) > 0;
+      const personal = (personalRes.data ?? [])[0] as any;
+      const personalValid = !!personal?.access_token
+        && (!personal.expires_at || new Date(personal.expires_at).getTime() > Date.now());
+
+      if (hasKey || hasAccounts || personalValid) return; // healthy — stay silent
+
+      relinkWarnedRef.current = true;
+      window.sessionStorage.setItem('social_relink_dismissed', '1');
+      toast.error('חיבור הרשתות החברתיות אינו תקין — יש לחדש חיבור בהגדרות', {
+        duration: 8000,
+        action: {
+          label: 'חבר מחדש',
+          onClick: () => { window.location.href = '/api-settings#facebook'; },
+        },
+      });
     })().catch(() => {});
   }, [user, loading]);
 
