@@ -508,6 +508,16 @@ const ApiSettings = () => {
     });
   };
 
+  // Deep-link support: /api-settings#facebook scrolls to the Facebook card.
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (!hash) return;
+    const t = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, []);
+
   // ─── Homely API ───
   useEffect(() => {
     if (!authUser) return;
