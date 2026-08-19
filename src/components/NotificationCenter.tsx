@@ -222,12 +222,14 @@ export default function NotificationCenter() {
           variant="ghost"
           size="icon"
           aria-label="מרכז התראות"
-          className="relative h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          className={`relative h-9 w-9 p-0 ${badgeCount > 0 ? 'text-destructive hover:bg-destructive/10 hover:text-destructive' : 'text-muted-foreground hover:text-primary'}`}
         >
           <Bell className="h-4 w-4" />
-          <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-            {badgeCount > 9 ? '9+' : badgeCount}
-          </span>
+          {badgeCount > 0 && (
+            <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+              {badgeCount > 9 ? '9+' : badgeCount}
+            </span>
+          )}
         </Button>
       </PopoverTrigger>
 
@@ -235,13 +237,14 @@ export default function NotificationCenter() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-primary/15">
           <h4 className="text-sm font-semibold text-primary">מרכז התראות</h4>
           <div className="flex items-center gap-1">
-            {unviewedAlerts.length > 0 && (
+            {badgeCount > 0 && (
               <Button variant="ghost" size="sm" className="text-xs h-6 px-2" onClick={markAllRead}>
                 סמן הכל כנקרא
               </Button>
             )}
           </div>
         </div>
+
         <ScrollArea className="h-[min(70vh,28rem)] max-h-[calc(100vh-8rem)]">
           {activeBudgetAlerts.map(b => (
             <div
