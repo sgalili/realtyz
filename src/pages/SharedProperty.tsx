@@ -327,18 +327,32 @@ export default function SharedProperty() {
           addressLabel={[addr, p.neighborhood, p.city].filter(Boolean).join(', ')}
         />
 
-        {waHref && (
-          <div className="sticky bottom-4 pt-2">
-            <WaButton />
-          </div>
-        )}
+        <div className="sticky bottom-4 space-y-2 pt-2">
+          <Button
+            type="button"
+            onClick={() => setTourOpen(true)}
+            className="h-14 w-full gap-2 rounded-xl text-[18px] font-bold shadow-lg"
+          >
+            <CalendarClock className="h-6 w-6" />
+            תאם סיור
+          </Button>
+          {waHref && <WaButton />}
+        </div>
       </main>
+
+      <TourSchedulerDialog
+        open={tourOpen}
+        onOpenChange={setTourOpen}
+        token={token ?? ''}
+        propertyTitle={displayTitle}
+      />
 
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
         <DialogContent className="max-w-4xl p-2">
           {lightbox ? <img src={lightbox} alt="" className="max-h-[80vh] w-full rounded-lg object-contain" /> : null}
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }
