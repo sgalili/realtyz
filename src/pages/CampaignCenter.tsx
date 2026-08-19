@@ -1050,6 +1050,44 @@ const InlineComposer = ({
   const selectedListing = listings.find((l) => l.id === selectedListingId)
     || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', description: null, city: null, neighborhood: null, address: null, rooms: null, sqm: null, floor: null, asking_price: null, features: null, source_metadata: null, status: null, is_published: null, created_at: null } : null);
 
+  // Always attach the property's first 10 photos when a listing is promoted —
+  // covers deep-links / calendar fan-out / restored drafts, not just manual picks.
+  const autoPhotoListingRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selectedListingId) return;
+    if (autoPhotoListingRef.current === selectedListingId) return;
+    let cancelled = false;
+    (async () => {
+      const local = listings.find((l) => l.id === selectedListingId) || null;
+      let urls = extractListingPhotoUrls(local as CampaignListing | null).slice(0, 10);
+      if (urls.length === 0) {
+        try {
+          const { data } = await supabase
+            .from('listings')
+            .select('id, property_title, address, media_photos, source_metadata')
+            .eq('id', selectedListingId)
+            .maybeSingle();
+          if (data) urls = extractListingPhotoUrls(data as unknown as CampaignListing).slice(0, 10);
+        } catch { /* ignore */ }
+      }
+      if (cancelled || urls.length === 0) return;
+      autoPhotoListingRef.current = selectedListingId;
+      const label = (local?.property_title || local?.address || 'property') as string;
+      setAttachments((curr) => {
+        const existing = new Set(curr.map((a) => a.url).filter(Boolean) as string[]);
+        const missing = urls.filter((u) => !existing.has(u));
+        if (missing.length === 0) return curr;
+        const nonImages = curr.filter((a) => a.kind !== 'image');
+        const images = curr.filter((a) => a.kind === 'image');
+        const added = missing
+          .slice(0, Math.max(0, 10 - images.length))
+          .map((u, i) => ({ name: `${label}-${images.length + i + 1}.jpg`, kind: 'image' as const, url: u }));
+        return [...images, ...added, ...nonImages];
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [selectedListingId, listings]);
+
   useEffect(() => {
     if (!firstComment || !oldListingPostCommentPattern.test(firstComment)) return;
     setFirstComment(buildFallbackFirstComment(selectedListing as CampaignListing | null));
