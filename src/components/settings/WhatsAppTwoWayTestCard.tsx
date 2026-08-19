@@ -38,8 +38,8 @@ function normalizePhone(raw: string): string {
 export function WhatsAppTwoWayTestCard() {
   const [phone, setPhone] = useState('');
   const [mode, setMode] = useState<'template' | 'text'>('template');
-  const [templateName, setTemplateName] = useState('hello_world');
-  const [templateLang, setTemplateLang] = useState('en_US');
+  const [templateName, setTemplateName] = useState('');
+  const [templateLang, setTemplateLang] = useState('he');
   const [body, setBody] = useState('בדיקת חיבור WhatsApp מ-Realtyz AI+ ✅ אנא השב/י בהודעה כלשהי כדי לאמת תקשורת דו-כיוונית.');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
@@ -175,7 +175,7 @@ export function WhatsAppTwoWayTestCard() {
                 dir="ltr"
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="hello_world"
+                placeholder="שם תבנית מאושרת שלך"
               />
             </div>
             <div className="space-y-1">
@@ -187,7 +187,8 @@ export function WhatsAppTwoWayTestCard() {
                 placeholder="en_US / he"
               />
               <p className="text-[11px] text-muted-foreground">
-                עבור hello_world יש להשתמש ב-en_US. לתבנית Utility בעברית — he.
+                hello_world עובדת רק ממספרי הבדיקה של Meta. מהמספר העסקי שלך יש לשלוח תבנית
+                מאושרת משלך (סנכרן תבניות בכרטיס התבניות ובחר משם שם ושפה).
               </p>
             </div>
           </div>

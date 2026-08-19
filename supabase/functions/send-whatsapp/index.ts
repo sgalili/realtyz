@@ -506,10 +506,17 @@ function classifyMetaError(
       };
     case 131026:
       return { category: "recipient", hebrew: "המספר אינו רשום בוואטסאפ או שאינו יכול לקבל הודעות" };
+    case 131058:
+      return {
+        category: "template",
+        hebrew:
+          "התבנית hello_world נתמכת רק במספרי הבדיקה של Meta. מהמספר העסקי שלך יש לשלוח תבנית מאושרת משלך (סנכרן תבניות בהגדרות ובחר אחת מהן)",
+      };
     case 132000:
     case 132001:
     case 132012:
       return { category: "template", hebrew: "תבנית הוואטסאפ אינה מאושרת או שאינה תואמת לשפה/משתנים שהוגדרו" };
+
     case 131051:
       return { category: "unknown", hebrew: "סוג ההודעה אינו נתמך על ידי וואטסאפ" };
     case 100:
