@@ -290,9 +290,55 @@ export default function NotificationCenter() {
             </div>
           ))}
 
-          {alerts.length === 0 && activeBudgetAlerts.length === 0 ? (
+          {tours.map((t: any) => {
+            const isUnread = !viewedIds.has(t.id);
+            return (
+              <button
+                key={t.id}
+                onClick={() => { markViewed(t.id); setOpen(false); navigate('/dashboard#tours'); }}
+                className={`w-full text-right px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors flex gap-3 items-start ${isUnread ? 'bg-primary/5' : ''}`}
+              >
+                <CalendarClock className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">סיור חדש: {t.client_name || 'לקוח'}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {t.property_title || 'נכס'}
+                    {t.scheduled_at ? ` · ${new Date(t.scheduled_at).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">
+                    {t.created_at ? formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: he }) : ''}
+                  </p>
+                </div>
+                <ExternalLink className="h-3 w-3 text-muted-foreground/40 mt-1 shrink-0" />
+              </button>
+            );
+          })}
+
+          {inbound.map((m: any) => {
+            const isUnread = !viewedIds.has(m.id);
+            return (
+              <button
+                key={m.id}
+                onClick={() => handleClick(m.lead_id, m.id)}
+                className={`w-full text-right px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors flex gap-3 items-start ${isUnread ? 'bg-primary/5' : ''}`}
+              >
+                <MessageCircle className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{m.leads?.full_name || 'מתעניין'}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{(m.content || '').slice(0, 70)}</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">
+                    {m.created_at ? formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: he }) : ''}
+                  </p>
+                </div>
+                <ExternalLink className="h-3 w-3 text-muted-foreground/40 mt-1 shrink-0" />
+              </button>
+            );
+          })}
+
+          {alerts.length === 0 && activeBudgetAlerts.length === 0 && inbound.length === 0 && tours.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">אין התראות</p>
           ) : (
+
             alerts.map(a => {
               const isUnread = !viewedIds.has(a.id);
               const keyword = a.content ? getMatchedKeyword(a.content) : '';
