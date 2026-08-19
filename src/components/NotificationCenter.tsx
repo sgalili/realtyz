@@ -104,9 +104,86 @@ export default function NotificationCenter() {
     enabled: voterIds.length > 0,
   });
 
+  // ---- Inbound WhatsApp / client messages (near real-time via short polling;
+  // Realtime stays disabled on `messages` for privacy) ----
+  const { data: inbound = [] } = useQuery({
+    queryKey: ['notif-inbound-messages', user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 15_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id, content, created_at, lead_id, channel, platform, sender_type, leads!inner(id, full_name, user_id)')
+        .eq('sender_type', 'voter')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  // ---- New property tour bookings (Realtime enabled on property_tours) ----
+  const { data: tours = [] } = useQuery({
+    queryKey: ['notif-tours', user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('property_tours')
+        .select('id, client_name, client_phone, property_title, scheduled_at, created_at, status')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel('notif-tours-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'property_tours' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['notif-tours', user.id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, queryClient]);
+
+  // Toast on genuinely new items (skip the first load so we don't spam on mount)
+  const seenRef = useRef<{ ready: boolean; ids: Set<string> }>({ ready: false, ids: new Set() });
+  useEffect(() => {
+    const items = [
+      ...inbound.map((m: any) => ({ id: m.id, msg: `הודעה חדשה מ${m.leads?.full_name || 'מתעניין'}` })),
+      ...tours.map((t: any) => ({ id: t.id, msg: `סיור חדש נקבע: ${t.client_name || 'לקוח'}` })),
+    ];
+    if (!seenRef.current.ready) {
+      seenRef.current = { ready: true, ids: new Set(items.map(i => i.id)) };
+      return;
+    }
+    items.forEach(i => {
+      if (!seenRef.current.ids.has(i.id)) {
+        seenRef.current.ids.add(i.id);
+        toast(i.msg);
+      }
+    });
+  }, [inbound, tours]);
+
   const unviewedAlerts = alerts.filter(a => !viewedIds.has(a.id));
+  const unviewedInbound = inbound.filter((m: any) => !viewedIds.has(m.id));
+  const unviewedTours = tours.filter((t: any) => !viewedIds.has(t.id));
   const activeBudgetAlerts = budgetAlerts.filter(b => !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
-  const badgeCount = unviewedAlerts.length + activeBudgetAlerts.length;
+  const badgeCount = unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + activeBudgetAlerts.length;
+
+  const markViewed = (id: string) => {
+    const next = new Set(viewedIds);
+    next.add(id);
+    setViewedIds(next);
+    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
+  };
 
   const dismissBudget = (service: string) => {
     const key = `${service}-${new Date().getMonth()}`;
@@ -118,16 +195,18 @@ export default function NotificationCenter() {
 
   const handleClick = (voterId: string | null, id: string) => {
     if (!voterId) return;
-    const next = new Set(viewedIds);
-    next.add(id);
-    setViewedIds(next);
-    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
+    markViewed(id);
     setOpen(false);
     navigate(`/live-conversations?lead=${voterId}`);
   };
 
   const markAllRead = () => {
-    const next = new Set([...viewedIds, ...alerts.map(a => a.id)]);
+    const next = new Set([
+      ...viewedIds,
+      ...alerts.map(a => a.id),
+      ...inbound.map((m: any) => m.id),
+      ...tours.map((t: any) => t.id),
+    ]);
     setViewedIds(next);
     localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
   };
@@ -135,9 +214,6 @@ export default function NotificationCenter() {
   const getMatchedKeyword = (content: string) =>
     ALERT_KEYWORDS.find(kw => content.includes(kw)) || '';
 
-  // Only render the bell when there's something to notify about — keeps the
-  // header clean when the user is fully caught up.
-  if (badgeCount === 0) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
