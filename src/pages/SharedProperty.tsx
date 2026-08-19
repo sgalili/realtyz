@@ -79,6 +79,8 @@ export default function SharedProperty() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [tourOpen, setTourOpen] = useState(false);
+
 
   useEffect(() => {
     if (!token) return;
