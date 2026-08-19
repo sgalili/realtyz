@@ -232,6 +232,25 @@ export const FacebookPersonalConnectCard = () => {
           </p>
         )}
 
+        {(data?.missing_scopes?.length ?? 0) > 0 && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5">
+            <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-[11px] text-red-800">
+                {data?.scope_advisory ||
+                  'פייסבוק לא אישר את כל הרשאות הקבוצות הנדרשות. יש להשלים App Review ב-Meta Developer Console.'}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {data!.missing_scopes!.map((s) => (
+                  <Badge key={s} variant="outline" className="text-[9px] border-red-300 text-red-700" dir="ltr">
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {identity?.last_error && (
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
             <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />

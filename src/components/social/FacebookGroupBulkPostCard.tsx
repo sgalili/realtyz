@@ -195,7 +195,7 @@ export const FacebookGroupBulkPostCard = () => {
                     <span className="text-[10px] text-muted-foreground">{g.member_count.toLocaleString('he-IL')}</span>
                   )}
                   {res?.ok && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-                  {res && !res.ok && <XCircle className="h-4 w-4 text-red-500" title={res.reason} />}
+                  {res && !res.ok && <XCircle className="h-4 w-4 text-red-500" />}
                 </label>
               );
             })}
