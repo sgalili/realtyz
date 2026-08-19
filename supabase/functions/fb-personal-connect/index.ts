@@ -15,6 +15,8 @@ import {
   GRAPH,
   resolveCaller,
   humanizeGraphError,
+  missingScopes,
+  scopeAdvisory,
 } from "../_shared/fbPersonal.ts";
 
 const json = (b: unknown, s = 200) =>
@@ -47,10 +49,15 @@ Deno.serve(async (req) => {
         .from("fb_user_groups")
         .select("id", { count: "exact", head: true })
         .eq("workspace_owner_id", caller.workspaceOwnerId);
+      const missing = (data as any)?.fb_user_id
+        ? missingScopes((data as any)?.scopes)
+        : [];
       return json({
         connected: !!(data as any)?.fb_user_id,
         identity: data ?? null,
         groups_count: count ?? 0,
+        missing_scopes: missing,
+        scope_advisory: missing.length ? scopeAdvisory(missing) : null,
       });
     }
 
@@ -177,8 +184,18 @@ Deno.serve(async (req) => {
         return json({ error: upsertErr.message }, 500);
       }
 
+      const missing = missingScopes(granted);
+      if (missing.length) {
+        await admin
+          .from("fb_personal_connections")
+          .update({ last_error: scopeAdvisory(missing), updated_at: new Date().toISOString() })
+          .eq("workspace_owner_id", caller.workspaceOwnerId);
+      }
+
       return json({
         ok: true,
+        missing_scopes: missing,
+        scope_advisory: missing.length ? scopeAdvisory(missing) : null,
         identity: {
           fb_user_id: String(me.id),
           fb_user_name: String(me.name ?? ""),

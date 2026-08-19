@@ -150,8 +150,8 @@ export function humanizeGraphError(body: any): string {
   if (code === 190 || sub === 463 || sub === 467) {
     return "החיבור לפרופיל הפייסבוק פג. יש להתחבר מחדש בעמוד החיבורים.";
   }
-  if (code === 200 || code === 3 || code === 10) {
-    return "לפייסבוק אין הרשאה לפרסם בקבוצה הזו עבור האפליקציה. יש לוודא שהאפליקציה מותקנת בקבוצה ושהיא אושרה להרשאות קבוצות.";
+  if (code === 200 || code === 3 || code === 10 || /permission|scope/i.test(msg)) {
+    return "לפייסבוק אין הרשאה לפרסם בקבוצה הזו עבור האפליקציה. יש להשלים App Review להרשאות הקבוצות ב-Meta Developer Console (App Review > Permissions and Features) ולוודא שהאפליקציה מותקנת בקבוצה.";
   }
   if (code === 4 || code === 17 || code === 32 || code === 613) {
     return "פייסבוק הגביל את קצב הבקשות. הפרסום ינסה שוב מאוחר יותר.";
