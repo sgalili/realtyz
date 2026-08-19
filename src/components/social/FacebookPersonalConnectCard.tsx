@@ -66,10 +66,17 @@ export const FacebookPersonalConnectCard = () => {
     queryKey: ['fb-personal-connection'],
     retry: 1,
     queryFn: async () =>
-      await callFbPersonal<{ connected: boolean; identity: Identity | null; groups_count: number }>({
+      await callFbPersonal<{
+        connected: boolean;
+        identity: Identity | null;
+        groups_count: number;
+        missing_scopes?: string[];
+        scope_advisory?: string | null;
+      }>({
         action: 'status',
       }),
   });
+
 
 
   const { data: groups } = useQuery({
