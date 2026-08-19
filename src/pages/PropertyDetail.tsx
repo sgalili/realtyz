@@ -25,6 +25,7 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard';
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
+import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
@@ -1331,6 +1332,20 @@ export default function PropertyDetail() {
                 ))}
               </div>
             </Card>
+          )}
+
+          {!editMode && (
+            <PropertyFeatureBadges
+              sources={[
+                (property as any).features,
+                (property as any).attributes,
+                (property as any).additional_details,
+                (property as any).source_metadata,
+                data?.rich?.amenities,
+                data?.rich?.additional,
+              ]}
+              flags={{ elevator: (property as any).elevator, parking: (property as any).parking }}
+            />
           )}
 
           {!editMode && data?.rich && (

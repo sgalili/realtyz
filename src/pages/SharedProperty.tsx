@@ -19,18 +19,44 @@ import { Button } from '@/components/ui/button';
 import { CalendarClock } from 'lucide-react';
 
 import {
-  Loader2, MapPin, Home, Ruler, Bed, Building2, Car,
+  Loader2, MapPin, Home, Ruler, Bed, Building2, Car, Layers,
   ArrowUpCircle, Sun, Wind, Shield, ImageIcon, ChevronLeft, ChevronRight,
+  BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves,
 } from 'lucide-react';
+import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 
 type SharedPayload = {
   workspace_name: string | null;
+  agency_name?: string | null;
+  area_facts?: AreaFacts | null;
   logo_url?: string | null;
   owner_wa?: string | null;
   owner_name?: string | null;
   broker_wa: string | null;
   property: any | null;
 };
+
+type AreaFacts = {
+  city: string;
+  neighborhood: string | null;
+  dealType: 'sale' | 'rent';
+  sampleSize: number;
+  avgPrice: number | null;
+  medianPrice: number | null;
+  avgPricePerSqm: number | null;
+  avgRooms: number | null;
+  avgSqm: number | null;
+};
+
+/** Buckets for the "מה יש בסביבה הקרובה" list, mirroring the internal view. */
+const PERK_BUCKETS = [
+  { label: 'גנים, בתי ספר ומוסדות חינוך', icon: GraduationCap, re: /גן|גני|בית ספר|בתי ספר|תיכון|חינוך|מעון|אוניברסיט|מכלל/ },
+  { label: 'פארקים ושטחים ירוקים', icon: Trees, re: /פארק|גינה|שטח ירוק|טיילת|מגרש משחקים|ספורט|פנאי/ },
+  { label: 'בריאות ומרפאות', icon: HeartPulse, re: /מרפא|קופת חולים|בית חולים|רפוא|חירום/ },
+  { label: 'צירים ראשיים וכבישים', icon: Car, re: /כביש|איילון|מחלף|צומת|כניסה לעיר|חני/ },
+  { label: 'תחבורה ציבורית ורכבת', icon: TrainFront, re: /רכבת|אוטובוס|תחבורה|רכבת קלה|תחנת/ },
+  { label: 'מרחק מהים', icon: Waves, re: /ים|חוף|מרינה/ },
+] as const;
 
 function normalizeWA(raw?: string | null) {
   if (!raw) return null;
@@ -160,30 +186,28 @@ export default function SharedProperty() {
   const displayTitle = publicTitle(p.property_title ?? p.title ?? p.address ?? 'נכס') || 'נכס';
   const about = p.long_description || p.description || p.short_description || null;
 
+  const specs: { label: string; value: string; icon: any }[] = [];
+  if (Number(p.rooms) > 0) specs.push({ label: 'חדרים', value: String(p.rooms), icon: Bed });
+  if (Number(p.sqm) > 0) specs.push({ label: 'מ״ר בנוי', value: `${Number(p.sqm)} מ״ר`, icon: Ruler });
+  if (p.floor != null && p.floor !== '') specs.push({ label: 'קומה', value: String(p.floor), icon: Layers });
+  if (p.neighborhood) specs.push({ label: 'שכונה', value: String(p.neighborhood), icon: MapPin });
+  if (p.city) specs.push({ label: 'עיר', value: String(p.city), icon: Building2 });
+  if (p.project_name) specs.push({ label: 'פרויקט', value: String(p.project_name), icon: Home });
+
+  const facts = data?.area_facts ?? null;
+  const perkList: string[] = Array.isArray(p.area_perks?.perks) ? p.area_perks.perks : [];
+  const perkBuckets = PERK_BUCKETS
+    .map((b) => ({ ...b, items: perkList.filter((x) => b.re.test(x)) }))
+    .filter((b) => b.items.length > 0);
+
   const wa = normalizeWA(data?.owner_wa) ?? normalizeWA(data?.broker_wa);
   const waMsg = encodeURIComponent(
     `שלום, ראיתי את הנכס "${displayTitle}" ואשמח לקבל פרטים נוספים.`,
   );
   const waHref = wa ? `https://wa.me/${wa}?text=${waMsg}` : null;
 
-  const WaButton = ({ compact }: { compact?: boolean }) =>
-    waHref ? (
-      <a
-        href={waHref}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="שיחת WhatsApp"
-        style={{ backgroundColor: '#25D366' }}
-        className={
-          compact
-            ? 'inline-flex items-center gap-2 rounded-full px-3 py-2 text-[14px] font-semibold text-white shadow-sm transition hover:brightness-95'
-            : 'flex h-14 w-full items-center justify-center gap-2 rounded-xl text-[18px] font-bold text-white shadow-lg transition hover:brightness-95'
-        }
-      >
-        <WhatsAppIcon className={compact ? 'h-5 w-5' : 'h-6 w-6'} />
-        {compact ? <span className="hidden sm:inline">WhatsApp</span> : 'שלחו לי פרטים ב-WhatsApp'}
-      </a>
-    ) : null;
+
+
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
@@ -199,7 +223,7 @@ export default function SharedProperty() {
               />
             ) : null}
             <h1 className="text-center text-[18px] font-bold text-slate-900">
-              {data?.workspace_name || 'Realtyz'}
+              {data?.agency_name || data?.workspace_name || 'Realtyz'}
             </h1>
           </div>
         </div>
@@ -316,6 +340,66 @@ export default function SharedProperty() {
 
 
 
+        {specs.length > 0 ? (
+          <section className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {specs.map((sp) => (
+              <Spec key={sp.label} icon={sp.icon} label={sp.label} value={sp.value} />
+            ))}
+          </section>
+        ) : null}
+
+        <PropertyFeatureBadges
+          sources={[features, p.attributes, p.additional_details, p.source_metadata]}
+          flags={{ elevator: p.elevator, parking: p.parking }}
+        />
+
+        {facts ? (
+          <Card className="p-4 sm:p-5" dir="rtl">
+            <h2 className="mb-3 inline-flex items-center gap-2 text-2xl font-bold text-foreground">
+              <BarChart3 className="h-5 w-5 text-primary" /> נתוני שוק באזור
+            </h2>
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {[
+                ['מחיר ממוצע', facts.avgPrice ? `₪${facts.avgPrice.toLocaleString('he-IL')}` : null],
+                ['מחיר חציוני', facts.medianPrice ? `₪${facts.medianPrice.toLocaleString('he-IL')}` : null],
+                ['מחיר למ״ר', facts.avgPricePerSqm ? `₪${facts.avgPricePerSqm.toLocaleString('he-IL')}` : null],
+                ['שטח ממוצע', facts.avgSqm ? `${facts.avgSqm} מ״ר` : null],
+                ['חדרים בממוצע', facts.avgRooms ? String(facts.avgRooms) : null],
+                ['מדגם נכסים', facts.sampleSize ? String(facts.sampleSize) : null],
+              ].filter(([, v]) => !!v).map(([k, v]) => (
+                <div key={String(k)} className="rounded-lg border bg-muted/30 px-3 py-2">
+                  <dt className="text-[13px] text-muted-foreground">{k}</dt>
+                  <dd className="text-[16px] font-semibold text-slate-900">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              {facts.city}
+              {facts.neighborhood ? ` · ${facts.neighborhood}` : ''} · {facts.dealType === 'rent' ? 'שכירות' : 'מכירה'}
+            </p>
+          </Card>
+        ) : null}
+
+        {perkBuckets.length > 0 ? (
+          <Card className="p-4 sm:p-5" dir="rtl">
+            <h2 className="mb-3 inline-flex items-center gap-2 text-2xl font-bold text-foreground">
+              <MapPin className="h-5 w-5 text-primary" /> מה יש בסביבה הקרובה
+            </h2>
+            <div className="space-y-4">
+              {perkBuckets.map(({ label, icon: Icon, items }) => (
+                <div key={label}>
+                  <p className="mb-1 inline-flex items-center gap-2 text-[16px] font-semibold text-slate-900">
+                    <Icon className="h-5 w-5 text-primary" /> {label}
+                  </p>
+                  <ul className="ms-7 list-disc space-y-1 text-[15px] text-muted-foreground">
+                    {items.map((it, i) => <li key={i}>{it}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
+
         <PropertyRichDetailsCard
           aboutText={about}
           furniture={p.furniture_details ?? null}
@@ -327,16 +411,28 @@ export default function SharedProperty() {
           addressLabel={[addr, p.neighborhood, p.city].filter(Boolean).join(', ')}
         />
 
-        <div className="sticky bottom-4 space-y-2 pt-2">
+        <div className="sticky bottom-4 flex items-stretch gap-2 pt-2">
           <Button
             type="button"
             onClick={() => setTourOpen(true)}
-            className="h-14 w-full gap-2 rounded-xl text-[18px] font-bold shadow-lg"
+            className="h-14 flex-1 gap-2 rounded-xl text-[18px] font-bold shadow-lg"
           >
             <CalendarClock className="h-6 w-6" />
             תאם סיור
           </Button>
-          {waHref && <WaButton />}
+          {waHref ? (
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="דברו איתי"
+              style={{ backgroundColor: '#25D366' }}
+              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl text-[18px] font-bold text-white shadow-lg transition hover:brightness-95"
+            >
+              <WhatsAppIcon className="h-6 w-6" />
+              דברו איתי
+            </a>
+          ) : null}
         </div>
       </main>
 

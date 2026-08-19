@@ -10,6 +10,7 @@ import { stripAddressNumbers } from '@/lib/formatAddress';
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
 import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { buildDescriptionBlocks } from '@/lib/descriptionBlocks';
+import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -176,6 +177,23 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           </div>
         )}
 
+
+        <PropertyFeatureBadges
+          sources={[
+            (property as any).features,
+            (property as any).attributes,
+            (property as any).additional_details,
+            sourceMetadata,
+          ]}
+          flags={{
+            elevator: (property as any).elevator ?? amenities?.elevator,
+            parking: (property as any).parking ?? amenities?.parking,
+            balcony: amenities?.balcony,
+            shelter: amenities?.shelter,
+            ac: amenities?.ac,
+            solar: amenities?.solar,
+          }}
+        />
 
         <PropertyRichDetailsCard
           aboutBlocks={buildDescriptionBlocks(property)}
