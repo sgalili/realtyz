@@ -14,6 +14,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetailsCard';
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
+import TourSchedulerDialog from '@/components/properties/TourSchedulerDialog';
+import { Button } from '@/components/ui/button';
+import { CalendarClock } from 'lucide-react';
+
 import {
   Loader2, MapPin, Home, Ruler, Bed, Building2, Car,
   ArrowUpCircle, Sun, Wind, Shield, ImageIcon, ChevronLeft, ChevronRight,
@@ -75,6 +79,8 @@ export default function SharedProperty() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [tourOpen, setTourOpen] = useState(false);
+
 
   useEffect(() => {
     if (!token) return;
@@ -321,18 +327,32 @@ export default function SharedProperty() {
           addressLabel={[addr, p.neighborhood, p.city].filter(Boolean).join(', ')}
         />
 
-        {waHref && (
-          <div className="sticky bottom-4 pt-2">
-            <WaButton />
-          </div>
-        )}
+        <div className="sticky bottom-4 space-y-2 pt-2">
+          <Button
+            type="button"
+            onClick={() => setTourOpen(true)}
+            className="h-14 w-full gap-2 rounded-xl text-[18px] font-bold shadow-lg"
+          >
+            <CalendarClock className="h-6 w-6" />
+            תאם סיור
+          </Button>
+          {waHref && <WaButton />}
+        </div>
       </main>
+
+      <TourSchedulerDialog
+        open={tourOpen}
+        onOpenChange={setTourOpen}
+        token={token ?? ''}
+        propertyTitle={displayTitle}
+      />
 
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
         <DialogContent className="max-w-4xl p-2">
           {lightbox ? <img src={lightbox} alt="" className="max-h-[80vh] w-full rounded-lg object-contain" /> : null}
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }
