@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Users, Check, Loader2, RefreshCw, Puzzle } from "lucide-react";
 import { toast } from "sonner";
-import { useExtensionGroups } from "@/lib/extensionGroupBridge";
+import { useExtensionGroups, loadMockExtensionGroups, clearExtensionGroups, MOCK_EXTENSION_GROUPS } from "@/lib/extensionGroupBridge";
 
 const SESSION_CACHE_KEY = "rz-fb-groups-cache";
 
@@ -101,9 +101,32 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
+  const usingMock = extGroups.length > 0 && extGroups.every((g) => g.group_id.startsWith("ext:mock-"));
+
   const syncFromExtension = () => {
     refresh();
     toast.info("מבקש קבוצות מהתוסף…");
+    // If the extension doesn't answer shortly, fall back to sample groups so
+    // testing the checkboxes and broadcast flow is never blocked.
+    window.setTimeout(() => {
+      const stillEmpty = extGroups.length === 0;
+      if (stillEmpty) {
+        loadMockExtensionGroups();
+        toast.success(`נטענו ${MOCK_EXTENSION_GROUPS.length} קבוצות לדוגמה (מצב בדיקה)`);
+      }
+    }, 1200);
+  };
+
+  const toggleMock = () => {
+    if (usingMock) {
+      clearExtensionGroups();
+      onChange(selectedIds.filter((id) => !id.startsWith("ext:mock-")));
+      window.dispatchEvent(new StorageEvent("storage", { key: "rz-ext-fb-groups", newValue: null }));
+      window.location.reload();
+      return;
+    }
+    loadMockExtensionGroups();
+    toast.success("מצב בדיקה: נטענו קבוצות לדוגמה");
   };
 
   const toggle = (id: string) => {
@@ -133,6 +156,15 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         </button>
       </div>
 
+      <button
+        type="button"
+        onClick={toggleMock}
+        className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/60"
+      >
+        <Puzzle className="h-3 w-3" />
+        {usingMock ? "נקה קבוצות בדיקה" : "טען קבוצות לדוגמה (בדיקה)"}
+      </button>
+
       {loading && !hasVisibleGroups && (
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -142,14 +174,15 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
       {!loading && !hasVisibleGroups && (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-xs text-muted-foreground">
-          אין קבוצות זמינות. פתח את תוסף הדפדפן בחלון פייסבוק פעיל — הקבוצות יופיעו כאן אוטומטית.
+          אין קבוצות זמינות. פתח את תוסף הדפדפן בחלון פייסבוק פעיל — הקבוצות יופיעו כאן אוטומטית,
+          או טען קבוצות לדוגמה לבדיקה.
         </div>
       )}
 
       {extensionGroups.length > 0 && (
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Puzzle className="h-3 w-3 text-primary" />
-          {extensionGroups.length} קבוצות סונכרנו מהתוסף
+          {extensionGroups.length} קבוצות {usingMock ? "לדוגמה (בדיקה)" : "סונכרנו מהתוסף"}
           {lastSyncAt ? ` · ${new Date(lastSyncAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : ""}
         </div>
       )}
