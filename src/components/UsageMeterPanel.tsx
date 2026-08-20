@@ -28,6 +28,8 @@ function formatNumber(n: number): string {
 export function UsageMeterPanel() {
   const { user } = useAuth();
   const { isDemoMode } = useDemoMode();
+  const [open, setOpen] = useState(false);
+
 
   const monthStart = useMemo(() => {
     const d = new Date();
