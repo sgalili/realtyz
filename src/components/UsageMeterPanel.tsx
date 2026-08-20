@@ -85,22 +85,33 @@ export function UsageMeterPanel() {
     <Card dir="rtl">
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex-1 text-right"
+            aria-expanded={open}
+          >
             <CardTitle className="flex items-center gap-2 text-lg">
               <Activity className="h-5 w-5 text-primary" aria-hidden="true" />
               צריכת משאבים
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
             </CardTitle>
             <CardDescription>
               מעקב חודשי אחר שימוש ב-API. {isDemoMode ? "מציג נתוני דמו." : "מציג נתונים אמיתיים."}
             </CardDescription>
-          </div>
+          </button>
           <Badge variant={isDemoMode ? "secondary" : "outline"}>
             {isDemoMode ? "מצב דמו" : "מצב חי"}
           </Badge>
         </div>
       </CardHeader>
 
+      {open && (
       <CardContent className="space-y-4">
+
         {overSoft.length > 0 && (
           <Alert variant="destructive" className="border-amber-500/40 bg-amber-500/10 text-foreground">
             <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden="true" />
