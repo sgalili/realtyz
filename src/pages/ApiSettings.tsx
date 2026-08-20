@@ -41,7 +41,6 @@ import { MetaWabaHealthCard } from '@/components/settings/MetaWabaHealthCard';
 import { WhatsAppTwoWayTestCard } from '@/components/settings/WhatsAppTwoWayTestCard';
 import { WaTemplatesSyncCard } from '@/components/settings/WaTemplatesSyncCard';
 import { SocialChannelsGrid } from '@/components/social/SocialChannelsGrid';
-import { CustomGroupsManager } from '@/components/social/CustomGroupsManager';
 import { FacebookPersonalConnectCard } from '@/components/social/FacebookPersonalConnectCard';
 
 
@@ -920,7 +919,6 @@ const ApiSettings = () => {
       <SectionShell title="רשתות חברתיות" subtitle="Ayrshare, קטלוג ערוצים חי וקבוצות מותאמות">
         <div id="facebook" className="scroll-mt-24 space-y-4">
           <FacebookPersonalConnectCard />
-          <CustomGroupsManager />
           <SocialChannelsGrid />
         </div>
 
