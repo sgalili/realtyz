@@ -160,4 +160,26 @@ export const publishViaExtension = (payload: ExtensionPublishPayload): number =>
   return resolved.length;
 };
 
+/** Sample Israeli real-estate groups used when the extension is unavailable. */
+export const MOCK_EXTENSION_GROUPS: ExtensionGroup[] = [
+  { group_id: "ext:mock-hrz-rent", group_name: "דירות להשכרה בהרצליה", group_icon: null, group_url: "https://www.facebook.com/groups/mock-hrz-rent" },
+  { group_id: "ext:mock-sharon-realestate", group_name: "נדל\u05f4ן השרון", group_icon: null, group_url: "https://www.facebook.com/groups/mock-sharon-realestate" },
+  { group_id: "ext:mock-buy-sell", group_name: "קונים מוכרים נדל\u05f4ן", group_icon: null, group_url: "https://www.facebook.com/groups/mock-buy-sell" },
+  { group_id: "ext:mock-rh-apartments", group_name: "דירות ברמת השרון", group_icon: null, group_url: "https://www.facebook.com/groups/mock-rh-apartments" },
+  { group_id: "ext:mock-tlv-luxury", group_name: "נדל\u05f4ן יוקרה תל אביב והסביבה", group_icon: null, group_url: "https://www.facebook.com/groups/mock-tlv-luxury" },
+];
+
+/** Push the sample groups through the same bridge the extension uses. */
+export const loadMockExtensionGroups = (): ExtensionGroup[] => {
+  writeExtensionGroups(MOCK_EXTENSION_GROUPS);
+  try {
+    document.dispatchEvent(new CustomEvent(EXT_GROUPS_EVENT, { detail: { groups: MOCK_EXTENSION_GROUPS } }));
+  } catch { /* noop */ }
+  return MOCK_EXTENSION_GROUPS;
+};
+
+export const clearExtensionGroups = () => {
+  try { localStorage.removeItem(EXT_GROUPS_STORAGE_KEY); } catch { /* noop */ }
+};
+
 export const isExtensionGroupId = (id: string) => id.startsWith("ext:");
