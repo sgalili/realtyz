@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
+import { publishViaExtension, isExtensionGroupId } from '@/lib/extensionGroupBridge';
 import { cn } from '@/lib/utils';
 
 type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -383,6 +384,27 @@ export function ScheduleCurrentPostDialog({
         }
         done++;
         setProgress(Math.round((done / totalOps) * 100));
+      }
+
+      // ---- Extension-assisted group broadcast --------------------------------
+      // Groups discovered by the companion browser extension can't be posted to
+      // through the API, so we hand the packaged job (text, images, link,
+      // target group URLs) to the extension worker.
+      if (channelId === 'facebook') {
+        const extGroupIds = (selectedGroupIds || []).filter(isExtensionGroupId);
+        if (extGroupIds.length > 0) {
+          const dispatched = publishViaExtension({
+            text: body,
+            firstComment: firstComment || null,
+            imageUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
+            link: null,
+            scheduledAt: firstSlot.toISOString(),
+            groups: extGroupIds.map((id) => ({ group_id: id, group_url: null, group_name: id })),
+          });
+          if (dispatched > 0) {
+            toast.success(`נשלחו ${dispatched} קבוצות לתוסף לפרסום`);
+          }
+        }
       }
 
       // ---- SLOTS 1..N-1 : lightweight placeholders --------------------------
