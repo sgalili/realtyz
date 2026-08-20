@@ -41,12 +41,11 @@ export function missingScopes(granted: string[] | null | undefined): string[] {
   return FB_GROUP_REQUIRED_SCOPES.filter((s) => !set.has(s));
 }
 
-/** Advisory shown when Meta withholds the group permissions. */
+/** Advisory shown when Meta withholds a basic permission. */
 export function scopeAdvisory(missing: string[]): string {
-  return `פייסבוק לא אישר את ההרשאות הנדרשות לקבוצות (${missing.join(", ")}). ` +
-    `יש להשלים App Review באפליקציית Meta (Meta Developer Console > App Review > Permissions and Features) ` +
-    `ולוודא שהאפליקציה מותקנת בקבוצות היעד, ואז להתחבר מחדש.`;
+  return `פייסבוק לא אישר את ההרשאה הבסיסית (${missing.join(", ")}). יש להתחבר מחדש ולאשר את הבקשה.`;
 }
+
 
 
 export function adminClient(): SupabaseClient {
