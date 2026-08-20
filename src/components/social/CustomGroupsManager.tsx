@@ -108,12 +108,18 @@ export function CustomGroupsManager() {
         />
         <Button onClick={add} disabled={saving} className="gap-1">
           <Plus className="h-4 w-4" />
-          {saving ? 'שומר…' : 'הוסף'}
+          {saving ? 'שומר…' : 'הוסף קבוצה'}
         </Button>
       </div>
 
       <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
         {loading && <div className="px-3 py-4 text-center text-xs text-muted-foreground">טוען…</div>}
+        {!loading && groups.length === 0 && (
+          <div className="px-3 py-5 text-center text-xs text-muted-foreground">
+            אין קבוצות שמורות. הוסף קבוצה בשדות שלמעלה או סנכרן דרך התוסף.
+          </div>
+        )}
+
 
         {groups.map((g) => (
           <div key={g.id} className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-muted/40">
