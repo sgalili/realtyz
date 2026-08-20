@@ -87,9 +87,7 @@ export function CustomGroupsManager() {
             <Users className="h-4 w-4" />
             קבוצות פייסבוק ידניות · Custom Groups Directory
           </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            שמור קבוצות שבהן אתה חבר אך לא מנהל — Facebook חוסם פרסום אוטומטי, אז נציג כאן כפתור "שיתוף ידני מהיר" שמעתיק את הטקסט ופותח את הקבוצה בכרטיסייה חדשה.
-          </p>
+
         </div>
       </div>
 
