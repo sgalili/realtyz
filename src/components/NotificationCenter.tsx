@@ -153,24 +153,36 @@ export default function NotificationCenter() {
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, queryClient]);
 
-  // Toast on genuinely new items (skip the first load so we don't spam on mount)
+  // Toast once per notification, ever (persisted across page loads / navigation)
+  const TOASTED_KEY = 'realtyz_toasted_notifs';
   const seenRef = useRef<{ ready: boolean; ids: Set<string> }>({ ready: false, ids: new Set() });
   useEffect(() => {
+    if (!seenRef.current.ready) {
+      let stored: string[] = [];
+      try { stored = JSON.parse(localStorage.getItem(TOASTED_KEY) || '[]'); } catch { /* noop */ }
+      seenRef.current = { ready: true, ids: new Set(stored) };
+    }
     const items = [
       ...inbound.map((m: any) => ({ id: m.id, msg: `הודעה חדשה מ${m.leads?.full_name || 'מתעניין'}` })),
       ...tours.map((t: any) => ({ id: t.id, msg: `סיור חדש נקבע: ${t.client_name || 'לקוח'}` })),
     ];
-    if (!seenRef.current.ready) {
-      seenRef.current = { ready: true, ids: new Set(items.map(i => i.id)) };
-      return;
-    }
+    let changed = false;
     items.forEach(i => {
-      if (!seenRef.current.ids.has(i.id)) {
-        seenRef.current.ids.add(i.id);
-        toast(i.msg);
-      }
+      if (!i.id || seenRef.current.ids.has(i.id)) return;
+      seenRef.current.ids.add(i.id);
+      changed = true;
+      toast(i.msg);
     });
+    if (changed) {
+      try {
+        // keep the tail bounded so the key never grows without limit
+        const all = [...seenRef.current.ids].slice(-300);
+        seenRef.current.ids = new Set(all);
+        localStorage.setItem(TOASTED_KEY, JSON.stringify(all));
+      } catch { /* noop */ }
+    }
   }, [inbound, tours]);
+
 
   const unviewedAlerts = alerts.filter(a => !viewedIds.has(a.id));
   const unviewedInbound = inbound.filter((m: any) => !viewedIds.has(m.id));
