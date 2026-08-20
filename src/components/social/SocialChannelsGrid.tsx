@@ -98,12 +98,10 @@ export const SocialChannelsGrid = () => {
           <div className="space-y-1">
             <CardTitle className="text-base flex items-center gap-2">
               <Link2 className="h-4 w-4" />
-              ערוצי תקשורת חברתיים · Social Channels
+              ערוצי תקשורת חברתיים
             </CardTitle>
-            <CardDescription className="text-xs">
-              חיבור דינמי לכל הרשתות הנתמכות דרך Ayrshare. ניתן לחבר מספר עמודי פייסבוק תחת אותו פרופיל.
-            </CardDescription>
           </div>
+
           <div className="flex items-center gap-2">
             <Badge variant={connectedCount > 0 ? 'default' : 'secondary'}>
               {connectedCount} מחובר
