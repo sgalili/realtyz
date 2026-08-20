@@ -98,8 +98,8 @@ export const useExtensionGroups = () => {
     const onMessage = (e: MessageEvent) => {
       const d: any = e.data;
       if (!d || typeof d !== "object") return;
-      if (d.type !== EXT_GROUPS_MESSAGE) return;
-      commit(d.groups ?? d.payload);
+      if (d.type !== EXT_GROUPS_MESSAGE && d.type !== EXT_SYNC_GROUPS_MESSAGE) return;
+      commit(d.groups ?? d.payload ?? d.data);
     };
     const onCustom = (e: Event) => commit((e as CustomEvent).detail);
     const onStorage = (e: StorageEvent) => {
