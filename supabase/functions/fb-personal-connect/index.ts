@@ -119,8 +119,16 @@ Deno.serve(async (req) => {
       const tokenBody = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || !tokenBody?.access_token) {
         console.error("[fb-personal-connect] token exchange failed", tokenBody);
+        const raw = String(tokenBody?.error?.message ?? "");
+        if (/client secret/i.test(raw)) {
+          return json({
+            error:
+              `ה-App Secret אינו תואם ל-App ID ${clientId}. יש להעתיק את ה-App Secret של אותה אפליקציית Meta ולעדכן אותו בהגדרות.`,
+          }, 400);
+        }
         return json({ error: humanizeGraphError(tokenBody) }, 400);
       }
+
 
       // 2) short-lived -> long-lived (≈60 days)
       let accessToken = String(tokenBody.access_token);
