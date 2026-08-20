@@ -134,15 +134,6 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={toggleMock}
-        className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/60"
-      >
-        <Puzzle className="h-3 w-3" />
-        {usingMock ? "נקה קבוצות בדיקה" : "טען קבוצות לדוגמה (בדיקה)"}
-      </button>
-
       {loading && !hasVisibleGroups && (
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -152,15 +143,17 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
       {!loading && !hasVisibleGroups && (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-xs text-muted-foreground">
-          אין קבוצות זמינות. פתח את תוסף הדפדפן בחלון פייסבוק פעיל — הקבוצות יופיעו כאן אוטומטית,
-          או טען קבוצות לדוגמה לבדיקה.
+          אין קבוצות זמינות. פתח את עמוד הקבוצות שלך בפייסבוק כשתוסף הדפדפן פעיל — הקבוצות יסונכרנו לכאן אוטומטית.
         </div>
       )}
 
       {extensionGroups.length > 0 && (
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Puzzle className="h-3 w-3 text-primary" />
-          {extensionGroups.length} קבוצות {usingMock ? "לדוגמה (בדיקה)" : "סונכרנו מהתוסף"}
+          {extensionGroups.length} קבוצות סונכרנו מהתוסף
+          {lastSyncAt ? ` · ${new Date(lastSyncAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : ""}
+        </div>
+      )}
           {lastSyncAt ? ` · ${new Date(lastSyncAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : ""}
         </div>
       )}
