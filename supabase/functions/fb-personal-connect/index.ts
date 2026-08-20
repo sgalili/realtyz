@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
         scope: FB_PERSONAL_SCOPES.join(","),
         state: `facebook_personal:${crypto.randomUUID()}`,
         auth_type: "rerequest",
+        config_id: "1741528006908878",
       });
       return json({
         auth_url: `https://www.facebook.com/${
