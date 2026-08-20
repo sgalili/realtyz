@@ -230,20 +230,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       console.log("[FB_GROUPS] Connect Groups clicked. Active Profile Key:", activeKey);
       toast.loading("מסנכרן קבוצות פייסבוק…", { id: "fbg-connect" });
 
-      // Preferred path: re-import from the connected personal Facebook profile.
-      try {
-        await supabase.functions.invoke("fb-groups-import", { body: {} });
-      } catch { /* falls through to the other providers */ }
-      const personal = await fetchPersonalGroups();
-      if (personal.length > 0) {
-        setAyrshareGroups(personal);
-        try {
-          sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ ayrshare: personal, manual: customUserGroups }));
-        } catch { /* ignore */ }
-        toast.dismiss("fbg-connect");
-        toast.success(`נטענו ${personal.length} קבוצות מהפרופיל האישי`);
-        return;
-      }
+
+
 
 
       // First, try a live pull using the active profile key
