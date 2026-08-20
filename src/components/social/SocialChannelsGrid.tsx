@@ -98,12 +98,10 @@ export const SocialChannelsGrid = () => {
           <div className="space-y-1">
             <CardTitle className="text-base flex items-center gap-2">
               <Link2 className="h-4 w-4" />
-              ערוצי תקשורת חברתיים · Social Channels
+              ערוצי תקשורת חברתיים
             </CardTitle>
-            <CardDescription className="text-xs">
-              חיבור דינמי לכל הרשתות הנתמכות דרך Ayrshare. ניתן לחבר מספר עמודי פייסבוק תחת אותו פרופיל.
-            </CardDescription>
           </div>
+
           <div className="flex items-center gap-2">
             <Badge variant={connectedCount > 0 ? 'default' : 'secondary'}>
               {connectedCount} מחובר
@@ -127,16 +125,13 @@ export const SocialChannelsGrid = () => {
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
             <div className="space-y-2 flex-1">
-              <div>
-                עדיין לא נוצר פרופיל Ayrshare ייעודי לסביבה הזו. לחיצה תפתח חיבור מאובטח —
-                פרופיל חדש יוקצה אוטומטית לסביבת העבודה שלך.
-              </div>
               <Button size="sm" onClick={() => connectAyrshare.mutate('facebook')} disabled={connectAyrshare.isPending}>
                 {connectAyrshare.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                 <span className="ms-2">צור פרופיל וחיבור</span>
               </Button>
             </div>
           </div>
+
         )}
 
         {networksQ.isLoading ? (

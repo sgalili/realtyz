@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Activity, MessageCircle, Sparkles, Phone, Send } from "lucide-react";
+import { AlertTriangle, Activity, MessageCircle, Sparkles, Phone, Send, ChevronDown } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDemoMode } from "@/hooks/useDemoMode";
@@ -27,6 +28,8 @@ function formatNumber(n: number): string {
 export function UsageMeterPanel() {
   const { user } = useAuth();
   const { isDemoMode } = useDemoMode();
+  const [open, setOpen] = useState(false);
+
 
   const monthStart = useMemo(() => {
     const d = new Date();
@@ -85,22 +88,33 @@ export function UsageMeterPanel() {
     <Card dir="rtl">
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex-1 text-right"
+            aria-expanded={open}
+          >
             <CardTitle className="flex items-center gap-2 text-lg">
               <Activity className="h-5 w-5 text-primary" aria-hidden="true" />
               צריכת משאבים
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
             </CardTitle>
             <CardDescription>
               מעקב חודשי אחר שימוש ב-API. {isDemoMode ? "מציג נתוני דמו." : "מציג נתונים אמיתיים."}
             </CardDescription>
-          </div>
+          </button>
           <Badge variant={isDemoMode ? "secondary" : "outline"}>
             {isDemoMode ? "מצב דמו" : "מצב חי"}
           </Badge>
         </div>
       </CardHeader>
 
+      {open && (
       <CardContent className="space-y-4">
+
         {overSoft.length > 0 && (
           <Alert variant="destructive" className="border-amber-500/40 bg-amber-500/10 text-foreground">
             <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden="true" />
@@ -161,6 +175,8 @@ export function UsageMeterPanel() {
           המגבלה ניתנת להגדרה לכל שירות. הספים מתאפסים בתחילת כל חודש קלנדרי.
         </p>
       </CardContent>
+      )}
+
     </Card>
   );
 }
