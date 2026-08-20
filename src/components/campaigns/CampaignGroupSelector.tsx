@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Users, Check, Loader2, RefreshCw, Puzzle } from "lucide-react";
 import { toast } from "sonner";
-import { useExtensionGroups, loadMockExtensionGroups, clearExtensionGroups, MOCK_EXTENSION_GROUPS } from "@/lib/extensionGroupBridge";
+import { useExtensionGroups } from "@/lib/extensionGroupBridge";
 
 const SESSION_CACHE_KEY = "rz-fb-groups-cache";
 
@@ -101,33 +101,11 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
-  const usingMock = extGroups.length > 0 && extGroups.every((g) => g.group_id.startsWith("ext:mock-"));
-
   const syncFromExtension = () => {
     refresh();
     toast.info("מבקש קבוצות מהתוסף…");
-    // If the extension doesn't answer shortly, fall back to sample groups so
-    // testing the checkboxes and broadcast flow is never blocked.
-    window.setTimeout(() => {
-      const stillEmpty = extGroups.length === 0;
-      if (stillEmpty) {
-        loadMockExtensionGroups();
-        toast.success(`נטענו ${MOCK_EXTENSION_GROUPS.length} קבוצות לדוגמה (מצב בדיקה)`);
-      }
-    }, 1200);
   };
 
-  const toggleMock = () => {
-    if (usingMock) {
-      clearExtensionGroups();
-      onChange(selectedIds.filter((id) => !id.startsWith("ext:mock-")));
-      window.dispatchEvent(new StorageEvent("storage", { key: "rz-ext-fb-groups", newValue: null }));
-      window.location.reload();
-      return;
-    }
-    loadMockExtensionGroups();
-    toast.success("מצב בדיקה: נטענו קבוצות לדוגמה");
-  };
 
   const toggle = (id: string) => {
     onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
