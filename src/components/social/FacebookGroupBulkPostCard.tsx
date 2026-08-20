@@ -38,16 +38,25 @@ export const FacebookGroupBulkPostCard = () => {
   const [results, setResults] = useState<Record<string, Result>>({});
 
   const { data: groups, isLoading } = useQuery({
-    queryKey: ['fb-user-groups'],
+    queryKey: ['custom-user-groups', 'facebook'],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
-        .from('fb_user_groups')
-        .select('group_id, group_name, group_icon, member_count, is_administrator, group_url')
-        .order('group_name', { ascending: true });
+        .from('custom_user_groups')
+        .select('id, group_name, group_url')
+        .eq('platform', 'facebook')
+        .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Group[];
+      return (data ?? []).map((r: any) => ({
+        group_id: String(r.id),
+        group_name: String(r.group_name || r.group_url || 'קבוצה'),
+        group_icon: null,
+        member_count: null,
+        is_administrator: null,
+        group_url: r.group_url ?? null,
+      })) as Group[];
     },
   });
+
 
   const filtered = useMemo(() => {
     const q = query.trim();
