@@ -15,22 +15,25 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 export const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v20.0";
 export const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
-/** Scopes requested during Facebook Login for the personal profile. */
+/**
+ * Scopes requested during Facebook Login for the personal profile.
+ *
+ * Meta's group permissions (user_managed_groups, groups_access_member_info,
+ * publish_to_groups) are restricted and make the login dialog fail before the
+ * user can approve anything, so we request ONLY the standard basic scope.
+ * Group lists / group publishing are handled by the browser-extension &
+ * automation workflow instead (the fb_user_groups data structure stays).
+ */
 export const FB_PERSONAL_SCOPES = (
-  Deno.env.get("FB_PERSONAL_SCOPES") ||
-  "public_profile,user_managed_groups,groups_access_member_info,publish_to_groups"
+  Deno.env.get("FB_PERSONAL_SCOPES") || "public_profile"
 )
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
-/** Scopes that MUST be granted for group import + group publishing to work. */
-export const FB_GROUP_REQUIRED_SCOPES = [
-  "public_profile",
-  "user_managed_groups",
-  "groups_access_member_info",
-  "publish_to_groups",
-];
+/** Scopes that MUST be granted for the connection to be considered healthy. */
+export const FB_GROUP_REQUIRED_SCOPES = ["public_profile"];
+
 
 /** Which required scopes Meta did NOT grant. */
 export function missingScopes(granted: string[] | null | undefined): string[] {
