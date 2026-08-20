@@ -81,15 +81,16 @@ export function CustomGroupsManager() {
 
   return (
     <div className="space-y-4 rounded-xl border border-border bg-card p-4" dir="rtl">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight">
-            <Users className="h-4 w-4" />
-            קבוצות פייסבוק ידניות · Custom Groups Directory
-          </h3>
-
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight">
+          <Users className="h-4 w-4" />
+          ניהול קבוצות ידני / תוסף
+        </h3>
+        <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+          {groups.length} קבוצות
+        </span>
       </div>
+
 
       <div className="grid gap-2 md:grid-cols-[1fr_2fr_auto]">
         <Input
@@ -107,12 +108,18 @@ export function CustomGroupsManager() {
         />
         <Button onClick={add} disabled={saving} className="gap-1">
           <Plus className="h-4 w-4" />
-          {saving ? 'שומר…' : 'הוסף'}
+          {saving ? 'שומר…' : 'הוסף קבוצה'}
         </Button>
       </div>
 
       <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
         {loading && <div className="px-3 py-4 text-center text-xs text-muted-foreground">טוען…</div>}
+        {!loading && groups.length === 0 && (
+          <div className="px-3 py-5 text-center text-xs text-muted-foreground">
+            אין קבוצות שמורות. הוסף קבוצה בשדות שלמעלה או סנכרן דרך התוסף.
+          </div>
+        )}
+
 
         {groups.map((g) => (
           <div key={g.id} className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-muted/40">

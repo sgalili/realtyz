@@ -920,10 +920,10 @@ const ApiSettings = () => {
       <SectionShell title="רשתות חברתיות" subtitle="Ayrshare, קטלוג ערוצים חי וקבוצות מותאמות">
         <div id="facebook" className="scroll-mt-24 space-y-4">
           <FacebookPersonalConnectCard />
-          
+          <CustomGroupsManager />
           <SocialChannelsGrid />
         </div>
-        <CustomGroupsManager />
+
       </SectionShell>
 
       <SectionShell title="AI Fine-Tuning" subtitle="כיול סגנון מהשיחות שלך">
