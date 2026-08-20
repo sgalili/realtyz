@@ -154,9 +154,6 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
           {lastSyncAt ? ` · ${new Date(lastSyncAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : ""}
         </div>
       )}
-          {lastSyncAt ? ` · ${new Date(lastSyncAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : ""}
-        </div>
-      )}
 
       {hasVisibleGroups && (
         <div className="rounded-lg border border-border overflow-hidden">
