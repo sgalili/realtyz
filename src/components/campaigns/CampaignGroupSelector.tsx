@@ -52,30 +52,10 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     return Array.isArray((data as any)?.groups) ? (data as any).groups : [];
   };
 
-  // Groups imported from the workspace's connected PERSONAL Facebook profile
-  // (official Facebook Login + GET /me/groups). Primary source.
-  const fetchPersonalGroups = async (): Promise<FacebookGroup[]> => {
-    try {
-      const { data, error } = await (supabase as any)
-        .from("fb_user_groups")
-        .select("group_id, group_name, group_icon, group_url, member_count")
-        .order("group_name", { ascending: true });
-      if (error) {
-        console.warn("[FB_GROUPS] fb_user_groups query failed", error);
-        return [];
-      }
-      return (data ?? []).map((r: any) => ({
-        group_id: String(r.group_id),
-        group_name: String(r.group_name || r.group_id),
-        group_icon: r.group_icon ?? null,
-        connected: true,
-        source: "api" as const,
-        group_url: r.group_url ?? null,
-      }));
-    } catch {
-      return [];
-    }
-  };
+  // NOTE: the Graph API group endpoints (/me/groups) are intentionally NOT used.
+  // Meta blocks user_managed_groups for business configurations, so groups are
+  // maintained manually / via the browser extension (custom_user_groups).
+
 
   const fetchCustomGroups = async (): Promise<FacebookGroup[]> => {
     if (!workspaceOwnerId) return [];
