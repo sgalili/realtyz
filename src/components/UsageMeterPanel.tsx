@@ -172,6 +172,8 @@ export function UsageMeterPanel() {
           המגבלה ניתנת להגדרה לכל שירות. הספים מתאפסים בתחילת כל חודש קלנדרי.
         </p>
       </CardContent>
+      )}
+
     </Card>
   );
 }
