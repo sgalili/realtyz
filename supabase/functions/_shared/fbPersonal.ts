@@ -24,12 +24,20 @@ export const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
  * Group lists / group publishing are handled by the browser-extension &
  * automation workflow instead (the fb_user_groups data structure stays).
  */
-export const FB_PERSONAL_SCOPES = (
+const rawScopes = (
   Deno.env.get("FB_PERSONAL_SCOPES") || "public_profile"
 )
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+
+/**
+ * Scopes requested during Facebook Login for the personal profile.
+ * Meta rejects an empty scope list, so we always fall back to the basic
+ * required `public_profile` scope even if the env override is malformed.
+ */
+export const FB_PERSONAL_SCOPES = rawScopes.length > 0 ? rawScopes : ["public_profile"];
+
 
 /** Scopes that MUST be granted for the connection to be considered healthy. */
 export const FB_GROUP_REQUIRED_SCOPES = ["public_profile"];
