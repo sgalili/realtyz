@@ -1,5 +1,5 @@
 // Realtyz meta-insights — direct Meta Graph API analytics (replaces
-// ayrshare-analytics).
+
 //
 // Actions:
 //   posts (default) → per-post likes/comments/shares/impressions for the

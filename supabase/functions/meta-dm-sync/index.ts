@@ -1,6 +1,6 @@
 // meta-dm-sync — poll Messenger + Instagram conversations straight from the
 // Meta Graph API and mirror inbound DMs into public.messages (replaces
-// ayrshare-fetch-dms). Safe to call on an interval; dedupes on the Meta
+// Safe to call on an interval; dedupes on the Meta
 // message id.
 //
 // POST { platforms?: ["messenger","instagram"], limit?, user_id? }

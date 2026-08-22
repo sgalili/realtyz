@@ -1,4 +1,4 @@
-// Pure text helpers shared by non-Ayrshare edge functions (AI copy sanitizers,
+// Pure text helpers shared by edge functions (AI copy sanitizers,
 // language detection, markdown stripping). No network calls, no DB access.
 
 // Inline conservative street-number scrubber (mirrors owner-laws.ts so we
