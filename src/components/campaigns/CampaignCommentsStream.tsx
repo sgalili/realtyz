@@ -542,7 +542,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
           new Promise<T>((_, reject) => setTimeout(() => reject(new Error("provider_refresh_timeout")), ms)),
         ]);
       const settled = await Promise.allSettled([
-        withTimeout(supabase.functions.invoke("ayrshare-analytics", {
+        withTimeout(supabase.functions.invoke("meta-insights", {
           body: pid ? { provider_message_id: pid } : {},
         })),
         // Comments come straight from the Meta Graph API (no Ayrshare).
