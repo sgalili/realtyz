@@ -112,7 +112,7 @@ async function findMatchingListings(admin: any, intent: Intent, ownerId: string 
   try {
     let q = admin
       .from("listings")
-      .select("id, property_title, city, neighborhood, rooms, size_sqm, asking_price, price, slug, description, features, status, is_published, user_id")
+      .select("id, property_title, city, neighborhood, rooms, sqm, asking_price, slug, deal_type, status, user_id")
       .order("updated_at", { ascending: false })
       .limit(6);
     if (ownerId) q = q.eq("user_id", ownerId);
@@ -124,15 +124,12 @@ async function findMatchingListings(admin: any, intent: Intent, ownerId: string 
     rows = rows.filter((r) => r.status !== "discarded");
     if (intent.budget_max) {
       rows = rows.filter((r) => {
-        const price = Number(r.asking_price ?? r.price ?? 0);
+        const price = Number(r.asking_price ?? 0);
         return !price || price <= intent.budget_max! * 1.15;
       });
     }
     if (intent.deal_type) {
-      rows = rows.filter((r) => {
-        const dt = String((r.features ?? {})?.deal_type ?? "");
-        return !dt || dt === intent.deal_type;
-      });
+      rows = rows.filter((r) => !r.deal_type || r.deal_type === intent.deal_type);
     }
     return rows.slice(0, 4);
   } catch {
@@ -143,12 +140,12 @@ async function findMatchingListings(admin: any, intent: Intent, ownerId: string 
 function renderListings(rows: any[]): string {
   if (!rows.length) return "";
   const lines = rows.map((r) => {
-    const price = Number(r.asking_price ?? r.price ?? 0);
+    const price = Number(r.asking_price ?? 0);
     const bits = [
       r.city,
       r.neighborhood,
       r.rooms ? `${r.rooms} חד׳` : null,
-      r.size_sqm ? `${r.size_sqm} מ״ר` : null,
+      r.sqm ? `${r.sqm} מ״ר` : null,
       price ? `₪${price.toLocaleString("he-IL")}` : null,
     ].filter(Boolean).join(" · ");
     return `• ${r.property_title || "נכס"} — ${bits}`;
