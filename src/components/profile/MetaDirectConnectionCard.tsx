@@ -134,6 +134,25 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
     }
   };
 
+  const saveManual = async () => {
+    setSavingManual(true);
+    try {
+      const res = await callPageConnect<any>({
+        action: 'manual',
+        page_id: manualPageId.trim(),
+        page_access_token: manualToken.trim(),
+      });
+      toast.success('הטוקן נשמר והעמוד חובר', { description: res?.page?.name ?? undefined });
+      setManualToken('');
+      setManualOpen(false);
+      await probe(false);
+    } catch (e: any) {
+      toast.error('שמירת הטוקן נכשלה', { description: e?.message });
+    } finally {
+      setSavingManual(false);
+    }
+  };
+
   const pageName = page?.page?.name ?? status?.facebook?.name ?? status?.facebook?.id ?? null;
   const igHandle = page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
   const isConnected = !!(page?.connected || status?.facebook);
