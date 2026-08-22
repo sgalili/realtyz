@@ -1,10 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Facebook, Instagram, Loader2, RefreshCw } from 'lucide-react';
+import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2 } from 'lucide-react';
 
 export type MetaStatus = {
   connected: boolean;
@@ -13,18 +13,48 @@ export type MetaStatus = {
   message?: string | null;
 };
 
-/** Direct Meta Graph API publishing status (Facebook Page + Instagram Business). */
+type PageStatus = {
+  connected: boolean;
+  page: { id: string; name: string | null; picture: string | null; connected_at: string | null } | null;
+  instagram?: { id: string; username: string | null } | null;
+};
+
+const STATE_PREFIX = 'facebook_page:';
+
+async function callPageConnect<T = any>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('meta-page-connect', { body });
+  if (error) {
+    const raw = String(error?.message ?? error);
+    throw new Error(
+      /failed to (send|fetch)/i.test(raw) ? 'לא ניתן להגיע לשירות החיבור לפייסבוק. נסה שוב בעוד רגע.' : raw,
+    );
+  }
+  if (data && (data as any).error) throw new Error(String((data as any).error));
+  return data as T;
+}
+
+/**
+ * MetaDirectConnectionCard — connects a Facebook Page (and its linked
+ * Instagram Business account) through the official Facebook Login flow and
+ * shows the live publishing status for direct Meta Graph publishing.
+ */
 export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStatus | null) => void }) {
   const [status, setStatus] = useState<MetaStatus | null>(null);
+  const [page, setPage] = useState<PageStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
 
   const probe = useCallback(async (notify = false) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('meta-publish', { body: { action: 'status' } });
-      if (error) throw error;
-      const s = data as MetaStatus;
+      const [pubRes, pageRes] = await Promise.all([
+        supabase.functions.invoke('meta-publish', { body: { action: 'status' } }),
+        callPageConnect<PageStatus>({ action: 'status' }).catch(() => null),
+      ]);
+      if (pubRes.error) throw pubRes.error;
+      const s = pubRes.data as MetaStatus;
       setStatus(s);
+      setPage(pageRes);
       onStatus?.(s);
       if (notify) {
         if (s?.connected) toast.success('החיבור לפייסבוק תקין');
@@ -41,6 +71,66 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
 
   useEffect(() => { probe(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
+  // Receive the OAuth code from the popup and exchange it server-side.
+  useEffect(() => {
+    const handler = async (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) return;
+      const m: any = ev.data;
+      if (!m || m.type !== 'realtyz-oauth-callback') return;
+      if (!String(m.state || '').startsWith(STATE_PREFIX)) return;
+      if (m.error) {
+        setConnecting(false);
+        toast.error('חיבור עמוד הפייסבוק בוטל', { description: m.errorDescription || m.error });
+        return;
+      }
+      try {
+        const res = await callPageConnect<any>({
+          action: 'exchange',
+          code: m.code,
+          redirect_uri: `${window.location.origin}/oauth/callback`,
+        });
+        toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
+        await probe(false);
+      } catch (e: any) {
+        toast.error('חיבור עמוד הפייסבוק נכשל', { description: e?.message });
+      } finally {
+        setConnecting(false);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const connect = async () => {
+    setConnecting(true);
+    try {
+      const res = await callPageConnect<any>({
+        action: 'start',
+        redirect_uri: `${window.location.origin}/oauth/callback`,
+      });
+      if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
+      window.open(res.auth_url, 'realtyz-fb-page-oauth', 'width=560,height=680');
+    } catch (e: any) {
+      setConnecting(false);
+      toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: e?.message });
+    }
+  };
+
+  const disconnect = async () => {
+    try {
+      await callPageConnect({ action: 'disconnect' });
+      toast.success('עמוד הפייסבוק נותק');
+      await probe(false);
+    } catch (e: any) {
+      toast.error('ניתוק נכשל', { description: e?.message });
+    }
+  };
+
+  const pageName = page?.page?.name ?? status?.facebook?.name ?? status?.facebook?.id ?? null;
+  const igHandle = page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
+  const isConnected = !!(page?.connected || status?.facebook);
+
   return (
     <Card dir="rtl" className="text-right">
       <CardHeader>
@@ -49,29 +139,70 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
           <span>פרסום ישיר לפייסבוק ואינסטגרם (Meta Graph)</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
           הפוסטים והקמפיינים מתפרסמים ישירות דרך ה-API הרשמי של Meta, ללא ספק ביניים.
         </p>
+
+        {isConnected ? (
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
+            {page?.page?.picture ? (
+              <img src={page.page.picture} alt={pageName ?? 'עמוד פייסבוק'} className="h-11 w-11 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+                <Facebook className="h-5 w-5 text-primary" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold">{pageName ?? 'עמוד פייסבוק'}</div>
+              <div className="flex items-center gap-1.5 text-[11px] text-emerald-700">
+                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                מחובר ומוכן לפרסום
+              </div>
+            </div>
+            <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-600">
+              <CheckCircle2 className="h-3.5 w-3.5" /> פעיל
+            </Badge>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed p-3">
+            <p className="mb-3 text-xs text-muted-foreground">
+              חבר את עמוד הפייסבוק העסקי שלך כדי לפרסם פוסטים, תמונות וקרוסלות ישירות מהמערכת.
+            </p>
+            <Button onClick={connect} disabled={connecting} className="w-full gap-2 bg-[#1877F2] text-white hover:bg-[#1877F2]/90">
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
+              חבר עמוד פייסבוק
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={status?.facebook ? 'default' : 'secondary'} className="gap-1.5">
-            <Facebook className="h-3.5 w-3.5" />
-            {status?.facebook ? `דף: ${status.facebook.name ?? status.facebook.id}` : 'דף פייסבוק לא מחובר'}
-          </Badge>
-          <Badge variant={status?.instagram ? 'default' : 'secondary'} className="gap-1.5">
+          <Badge variant={igHandle ? 'default' : 'secondary'} className="gap-1.5">
             <Instagram className="h-3.5 w-3.5" />
-            {status?.instagram
-              ? `אינסטגרם: @${status.instagram.username ?? status.instagram.id}`
-              : 'אינסטגרם לא מקושר'}
+            {igHandle ? `אינסטגרם: @${igHandle}` : 'אינסטגרם לא מקושר'}
           </Badge>
         </div>
+
         {status && !status.connected && status.message && (
           <p className="text-xs text-destructive">{status.message}</p>
         )}
-        <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="gap-1.5">
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          בדיקת חיבור
-        </Button>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="gap-1.5">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            בדיקת חיבור
+          </Button>
+          {isConnected && (
+            <>
+              <Button variant="outline" size="sm" onClick={connect} disabled={connecting} className="gap-1.5">
+                <Facebook className="h-4 w-4" /> החלף עמוד
+              </Button>
+              <Button variant="ghost" size="sm" onClick={disconnect} className="gap-1.5 text-destructive">
+                <Unlink className="h-4 w-4" /> נתק
+              </Button>
+            </>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
