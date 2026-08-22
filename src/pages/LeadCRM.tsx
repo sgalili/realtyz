@@ -989,62 +989,35 @@ const LeadCRM = () => {
   };
 
   /**
-   * Create a blank lead row and immediately open its profile sheet so the
-   * broker can fill every field (name, phone, email, age/gender, deal type,
-   * budget…) inside the unified CRM workspace. Replaces the legacy modal
-   * popups for "add lead".
+   * "Add Lead" no longer writes a placeholder row. The NewLeadDialog collects
+   * name + phone (and pipeline fields) and only then inserts a real lead, so
+   * the CRM can never accumulate blank "לקוח חדש" records.
    */
-  const createBlankLeadAndOpen = async () => {
-    if (blockDemoAction('add-lead')) return;
+
+  /** Permanently delete a single lead from the CRM profile sheet. */
+  const deleteSingleLead = async (leadId: string) => {
+    setDeletingSingle(true);
     try {
-      const { data: userResp, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !userResp?.user) throw userErr || new Error('not_authenticated');
-      const uid = userResp.user.id;
-      // phone_number is NOT NULL + UNIQUE — generate a unique placeholder the user can edit
-      const placeholderPhone = `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const { data, error } = await supabase
-        .from('leads')
-        .insert({
-          full_name: 'לקוח חדש',
-          phone_number: placeholderPhone,
-          lead_stage: 'new',
-          status: 'new',
-          interest_tag: 'manual',
-          assigned_to: uid,
-          is_demo: false,
-        } as any)
-        .select('id')
-        .single();
+      const { data, error } = await supabase.rpc('delete_leads_cascade', { _ids: [leadId] } as any);
       if (error) throw error;
-      const newId = (data as any)?.id;
-      if (!newId) throw new Error('insert_returned_no_row');
-      await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-      queryClient.invalidateQueries({ queryKey: ['leads-total'] });
-      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
-      setSelectedVoterId(newId);
-      toast.success('פרופיל מתעניין נפתח — מלא את הפרטים');
-      try {
-        navigate(`/lead-crm/${newId}`);
-        // Hard fallback in case dropdown portal swallows the router transition
-        setTimeout(() => {
-          if (!window.location.pathname.includes(newId)) {
-            window.location.href = `/lead-crm/${newId}`;
-          }
-        }, 250);
-      } catch {
-        window.location.href = `/lead-crm/${newId}`;
+      const deleted = typeof data === 'number' ? data : Number(data ?? 0);
+      if (deleted === 0) {
+        toast.error('המחיקה נחסמה - אין הרשאה למחוק את הרשומה');
+        return;
       }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
+        queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
+      ]);
+      setSingleDeleteId(null);
+      setSelectedVoterId(null);
+      if (routeLeadId) navigate('/lead-crm');
+      toast.success('המתעניין נמחק לצמיתות');
     } catch (err: any) {
-      console.error('[createBlankLeadAndOpen] failed', err);
-      const msg = String(err?.message || '');
-      if (msg.includes('TRIAL_RECORD_LIMIT')) {
-        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו', {
-          duration: 8000,
-          action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
-        });
-      } else {
-        toast.error('יצירת מתעניין נכשלה: ' + (err?.message || 'שגיאה'));
-      }
+      toast.error('מחיקה נכשלה: ' + (err?.message || 'שגיאה'));
+    } finally {
+      setDeletingSingle(false);
     }
   };
 
