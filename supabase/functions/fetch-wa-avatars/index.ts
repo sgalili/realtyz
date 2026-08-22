@@ -84,12 +84,12 @@ async function runJob(
   jobId: string,
   force: boolean,
 ) {
-  const PAGE = 100;
+  const PAGE = 500;
+  const MAX_CONTACTS = 10_000;
   let scanned = 0;
   let updated = 0;
   let skipped = 0;
   let failed = 0;
-  let offset = 0;
 
   const patch = (extra: Record<string, unknown> = {}) =>
     admin
@@ -104,43 +104,43 @@ async function runJob(
       .update({ status: "running", started_at: new Date().toISOString() })
       .eq("id", jobId);
 
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    // Snapshot the candidate list up front: rows leave the "missing avatar"
+    // filter as we update them, so a live-paged query would skip contacts.
+    const candidates: Array<{ id: string; phone_number: string | null }> = [];
+    for (let offset = 0; offset < MAX_CONTACTS; offset += PAGE) {
       let query = admin
         .from("leads")
-        .select("id, phone_number, profile_picture_url")
+        .select("id, phone_number")
         .not("phone_number", "is", null)
         .order("created_at", { ascending: false })
         .range(offset, offset + PAGE - 1);
       if (!force) query = query.is("profile_picture_url", null);
-
       const { data: rows, error } = await query;
       if (error) throw new Error(error.message);
       const batch = (rows ?? []) as Array<{ id: string; phone_number: string | null }>;
-      if (!batch.length) break;
+      candidates.push(...batch);
+      if (batch.length < PAGE) break;
+    }
 
-      for (const row of batch) {
-        scanned++;
-        const cid = chatId(row.phone_number);
-        if (!cid) { skipped++; continue; }
-        const url = await fetchGreenAvatar(creds, cid);
-        if (!url) { failed++; continue; }
-        const { error: upErr } = await admin
-          .from("leads")
-          .update({ profile_picture_url: url })
-          .eq("id", row.id);
-        if (upErr) failed++;
-        else updated++;
-        // Gentle pacing so Green API never rate-limits the sweep.
-        await sleep(250);
-      }
+    await patch({ total: candidates.length });
 
-      await patch();
-      // When `force` is on we page forward; otherwise processed rows drop out of
-      // the "missing avatar" filter, so staying at offset 0 keeps draining.
-      if (force) offset += PAGE;
-      if (batch.length < PAGE && !force) break;
-      if (!force && updated + failed + skipped >= scanned && batch.length < PAGE) break;
+    for (let i = 0; i < candidates.length; i++) {
+      const row = candidates[i];
+      scanned++;
+      const cid = chatId(row.phone_number);
+      if (!cid) { skipped++; continue; }
+      const url = await fetchGreenAvatar(creds, cid);
+      if (!url) { failed++; continue; }
+      const { error: upErr } = await admin
+        .from("leads")
+        .update({ profile_picture_url: url })
+        .eq("id", row.id);
+      if (upErr) failed++;
+      else updated++;
+      // Gentle pacing so Green API never rate-limits the sweep,
+      // plus a progress heartbeat every 10 contacts.
+      await sleep(250);
+      if (scanned % 10 === 0) await patch();
     }
 
     await patch({ status: "done", finished_at: new Date().toISOString() });
