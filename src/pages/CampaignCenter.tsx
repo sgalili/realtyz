@@ -2289,8 +2289,12 @@ const ConfirmDispatchDialog = ({
             link: null,
             scheduledAt: scheduledAt || null,
             groups: extGroupIds.map((id) => {
-              const g = known.find((k) => k.id === id);
-              return { group_id: g?.groupId ?? id, group_url: g?.url ?? null, group_name: g?.name ?? id };
+              const g = known.find((k) => k.group_id === id);
+              return {
+                group_id: (g?.group_id ?? id).replace(/^ext:/, ''),
+                group_url: g?.group_url ?? null,
+                group_name: g?.group_name ?? id,
+              };
             }),
           });
           if (dispatched > 0) toast.success(`נשלחו ${dispatched} קבוצות לתוסף לפרסום`);
