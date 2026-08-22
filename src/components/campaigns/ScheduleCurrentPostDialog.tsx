@@ -365,7 +365,7 @@ export function ScheduleCurrentPostDialog({
           series_total: slots.length,
         };
         try {
-          const { data, error } = await supabase.functions.invoke('ayrshare-post', {
+          const { data, error } = await supabase.functions.invoke('meta-publish', {
             body: invokeBody,
           });
           const payload: any = data;
