@@ -888,13 +888,54 @@ Deno.serve(async (req) => {
       disclosureAppended = r.appended;
     }
 
-    const template = parsed.data.template_id
-      ? {
-          id: parsed.data.template_id,
-          language: parsed.data.template_language,
-          components: parsed.data.template_components,
+    // Template dispatch. When the caller didn't pre-build `components`, we
+    // look up the approved template body from the synced cache and map the
+    // dynamic variables (lead name, property address, business name) into the
+    // Meta payload before sending.
+    let template:
+      | { id: string; language?: string; components?: unknown[] }
+      | undefined;
+    if (parsed.data.template_id) {
+      let language = parsed.data.template_language;
+      let components = parsed.data.template_components;
+
+      if (!components || components.length === 0) {
+        let bodyText = "";
+        const tplQuery = admin
+          .from("wa_message_templates")
+          .select("name, language, body_text, owner_user_id")
+          .eq("name", parsed.data.template_id)
+          .order("synced_at", { ascending: false })
+          .limit(5);
+        const { data: tplRows } = await tplQuery;
+        const rows = (tplRows ?? []) as any[];
+        const row =
+          rows.find((r) => routing.owner_id && r.owner_user_id === routing.owner_id) ??
+          rows.find((r) => !language || r.language === language) ??
+          rows[0];
+        if (row) {
+          bodyText = String(row.body_text ?? "");
+          language = language ?? String(row.language ?? "he");
         }
-      : undefined;
+
+        if (bodyText && /\{\{\s*[A-Za-z0-9_]+\s*\}\}/.test(bodyText)) {
+          const values = await buildTemplateVariables(admin, {
+            leadId: parsed.data.lead_id ?? null,
+            listingId: parsed.data.listing_id ?? null,
+            ownerId: routing.owner_id,
+            overrides: parsed.data.template_variables,
+          });
+          components = buildTemplateComponents(bodyText, values);
+        }
+      }
+
+      template = {
+        id: parsed.data.template_id,
+        language,
+        components,
+      };
+    }
+
 
     let result: StdResponse = await sendViaWba(
       provider.config,
