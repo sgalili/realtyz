@@ -172,20 +172,14 @@ export function WhatsAppGatewayCard() {
     }
   };
 
+  // Background sweep: keeps running on the server even if the user navigates
+  // away mid-sync, and the hook re-attaches to the live job on return.
   const syncAvatars = async (force = false) => {
     setSyncingAvatars(true);
     try {
-      const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', {
-        body: { force, limit: 500 },
-      });
-      const r = (data as any) || {};
-      // Silent circuit-breaker: unconfigured/expired instance → no error toast.
-      if (error || r.supported === false) return;
-      toast.success(
-        `סונכרנו תמונות פרופיל מוואטסאפ · עודכנו ${r.updated ?? 0} מתוך ${r.scanned ?? 0}`,
-      );
-    } catch {
-      /* silent — initials avatars remain */
+      const res = await avatarSync.start(force);
+      if (res.supported === false) return; // silent circuit-breaker
+      toast.success('סנכרון תמונות הפרופיל התחיל · ימשיך לרוץ גם אם תעבור למסך אחר');
     } finally {
       setSyncingAvatars(false);
     }
