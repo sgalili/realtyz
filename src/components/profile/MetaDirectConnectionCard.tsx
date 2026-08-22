@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2 } from 'lucide-react';
+import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
 
 export type MetaStatus = {
   connected: boolean;
@@ -43,6 +45,11 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
   const [page, setPage] = useState<PageStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualPageId, setManualPageId] = useState('');
+  const [manualToken, setManualToken] = useState('');
+  const [savingManual, setSavingManual] = useState(false);
+
 
   const probe = useCallback(async (notify = false) => {
     setLoading(true);
@@ -127,6 +134,25 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
     }
   };
 
+  const saveManual = async () => {
+    setSavingManual(true);
+    try {
+      const res = await callPageConnect<any>({
+        action: 'manual',
+        page_id: manualPageId.trim(),
+        page_access_token: manualToken.trim(),
+      });
+      toast.success('הטוקן נשמר והעמוד חובר', { description: res?.page?.name ?? undefined });
+      setManualToken('');
+      setManualOpen(false);
+      await probe(false);
+    } catch (e: any) {
+      toast.error('שמירת הטוקן נכשלה', { description: e?.message });
+    } finally {
+      setSavingManual(false);
+    }
+  };
+
   const pageName = page?.page?.name ?? status?.facebook?.name ?? status?.facebook?.id ?? null;
   const igHandle = page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
   const isConnected = !!(page?.connected || status?.facebook);
@@ -186,6 +212,56 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
         {status && !status.connected && status.message && (
           <p className="text-xs text-destructive">{status.message}</p>
         )}
+
+        {/* Manual token fallback for apps blocked in development/testing mode */}
+        <div className="rounded-xl border">
+          <button
+            type="button"
+            onClick={() => setManualOpen((v) => !v)}
+            aria-expanded={manualOpen}
+            className="flex w-full items-center justify-between gap-2 p-3 text-right"
+          >
+            <span className="flex items-center gap-2 text-xs font-medium">
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              חיבור ידני באמצעות טוקן
+            </span>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${manualOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {manualOpen && (
+            <div className="space-y-3 border-t p-3">
+              <p className="text-[11px] text-muted-foreground">
+                שימושי כאשר אפליקציית Meta נמצאת במצב פיתוח או חסומה. הטוקן נשמר בצד השרת בלבד.
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="meta-page-id" className="text-xs">Page ID</Label>
+                <Input
+                  id="meta-page-id"
+                  dir="ltr"
+                  inputMode="numeric"
+                  value={manualPageId}
+                  onChange={(e) => setManualPageId(e.target.value)}
+                  className="text-left"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="meta-page-token" className="text-xs">Page Access Token</Label>
+                <Input
+                  id="meta-page-token"
+                  dir="ltr"
+                  type="password"
+                  autoComplete="off"
+                  value={manualToken}
+                  onChange={(e) => setManualToken(e.target.value)}
+                  className="text-left"
+                />
+              </div>
+              <Button size="sm" onClick={saveManual} disabled={savingManual} className="w-full gap-1.5">
+                {savingManual ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                שמור טוקן ידני
+              </Button>
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="gap-1.5">
