@@ -16,6 +16,8 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { supabase } from '@/integrations/supabase/client';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
+import { AyrshareCredentialsCard } from '@/components/profile/AyrshareCredentialsCard';
+import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
 import { EmailAliasCard } from '@/components/profile/EmailAliasCard';
