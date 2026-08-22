@@ -99,22 +99,34 @@ Deno.serve(async (req) => {
 
     // ---- Reply to a comment (POST /{comment-id}/comments) -------------------
     if (action === "reply") {
-      const rawText = String(body?.text ?? body?.final_text ?? "").trim();
-      const target = String(body?.comment_id ?? "").trim();
+      const rawText = String(body?.text ?? body?.final_text ?? body?.comment ?? "").trim();
+      const target = String(body?.comment_id ?? body?.event_id ?? "").trim();
       if (!target || !rawText) return json({ error: "comment_id and text are required" }, 400);
 
-      // Accept either a fb_comments row id or a native Meta comment id.
+      // Accept a fb_comments row id, an engagement_events row id, or a native
+      // Meta comment id.
       let nativeId = target;
       let commentRowId: string | null = null;
+      let eventRowId: string | null = null;
       if (isUuid(target)) {
         const { data: row } = await admin
           .from("fb_comments")
           .select("id, ayr_comment_id")
           .eq("id", target)
           .maybeSingle();
-        if (!row?.ayr_comment_id) return json({ error: "comment_not_found" }, 404);
-        commentRowId = String((row as any).id);
-        nativeId = String((row as any).ayr_comment_id);
+        if (row?.ayr_comment_id) {
+          commentRowId = String((row as any).id);
+          nativeId = String((row as any).ayr_comment_id);
+        } else {
+          const { data: ev } = await admin
+            .from("engagement_events")
+            .select("id, external_id")
+            .eq("id", target)
+            .maybeSingle();
+          if (!ev?.external_id) return json({ error: "comment_not_found" }, 404);
+          eventRowId = String((ev as any).id);
+          nativeId = String((ev as any).external_id);
+        }
       }
 
       const r = await graphCall(`/${nativeId}/comments`, {
