@@ -165,6 +165,8 @@ Deno.serve(async (req) => {
       }
 
       const chosen = (wantedPageId ? pages.find((p) => String(p.id) === wantedPageId) : null) ?? pages[0];
+      // One page per workspace: drop any previous binding, then upsert on page_id.
+      await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
       const { error: upsertErr } = await admin.from("messenger_page_bindings").upsert(
         {
           owner_id: ownerId,
@@ -173,7 +175,7 @@ Deno.serve(async (req) => {
           page_access_token: String(chosen.access_token),
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "owner_id" },
+        { onConflict: "page_id" },
       );
       if (upsertErr) {
         console.error("[meta-page-connect] upsert failed", upsertErr);
