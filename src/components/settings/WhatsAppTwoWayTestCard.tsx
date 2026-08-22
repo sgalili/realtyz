@@ -84,14 +84,22 @@ export function WhatsAppTwoWayTestCard() {
     setResult(null);
     const startedAt = new Date().toISOString();
     try {
+      const def = templateDefs?.find(
+        (t) => t.name === template?.name && t.language === template?.language,
+      );
       const payload =
         mode === 'template'
           ? {
               phone_number: normalized,
-              template_id: templateName.trim(),
-              template_language: templateLang.trim(),
+              template_id: template!.name,
+              template_language: template!.language,
+              template_components: buildTemplateComponents(
+                def?.body_text ?? '',
+                template!.body_params,
+              ),
             }
           : { phone_number: normalized, message: body.trim() };
+
 
       const { data, error } = await supabase.functions.invoke('send-whatsapp', { body: payload });
       if (error) throw new Error(error.message);
