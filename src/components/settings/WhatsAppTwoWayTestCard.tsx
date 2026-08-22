@@ -52,7 +52,7 @@ export function WhatsAppTwoWayTestCard() {
 
   const normalized = useMemo(() => normalizePhone(phone), [phone]);
   const valid = normalized.length >= 10 && normalized.length <= 15;
-  const canSend = mode === 'template' ? !!templateName.trim() && !!templateLang.trim() : !!body.trim();
+  const canSend = mode === 'template' ? !!template?.name : !!body.trim();
 
   // Live webhook listener: polls for inbound WhatsApp messages since the test send.
   const { data: inbound, isFetching: polling } = useQuery({
