@@ -1,0 +1,201 @@
+// meta-page-connect — official Facebook Login for a PAGE (publishing identity).
+//
+// Actions (POST body { action }):
+//   start      → { auth_url }                 Facebook Login URL (server holds client_id)
+//   exchange   → { ok, page, pages }          code -> page access token, stored per workspace
+//   status     → { connected, page }          stored binding + live page picture
+//   disconnect → { ok }                       wipe the stored page binding
+//
+// The page access token never leaves the server: it is stored in
+// public.messenger_page_bindings and used by meta-publish for Graph publishing.
+import { corsHeaders } from "../_shared/cors.ts";
+import { adminClient, fbAppCredentials, GRAPH, humanizeGraphError, resolveCaller } from "../_shared/fbPersonal.ts";
+
+const json = (b: unknown, s = 200) =>
+  new Response(JSON.stringify(b), {
+    status: s,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+/** Page-level publishing scopes (Instagram included so IG carousels work). */
+const PAGE_SCOPES = [
+  "public_profile",
+  "pages_show_list",
+  "pages_manage_posts",
+  "pages_read_engagement",
+  "pages_manage_engagement",
+  "instagram_basic",
+  "instagram_content_publish",
+];
+
+const CONFIG_ID = Deno.env.get("META_PAGE_CONFIG_ID")?.trim() || "1741528006908878";
+const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v20.0";
+
+async function graph(path: string) {
+  const res = await fetch(`${GRAPH}${path}`);
+  const text = await res.text();
+  let payload: any = null;
+  try { payload = text ? JSON.parse(text) : null; } catch { payload = { raw: text }; }
+  return { ok: res.ok, payload };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const admin = adminClient();
+    const caller = await resolveCaller(admin, req);
+    if (!caller) return json({ error: "unauthorized" }, 401);
+    const ownerId = caller.workspaceOwnerId;
+
+    const body = await req.json().catch(() => ({} as any));
+    const action = String(body?.action ?? "status");
+    const redirectUri = String(body?.redirect_uri ?? "").trim();
+
+    if (action === "status") {
+      const { data } = await admin
+        .from("messenger_page_bindings")
+        .select("page_id, page_name, page_access_token, updated_at")
+        .eq("owner_id", ownerId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const row: any = data;
+      if (!row?.page_id) return json({ connected: false, page: null });
+
+      let picture: string | null = null;
+      let instagram: { id: string; username: string | null } | null = null;
+      if (row.page_access_token) {
+        const r = await graph(
+          `/${row.page_id}?fields=name,picture.width(160).height(160),instagram_business_account{id,username}&access_token=${
+            encodeURIComponent(row.page_access_token)
+          }`,
+        );
+        if (r.ok) {
+          picture = r.payload?.picture?.data?.url ?? null;
+          const ig = r.payload?.instagram_business_account;
+          if (ig?.id) instagram = { id: String(ig.id), username: ig.username ?? null };
+        }
+      }
+      return json({
+        connected: true,
+        page: {
+          id: String(row.page_id),
+          name: row.page_name ?? null,
+          picture,
+          connected_at: row.updated_at ?? null,
+        },
+        instagram,
+      });
+    }
+
+    if (action === "disconnect") {
+      await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+      return json({ ok: true });
+    }
+
+    const { clientId, clientSecret } = await fbAppCredentials(admin);
+    if (!clientId) {
+      return json({ error: "פייסבוק לא מוגדר: חסר Facebook App ID." }, 400);
+    }
+
+    if (action === "start") {
+      if (!redirectUri) return json({ error: "redirect_uri is required" }, 400);
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: PAGE_SCOPES.join(","),
+        state: `facebook_page:${crypto.randomUUID()}`,
+        auth_type: "rerequest",
+        config_id: CONFIG_ID,
+      });
+      return json({
+        auth_url: `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params}`,
+        scopes: PAGE_SCOPES,
+      });
+    }
+
+    if (action === "exchange") {
+      const code = String(body?.code ?? "").trim();
+      const wantedPageId = String(body?.page_id ?? "").trim();
+      if (!code || !redirectUri) return json({ error: "code and redirect_uri are required" }, 400);
+      if (!clientSecret) return json({ error: "פייסבוק לא מוגדר: חסר App Secret." }, 400);
+
+      const tokenRes = await graph(
+        `/oauth/access_token?${new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          code,
+        })}`,
+      );
+      if (!tokenRes.ok || !tokenRes.payload?.access_token) {
+        return json({ error: humanizeGraphError(tokenRes.payload) }, 400);
+      }
+      let userToken = String(tokenRes.payload.access_token);
+
+      // Long-lived user token so page tokens do not expire in an hour.
+      const longRes = await graph(
+        `/oauth/access_token?${new URLSearchParams({
+          grant_type: "fb_exchange_token",
+          client_id: clientId,
+          client_secret: clientSecret,
+          fb_exchange_token: userToken,
+        })}`,
+      );
+      if (longRes.ok && longRes.payload?.access_token) userToken = String(longRes.payload.access_token);
+
+      const pagesRes = await graph(
+        `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${
+          encodeURIComponent(userToken)
+        }`,
+      );
+      const pages: any[] = Array.isArray(pagesRes.payload?.data) ? pagesRes.payload.data : [];
+      if (!pagesRes.ok || pages.length === 0) {
+        return json(
+          {
+            error: pagesRes.ok
+              ? "לא נמצא עמוד פייסבוק שאתה מנהל. ודא שאישרת את העמוד במסך ההרשאות של פייסבוק."
+              : humanizeGraphError(pagesRes.payload),
+            pages: [],
+          },
+          400,
+        );
+      }
+
+      const chosen = (wantedPageId ? pages.find((p) => String(p.id) === wantedPageId) : null) ?? pages[0];
+      // One page per workspace: drop any previous binding, then upsert on page_id.
+      await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+      const { error: upsertErr } = await admin.from("messenger_page_bindings").upsert(
+        {
+          owner_id: ownerId,
+          page_id: String(chosen.id),
+          page_name: chosen.name ?? null,
+          page_access_token: String(chosen.access_token),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "page_id" },
+      );
+      if (upsertErr) {
+        console.error("[meta-page-connect] upsert failed", upsertErr);
+        return json({ error: upsertErr.message }, 500);
+      }
+
+      return json({
+        ok: true,
+        page: {
+          id: String(chosen.id),
+          name: chosen.name ?? null,
+          picture: chosen?.picture?.data?.url ?? null,
+        },
+        pages: pages.map((p) => ({ id: String(p.id), name: p.name ?? null })),
+      });
+    }
+
+    return json({ error: "unknown_action" }, 400);
+  } catch (e) {
+    console.error("[meta-page-connect] fatal", e);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
+  }
+});
