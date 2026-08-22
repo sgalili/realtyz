@@ -3114,7 +3114,7 @@ const PublishedFeed = () => {
 
     try {
       const [{ data, error }] = await Promise.all([
-        supabase.functions.invoke('ayrshare-analytics', {
+        supabase.functions.invoke('meta-insights', {
           body: { force_live: true, cache_bust: cacheBust, user_id: metricsOwner },
         }),
         syncPromise,
