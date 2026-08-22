@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle2, Loader2, MessageSquare, RadioTower, Send, XCircle } from 'lucide-react';
+import { WaTemplatePicker, type WaTemplateSelection } from '@/components/whatsapp/WaTemplatePicker';
+import { buildTemplateComponents, useMetaWaTemplates } from '@/hooks/useMetaWaTemplates';
+
 
 type SendResult = {
   ok: boolean;
