@@ -14,15 +14,17 @@
 //   status → { connected, page }
 import { corsHeaders } from "../_shared/cors.ts";
 import {
-  authorAvatar,
-  cleanAuthorName,
   graphCall,
   humanizeMetaError,
-  isOwnPageAuthor,
   metaAdminClient,
   resolveMetaPage,
-  type MetaPage,
 } from "../_shared/metaPage.ts";
+import {
+  fetchCommentTree,
+  persistComment,
+  persistTrackedComments,
+  safeStr,
+} from "../_shared/metaComments.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -30,187 +32,9 @@ const json = (b: unknown, s = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const COMMENT_FIELDS =
-  "id,message,created_time,like_count,permalink_url,from{id,name,picture{url}},parent{id}";
-
 const isUuid = (v: unknown) =>
   typeof v === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.trim());
-
-const safeStr = (v: unknown, max = 500): string | null => {
-  if (v === null || v === undefined) return null;
-  const s = typeof v === "string" ? v : String(v);
-  const t = s.trim();
-  return t ? t.slice(0, max) : null;
-};
-
-type FlatComment = {
-  id: string;
-  postId: string;
-  parentId: string | null;
-  text: string;
-  fromId: string | null;
-  fromName: string | null;
-  avatar: string | null;
-  createdAt: string | null;
-  likeCount: number;
-  permalink: string | null;
-  raw: any;
-};
-
-/** Walk a post's comment tree (comments + nested replies) into a flat list. */
-async function fetchCommentTree(
-  postId: string,
-  page: MetaPage,
-  maxDepth = 3,
-): Promise<{ comments: FlatComment[]; error: string | null }> {
-  const out: FlatComment[] = [];
-  let error: string | null = null;
-
-  const pull = async (nodeId: string, parentId: string | null, depth: number) => {
-    if (depth > maxDepth) return;
-    let next: string | null =
-      `/${nodeId}/comments?fields=${encodeURIComponent(COMMENT_FIELDS)}&filter=stream&order=chronological&limit=100&access_token=${
-        encodeURIComponent(page.token)
-      }`;
-    while (next) {
-      const r: any = await graphCall(next);
-      if (!r.ok) {
-        error = error ?? humanizeMetaError(r.payload, "שליפת התגובות מפייסבוק נכשלה");
-        return;
-      }
-      const rows: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
-      for (const c of rows) {
-        const id = safeStr(c?.id, 200);
-        if (!id) continue;
-        out.push({
-          id,
-          postId,
-          parentId: parentId ?? safeStr(c?.parent?.id, 200),
-          text: safeStr(c?.message, 4000) ?? "",
-          fromId: safeStr(c?.from?.id, 200),
-          fromName: cleanAuthorName(c?.from?.name),
-          avatar: authorAvatar(c?.from),
-          createdAt: safeStr(c?.created_time),
-          likeCount: Number(c?.like_count ?? 0) || 0,
-          permalink: safeStr(c?.permalink_url, 1000),
-          raw: c,
-        });
-        // `filter=stream` already flattens most threads, but nested replies on
-        // older posts still need an explicit walk one level down.
-        await pull(id, id, depth + 1);
-      }
-      const after = r.payload?.paging?.cursors?.after;
-      next = rows.length === 100 && after
-        ? `/${nodeId}/comments?fields=${encodeURIComponent(COMMENT_FIELDS)}&filter=stream&order=chronological&limit=100&after=${
-          encodeURIComponent(after)
-        }&access_token=${encodeURIComponent(page.token)}`
-        : null;
-    }
-  };
-
-  await pull(postId, null, 0);
-  // de-dupe (a reply can surface both in the stream and in the nested walk)
-  const seen = new Set<string>();
-  return { comments: out.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true))), error };
-}
-
-/** Mirror one comment into engagement_events (insert or refresh). */
-export async function persistComment(
-  admin: any,
-  ownerId: string,
-  page: { pageId: string; pageName: string | null },
-  c: FlatComment,
-  source = "meta_comments_sync",
-): Promise<"inserted" | "updated" | "skipped"> {
-  if (!c.text.trim()) return "skipped";
-  const selfAuthored = isOwnPageAuthor(c.fromId, c.fromName, page);
-  const avatar = safeStr(c.avatar, 1000);
-
-  const { data: exists } = await admin
-    .from("engagement_events")
-    .select("id, status, ai_reply_text, metadata")
-    .eq("user_id", ownerId)
-    .eq("external_id", c.id)
-    .maybeSingle();
-
-  const baseMeta = {
-    source,
-    parent_id: c.parentId,
-    self_authored: selfAuthored,
-    author_type: selfAuthored ? "workspace_page" : "audience",
-    native_created_at: c.createdAt,
-    like_count: c.likeCount,
-    permalink: c.permalink,
-    sender_id: c.fromId,
-    profile_image: avatar,
-    sender_avatar_url: avatar,
-    author: { name: c.fromName, profile_image: avatar },
-  };
-
-  if (exists?.id) {
-    const current = (exists.metadata && typeof exists.metadata === "object") ? exists.metadata : {};
-    await admin
-      .from("engagement_events")
-      .update({
-        external_post_id: c.postId,
-        sender_handle: c.fromName,
-        inbound_text: c.text,
-        platform: "facebook",
-        metadata: { ...current, ...baseMeta, profile_image: avatar ?? (current as any).profile_image ?? null },
-      })
-      .eq("id", exists.id)
-      .eq("user_id", ownerId);
-    return "updated";
-  }
-
-  const { error } = await admin.from("engagement_events").insert({
-    user_id: ownerId,
-    platform: "facebook",
-    sender_handle: c.fromName,
-    inbound_text: c.text,
-    external_id: c.id,
-    external_post_id: c.postId,
-    status: selfAuthored ? "sent" : "pending",
-    ai_action: selfAuthored ? "display_only" : "queued",
-    metadata: baseMeta,
-  });
-  if (error) {
-    console.error("[meta-comments-sync] engagement insert failed", error.message);
-    return "skipped";
-  }
-  return "inserted";
-}
-
-/** Mirror comments of a tracked post into fb_comments (HITL / learning UI). */
-async function persistTrackedComments(admin: any, postRowId: string, comments: FlatComment[], page: MetaPage) {
-  const byParent = new Map<string, FlatComment[]>();
-  for (const c of comments) {
-    if (!c.parentId) continue;
-    byParent.set(c.parentId, [...(byParent.get(c.parentId) ?? []), c]);
-  }
-  for (const c of comments) {
-    if (c.parentId) continue; // replies are attributed to their parent below
-    const kids = byParent.get(c.id) ?? [];
-    const ownReply = kids.find((k) => isOwnPageAuthor(k.fromId, k.fromName, page));
-    await admin.from("fb_comments").upsert({
-      post_id: postRowId,
-      ayr_comment_id: c.id,
-      parent_comment_id: null,
-      author_name: c.fromName,
-      author_fb_id: c.fromId,
-      comment_text: c.text,
-      likes_count: c.likeCount,
-      shares_count: 0,
-      posted_at: c.createdAt,
-      is_historical_replied: !!ownReply,
-      historical_reply_text: ownReply?.text ?? null,
-      status: ownReply ? "historical" : (kids.length > 0 ? "replied" : "new"),
-      raw: c.raw,
-      fetched_at: new Date().toISOString(),
-    }, { onConflict: "post_id,ayr_comment_id" });
-  }
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
