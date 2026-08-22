@@ -1,7 +1,8 @@
-// Fetch Facebook Page posts via Ayrshare's platform history endpoint and persist
-// every native Page post into campaign_logs. The browser feed must never depend
-// on transient Ayrshare pages; campaign_logs is the permanent source of truth.
+// Fetch Facebook Page posts directly via the Meta Graph API (using the
+// workspace's connected Page token) and persist every native Page post into
+// campaign_logs. campaign_logs is the permanent source of truth for the feed.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { resolveMetaPage } from "../_shared/metaPage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,11 +11,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
 
-const WORKSPACE_ID = "00000000-0000-0000-0000-000000000001";
 const DEFAULT_OWNER_ID = "8f66ac1a-070a-4485-ac3b-07697d6c4b9e";
-const AYR_BASE = "https://api.ayrshare.com/api";
 const MIN_SAFE_PURGE_POSTS = 50;
-const PROVIDER_COOLDOWN_MINUTES = 15;
 
 const asText = (
   value: unknown,
