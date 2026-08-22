@@ -31,7 +31,17 @@ type Props = {
 export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Props) => {
   const [ayrshareGroups, setAyrshareGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const { groups: extGroups, lastSyncAt, refresh } = useExtensionGroups();
+
+  // The extension answers asynchronously — clear the sync state as soon as a
+  // fresh push lands (or after a short grace period if it never arrives).
+  useEffect(() => {
+    if (!syncing) return;
+    if (lastSyncAt) { setSyncing(false); return; }
+    const t = window.setTimeout(() => setSyncing(false), 8000);
+    return () => window.clearTimeout(t);
+  }, [syncing, lastSyncAt, extGroups.length]);
 
   const extensionGroups: FacebookGroup[] = extGroups.map((g) => ({
     group_id: g.group_id,
@@ -102,6 +112,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const syncFromExtension = () => {
+    setSyncing(true);
     refresh();
     toast.info("מבקש קבוצות מהתוסף…");
   };
@@ -127,12 +138,21 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         <button
           type="button"
           onClick={syncFromExtension}
+          disabled={syncing}
           title="סנכרן קבוצות מהתוסף"
-          className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+          className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
         >
-          <RefreshCw className="h-3 w-3" /> סנכרן מהתוסף
+          {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+          {syncing ? "מסנכרן…" : "סנכרן מהתוסף"}
         </button>
       </div>
+
+      {syncing && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-[11px] text-primary">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ממתין לקבוצות מהתוסף — פתח את עמוד הקבוצות שלך בפייסבוק אם החלון סגור.
+        </div>
+      )}
 
       {loading && !hasVisibleGroups && (
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
