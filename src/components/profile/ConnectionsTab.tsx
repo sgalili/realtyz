@@ -84,7 +84,7 @@ function ConnectionSection({
 }
 
 export function ConnectionsTab() {
-  const { workspaceOwnerId } = useWorkspace();
+  const { activeWorkspaceId } = useWorkspace();
   const [openId, setOpenId] = useState<string | null>(null);
   const [meta, setMeta] = useState<MetaStatus | null>(null);
   const [waMode, setWaMode] = useState<string | null>(null);
@@ -106,7 +106,7 @@ export function ConnectionsTab() {
           const { data: p } = await supabase.from('profiles').select('email_alias').eq('id', user.id).maybeSingle();
           setEmailAlias(((p as any)?.email_alias as string) || null);
         }
-        const ownerId = workspaceOwnerId ?? user?.id;
+        const ownerId = activeWorkspaceId ?? user?.id;
         if (ownerId) {
           const { data: ws } = await supabase
             .from('workspace_whatsapp_settings' as never)
@@ -117,7 +117,7 @@ export function ConnectionsTab() {
         }
       } catch { /* silent */ }
     })();
-  }, [workspaceOwnerId]);
+  }, [activeWorkspaceId]);
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
