@@ -167,7 +167,7 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   }, [property, open]);
 
   // 60s client-side debounce on the manual Homely sync — prevents accidental
-  // burst clicks from spamming the Homely API (Udi's Ayrshare profile was
+  // burst clicks from spamming the Homely API (the provider profile was
   // permanently locked for monthly-unsuspension overuse from a similar storm).
   const lastHomelySyncAtRef = useRef<number>(0);
   const handleSyncFromHomely = async () => {

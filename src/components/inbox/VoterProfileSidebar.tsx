@@ -220,9 +220,16 @@ const VoterProfileSidebar = ({ voter }: Props) => {
           )}
           <div className="space-y-2">
             {recentMessages?.map((msg: any) => {
-              const label = msg.direction === 'outbound'
-                ? 'הצעת נכס נשלחה אוטומטית בוואטסאפ'
-                : 'תגובת לקוח התקבלה';
+              const p = String(msg.platform || msg.channel || '').toLowerCase();
+              const channelLabel = p.includes('whatsapp') ? 'וואטסאפ'
+                : p.includes('instagram') ? 'אינסטגרם'
+                : (p.includes('facebook') || p.includes('messenger')) ? 'פייסבוק'
+                : p.includes('email') ? 'אימייל'
+                : p.includes('sms') ? 'SMS' : '';
+              const who = msg.direction === 'outbound'
+                ? (msg.sender_type === 'ai' ? 'הסוכן הדיגיטלי שלח' : 'נשלחה הודעה')
+                : 'הודעה מהלקוח';
+              const label = channelLabel ? `${who} · ${channelLabel}` : who;
               return (
                 <div key={msg.id} className="flex items-start gap-2 text-xs">
                   <MessageSquare className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />

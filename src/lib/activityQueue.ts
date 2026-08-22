@@ -11,7 +11,7 @@ export type ActivityType =
   | "fb_comment"
   | "messenger"
   | "manual_share"
-  | "ayrshare_post"
+  | "meta_post"
   | "outreach";
 
 export type Variation = { title: string; body: string };

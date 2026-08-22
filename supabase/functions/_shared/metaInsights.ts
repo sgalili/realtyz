@@ -1,5 +1,5 @@
 // Shared helpers for reading performance metrics straight from the Meta
-// Graph API (replaces the Ayrshare /analytics endpoints).
+// Graph API.
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { graphCall, type MetaPage } from "./metaPage.ts";
 

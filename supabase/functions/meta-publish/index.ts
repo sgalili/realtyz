@@ -1,5 +1,5 @@
 // meta-publish — direct Meta Graph API publishing for Facebook Pages and
-// Instagram Business accounts. Replaces the Ayrshare publishing bridge.
+// Instagram Business accounts.
 //
 // POST  { post|text, channels:['facebook'|'instagram'], campaign_name?, media_urls?,
 //         scheduled_at?, workspace_owner_id?, group_ids?, first_comment?, action? }

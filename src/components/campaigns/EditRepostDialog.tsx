@@ -61,7 +61,7 @@ async function fetchWebtivLookupOptions(): Promise<ListingMeta[]> {
 
   webtivLookupInFlight = (async () => {
     // Pull fresh inventory from Webtiv and hydrate into `listings` so we get
-    // internal UUIDs that generate-content / ayrshare-post already understand.
+    // internal UUIDs that generate-content / meta-publish already understand.
     try {
       await supabase.functions.invoke('homely-search', {
         body: { limit: 100, hydrate: true },
@@ -165,7 +165,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
   }, []);
 
   // Robust listing resolver — tries multiple signals in order:
-  //   1) campaign.listing_id (persisted by ayrshare-post into provider_response)
+  //   1) campaign.listing_id (persisted by meta-publish into provider_response)
   //   2) ai_content_logs match by generated_text or media overlap
   //   3) listings.media_photos direct overlap
   //   4) listings match by title/address token overlap against message body
@@ -496,7 +496,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
       if (error) throw error;
       const payload: any = data ?? {};
       const errCode = payload?.error;
-      // Friendly rate-limit surface — provider (Ayrshare) or platform hit the ceiling.
+      // Friendly rate-limit surface — Meta hit the request ceiling.
       if (
         errCode === 'rate_limit_exceeded' ||
         errCode === 'RATE_LIMITED' ||
@@ -642,7 +642,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
 
 
         {/* First-comment section — mirrors the main composer. Auto-posts as
-            the first comment on the published post via Ayrshare. */}
+            the first comment on the published post via the Meta API. */}
         <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <label className="flex items-center gap-2 text-sm font-semibold">

@@ -1,5 +1,5 @@
 // meta-dm-send — send a Facebook Messenger / Instagram DM through the official
-// Meta Send API (replaces ayrshare-send-dm).
+// Meta Send API.
 //
 // POST { lead_id, content, platform?: messenger|facebook|instagram, recipient_id? }
 //   → { ok: true, message_id }                       on success

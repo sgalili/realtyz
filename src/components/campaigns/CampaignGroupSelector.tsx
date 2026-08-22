@@ -24,12 +24,12 @@ type Props = {
 
 /**
  * CampaignGroupSelector — group targets come from two sources only:
- *  1. Groups already connected through Ayrshare / previously synced rows.
+ *  1. Groups previously synced into fb_user_groups.
  *  2. Groups pushed in live by the companion browser extension.
  * Manual entry was removed: the extension owns group discovery.
  */
 export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Props) => {
-  const [ayrshareGroups, setAyrshareGroups] = useState<FacebookGroup[]>([]);
+  const [syncedGroups, setSyncedGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const { groups: extGroups, lastSyncAt, refresh } = useExtensionGroups();
@@ -53,28 +53,21 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   }));
 
   const extIds = new Set(extensionGroups.map((g) => g.group_id));
-  const groups = [...extensionGroups, ...ayrshareGroups.filter((g) => !extIds.has(g.group_id))];
+  const groups = [...extensionGroups, ...syncedGroups.filter((g) => !extIds.has(g.group_id))];
   const hasVisibleGroups = groups.length > 0;
-
-  const fetchFromAyrshare = async (): Promise<FacebookGroup[]> => {
-    const { data, error } = await supabase.functions.invoke("ayrshare-groups-fetch", { body: {} });
-    if (error) return [];
-    return Array.isArray((data as any)?.groups) ? (data as any).groups : [];
-  };
 
   const fetchSyncedGroups = async (): Promise<FacebookGroup[]> => {
     try {
       const { data, error } = await (supabase as any)
-        .from("ayrshare_social_accounts")
-        .select("account_ref, account_name, page_name, profile_image_url, platform")
-        .in("platform", ["fbg", "facebook_group", "facebookgroup"]);
+        .from("fb_user_groups")
+        .select("group_id, group_name, group_icon");
       if (error) return [];
       return (data ?? [])
-        .filter((r: any) => r.account_ref)
+        .filter((r: any) => r.group_id)
         .map((r: any) => ({
-          group_id: String(r.account_ref),
-          group_name: String(r.page_name || r.account_name || "קבוצה"),
-          group_icon: r.profile_image_url || null,
+          group_id: String(r.group_id),
+          group_name: String(r.group_name || "קבוצה"),
+          group_icon: r.group_icon || null,
           connected: true,
           source: "api" as const,
         }));
@@ -89,21 +82,20 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       try {
         const cached = sessionStorage.getItem(SESSION_CACHE_KEY);
         if (cached) {
-          const parsed = JSON.parse(cached) as { ayrshare: FacebookGroup[] };
-          if (Array.isArray(parsed?.ayrshare)) {
-            setAyrshareGroups(parsed.ayrshare);
+          const parsed = JSON.parse(cached) as { groups: FacebookGroup[] };
+          if (Array.isArray(parsed?.groups)) {
+            setSyncedGroups(parsed.groups);
             setLoading(false);
             return;
           }
         }
       } catch { /* noop */ }
 
-      let list = await fetchFromAyrshare();
-      if (list.length === 0) list = await fetchSyncedGroups();
-      setAyrshareGroups(list);
-      try { sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ ayrshare: list })); } catch { /* noop */ }
+      const list = await fetchSyncedGroups();
+      setSyncedGroups(list);
+      try { sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ groups: list })); } catch { /* noop */ }
     } catch {
-      setAyrshareGroups([]);
+      setSyncedGroups([]);
     } finally {
       setLoading(false);
     }

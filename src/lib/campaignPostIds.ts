@@ -67,9 +67,9 @@ export const getCampaignPostIds = (campaign: CampaignPostIdentity): string[] => 
   const allPostIds = [...flatPostIds, ...wrappedPostIds];
   const platform = platformForCampaignChannel(campaign.channel);
 
-  // Ayrshare returns a native `id` (e.g. "AFNkABkomz1Bnpbud7Ui") in addition
+  // Meta returns a native `id` (e.g. "AFNkABkomz1Bnpbud7Ui") in addition
   // to the platform-native fbId. Some downstream rows (ai replies posted via
-  // ayrshare-comment-reply, etc.) store that native id in `external_post_id`,
+  // meta-comments-sync, etc.) store that native id in `external_post_id`,
   // so include both forms.
   if (Array.isArray(response?.posts)) {
     response.posts.forEach((post: any) => {

@@ -97,8 +97,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   // Social-connection sentinel. Only warns when EVERY signal says there is no
-  // usable connection (Ayrshare profile key, linked social accounts, or a
-  // personal Facebook token). Any read error is treated as "healthy" so RLS
+  // usable connection (a bound Meta Page or a personal Facebook token).
+  // Any read error is treated as "healthy" so RLS
   // hiccups never produce a false-positive banner. Dismissed for the session
   // once shown.
   const relinkWarnedRef = useRef(false);
@@ -110,17 +110,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       return;
     }
     (async () => {
-      const [profileRes, accountsRes, personalRes] = await Promise.all([
-        supabase.from('workspace_social_profile').select('ayrshare_profile_key').maybeSingle(),
-        supabase.from('ayrshare_social_accounts').select('id').limit(1),
+      const [pageRes, socialRes, personalRes] = await Promise.all([
+        supabase.from('messenger_page_bindings').select('id, page_id').limit(1),
+        supabase.from('social_connections').select('id').limit(1),
         supabase.from('fb_personal_connections').select('id, access_token, expires_at').limit(1),
       ]);
 
       // Errors == unknown state, not broken state.
-      if (profileRes.error || accountsRes.error || personalRes.error) return;
+      if (pageRes.error || socialRes.error || personalRes.error) return;
 
-      const hasKey = !!(profileRes.data as any)?.ayrshare_profile_key?.toString().trim();
-      const hasAccounts = (accountsRes.data?.length ?? 0) > 0;
+      const hasKey = !!(pageRes.data ?? [])[0]?.page_id;
+      const hasAccounts = (socialRes.data?.length ?? 0) > 0;
       const personal = (personalRes.data ?? [])[0] as any;
       const personalValid = !!personal?.access_token
         && (!personal.expires_at || new Date(personal.expires_at).getTime() > Date.now());
@@ -133,7 +133,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         duration: 8000,
         action: {
           label: 'חבר מחדש',
-          onClick: () => { window.location.href = '/api-settings#facebook'; },
+          onClick: () => { window.location.href = '/profile?tab=connections'; },
         },
       });
     })().catch(() => {});

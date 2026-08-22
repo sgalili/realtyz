@@ -3,7 +3,7 @@
 // Called by pg_cron every minute. Finds `campaign_logs` rows that were inserted
 // as lightweight placeholders (status='scheduled', needs_regeneration=true) and
 // whose `sent_at` is imminent. For each, it lazily generates the AI content
-// (via generate-content) and dispatches it through ayrshare-post NOW. This lets
+// (via generate-content) and dispatches it through meta-publish NOW. This lets
 // the client insert hundreds of series slots instantly without pre-generating
 // content or burning tokens up-front.
 //
@@ -27,9 +27,9 @@ const json = (b: unknown, s = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-async function invokeAyrsharePost(row: any, body: string): Promise<{ ok: boolean; error?: string }> {
+async function invokeMetaPublish(row: any, body: string): Promise<{ ok: boolean; error?: string }> {
   try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/ayrshare-post`, {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/meta-publish`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -139,10 +139,10 @@ Deno.serve(async (req) => {
     if (claimErr || !claimed) continue;
 
     const finalBody = await regenerateBody(row);
-    const dispatch = await invokeAyrsharePost(row, finalBody);
+    const dispatch = await invokeMetaPublish(row, finalBody);
 
     if (dispatch.ok) {
-      // ayrshare-post inserted its own row(s). Retire the placeholder so it
+      // meta-publish inserted its own row(s). Retire the placeholder so it
       // doesn't double-count on the calendar.
       await admin.from("campaign_logs").delete().eq("id", row.id);
       results.push({ id: row.id, ok: true });

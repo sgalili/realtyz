@@ -4,7 +4,7 @@
 // with anti-spam high-entropy phrasing. Pure compose-and-return.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { sanitizeOutboundText, detectDominantLanguage } from "../_shared/ayrshare-helpers.ts";
+import { sanitizeOutboundText, detectDominantLanguage } from "../_shared/textSanitize.ts";
 import {
   adminClient,
   loadKbSnippets,

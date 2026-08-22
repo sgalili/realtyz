@@ -15,7 +15,7 @@ const PUBLIC_BASE = SUPABASE_URL ? `${SUPABASE_URL}/storage/v1/object/public` : 
 
 const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif|avif|mp4|mov|m4v)(\?|#|$)/i;
 
-/** Pull a URL-ish string out of an object shape (Graph API / Ayrshare payloads). */
+/** Pull a URL-ish string out of an object shape (Graph API payloads). */
 function pickFromObject(value: Record<string, unknown>): string {
   const candidates = [
     (value as any).url,

@@ -30,7 +30,7 @@ async function ensureBucket() {
 }
 
 function sanitizeUrl(url: string): string {
-  // Strip tracking / query params and fragments — Firecrawl (and Ayrshare)
+  // Strip tracking / query params and fragments — Firecrawl
   // occasionally reject share URLs that carry oversized query strings (code 438).
   try {
     const u = new URL(url);
@@ -60,7 +60,7 @@ async function firecrawlScrapeOnce(url: string): Promise<{ ok: boolean; status: 
   });
   const rawText = await resp.text().catch(() => "");
   if (!resp.ok) {
-    // Try to extract provider error code (Ayrshare-style 438/331 or Firecrawl code fields)
+    // Try to extract provider error code (438/331-style or Firecrawl code fields)
     let errCode: number | null = null;
     let errMsg = rawText.slice(0, 500);
     try {

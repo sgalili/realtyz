@@ -283,7 +283,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
     // Strip markdown emphasis for non-WhatsApp channels. WA Green API renders
     // *bold* natively, so we keep asterisks intact for whatsapp drafts only.
     if (channel !== "whatsapp") {
-      const { stripMarkdownEmphasis } = await import("../_shared/ayrshare-helpers.ts");
+      const { stripMarkdownEmphasis } = await import("../_shared/textSanitize.ts");
       if (typeof draft.subject === "string") draft.subject = stripMarkdownEmphasis(draft.subject);
       if (typeof draft.message === "string") draft.message = stripMarkdownEmphasis(draft.message);
       if (typeof draft.call_to_action === "string") draft.call_to_action = stripMarkdownEmphasis(draft.call_to_action);
