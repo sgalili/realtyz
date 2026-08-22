@@ -240,16 +240,35 @@ export function WhatsAppGatewayCard() {
           />
         </div>
 
+        {avatarSync.active && (
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="tabular-nums">{avatarSync.percent}%</span>
+              <span>
+                מסנכרן תמונות פרופיל · {avatarSync.job?.scanned ?? 0}/{avatarSync.job?.total ?? 0}
+                {' · עודכנו '}{avatarSync.job?.updated ?? 0}
+              </span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full bg-emerald-500 transition-all"
+                style={{ width: `${avatarSync.percent}%` }}
+              />
+            </div>
+            <p className="text-[11px]">הסנכרון ממשיך ברקע גם אם תעבור למסך אחר.</p>
+          </div>
+        )}
+
         <div className="flex items-center gap-1.5 justify-end pt-1 flex-nowrap">
           <Button
             variant="outline"
             size="sm"
             onClick={() => syncAvatars(false)}
-            disabled={syncingAvatars || loading}
+            disabled={syncingAvatars || avatarSync.active || loading}
             title="משוך תמונות פרופיל מ-WhatsApp לכל המתעניינים החסרים תמונה"
             className="px-2 text-xs whitespace-nowrap"
           >
-            {syncingAvatars ? (
+            {syncingAvatars || avatarSync.active ? (
               <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
             ) : (
               <ImageDown className="ml-1 h-3.5 w-3.5" />
