@@ -15,8 +15,8 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { supabase } from '@/integrations/supabase/client';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
+import { ConnectionsTab } from '@/components/profile/ConnectionsTab';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
-import { AyrshareCredentialsCard } from '@/components/profile/AyrshareCredentialsCard';
 import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
@@ -619,12 +619,7 @@ export default function Profile() {
           <WorkspaceTab />
         </TabsContent>
         <TabsContent value="connections" className="mt-[20px] space-y-4" dir="rtl">
-          <AyrshareCredentialsCard />
-          <WhatsAppConnectionModeCard />
-          <WhatsAppGatewayCard />
-          <VoiceGatewayCard />
-          <EmailAliasCard />
-          <ListingPortalsCard />
+          <ConnectionsTab />
         </TabsContent>
 
       </Tabs>
