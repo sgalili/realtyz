@@ -187,6 +187,56 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
           <p className="text-xs text-destructive">{status.message}</p>
         )}
 
+        {/* Manual token fallback for apps blocked in development/testing mode */}
+        <div className="rounded-xl border">
+          <button
+            type="button"
+            onClick={() => setManualOpen((v) => !v)}
+            aria-expanded={manualOpen}
+            className="flex w-full items-center justify-between gap-2 p-3 text-right"
+          >
+            <span className="flex items-center gap-2 text-xs font-medium">
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              חיבור ידני באמצעות טוקן
+            </span>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${manualOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {manualOpen && (
+            <div className="space-y-3 border-t p-3">
+              <p className="text-[11px] text-muted-foreground">
+                שימושי כאשר אפליקציית Meta נמצאת במצב פיתוח או חסומה. הטוקן נשמר בצד השרת בלבד.
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="meta-page-id" className="text-xs">Page ID</Label>
+                <Input
+                  id="meta-page-id"
+                  dir="ltr"
+                  inputMode="numeric"
+                  value={manualPageId}
+                  onChange={(e) => setManualPageId(e.target.value)}
+                  className="text-left"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="meta-page-token" className="text-xs">Page Access Token</Label>
+                <Input
+                  id="meta-page-token"
+                  dir="ltr"
+                  type="password"
+                  autoComplete="off"
+                  value={manualToken}
+                  onChange={(e) => setManualToken(e.target.value)}
+                  className="text-left"
+                />
+              </div>
+              <Button size="sm" onClick={saveManual} disabled={savingManual} className="w-full gap-1.5">
+                {savingManual ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                שמור טוקן ידני
+              </Button>
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="gap-1.5">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
