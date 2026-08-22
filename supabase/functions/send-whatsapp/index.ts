@@ -64,8 +64,16 @@ const BodySchema = z
     template_id: z.string().min(1).max(120).optional(),
     template_language: z.string().min(2).max(20).optional(),
     template_components: z.array(z.unknown()).optional(),
+    // Dynamic template variables. Keys may be placeholder names
+    // ({{first_name}}) or positional indexes ("1", "2"). Missing values are
+    // auto-filled from the lead / listing / workspace branding.
+    template_variables: z.record(z.string().max(600)).optional(),
+    // Optional listing used to resolve property-address variables.
+    listing_id: z.string().uuid().optional(),
     // Tenant-scoped routing override (looks up wa_providers by tenant_id).
     tenant_id: z.string().uuid().optional(),
+
+
     // Optional file attachment (base64) for unified file send.
     file: z
       .object({
@@ -124,19 +132,46 @@ interface ResolvedProvider {
   name: "WBA";
   is_official: true;
   config: Record<string, unknown>;
+  source: "workspace" | "central";
+}
+
+/** Project-level (central platform) Meta Cloud API credentials. */
+function centralMetaConfig(): Record<string, unknown> | null {
+  const phoneNumberId = Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? Deno.env.get("META_PHONE_NUMBER_ID") ?? "";
+  const accessToken = Deno.env.get("META_WA_ACCESS_TOKEN") ?? Deno.env.get("META_WHATSAPP_TOKEN") ?? "";
+  if (!phoneNumberId || !accessToken) return null;
+  return {
+    phone_number_id: phoneNumberId,
+    access_token: accessToken,
+    api_version:
+      Deno.env.get("META_WA_API_VERSION") ??
+      Deno.env.get("META_API_VERSION") ??
+      Deno.env.get("WHATSAPP_API_VERSION") ??
+      "v20.0",
+  };
 }
 
 /**
  * Resolve the official Meta WBA credentials for this workspace.
  * Only `wa_providers` rows with provider_name='WBA' are considered; if none
  * exist we fall back to the project-level Meta env secrets.
+ *
+ * When the workspace is configured for 'official_meta' (`preferCentral`), the
+ * central platform Meta Cloud API number is used first, and the workspace's
+ * own registered WABA row is only a fallback.
  */
 async function resolveProvider(
   admin: ReturnType<typeof createClient>,
   userId: string | null,
   tenantId: string | null,
+  preferCentral = false,
 ): Promise<ResolvedProvider | null> {
+  if (preferCentral) {
+    const central = centralMetaConfig();
+    if (central) return { name: "WBA", is_official: true, config: central, source: "central" };
+  }
   const tryRows = async (column: "tenant_id" | "user_id", value: string) => {
+
     const { data: rows } = await admin
       .from("wa_providers")
       .select("provider_name, config, is_active, updated_at")
@@ -152,8 +187,9 @@ async function resolveProvider(
     if (!row) return null;
     const cfg = row.config ?? {};
     if (!cfg.phone_number_id || !cfg.access_token) return null;
-    return { name: "WBA", is_official: true, config: cfg };
+    return { name: "WBA", is_official: true, config: cfg, source: "workspace" };
   };
+
 
   const ids = [tenantId, userId].filter(Boolean) as string[];
   for (const id of ids) {
@@ -194,22 +230,157 @@ async function resolveProvider(
   }
 
   // Project-level Meta Cloud API secrets.
-  const phoneNumberId = Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? Deno.env.get("META_PHONE_NUMBER_ID") ?? "";
-  const accessToken = Deno.env.get("META_WA_ACCESS_TOKEN") ?? Deno.env.get("META_WHATSAPP_TOKEN") ?? "";
-  if (phoneNumberId && accessToken) {
-    return {
-      name: "WBA",
-      is_official: true,
-      config: {
-        phone_number_id: phoneNumberId,
-        access_token: accessToken,
-        api_version: Deno.env.get("META_WA_API_VERSION") ?? Deno.env.get("META_API_VERSION") ?? Deno.env.get("WHATSAPP_API_VERSION") ?? "v20.0",
-      },
-    };
-  }
+  const central = centralMetaConfig();
+  if (central) return { name: "WBA", is_official: true, config: central, source: "central" };
 
   return null;
 }
+
+/**
+ * Resolve the workspace WhatsApp connection mode chosen in settings
+ * (`workspace_whatsapp_settings.connection_type`).
+ *  - 'official_meta' → central platform Meta Cloud API template system
+ *  - 'qr_session'    → workspace's own connected number
+ * Defaults to 'official_meta' when nothing was configured yet.
+ */
+async function resolveWorkspaceMode(
+  admin: ReturnType<typeof createClient>,
+  userId: string | null,
+  tenantId: string | null,
+): Promise<{ mode: "official_meta" | "qr_session"; owner_id: string | null }> {
+  const ids = [tenantId, userId].filter(Boolean) as string[];
+  const candidates = [...ids];
+  for (const id of ids) {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("active_workspace_owner_id, workspace_owner_id")
+      .eq("id", id)
+      .maybeSingle();
+    const owner = ((prof as any)?.active_workspace_owner_id ?? (prof as any)?.workspace_owner_id) as string | null;
+    if (owner && !candidates.includes(owner)) candidates.push(owner);
+  }
+  for (const id of candidates) {
+    const { data } = await admin
+      .from("workspace_whatsapp_settings")
+      .select("connection_type")
+      .eq("workspace_owner_id", id)
+      .maybeSingle();
+    const mode = (data as any)?.connection_type as string | undefined;
+    if (mode === "official_meta" || mode === "qr_session") return { mode, owner_id: id };
+  }
+  return { mode: "official_meta", owner_id: candidates[0] ?? null };
+}
+
+/**
+ * Build the Meta `components` payload for an approved template.
+ *
+ * Supports both positional ({{1}}) and named ({{first_name}}) placeholders —
+ * named ones require `parameter_name` per Meta's Cloud API spec.
+ */
+function buildTemplateComponents(
+  bodyText: string,
+  values: Record<string, string>,
+): unknown[] {
+  const keys: string[] = [];
+  const re = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(bodyText)) !== null) {
+    if (!keys.includes(m[1])) keys.push(m[1]);
+  }
+  if (!keys.length) return [];
+  const parameters = keys.map((key) => {
+    const text = values[key] ?? values[key.toLowerCase()] ?? "";
+    return /^\d+$/.test(key)
+      ? { type: "text", text }
+      : { type: "text", parameter_name: key, text };
+  });
+  return [{ type: "body", parameters }];
+}
+
+/**
+ * Collect the dynamic values a template may reference: lead name, property
+ * address and the workspace's business name — merged with caller overrides.
+ */
+async function buildTemplateVariables(
+  admin: ReturnType<typeof createClient>,
+  opts: {
+    leadId?: string | null;
+    listingId?: string | null;
+    ownerId?: string | null;
+    overrides?: Record<string, string>;
+  },
+): Promise<Record<string, string>> {
+  const values: Record<string, string> = {};
+
+  let leadName = "";
+  let listingId = opts.listingId ?? null;
+  if (opts.leadId) {
+    const { data: lead } = await admin
+      .from("leads")
+      .select("full_name, city, linked_listing_id")
+      .eq("id", opts.leadId)
+      .maybeSingle();
+    leadName = String((lead as any)?.full_name ?? "");
+    listingId = listingId ?? ((lead as any)?.linked_listing_id ?? null);
+  }
+
+  let address = "";
+  if (listingId) {
+    const { data: listing } = await admin
+      .from("listings")
+      .select("address, house_number, apartment_number, city, property_title")
+      .eq("id", listingId)
+      .maybeSingle();
+    const l = (listing ?? {}) as any;
+    if (l) {
+      const street = [l.address, l.house_number].filter(Boolean).join(" ").trim();
+      address = [street, l.city].filter(Boolean).join(", ") || String(l.property_title ?? "");
+    }
+  }
+
+  let businessName = "";
+  if (opts.ownerId) {
+    const { data: brand } = await admin
+      .from("white_label_settings")
+      .select("agency_name")
+      .eq("user_id", opts.ownerId)
+      .maybeSingle();
+    businessName = String((brand as any)?.agency_name ?? "");
+    if (!businessName) {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", opts.ownerId)
+        .maybeSingle();
+      businessName = String((prof as any)?.full_name ?? "");
+    }
+  }
+
+  const first = leadName.trim().split(/\s+/)[0] ?? "";
+  const assign = (keys: string[], value: string) => {
+    if (!value) return;
+    for (const k of keys) values[k] = value;
+  };
+  assign(["lead_name", "name", "full_name", "customer_name", "client_name"], leadName);
+  assign(["first_name", "firstname"], first || leadName);
+  assign(["property_address", "address", "property", "listing_address"], address);
+  assign(["business_name", "agency_name", "company_name", "broker_name"], businessName);
+
+  // Caller-supplied values always win.
+  for (const [k, v] of Object.entries(opts.overrides ?? {})) {
+    if (v != null && v !== "") values[k] = v;
+  }
+
+  // Positional fallback: {{1}}, {{2}}, {{3}} → lead name, address, business.
+  const positional = [values.lead_name ?? first, values.property_address ?? "", values.business_name ?? ""];
+  positional.forEach((v, i) => {
+    const key = String(i + 1);
+    if (values[key] == null && v) values[key] = v;
+  });
+
+  return values;
+}
+
 
 async function sendViaWba(
   cfg: Record<string, unknown>,
@@ -675,12 +846,19 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
+    // Workspace-chosen connection mode: 'official_meta' routes through the
+    // central platform Meta Cloud API number, 'qr_session' keeps the
+    // workspace's own connected number.
+    const routing = await resolveWorkspaceMode(admin, userId, routingTenantId);
+
     // Official Meta WhatsApp Business Cloud API credentials for this workspace.
     const provider = await resolveProvider(
       admin,
       userId,
       routingTenantId,
+      routing.mode === "official_meta",
     );
+
     if (!provider) {
       console.error("send-whatsapp no active WBA provider", {
         user_routed: !!userId,
@@ -710,13 +888,54 @@ Deno.serve(async (req) => {
       disclosureAppended = r.appended;
     }
 
-    const template = parsed.data.template_id
-      ? {
-          id: parsed.data.template_id,
-          language: parsed.data.template_language,
-          components: parsed.data.template_components,
+    // Template dispatch. When the caller didn't pre-build `components`, we
+    // look up the approved template body from the synced cache and map the
+    // dynamic variables (lead name, property address, business name) into the
+    // Meta payload before sending.
+    let template:
+      | { id: string; language?: string; components?: unknown[] }
+      | undefined;
+    if (parsed.data.template_id) {
+      let language = parsed.data.template_language;
+      let components = parsed.data.template_components;
+
+      if (!components || components.length === 0) {
+        let bodyText = "";
+        const tplQuery = admin
+          .from("wa_message_templates")
+          .select("name, language, body_text, owner_user_id")
+          .eq("name", parsed.data.template_id)
+          .order("synced_at", { ascending: false })
+          .limit(5);
+        const { data: tplRows } = await tplQuery;
+        const rows = (tplRows ?? []) as any[];
+        const row =
+          rows.find((r) => routing.owner_id && r.owner_user_id === routing.owner_id) ??
+          rows.find((r) => !language || r.language === language) ??
+          rows[0];
+        if (row) {
+          bodyText = String(row.body_text ?? "");
+          language = language ?? String(row.language ?? "he");
         }
-      : undefined;
+
+        if (bodyText && /\{\{\s*[A-Za-z0-9_]+\s*\}\}/.test(bodyText)) {
+          const values = await buildTemplateVariables(admin, {
+            leadId: parsed.data.lead_id ?? null,
+            listingId: parsed.data.listing_id ?? null,
+            ownerId: routing.owner_id,
+            overrides: parsed.data.template_variables,
+          });
+          components = buildTemplateComponents(bodyText, values);
+        }
+      }
+
+      template = {
+        id: parsed.data.template_id,
+        language,
+        components,
+      };
+    }
+
 
     let result: StdResponse = await sendViaWba(
       provider.config,
@@ -828,6 +1047,8 @@ Deno.serve(async (req) => {
         provider: effectiveProvider,
         phone_last4: phone.slice(-4),
         message_id_present: !!result.message_id,
+        connection_mode: routing.mode,
+        creds_source: provider.source,
         tenant_routed: !!routingTenantId,
         template: parsed.data.template_id ?? null,
       });
