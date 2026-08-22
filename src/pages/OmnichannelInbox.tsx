@@ -193,12 +193,12 @@ const OmnichannelInbox = () => {
     },
   });
 
-  // Auto-sync inbound Messenger/Instagram DMs on mount + every 60s, since
-  // Ayrshare's push webhook isn't always reliable.
+  // Auto-sync inbound Messenger/Instagram DMs on mount + every 60s straight
+  // from the Meta Graph API (the webhook covers realtime; this is the safety net).
   useEffect(() => {
     let cancelled = false;
     const run = () => {
-      supabase.functions.invoke('ayrshare-fetch-dms').then(({ data }) => {
+      supabase.functions.invoke('meta-dm-sync', { body: {} }).then(({ data }) => {
         if (cancelled) return;
         const inserted = Object.values((data as any)?.summary || {})
           .reduce<number>((sum, p: any) => sum + (p?.inserted || 0), 0);

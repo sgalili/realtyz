@@ -300,16 +300,16 @@ serve(async (req) => {
     }
 
     // Direct DM channels (Messenger / Instagram / raw Facebook DM) bypass the
-    // approval queue: they send immediately via Ayrshare Messages API and the
-    // outbound row is inserted by ayrshare-send-dm.
-    if (channel === "messenger" || channel === "instagram" || channel === "facebook" || channel === "linkedin") {
+    // approval queue: they send immediately through the official Meta Send API
+    // and the outbound row is inserted by meta-dm-send.
+    if (channel === "messenger" || channel === "instagram" || channel === "facebook") {
       if (!lead_id) {
         return new Response(JSON.stringify({ success: false, sent: false, fallback: true, error: "missing_lead_id", code: "missing_lead_id" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const dmRes = await fetch(`${supabaseUrl}/functions/v1/ayrshare-send-dm`, {
+      const dmRes = await fetch(`${supabaseUrl}/functions/v1/meta-dm-send`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${serviceRoleKey}`,
