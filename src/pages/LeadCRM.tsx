@@ -434,6 +434,8 @@ const LeadCRM = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiPreviews, setAiPreviews] = useState<Array<{ name: string; message: string }>>([]);
   const [addVoterOpen, setAddVoterOpen] = useState(false);
+  const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
+  const [deletingSingle, setDeletingSingle] = useState(false);
   const [newVoter, setNewVoter] = useState({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
   const [addingVoter, setAddingVoter] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -453,7 +455,7 @@ const LeadCRM = () => {
   useEffect(() => {
     const handler = (e: Event) => {
       const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' }>).detail?.action;
-      if (action === 'manual') createBlankLeadAndOpen();
+      if (action === 'manual') setAddVoterOpen(true);
       else if (action === 'import') fileInputRef.current?.click();
       else if (action === 'homely') handleHomelySync();
     };
@@ -522,7 +524,17 @@ const LeadCRM = () => {
     refetchInterval: 30_000,    // 30s polling for non-critical updates
   });
 
-  const dbVoters = useMemo(() => voterPages?.pages.flatMap(p => p.rows) ?? [], [voterPages]);
+  // Blank/placeholder rows from the legacy "create empty lead" flow are never
+  // shown: no real phone number and the stock "לקוח חדש" name.
+  const isBlankPlaceholderLead = (v: any) =>
+    String(v?.phone_number ?? '').startsWith('new-') ||
+    (String(v?.full_name ?? '').trim() === 'לקוח חדש' &&
+      !String(v?.email ?? '').trim() &&
+      !String(v?.city ?? '').trim());
+  const dbVoters = useMemo(
+    () => (voterPages?.pages.flatMap(p => p.rows) ?? []).filter((v) => !isBlankPlaceholderLead(v)),
+    [voterPages],
+  );
   const demoVoters = useMemo(() => getDemoCandidateVoters(demoCandidateId), [demoCandidateId]);
   const demoMessages = useMemo(() => getDemoCandidateMessages(demoCandidateId), [demoCandidateId]);
   const leads = useMemo(() => {
@@ -989,62 +1001,35 @@ const LeadCRM = () => {
   };
 
   /**
-   * Create a blank lead row and immediately open its profile sheet so the
-   * broker can fill every field (name, phone, email, age/gender, deal type,
-   * budget…) inside the unified CRM workspace. Replaces the legacy modal
-   * popups for "add lead".
+   * "Add Lead" no longer writes a placeholder row. The NewLeadDialog collects
+   * name + phone (and pipeline fields) and only then inserts a real lead, so
+   * the CRM can never accumulate blank "לקוח חדש" records.
    */
-  const createBlankLeadAndOpen = async () => {
-    if (blockDemoAction('add-lead')) return;
+
+  /** Permanently delete a single lead from the CRM profile sheet. */
+  const deleteSingleLead = async (leadId: string) => {
+    setDeletingSingle(true);
     try {
-      const { data: userResp, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !userResp?.user) throw userErr || new Error('not_authenticated');
-      const uid = userResp.user.id;
-      // phone_number is NOT NULL + UNIQUE — generate a unique placeholder the user can edit
-      const placeholderPhone = `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const { data, error } = await supabase
-        .from('leads')
-        .insert({
-          full_name: 'לקוח חדש',
-          phone_number: placeholderPhone,
-          lead_stage: 'new',
-          status: 'new',
-          interest_tag: 'manual',
-          assigned_to: uid,
-          is_demo: false,
-        } as any)
-        .select('id')
-        .single();
+      const { data, error } = await supabase.rpc('delete_leads_cascade', { _ids: [leadId] } as any);
       if (error) throw error;
-      const newId = (data as any)?.id;
-      if (!newId) throw new Error('insert_returned_no_row');
-      await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-      queryClient.invalidateQueries({ queryKey: ['leads-total'] });
-      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
-      setSelectedVoterId(newId);
-      toast.success('פרופיל מתעניין נפתח — מלא את הפרטים');
-      try {
-        navigate(`/lead-crm/${newId}`);
-        // Hard fallback in case dropdown portal swallows the router transition
-        setTimeout(() => {
-          if (!window.location.pathname.includes(newId)) {
-            window.location.href = `/lead-crm/${newId}`;
-          }
-        }, 250);
-      } catch {
-        window.location.href = `/lead-crm/${newId}`;
+      const deleted = typeof data === 'number' ? data : Number(data ?? 0);
+      if (deleted === 0) {
+        toast.error('המחיקה נחסמה - אין הרשאה למחוק את הרשומה');
+        return;
       }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
+        queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
+      ]);
+      setSingleDeleteId(null);
+      setSelectedVoterId(null);
+      if (routeLeadId) navigate('/lead-crm');
+      toast.success('המתעניין נמחק לצמיתות');
     } catch (err: any) {
-      console.error('[createBlankLeadAndOpen] failed', err);
-      const msg = String(err?.message || '');
-      if (msg.includes('TRIAL_RECORD_LIMIT')) {
-        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו', {
-          duration: 8000,
-          action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
-        });
-      } else {
-        toast.error('יצירת מתעניין נכשלה: ' + (err?.message || 'שגיאה'));
-      }
+      toast.error('מחיקה נכשלה: ' + (err?.message || 'שגיאה'));
+    } finally {
+      setDeletingSingle(false);
     }
   };
 
@@ -2033,6 +2018,15 @@ const LeadCRM = () => {
                             {/* Homely / WebTiv are read-only sources — no push action. */}
 
                             <LeadEnrichmentIconButton lead={selectedVoter} />
+                            <button
+                              type="button"
+                              aria-label="מחק מתעניין"
+                              title="מחק מתעניין"
+                              onClick={() => setSingleDeleteId(selectedVoter.id)}
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-destructive hover:bg-destructive/10 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" strokeWidth={1.8} />
+                            </button>
                             <div className="flex items-center gap-1.5 mr-auto ps-2">
                               <Switch
                                 className="group h-6 w-11 data-[state=checked]:bg-[#25D366]"
@@ -2424,8 +2418,30 @@ const LeadCRM = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add-Lead modals deprecated — clicking "+" now creates a blank lead
-          and opens its CRM profile directly via createBlankLeadAndOpen(). */}
+      {/* Add Lead: a real row is inserted only after the broker fills the form. */}
+      <NewLeadDialog open={addVoterOpen} onOpenChange={setAddVoterOpen} />
+
+      <AlertDialog open={!!singleDeleteId} onOpenChange={(o) => { if (!deletingSingle && !o) setSingleDeleteId(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">מחיקת מתעניין</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">
+              האם אתה בטוח שברצונך למחוק ליד זה לצמיתות? הפעולה בלתי הפיכה.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingSingle}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingSingle}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); if (singleDeleteId) deleteSingleLead(singleDeleteId); }}
+            >
+              {deletingSingle ? 'מוחק…' : 'מחק לצמיתות'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <HomelyBulkSyncDialog
         open={homelyContactsSyncOpen}
         onOpenChange={setHomelyContactsSyncOpen}
