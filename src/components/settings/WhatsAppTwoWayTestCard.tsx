@@ -41,8 +41,9 @@ function normalizePhone(raw: string): string {
 export function WhatsAppTwoWayTestCard() {
   const [phone, setPhone] = useState('');
   const [mode, setMode] = useState<'template' | 'text'>('template');
-  const [templateName, setTemplateName] = useState('');
-  const [templateLang, setTemplateLang] = useState('he');
+  const [template, setTemplate] = useState<WaTemplateSelection | null>(null);
+  const { data: templateDefs } = useMetaWaTemplates();
+
   const [body, setBody] = useState('בדיקת חיבור WhatsApp מ-Realtyz AI+ ✅ אנא השב/י בהודעה כלשהי כדי לאמת תקשורת דו-כיוונית.');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
