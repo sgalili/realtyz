@@ -113,11 +113,23 @@ export const useExtensionGroups = () => {
     window.addEventListener("storage", onStorage);
     requestExtensionGroups();
 
+    // Same-tab writes by the extension do not raise a `storage` event, so we
+    // also poll the key and commit whenever its content changed.
+    let lastRaw = (() => { try { return localStorage.getItem(EXT_GROUPS_STORAGE_KEY); } catch { return null; } })();
+    const poll = window.setInterval(() => {
+      let raw: string | null = null;
+      try { raw = localStorage.getItem(EXT_GROUPS_STORAGE_KEY); } catch { return; }
+      if (raw === lastRaw) return;
+      lastRaw = raw;
+      try { commit(raw ? JSON.parse(raw) : []); } catch { /* noop */ }
+    }, 2000);
+
     return () => {
       window.removeEventListener("message", onMessage);
       document.removeEventListener(EXT_GROUPS_EVENT, onCustom as EventListener);
       window.removeEventListener(EXT_GROUPS_EVENT, onCustom as EventListener);
       window.removeEventListener("storage", onStorage);
+      window.clearInterval(poll);
     };
   }, []);
 
