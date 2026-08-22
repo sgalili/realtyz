@@ -193,7 +193,7 @@ const collectPostIds = (it: any, includeDirectId = true): string[] => {
 const looksLikeNativeFacebookPostId = (value: unknown) => {
   const v = asText(value);
   // Native Facebook page posts commonly arrive as PAGEID_POSTID. Keep this
-  // broad enough for Meta variants while excluding Ayrshare history UUIDs/ids.
+  // broad enough for Meta variants while excluding non-numeric history ids.
   return /^\d{5,}(_\d{5,})?$/.test(v);
 };
 
@@ -415,7 +415,7 @@ Deno.serve(async (req) => {
         ),
       ),
     );
-    // Ayrshare may silently cap very large page sizes; keep our request at a
+    // Keep our request at a pagination-friendly size, capped by Graph limits.
     // pagination-friendly size so maxPages is high enough to walk history.
     const pageSize = Math.min(
       50,
@@ -644,7 +644,7 @@ Deno.serve(async (req) => {
             provider_response: {
               imported_native_facebook: true,
               imported_at: new Date().toISOString(),
-              ayrshare_profile_ref_id: p._profile_ref_id,
+              profile_ref_id: p._profile_ref_id,
               facebook_page_id: p._profile_fb_id ?? ws?.facebook_page_id ?? null,
               facebook_page_name: p._profile_fb_name ?? ws?.facebook_page_name ??
                 null,

@@ -1,7 +1,7 @@
 // Bulk media re-sync for every stored Facebook campaign post.
 //
 // 1. Pulls active full-resolution media for each post from the Facebook Graph
-//    API (batched) and, as a fallback, from the Ayrshare history endpoint.
+//    API (batched), permanently mirroring images so posts never depend on
 // 2. Permanently mirrors every image into the public `post-media-cache` bucket.
 // 3. Rewrites campaign_logs.media_urls (+ provider_response.cached_media_urls)
 //    so the feed never depends on an expiring CDN signature again.
@@ -9,14 +9,12 @@
 // POST { limit?: number, force?: boolean, user_id?: string }
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { resolveMetaPage } from "../_shared/metaPage.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const AYR_BASE = "https://api.ayrshare.com/api";
-const WORKSPACE_ID = "00000000-0000-0000-0000-000000000001";
 const BUCKET = "post-media-cache";
 
-const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
@@ -144,24 +142,15 @@ function parseMetaCredential(raw: unknown): { token: string; pageId: string | nu
   }
 }
 
-async function resolveGraphToken(pageIdHint: string | null): Promise<{ token: string; pageId: string | null }> {
+async function resolveGraphToken(ownerId: string | null): Promise<{ token: string; pageId: string | null }> {
+  const page = await resolveMetaPage(admin, ownerId);
+  if (page?.token) return { token: page.token, pageId: page.pageId };
   const env = parseMetaCredential(
     Deno.env.get("FB_PAGE_ACCESS_TOKEN") ||
       Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN") ||
       Deno.env.get("META_ACCESS_TOKEN"),
   );
-  if (env.token) return { token: env.token, pageId: env.pageId || pageIdHint };
-  const { data: rows } = await admin
-    .from("api_configs")
-    .select("api_key, service_name")
-    .in("service_name", ["Meta Marketing API", "Facebook Graph API", "Facebook Page Access Token"])
-    .eq("is_active", true)
-    .limit(5);
-  for (const row of rows ?? []) {
-    const parsed = parseMetaCredential((row as any)?.api_key);
-    if (parsed.token) return { token: parsed.token, pageId: parsed.pageId || pageIdHint };
-  }
-  return { token: "", pageId: pageIdHint };
+  return { token: env.token, pageId: env.pageId };
 }
 
 function collectFromGraphEntry(entry: any): string[] {
@@ -190,35 +179,7 @@ function collectDeep(node: any, acc: Set<string>, seen = new Set<any>()) {
   else Object.values(node).forEach((n) => collectDeep(n, acc, seen));
 }
 
-async function ayrshareHistoryMap(): Promise<Map<string, string[]>> {
-  const map = new Map<string, string[]>();
-  const apiKey = Deno.env.get("AYRSHARE_API_KEY")?.trim();
-  if (!apiKey) return map;
-  const { data: ws } = await admin
-    .from("workspace_social_profile")
-    .select("ayrshare_profile_key")
-    .eq("id", WORKSPACE_ID)
-    .maybeSingle();
-  const profileKey = asText((ws as any)?.ayrshare_profile_key);
-  if (!profileKey) return map;
-  try {
-    const res = await fetch(`${AYR_BASE}/history/facebook?lastDays=0&limit=500`, {
-      headers: { Authorization: `Bearer ${apiKey}`, "Profile-Key": profileKey },
-    });
-    if (!res.ok) return map;
-    const payload: any = await res.json().catch(() => ({}));
-    const items: any[] = Array.isArray(payload) ? payload : (payload?.posts || payload?.history || payload?.data || []);
-    for (const item of items) {
-      const ids = [item?.id, item?.postId, item?.fbId, item?.post_id]
-        .map((v) => asText(v)).filter(Boolean);
-      const urls = new Set<string>();
-      collectDeep(item, urls);
-      if (!urls.size) continue;
-      for (const id of ids) map.set(id, Array.from(urls));
-    }
-  } catch { /* fallback only */ }
-  return map;
-}
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -227,12 +188,7 @@ Deno.serve(async (req) => {
     const limit = Math.min(1000, Math.max(1, Number(body?.limit) || 500));
     const force = body?.force === true;
 
-    const { data: ws } = await admin
-      .from("workspace_social_profile")
-      .select("facebook_page_id")
-      .eq("id", WORKSPACE_ID)
-      .maybeSingle();
-    const pageIdHint = asText((ws as any)?.facebook_page_id) || null;
+    const ownerId = asText(body?.user_id) || null;
 
     let query = admin
       .from("campaign_logs")
@@ -259,7 +215,7 @@ Deno.serve(async (req) => {
 
     // ---- Graph batch fetch -------------------------------------------------
     const graphMedia = new Map<string, string[]>();
-    const { token } = await resolveGraphToken(pageIdHint);
+    const { token } = await resolveGraphToken(ownerId);
     const nativeTargets = targets.filter((t: any) => /^\d{5,}(_\d{5,})?$/.test(asText(t.provider_message_id)));
     if (token && nativeTargets.length) {
       const fields = "full_picture,attachments{media,subattachments{media}}";
@@ -279,8 +235,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---- Ayrshare history fallback ----------------------------------------
-    const historyMedia = graphMedia.size < targets.length ? await ayrshareHistoryMap() : new Map<string, string[]>();
+    const historyMedia = new Map<string, string[]>();
 
     let updated = 0;
     let mirrored = 0;

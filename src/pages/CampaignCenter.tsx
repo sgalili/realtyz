@@ -4730,8 +4730,8 @@ const CampaignCenter = () => {
 
 
   // STRICT WORKSPACE ISOLATION: only show a channel as connected when
-  // (1) this workspace owns a verified `workspace_social_profile` with its
-  //     OWN `ayrshare_profile_key` (never a shared/global key), AND
+  // (1) this workspace has its OWN bound Facebook Page in
+  //     `messenger_page_bindings`, AND
   // (2) the channel exists in `social_connections` for the active user with
   //     `is_connected = true`. Otherwise every card defaults to "חבר".
   useEffect(() => {
@@ -4746,12 +4746,13 @@ const CampaignCenter = () => {
         }
 
         const { data: wsp } = await supabase
-          .from('workspace_social_profile')
-          .select('ayrshare_profile_key, facebook_page_id, facebook_page_name')
+          .from('messenger_page_bindings')
+          .select('page_id, page_name')
+          .limit(1)
           .maybeSingle();
-        const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
-        const wspFbId = (wsp as any)?.facebook_page_id as string | null;
-        const wspFbName = (wsp as any)?.facebook_page_name as string | null;
+        const hasOwnProfile = !!(wsp as any)?.page_id;
+        const wspFbId = (wsp as any)?.page_id as string | null;
+        const wspFbName = (wsp as any)?.page_name as string | null;
         if (!hasOwnProfile) {
           if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
           // continue — still derive direct channels (IVR/email) below
@@ -4760,18 +4761,6 @@ const CampaignCenter = () => {
             setChannelAccountNames((prev) => ({ ...prev, facebook: wspFbName }));
           }
 
-          // Best-effort sync, throttled per browser session so route changes
-          // don't repeatedly call the external account endpoint.
-          try {
-            const syncKey = 'realtyz.ayrshare_accounts_sync_at';
-            const lastSyncAt = Number(sessionStorage.getItem(syncKey) || 0);
-            if (!Number.isFinite(lastSyncAt) || Date.now() - lastSyncAt > CAMPAIGN_CACHE_MS) {
-              await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
-              sessionStorage.setItem(syncKey, String(Date.now()));
-            }
-          } catch (e) {
-            console.warn('[CampaignCenter] ayrshare-sync-accounts failed (non-fatal):', (e as Error)?.message);
-          }
         }
         if (cancelled) return;
 
@@ -4787,28 +4776,27 @@ const CampaignCenter = () => {
             .select('platform, is_connected')
             .eq('is_connected', true);
           const { data: accountRows, error: accountRowsErr } = await supabase
-            .from('ayrshare_social_accounts')
-            .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, connected, is_active')
-            .eq('connected', true)
-            .eq('is_active', true);
+            .from('social_connections')
+            .select('id, platform, account_id, account_name, avatar_url, is_connected')
+            .eq('is_connected', true);
           if (cancelled) return;
 
           if (connsErr || accountRowsErr) {
             console.warn('[CampaignCenter] social conn fetch error:', connsErr?.message || accountRowsErr?.message);
           } else {
-            // Dedupe by platform+account_ref so duplicate Ayrshare rows from
-            // older imports don't render the same page twice on the FB card.
+            // Dedupe by platform+account_ref so duplicate rows from older
+            // imports don't render the same page twice on the FB card.
             const seenAcct = new Set<string>();
             const profiles = ((accountRows as any[]) || [])
               .map((r) => ({
                 id: r?.id,
                 platform: String(r?.platform || '').toLowerCase(),
-                accountRef: r?.account_ref || '',
-                profileKey: r?.profile_key || null,
-                name: r?.display_name || r?.account_username || r?.username || r?.account_ref || 'Facebook',
-                username: r?.account_username || r?.username || null,
+                accountRef: r?.account_id || '',
+                profileKey: null as string | null,
+                name: r?.account_name || r?.account_id || 'Facebook',
+                username: null as string | null,
                 avatar: r?.avatar_url || null,
-                profileUrl: r?.profile_url || (r?.account_ref ? buildAccountUrl(String(r?.platform || '').toLowerCase(), r.account_ref) : null),
+                profileUrl: r?.account_id ? buildAccountUrl(String(r?.platform || '').toLowerCase(), r.account_id) : null,
               }))
               .filter((p) => {
                 const k = `${p.platform}:${p.accountRef}`;
@@ -4928,19 +4916,16 @@ const CampaignCenter = () => {
       return;
     }
 
-    const platformMap: Record<string, string> = {
-      facebook: 'facebook', instagram: 'instagram', x: 'twitter', twitter: 'twitter',
-      youtube: 'youtube', linkedin: 'linkedin', tiktok: 'tiktok',
-    };
-    const platform = platformMap[c.id];
-    if (!platform) {
-      toast.error('הערוץ הזה לא נתמך כרגע דרך Ayrshare');
+    if (c.id !== 'facebook' && c.id !== 'instagram') {
+      if (preOpened) { try { preOpened.close(); } catch { /* ignore */ } }
+      toast.error('הערוץ הזה מנוהל בהגדרות החיבורים');
+      window.location.href = '/profile?tab=connections';
       return;
     }
     try {
-      toast.loading('פותח חיבור Ayrshare…', { id: 'ayr-connect' });
-      const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: { platform } });
-      toast.dismiss('ayr-connect');
+      toast.loading('פותח חיבור לפייסבוק…', { id: 'meta-connect' });
+      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'start' } });
+      toast.dismiss('meta-connect');
       if (error) {
         let backendMsg: string | null = null;
         try {
@@ -4954,10 +4939,10 @@ const CampaignCenter = () => {
         } catch { /* ignore */ }
         throw new Error(backendMsg || error.message || 'יצירת חיבור נכשלה');
       }
-      const url = (data as any)?.url;
+      const url = (data as any)?.auth_url;
       if (!url) {
         if (preOpened) { try { preOpened.close(); } catch { /* ignore */ } }
-        toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Ayrshare');
+        toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Meta');
         return;
       }
       if (preOpened && !preOpened.closed) {
@@ -4966,7 +4951,7 @@ const CampaignCenter = () => {
         window.open(url, '_blank', 'noopener,noreferrer');
       }
     } catch (e: any) {
-      toast.dismiss('ayr-connect');
+      toast.dismiss('meta-connect');
       if (preOpened && !preOpened.closed) { try { preOpened.close(); } catch { /* ignore */ } }
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
     }

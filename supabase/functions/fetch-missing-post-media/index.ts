@@ -1,7 +1,7 @@
 // Safe, rate-limit-compliant media recovery worker.
 //
 // Processes at most 25 campaign posts per run. For every post whose media is
-// missing or not yet durably mirrored, it asks Ayrshare (history + per-post
+// missing or not yet durably mirrored, it asks the Facebook Graph API and
 // lookup, both wrapped in the shared 429 backoff guard) and the Facebook Graph
 // API for the live image attachments, downloads them server-side and uploads
 // them permanently into the public `post-media-cache` bucket. The absolute
