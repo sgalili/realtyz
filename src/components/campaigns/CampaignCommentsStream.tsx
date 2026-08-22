@@ -132,7 +132,7 @@ const sentimentLabel = (s: string | null) =>
 
 // In-memory + sessionStorage cache for engagement_event rows keyed by
 // campaign id. Lets the comments panel render instantly on re-open while a
-// background delta-refresh pulls fresh rows from Ayrshare without flashing
+// background delta-refresh pulls fresh rows from Meta without flashing
 // the "טוען תגובות חיות…" loader.
 const COMMENT_CACHE = new Map<string, EngagementRow[]>();
 const cacheKey = (campaignId: string) => `realtyz.comments.${campaignId}`;
@@ -185,7 +185,7 @@ const writeCache = (campaignId: string, rows: EngagementRow[], postIds: string[]
   }
 };
 
-// Per-postId provider-fetch throttle. Ayrshare caps at 300 calls / 5min per
+// Per-postId provider-fetch throttle. Meta caps burst requests per
 // profile and Udi's account was previously flagged for repeated bursts —
 // silent re-mounts (collapse/expand of the card, route revisits, background
 // refreshes) must NOT spam the API. We persist the last provider-fetch
@@ -235,12 +235,12 @@ const stampProviderFetch = (pids: string[]) => {
 };
 
 // ONE-SHOT GLOBAL WIPE — runs exactly once per browser after the workspace
-// migrated to a fresh Ayrshare profile. Removes every stale per-post comment
+// migrated to a fresh page binding. Removes every stale per-post comment
 // cache and provider-fetch lock so the new healthy connection starts from a
 // completely clean slate (Udi's previous profile was permanently locked for
 // monthly-unsuspension overuse). Bump the sentinel to run another wipe.
 const WIPE_SENTINEL_KEY = "realtyz_fb_cache_wipe_v3_new_profile";
-(function purgeLegacyAyrshareCaches() {
+(function purgeLegacyCommentCaches() {
   try {
     if (typeof window === "undefined") return;
     if (localStorage.getItem(WIPE_SENTINEL_KEY) === "1") return;
@@ -293,7 +293,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
 
   // Surface live row count to the parent so the post-card header counter
   // reflects what the comment tree actually loaded (and matches Meta Graph
-  // reality, not a stale Ayrshare analytics number).
+  // reality, not a stale cached analytics number).
   useEffect(() => {
     if (!onLiveCountResolved) return;
     if (!Array.isArray(rows)) return;
@@ -497,25 +497,25 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
 
 
   // Reactive rate-limiting only: we NEVER pre-emptively block a user click.
-  // Provider hits fire instantly. A cooldown is armed ONLY after Ayrshare/FB
+  // Provider hits fire instantly. A cooldown is armed ONLY after Meta/FB
   // return an actual rate-limit / halt / suspended signal — that's the only
   // case where we're truly risking the account and must back off.
   const nextAllowedAtRef = useRef<number>(0);
   const forceRefresh = async ({ manual = false, wipeCache = false }: { manual?: boolean; wipeCache?: boolean } = {}) => {
     if (!manual) {
       // HARD RULE (post-suspension): non-manual callers are NEVER allowed to
-      // hit Ayrshare. Provider data only loads on an explicit user click.
+      // hit Meta. Provider data only loads on an explicit user click.
       return;
     }
     const now = Date.now();
     if (nextAllowedAtRef.current > now) {
       const wait = Math.ceil((nextAllowedAtRef.current - now) / 1000);
-      toast.message(`ספק ההודעות (Ayrshare) חסם זמנית להגנת החשבון — נסה שוב בעוד ${wait} שניות`);
+      toast.message(`ספק ההודעות (Meta) חסם זמנית להגנת החשבון — נסה שוב בעוד ${wait} שניות`);
       onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: `rate_limited: ${wait}s` });
       return;
     }
     // Only wipe caches when the caller opts in (e.g. HARD RESET after an
-    // Ayrshare token was suspended). Regular expand/refresh keeps the cached
+    // the page token was suspended). Regular expand/refresh keeps the cached
     // tree so new rows are merged in without ever resetting existing comments.
     if (wipeCache) {
       for (const pid of postIds) {
@@ -545,7 +545,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
         withTimeout(supabase.functions.invoke("meta-insights", {
           body: pid ? { provider_message_id: pid } : {},
         })),
-        // Comments come straight from the Meta Graph API (no Ayrshare).
+        // Comments come straight from the Meta Graph API.
         withTimeout(supabase.functions.invoke("meta-comments-sync", {
           body: postIds.length > 0
             ? { action: "sync", user_id: commentOwnerId, post_ids: postIds }
@@ -577,7 +577,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       }
       setFbSessionExpired(sawSessionExpired);
       if (sawHalt) {
-        // Ayrshare returned 429/403 — arm a 5-minute reactive cooldown. This
+        // Meta returned 429/403 — arm a 5-minute reactive cooldown. This
         // is the ONLY case we block subsequent clicks, because the provider
         // itself asked us to back off.
         nextAllowedAtRef.current = Date.now() + 5 * 60_000;
@@ -1022,7 +1022,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       if (optimisticReply && (data as any)?.reply_comment_id) {
         setRows((prev) => {
           const next = (prev ?? []).map((r) => r.id === optimisticReplyId
-            ? { ...r, external_id: String((data as any).reply_comment_id), metadata: { ...(r.metadata ?? {}), optimistic: false, ayrshare_reply: (data as any).ayrshare } }
+            ? { ...r, external_id: String((data as any).reply_comment_id), metadata: { ...(r.metadata ?? {}), optimistic: false, meta_reply: (data as any).meta ?? (data as any).reply } }
             : r);
           writeCache(campaign.id, next, postIds);
           return next;
