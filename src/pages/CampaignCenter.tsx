@@ -2118,12 +2118,12 @@ const ConfirmDispatchDialog = ({
           return true;
         });
         if (channel.id === 'facebook' && rows.length === 0) {
-          if (workspaceFbId && workspaceProfileKey) {
+          if (workspaceFbId) {
             rows = [{
               id: `workspace-facebook:${workspaceFbId}`,
               platform: 'facebook',
               accountRef: workspaceFbId,
-              profileKey: workspaceProfileKey,
+              profileKey: null,
               name: workspaceFbName || 'Facebook',
               username: null,
               avatar: null,
