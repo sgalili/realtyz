@@ -26,6 +26,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { appendDisclosure } from "../_shared/compliance.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
+import { sendGreenApiText, type GreenApiCreds } from "../_shared/greenApi.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,7 +102,7 @@ const BodySchema = z
 
 type StdResponse = {
   success: boolean;
-  provider: "WBA";
+  provider: "WBA" | "GREEN_API";
   message_id: string | null;
   error?: string;
   details?: unknown;
@@ -272,6 +273,29 @@ async function resolveWorkspaceMode(
 }
 
 /**
+ * Green API (QR-session) credentials for a workspace, only returned when the
+ * personal number is actually linked (`qr_status = 'connected'`).
+ */
+async function resolveGreenApiCreds(
+  admin: ReturnType<typeof createClient>,
+  ownerId: string | null,
+): Promise<GreenApiCreds | null> {
+  if (!ownerId) return null;
+  const { data } = await admin
+    .from("workspace_whatsapp_settings")
+    .select("green_api_instance_id, green_api_token, qr_status")
+    .eq("workspace_owner_id", ownerId)
+    .maybeSingle();
+  const row = data as any;
+  if (!row) return null;
+  const instance_id = String(row.green_api_instance_id ?? "").trim();
+  const token = String(row.green_api_token ?? "").trim();
+  if (!instance_id || !token) return null;
+  if (row.qr_status && row.qr_status !== "connected") return null;
+  return { instance_id, token };
+}
+
+/**
  * Build the Meta `components` payload for an approved template.
  *
  * Supports both positional ({{1}}) and named ({{first_name}}) placeholders —
@@ -381,6 +405,26 @@ async function buildTemplateVariables(
   return values;
 }
 
+
+/**
+ * Green API has no template engine — flatten an already-populated Meta
+ * template payload into readable text so QR-session workspaces still send
+ * something meaningful.
+ */
+function renderTemplateFallbackText(template: {
+  id: string;
+  components?: unknown[];
+}): string {
+  const parts: string[] = [];
+  for (const comp of template.components ?? []) {
+    const params = (comp as any)?.parameters ?? [];
+    for (const p of params) {
+      const t = String((p as any)?.text ?? "").trim();
+      if (t) parts.push(t);
+    }
+  }
+  return parts.join(" ").trim();
+}
 
 async function sendViaWba(
   cfg: Record<string, unknown>,
@@ -851,15 +895,24 @@ Deno.serve(async (req) => {
     // workspace's own connected number.
     const routing = await resolveWorkspaceMode(admin, userId, routingTenantId);
 
-    // Official Meta WhatsApp Business Cloud API credentials for this workspace.
-    const provider = await resolveProvider(
-      admin,
-      userId,
-      routingTenantId,
-      routing.mode === "official_meta",
-    );
+    // QR-session workspaces dispatch through their own linked personal number
+    // (Green API). Free-text only — Green API has no template concept.
+    const greenCreds =
+      routing.mode === "qr_session"
+        ? await resolveGreenApiCreds(admin, routing.owner_id)
+        : null;
 
-    if (!provider) {
+    // Official Meta WhatsApp Business Cloud API credentials for this workspace.
+    const provider = greenCreds
+      ? null
+      : await resolveProvider(
+          admin,
+          userId,
+          routingTenantId,
+          routing.mode === "official_meta",
+        );
+
+    if (!greenCreds && !provider) {
       console.error("send-whatsapp no active WBA provider", {
         user_routed: !!userId,
         tenant_routed: !!routingTenantId,
@@ -937,13 +990,41 @@ Deno.serve(async (req) => {
     }
 
 
-    let result: StdResponse = await sendViaWba(
-      provider.config,
-      phone,
-      outboundMessage,
-      parsed.data.file,
-      template,
-    );
+    let result: StdResponse;
+    if (greenCreds) {
+      // Green API path: send the plain text body via waInstance/sendMessage.
+      const text =
+        outboundMessage ??
+        (template ? renderTemplateFallbackText(template) : "");
+      if (!text.trim()) {
+        result = {
+          success: false,
+          provider: "GREEN_API",
+          message_id: null,
+          error: "לא ניתן לשלוח הודעה ריקה מהמספר האישי",
+        };
+      } else {
+        const sent = await sendGreenApiText(greenCreds, phone, text);
+        result = {
+          success: sent.success,
+          provider: "GREEN_API",
+          message_id: sent.message_id,
+          error: sent.success
+            ? undefined
+            : humanizeWaError(sent.error ?? "Green API send failed"),
+          details: sent.details,
+        };
+      }
+      outboundMessage = outboundMessage ?? text;
+    } else {
+      result = await sendViaWba(
+        provider!.config,
+        phone,
+        outboundMessage,
+        parsed.data.file,
+        template,
+      );
+    }
 
 
     // Compliance audit + message-row logging. Best-effort; never blocks the send.
@@ -1048,7 +1129,7 @@ Deno.serve(async (req) => {
         phone_last4: phone.slice(-4),
         message_id_present: !!result.message_id,
         connection_mode: routing.mode,
-        creds_source: provider.source,
+        creds_source: greenCreds ? "green_api_qr" : provider?.source,
         tenant_routed: !!routingTenantId,
         template: parsed.data.template_id ?? null,
       });
