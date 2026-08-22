@@ -74,7 +74,8 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true }: Prop
           onValueChange={(v) => {
             const [name, language] = v.split('|');
             const t = templates.find((x) => x.name === name && x.language === language);
-            onChange({ name, language, body_params: Array(t?.variable_count ?? 0).fill('') });
+            const keys = templateVariableKeys(t?.body_text ?? '');
+            onChange({ name, language, body_params: Array(keys.length).fill('') });
           }}
         >
           <SelectTrigger className="bg-blue-50 border-blue-200">
@@ -90,11 +91,12 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true }: Prop
         </Select>
       </div>
 
-      {selected && selected.variable_count > 0 && (
+      {selected && selectedKeys.length > 0 && (
         <div className="space-y-2">
-          {Array.from({ length: selected.variable_count }).map((_, i) => (
-            <div key={i} className="space-y-1">
-              <Label className="text-xs">משתנה {`{{${i + 1}}}`}</Label>
+          {selectedKeys.map((key, i) => (
+            <div key={key} className="space-y-1">
+              <Label className="text-xs">משתנה {`{{${key}}}`}</Label>
+
               <Input
                 className="bg-blue-50 border-blue-200"
                 value={value?.body_params[i] ?? ''}
