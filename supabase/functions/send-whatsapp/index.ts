@@ -64,8 +64,13 @@ const BodySchema = z
     template_id: z.string().min(1).max(120).optional(),
     template_language: z.string().min(2).max(20).optional(),
     template_components: z.array(z.unknown()).optional(),
-    // Tenant-scoped routing override (looks up wa_providers by tenant_id).
-    tenant_id: z.string().uuid().optional(),
+    // Dynamic template variables. Keys may be placeholder names
+    // ({{first_name}}) or positional indexes ("1", "2"). Missing values are
+    // auto-filled from the lead / listing / workspace branding.
+    template_variables: z.record(z.string().max(600)).optional(),
+    // Optional listing used to resolve property-address variables.
+    listing_id: z.string().uuid().optional(),
+
     // Optional file attachment (base64) for unified file send.
     file: z
       .object({
