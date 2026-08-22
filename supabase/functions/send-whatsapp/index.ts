@@ -317,11 +317,11 @@ async function buildTemplateVariables(
   if (opts.leadId) {
     const { data: lead } = await admin
       .from("leads")
-      .select("full_name, city, interested_listing_id")
+      .select("full_name, city, linked_listing_id")
       .eq("id", opts.leadId)
       .maybeSingle();
     leadName = String((lead as any)?.full_name ?? "");
-    listingId = listingId ?? ((lead as any)?.interested_listing_id ?? null);
+    listingId = listingId ?? ((lead as any)?.linked_listing_id ?? null);
   }
 
   let address = "";
