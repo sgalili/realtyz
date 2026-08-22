@@ -29,13 +29,21 @@ type TemplateOut = {
 };
 
 /** Count {{1}}, {{2}} … placeholders in a template body. */
+/**
+ * Counts template body variables. Meta supports BOTH positional ({{1}}) and
+ * named ({{first_name}}) placeholders — counting only digits reported 0 for
+ * named templates, which made sends fail with "number of localizable_params
+ * (0) does not match the expected number of params".
+ */
 function countVariables(text: string): number {
-  const found = new Set<number>();
-  for (const m of String(text).matchAll(/\{\{\s*(\d+)\s*\}\}/g)) {
-    found.add(Number(m[1]));
+  const keys: string[] = [];
+  for (const m of String(text).matchAll(/\{\{\s*([^{}\s][^{}]*?)\s*\}\}/g)) {
+    const key = m[1].trim();
+    if (key && !keys.includes(key)) keys.push(key);
   }
-  return found.size;
+  return keys.length;
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
