@@ -36,6 +36,7 @@ import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsS
 import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
+import { isExtensionGroupId, publishViaExtension, readExtensionGroups } from '@/lib/extensionGroupBridge';
 import { CustomGroupsQuickShare } from '@/components/social/CustomGroupsQuickShare';
 import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdown';
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
@@ -2185,6 +2186,10 @@ const ConfirmDispatchDialog = ({
         }
         // Fan-out one distinct publish payload per selected Facebook page/profile.
         const targets = channel.id === 'facebook' && publishTargets.length > 0 ? publishTargets : [null];
+        // Groups discovered by the browser extension cannot be posted through the
+        // Graph API, so they are split out and handed to the extension worker.
+        const apiGroupIds = groupIds.filter((id) => !isExtensionGroupId(id));
+        const extGroupIds = groupIds.filter((id) => isExtensionGroupId(id));
         const results = [] as any[];
         for (const target of targets) {
           // Optimistic pill in the sent-posts feed while Ayrshare verifies.
@@ -2208,7 +2213,7 @@ const ConfirmDispatchDialog = ({
               media_urls: mediaUrls,
               scheduled_at: scheduledAt,
               workspace_owner_id: ownerScope,
-              group_ids: groupIds,
+              group_ids: apiGroupIds,
               target_profile_id: target?.id ?? null,
               target_account_ref: target?.accountRef ?? null,
               target_profile_key: target?.profileKey ?? null,
@@ -2272,6 +2277,25 @@ const ConfirmDispatchDialog = ({
           throw new Error(payload?.message || payload?.error || 'פייסבוק לא אישר שהפוסט פורסם בפועל');
         }
         const groupFailures: any[] = results.flatMap((r) => Array.isArray((r.data as any)?.group_failures) ? (r.data as any).group_failures : []);
+
+        // Hand the packaged broadcast (text, first comment, images, target group
+        // URLs) to the extension so it can run the sequence in the user's browser.
+        if (channel.id === 'facebook' && extGroupIds.length > 0) {
+          const known = readExtensionGroups();
+          const dispatched = publishViaExtension({
+            text: bodyToPublish,
+            firstComment: firstComment || null,
+            imageUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
+            link: null,
+            scheduledAt: scheduledAt || null,
+            groups: extGroupIds.map((id) => {
+              const g = known.find((k) => k.id === id);
+              return { group_id: g?.groupId ?? id, group_url: g?.url ?? null, group_name: g?.name ?? id };
+            }),
+          });
+          if (dispatched > 0) toast.success(`נשלחו ${dispatched} קבוצות לתוסף לפרסום`);
+          else toast.warning('התוסף לא זמין — הקבוצות לא נשלחו לפרסום');
+        }
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
           toast.success(`הפוסט תוזמן ל-${when} ב-${targets.length} יעד(ים)`);
