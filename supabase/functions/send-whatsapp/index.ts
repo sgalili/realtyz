@@ -70,6 +70,9 @@ const BodySchema = z
     template_variables: z.record(z.string().max(600)).optional(),
     // Optional listing used to resolve property-address variables.
     listing_id: z.string().uuid().optional(),
+    // Tenant-scoped routing override (looks up wa_providers by tenant_id).
+    tenant_id: z.string().uuid().optional(),
+
 
     // Optional file attachment (base64) for unified file send.
     file: z
