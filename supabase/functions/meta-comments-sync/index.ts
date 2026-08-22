@@ -187,11 +187,16 @@ Deno.serve(async (req) => {
         await admin.from("fb_comments").update({ status: "replied" }).eq("id", commentRowId);
       }
       // Keep the campaign comment stream in sync.
-      await admin
-        .from("engagement_events")
-        .update({ status: "sent", ai_reply_text: rawText })
-        .eq("user_id", ownerId)
-        .eq("external_id", nativeId);
+      const streamPatch = { status: "sent", ai_reply_text: rawText };
+      if (eventRowId) {
+        await admin.from("engagement_events").update(streamPatch).eq("id", eventRowId);
+      } else {
+        await admin
+          .from("engagement_events")
+          .update(streamPatch)
+          .eq("user_id", ownerId)
+          .eq("external_id", nativeId);
+      }
 
       return json({ ok: true, reply_id: replyId });
     }
