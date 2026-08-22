@@ -45,6 +45,11 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
   const [page, setPage] = useState<PageStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualPageId, setManualPageId] = useState('');
+  const [manualToken, setManualToken] = useState('');
+  const [savingManual, setSavingManual] = useState(false);
+
 
   const probe = useCallback(async (notify = false) => {
     setLoading(true);
