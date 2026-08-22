@@ -69,9 +69,13 @@ Deno.serve(async (req) => {
 
     const { profileKey } = await resolveWorkspaceProfileKey(admin);
     if (!profileKey) {
-      return new Response(JSON.stringify({ error: "no_workspace_profile" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // No social profile linked for this workspace: nothing to poll. This is a
+      // normal state (WhatsApp-only workspaces), so respond 200 with an empty
+      // summary instead of an error the UI would surface as a runtime failure.
+      return new Response(
+        JSON.stringify({ ok: true, skipped: "no_workspace_profile", summary: {} }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     await ensureWorkspaceWebhooks(admin, SUPABASE_URL, AYRSHARE_API_KEY, profileKey);
