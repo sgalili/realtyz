@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
         })}`,
       );
       if (!tokenRes.ok || !tokenRes.payload?.access_token) {
-        return json({ error: humanizeGraphError(tokenRes.payload) }, 400);
+        return json({ error: humanizeGraphError(tokenRes.payload, "פייסבוק דחה את ההתחברות. יש לנסות להתחבר מחדש ולאשר את הרשאות העמוד.") }, 400);
       }
       let userToken = String(tokenRes.payload.access_token);
 
@@ -191,7 +191,7 @@ Deno.serve(async (req) => {
           {
             error: pagesRes.ok
               ? "לא נמצא עמוד פייסבוק שאתה מנהל. ודא שאישרת את העמוד במסך ההרשאות של פייסבוק."
-              : humanizeGraphError(pagesRes.payload),
+              : humanizeGraphError(pagesRes.payload, "לא הצלחנו לקרוא את רשימת העמודים שאתה מנהל. ודא שאישרת הרשאות ניהול עמוד (pages_show_list, pages_manage_posts)."),
             pages: [],
           },
           400,
