@@ -107,16 +107,15 @@ export default function FbEngagement() {
     setBusyId('FETCH');
     toast.dismiss();
     try {
-      const { data, error } = await supabase.functions.invoke('fb-engagement-fetch', { body: {} });
+      const { data, error } = await supabase.functions.invoke('meta-comments-sync', {
+        body: { action: 'sync' },
+      });
       if (error) throw error;
-      if (data?.ok === false) {
-        toast.warning(data.error || 'לא נסרקו תגובות');
+      if (data?.success === false) {
+        toast.warning(data.message || data.error || 'לא נסרקו תגובות');
         setLiveStatus(null);
-      } else if (data?.fallback) {
-        toast.info(`טוען מצב סימולציה (${data.upserted ?? 0} תגובות): Ayrshare חסם את המשיכה`);
-        setLiveStatus('fallback');
       } else {
-        toast.success(`נסרקו ${data?.upserted ?? 0} תגובות`);
+        toast.success(`נסרקו ${data?.comments ?? 0} תגובות מפייסבוק`);
         setLiveStatus('live');
       }
       await qc.invalidateQueries({ queryKey: ['fb_comments'] });
@@ -144,10 +143,11 @@ export default function FbEngagement() {
     if (!text.trim()) return toast.error('הטיוטה ריקה');
     setBusyId(commentId + ':send');
     try {
-      const { error } = await supabase.functions.invoke('fb-engagement-reply', {
-        body: { comment_id: commentId, final_text: text, mode },
+      const { data, error } = await supabase.functions.invoke('meta-comments-sync', {
+        body: { action: 'reply', comment_id: commentId, text, mode },
       });
       if (error) throw error;
+      if (data?.ok === false) throw new Error(data?.error || 'פרסום התגובה נכשל');
       toast.success('התשובה נשלחה ל-Facebook ונשמרה לבסיס הידע');
       setEditing((p) => { const n = { ...p }; delete n[commentId]; return n; });
       qc.invalidateQueries({ queryKey: ['fb_comments'] });

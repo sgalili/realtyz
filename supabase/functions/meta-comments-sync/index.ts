@@ -132,6 +132,37 @@ Deno.serve(async (req) => {
       const replyId = safeStr(r.payload?.id, 200);
 
       if (commentRowId) {
+        // Knowledge-base write-back so the persona learns from approved replies.
+        let kbDocId: string | null = null;
+        try {
+          const { data: row } = await admin
+            .from("fb_comments")
+            .select("comment_text, author_name")
+            .eq("id", commentRowId)
+            .maybeSingle();
+          const kbBody = `שאלה/תגובה: ${(row as any)?.comment_text ?? ""}\n\nתשובה: ${rawText}`;
+          const { data: doc } = await admin.from("knowledge_documents").insert({
+            user_id: ownerId,
+            source_type: "text",
+            title: `תגובת פייסבוק — ${(row as any)?.author_name ?? "גולש"}`,
+            raw_text: kbBody,
+            source_metadata: { source: "meta_comments", comment_id: commentRowId, meta_comment_id: nativeId },
+            is_active: true,
+            chunk_count: 1,
+          }).select("id").maybeSingle();
+          kbDocId = (doc as any)?.id ?? null;
+          if (kbDocId) {
+            await admin.from("knowledge_chunks").insert({
+              document_id: kbDocId,
+              user_id: ownerId,
+              chunk_index: 0,
+              content: kbBody,
+            });
+          }
+        } catch (kbErr) {
+          console.error("[meta-comments-sync] KB write-back failed", kbErr);
+        }
+
         await admin.from("fb_comment_replies").insert({
           comment_id: commentRowId,
           final_text: rawText,
@@ -139,6 +170,7 @@ Deno.serve(async (req) => {
           posted_by: callerId,
           ayrshare_reply_id: replyId,
           ayrshare_response: r.payload ?? {},
+          kb_document_id: kbDocId,
         });
         await admin.from("fb_comments").update({ status: "replied" }).eq("id", commentRowId);
       }
