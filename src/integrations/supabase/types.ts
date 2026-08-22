@@ -542,138 +542,6 @@ export type Database = {
           },
         ]
       }
-      ayrshare_action_log: {
-        Row: {
-          action_type: string
-          block_reason: string | null
-          content_hash: string | null
-          content_preview: string | null
-          created_at: string
-          id: string
-          platform: string | null
-          status: string
-          target_id: string | null
-        }
-        Insert: {
-          action_type: string
-          block_reason?: string | null
-          content_hash?: string | null
-          content_preview?: string | null
-          created_at?: string
-          id?: string
-          platform?: string | null
-          status?: string
-          target_id?: string | null
-        }
-        Update: {
-          action_type?: string
-          block_reason?: string | null
-          content_hash?: string | null
-          content_preview?: string | null
-          created_at?: string
-          id?: string
-          platform?: string | null
-          status?: string
-          target_id?: string | null
-        }
-        Relationships: []
-      }
-      ayrshare_social_accounts: {
-        Row: {
-          account_ref: string
-          account_type: string | null
-          account_username: string | null
-          avatar_url: string | null
-          connected: boolean
-          connected_at: string
-          display_name: string | null
-          id: string
-          is_active: boolean
-          last_synced_at: string
-          metadata: Json | null
-          platform: string
-          profile_key: string | null
-          profile_url: string | null
-          raw: Json | null
-          updated_at: string
-          user_id: string
-          username: string | null
-        }
-        Insert: {
-          account_ref: string
-          account_type?: string | null
-          account_username?: string | null
-          avatar_url?: string | null
-          connected?: boolean
-          connected_at?: string
-          display_name?: string | null
-          id?: string
-          is_active?: boolean
-          last_synced_at?: string
-          metadata?: Json | null
-          platform: string
-          profile_key?: string | null
-          profile_url?: string | null
-          raw?: Json | null
-          updated_at?: string
-          user_id: string
-          username?: string | null
-        }
-        Update: {
-          account_ref?: string
-          account_type?: string | null
-          account_username?: string | null
-          avatar_url?: string | null
-          connected?: boolean
-          connected_at?: string
-          display_name?: string | null
-          id?: string
-          is_active?: boolean
-          last_synced_at?: string
-          metadata?: Json | null
-          platform?: string
-          profile_key?: string | null
-          profile_url?: string | null
-          raw?: Json | null
-          updated_at?: string
-          user_id?: string
-          username?: string | null
-        }
-        Relationships: []
-      }
-      ayrshare_webhook_events: {
-        Row: {
-          ayrshare_ref_id: string | null
-          created_at: string
-          event_type: string | null
-          id: string
-          payload: Json
-          platform: string | null
-          processed: boolean
-          user_id: string | null
-        }
-        Insert: {
-          ayrshare_ref_id?: string | null
-          created_at?: string
-          event_type?: string | null
-          id?: string
-          payload: Json
-          platform?: string | null
-          processed?: boolean
-          user_id?: string | null
-        }
-        Update: {
-          ayrshare_ref_id?: string | null
-          created_at?: string
-          event_type?: string | null
-          id?: string
-          payload?: Json
-          platform?: string | null
-          processed?: boolean
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       balance_adjustments: {
         Row: {
           amount: number
@@ -2147,34 +2015,34 @@ export type Database = {
       }
       fb_comment_replies: {
         Row: {
-          ayrshare_reply_id: string | null
-          ayrshare_response: Json | null
           comment_id: string
           final_text: string
           id: string
           kb_document_id: string | null
+          meta_reply_id: string | null
+          meta_response: Json | null
           mode: string
           posted_at: string
           posted_by: string | null
         }
         Insert: {
-          ayrshare_reply_id?: string | null
-          ayrshare_response?: Json | null
           comment_id: string
           final_text: string
           id?: string
           kb_document_id?: string | null
+          meta_reply_id?: string | null
+          meta_response?: Json | null
           mode: string
           posted_at?: string
           posted_by?: string | null
         }
         Update: {
-          ayrshare_reply_id?: string | null
-          ayrshare_response?: Json | null
           comment_id?: string
           final_text?: string
           id?: string
           kb_document_id?: string | null
+          meta_reply_id?: string | null
+          meta_response?: Json | null
           mode?: string
           posted_at?: string
           posted_by?: string | null
@@ -3879,8 +3747,6 @@ export type Database = {
           auto_reply_negative: boolean
           auto_reply_positive: boolean
           avatar_url: string | null
-          ayrshare_profile_key: string | null
-          ayrshare_ref_id: string | null
           broker_byline: string | null
           broker_license_number: string | null
           city: string | null
@@ -3910,8 +3776,6 @@ export type Database = {
           auto_reply_negative?: boolean
           auto_reply_positive?: boolean
           avatar_url?: string | null
-          ayrshare_profile_key?: string | null
-          ayrshare_ref_id?: string | null
           broker_byline?: string | null
           broker_license_number?: string | null
           city?: string | null
@@ -3941,8 +3805,6 @@ export type Database = {
           auto_reply_negative?: boolean
           auto_reply_positive?: boolean
           avatar_url?: string | null
-          ayrshare_profile_key?: string | null
-          ayrshare_ref_id?: string | null
           broker_byline?: string | null
           broker_license_number?: string | null
           city?: string | null
@@ -5146,39 +5008,6 @@ export type Database = {
           workspace_logo_url?: string | null
           workspace_name?: string | null
           workspace_owner_id?: string
-        }
-        Relationships: []
-      }
-      workspace_social_profile: {
-        Row: {
-          ayrshare_profile_key: string | null
-          ayrshare_ref_id: string | null
-          connected_platforms: Json
-          created_at: string
-          facebook_page_id: string | null
-          facebook_page_name: string | null
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          ayrshare_profile_key?: string | null
-          ayrshare_ref_id?: string | null
-          connected_platforms?: Json
-          created_at?: string
-          facebook_page_id?: string | null
-          facebook_page_name?: string | null
-          id?: string
-          updated_at?: string
-        }
-        Update: {
-          ayrshare_profile_key?: string | null
-          ayrshare_ref_id?: string | null
-          connected_platforms?: Json
-          created_at?: string
-          facebook_page_id?: string | null
-          facebook_page_name?: string | null
-          id?: string
-          updated_at?: string
         }
         Relationships: []
       }
