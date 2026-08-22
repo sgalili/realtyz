@@ -2018,6 +2018,15 @@ const LeadCRM = () => {
                             {/* Homely / WebTiv are read-only sources — no push action. */}
 
                             <LeadEnrichmentIconButton lead={selectedVoter} />
+                            <button
+                              type="button"
+                              aria-label="מחק מתעניין"
+                              title="מחק מתעניין"
+                              onClick={() => setSingleDeleteId(selectedVoter.id)}
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-destructive hover:bg-destructive/10 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" strokeWidth={1.8} />
+                            </button>
                             <div className="flex items-center gap-1.5 mr-auto ps-2">
                               <Switch
                                 className="group h-6 w-11 data-[state=checked]:bg-[#25D366]"
