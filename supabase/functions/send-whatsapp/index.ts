@@ -187,8 +187,9 @@ async function resolveProvider(
     if (!row) return null;
     const cfg = row.config ?? {};
     if (!cfg.phone_number_id || !cfg.access_token) return null;
-    return { name: "WBA", is_official: true, config: cfg };
+    return { name: "WBA", is_official: true, config: cfg, source: "workspace" };
   };
+
 
   const ids = [tenantId, userId].filter(Boolean) as string[];
   for (const id of ids) {
