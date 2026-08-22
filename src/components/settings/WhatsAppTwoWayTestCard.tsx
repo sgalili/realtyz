@@ -180,30 +180,14 @@ export function WhatsAppTwoWayTestCard() {
         </div>
 
         {mode === 'template' ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label className="text-xs">שם התבנית (Template Name)</Label>
-              <Input
-                dir="ltr"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="שם תבנית מאושרת שלך"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">שפת התבנית (Language Code)</Label>
-              <Input
-                dir="ltr"
-                value={templateLang}
-                onChange={(e) => setTemplateLang(e.target.value)}
-                placeholder="en_US / he"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                hello_world עובדת רק ממספרי הבדיקה של Meta. מהמספר העסקי שלך יש לשלוח תבנית
-                מאושרת משלך (סנכרן תבניות בכרטיס התבניות ובחר משם שם ושפה).
-              </p>
-            </div>
+          <div className="space-y-2">
+            <WaTemplatePicker value={template} onChange={setTemplate} showTokenHint={false} />
+            <p className="text-[11px] text-muted-foreground">
+              hello_world עובדת רק ממספרי הבדיקה של Meta. מהמספר העסקי שלך יש לשלוח תבנית מאושרת
+              משלך, ולמלא את כל המשתנים שלה.
+            </p>
           </div>
+
         ) : (
           <div className="space-y-1">
             <Label className="text-xs">גוף ההודעה</Label>
