@@ -4,7 +4,7 @@
 //  3. Dispatch private DM / auto-like only when the relevant auto-reply switch
 //     and global AI autopilot switch are enabled.
 //  4. If the workspace has auto_reply_positive/negative enabled AND sentiment
-//     matches, ALSO auto-publish the public reply via ayrshare-comment-reply.
+//     matches, ALSO auto-publish the public reply via meta-comments-sync.
 //     Otherwise leave the row in `pending_approval` for the human queue.
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
