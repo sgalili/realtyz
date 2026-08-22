@@ -93,10 +93,37 @@ Deno.serve(async (req) => {
         .eq("workspace_owner_id", ownerId);
     };
 
+    // Point the instance at our inbound receiver the moment it is live, so
+    // customer messages reach the CRM + AI autopilot with zero manual setup.
+    const ensureWebhook = async () => {
+      try {
+        const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/greenapi-webhook`;
+        await fetch(
+          `https://api.green-api.com/waInstance${creds.instance_id}/setSettings/${creds.token}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              webhookUrl,
+              webhookUrlToken: "",
+              incomingWebhook: "yes",
+              outgoingWebhook: "yes",
+              outgoingMessageWebhook: "yes",
+              outgoingAPIMessageWebhook: "yes",
+              stateWebhook: "yes",
+            }),
+          },
+        );
+      } catch {
+        /* non-blocking — the settings card exposes a manual sync too */
+      }
+    };
+
     // ── status ─────────────────────────────────────────────────────────────
     if (parsed.data.action === "status") {
       const state = await getStateInstance(creds);
       const phone = state.status === "connected" ? await getLinkedPhone(creds) : null;
+      if (state.status === "connected") await ensureWebhook();
       await persist({
         qr_status: state.status,
         ...(phone ? { qr_phone: phone } : {}),
@@ -119,6 +146,7 @@ Deno.serve(async (req) => {
     }
     if (qr.kind === "already_logged") {
       const phone = await getLinkedPhone(creds);
+      await ensureWebhook();
       await persist({ qr_status: "connected", ...(phone ? { qr_phone: phone } : {}) });
       return json({ success: true, status: "connected", phone, qr_image: null });
     }

@@ -4747,6 +4747,60 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_avatar_sync_jobs: {
+        Row: {
+          created_at: string
+          failed: number
+          finished_at: string | null
+          force_refresh: boolean
+          id: string
+          last_error: string | null
+          scanned: number
+          skipped: number
+          started_at: string | null
+          started_by: string | null
+          status: string
+          total: number
+          updated: number
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          failed?: number
+          finished_at?: string | null
+          force_refresh?: boolean
+          id?: string
+          last_error?: string | null
+          scanned?: number
+          skipped?: number
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          total?: number
+          updated?: number
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          failed?: number
+          finished_at?: string | null
+          force_refresh?: boolean
+          id?: string
+          last_error?: string | null
+          scanned?: number
+          skipped?: number
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          total?: number
+          updated?: number
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       wa_message_templates: {
         Row: {
           body_text: string

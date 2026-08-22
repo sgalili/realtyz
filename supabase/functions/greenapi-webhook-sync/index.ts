@@ -2,10 +2,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
 const GREEN_API_BASE = "https://api.green-api.com";
-const WEBHOOK_FUNCTION_NAME = "whatsapp-webhook";
+const WEBHOOK_FUNCTION_NAME = "greenapi-webhook";
 
 type GreenCredentials = {
-  source: "api_configs" | "social_connections";
+  source: "workspace_settings" | "api_configs" | "social_connections";
   instanceId: string;
   token: string;
   apiConfigId?: string;
@@ -49,6 +49,23 @@ async function requireAdmin(req: Request, supabaseUrl: string, serviceKey: strin
 }
 
 async function resolveGreenCredentials(admin: ReturnType<typeof createClient>): Promise<GreenCredentials | null> {
+  // Modern path: per-workspace QR-session credentials.
+  const { data: wsRows } = await admin
+    .from("workspace_whatsapp_settings")
+    .select("green_api_instance_id, green_api_token, qr_status, updated_at")
+    .not("green_api_instance_id", "is", null)
+    .not("green_api_token", "is", null)
+    .order("updated_at", { ascending: false })
+    .limit(5);
+  const ws = ((wsRows ?? []) as any[]).find((r) => r.qr_status === "connected") ?? ((wsRows ?? []) as any[])[0];
+  if (ws?.green_api_instance_id && ws?.green_api_token) {
+    return {
+      source: "workspace_settings",
+      instanceId: String(ws.green_api_instance_id).trim(),
+      token: String(ws.green_api_token).trim(),
+    };
+  }
+
   const { data: apiConfig } = await admin
     .from("api_configs")
     .select("id, api_key")

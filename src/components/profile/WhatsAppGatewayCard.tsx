@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { MessageCircle, Save, Loader2, CheckCircle2, ImageDown } from 'lucide-react';
+import { useWaAvatarSync } from '@/hooks/useWaAvatarSync';
 
 /**
  * Quick-update card for Green API WhatsApp gateway credentials.
@@ -29,6 +30,7 @@ export function WhatsAppGatewayCard() {
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState<'unknown' | 'ok' | 'err'>('unknown');
   const [syncingAvatars, setSyncingAvatars] = useState(false);
+  const avatarSync = useWaAvatarSync();
 
   useEffect(() => {
     (async () => {
@@ -172,20 +174,14 @@ export function WhatsAppGatewayCard() {
     }
   };
 
+  // Background sweep: keeps running on the server even if the user navigates
+  // away mid-sync, and the hook re-attaches to the live job on return.
   const syncAvatars = async (force = false) => {
     setSyncingAvatars(true);
     try {
-      const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', {
-        body: { force, limit: 500 },
-      });
-      const r = (data as any) || {};
-      // Silent circuit-breaker: unconfigured/expired instance → no error toast.
-      if (error || r.supported === false) return;
-      toast.success(
-        `סונכרנו תמונות פרופיל מוואטסאפ · עודכנו ${r.updated ?? 0} מתוך ${r.scanned ?? 0}`,
-      );
-    } catch {
-      /* silent — initials avatars remain */
+      const res = await avatarSync.start(force);
+      if (res.supported === false) return; // silent circuit-breaker
+      toast.success('סנכרון תמונות הפרופיל התחיל · ימשיך לרוץ גם אם תעבור למסך אחר');
     } finally {
       setSyncingAvatars(false);
     }
@@ -244,16 +240,35 @@ export function WhatsAppGatewayCard() {
           />
         </div>
 
+        {avatarSync.active && (
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="tabular-nums">{avatarSync.percent}%</span>
+              <span>
+                מסנכרן תמונות פרופיל · {avatarSync.job?.scanned ?? 0}/{avatarSync.job?.total ?? 0}
+                {' · עודכנו '}{avatarSync.job?.updated ?? 0}
+              </span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full bg-emerald-500 transition-all"
+                style={{ width: `${avatarSync.percent}%` }}
+              />
+            </div>
+            <p className="text-[11px]">הסנכרון ממשיך ברקע גם אם תעבור למסך אחר.</p>
+          </div>
+        )}
+
         <div className="flex items-center gap-1.5 justify-end pt-1 flex-nowrap">
           <Button
             variant="outline"
             size="sm"
             onClick={() => syncAvatars(false)}
-            disabled={syncingAvatars || loading}
+            disabled={syncingAvatars || avatarSync.active || loading}
             title="משוך תמונות פרופיל מ-WhatsApp לכל המתעניינים החסרים תמונה"
             className="px-2 text-xs whitespace-nowrap"
           >
-            {syncingAvatars ? (
+            {syncingAvatars || avatarSync.active ? (
               <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
             ) : (
               <ImageDown className="ml-1 h-3.5 w-3.5" />
