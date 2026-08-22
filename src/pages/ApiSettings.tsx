@@ -31,8 +31,6 @@ import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
 import { PersonaCalibrationPanel } from '@/components/PersonaCalibrationPanel';
 import { ProductionPrepPanel } from '@/components/ProductionPrepPanel';
 import { WebtivHomelySyncCard } from '@/components/integrations/WebtivHomelySyncCard';
-import { AyrshareProfilePurgeCard } from '@/components/admin/AyrshareProfilePurgeCard';
-import { AyrshareBulkPurgeCard } from '@/components/admin/AyrshareBulkPurgeCard';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
@@ -42,7 +40,7 @@ import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnec
 import { MetaWabaHealthCard } from '@/components/settings/MetaWabaHealthCard';
 import { WhatsAppTwoWayTestCard } from '@/components/settings/WhatsAppTwoWayTestCard';
 import { WaTemplatesSyncCard } from '@/components/settings/WaTemplatesSyncCard';
-import { SocialChannelsGrid } from '@/components/social/SocialChannelsGrid';
+import { MetaDirectConnectionCard } from '@/components/profile/MetaDirectConnectionCard';
 import { FacebookPersonalConnectCard } from '@/components/social/FacebookPersonalConnectCard';
 
 
@@ -918,10 +916,10 @@ const ApiSettings = () => {
         <ProductionPrepPanel />
       </SectionShell>
 
-      <SectionShell title="רשתות חברתיות" subtitle="Ayrshare, קטלוג ערוצים חי וקבוצות מותאמות">
+      <SectionShell title="רשתות חברתיות" subtitle="חיבור ישיר לפייסבוק ואינסטגרם וקבוצות מותאמות">
         <div id="facebook" className="scroll-mt-24 space-y-4">
           <FacebookPersonalConnectCard />
-          <SocialChannelsGrid />
+          <MetaDirectConnectionCard />
         </div>
 
       </SectionShell>
@@ -1564,12 +1562,6 @@ const ApiSettings = () => {
         </Accordion>
       </SectionShell>
 
-      {isSuperAdmin && (
-        <SectionShell title="מידע לסופר-אדמין · Super Admin" subtitle="ניקוי Ayrshare וכלי אבחון פנימיים">
-          <AyrshareProfilePurgeCard />
-          <AyrshareBulkPurgeCard />
-        </SectionShell>
-      )}
     </div>
     </ApiSettingsCtx.Provider>
   );
