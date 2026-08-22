@@ -7,8 +7,9 @@ import { Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { WaTemplatePicker, type WaTemplateSelection } from './WaTemplatePicker';
-import { renderTemplateBody } from '@/hooks/useMetaWaTemplates';
+import { renderTemplateBody, buildTemplateComponents } from '@/hooks/useMetaWaTemplates';
 import { useMetaWaTemplates } from '@/hooks/useMetaWaTemplates';
+
 
 type Props = {
   open: boolean;
