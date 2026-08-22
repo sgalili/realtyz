@@ -29,6 +29,7 @@ export function WhatsAppGatewayCard() {
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState<'unknown' | 'ok' | 'err'>('unknown');
   const [syncingAvatars, setSyncingAvatars] = useState(false);
+  const avatarSync = useWaAvatarSync();
 
   useEffect(() => {
     (async () => {
