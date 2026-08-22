@@ -37,6 +37,8 @@ import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
+import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
+
 import { MetaWabaHealthCard } from '@/components/settings/MetaWabaHealthCard';
 import { WhatsAppTwoWayTestCard } from '@/components/settings/WhatsAppTwoWayTestCard';
 import { WaTemplatesSyncCard } from '@/components/settings/WaTemplatesSyncCard';
@@ -1284,8 +1286,13 @@ const ApiSettings = () => {
       </ServiceCard>
 
       <div className="mb-4">
+        <WhatsAppConnectionModeCard />
+      </div>
+
+      <div className="mb-4">
         <MetaWhatsAppAuthCard />
       </div>
+
 
       <div className="mb-4">
         <MetaWabaHealthCard />

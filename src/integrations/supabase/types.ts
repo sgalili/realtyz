@@ -5182,6 +5182,45 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_whatsapp_settings: {
+        Row: {
+          connection_type: string
+          created_at: string
+          green_api_instance_id: string | null
+          green_api_token: string | null
+          id: string
+          last_checked_at: string | null
+          qr_phone: string | null
+          qr_status: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          connection_type?: string
+          created_at?: string
+          green_api_instance_id?: string | null
+          green_api_token?: string | null
+          id?: string
+          last_checked_at?: string | null
+          qr_phone?: string | null
+          qr_status?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          connection_type?: string
+          created_at?: string
+          green_api_instance_id?: string | null
+          green_api_token?: string | null
+          id?: string
+          last_checked_at?: string | null
+          qr_phone?: string | null
+          qr_status?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       usage_monthly_summary: {
