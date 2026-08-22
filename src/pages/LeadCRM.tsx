@@ -524,7 +524,17 @@ const LeadCRM = () => {
     refetchInterval: 30_000,    // 30s polling for non-critical updates
   });
 
-  const dbVoters = useMemo(() => voterPages?.pages.flatMap(p => p.rows) ?? [], [voterPages]);
+  // Blank/placeholder rows from the legacy "create empty lead" flow are never
+  // shown: no real phone number and the stock "לקוח חדש" name.
+  const isBlankPlaceholderLead = (v: any) =>
+    String(v?.phone_number ?? '').startsWith('new-') ||
+    (String(v?.full_name ?? '').trim() === 'לקוח חדש' &&
+      !String(v?.email ?? '').trim() &&
+      !String(v?.city ?? '').trim());
+  const dbVoters = useMemo(
+    () => (voterPages?.pages.flatMap(p => p.rows) ?? []).filter((v) => !isBlankPlaceholderLead(v)),
+    [voterPages],
+  );
   const demoVoters = useMemo(() => getDemoCandidateVoters(demoCandidateId), [demoCandidateId]);
   const demoMessages = useMemo(() => getDemoCandidateMessages(demoCandidateId), [demoCandidateId]);
   const leads = useMemo(() => {
