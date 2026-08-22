@@ -1825,11 +1825,24 @@ const LeadCRM = () => {
 
             // Messages from messages table
             activeVoterMessages?.forEach(msg => {
+              const channelLabel = ((): string => {
+                const p = String((msg as any).platform || (msg as any).channel || '').toLowerCase();
+                if (p.includes('whatsapp')) return 'וואטסאפ';
+                if (p.includes('instagram')) return 'אינסטגרם';
+                if (p.includes('facebook') || p.includes('messenger')) return 'פייסבוק';
+                if (p.includes('email')) return 'אימייל';
+                if (p.includes('sms')) return 'SMS';
+                return '';
+              })();
+              const isOut = msg.direction === 'outbound';
+              const who = isOut
+                ? ((msg as any).sender_type === 'ai' ? 'הסוכן הדיגיטלי שלח' : 'נשלחה הודעה')
+                : 'הודעה מהלקוח';
               events.push({
                 id: `msg-${msg.id}`,
                 date: msg.created_at || '',
-                type: msg.direction === 'outbound' ? 'message_out' : 'message_in',
-                label: msg.direction === 'outbound' ? 'הצעת נכס נשלחה אוטומטית בוואטסאפ' : 'תגובת לקוח התקבלה',
+                type: isOut ? 'message_out' : 'message_in',
+                label: channelLabel ? `${who} · ${channelLabel}` : who,
                 detail: msg.content?.slice(0, 80) || 'אין תוכן',
               });
             });
