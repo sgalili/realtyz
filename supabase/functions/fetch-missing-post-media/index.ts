@@ -11,11 +11,10 @@
 // POST { limit?: number (<=25), force?: boolean, user_id?: string, budget_ms?: number }
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { createAyrshareBackoff } from "../_shared/ayrshare-backoff.ts";
+import { resolveMetaPage } from "../_shared/metaPage.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const AYR_BASE = "https://api.ayrshare.com/api";
 const WORKSPACE_ID = "00000000-0000-0000-0000-000000000001";
 const BUCKET = "post-media-cache";
 const MAX_POSTS_PER_RUN = 25;
@@ -180,24 +179,15 @@ function parseMetaCredential(value: unknown): { token: string; pageId: string | 
   }
 }
 
-async function resolveGraphToken(): Promise<string> {
+async function resolveGraphToken(ownerId?: string | null): Promise<string> {
+  const page = await resolveMetaPage(admin, ownerId ?? null);
+  if (page?.token) return page.token;
   const env = parseMetaCredential(
     Deno.env.get("FB_PAGE_ACCESS_TOKEN") ||
       Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN") ||
       Deno.env.get("META_ACCESS_TOKEN"),
   );
-  if (env.token) return env.token;
-  const { data: rows } = await admin
-    .from("api_configs")
-    .select("api_key")
-    .in("service_name", ["Meta Marketing API", "Facebook Graph API", "Facebook Page Access Token"])
-    .eq("is_active", true)
-    .limit(5);
-  for (const row of rows ?? []) {
-    const parsed = parseMetaCredential((row as any)?.api_key);
-    if (parsed.token) return parsed.token;
-  }
-  return "";
+  return env.token;
 }
 
 Deno.serve(async (req) => {
@@ -209,16 +199,6 @@ Deno.serve(async (req) => {
     const force = body?.force === true;
     const budgetMs = Math.min(240_000, Math.max(10_000, Number(body?.budget_ms) || 120_000));
     const startedAt = Date.now();
-
-    // Circuit breaker: when the provider circuit is open we must not touch
-    // Ayrshare at all — but Graph/storage recovery is unaffected, so the run
-    // continues in Ayrshare-free mode instead of aborting.
-    const { readCircuit } = await import("../_shared/ayrshare-circuit.ts");
-    const circuit = await readCircuit(admin);
-    const ayrshareBlocked = !!circuit;
-
-
-    const backoff = createAyrshareBackoff();
 
     let query = admin
       .from("campaign_logs")
@@ -247,41 +227,11 @@ Deno.serve(async (req) => {
       return json({ ok: true, scanned: scanned.length, targeted: 0, updated: 0, mirrored: 0 });
     }
 
-    // ---- Ayrshare history (one throttled call for the whole batch) ---------
     const historyMedia = new Map<string, string[]>();
-    const apiKey = Deno.env.get("AYRSHARE_API_KEY")?.trim();
-    const { data: ws } = await admin
-      .from("workspace_social_profile")
-      .select("ayrshare_profile_key")
-      .eq("id", WORKSPACE_ID)
-      .maybeSingle();
-    const profileKey = asText((ws as any)?.ayrshare_profile_key);
-
-    if (apiKey && profileKey && !ayrshareBlocked) {
-      const res = await backoff.run(() =>
-        fetch(`${AYR_BASE}/history/facebook?lastDays=0&limit=200`, {
-          headers: { Authorization: `Bearer ${apiKey}`, "Profile-Key": profileKey },
-        })
-      );
-      if (res?.ok) {
-        const payload: any = await (res as Response).json().catch(() => ({}));
-        const items: any[] = Array.isArray(payload)
-          ? payload
-          : (payload?.posts || payload?.history || payload?.data || []);
-        for (const item of items) {
-          const urls = new Set<string>();
-          collectDeep(item, urls);
-          if (!urls.size) continue;
-          for (const id of [item?.id, item?.postId, item?.fbId, item?.post_id].map(asText).filter(Boolean)) {
-            historyMedia.set(id, Array.from(urls));
-          }
-        }
-      }
-    }
 
     // ---- Facebook Graph batch lookup --------------------------------------
     const graphMedia = new Map<string, string[]>();
-    const token = await resolveGraphToken();
+    const token = await resolveGraphToken(asText(body?.user_id) || null);
     const nativeIds = targets
       .map((t: any) => asText(t.provider_message_id))
       .filter((id) => /^\d{5,}(_\d{5,})?$/.test(id));
@@ -325,22 +275,6 @@ Deno.serve(async (req) => {
       const deep = new Set<string>();
       collectDeep((pr as any).raw, deep);
       deep.forEach(push);
-
-      // Per-post Ayrshare lookup only when nothing else surfaced — throttled
-      // through the same guard, and skipped entirely once it halts.
-      if (candidates.length === 0 && apiKey && profileKey && pid && !ayrshareBlocked && !backoff.halted) {
-        const res = await backoff.run(() =>
-          fetch(`${AYR_BASE}/post/${encodeURIComponent(pid)}?searchPlatformId=true`, {
-            headers: { Authorization: `Bearer ${apiKey}`, "Profile-Key": profileKey },
-          })
-        );
-        if (res?.ok) {
-          const payload = await (res as Response).json().catch(() => ({}));
-          const urls = new Set<string>();
-          collectDeep(payload, urls);
-          urls.forEach(push);
-        }
-      }
 
       // Last resort: the linked property's own photos.
       if (candidates.length === 0 && (row as any).listing_id) {
@@ -402,8 +336,6 @@ Deno.serve(async (req) => {
       mirrored,
       unresolved,
       timed_out: timedOut,
-      rate_limited: backoff.halted,
-      ayrshare_skipped: ayrshareBlocked,
       graph_hits: graphMedia.size,
       history_hits: historyMedia.size,
     });

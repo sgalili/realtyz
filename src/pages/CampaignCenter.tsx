@@ -2079,35 +2079,36 @@ const ConfirmDispatchDialog = ({
     (async () => {
       setPagesLoading(true);
       try {
-        let workspaceFacebookProfile: any = null;
-        if (channel.id === 'facebook') {
-          const { data: wsp } = await supabase
-            .from('workspace_social_profile')
-            .select('ayrshare_profile_key, facebook_page_id, facebook_page_name')
+        // Direct Meta: the bound Facebook Page (and its linked IG business
+        // account) is the single publishing target for this workspace.
+        let workspaceFbId = '';
+        let workspaceFbName = '';
+        if (channel.id === 'facebook' || channel.id === 'instagram') {
+          const { data: binding } = await supabase
+            .from('messenger_page_bindings')
+            .select('page_id, page_name')
+            .limit(1)
             .maybeSingle();
-          workspaceFacebookProfile = wsp;
+          workspaceFbId = String((binding as any)?.page_id || '').trim();
+          workspaceFbName = String((binding as any)?.page_name || '').trim();
         }
-        const workspaceProfileKey = String(workspaceFacebookProfile?.ayrshare_profile_key || '').trim();
-        const workspaceFbId = String(workspaceFacebookProfile?.facebook_page_id || '').trim();
-        const workspaceFbName = String(workspaceFacebookProfile?.facebook_page_name || '').trim();
 
         const { data } = await supabase
-          .from('ayrshare_social_accounts')
-          .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, is_active, connected')
+          .from('social_connections')
+          .select('id, platform, account_name, account_id, avatar_url, is_connected')
           .eq('platform', channel.id)
-          .eq('connected', true)
-          .eq('is_active', true)
+          .eq('is_connected', true)
           .order('updated_at', { ascending: false });
         let rows = (data || [])
           .map((r: any) => ({
             id: r.id,
             platform: r.platform,
-            accountRef: r.account_ref || '',
-            profileKey: channel.id === 'facebook' && workspaceProfileKey ? workspaceProfileKey : r.profile_key || null,
-            name: workspaceFbName || r.display_name || r.account_username || r.username || channel.label,
-            username: r.account_username || r.username || null,
+            accountRef: r.account_id || workspaceFbId || '',
+            profileKey: null as string | null,
+            name: workspaceFbName || r.account_name || channel.label,
+            username: null as string | null,
             avatar: r.avatar_url || null,
-            profileUrl: r.profile_url || (r.account_ref ? buildAccountUrl(channel.id, r.account_ref) : null),
+            profileUrl: (r.account_id || workspaceFbId) ? buildAccountUrl(channel.id, r.account_id || workspaceFbId) : null,
           }));
         const seen = new Set<string>();
         rows = rows.filter((p) => {
@@ -2748,15 +2749,15 @@ const PublishedFeed = () => {
 
   // Circuit-breaker countdown: DISABLED via emergency override — publishing is
   // force-unlocked for development testing. The paused banner and cooldown
-  // gate are bypassed regardless of any persisted `ayrshare_circuit_state`.
+  // gate are bypassed regardless of any persisted `social_circuit_state`.
   const CIRCUIT_OVERRIDE = true;
   const [circuitUntilMs, setCircuitUntilMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   useEffect(() => {
     if (CIRCUIT_OVERRIDE) {
       try {
-        sessionStorage.removeItem('realtyz.ayrshare_circuit_state');
-        localStorage.removeItem('realtyz.ayrshare_circuit_state');
+        sessionStorage.removeItem('realtyz.social_circuit_state');
+        localStorage.removeItem('realtyz.social_circuit_state');
       } catch { /* noop */ }
       setCircuitUntilMs(null);
       return;
@@ -2767,7 +2768,7 @@ const PublishedFeed = () => {
         const { data } = await supabase
           .from('campaign_settings')
           .select('value')
-          .eq('key', 'ayrshare_circuit_state')
+          .eq('key', 'social_circuit_state')
           .maybeSingle();
         if (cancelled) return;
         const parsed = data?.value ? JSON.parse(String(data.value)) : null;
@@ -2899,22 +2900,21 @@ const PublishedFeed = () => {
   }, []);
 
   const handleFeedConnect = async (id: string) => {
-    const platformMap: Record<string, string> = {
-      facebook: 'facebook', instagram: 'instagram', x: 'twitter',
-      youtube: 'youtube', linkedin: 'linkedin', tiktok: 'tiktok',
-    };
-    const platform = platformMap[id];
-    if (!platform) { toast.error('הערוץ הזה לא נתמך כרגע דרך Ayrshare'); return; }
+    if (id !== 'facebook' && id !== 'instagram') {
+      toast.error('הערוץ הזה מנוהל בהגדרות החיבורים');
+      window.location.href = '/profile?tab=connections';
+      return;
+    }
     try {
-      toast.loading('פותח חיבור Ayrshare…', { id: 'ayr-connect-feed' });
-      const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: { platform } });
-      toast.dismiss('ayr-connect-feed');
+      toast.loading('פותח חיבור לפייסבוק…', { id: 'meta-connect-feed' });
+      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'start' } });
+      toast.dismiss('meta-connect-feed');
       if (error) throw new Error((error as any)?.message || 'יצירת חיבור נכשלה');
-      const url = (data as any)?.url;
-      if (!url) { toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Ayrshare'); return; }
+      const url = (data as any)?.auth_url;
+      if (!url) { toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Meta'); return; }
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e: any) {
-      toast.dismiss('ayr-connect-feed');
+      toast.dismiss('meta-connect-feed');
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
     }
   };
@@ -4703,8 +4703,7 @@ const CampaignCenter = () => {
       }
     } catch { /* ignore */ }
     queryClient.invalidateQueries({ queryKey: ['social-connections'] });
-    queryClient.invalidateQueries({ queryKey: ['workspace-social-profile'] });
-    queryClient.invalidateQueries({ queryKey: ['ayrshare-social-accounts'] });
+    queryClient.invalidateQueries({ queryKey: ['meta-page-binding'] });
   };
 
   // Persist whenever the resolved connection state changes — keeps the grid
