@@ -230,22 +230,157 @@ async function resolveProvider(
   }
 
   // Project-level Meta Cloud API secrets.
-  const phoneNumberId = Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? Deno.env.get("META_PHONE_NUMBER_ID") ?? "";
-  const accessToken = Deno.env.get("META_WA_ACCESS_TOKEN") ?? Deno.env.get("META_WHATSAPP_TOKEN") ?? "";
-  if (phoneNumberId && accessToken) {
-    return {
-      name: "WBA",
-      is_official: true,
-      config: {
-        phone_number_id: phoneNumberId,
-        access_token: accessToken,
-        api_version: Deno.env.get("META_WA_API_VERSION") ?? Deno.env.get("META_API_VERSION") ?? Deno.env.get("WHATSAPP_API_VERSION") ?? "v20.0",
-      },
-    };
-  }
+  const central = centralMetaConfig();
+  if (central) return { name: "WBA", is_official: true, config: central, source: "central" };
 
   return null;
 }
+
+/**
+ * Resolve the workspace WhatsApp connection mode chosen in settings
+ * (`workspace_whatsapp_settings.connection_type`).
+ *  - 'official_meta' → central platform Meta Cloud API template system
+ *  - 'qr_session'    → workspace's own connected number
+ * Defaults to 'official_meta' when nothing was configured yet.
+ */
+async function resolveWorkspaceMode(
+  admin: ReturnType<typeof createClient>,
+  userId: string | null,
+  tenantId: string | null,
+): Promise<{ mode: "official_meta" | "qr_session"; owner_id: string | null }> {
+  const ids = [tenantId, userId].filter(Boolean) as string[];
+  const candidates = [...ids];
+  for (const id of ids) {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("active_workspace_owner_id, workspace_owner_id")
+      .eq("id", id)
+      .maybeSingle();
+    const owner = ((prof as any)?.active_workspace_owner_id ?? (prof as any)?.workspace_owner_id) as string | null;
+    if (owner && !candidates.includes(owner)) candidates.push(owner);
+  }
+  for (const id of candidates) {
+    const { data } = await admin
+      .from("workspace_whatsapp_settings")
+      .select("connection_type")
+      .eq("workspace_owner_id", id)
+      .maybeSingle();
+    const mode = (data as any)?.connection_type as string | undefined;
+    if (mode === "official_meta" || mode === "qr_session") return { mode, owner_id: id };
+  }
+  return { mode: "official_meta", owner_id: candidates[0] ?? null };
+}
+
+/**
+ * Build the Meta `components` payload for an approved template.
+ *
+ * Supports both positional ({{1}}) and named ({{first_name}}) placeholders —
+ * named ones require `parameter_name` per Meta's Cloud API spec.
+ */
+function buildTemplateComponents(
+  bodyText: string,
+  values: Record<string, string>,
+): unknown[] {
+  const keys: string[] = [];
+  const re = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(bodyText)) !== null) {
+    if (!keys.includes(m[1])) keys.push(m[1]);
+  }
+  if (!keys.length) return [];
+  const parameters = keys.map((key) => {
+    const text = values[key] ?? values[key.toLowerCase()] ?? "";
+    return /^\d+$/.test(key)
+      ? { type: "text", text }
+      : { type: "text", parameter_name: key, text };
+  });
+  return [{ type: "body", parameters }];
+}
+
+/**
+ * Collect the dynamic values a template may reference: lead name, property
+ * address and the workspace's business name — merged with caller overrides.
+ */
+async function buildTemplateVariables(
+  admin: ReturnType<typeof createClient>,
+  opts: {
+    leadId?: string | null;
+    listingId?: string | null;
+    ownerId?: string | null;
+    overrides?: Record<string, string>;
+  },
+): Promise<Record<string, string>> {
+  const values: Record<string, string> = {};
+
+  let leadName = "";
+  let listingId = opts.listingId ?? null;
+  if (opts.leadId) {
+    const { data: lead } = await admin
+      .from("leads")
+      .select("full_name, city, interested_listing_id")
+      .eq("id", opts.leadId)
+      .maybeSingle();
+    leadName = String((lead as any)?.full_name ?? "");
+    listingId = listingId ?? ((lead as any)?.interested_listing_id ?? null);
+  }
+
+  let address = "";
+  if (listingId) {
+    const { data: listing } = await admin
+      .from("listings")
+      .select("address, house_number, apartment_number, city, property_title")
+      .eq("id", listingId)
+      .maybeSingle();
+    const l = (listing ?? {}) as any;
+    if (l) {
+      const street = [l.address, l.house_number].filter(Boolean).join(" ").trim();
+      address = [street, l.city].filter(Boolean).join(", ") || String(l.property_title ?? "");
+    }
+  }
+
+  let businessName = "";
+  if (opts.ownerId) {
+    const { data: brand } = await admin
+      .from("white_label_settings")
+      .select("agency_name")
+      .eq("user_id", opts.ownerId)
+      .maybeSingle();
+    businessName = String((brand as any)?.agency_name ?? "");
+    if (!businessName) {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", opts.ownerId)
+        .maybeSingle();
+      businessName = String((prof as any)?.full_name ?? "");
+    }
+  }
+
+  const first = leadName.trim().split(/\s+/)[0] ?? "";
+  const assign = (keys: string[], value: string) => {
+    if (!value) return;
+    for (const k of keys) values[k] = value;
+  };
+  assign(["lead_name", "name", "full_name", "customer_name", "client_name"], leadName);
+  assign(["first_name", "firstname"], first || leadName);
+  assign(["property_address", "address", "property", "listing_address"], address);
+  assign(["business_name", "agency_name", "company_name", "broker_name"], businessName);
+
+  // Caller-supplied values always win.
+  for (const [k, v] of Object.entries(opts.overrides ?? {})) {
+    if (v != null && v !== "") values[k] = v;
+  }
+
+  // Positional fallback: {{1}}, {{2}}, {{3}} → lead name, address, business.
+  const positional = [values.lead_name ?? first, values.property_address ?? "", values.business_name ?? ""];
+  positional.forEach((v, i) => {
+    const key = String(i + 1);
+    if (values[key] == null && v) values[key] = v;
+  });
+
+  return values;
+}
+
 
 async function sendViaWba(
   cfg: Record<string, unknown>,
