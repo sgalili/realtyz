@@ -151,18 +151,22 @@ export async function loadConnection(
 }
 
 /** Translate a Graph API error into a short Hebrew explanation. */
-export function humanizeGraphError(body: any): string {
+export function humanizeGraphError(body: any, fallback?: string): string {
   const err = body?.error ?? {};
   const code = Number(err.code ?? 0);
   const sub = Number(err.error_subcode ?? 0);
-  const msg = String(err.message ?? "שגיאה לא ידועה מול פייסבוק");
+  const msg = String(err.message ?? fallback ?? "שגיאה לא ידועה מול פייסבוק");
 
   if (code === 190 || sub === 463 || sub === 467) {
-    return "החיבור לפרופיל הפייסבוק פג. יש להתחבר מחדש בעמוד החיבורים.";
+    return "החיבור לפייסבוק פג או שהטוקן אינו תקין. יש להתחבר מחדש בעמוד החיבורים.";
   }
   if (code === 200 || code === 3 || code === 10 || /permission|scope/i.test(msg)) {
-    return "לפייסבוק אין הרשאה לפרסם בקבוצה הזו עבור האפליקציה. יש להשלים App Review להרשאות הקבוצות ב-Meta Developer Console (App Review > Permissions and Features) ולוודא שהאפליקציה מותקנת בקבוצה.";
+    // Keep the caller's context-specific wording when provided (e.g. page connect),
+    // otherwise fall back to the group-publishing explanation.
+    return fallback ??
+      "לפייסבוק אין הרשאה לפרסם בקבוצה הזו עבור האפליקציה. יש להשלים App Review להרשאות הקבוצות ב-Meta Developer Console (App Review > Permissions and Features) ולוודא שהאפליקציה מותקנת בקבוצה.";
   }
+
   if (code === 4 || code === 17 || code === 32 || code === 613) {
     return "פייסבוק הגביל את קצב הבקשות. הפרסום ינסה שוב מאוחר יותר.";
   }
