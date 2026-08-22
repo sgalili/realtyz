@@ -616,12 +616,15 @@ export default function Profile() {
         <TabsContent value="workspace" className="mt-[20px] space-y-4">
           <WorkspaceTab />
         </TabsContent>
-        <TabsContent value="connections" className="mt-[20px] space-y-4">
+        <TabsContent value="connections" className="mt-[20px] space-y-4" dir="rtl">
+          <AyrshareCredentialsCard />
+          <WhatsAppConnectionModeCard />
           <WhatsAppGatewayCard />
           <VoiceGatewayCard />
           <EmailAliasCard />
           <ListingPortalsCard />
         </TabsContent>
+
       </Tabs>
     </div>
   );
