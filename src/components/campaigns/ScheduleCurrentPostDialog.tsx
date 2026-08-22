@@ -3,7 +3,7 @@
 // Mirrors the UI/UX of the calendar's "New scheduled campaign" dialog.
 //
 // Unlike the calendar-side flow, this does NOT create a new draft — it directly
-// dispatches the composer payload to `ayrshare-post` for each computed slot
+// dispatches the composer payload to `meta-publish` for each computed slot
 // with a `scheduled_at` timestamp.
 
 import { useEffect, useMemo, useState } from 'react';
@@ -325,8 +325,8 @@ export function ScheduleCurrentPostDialog({
 
     try {
       // ---- SLOT 0 -----------------------------------------------------------
-      // Publish the first chronological slot for real via ayrshare-post so it
-      // rides Ayrshare's own scheduler. This is the only heavy call in the
+      // Publish the first chronological slot for real via meta-publish so it
+      // rides Meta's own scheduler. This is the only heavy call in the
       // whole series — everything after it is a lightweight DB insert.
       const firstSlot = slots[0];
       const totalOps = slots.length * fanoutTargets.length;
@@ -425,7 +425,7 @@ export function ScheduleCurrentPostDialog({
             message_body: body, // fallback body if regeneration ever fails
             status: 'scheduled',
             sent_at: slot.toISOString(),
-            source_account: 'ayrshare-placeholder',
+            source_account: 'meta-placeholder',
             needs_regeneration: true,
             regen_prompt: rotateNote,
             listing_id: listingId ?? null,

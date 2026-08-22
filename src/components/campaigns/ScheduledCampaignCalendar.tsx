@@ -250,7 +250,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
 
   const cancelScheduled = async (r: ScheduledRow) => {
     if (!confirm('לבטל את הפרסום המתוזמן הזה?')) return;
-    // Try to cancel on Ayrshare for posts that already received an external id.
+    // Try to cancel on Meta for posts that already received an external id.
     const externalIds = Array.from(new Set([
       r.provider_message_id,
       ...((r.provider_response as any)?.postIds || [])
@@ -303,7 +303,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     if (count === 0) { toast.info('אין פרסומים עתידיים בסדרה'); return; }
     if (!confirm(`לבטל את כל הסדרה? (${count} פרסומים עתידיים)`)) return;
 
-    // Cancel every known Ayrshare id best-effort.
+    // Cancel every known Meta post id best-effort.
     const { data: sess } = await supabase.auth.getSession();
     const accessToken = sess?.session?.access_token;
     const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/meta-publish`;

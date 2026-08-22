@@ -187,7 +187,7 @@ const VOICE_DIAL_NUMBER = '+97233829914';
 
 // Connection state is resolved live per-workspace from `social_connections`
 // gated by a verified `workspace_social_profile` row. No hardcoded defaults —
-// each workspace must own its own Ayrshare profile key before any channel can
+// each workspace must own its own connected Meta Page before any channel can
 // appear connected, preventing cross-tenant leak from shared/global keys.
 const EMPTY_CONNECTED = new Set<string>();
 const SOCIAL_CHANNEL_IDS = new Set(['facebook', 'instagram', 'x', 'youtube', 'linkedin', 'tiktok']);
@@ -713,7 +713,7 @@ const InlineComposer = ({
   const [attachWaLink, setAttachWaLink] = useState<boolean>(!!initial.attachWaLink);
   const [attachMsngrLink, setAttachMsngrLink] = useState<boolean>(!!initial.attachMsngrLink);
   // First-comment auto-post: when enabled, the branded first-comment text is
-  // posted as the first comment on the published post via Ayrshare.
+  // posted as the first comment on the published post via the Meta API.
   const [firstCommentEnabled, setFirstCommentEnabled] = useState<boolean>(initial.firstCommentEnabled ?? true);
   const [firstComment, setFirstComment] = useState<string>(initial.firstComment || '');
   const [firstCommentGenerating, setFirstCommentGenerating] = useState<boolean>(false);
@@ -761,7 +761,7 @@ const InlineComposer = ({
     const variant = presetVariant ?? Number(params.get('variant') || '');
     const variants = presetVariants ?? Number(params.get('variants') || '');
     if (variant > 0 && variants > 1) {
-      // Anti-ban variation directive — Facebook/Ayrshare will throttle or
+      // Anti-ban variation directive — Facebook will throttle or
       // shadow-block accounts that repost identical payloads. Every recurring
       // variant must be a fully distinct human-written copy.
       const structures = ['סיפור-פתיחה רגשי קצר', 'רשימת בולטים של יתרונות', 'וו-דחיפות עם CTA חד', 'נקודת מבט של תושב השכונה', 'שאלה פתוחה לקהל'];
@@ -1725,7 +1725,7 @@ const InlineComposer = ({
       </div>
 
       {/* First-comment composer — always visible below the main textarea.
-          When enabled (checkbox on), Ayrshare posts this text as the first
+          When enabled (checkbox on), the Meta API posts this text as the first
           comment on the published post. WA / Messenger link options live
           here and no longer touch the main post body. */}
       <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2" dir="rtl">
@@ -2192,7 +2192,7 @@ const ConfirmDispatchDialog = ({
         const extGroupIds = groupIds.filter((id) => isExtensionGroupId(id));
         const results = [] as any[];
         for (const target of targets) {
-          // Optimistic pill in the sent-posts feed while Ayrshare verifies.
+          // Optimistic pill in the sent-posts feed while Meta verifies.
           if (!scheduledAt) {
             try {
               window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
@@ -2225,7 +2225,7 @@ const ConfirmDispatchDialog = ({
 
 
         // Circuit-breaker short-circuit: the backend is intentionally pausing
-        // outbound Ayrshare traffic. Persist a "paused" campaign row so the
+        // outbound Meta traffic. Persist a "paused" campaign row so the
         // user sees the attempt in "קמפיינים שנשלחו" instead of it vanishing,
         // then close the dialog with a calm Hebrew notice.
         // Emergency override: publish path ignores the circuit-open response
@@ -2530,7 +2530,7 @@ const firstPipelineError = (data: any): string | null => {
   return null;
 };
 
-// Derive the live native post URL from Ayrshare provider response, or build
+// Derive the live native post URL from the Meta provider response, or build
 // a best-effort fallback URL from the platform + native post id.
 const derivePostUrl = (r: CampaignRow): string | null => {
   if (r.external_url) return r.external_url;
@@ -2685,7 +2685,7 @@ const PublishedFeed = () => {
   const [editRepostRow, setEditRepostRow] = useState<CampaignRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CampaignRow | null>(null);
   // Optimistic rows for immediate publish — prepended to the feed with a
-  // countdown pill while Ayrshare finishes verifying the FB publish.
+  // countdown pill while Meta finishes verifying the FB publish.
   const [optimisticRows, setOptimisticRows] = useState<Array<CampaignRow & { _optimistic: true; _eta_ms: number; _scheduled_at?: string | null }>>([]);
   useEffect(() => {
     const handler = (ev: Event) => {
@@ -2930,7 +2930,7 @@ const PublishedFeed = () => {
     const scopedUserIds = await getCampaignWorkspaceUserIds(ownerScope, user.id);
     setCampaignUserIds(scopedUserIds);
 
-    // DB-first: read the persisted campaign_logs feed BEFORE any Ayrshare
+    // DB-first: read the persisted campaign_logs feed BEFORE any Meta
     // import. This is the whole point of the cache — the user should see
     // instantly whatever was previously stored, never waiting on the provider.
     const { data } = await supabase
@@ -3033,7 +3033,7 @@ const PublishedFeed = () => {
     // Nudge the sidebar to repaint the campaigns badge with the persisted DB count.
     try { queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] }); } catch { /* no-op */ }
 
-    // Background Ayrshare import — never blocks the DB paint above. Only runs
+    // Background Meta import — never blocks the DB paint above. Only runs
     // when the caller explicitly forces it OR the persisted feed is thin
     // enough that we still need to backfill from the provider. The import
     // UPSERTS into campaign_logs; the realtime INSERT handler streams new
@@ -3093,7 +3093,7 @@ const PublishedFeed = () => {
 
 
 
-  // Ask the backend to (a) refresh live Ayrshare analytics — likes/comments/shares/views
+  // Ask the backend to (a) refresh live Meta analytics — likes/comments/shares/views
   // land back on campaign_logs and stream in via the realtime subscription below — and
   // (b) pull fresh inbound comments into engagement_events so the per-card comments tree
   // updates without a manual refresh.
@@ -3101,14 +3101,14 @@ const PublishedFeed = () => {
     const metricsOwner = ownerOverride ?? workspaceOwnerId ?? userId;
     if (!metricsOwner) return false;
     // Force a direct live page fetch every time — bypass any cached counters
-    // so the UI mirrors the exact real-time Meta payload via Ayrshare.
+    // so the UI mirrors the exact real-time Meta payload.
     const cacheBust = `${Date.now()}-${crypto.randomUUID()}`;
     // Run the comments sync (nested replies + Like reactions) and the
     // headline analytics in parallel — neither blocks the other.
     // RATE-LIMIT HARD RULE: the bulk comments sync (which fanned out to every
     // post in the workspace) is NO LONGER auto-triggered here. It caused the
     // HTTP 429 storm / provider suspension. Comments now arrive via the
-    // Ayrshare webhook (realtime) or an explicit per-card refresh click.
+    // Meta webhook (realtime) or an explicit per-card refresh click.
     const syncPromise = Promise.resolve(null);
 
 
@@ -3133,7 +3133,7 @@ const PublishedFeed = () => {
       const byId = new Map(results.filter((r) => r.ok && r.counts).map((r) => [r.id, r]));
 
       // Authoritative nested-comment count: every comment ingested by
-      // ayrshare-comments-fetch (parent + every recursive child) lives in
+      // meta-comments-sync (parent + every recursive child) lives in
       // engagement_events keyed by external_post_id. Use that count as the
       // floor so the headline never under-reports vs the live FB thread.
       const nativeIds = Array.from(
@@ -3210,7 +3210,7 @@ const PublishedFeed = () => {
       }
 
       // 2) Always run a DB-only read so cross-session re-entries paint
-      //    instantly from campaign_logs without waiting on Ayrshare. The
+      //    instantly from campaign_logs without waiting on Meta. The
       //    fb-recent-posts import is fired inside load() as a background
       //    task — it never blocks the DB paint.
       let pending = FEED_LOAD_PROMISE_CACHE.get(wsKey);
@@ -3434,7 +3434,7 @@ const PublishedFeed = () => {
   ].filter(Boolean) as string[]));
 
   // Performs the actual deletion. `mode === 'both'` first wipes the post off
-  // the native social network (Meta Graph via ayrshare-post) and aborts on
+  // the native social network (Meta Graph via meta-publish) and aborts on
   // failure, so we never leave a phantom post live on the broker's Page.
   const performDelete = async (r: CampaignRow, mode: 'db' | 'both') => {
     const externalIds = mode === 'both' ? externalIdsFor(r) : [];
@@ -3696,7 +3696,7 @@ const PublishedFeed = () => {
         const liveCount = liveCommentCounts[r.id];
         // Once the comment tree has been loaded (even once), it is the
         // authoritative count — top-level + follow-up replies. Never mix in
-        // the inflated Ayrshare aggregate (dbComments); it double-counts.
+        // the inflated provider aggregate (dbComments); it double-counts.
         const dbComments = Math.max(0, typeof r.comment_count === 'number' ? r.comment_count : 0);
         const commentDisplay = typeof liveCount === 'number'
           ? Math.max(liveCount, dbComments)
@@ -4020,8 +4020,8 @@ const PublishedFeed = () => {
 
 
 const Stat = ({ icon: Icon, label, value, hasData = true }: { icon: any; label: string; value: number | null | undefined; hasData?: boolean }) => {
-  // When Ayrshare hasn't returned analytics yet (e.g. historical posts the
-  // current Ayrshare plan can't pull, or freshly published posts before the
+  // When Meta hasn't returned analytics yet (e.g. historical posts Meta
+  // can't pull insights for, or freshly published posts before the
   // first refresh) we render a clean "–" instead of misleading zeros.
   const display = hasData && typeof value === 'number' ? value : '–';
   return (

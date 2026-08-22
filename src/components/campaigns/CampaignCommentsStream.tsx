@@ -653,7 +653,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
 
   useEffect(() => {
     // Load cached DB rows immediately. On first expand per browser session
-    // (sentinel in sessionStorage), ALSO pull live Ayrshare comments so the
+    // (sentinel in sessionStorage), ALSO pull live Meta comments so the
     // tree populates without requiring a manual click. After that, the
     // session cache hydrates instantly on every subsequent expand.
     (async () => {
@@ -666,7 +666,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       await load();
 
       // RATE-LIMIT HARD RULE: no automatic provider fetch on card expand.
-      // Comments arrive event-driven (ayrshare-webhook -> engagement_events ->
+      // Comments arrive event-driven (meta-comments-webhook -> engagement_events ->
       // realtime) or via the explicit user-triggered רענן action. Any
       // background polling here is what caused the HTTP 429 storm.
 
