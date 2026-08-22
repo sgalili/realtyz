@@ -193,7 +193,7 @@ export function WhatsAppGatewayCard() {
 
 
   return (
-    <Card>
+    <Card dir="rtl" className="text-right">
       <CardHeader>
         <CardTitle className="text-right flex items-center gap-2 justify-end">
           {status === 'ok' && (
@@ -201,14 +201,12 @@ export function WhatsAppGatewayCard() {
               <CheckCircle2 className="h-3 w-3" /> פעיל
             </Badge>
           )}
-          <span>חיבור WhatsApp (Green API)</span>
+          <span>מספר אישי בסריקת QR (Green API)</span>
           <MessageCircle className="h-5 w-5 text-emerald-600" />
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-xs text-muted-foreground text-right">
-          {"\n"}
-        </p>
+
 
         <div className="space-y-1.5">
           <Label className="text-right block">מספר WhatsApp מחובר</Label>
