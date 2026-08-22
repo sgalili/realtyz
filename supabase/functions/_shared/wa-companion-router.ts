@@ -402,18 +402,19 @@ async function handleReplyCommand(ctx: RouterContext): Promise<RouterResult> {
     };
   }
   try {
-    const res = await fetch(`${ctx.supabaseUrl}/functions/v1/ayrshare-comment-reply`, {
+    const res = await fetch(`${ctx.supabaseUrl}/functions/v1/meta-comments-sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${ctx.serviceKey}` },
       body: JSON.stringify({
+        action: "reply",
         event_id: event.id,
-        comment: replyText,
-        platform: event.platform ?? "facebook",
+        text: replyText,
         user_id: ctx.ownerUserId,
+        mode: "auto",
       }),
     });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(`ayrshare-comment-reply ${res.status}: ${JSON.stringify(j).slice(0, 200)}`);
+    if (!res.ok) throw new Error(`meta-comments-sync ${res.status}: ${JSON.stringify(j).slice(0, 200)}`);
     return {
       handled: true,
       action: "reply_sent",

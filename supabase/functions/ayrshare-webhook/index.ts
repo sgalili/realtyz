@@ -216,10 +216,10 @@ Deno.serve(async (req) => {
     if (shouldSync) {
       const syncTask = (async () => {
         if (postIds.length > 0) {
-          await fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comments-fetch`, {
+          await fetch(`${SUPABASE_URL}/functions/v1/meta-comments-sync`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, post_ids: postIds, platform: 'facebook', force_refresh: true }),
+            body: JSON.stringify({ action: 'sync', user_id: userId, post_ids: postIds }),
           }).catch((e) => console.error('[ayrshare-webhook] comments sync failed', e));
         }
         await fetch(`${SUPABASE_URL}/functions/v1/fb-recent-posts`, {

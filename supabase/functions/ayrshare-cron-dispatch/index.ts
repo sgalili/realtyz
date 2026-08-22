@@ -1,5 +1,5 @@
 // Realtyz cron dispatcher — scans recent Facebook campaign posts and asks
-// ayrshare-comments-fetch to refresh comment data per post for each owner.
+// meta-comments-sync (direct Meta Graph API) to refresh comments per owner.
 // Strict tenant isolation: every dispatched fetch carries the owning user_id.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -90,13 +90,13 @@ Deno.serve(async (req) => {
 
   const results = await Promise.allSettled(
     targets.map((b) =>
-      fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comments-fetch`, {
+      fetch(`${SUPABASE_URL}/functions/v1/meta-comments-sync`, {
         method: "POST",
         headers: { Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" },
         body: JSON.stringify({
+          action: "sync",
           post_ids: Array.from(b.ids),
           user_id: b.user_id,
-          campaign_name: b.campaign_name,
         }),
       })
         .then((r) => r.json())

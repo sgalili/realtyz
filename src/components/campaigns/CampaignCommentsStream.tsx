@@ -545,11 +545,12 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
         withTimeout(supabase.functions.invoke("ayrshare-analytics", {
           body: pid ? { provider_message_id: pid } : {},
         })),
-        withTimeout(postIds.length > 0
-          ? supabase.functions.invoke("ayrshare-comments-fetch", {
-              body: { user_id: commentOwnerId, post_ids: postIds, platform: platformForCampaignChannel(campaign.channel), campaign_body: campaign.message_body ?? null, force_refresh: manual },
-            })
-          : supabase.functions.invoke("ayrshare-sync-comments", { body: { user_id: commentOwnerId } })),
+        // Comments come straight from the Meta Graph API (no Ayrshare).
+        withTimeout(supabase.functions.invoke("meta-comments-sync", {
+          body: postIds.length > 0
+            ? { action: "sync", user_id: commentOwnerId, post_ids: postIds }
+            : { action: "sync", user_id: commentOwnerId },
+        })),
       ]);
       let sawSessionExpired = false;
       let sawHalt = false;
@@ -995,16 +996,14 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       const dmText = sendDm ? dmDraft.trim() : "";
       const finalPublic = sendPublic ? replyDraft.trim() : "";
       const { data, error } = await supabase.functions.invoke(
-        "ayrshare-comment-reply",
+        "meta-comments-sync",
         {
           body: {
-            event_id: replyOpen.id,
+            action: "reply",
             user_id: commentOwnerId,
-            comment: finalPublic || undefined,
-            platform: replyOpen.platform,
             comment_id: replyOpen.external_id,
-            private_dm: dmText || undefined,
-            skip_public_reply: !sendPublic,
+            text: finalPublic || dmText,
+            mode: "hitl",
           },
         },
       );

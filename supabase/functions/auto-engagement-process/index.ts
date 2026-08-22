@@ -4,7 +4,7 @@
 //  3. Dispatch private DM / auto-like only when the relevant auto-reply switch
 //     and global AI autopilot switch are enabled.
 //  4. If the workspace has auto_reply_positive/negative enabled AND sentiment
-//     matches, ALSO auto-publish the public reply via ayrshare-comment-reply.
+//     matches, ALSO auto-publish the public reply via meta-comments-sync.
 //     Otherwise leave the row in `pending_approval` for the human queue.
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -353,14 +353,15 @@ Deno.serve(async (req) => {
     // 3. If auto-reply is enabled and we have a draft, publish public reply.
     let dispatch: any = null;
     if (willAutoReply && analysis.reply && rowId) {
-      const r = await fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comment-reply`, {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/meta-comments-sync`, {
         method: "POST",
         headers: { Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" },
         body: JSON.stringify({
+          action: "reply",
           event_id: rowId,
           user_id,
-          comment: analysis.reply,
-          platform,
+          text: analysis.reply,
+          mode: "auto",
         }),
       });
       dispatch = await r.json().catch(() => ({ ok: false }));
