@@ -260,7 +260,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     if (externalIds.length > 0) {
       const { data: sess } = await supabase.auth.getSession();
       const accessToken = sess?.session?.access_token;
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/ayrshare-post`;
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/meta-publish`;
       for (const pid of externalIds) {
         try {
           await fetch(fnUrl, {
@@ -306,7 +306,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     // Cancel every known Ayrshare id best-effort.
     const { data: sess } = await supabase.auth.getSession();
     const accessToken = sess?.session?.access_token;
-    const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/ayrshare-post`;
+    const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/meta-publish`;
     const externalIds = new Set<string>();
     for (const s of siblings || []) {
       if (s.provider_message_id) externalIds.add(s.provider_message_id);

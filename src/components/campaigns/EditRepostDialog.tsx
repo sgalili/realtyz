@@ -483,7 +483,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
     setPosting(true);
     setRateLimited(null);
     try {
-      const { data, error } = await supabase.functions.invoke('ayrshare-post', {
+      const { data, error } = await supabase.functions.invoke('meta-publish', {
         body: {
           post: body.trim(),
           channels: [campaign.channel],

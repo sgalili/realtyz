@@ -2200,7 +2200,7 @@ const ConfirmDispatchDialog = ({
               }));
             } catch { /* noop */ }
           }
-          const { data, error } = await supabase.functions.invoke('ayrshare-post', {
+          const { data, error } = await supabase.functions.invoke('meta-publish', {
             body: {
               post: bodyToPublish,
               channels: [channel.id],
@@ -3414,7 +3414,7 @@ const PublishedFeed = () => {
     if (externalIds.length > 0) {
       const { data: sess } = await supabase.auth.getSession();
       const accessToken = sess?.session?.access_token;
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/ayrshare-post`;
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/meta-publish`;
       for (const pid of externalIds) {
         const resp = await fetch(fnUrl, {
           method: 'DELETE',
