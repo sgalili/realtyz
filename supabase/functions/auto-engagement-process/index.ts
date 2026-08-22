@@ -353,14 +353,15 @@ Deno.serve(async (req) => {
     // 3. If auto-reply is enabled and we have a draft, publish public reply.
     let dispatch: any = null;
     if (willAutoReply && analysis.reply && rowId) {
-      const r = await fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comment-reply`, {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/meta-comments-sync`, {
         method: "POST",
         headers: { Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" },
         body: JSON.stringify({
+          action: "reply",
           event_id: rowId,
           user_id,
-          comment: analysis.reply,
-          platform,
+          text: analysis.reply,
+          mode: "auto",
         }),
       });
       dispatch = await r.json().catch(() => ({ ok: false }));

@@ -1199,17 +1199,16 @@ Deno.serve(async (req) => {
         for (let i = 0; i < postIds.length; i += 2) {
           const chunk = postIds.slice(i, i + 2);
           try {
-            await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/ayrshare-comments-fetch`, {
+            await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/meta-comments-sync`, {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
+                action: "sync",
                 user_id: ownerId,
                 post_ids: chunk,
-                platform: "facebook",
-                force_refresh: true,
               }),
             }).catch(() => null);
           } catch (_commentErr) {
