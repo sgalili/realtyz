@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { MessageCircle, Save, Loader2, CheckCircle2, ImageDown } from 'lucide-react';
+import { useWaAvatarSync } from '@/hooks/useWaAvatarSync';
 
 /**
  * Quick-update card for Green API WhatsApp gateway credentials.
