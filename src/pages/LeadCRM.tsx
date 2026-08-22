@@ -2418,8 +2418,30 @@ const LeadCRM = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add-Lead modals deprecated — clicking "+" now creates a blank lead
-          and opens its CRM profile directly via createBlankLeadAndOpen(). */}
+      {/* Add Lead: a real row is inserted only after the broker fills the form. */}
+      <NewLeadDialog open={addVoterOpen} onOpenChange={setAddVoterOpen} />
+
+      <AlertDialog open={!!singleDeleteId} onOpenChange={(o) => { if (!deletingSingle && !o) setSingleDeleteId(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">מחיקת מתעניין</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">
+              האם אתה בטוח שברצונך למחוק ליד זה לצמיתות? הפעולה בלתי הפיכה.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingSingle}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingSingle}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); if (singleDeleteId) deleteSingleLead(singleDeleteId); }}
+            >
+              {deletingSingle ? 'מוחק…' : 'מחק לצמיתות'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <HomelyBulkSyncDialog
         open={homelyContactsSyncOpen}
         onOpenChange={setHomelyContactsSyncOpen}
