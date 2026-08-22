@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle2, Loader2, MessageSquare, RadioTower, Send, XCircle } from 'lucide-react';
+import { WaTemplatePicker, type WaTemplateSelection } from '@/components/whatsapp/WaTemplatePicker';
+import { buildTemplateComponents, useMetaWaTemplates } from '@/hooks/useMetaWaTemplates';
+
 
 type SendResult = {
   ok: boolean;
@@ -38,8 +41,9 @@ function normalizePhone(raw: string): string {
 export function WhatsAppTwoWayTestCard() {
   const [phone, setPhone] = useState('');
   const [mode, setMode] = useState<'template' | 'text'>('template');
-  const [templateName, setTemplateName] = useState('');
-  const [templateLang, setTemplateLang] = useState('he');
+  const [template, setTemplate] = useState<WaTemplateSelection | null>(null);
+  const { data: templateDefs } = useMetaWaTemplates();
+
   const [body, setBody] = useState('בדיקת חיבור WhatsApp מ-Realtyz AI+ ✅ אנא השב/י בהודעה כלשהי כדי לאמת תקשורת דו-כיוונית.');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
@@ -48,7 +52,7 @@ export function WhatsAppTwoWayTestCard() {
 
   const normalized = useMemo(() => normalizePhone(phone), [phone]);
   const valid = normalized.length >= 10 && normalized.length <= 15;
-  const canSend = mode === 'template' ? !!templateName.trim() && !!templateLang.trim() : !!body.trim();
+  const canSend = mode === 'template' ? !!template?.name : !!body.trim();
 
   // Live webhook listener: polls for inbound WhatsApp messages since the test send.
   const { data: inbound, isFetching: polling } = useQuery({
@@ -80,14 +84,22 @@ export function WhatsAppTwoWayTestCard() {
     setResult(null);
     const startedAt = new Date().toISOString();
     try {
+      const def = templateDefs?.find(
+        (t) => t.name === template?.name && t.language === template?.language,
+      );
       const payload =
         mode === 'template'
           ? {
               phone_number: normalized,
-              template_id: templateName.trim(),
-              template_language: templateLang.trim(),
+              template_id: template!.name,
+              template_language: template!.language,
+              template_components: buildTemplateComponents(
+                def?.body_text ?? '',
+                template!.body_params,
+              ),
             }
           : { phone_number: normalized, message: body.trim() };
+
 
       const { data, error } = await supabase.functions.invoke('send-whatsapp', { body: payload });
       if (error) throw new Error(error.message);
@@ -168,30 +180,14 @@ export function WhatsAppTwoWayTestCard() {
         </div>
 
         {mode === 'template' ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label className="text-xs">שם התבנית (Template Name)</Label>
-              <Input
-                dir="ltr"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="שם תבנית מאושרת שלך"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">שפת התבנית (Language Code)</Label>
-              <Input
-                dir="ltr"
-                value={templateLang}
-                onChange={(e) => setTemplateLang(e.target.value)}
-                placeholder="en_US / he"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                hello_world עובדת רק ממספרי הבדיקה של Meta. מהמספר העסקי שלך יש לשלוח תבנית
-                מאושרת משלך (סנכרן תבניות בכרטיס התבניות ובחר משם שם ושפה).
-              </p>
-            </div>
+          <div className="space-y-2">
+            <WaTemplatePicker value={template} onChange={setTemplate} showTokenHint={false} />
+            <p className="text-[11px] text-muted-foreground">
+              hello_world עובדת רק ממספרי הבדיקה של Meta. מהמספר העסקי שלך יש לשלוח תבנית מאושרת
+              משלך, ולמלא את כל המשתנים שלה.
+            </p>
           </div>
+
         ) : (
           <div className="space-y-1">
             <Label className="text-xs">גוף ההודעה</Label>

@@ -42,7 +42,41 @@ export function useMetaWaTemplates(enabled = true) {
   });
 }
 
-/** Fill {{1}}, {{2}}… in a template body with the given parameter values. */
-export function renderTemplateBody(body: string, params: string[]): string {
-  return String(body ?? '').replace(/\{\{\s*(\d+)\s*\}\}/g, (_m, i) => params[Number(i) - 1] ?? `{{${i}}}`);
+/**
+ * Ordered, unique placeholder keys in a template body. Meta templates use
+ * either positional ({{1}}) or named ({{first_name}}) variables.
+ */
+export function templateVariableKeys(body: string): string[] {
+  const keys: string[] = [];
+  for (const m of String(body ?? '').matchAll(/\{\{\s*([^{}\s][^{}]*?)\s*\}\}/g)) {
+    const key = m[1].trim();
+    if (key && !keys.includes(key)) keys.push(key);
+  }
+  return keys;
 }
+
+/** Fill {{1}} / {{first_name}} in a template body with the given values. */
+export function renderTemplateBody(body: string, params: string[]): string {
+  const keys = templateVariableKeys(body);
+  return String(body ?? '').replace(/\{\{\s*([^{}\s][^{}]*?)\s*\}\}/g, (m, k) => {
+    const idx = keys.indexOf(String(k).trim());
+    return params[idx] || m;
+  });
+}
+
+/**
+ * Builds the Meta `components` array for a template send. Named templates must
+ * carry `parameter_name` for each value; positional ones must not.
+ */
+export function buildTemplateComponents(body: string, params: string[]): unknown[] {
+  const keys = templateVariableKeys(body);
+  if (keys.length === 0) return [];
+  const parameters = keys.map((key, i) => {
+    const text = params[i] ?? '';
+    return /^\d+$/.test(key)
+      ? { type: 'text', text }
+      : { type: 'text', parameter_name: key, text };
+  });
+  return [{ type: 'body', parameters }];
+}
+
