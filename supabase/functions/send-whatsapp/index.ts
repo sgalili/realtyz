@@ -132,19 +132,46 @@ interface ResolvedProvider {
   name: "WBA";
   is_official: true;
   config: Record<string, unknown>;
+  source: "workspace" | "central";
+}
+
+/** Project-level (central platform) Meta Cloud API credentials. */
+function centralMetaConfig(): Record<string, unknown> | null {
+  const phoneNumberId = Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? Deno.env.get("META_PHONE_NUMBER_ID") ?? "";
+  const accessToken = Deno.env.get("META_WA_ACCESS_TOKEN") ?? Deno.env.get("META_WHATSAPP_TOKEN") ?? "";
+  if (!phoneNumberId || !accessToken) return null;
+  return {
+    phone_number_id: phoneNumberId,
+    access_token: accessToken,
+    api_version:
+      Deno.env.get("META_WA_API_VERSION") ??
+      Deno.env.get("META_API_VERSION") ??
+      Deno.env.get("WHATSAPP_API_VERSION") ??
+      "v20.0",
+  };
 }
 
 /**
  * Resolve the official Meta WBA credentials for this workspace.
  * Only `wa_providers` rows with provider_name='WBA' are considered; if none
  * exist we fall back to the project-level Meta env secrets.
+ *
+ * When the workspace is configured for 'official_meta' (`preferCentral`), the
+ * central platform Meta Cloud API number is used first, and the workspace's
+ * own registered WABA row is only a fallback.
  */
 async function resolveProvider(
   admin: ReturnType<typeof createClient>,
   userId: string | null,
   tenantId: string | null,
+  preferCentral = false,
 ): Promise<ResolvedProvider | null> {
+  if (preferCentral) {
+    const central = centralMetaConfig();
+    if (central) return { name: "WBA", is_official: true, config: central, source: "central" };
+  }
   const tryRows = async (column: "tenant_id" | "user_id", value: string) => {
+
     const { data: rows } = await admin
       .from("wa_providers")
       .select("provider_name, config, is_active, updated_at")
