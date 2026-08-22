@@ -118,3 +118,42 @@ export function authorAvatar(from: any): string | null {
   const id = from?.id;
   return /^\d{5,}$/.test(String(id ?? "")) ? `https://graph.facebook.com/${id}/picture?type=normal` : null;
 }
+
+/**
+ * Resolve the workspace owner for a request: the caller's active workspace,
+ * or an explicit body.user_id for service-role / member invocations.
+ */
+export async function resolveTenant(
+  db: SupabaseClient,
+  req: Request,
+  body: any,
+): Promise<{ ownerId: string | null; callerId: string | null }> {
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  let callerId: string | null = null;
+  if (token) {
+    try {
+      const { data } = await db.auth.getUser(token);
+      callerId = data?.user?.id ?? null;
+    } catch { /* service-role call */ }
+  }
+  let ownerId: string | null = callerId;
+  if (callerId) {
+    const { data: profile } = await db
+      .from("profiles")
+      .select("active_workspace_owner_id")
+      .eq("id", callerId)
+      .maybeSingle();
+    ownerId = String((profile as any)?.active_workspace_owner_id || callerId);
+  }
+  if (!callerId && typeof body?.user_id === "string") ownerId = body.user_id;
+  else if (callerId && typeof body?.user_id === "string" && body.user_id !== callerId) {
+    const { data: member } = await db
+      .from("workspace_memberships")
+      .select("user_id")
+      .eq("workspace_owner_id", body.user_id)
+      .eq("user_id", callerId)
+      .maybeSingle();
+    if (member) ownerId = String(body.user_id);
+  }
+  return { ownerId, callerId };
+}
