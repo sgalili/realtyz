@@ -453,7 +453,7 @@ const LeadCRM = () => {
   useEffect(() => {
     const handler = (e: Event) => {
       const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' }>).detail?.action;
-      if (action === 'manual') createBlankLeadAndOpen();
+      if (action === 'manual') setAddVoterOpen(true);
       else if (action === 'import') fileInputRef.current?.click();
       else if (action === 'homely') handleHomelySync();
     };
