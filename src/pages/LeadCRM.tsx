@@ -434,6 +434,8 @@ const LeadCRM = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiPreviews, setAiPreviews] = useState<Array<{ name: string; message: string }>>([]);
   const [addVoterOpen, setAddVoterOpen] = useState(false);
+  const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
+  const [deletingSingle, setDeletingSingle] = useState(false);
   const [newVoter, setNewVoter] = useState({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
   const [addingVoter, setAddingVoter] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
