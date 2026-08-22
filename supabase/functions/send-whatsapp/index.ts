@@ -1047,6 +1047,8 @@ Deno.serve(async (req) => {
         provider: effectiveProvider,
         phone_last4: phone.slice(-4),
         message_id_present: !!result.message_id,
+        connection_mode: routing.mode,
+        creds_source: provider.source,
         tenant_routed: !!routingTenantId,
         template: parsed.data.template_id ?? null,
       });
