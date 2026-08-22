@@ -317,19 +317,32 @@ export function WhatsAppConnectionModeCard() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => checkStatus()} disabled={checking}>
-                    {checking ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="ml-1 h-3.5 w-3.5" />}
-                    בדיקת מצב
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => generateQr()} disabled={qrLoading}>
-                    {qrLoading ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <QrCode className="ml-1 h-3.5 w-3.5" />}
-                    הפקת קוד QR
-                  </Button>
-                  <Button size="sm" onClick={saveCreds} disabled={saving}>
-                    {saving ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <Save className="ml-1 h-3.5 w-3.5" />}
-                    שמירה
-                  </Button>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Badge variant="outline" className={`gap-1 ${statusMeta.className}`}>
+                    {status === 'connected' ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                    {statusMeta.label}
+                    {phone ? ` · ${phone}` : ''}
+                  </Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => checkStatus()} disabled={checking}>
+                      {checking ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="ml-1 h-3.5 w-3.5" />}
+                      בדיקת מצב
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => generateQr()} disabled={qrLoading}>
+                      {qrLoading ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <QrCode className="ml-1 h-3.5 w-3.5" />}
+                      הפקת קוד QR
+                    </Button>
+                    {status === 'connected' && (
+                      <Button variant="outline" size="sm" onClick={disconnect} disabled={checking}>
+                        <WifiOff className="ml-1 h-3.5 w-3.5" />
+                        ניתוק
+                      </Button>
+                    )}
+                    <Button size="sm" onClick={saveCreds} disabled={saving}>
+                      {saving ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <Save className="ml-1 h-3.5 w-3.5" />}
+                      שמירה
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-blue-300 bg-background p-4">
@@ -338,17 +351,23 @@ export function WhatsAppConnectionModeCard() {
                       <img src={qrImage} alt="קוד QR לחיבור WhatsApp" className="h-48 w-48" />
                       <p className="text-center text-xs text-muted-foreground leading-relaxed">
                         פתח WhatsApp בטלפון, היכנס להגדרות ולמכשירים מקושרים וסרוק את הקוד.
-                        לאחר הסריקה לחץ על בדיקת מצב.
                       </p>
+                      {polling && (
+                        <span className="flex items-center gap-1 text-xs text-blue-700">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          ממתין לסריקה, המצב מתעדכן אוטומטית
+                        </span>
+                      )}
                     </>
                   ) : (
                     <p className="text-center text-xs text-muted-foreground">
                       {status === 'connected'
-                        ? 'המספר האישי מחובר. אין צורך בסריקה נוספת.'
+                        ? 'המספר האישי מחובר. הודעות אוטומטיות יישלחו מהמספר הזה.'
                         : 'לחץ על הפקת קוד QR כדי לחבר את המספר האישי.'}
                     </p>
                   )}
                 </div>
+
               </div>
             )}
           </>
