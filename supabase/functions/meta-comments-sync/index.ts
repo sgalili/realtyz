@@ -1,7 +1,6 @@
 // meta-comments-sync — direct Meta Graph API comment ingestion and replies.
 //
-// Replaces the legacy Ayrshare comment pipeline (ayrshare-comments-fetch /
-// ayrshare-sync-comments / ayrshare-comment-reply / fb-engagement-fetch /
+// Replaces the legacy third-party comment pipeline (fb-engagement-fetch /
 // fb-engagement-reply). Everything runs against the official Graph API using
 // the workspace Page access token stored by meta-page-connect.
 //
@@ -180,8 +179,8 @@ Deno.serve(async (req) => {
           final_text: rawText,
           mode: String(body?.mode ?? "hitl"),
           posted_by: callerId,
-          ayrshare_reply_id: replyId,
-          ayrshare_response: r.payload ?? {},
+          meta_reply_id: replyId,
+          meta_response: r.payload ?? {},
           kb_document_id: kbDocId,
         });
         await admin.from("fb_comments").update({ status: "replied" }).eq("id", commentRowId);

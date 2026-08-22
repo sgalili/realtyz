@@ -308,7 +308,7 @@ async function handlePublishCommand(ctx: RouterContext): Promise<RouterResult> {
     };
   }
   try {
-    const res = await fetch(`${ctx.supabaseUrl}/functions/v1/ayrshare-post`, {
+    const res = await fetch(`${ctx.supabaseUrl}/functions/v1/meta-publish`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -319,11 +319,12 @@ async function handlePublishCommand(ctx: RouterContext): Promise<RouterResult> {
         post: pending.draft_text,
         channels: ["facebook"],
         campaign_name: "WhatsApp Companion",
+        workspace_owner_id: ctx.ownerUserId,
         listing_id: (pending.metadata as any)?.listing_id ?? null,
       }),
     });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(`ayrshare-post ${res.status}: ${JSON.stringify(j).slice(0, 200)}`);
+    if (!res.ok) throw new Error(`meta-publish ${res.status}: ${JSON.stringify(j).slice(0, 200)}`);
     await ctx.admin
       .from("approval_queue")
       .update({ status: "approved", metadata: { ...(pending.metadata ?? {}), published_at: new Date().toISOString() } })

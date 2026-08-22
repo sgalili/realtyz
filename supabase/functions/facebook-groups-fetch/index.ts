@@ -1,4 +1,4 @@
-// facebook-groups-fetch — hard-bypasses Ayrshare for group reads.
+// facebook-groups-fetch — direct Graph API group reads.
 // Hotfix rule: never throw a non-2xx response. The campaign UI must stay
 // renderable even when Meta permissions/tokens are missing or rejected.
 import { corsHeaders } from "../_shared/cors.ts";
