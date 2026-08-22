@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import { useMetaWaTemplates, renderTemplateBody, type MetaWaTemplate } from '@/hooks/useMetaWaTemplates';
+import { useMetaWaTemplates, renderTemplateBody, templateVariableKeys, type MetaWaTemplate } from '@/hooks/useMetaWaTemplates';
 
 export type WaTemplateSelection = {
   name: string;
