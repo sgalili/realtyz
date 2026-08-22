@@ -68,9 +68,8 @@ export const NewWhatsAppChatDialog = ({ open, onOpenChange, onStarted, currentUs
       // 2. Dispatch the approved template through the Meta Cloud API.
       const def = templates?.find((t) => t.name === template.name && t.language === template.language);
       const preview = renderTemplateBody(def?.body_text ?? '', template.body_params);
-      const components = template.body_params.length
-        ? [{ type: 'body', parameters: template.body_params.map((text) => ({ type: 'text', text })) }]
-        : [];
+      const components = buildTemplateComponents(def?.body_text ?? '', template.body_params);
+
 
       const { data, error: fnError } = await supabase.functions.invoke('send-whatsapp', {
         body: {
