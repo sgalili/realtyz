@@ -31,13 +31,19 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true }: Prop
     [templates, value],
   );
 
+  // Derive variable keys from the body text — the cached variable_count can be
+  // stale (older syncs did not count named {{first_name}} placeholders).
+  const selectedKeys = useMemo(() => templateVariableKeys(selected?.body_text ?? ''), [selected]);
+
   // Auto-select the first approved template so the broker isn't blocked.
   useEffect(() => {
     if (!value && templates && templates.length > 0) {
       const t = templates[0];
-      onChange({ name: t.name, language: t.language, body_params: Array(t.variable_count).fill('') });
+      const keys = templateVariableKeys(t.body_text);
+      onChange({ name: t.name, language: t.language, body_params: Array(keys.length).fill('') });
     }
   }, [templates, value, onChange]);
+
 
   if (isLoading) {
     return (
