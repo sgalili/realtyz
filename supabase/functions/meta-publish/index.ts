@@ -262,8 +262,10 @@ Deno.serve(async (req) => {
           channel: ch,
           message_body: text,
           status: "scheduled",
-          scheduled_for: scheduledIso,
-          provider_response: { media_urls: media, first_comment: firstComment || null, provider: "meta_graph" },
+          sent_at: scheduledIso,
+          media_urls: media,
+          first_comment: firstComment || null,
+          provider_response: { provider: "meta_graph", scheduled_at: scheduledIso },
         })),
       );
       return json({ success: true, verified: true, scheduled: true, post_ids: [] });
@@ -337,6 +339,10 @@ Deno.serve(async (req) => {
         channel: ch,
         message_body: text,
         status: match ? "sent" : "failed",
+        sent_at: match ? new Date().toISOString() : null,
+        media_urls: media,
+        first_comment: firstComment || null,
+        failure_reason: fail?.message ?? null,
         provider_message_id: match?.id ?? null,
         provider_response: {
           provider: "meta_graph",
