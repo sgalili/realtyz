@@ -9,11 +9,35 @@
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment, resolveOwnPageIdentity, isSelfAuthoredComment } from "../_shared/ayrshare-helpers.ts";
+import { sanitizeOutboundText } from "../_shared/textSanitize.ts";
+import { resolveMetaPage, graphCall, isOwnPageAuthor } from "../_shared/metaPage.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
-const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY") ?? "";
-const AYR_MESSAGES_URL = "https://api.ayrshare.com/api/messages";
+
+// True when the inbound comment was authored by our own connected Page, or
+// carries our system reply signature.
+function isSelfAuthoredComment(args: {
+  fromId?: string | null;
+  fromName?: string | null;
+  text?: string | null;
+  ownPageId?: string | null;
+  ownPageName?: string | null;
+}): boolean {
+  if (
+    isOwnPageAuthor(args.fromId ?? null, args.fromName ?? null, {
+      pageId: args.ownPageId ?? "",
+      pageName: args.ownPageName ?? null,
+    })
+  ) return true;
+  const t = String(args.text ?? "").toLowerCase();
+  const signatures = [
+    "אני מודה לך אודי ויטמן",
+    "תודה רבה על העדכון",
+    "[ai realtyz]",
+  ];
+  if (t && signatures.some((s) => t.includes(s))) return true;
+  return false;
+}
 
 type Analysis = {
   sentiment: "positive" | "neutral" | "negative";
@@ -125,7 +149,7 @@ Deno.serve(async (req) => {
 
     // SENDER FIREWALL: refuse to react to comments authored by our own Page,
     // by an AI/system signature, or to events flagged is_ai_reply upstream.
-    const ownPage = await resolveOwnPageIdentity(admin);
+    const ownPage = await resolveMetaPage(admin, user_id);
     const incomingSenderId =
       (rawIncomingMetadata as any)?.sender_id ??
       (rawIncomingMetadata as any)?.from_id ??
@@ -138,8 +162,8 @@ Deno.serve(async (req) => {
         fromId: incomingSenderId,
         fromName: sender_name ?? sender_handle ?? null,
         text: inbound_text,
-        ownPageId: ownPage.pageId,
-        ownPageName: ownPage.pageName,
+        ownPageId: ownPage?.pageId ?? null,
+        ownPageName: ownPage?.pageName ?? null,
       })
     ) {
       console.log("[auto-engagement-process] blocked self/ai-authored event", {
@@ -373,62 +397,29 @@ Deno.serve(async (req) => {
     //    public reply pipeline.
     let private_dm: any = null;
     let auto_like: any = null;
-    if (willAutoReply && event_type === "comment" && external_id && AYRSHARE_API_KEY) {
+    if (willAutoReply && event_type === "comment" && external_id && platform === "facebook") {
       try {
-        const { profileKey } = await resolveWorkspaceProfileKey(admin);
-        if (profileKey) {
-          const dmTask = analysis.reply
-            ? fetch(AYR_MESSAGES_URL, {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-                  "Profile-Key": profileKey,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  platforms: [platform],
-                  commentId: external_id,
-                  message: analysis.reply,
-                  searchPlatformId: true,
-                }),
-              }).then(async (r) => {
-                const t = await r.text();
-                let p: any; try { p = t ? JSON.parse(t) : { ok: r.ok }; } catch { p = { raw: t, ok: r.ok }; }
-                return { status: r.status, response: p };
-              }).catch((e) => ({ status: 0, response: { error: e instanceof Error ? e.message : String(e) } }))
-            : Promise.resolve(null);
-
-          const likeTask = likeNativeComment({
-            apiKey: AYRSHARE_API_KEY,
-            profileKey,
-            platform,
-            commentId: external_id,
-          });
-
-          const [dmResult, likeResult] = await Promise.all([dmTask, likeTask]);
-          private_dm = dmResult?.response ?? null;
-          auto_like = likeResult;
-          if (!likeResult.ok) {
-            console.warn("[auto-engagement-process] auto-like non-fatal failure", likeResult);
+        const page = ownPage ?? await resolveMetaPage(admin, user_id);
+        if (page?.token) {
+          const result = await graphCall(
+            `/${encodeURIComponent(external_id)}/likes`,
+            { method: "POST", body: new URLSearchParams({ access_token: page.token }) },
+          );
+          auto_like = { ok: result.ok, status: result.status, response: result.payload };
+          if (!result.ok) {
+            console.warn("[auto-engagement-process] auto-like non-fatal failure", auto_like);
           }
-
           if (rowId) {
             await admin
               .from("engagement_events")
-              .update({
-                metadata: {
-                  ...mergedMetadata,
-                  ...(dmResult ? { private_dm: dmResult } : {}),
-                  auto_like: likeResult,
-                },
-              })
+              .update({ metadata: { ...mergedMetadata, auto_like } })
               .eq("id", rowId)
               .eq("user_id", user_id);
           }
         }
       } catch (e) {
-        console.error("[auto-engagement-process] dm/like dispatch failed", e);
-        private_dm = private_dm ?? { error: e instanceof Error ? e.message : String(e) };
+        console.error("[auto-engagement-process] like dispatch failed", e);
+        auto_like = auto_like ?? { error: e instanceof Error ? e.message : String(e) };
       }
     }
 
