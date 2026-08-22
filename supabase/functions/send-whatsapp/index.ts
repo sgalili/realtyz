@@ -846,12 +846,19 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
+    // Workspace-chosen connection mode: 'official_meta' routes through the
+    // central platform Meta Cloud API number, 'qr_session' keeps the
+    // workspace's own connected number.
+    const routing = await resolveWorkspaceMode(admin, userId, routingTenantId);
+
     // Official Meta WhatsApp Business Cloud API credentials for this workspace.
     const provider = await resolveProvider(
       admin,
       userId,
       routingTenantId,
+      routing.mode === "official_meta",
     );
+
     if (!provider) {
       console.error("send-whatsapp no active WBA provider", {
         user_routed: !!userId,
