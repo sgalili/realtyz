@@ -94,6 +94,40 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    // Manual fallback: broker pastes a Page ID + Page access token directly.
+    // Used when the Meta app is in development/testing mode and OAuth is blocked.
+    if (action === "manual") {
+      const pageId = String(body?.page_id ?? "").trim();
+      const token = String(body?.page_access_token ?? "").trim();
+      if (!/^\d{5,}$/.test(pageId)) return json({ error: "מזהה עמוד (Page ID) לא תקין." }, 400);
+      if (token.length < 40) return json({ error: "טוקן העמוד קצר מדי או שגוי." }, 400);
+
+      const verify = await graph(
+        `/${pageId}?fields=name,instagram_business_account{id,username}&access_token=${encodeURIComponent(token)}`,
+      );
+      if (!verify.ok || !verify.payload?.id) {
+        return json({ error: humanizeGraphError(verify.payload, "הטוקן נדחה על ידי פייסבוק. ודא שזה Page Access Token של אותו עמוד.") }, 400);
+      }
+
+      await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+      const { error: manualErr } = await admin.from("messenger_page_bindings").upsert(
+        {
+          owner_id: ownerId,
+          page_id: pageId,
+          page_name: verify.payload?.name ?? null,
+          page_access_token: token,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "page_id" },
+      );
+      if (manualErr) return json({ error: manualErr.message }, 500);
+
+      return json({
+        ok: true,
+        page: { id: pageId, name: verify.payload?.name ?? null, picture: null },
+      });
+    }
+
     const { clientId, clientSecret } = await fbAppCredentials(admin);
     if (!clientId) {
       return json({ error: "פייסבוק לא מוגדר: חסר Facebook App ID." }, 400);
