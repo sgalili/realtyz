@@ -1284,8 +1284,13 @@ const ApiSettings = () => {
       </ServiceCard>
 
       <div className="mb-4">
+        <WhatsAppConnectionModeCard />
+      </div>
+
+      <div className="mb-4">
         <MetaWhatsAppAuthCard />
       </div>
+
 
       <div className="mb-4">
         <MetaWabaHealthCard />
