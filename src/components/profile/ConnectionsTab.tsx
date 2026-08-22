@@ -1,0 +1,189 @@
+import { useEffect, useState, type ReactNode } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
+import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
+import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
+import { EmailAliasCard } from '@/components/profile/EmailAliasCard';
+import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
+import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
+
+type Tone = 'ok' | 'idle';
+
+function StatusPill({ label, tone }: { label: string; tone: Tone }) {
+  return (
+    <span
+      className={cn(
+        'shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
+        tone === 'ok'
+          ? 'border-primary/30 bg-primary/10 text-primary'
+          : 'border-border bg-muted text-muted-foreground',
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Collapsible connection section. Collapsed rows show only the connection name
+ * and its live status; opening one closes the previously open section.
+ * Inner card chrome (border + its own header) is neutralized so the section
+ * header is the single source of truth for the title.
+ */
+function ConnectionSection({
+  title,
+  status,
+  tone,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  status: string;
+  tone: Tone;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div dir="rtl" className="rounded-xl border bg-card text-right shadow-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 p-4 text-right"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
+          <span className="truncate text-sm font-semibold">{title}</span>
+        </span>
+        <StatusPill label={status} tone={tone} />
+      </button>
+      {open && (
+        <div
+          className={cn(
+            'border-t px-1 pb-1 text-right',
+            // neutralize the nested Card chrome + hide its duplicate header
+            '[&_[data-conn-body]>div]:border-0 [&_[data-conn-body]>div]:bg-transparent [&_[data-conn-body]>div]:shadow-none',
+            '[&_[data-conn-body]>div>:first-child]:hidden',
+            // RTL text + label alignment for every field inside
+            '[&_label]:block [&_label]:text-right',
+            '[&_input:not([dir])]:text-right [&_textarea:not([dir])]:text-right',
+            '[&_input:not([dir])]:placeholder:text-right [&_textarea:not([dir])]:placeholder:text-right',
+            '[&_p]:text-right [&_h3]:text-right [&_h4]:text-right',
+          )}
+        >
+          <div data-conn-body dir="rtl">{children}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ConnectionsTab() {
+  const { workspaceOwnerId } = useWorkspace();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [meta, setMeta] = useState<MetaStatus | null>(null);
+  const [waMode, setWaMode] = useState<string | null>(null);
+  const [greenReady, setGreenReady] = useState(false);
+  const [voiceReady, setVoiceReady] = useState(false);
+  const [emailAlias, setEmailAlias] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke('manage-api-configs', { method: 'GET' });
+        const rows = (data as any[]) || [];
+        setGreenReady(!!rows.find((r) => r.service_name === 'Green API')?.api_key);
+        setVoiceReady(!!rows.find((r) => r.service_name === 'Vapi')?.api_key);
+      } catch { /* silent */ }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: p } = await supabase.from('profiles').select('email_alias').eq('id', user.id).maybeSingle();
+          setEmailAlias(((p as any)?.email_alias as string) || null);
+        }
+        const ownerId = workspaceOwnerId ?? user?.id;
+        if (ownerId) {
+          const { data: ws } = await supabase
+            .from('workspace_whatsapp_settings' as never)
+            .select('*')
+            .eq('workspace_owner_id', ownerId)
+            .maybeSingle();
+          setWaMode(((ws as any)?.connection_type as string) || null);
+        }
+      } catch { /* silent */ }
+    })();
+  }, [workspaceOwnerId]);
+
+  const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
+
+  const metaStatus: [string, Tone] = meta?.connected
+    ? [meta.instagram ? 'פייסבוק ואינסטגרם מחוברים' : 'פייסבוק מחובר', 'ok']
+    : ['לא מחובר', 'idle'];
+
+  const sections: Array<{ id: string; title: string; status: string; tone: Tone; node: ReactNode }> = [
+    {
+      id: 'meta',
+      title: 'פרסום ישיר לפייסבוק ואינסטגרם',
+      status: metaStatus[0],
+      tone: metaStatus[1],
+      node: <MetaDirectConnectionCard onStatus={setMeta} />,
+    },
+    {
+      id: 'wa-mode',
+      title: 'אופן חיבור WhatsApp',
+      status: waMode === 'qr_session' ? 'מספר אישי (QR)' : waMode === 'official_meta' ? 'מספר רשמי (Meta)' : 'לא הוגדר',
+      tone: waMode ? 'ok' : 'idle',
+      node: <WhatsAppConnectionModeCard />,
+    },
+    {
+      id: 'wa-green',
+      title: 'WhatsApp · מספר אישי (Green API)',
+      status: greenReady ? 'מוגדר' : 'לא מוגדר',
+      tone: greenReady ? 'ok' : 'idle',
+      node: <WhatsAppGatewayCard />,
+    },
+    {
+      id: 'voice',
+      title: 'שיחות טלפון (Vapi / Twilio)',
+      status: voiceReady ? 'מוגדר' : 'לא מוגדר',
+      tone: voiceReady ? 'ok' : 'idle',
+      node: <VoiceGatewayCard />,
+    },
+    {
+      id: 'email',
+      title: 'כתובת מייל מותגת',
+      status: emailAlias ? `${emailAlias}@realtyz.co.il` : 'לא הוגדר',
+      tone: emailAlias ? 'ok' : 'idle',
+      node: <EmailAliasCard />,
+    },
+    {
+      id: 'portals',
+      title: 'פורטלי נדל"ן',
+      status: 'הגדרות',
+      tone: 'idle',
+      node: <ListingPortalsCard />,
+    },
+  ];
+
+  return (
+    <div dir="rtl" className="space-y-3 text-right">
+      {sections.map((s) => (
+        <ConnectionSection
+          key={s.id}
+          title={s.title}
+          status={s.status}
+          tone={s.tone}
+          open={openId === s.id}
+          onToggle={() => toggle(s.id)}
+        >
+          {s.node}
+        </ConnectionSection>
+      ))}
+    </div>
+  );
+}
