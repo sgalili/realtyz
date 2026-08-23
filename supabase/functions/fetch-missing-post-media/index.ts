@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
       for (let i = 0; i < nativeIds.length; i += 25) {
         const chunk = nativeIds.slice(i, i + 25);
         const url =
-          `https://graph.facebook.com/v20.0/?ids=${encodeURIComponent(chunk.join(","))}` +
+          `https://graph.facebook.com/v26.0/?ids=${encodeURIComponent(chunk.join(","))}` +
           `&fields=${encodeURIComponent(fields)}&access_token=${encodeURIComponent(token)}`;
         const resp = await fetch(url).catch(() => null);
         if (!resp?.ok) continue;

@@ -4,7 +4,7 @@
 // (written by meta-page-connect) and never leaves the edge runtime.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-export const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v20.0";
+export const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 export const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
 export type MetaPage = { pageId: string; pageName: string | null; token: string };

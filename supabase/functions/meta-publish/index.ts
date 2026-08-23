@@ -11,7 +11,7 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v20.0";
+const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
 const json = (b: unknown, s = 200) =>

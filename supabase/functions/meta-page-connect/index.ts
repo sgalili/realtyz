@@ -29,7 +29,7 @@ const PAGE_SCOPES = [
 ];
 
 const CONFIG_ID = Deno.env.get("META_PAGE_CONFIG_ID")?.trim() || "1741528006908878";
-const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v20.0";
+const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 
 async function graph(path: string) {
   const res = await fetch(`${GRAPH}${path}`);

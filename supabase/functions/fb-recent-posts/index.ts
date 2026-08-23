@@ -481,7 +481,7 @@ Deno.serve(async (req) => {
         "shares",
       ].join(",");
       let nextUrl = `${
-        new URL(`${cred.pageId}/posts`, "https://graph.facebook.com/v20.0/")
+        new URL(`${cred.pageId}/posts`, "https://graph.facebook.com/v26.0/")
           .toString()
       }?${
         new URLSearchParams({
@@ -736,7 +736,7 @@ Deno.serve(async (req) => {
         for (let i = 0; i < targets.length; i += 40) {
           const chunk = targets.slice(i, i + 40);
           const ids = chunk.map((t: any) => String(t.provider_message_id)).join(",");
-          const url = `https://graph.facebook.com/v20.0/?ids=${encodeURIComponent(ids)}&fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(cred.token)}`;
+          const url = `https://graph.facebook.com/v26.0/?ids=${encodeURIComponent(ids)}&fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(cred.token)}`;
           const resp = await fetch(url);
           if (!resp.ok) continue;
           const json: any = await resp.json().catch(() => ({}));
