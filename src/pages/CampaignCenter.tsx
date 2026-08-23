@@ -4764,6 +4764,8 @@ const CampaignCenter = () => {
   const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
+  const [supportChannel, setSupportChannel] = useState<string | null>(null);
+
   const [confirmPayload, setConfirmPayload] = useState<ConfirmPayload | null>(null);
   // Bump to force-remount the InlineComposer so its body/selectedListingId/media
   // state fully clear after a successful (or paused) dispatch.
