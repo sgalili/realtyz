@@ -795,6 +795,15 @@ const InlineComposer = ({
   useEffect(() => {
     try { localStorage.setItem('campaign:groupIds', JSON.stringify(groupIds)); } catch {}
   }, [groupIds]);
+
+  // Group picker modal (opened from the group icon button next to "פרסם").
+  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
+  const [groupTextVariation, setGroupTextVariation] = useState<boolean>(() => {
+    try { return localStorage.getItem('campaign:groupTextVariation') !== 'false'; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('campaign:groupTextVariation', groupTextVariation ? 'true' : 'false'); } catch {}
+  }, [groupTextVariation]);
   const platformProfiles = useMemo(
     () => socialProfiles.filter((p) => p.platform === channel.id || (channel.id === 'x' && p.platform === 'twitter')),
     [socialProfiles, channel.id],
