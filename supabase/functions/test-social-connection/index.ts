@@ -78,7 +78,7 @@ async function testPlatform(p: string, c: Record<string, string>): Promise<{ suc
       }
       case 'whatsapp_wba': {
         if (!c.phone_number_id || !c.access_token) return { success: false, message: 'חסרים Phone Number ID או Access Token' };
-        const r = await fetch(`https://graph.facebook.com/v20.0/${c.phone_number_id}`, {
+        const r = await fetch(`https://graph.facebook.com/v26.0/${c.phone_number_id}`, {
           headers: { Authorization: `Bearer ${c.access_token}` },
         });
         if (!r.ok) return { success: false, message: `WBA שגיאה ${r.status}` };
@@ -94,14 +94,14 @@ async function testPlatform(p: string, c: Record<string, string>): Promise<{ suc
       }
       case 'instagram': {
         if (!c.access_token) return { success: false, message: 'חסר Access Token' };
-        const r = await fetch(`https://graph.facebook.com/v20.0/me?access_token=${c.access_token}`);
+        const r = await fetch(`https://graph.facebook.com/v26.0/me?access_token=${c.access_token}`);
         if (!r.ok) return { success: false, message: `Instagram שגיאה ${r.status}` };
         const j = await r.json();
         return { success: true, message: `מאומת: ${j.name ?? j.id}` };
       }
       case 'facebook': {
         if (!c.page_token) return { success: false, message: 'חסר Page Access Token' };
-        const r = await fetch(`https://graph.facebook.com/v20.0/me?access_token=${c.page_token}`);
+        const r = await fetch(`https://graph.facebook.com/v26.0/me?access_token=${c.page_token}`);
         if (!r.ok) return { success: false, message: `Facebook שגיאה ${r.status}` };
         const j = await r.json();
         return { success: true, message: `דף: ${j.name ?? j.id}` };

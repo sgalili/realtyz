@@ -3,7 +3,7 @@
 // renderable even when Meta permissions/tokens are missing or rejected.
 import { corsHeaders } from "../_shared/cors.ts";
 
-const META_GROUPS_URL = "https://graph.facebook.com/v20.0/me/groups";
+const META_GROUPS_URL = "https://graph.facebook.com/v26.0/me/groups";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {

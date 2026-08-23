@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
         const chunk = nativeTargets.slice(i, i + 40);
         const ids = chunk.map((t: any) => asText(t.provider_message_id)).join(",");
         const url =
-          `https://graph.facebook.com/v20.0/?ids=${encodeURIComponent(ids)}&fields=${encodeURIComponent(fields)}&access_token=${encodeURIComponent(token)}`;
+          `https://graph.facebook.com/v26.0/?ids=${encodeURIComponent(ids)}&fields=${encodeURIComponent(fields)}&access_token=${encodeURIComponent(token)}`;
         const resp = await fetch(url);
         if (!resp.ok) continue;
         const payload: any = await resp.json().catch(() => ({}));

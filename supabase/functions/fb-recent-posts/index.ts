@@ -481,7 +481,7 @@ Deno.serve(async (req) => {
         "shares",
       ].join(",");
       let nextUrl = `${
-        new URL(`${cred.pageId}/posts`, "https://graph.facebook.com/v20.0/")
+        new URL(`${cred.pageId}/posts`, "https://graph.facebook.com/v26.0/")
           .toString()
       }?${
         new URLSearchParams({
@@ -722,7 +722,7 @@ Deno.serve(async (req) => {
       if (cred.token) {
         const { data: allFbPosts } = await admin
           .from("campaign_logs")
-          .select("id, provider_message_id, provider_response, media_urls, created_at, like_count, comment_count, share_count")
+          .select("id, provider_message_id, provider_response, media_urls, created_at, like_count, comment_count, share_count, view_count")
           .eq("channel", "facebook")
           .eq("user_id", ownerId)
           .eq("is_archived", false)
@@ -732,11 +732,11 @@ Deno.serve(async (req) => {
           /^\d{5,}(_\d{5,})?$/.test(String(r.provider_message_id || ""))
         );
         const graphFields =
-          "full_picture,attachments{media,subattachments{media}},reactions.summary(true).limit(0),likes.summary(true).limit(0),comments.summary(true).limit(0),shares,created_time";
+          "full_picture,attachments{media,subattachments{media}},reactions.summary(true).limit(0),likes.summary(true).limit(0),comments.summary(true).limit(0),shares,created_time,insights.metric(post_impressions_unique,post_impressions)";
         for (let i = 0; i < targets.length; i += 40) {
           const chunk = targets.slice(i, i + 40);
           const ids = chunk.map((t: any) => String(t.provider_message_id)).join(",");
-          const url = `https://graph.facebook.com/v20.0/?ids=${encodeURIComponent(ids)}&fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(cred.token)}`;
+          const url = `https://graph.facebook.com/v26.0/?ids=${encodeURIComponent(ids)}&fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(cred.token)}`;
           const resp = await fetch(url);
           if (!resp.ok) continue;
           const json: any = await resp.json().catch(() => ({}));
@@ -765,6 +765,14 @@ Deno.serve(async (req) => {
             );
             const commentCount = pickNumber(entry?.comments?.summary?.total_count);
             const shareCount = pickNumber(entry?.shares?.count);
+            // Live "views" straight from Page post insights (no aggregator).
+            const insightRows: any[] = Array.isArray(entry?.insights?.data) ? entry.insights.data : [];
+            const insightValue = (metric: string): number | null => {
+              const row = insightRows.find((r) => String(r?.name || "") === metric);
+              const raw = Array.isArray(row?.values) ? row.values[0]?.value : null;
+              return pickNumber(raw);
+            };
+            const viewCount = insightValue("post_impressions_unique") ?? insightValue("post_impressions");
 
             // True native created_time
             const nativeCreatedAt = firstValidDate(entry?.created_time);
@@ -792,7 +800,8 @@ Deno.serve(async (req) => {
             if (likeCount !== null) updatePayload.like_count = likeCount;
             if (commentCount !== null) updatePayload.comment_count = commentCount;
             if (shareCount !== null) updatePayload.share_count = shareCount;
-            if (likeCount !== null || commentCount !== null || shareCount !== null) {
+            if (viewCount !== null) updatePayload.view_count = viewCount;
+            if (likeCount !== null || commentCount !== null || shareCount !== null || viewCount !== null) {
               updatePayload.metrics_updated_at = new Date().toISOString();
               enrichedCounters++;
             }
