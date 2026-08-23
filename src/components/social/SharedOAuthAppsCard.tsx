@@ -281,7 +281,7 @@ function PlatformRow({ config, row, onSaved }: PlatformRowProps) {
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-[13px] font-semibold leading-tight">{config.title}</p>
             {configured && (
-              <Badge className="text-[9px] h-4 px-1.5 bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+              <Badge className="text-[9px] h-4 px-1.5 bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-600">
                 פעיל
               </Badge>
             )}
