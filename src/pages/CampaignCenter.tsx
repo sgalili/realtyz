@@ -2701,15 +2701,29 @@ const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
 const FIRST_VISIT_IMPORT_KEY_VERSION = 'v6_recent_media_comment_refresh';
 const CAMPAIGN_CACHE_MS = 5 * 60_000;
 
-// Cross-reload cache: the last painted feed is mirrored into sessionStorage so
-// re-entering /campaigns (or a hard refresh) renders the previous post list
-// instantly and never shows an empty feed while the DB/Meta refresh runs.
+// Cross-reload cache: the last painted feed is mirrored into localStorage so
+// re-entering /campaigns (or a hard refresh, or a brand-new tab) renders the
+// previous post list instantly and never shows an empty white feed while the
+// DB/Meta refresh runs in the background.
 const FEED_CACHE_STORAGE_KEY = 'realtyz.campaigns.feed_rows.v1';
 const FEED_CACHE_MAX_PERSISTED = 120;
 
+// Remembers that this account has a bound Facebook Page so the card renders
+// "מחובר" instantly on mount, before the async DB verification resolves.
+const FB_BINDING_FLAG_KEY = 'realtyz.campaigns.fb_page_bound.v1';
+const readFbBindingFlag = (): boolean => {
+  try { return localStorage.getItem(FB_BINDING_FLAG_KEY) === '1'; } catch { return false; }
+};
+const writeFbBindingFlag = (bound: boolean) => {
+  try {
+    if (bound) localStorage.setItem(FB_BINDING_FLAG_KEY, '1');
+    else localStorage.removeItem(FB_BINDING_FLAG_KEY);
+  } catch { /* ignore */ }
+};
+
 const readPersistedFeedCache = (): Record<string, CampaignRow[]> => {
   try {
-    const raw = sessionStorage.getItem(FEED_CACHE_STORAGE_KEY);
+    const raw = localStorage.getItem(FEED_CACHE_STORAGE_KEY) || sessionStorage.getItem(FEED_CACHE_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
     return parsed && typeof parsed === 'object' ? parsed as Record<string, CampaignRow[]> : {};
   } catch { return {}; }
@@ -2719,7 +2733,7 @@ const persistFeedCache = (scope: string, rows: CampaignRow[]) => {
   try {
     const all = readPersistedFeedCache();
     all[scope] = rows.slice(0, FEED_CACHE_MAX_PERSISTED);
-    sessionStorage.setItem(FEED_CACHE_STORAGE_KEY, JSON.stringify(all));
+    localStorage.setItem(FEED_CACHE_STORAGE_KEY, JSON.stringify(all));
   } catch { /* quota — in-memory cache still applies */ }
 };
 
@@ -2947,7 +2961,11 @@ const PublishedFeed = () => {
 
 
   const [activeChannel, setActiveChannel] = useState<string>('all');
-  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(new Set());
+  // Start from the remembered Facebook binding so the card never flashes
+  // "חבר" while the async verification runs.
+  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(
+    () => (readFbBindingFlag() ? new Set<string>(['facebook']) : new Set<string>()),
+  );
 
   useEffect(() => {
     (async () => {
@@ -2957,13 +2975,23 @@ const PublishedFeed = () => {
       // A bound Facebook Page (OAuth or manual token) is by itself a valid
       // connected state — the manual path never writes to social_connections.
       try {
-        const { data: binding } = await supabase
+        const { data: binding, error: bindingErr } = await supabase
           .from('messenger_page_bindings')
           .select('page_id')
           .limit(1)
           .maybeSingle();
-        if ((binding as any)?.page_id) next.add('facebook');
-      } catch { /* ignore */ }
+        if ((binding as any)?.page_id) {
+          next.add('facebook');
+          writeFbBindingFlag(true);
+        } else if (!bindingErr) {
+          writeFbBindingFlag(false);
+        } else if (readFbBindingFlag()) {
+          // Transient read failure — keep the remembered connected state.
+          next.add('facebook');
+        }
+      } catch {
+        if (readFbBindingFlag()) next.add('facebook');
+      }
       const { data } = await supabase
         .from('social_connections')
         .select('platform, is_connected')
@@ -4771,18 +4799,20 @@ const CampaignCenter = () => {
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
   const [alsoEmail, setAlsoEmail] = useState(false);
-  // Hydrate connection state from sessionStorage so a page refresh doesn't
-  // visually "disconnect" channels while the async verification re-runs.
+  // Hydrate connection state from localStorage so a page refresh (or a new
+  // tab) doesn't visually "disconnect" channels while verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
     try {
-      const raw = sessionStorage.getItem('rz-connected-channels');
-      if (raw) return new Set<string>(JSON.parse(raw));
+      const raw = localStorage.getItem('rz-connected-channels') || sessionStorage.getItem('rz-connected-channels');
+      if (raw) (JSON.parse(raw) as string[]).forEach((id) => initial.add(id));
     } catch { /* ignore */ }
-    return EMPTY_CONNECTED;
+    if (readFbBindingFlag()) initial.add('facebook');
+    return initial.size > 0 ? initial : EMPTY_CONNECTED;
   });
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>(() => {
     try {
-      const raw = sessionStorage.getItem('rz-connected-channel-names');
+      const raw = localStorage.getItem('rz-connected-channel-names') || sessionStorage.getItem('rz-connected-channel-names');
       if (raw) return JSON.parse(raw);
     } catch { /* ignore */ }
     return {};
@@ -4798,13 +4828,14 @@ const CampaignCenter = () => {
       return next;
     });
     try {
-      const cached = sessionStorage.getItem('rz-connected-channels');
-      if (cached) sessionStorage.setItem('rz-connected-channels', JSON.stringify((JSON.parse(cached) as string[]).filter((id) => !channels.includes(id))));
-      const names = sessionStorage.getItem('rz-connected-channel-names');
+      if (channels.includes('facebook')) writeFbBindingFlag(false);
+      const cached = localStorage.getItem('rz-connected-channels');
+      if (cached) localStorage.setItem('rz-connected-channels', JSON.stringify((JSON.parse(cached) as string[]).filter((id) => !channels.includes(id))));
+      const names = localStorage.getItem('rz-connected-channel-names');
       if (names) {
         const parsed = JSON.parse(names) as Record<string, string>;
         channels.forEach((id) => { delete parsed[id]; });
-        sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(parsed));
+        localStorage.setItem('rz-connected-channel-names', JSON.stringify(parsed));
       }
     } catch { /* ignore */ }
     queryClient.invalidateQueries({ queryKey: ['social-connections'] });
@@ -4812,12 +4843,12 @@ const CampaignCenter = () => {
   };
 
   // Persist whenever the resolved connection state changes — keeps the grid
-  // "remembered" for the whole browser session, including hard reloads.
+  // "remembered" across reloads and new tabs.
   useEffect(() => {
-    try { sessionStorage.setItem('rz-connected-channels', JSON.stringify([...connectedChannels])); } catch { /* ignore */ }
+    try { localStorage.setItem('rz-connected-channels', JSON.stringify([...connectedChannels])); } catch { /* ignore */ }
   }, [connectedChannels]);
   useEffect(() => {
-    try { sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
+    try { localStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
   }, [channelAccountNames]);
 
   // Default-select Facebook when it's connected and nothing is picked yet.
@@ -4850,7 +4881,7 @@ const CampaignCenter = () => {
           return;
         }
 
-        const { data: wsp } = await supabase
+        const { data: wsp, error: wspErr } = await supabase
           .from('messenger_page_bindings')
           .select('page_id, page_name')
           .limit(1)
@@ -4858,8 +4889,16 @@ const CampaignCenter = () => {
         const hasOwnProfile = !!(wsp as any)?.page_id;
         const wspFbId = (wsp as any)?.page_id as string | null;
         const wspFbName = (wsp as any)?.page_name as string | null;
+        if (hasOwnProfile) writeFbBindingFlag(true);
         if (!hasOwnProfile) {
-          if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
+          if (wspErr) {
+            // Transient read failure (RLS blip / offline) — never downgrade a
+            // known-good Facebook connection to "disconnected".
+            console.warn('[CampaignCenter] page binding read failed:', wspErr.message);
+          } else {
+            writeFbBindingFlag(false);
+            if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
+          }
           // continue — still derive direct channels (IVR/email) below
         } else {
           if (wspFbName && !cancelled) {
