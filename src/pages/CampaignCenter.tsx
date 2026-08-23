@@ -2961,7 +2961,11 @@ const PublishedFeed = () => {
 
 
   const [activeChannel, setActiveChannel] = useState<string>('all');
-  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(new Set());
+  // Start from the remembered Facebook binding so the card never flashes
+  // "חבר" while the async verification runs.
+  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(
+    () => (readFbBindingFlag() ? new Set<string>(['facebook']) : new Set<string>()),
+  );
 
   useEffect(() => {
     (async () => {
@@ -2971,13 +2975,23 @@ const PublishedFeed = () => {
       // A bound Facebook Page (OAuth or manual token) is by itself a valid
       // connected state — the manual path never writes to social_connections.
       try {
-        const { data: binding } = await supabase
+        const { data: binding, error: bindingErr } = await supabase
           .from('messenger_page_bindings')
           .select('page_id')
           .limit(1)
           .maybeSingle();
-        if ((binding as any)?.page_id) next.add('facebook');
-      } catch { /* ignore */ }
+        if ((binding as any)?.page_id) {
+          next.add('facebook');
+          writeFbBindingFlag(true);
+        } else if (!bindingErr) {
+          writeFbBindingFlag(false);
+        } else if (readFbBindingFlag()) {
+          // Transient read failure — keep the remembered connected state.
+          next.add('facebook');
+        }
+      } catch {
+        if (readFbBindingFlag()) next.add('facebook');
+      }
       const { data } = await supabase
         .from('social_connections')
         .select('platform, is_connected')
