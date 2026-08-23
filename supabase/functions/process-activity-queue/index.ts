@@ -84,7 +84,10 @@ Deno.serve(async (req) => {
     const ws = row.workspace_owner_id as string;
     const used = perWsCount.get(ws) ?? 0;
     if (used >= BATCH_SIZE) continue;
-    if (!(await isAutopilotEnabled(ws))) {
+    // User-scheduled Facebook group posts were explicitly authorized when
+    // they were queued, so they are not gated on the AI autopilot switch.
+    const isScheduledGroupPost = row.activity_type === "fb_group_post";
+    if (!isScheduledGroupPost && !(await isAutopilotEnabled(ws))) {
       await admin
         .from("campaign_activity_queue")
         .update({
@@ -154,6 +157,23 @@ Deno.serve(async (req) => {
             nextPublication = "published";
             (newPayload as any).fb_post_id = pub.post_id;
             (newPayload as any).published_via = "fb_personal_profile";
+            // Performance counters: one campaign_logs row per group post so
+            // the metric sync jobs and the UI counters can aggregate it.
+            try {
+              await admin.from("campaign_logs").insert({
+                user_id: locked.created_by ?? ws,
+                workspace_owner_id: ws,
+                campaign_name: `קבוצת פייסבוק · ${locked.target_label ?? locked.target_ref}`,
+                channel: "facebook",
+                status: "sent",
+                message_body: compliant,
+                group_ids: [locked.target_ref],
+                provider_message_id: String(pub.post_id),
+                sent_at: now,
+              });
+            } catch (logErr) {
+              console.error("[process-activity-queue] campaign_logs insert failed", logErr);
+            }
           } else {
             publishError = String(pub?.reason ?? "פרסום אוטומטי לקבוצה נכשל");
             (newPayload as any).publish_error = publishError;

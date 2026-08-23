@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Users, Send, Loader2, CheckCircle2, XCircle, Search, Eye, MessageCircle, Share2, Sparkles } from 'lucide-react';
+import { Users, Send, Loader2, CheckCircle2, XCircle, Search, Eye, MessageCircle, Share2, Sparkles, CalendarClock } from 'lucide-react';
 
 type Group = {
   group_id: string;
@@ -39,6 +39,8 @@ export const FacebookGroupBulkPostCard = () => {
   const [imageUrl, setImageUrl] = useState('');
   const [aiVariation, setAiVariation] = useState(true);
   const [sending, setSending] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState('');
+  const [scheduling, setScheduling] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, Result>>({});
 
@@ -127,6 +129,77 @@ export const FacebookGroupBulkPostCard = () => {
       return draft || message.trim();
     } catch {
       return message.trim();
+    }
+  };
+
+  /**
+   * Queue the post for fully server-side publishing. Each selected group gets
+   * its own campaign_activity_queue row (with its own AI variation) which the
+   * cron-driven process-activity-queue function publishes at the due time —
+   * no browser needs to stay open.
+   */
+  const schedule = async () => {
+    if (!message.trim()) {
+      toast.error('יש לכתוב תוכן לפוסט');
+      return;
+    }
+    if (selected.size === 0) {
+      toast.error('יש לבחור לפחות קבוצה אחת');
+      return;
+    }
+    const when = scheduleAt ? new Date(scheduleAt) : null;
+    if (!when || Number.isNaN(when.getTime())) {
+      toast.error('יש לבחור תאריך ושעה לפרסום');
+      return;
+    }
+    if (!workspaceOwnerId) {
+      toast.error('לא נמצא מרחב עבודה פעיל');
+      return;
+    }
+    setScheduling(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const createdBy = auth?.user?.id;
+      if (!createdBy) throw new Error('נדרשת התחברות מחדש');
+
+      const ids = Array.from(selected);
+      const rows: any[] = [];
+      for (let i = 0; i < ids.length; i++) {
+        const group = (groups ?? []).find((g) => g.group_id === ids[i]);
+        setProgress(`${i + 1}/${ids.length} · ${group?.group_name ?? ''}`);
+        const text = aiVariation && group ? await variationFor(group, i + 1) : message.trim();
+        rows.push({
+          workspace_owner_id: workspaceOwnerId,
+          created_by: createdBy,
+          activity_type: 'fb_group_post',
+          target_ref: ids[i],
+          target_label: group?.group_name ?? null,
+          scheduled_for: when.toISOString(),
+          status: 'pending',
+          publication_status: 'scheduled',
+          variation_index: 0,
+          variations: [{ body: text }],
+          payload: {
+            body: text,
+            link: link.trim() || null,
+            image_url: imageUrl.trim() || null,
+            group_url: group?.group_url ?? null,
+            ai_variation: aiVariation,
+          },
+        });
+      }
+      const { error } = await (supabase as any).from('campaign_activity_queue').insert(rows);
+      if (error) throw error;
+      toast.success(`תוזמנו ${rows.length} פוסטים לקבוצות`, {
+        description: when.toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }),
+      });
+      setSelected(new Set());
+      setScheduleAt('');
+    } catch (e: any) {
+      toast.error('התזמון נכשל', { description: e?.message });
+    } finally {
+      setProgress(null);
+      setScheduling(false);
     }
   };
 
@@ -323,14 +396,45 @@ export const FacebookGroupBulkPostCard = () => {
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-1">
+        <Separator />
+
+        <div className="space-y-2">
+          <Label className="text-xs flex items-center gap-1">
+            <CalendarClock className="h-3.5 w-3.5 text-blue-600" />
+            תזמון פרסום אוטומטי (אופציונלי)
+          </Label>
+          <Input
+            type="datetime-local"
+            value={scheduleAt}
+            onChange={(e) => setScheduleAt(e.target.value)}
+            className="text-sm"
+            dir="ltr"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            הפרסום מתבצע בשרת בזמן שנקבע, גם כשהמחשב סגור.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <span className="text-[11px] text-muted-foreground">
-            {progress ? `מפרסם ${progress}` : `${selected.size} קבוצות נבחרו`}
+            {progress ? `מעבד ${progress}` : `${selected.size} קבוצות נבחרו`}
           </span>
-          <Button size="sm" onClick={publish} disabled={sending} className="gap-1">
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            פרסום לקבוצות
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={schedule}
+              disabled={scheduling || sending || !scheduleAt}
+              className="gap-1"
+            >
+              {scheduling ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarClock className="h-4 w-4" />}
+              תזמן פרסום
+            </Button>
+            <Button size="sm" onClick={publish} disabled={sending || scheduling} className="gap-1">
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              פרסום לקבוצות
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
