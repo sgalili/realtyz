@@ -18,7 +18,7 @@ import { BrandIcon } from '@/components/BrandIcon';
 import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
-  ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
+  ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square, Users,
   Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -36,10 +36,8 @@ import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsS
 import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
-import { isExtensionGroupId, publishViaExtension, readExtensionGroups } from '@/lib/extensionGroupBridge';
 import { CustomGroupsQuickShare } from '@/components/social/CustomGroupsQuickShare';
 import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdown';
-import { FacebookGroupBulkPostCard } from '@/components/social/FacebookGroupBulkPostCard';
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
@@ -797,6 +795,15 @@ const InlineComposer = ({
   useEffect(() => {
     try { localStorage.setItem('campaign:groupIds', JSON.stringify(groupIds)); } catch {}
   }, [groupIds]);
+
+  // Group picker modal (opened from the group icon button next to "פרסם").
+  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
+  const [groupTextVariation, setGroupTextVariation] = useState<boolean>(() => {
+    try { return localStorage.getItem('campaign:groupTextVariation') !== 'false'; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('campaign:groupTextVariation', groupTextVariation ? 'true' : 'false'); } catch {}
+  }, [groupTextVariation]);
   const platformProfiles = useMemo(
     () => socialProfiles.filter((p) => p.platform === channel.id || (channel.id === 'x' && p.platform === 'twitter')),
     [socialProfiles, channel.id],
@@ -1866,13 +1873,50 @@ const InlineComposer = ({
                 <CalendarIcon className="h-4 w-4" />
               </button>
               )}
+              {channel.id === 'facebook' && (
+                <button
+                  type="button"
+                  onClick={() => setGroupPickerOpen(true)}
+                  title="בחירת קבוצות לפרסום"
+                  aria-label="בחירת קבוצות לפרסום"
+                  className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
+                >
+                  <Users className="h-4 w-4" />
+                  {groupIds.length > 0 && (
+                    <span className="absolute -top-1 -left-1 min-w-[18px] rounded-full bg-[hsl(217,80%,18%)] px-1 text-[10px] font-bold leading-[18px] text-white" dir="ltr">
+                      {groupIds.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
           </div>
+
 
         );
       })()}
 
 
+      {/* Facebook groups picker — opened from the group icon button */}
+      <Dialog open={groupPickerOpen} onOpenChange={setGroupPickerOpen}>
+        <DialogContent dir="rtl" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-right">קבוצות לפרסום</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
+            <label className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 cursor-pointer">
+              <Checkbox checked={groupTextVariation} onCheckedChange={(v) => setGroupTextVariation(v === true)} />
+              <span className="text-sm font-semibold text-foreground">שינוי טקסט לקבוצות</span>
+            </label>
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={() => setGroupPickerOpen(false)}>
+              אישור{groupIds.length > 0 ? ` (${groupIds.length})` : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
 
       {/* Lightbox for image attachments with prev/next navigation */}
@@ -2188,11 +2232,25 @@ const ConfirmDispatchDialog = ({
         }
         // Fan-out one distinct publish payload per selected Facebook page/profile.
         const targets = channel.id === 'facebook' && publishTargets.length > 0 ? publishTargets : [null];
-        // Groups discovered by the browser extension cannot be posted through the
-        // Graph API, so they are split out and handed to the extension worker.
-        const apiGroupIds = groupIds.filter((id) => !isExtensionGroupId(id));
-        const extGroupIds = groupIds.filter((id) => isExtensionGroupId(id));
+        // All group targets are published through the Graph API (no browser extension).
+        const apiGroupIds = groupIds.filter((id) => !!id).map((id) => id.replace(/^ext:/, ''));
+        // "שינוי טקסט לקבוצות" — build one unique phrasing per group so Facebook
+        // doesn't filter the fan-out as duplicate content.
+        const groupTexts: Record<string, string> = {};
+        let variationEnabled = true;
+        try { variationEnabled = localStorage.getItem('campaign:groupTextVariation') !== 'false'; } catch { /* noop */ }
+        if (channel.id === 'facebook' && variationEnabled && apiGroupIds.length > 1) {
+          await Promise.all(apiGroupIds.map(async (gid, i) => {
+            try {
+              const { data, error } = await supabase.functions.invoke('spin-group-post', {
+                body: { body: bodyToPublish, group_name: gid, seed: `${Date.now()}-${i}` },
+              });
+              if (!error && (data as any)?.draft) groupTexts[gid] = String((data as any).draft);
+            } catch { /* keep the base text for this group */ }
+          }));
+        }
         const results = [] as any[];
+
         for (const target of targets) {
           // Optimistic pill in the sent-posts feed while Meta verifies.
           if (!scheduledAt) {
@@ -2216,6 +2274,8 @@ const ConfirmDispatchDialog = ({
               scheduled_at: scheduledAt,
               workspace_owner_id: ownerScope,
               group_ids: apiGroupIds,
+              group_texts: groupTexts,
+
               target_profile_id: target?.id ?? null,
               target_account_ref: target?.accountRef ?? null,
               target_profile_key: target?.profileKey ?? null,
@@ -2280,28 +2340,7 @@ const ConfirmDispatchDialog = ({
         }
         const groupFailures: any[] = results.flatMap((r) => Array.isArray((r.data as any)?.group_failures) ? (r.data as any).group_failures : []);
 
-        // Hand the packaged broadcast (text, first comment, images, target group
-        // URLs) to the extension so it can run the sequence in the user's browser.
-        if (channel.id === 'facebook' && extGroupIds.length > 0) {
-          const known = readExtensionGroups();
-          const dispatched = publishViaExtension({
-            text: bodyToPublish,
-            firstComment: firstComment || null,
-            imageUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
-            link: null,
-            scheduledAt: scheduledAt || null,
-            groups: extGroupIds.map((id) => {
-              const g = known.find((k) => k.group_id === id);
-              return {
-                group_id: (g?.group_id ?? id).replace(/^ext:/, ''),
-                group_url: g?.group_url ?? null,
-                group_name: g?.group_name ?? id,
-              };
-            }),
-          });
-          if (dispatched > 0) toast.success(`נשלחו ${dispatched} קבוצות לתוסף לפרסום`);
-          else toast.warning('התוסף לא זמין — הקבוצות לא נשלחו לפרסום');
-        }
+
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
           toast.success(`הפוסט תוזמן ל-${when} ב-${targets.length} יעד(ים)`);
@@ -5062,7 +5101,7 @@ const CampaignCenter = () => {
 
 
         <TabsContent value="create" className="mt-6 space-y-4">
-          <FacebookGroupBulkPostCard />
+          
           <ChannelGrid
             selectedIds={pickedChannelIds}
             onPick={(c) => {
