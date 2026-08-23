@@ -4910,6 +4910,10 @@ const CampaignCenter = () => {
 
         const set = new Set<string>();
 
+        // A transient binding read failure must never disable Facebook: the
+        // native Page token is the single source of truth and stays remembered.
+        if (!hasOwnProfile && wspErr && readFbBindingFlag()) set.add('facebook');
+
         if (hasOwnProfile) {
           // A bound Facebook Page is by itself a valid connected state — the
           // manual-token path never writes to `social_connections`.
