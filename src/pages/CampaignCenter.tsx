@@ -3093,10 +3093,20 @@ const PublishedFeed = () => {
       }
     }
 
+    // Never wipe a populated feed with an empty read (transient RLS/scope/
+    // disconnect blips) — keep the cached list until real rows come back.
+    const cachedForScope = FEED_ROWS_CACHE.get(ownerScope) ?? anyCachedFeedRows();
+    if (merged.length === 0 && cachedForScope && cachedForScope.length > 0) {
+      setRows(cachedForScope);
+      setColdLoading(false);
+      return { rows: cachedForScope, ownerScope, importedCount: 0, importComplete: false };
+    }
     setRows(merged);
     FEED_ROWS_CACHE.set(ownerScope, merged);
+    persistFeedCache(ownerScope, merged);
     setColdLoading(false);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
+
     // Nudge the sidebar to repaint the campaigns badge with the persisted DB count.
     try { queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] }); } catch { /* no-op */ }
 
