@@ -5034,12 +5034,17 @@ const CampaignCenter = () => {
       return;
     }
 
+    if (!isNativeChannel(c.id)) {
+      if (preOpened) { try { preOpened.close(); } catch { /* ignore */ } }
+      setSupportChannel(c.label ?? c.id);
+      return;
+    }
     if (c.id !== 'facebook' && c.id !== 'instagram') {
       if (preOpened) { try { preOpened.close(); } catch { /* ignore */ } }
-      toast.error('הערוץ הזה מנוהל בהגדרות החיבורים');
       window.location.href = '/profile?tab=connections';
       return;
     }
+
     try {
       toast.loading('פותח חיבור לפייסבוק…', { id: 'meta-connect' });
       const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'start' } });
