@@ -39,6 +39,7 @@ import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelec
 import { isExtensionGroupId, publishViaExtension, readExtensionGroups } from '@/lib/extensionGroupBridge';
 import { CustomGroupsQuickShare } from '@/components/social/CustomGroupsQuickShare';
 import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdown';
+import { FacebookGroupBulkPostCard } from '@/components/social/FacebookGroupBulkPostCard';
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
@@ -5061,6 +5062,7 @@ const CampaignCenter = () => {
 
 
         <TabsContent value="create" className="mt-6 space-y-4">
+          <FacebookGroupBulkPostCard />
           <ChannelGrid
             selectedIds={pickedChannelIds}
             onPick={(c) => {

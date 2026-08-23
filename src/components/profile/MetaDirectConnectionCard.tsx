@@ -166,9 +166,6 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-xs text-muted-foreground">
-          הפוסטים והקמפיינים מתפרסמים ישירות דרך ה-API הרשמי של Meta, ללא ספק ביניים.
-        </p>
 
         {isConnected ? (
           <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
