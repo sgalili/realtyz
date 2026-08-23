@@ -4881,7 +4881,7 @@ const CampaignCenter = () => {
           return;
         }
 
-        const { data: wsp } = await supabase
+        const { data: wsp, error: wspErr } = await supabase
           .from('messenger_page_bindings')
           .select('page_id, page_name')
           .limit(1)
@@ -4889,7 +4889,15 @@ const CampaignCenter = () => {
         const hasOwnProfile = !!(wsp as any)?.page_id;
         const wspFbId = (wsp as any)?.page_id as string | null;
         const wspFbName = (wsp as any)?.page_name as string | null;
+        if (hasOwnProfile) writeFbBindingFlag(true);
         if (!hasOwnProfile) {
+          if (wspErr) {
+            // Transient read failure (RLS blip / offline) — never downgrade a
+            // known-good Facebook connection to "disconnected".
+            console.warn('[CampaignCenter] page binding read failed:', wspErr.message);
+            return;
+          }
+          writeFbBindingFlag(false);
           if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
           // continue — still derive direct channels (IVR/email) below
         } else {
