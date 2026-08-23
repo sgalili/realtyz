@@ -2274,6 +2274,8 @@ const ConfirmDispatchDialog = ({
               scheduled_at: scheduledAt,
               workspace_owner_id: ownerScope,
               group_ids: apiGroupIds,
+              group_texts: groupTexts,
+
               target_profile_id: target?.id ?? null,
               target_account_ref: target?.accountRef ?? null,
               target_profile_key: target?.profileKey ?? null,
