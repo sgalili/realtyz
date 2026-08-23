@@ -49,6 +49,8 @@ import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDia
 import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampaignCalendar';
 import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurrentPostDialog';
 import { PostImage } from '@/components/campaigns/PostImage';
+import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/SupportRequiredDialog';
+
 import { searchAllSources } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { SourceBadge } from '@/components/properties/SourceBadge';
@@ -2699,27 +2701,54 @@ const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
 const FIRST_VISIT_IMPORT_KEY_VERSION = 'v6_recent_media_comment_refresh';
 const CAMPAIGN_CACHE_MS = 5 * 60_000;
 
+// Cross-reload cache: the last painted feed is mirrored into sessionStorage so
+// re-entering /campaigns (or a hard refresh) renders the previous post list
+// instantly and never shows an empty feed while the DB/Meta refresh runs.
+const FEED_CACHE_STORAGE_KEY = 'realtyz.campaigns.feed_rows.v1';
+const FEED_CACHE_MAX_PERSISTED = 120;
+
+const readPersistedFeedCache = (): Record<string, CampaignRow[]> => {
+  try {
+    const raw = sessionStorage.getItem(FEED_CACHE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, CampaignRow[]> : {};
+  } catch { return {}; }
+};
+
+const persistFeedCache = (scope: string, rows: CampaignRow[]) => {
+  try {
+    const all = readPersistedFeedCache();
+    all[scope] = rows.slice(0, FEED_CACHE_MAX_PERSISTED);
+    sessionStorage.setItem(FEED_CACHE_STORAGE_KEY, JSON.stringify(all));
+  } catch { /* quota — in-memory cache still applies */ }
+};
+
+// Warm the in-memory cache from the persisted copy at module load.
+try {
+  Object.entries(readPersistedFeedCache()).forEach(([scope, rows]) => {
+    if (Array.isArray(rows) && rows.length > 0 && !FEED_ROWS_CACHE.has(scope)) {
+      FEED_ROWS_CACHE.set(scope, rows);
+    }
+  });
+} catch { /* ignore */ }
+
+const anyCachedFeedRows = (): CampaignRow[] | null => {
+  for (const cached of FEED_ROWS_CACHE.values()) {
+    if (Array.isArray(cached) && cached.length > 0) return cached;
+  }
+  return null;
+};
+
 const PublishedFeed = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
-  const [rows, setRows] = useState<CampaignRow[] | null>(() => {
-    // Optimistic hydration: on every mount, immediately seed from any prior
-    // in-session cache so re-entering /campaigns never flashes the blocking
-    // "טוען…" placeholder over posts we already loaded once this session.
-    for (const cached of FEED_ROWS_CACHE.values()) {
-      if (Array.isArray(cached) && cached.length > 0) return cached;
-    }
-    return null;
-  });
-  // True only during the very first cold load (no in-session cache anywhere).
-  // The blocking loader is gated on this — a background refresh must never
-  // hide already-rendered cached rows.
-  const [coldLoading, setColdLoading] = useState<boolean>(() => {
-    for (const cached of FEED_ROWS_CACHE.values()) {
-      if (Array.isArray(cached) && cached.length > 0) return false;
-    }
-    return true;
-  });
+  const [rows, setRows] = useState<CampaignRow[] | null>(() => anyCachedFeedRows());
+  // True only during the very first cold load (no cache anywhere, in-memory or
+  // persisted). The blocking loader is gated on this — a background refresh
+  // must never hide already-rendered cached rows.
+  const [coldLoading, setColdLoading] = useState<boolean>(() => anyCachedFeedRows() === null);
+  const [supportChannel, setSupportChannel] = useState<string | null>(null);
+
 
   const [userId, setUserId] = useState<string | null>(null);
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
@@ -2924,15 +2953,26 @@ const PublishedFeed = () => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      const next = new Set<string>();
+      // A bound Facebook Page (OAuth or manual token) is by itself a valid
+      // connected state — the manual path never writes to social_connections.
+      try {
+        const { data: binding } = await supabase
+          .from('messenger_page_bindings')
+          .select('page_id')
+          .limit(1)
+          .maybeSingle();
+        if ((binding as any)?.page_id) next.add('facebook');
+      } catch { /* ignore */ }
       const { data } = await supabase
         .from('social_connections')
         .select('platform, is_connected')
-        .eq('created_by', user.id);
-      const next = new Set<string>();
+        .eq('is_connected', true);
       (data || []).forEach((r: any) => {
         if (!r?.is_connected) return;
         const p = String(r.platform || '').toLowerCase();
         if (p === 'twitter') next.add('x');
+        else if (p.startsWith('facebook')) next.add('facebook');
         else next.add(p);
       });
       setConnectedChannels(next);
@@ -2940,8 +2980,13 @@ const PublishedFeed = () => {
   }, []);
 
   const handleFeedConnect = async (id: string) => {
+    // Channels that still require a managed aggregator account cannot be
+    // self-connected — surface the support popup instead of a dead redirect.
+    if (!isNativeChannel(id)) {
+      setSupportChannel(FEED_PLATFORMS.find((p) => p.id === id)?.label ?? id);
+      return;
+    }
     if (id !== 'facebook' && id !== 'instagram') {
-      toast.error('הערוץ הזה מנוהל בהגדרות החיבורים');
       window.location.href = '/profile?tab=connections';
       return;
     }
@@ -2958,6 +3003,7 @@ const PublishedFeed = () => {
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
     }
   };
+
 
 
 
@@ -3066,10 +3112,20 @@ const PublishedFeed = () => {
       }
     }
 
+    // Never wipe a populated feed with an empty read (transient RLS/scope/
+    // disconnect blips) — keep the cached list until real rows come back.
+    const cachedForScope = FEED_ROWS_CACHE.get(ownerScope) ?? anyCachedFeedRows();
+    if (merged.length === 0 && cachedForScope && cachedForScope.length > 0) {
+      setRows(cachedForScope);
+      setColdLoading(false);
+      return { rows: cachedForScope, ownerScope, importedCount: 0, importComplete: false };
+    }
     setRows(merged);
     FEED_ROWS_CACHE.set(ownerScope, merged);
+    persistFeedCache(ownerScope, merged);
     setColdLoading(false);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
+
     // Nudge the sidebar to repaint the campaigns badge with the persisted DB count.
     try { queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] }); } catch { /* no-op */ }
 
@@ -3694,6 +3750,11 @@ const PublishedFeed = () => {
 
   return (
     <div className="space-y-3">
+      <SupportRequiredDialog
+        channelLabel={supportChannel}
+        open={!!supportChannel}
+        onOpenChange={(v) => { if (!v) setSupportChannel(null); }}
+      />
       <GlobalSocialFeed
         rows={rows ?? []}
         activeChannel={activeChannel}
@@ -3701,6 +3762,8 @@ const PublishedFeed = () => {
         connectedChannels={connectedChannels}
         onConnectChannel={handleFeedConnect}
       />
+
+
 
       {filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
@@ -4701,6 +4764,8 @@ const CampaignCenter = () => {
   const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
+  const [supportChannel, setSupportChannel] = useState<string | null>(null);
+
   const [confirmPayload, setConfirmPayload] = useState<ConfirmPayload | null>(null);
   // Bump to force-remount the InlineComposer so its body/selectedListingId/media
   // state fully clear after a successful (or paused) dispatch.
@@ -4971,12 +5036,17 @@ const CampaignCenter = () => {
       return;
     }
 
+    if (!isNativeChannel(c.id)) {
+      if (preOpened) { try { preOpened.close(); } catch { /* ignore */ } }
+      setSupportChannel(c.label ?? c.id);
+      return;
+    }
     if (c.id !== 'facebook' && c.id !== 'instagram') {
       if (preOpened) { try { preOpened.close(); } catch { /* ignore */ } }
-      toast.error('הערוץ הזה מנוהל בהגדרות החיבורים');
       window.location.href = '/profile?tab=connections';
       return;
     }
+
     try {
       toast.loading('פותח חיבור לפייסבוק…', { id: 'meta-connect' });
       const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'start' } });
@@ -5335,6 +5405,12 @@ const CampaignCenter = () => {
           setChannelAccountNames((prev) => ({ ...prev, email: `${alias}@realtyz.co.il` }));
         }}
       />
+      <SupportRequiredDialog
+        channelLabel={supportChannel}
+        open={!!supportChannel}
+        onOpenChange={(v) => { if (!v) setSupportChannel(null); }}
+      />
+
     </div>
   );
 };
