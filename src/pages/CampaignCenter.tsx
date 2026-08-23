@@ -5037,7 +5037,7 @@ const CampaignCenter = () => {
 
 
         <TabsContent value="create" className="mt-6 space-y-4">
-          <FacebookGroupBulkPostCard />
+          
           <ChannelGrid
             selectedIds={pickedChannelIds}
             onPick={(c) => {
