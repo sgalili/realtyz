@@ -4828,13 +4828,14 @@ const CampaignCenter = () => {
       return next;
     });
     try {
-      const cached = sessionStorage.getItem('rz-connected-channels');
-      if (cached) sessionStorage.setItem('rz-connected-channels', JSON.stringify((JSON.parse(cached) as string[]).filter((id) => !channels.includes(id))));
-      const names = sessionStorage.getItem('rz-connected-channel-names');
+      if (channels.includes('facebook')) writeFbBindingFlag(false);
+      const cached = localStorage.getItem('rz-connected-channels');
+      if (cached) localStorage.setItem('rz-connected-channels', JSON.stringify((JSON.parse(cached) as string[]).filter((id) => !channels.includes(id))));
+      const names = localStorage.getItem('rz-connected-channel-names');
       if (names) {
         const parsed = JSON.parse(names) as Record<string, string>;
         channels.forEach((id) => { delete parsed[id]; });
-        sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(parsed));
+        localStorage.setItem('rz-connected-channel-names', JSON.stringify(parsed));
       }
     } catch { /* ignore */ }
     queryClient.invalidateQueries({ queryKey: ['social-connections'] });
@@ -4842,12 +4843,12 @@ const CampaignCenter = () => {
   };
 
   // Persist whenever the resolved connection state changes — keeps the grid
-  // "remembered" for the whole browser session, including hard reloads.
+  // "remembered" across reloads and new tabs.
   useEffect(() => {
-    try { sessionStorage.setItem('rz-connected-channels', JSON.stringify([...connectedChannels])); } catch { /* ignore */ }
+    try { localStorage.setItem('rz-connected-channels', JSON.stringify([...connectedChannels])); } catch { /* ignore */ }
   }, [connectedChannels]);
   useEffect(() => {
-    try { sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
+    try { localStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
   }, [channelAccountNames]);
 
   // Default-select Facebook when it's connected and nothing is picked yet.
