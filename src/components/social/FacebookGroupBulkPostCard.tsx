@@ -291,16 +291,9 @@ export const FacebookGroupBulkPostCard = () => {
           />
         </div>
 
-        <label className="flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50/50 px-2.5 py-2 cursor-pointer dark:bg-blue-950/10">
-          <Checkbox checked={aiVariation} onCheckedChange={(v) => setAiVariation(v === true)} className="mt-0.5" />
-          <span className="text-xs">
-            <span className="inline-flex items-center gap-1 font-semibold">
-              <Sparkles className="h-3.5 w-3.5 text-blue-600" /> AI Text
-            </span>
-            <span className="block text-[11px] text-muted-foreground">
-              יצירת נוסח מעט שונה לכל קבוצה כדי להימנע מסינון תוכן כפול בפייסבוק
-            </span>
-          </span>
+        <label className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50/50 px-2.5 py-2 cursor-pointer dark:bg-blue-950/10">
+          <Checkbox checked={aiVariation} onCheckedChange={(v) => setAiVariation(v === true)} />
+          <span className="text-xs font-semibold">שינוי טקסט לקבוצות</span>
         </label>
 
         <div className="grid gap-3 sm:grid-cols-2">
