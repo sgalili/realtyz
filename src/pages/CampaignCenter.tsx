@@ -4807,6 +4807,10 @@ const CampaignCenter = () => {
         const set = new Set<string>();
 
         if (hasOwnProfile) {
+          // A bound Facebook Page is by itself a valid connected state — the
+          // manual-token path never writes to `social_connections`.
+          if (wspFbId) set.add('facebook');
+
           // WORKSPACE-SHARED connection state — every workspace member sees the
           // same connected channels (owner / super-admin / managers / tenants).
           // No `created_by` / `user_id` filters here; RLS allows read for all
@@ -4823,46 +4827,57 @@ const CampaignCenter = () => {
 
           if (connsErr || accountRowsErr) {
             console.warn('[CampaignCenter] social conn fetch error:', connsErr?.message || accountRowsErr?.message);
-          } else {
-            // Dedupe by platform+account_ref so duplicate rows from older
-            // imports don't render the same page twice on the FB card.
-            const seenAcct = new Set<string>();
-            const profiles = ((accountRows as any[]) || [])
-              .map((r) => ({
-                id: r?.id,
-                platform: String(r?.platform || '').toLowerCase(),
-                accountRef: r?.account_id || '',
-                profileKey: null as string | null,
-                name: r?.account_name || r?.account_id || 'Facebook',
-                username: null as string | null,
-                avatar: r?.avatar_url || null,
-                profileUrl: r?.account_id ? buildAccountUrl(String(r?.platform || '').toLowerCase(), r.account_id) : null,
-              }))
-              .filter((p) => {
-                const k = `${p.platform}:${p.accountRef}`;
-                if (seenAcct.has(k)) return false;
-                seenAcct.add(k);
-                return true;
-              });
-            profiles.forEach((p) => {
-              if (p.platform.startsWith('facebook')) set.add('facebook');
-            });
-            if (!cancelled) setSocialAccountProfiles(profiles);
-            (conns || []).forEach((c: any) => {
-              const p = String(c?.platform || '').toLowerCase();
-              if (p.startsWith('facebook')) set.add('facebook');
-              else if (p.startsWith('instagram')) set.add('instagram');
-              else if (p === 'x' || p === 'twitter') set.add('x');
-              else if (p.startsWith('youtube')) set.add('youtube');
-              else if (p.startsWith('linkedin')) set.add('linkedin');
-              else if (p.startsWith('tiktok')) set.add('tiktok');
-            });
-            // Workspace fallback — if the singleton workspace profile has a
-            // connected Facebook Page on record, trust it for every member
-            // even before the sync/upsert finishes.
-            if (wspFbId) set.add('facebook');
           }
+
+          // Dedupe by platform+account_ref so duplicate rows from older
+          // imports don't render the same page twice on the FB card.
+          const seenAcct = new Set<string>();
+          const profiles = ((accountRows as any[]) || [])
+            .map((r) => ({
+              id: r?.id,
+              platform: String(r?.platform || '').toLowerCase(),
+              accountRef: r?.account_id || '',
+              profileKey: null as string | null,
+              name: r?.account_name || r?.account_id || 'Facebook',
+              username: null as string | null,
+              avatar: r?.avatar_url || null,
+              profileUrl: r?.account_id ? buildAccountUrl(String(r?.platform || '').toLowerCase(), r.account_id) : null,
+            }))
+            .filter((p) => {
+              const k = `${p.platform}:${p.accountRef}`;
+              if (seenAcct.has(k)) return false;
+              seenAcct.add(k);
+              return true;
+            });
+          profiles.forEach((p) => {
+            if (p.platform.startsWith('facebook')) set.add('facebook');
+          });
+          // Surface the bound Page on the Facebook card even when no
+          // `social_connections` row exists yet (manual token connection).
+          if (wspFbId && !profiles.some((p) => p.platform.startsWith('facebook') && p.accountRef === wspFbId)) {
+            profiles.unshift({
+              id: `page:${wspFbId}`,
+              platform: 'facebook',
+              accountRef: wspFbId,
+              profileKey: null,
+              name: wspFbName || 'Facebook',
+              username: null,
+              avatar: null,
+              profileUrl: buildAccountUrl('facebook', wspFbId),
+            });
+          }
+          if (!cancelled) setSocialAccountProfiles(profiles);
+          (conns || []).forEach((c: any) => {
+            const p = String(c?.platform || '').toLowerCase();
+            if (p.startsWith('facebook')) set.add('facebook');
+            else if (p.startsWith('instagram')) set.add('instagram');
+            else if (p === 'x' || p === 'twitter') set.add('x');
+            else if (p.startsWith('youtube')) set.add('youtube');
+            else if (p.startsWith('linkedin')) set.add('linkedin');
+            else if (p.startsWith('tiktok')) set.add('tiktok');
+          });
         }
+
 
 
         // Direct (non-social) channels — always safe to derive.
