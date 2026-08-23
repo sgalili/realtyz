@@ -316,14 +316,20 @@ Deno.serve(async (req) => {
 
     // Facebook Groups fan-out stays on the personal-profile publisher.
     const groupResults: any[] = [];
+    // Optional per-group text variations (anti-duplicate filter): { [group_id]: text }
+    const groupTexts: Record<string, string> =
+      body?.group_texts && typeof body.group_texts === "object" ? body.group_texts : {};
     for (const gid of groupIds) {
+      const groupText = typeof groupTexts[gid] === "string" && groupTexts[gid].trim()
+        ? String(groupTexts[gid])
+        : text;
       const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fb-group-publish`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ group_id: gid, message: text, image_url: media[0] ?? null, workspace_owner_id: ownerId }),
+        body: JSON.stringify({ group_id: gid, message: groupText, image_url: media[0] ?? null, workspace_owner_id: ownerId }),
       })
         .then((r) => r.json())
         .catch((e) => ({ ok: false, reason: String(e) }));
