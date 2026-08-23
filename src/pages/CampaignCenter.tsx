@@ -2699,27 +2699,54 @@ const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
 const FIRST_VISIT_IMPORT_KEY_VERSION = 'v6_recent_media_comment_refresh';
 const CAMPAIGN_CACHE_MS = 5 * 60_000;
 
+// Cross-reload cache: the last painted feed is mirrored into sessionStorage so
+// re-entering /campaigns (or a hard refresh) renders the previous post list
+// instantly and never shows an empty feed while the DB/Meta refresh runs.
+const FEED_CACHE_STORAGE_KEY = 'realtyz.campaigns.feed_rows.v1';
+const FEED_CACHE_MAX_PERSISTED = 120;
+
+const readPersistedFeedCache = (): Record<string, CampaignRow[]> => {
+  try {
+    const raw = sessionStorage.getItem(FEED_CACHE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, CampaignRow[]> : {};
+  } catch { return {}; }
+};
+
+const persistFeedCache = (scope: string, rows: CampaignRow[]) => {
+  try {
+    const all = readPersistedFeedCache();
+    all[scope] = rows.slice(0, FEED_CACHE_MAX_PERSISTED);
+    sessionStorage.setItem(FEED_CACHE_STORAGE_KEY, JSON.stringify(all));
+  } catch { /* quota — in-memory cache still applies */ }
+};
+
+// Warm the in-memory cache from the persisted copy at module load.
+try {
+  Object.entries(readPersistedFeedCache()).forEach(([scope, rows]) => {
+    if (Array.isArray(rows) && rows.length > 0 && !FEED_ROWS_CACHE.has(scope)) {
+      FEED_ROWS_CACHE.set(scope, rows);
+    }
+  });
+} catch { /* ignore */ }
+
+const anyCachedFeedRows = (): CampaignRow[] | null => {
+  for (const cached of FEED_ROWS_CACHE.values()) {
+    if (Array.isArray(cached) && cached.length > 0) return cached;
+  }
+  return null;
+};
+
 const PublishedFeed = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
-  const [rows, setRows] = useState<CampaignRow[] | null>(() => {
-    // Optimistic hydration: on every mount, immediately seed from any prior
-    // in-session cache so re-entering /campaigns never flashes the blocking
-    // "טוען…" placeholder over posts we already loaded once this session.
-    for (const cached of FEED_ROWS_CACHE.values()) {
-      if (Array.isArray(cached) && cached.length > 0) return cached;
-    }
-    return null;
-  });
-  // True only during the very first cold load (no in-session cache anywhere).
-  // The blocking loader is gated on this — a background refresh must never
-  // hide already-rendered cached rows.
-  const [coldLoading, setColdLoading] = useState<boolean>(() => {
-    for (const cached of FEED_ROWS_CACHE.values()) {
-      if (Array.isArray(cached) && cached.length > 0) return false;
-    }
-    return true;
-  });
+  const [rows, setRows] = useState<CampaignRow[] | null>(() => anyCachedFeedRows());
+  // True only during the very first cold load (no cache anywhere, in-memory or
+  // persisted). The blocking loader is gated on this — a background refresh
+  // must never hide already-rendered cached rows.
+  const [coldLoading, setColdLoading] = useState<boolean>(() => anyCachedFeedRows() === null);
+  const [supportChannel, setSupportChannel] = useState<string | null>(null);
+
 
   const [userId, setUserId] = useState<string | null>(null);
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
