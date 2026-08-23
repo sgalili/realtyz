@@ -1897,6 +1897,26 @@ const InlineComposer = ({
       })()}
 
 
+      {/* Facebook groups picker — opened from the group icon button */}
+      <Dialog open={groupPickerOpen} onOpenChange={setGroupPickerOpen}>
+        <DialogContent dir="rtl" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-right">קבוצות לפרסום</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
+            <label className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 cursor-pointer">
+              <Checkbox checked={groupTextVariation} onCheckedChange={(v) => setGroupTextVariation(v === true)} />
+              <span className="text-sm font-semibold text-foreground">שינוי טקסט לקבוצות</span>
+            </label>
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={() => setGroupPickerOpen(false)}>
+              אישור{groupIds.length > 0 ? ` (${groupIds.length})` : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
 
       {/* Lightbox for image attachments with prev/next navigation */}
