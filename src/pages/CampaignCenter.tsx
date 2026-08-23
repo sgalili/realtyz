@@ -49,6 +49,8 @@ import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDia
 import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampaignCalendar';
 import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurrentPostDialog';
 import { PostImage } from '@/components/campaigns/PostImage';
+import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/SupportRequiredDialog';
+
 import { searchAllSources } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { SourceBadge } from '@/components/properties/SourceBadge';
