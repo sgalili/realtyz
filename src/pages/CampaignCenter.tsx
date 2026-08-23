@@ -4895,10 +4895,10 @@ const CampaignCenter = () => {
             // Transient read failure (RLS blip / offline) — never downgrade a
             // known-good Facebook connection to "disconnected".
             console.warn('[CampaignCenter] page binding read failed:', wspErr.message);
-            return;
+          } else {
+            writeFbBindingFlag(false);
+            if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
           }
-          writeFbBindingFlag(false);
-          if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
           // continue — still derive direct channels (IVR/email) below
         } else {
           if (wspFbName && !cancelled) {
