@@ -3750,6 +3750,11 @@ const PublishedFeed = () => {
 
   return (
     <div className="space-y-3">
+      <SupportRequiredDialog
+        channelLabel={supportChannel}
+        open={!!supportChannel}
+        onOpenChange={(v) => { if (!v) setSupportChannel(null); }}
+      />
       <GlobalSocialFeed
         rows={rows ?? []}
         activeChannel={activeChannel}
@@ -3757,6 +3762,8 @@ const PublishedFeed = () => {
         connectedChannels={connectedChannels}
         onConnectChannel={handleFeedConnect}
       />
+
+
 
       {filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
