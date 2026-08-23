@@ -36,10 +36,8 @@ import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsS
 import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
-import { isExtensionGroupId, publishViaExtension, readExtensionGroups } from '@/lib/extensionGroupBridge';
 import { CustomGroupsQuickShare } from '@/components/social/CustomGroupsQuickShare';
 import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdown';
-import { FacebookGroupBulkPostCard } from '@/components/social/FacebookGroupBulkPostCard';
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
