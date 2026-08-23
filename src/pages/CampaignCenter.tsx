@@ -1873,8 +1873,25 @@ const InlineComposer = ({
                 <CalendarIcon className="h-4 w-4" />
               </button>
               )}
+              {channel.id === 'facebook' && (
+                <button
+                  type="button"
+                  onClick={() => setGroupPickerOpen(true)}
+                  title="בחירת קבוצות לפרסום"
+                  aria-label="בחירת קבוצות לפרסום"
+                  className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
+                >
+                  <Users className="h-4 w-4" />
+                  {groupIds.length > 0 && (
+                    <span className="absolute -top-1 -left-1 min-w-[18px] rounded-full bg-[hsl(217,80%,18%)] px-1 text-[10px] font-bold leading-[18px] text-white" dir="ltr">
+                      {groupIds.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
           </div>
+
 
         );
       })()}
