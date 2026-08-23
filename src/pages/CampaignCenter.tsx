@@ -2234,7 +2234,23 @@ const ConfirmDispatchDialog = ({
         const targets = channel.id === 'facebook' && publishTargets.length > 0 ? publishTargets : [null];
         // All group targets are published through the Graph API (no browser extension).
         const apiGroupIds = groupIds.filter((id) => !!id).map((id) => id.replace(/^ext:/, ''));
+        // "שינוי טקסט לקבוצות" — build one unique phrasing per group so Facebook
+        // doesn't filter the fan-out as duplicate content.
+        const groupTexts: Record<string, string> = {};
+        let variationEnabled = true;
+        try { variationEnabled = localStorage.getItem('campaign:groupTextVariation') !== 'false'; } catch { /* noop */ }
+        if (channel.id === 'facebook' && variationEnabled && apiGroupIds.length > 1) {
+          await Promise.all(apiGroupIds.map(async (gid, i) => {
+            try {
+              const { data, error } = await supabase.functions.invoke('spin-group-post', {
+                body: { body: bodyToPublish, group_name: gid, seed: `${Date.now()}-${i}` },
+              });
+              if (!error && (data as any)?.draft) groupTexts[gid] = String((data as any).draft);
+            } catch { /* keep the base text for this group */ }
+          }));
+        }
         const results = [] as any[];
+
         for (const target of targets) {
           // Optimistic pill in the sent-posts feed while Meta verifies.
           if (!scheduledAt) {
