@@ -2951,15 +2951,26 @@ const PublishedFeed = () => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      const next = new Set<string>();
+      // A bound Facebook Page (OAuth or manual token) is by itself a valid
+      // connected state — the manual path never writes to social_connections.
+      try {
+        const { data: binding } = await supabase
+          .from('messenger_page_bindings')
+          .select('page_id')
+          .limit(1)
+          .maybeSingle();
+        if ((binding as any)?.page_id) next.add('facebook');
+      } catch { /* ignore */ }
       const { data } = await supabase
         .from('social_connections')
         .select('platform, is_connected')
-        .eq('created_by', user.id);
-      const next = new Set<string>();
+        .eq('is_connected', true);
       (data || []).forEach((r: any) => {
         if (!r?.is_connected) return;
         const p = String(r.platform || '').toLowerCase();
         if (p === 'twitter') next.add('x');
+        else if (p.startsWith('facebook')) next.add('facebook');
         else next.add(p);
       });
       setConnectedChannels(next);
@@ -2967,8 +2978,13 @@ const PublishedFeed = () => {
   }, []);
 
   const handleFeedConnect = async (id: string) => {
+    // Channels that still require a managed aggregator account cannot be
+    // self-connected — surface the support popup instead of a dead redirect.
+    if (!isNativeChannel(id)) {
+      setSupportChannel(FEED_PLATFORMS.find((p) => p.id === id)?.label ?? id);
+      return;
+    }
     if (id !== 'facebook' && id !== 'instagram') {
-      toast.error('הערוץ הזה מנוהל בהגדרות החיבורים');
       window.location.href = '/profile?tab=connections';
       return;
     }
@@ -2985,6 +3001,7 @@ const PublishedFeed = () => {
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
     }
   };
+
 
 
 
