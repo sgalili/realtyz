@@ -2186,10 +2186,8 @@ const ConfirmDispatchDialog = ({
         }
         // Fan-out one distinct publish payload per selected Facebook page/profile.
         const targets = channel.id === 'facebook' && publishTargets.length > 0 ? publishTargets : [null];
-        // Groups discovered by the browser extension cannot be posted through the
-        // Graph API, so they are split out and handed to the extension worker.
-        const apiGroupIds = groupIds.filter((id) => !isExtensionGroupId(id));
-        const extGroupIds = groupIds.filter((id) => isExtensionGroupId(id));
+        // All group targets are published through the Graph API (no browser extension).
+        const apiGroupIds = groupIds.filter((id) => !!id).map((id) => id.replace(/^ext:/, ''));
         const results = [] as any[];
         for (const target of targets) {
           // Optimistic pill in the sent-posts feed while Meta verifies.
