@@ -2276,28 +2276,7 @@ const ConfirmDispatchDialog = ({
         }
         const groupFailures: any[] = results.flatMap((r) => Array.isArray((r.data as any)?.group_failures) ? (r.data as any).group_failures : []);
 
-        // Hand the packaged broadcast (text, first comment, images, target group
-        // URLs) to the extension so it can run the sequence in the user's browser.
-        if (channel.id === 'facebook' && extGroupIds.length > 0) {
-          const known = readExtensionGroups();
-          const dispatched = publishViaExtension({
-            text: bodyToPublish,
-            firstComment: firstComment || null,
-            imageUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
-            link: null,
-            scheduledAt: scheduledAt || null,
-            groups: extGroupIds.map((id) => {
-              const g = known.find((k) => k.group_id === id);
-              return {
-                group_id: (g?.group_id ?? id).replace(/^ext:/, ''),
-                group_url: g?.group_url ?? null,
-                group_name: g?.group_name ?? id,
-              };
-            }),
-          });
-          if (dispatched > 0) toast.success(`נשלחו ${dispatched} קבוצות לתוסף לפרסום`);
-          else toast.warning('התוסף לא זמין — הקבוצות לא נשלחו לפרסום');
-        }
+
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
           toast.success(`הפוסט תוזמן ל-${when} ב-${targets.length} יעד(ים)`);
