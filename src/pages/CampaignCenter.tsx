@@ -2701,15 +2701,29 @@ const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
 const FIRST_VISIT_IMPORT_KEY_VERSION = 'v6_recent_media_comment_refresh';
 const CAMPAIGN_CACHE_MS = 5 * 60_000;
 
-// Cross-reload cache: the last painted feed is mirrored into sessionStorage so
-// re-entering /campaigns (or a hard refresh) renders the previous post list
-// instantly and never shows an empty feed while the DB/Meta refresh runs.
+// Cross-reload cache: the last painted feed is mirrored into localStorage so
+// re-entering /campaigns (or a hard refresh, or a brand-new tab) renders the
+// previous post list instantly and never shows an empty white feed while the
+// DB/Meta refresh runs in the background.
 const FEED_CACHE_STORAGE_KEY = 'realtyz.campaigns.feed_rows.v1';
 const FEED_CACHE_MAX_PERSISTED = 120;
 
+// Remembers that this account has a bound Facebook Page so the card renders
+// "מחובר" instantly on mount, before the async DB verification resolves.
+const FB_BINDING_FLAG_KEY = 'realtyz.campaigns.fb_page_bound.v1';
+const readFbBindingFlag = (): boolean => {
+  try { return localStorage.getItem(FB_BINDING_FLAG_KEY) === '1'; } catch { return false; }
+};
+const writeFbBindingFlag = (bound: boolean) => {
+  try {
+    if (bound) localStorage.setItem(FB_BINDING_FLAG_KEY, '1');
+    else localStorage.removeItem(FB_BINDING_FLAG_KEY);
+  } catch { /* ignore */ }
+};
+
 const readPersistedFeedCache = (): Record<string, CampaignRow[]> => {
   try {
-    const raw = sessionStorage.getItem(FEED_CACHE_STORAGE_KEY);
+    const raw = localStorage.getItem(FEED_CACHE_STORAGE_KEY) || sessionStorage.getItem(FEED_CACHE_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
     return parsed && typeof parsed === 'object' ? parsed as Record<string, CampaignRow[]> : {};
   } catch { return {}; }
@@ -2719,7 +2733,7 @@ const persistFeedCache = (scope: string, rows: CampaignRow[]) => {
   try {
     const all = readPersistedFeedCache();
     all[scope] = rows.slice(0, FEED_CACHE_MAX_PERSISTED);
-    sessionStorage.setItem(FEED_CACHE_STORAGE_KEY, JSON.stringify(all));
+    localStorage.setItem(FEED_CACHE_STORAGE_KEY, JSON.stringify(all));
   } catch { /* quota — in-memory cache still applies */ }
 };
 
