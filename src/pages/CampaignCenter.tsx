@@ -5405,6 +5405,12 @@ const CampaignCenter = () => {
           setChannelAccountNames((prev) => ({ ...prev, email: `${alias}@realtyz.co.il` }));
         }}
       />
+      <SupportRequiredDialog
+        channelLabel={supportChannel}
+        open={!!supportChannel}
+        onOpenChange={(v) => { if (!v) setSupportChannel(null); }}
+      />
+
     </div>
   );
 };
