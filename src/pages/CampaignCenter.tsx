@@ -4799,18 +4799,20 @@ const CampaignCenter = () => {
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
   const [alsoEmail, setAlsoEmail] = useState(false);
-  // Hydrate connection state from sessionStorage so a page refresh doesn't
-  // visually "disconnect" channels while the async verification re-runs.
+  // Hydrate connection state from localStorage so a page refresh (or a new
+  // tab) doesn't visually "disconnect" channels while verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
     try {
-      const raw = sessionStorage.getItem('rz-connected-channels');
-      if (raw) return new Set<string>(JSON.parse(raw));
+      const raw = localStorage.getItem('rz-connected-channels') || sessionStorage.getItem('rz-connected-channels');
+      if (raw) (JSON.parse(raw) as string[]).forEach((id) => initial.add(id));
     } catch { /* ignore */ }
-    return EMPTY_CONNECTED;
+    if (readFbBindingFlag()) initial.add('facebook');
+    return initial.size > 0 ? initial : EMPTY_CONNECTED;
   });
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>(() => {
     try {
-      const raw = sessionStorage.getItem('rz-connected-channel-names');
+      const raw = localStorage.getItem('rz-connected-channel-names') || sessionStorage.getItem('rz-connected-channel-names');
       if (raw) return JSON.parse(raw);
     } catch { /* ignore */ }
     return {};
