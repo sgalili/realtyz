@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
       if (token.length < 40) return json({ error: "טוקן העמוד קצר מדי או שגוי." }, 400);
 
       const verify = await graph(
-        `/${pageId}?fields=name,instagram_business_account{id,username}&access_token=${encodeURIComponent(token)}`,
+        `/${pageId}?fields=name,picture.width(160).height(160),instagram_business_account{id,username}&access_token=${encodeURIComponent(token)}`,
       );
       if (!verify.ok || !verify.payload?.id) {
         return json({ error: humanizeGraphError(verify.payload, "הטוקן נדחה על ידי פייסבוק. ודא שזה Page Access Token של אותו עמוד.") }, 400);
@@ -122,9 +122,17 @@ Deno.serve(async (req) => {
       );
       if (manualErr) return json({ error: manualErr.message }, 500);
 
+      const igManual = verify.payload?.instagram_business_account;
       return json({
         ok: true,
-        page: { id: pageId, name: verify.payload?.name ?? null, picture: null },
+        connected: true,
+        page: {
+          id: pageId,
+          name: verify.payload?.name ?? null,
+          picture: verify.payload?.picture?.data?.url ?? null,
+          connected_at: new Date().toISOString(),
+        },
+        instagram: igManual?.id ? { id: String(igManual.id), username: igManual.username ?? null } : null,
       });
     }
 
