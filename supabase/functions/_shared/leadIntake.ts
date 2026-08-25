@@ -92,29 +92,62 @@ export function extractCityLoose(text: string | null | undefined): string | null
   return labelled?.[1]?.trim() || null;
 }
 
-function parseAmount(numText: string, unitText: string | undefined): number | null {
+/**
+ * Convert "3.5 מיליון" / "15,000" / "12 אלף" to shekels.
+ *
+ * The bare-number heuristic is deal-type aware: for a RENTAL, a small number
+ * means thousands per month ("שכירות עד 15" → 15,000), never millions. Only a
+ * purchase budget may be expanded to millions ("תקציב 3.5" → 3,500,000).
+ */
+function parseAmount(
+  numText: string,
+  unitText: string | undefined,
+  dealType: "sale" | "rent" | null = null,
+): number | null {
   const n = parseFloat(String(numText).replace(/,/g, ""));
-  if (!isFinite(n)) return null;
+  if (!isFinite(n) || n <= 0) return null;
   const unit = String(unitText ?? "");
   if (/מיליון|מיל׳|מיל'|m/i.test(unit)) return Math.round(n * 1_000_000);
   if (/אלף|k/i.test(unit)) return Math.round(n * 1_000);
+  if (dealType === "rent") {
+    // A monthly rent is thousands, not millions. 15 → 15,000; 15,000 stays.
+    return n < 1_000 ? Math.round(n * 1_000) : Math.round(n);
+  }
   if (n < 100) return Math.round(n * 1_000_000); // "תקציב 3.5" → 3.5M
   return Math.round(n);
 }
 
-export function extractBudgetLoose(text: string | null | undefined): number | null {
+/** Plausibility gate so a rent figure never lands as a purchase price. */
+function sanitizeBudget(value: number | null, dealType: "sale" | "rent" | null): number | null {
+  if (!value || value < 500) return null;
+  if (dealType === "rent") {
+    // Monthly rent above ~150k ILS is a mis-parse (usually a purchase figure).
+    if (value > 150_000) return null;
+    return value;
+  }
+  return value;
+}
+
+export function extractBudgetLoose(
+  text: string | null | undefined,
+  dealType: "sale" | "rent" | null = null,
+): number | null {
   const s = String(text ?? "");
+  const effectiveType = dealType ?? extractDealTypeLoose(s);
   const withLabel = s.match(
     /(?:תקציב|עד|מקסימום|budget|up\s*to)\D{0,12}?([\d.,]+)\s*(מיליון|מיל׳|מיל'|אלף|k|m)?/iu,
   );
   if (withLabel) {
-    const v = parseAmount(withLabel[1], withLabel[2]);
-    if (v && v >= 1000) return v;
+    const v = sanitizeBudget(parseAmount(withLabel[1], withLabel[2], effectiveType), effectiveType);
+    if (v) return v;
   }
-  const shekel = s.match(/₪\s*([\d.,]+)\s*(מיליון|אלף|k|m)?/iu);
+  const CURRENCY = /(?:₪|ש["״'׳]{0,2}ח|שקלים|שקל|nis|ils)/;
+  const shekel =
+    s.match(new RegExp(`([\\d.,]+)\\s*(מיליון|מיל׳|מיל'|אלף|k|m)?\\s*${CURRENCY.source}`, "iu")) ??
+    s.match(new RegExp(`${CURRENCY.source}\\s*([\\d.,]+)\\s*(מיליון|מיל׳|מיל'|אלף|k|m)?`, "iu"));
   if (shekel) {
-    const v = parseAmount(shekel[1], shekel[2]);
-    if (v && v >= 1000) return v;
+    const v = sanitizeBudget(parseAmount(shekel[1], shekel[2], effectiveType), effectiveType);
+    if (v) return v;
   }
   return null;
 }
@@ -132,21 +165,75 @@ export function extractDealTypeLoose(text: string | null | undefined): "sale" | 
   return null;
 }
 
+/**
+ * Words that are never part of a person's name. These are descriptors
+ * ("לקוח פוטנציאלי חדש"), field labels, deal words and connectors. Anything
+ * matching is dropped from a name candidate, and a candidate that starts with
+ * one of them is scanned further to the right for the real name.
+ */
 const NAME_STOPWORDS =
-  /^(חדש|חדשה|עם|של|בשם|בעיר|לשכירות|למכירה|טלפון|נייד|תקציב|לקוח|לקוחה|מתעניין|ליד|contact|lead)$/u;
+  /^(חדש|חדשה|חדשים|חם|חמה|קר|קרה|פוטנציאלי|פוטנציאלית|פוטנציאלים|מעניין|מעניינת|רציני|רצינית|עם|של|את|בשם|שם|בעיר|מעיר|באזור|לשכירות|להשכרה|שכירות|למכירה|מכירה|לקנייה|לרכישה|טלפון|נייד|מספר|מייל|אימייל|תקציב|עד|חדרים|לקוח|לקוחה|לקוחות|מתעניין|מתעניינת|ליד|לידים|כרטיס|איש|אישה|קשר|בבקשה|תודה|new|hot|potential|client|clients|contact|contacts|lead|leads|customer|name|phone|budget|rent|rental|sale|buy)$/iu;
+
+/** Words that end a name: whatever follows describes the request, not the person. */
+const NAME_TERMINATORS =
+  /^(מחפש|מחפשת|מעוניין|מעוניינת|רוצה|רוצים|צריך|צריכה|מבקש|מבקשת|שוכר|שוכרת|קונה|גר|גרה|בעל|בעלת|שמעוניין|שמחפש|looking|wants|needs|interested|searching)$/iu;
+
+const NAME_TOKEN = /^[\p{L}][\p{L}'’\-]{1,25}$/u;
+
+/**
+ * Keep only plausible name tokens: skip leading descriptors/labels, then take
+ * the contiguous run of name words and stop at the first non-name word.
+ */
+function cleanNameTokens(candidate: string): string | null {
+  const tokens = candidate
+    .split(/\s+/)
+    .map((p) => p.replace(/^["'׳״,.:;-]+|["'׳״,.:;-]+$/g, ""))
+    .filter(Boolean);
+  const parts: string[] = [];
+  for (const t of tokens) {
+    const isName = NAME_TOKEN.test(t) && !NAME_STOPWORDS.test(t) && !NAME_TERMINATORS.test(t);
+    if (isName) {
+      parts.push(t);
+      if (parts.length === 3) break;
+      continue;
+    }
+    if (parts.length) break; // name already started → this word ends it
+  }
+  return parts.length ? parts.join(" ") : null;
+}
 
 export function extractNameLoose(text: string | null | undefined): string | null {
   const s = String(text ?? "");
+  // Widen each capture to up to 5 words so descriptors can be stripped and the
+  // real name is still reached ("לקוח פוטנציאלי חדש משה ישראלי" → "משה ישראלי").
+  const WORDS = `([\\p{L}][\\p{L}'’\\-]{1,25}(?:\\s+[\\p{L}][\\p{L}'’\\-]{1,25}){0,4})`;
   const patterns: RegExp[] = [
-    /(?:בשם|שם\s*מלא|שם|name)\s*[:\-]?\s*([\p{L}][\p{L}'\-]{1,25}(?:\s+[\p{L}][\p{L}'\-]{1,25}){0,2})/iu,
-    /(?:ליד|מתעניין|מתעניינת|איש\s*קשר|לקוח[הת]?|contact|lead)\s*(?:חדש[הת]?)?\s*[:,\-–]?\s*([\p{L}][\p{L}'\-]{1,25}(?:\s+[\p{L}][\p{L}'\-]{1,25})?)/u,
+    // Explicit name marker wins: "בשם משה ישראלי", "שם מלא: משה ישראלי".
+    new RegExp(`(?:בשם|שם\\s*מלא|שמו|שמה|full\\s*name|name)\\s*[:\\-]?\\s*${WORDS}`, "iu"),
+    // Entity noun followed by descriptors and then the name.
+    new RegExp(
+      `(?:ליד|לידים|מתעניינ[תה]?|איש\\s*קשר|לקוח[הת]?|contact|lead|client|customer)\\s*[:,\\-–]?\\s*${WORDS}`,
+      "iu",
+    ),
+    // Verb-first phrasing without any noun: "תוסיף את משה ישראלי 0541234567".
+    new RegExp(
+      `(?:הוסף|תוסיף|הוסיפי|תוסיפי|תכניס|תכניסי|צור|תיצור|תיצרי|רשום|תרשום|שמור|תשמור|add|create|save)\\s*(?:את|for)?\\s*${WORDS}`,
+      "iu",
+    ),
   ];
-  for (const re of patterns) {
-    const cand = s.match(re)?.[1]?.trim();
-    if (!cand) continue;
-    const parts = cand.split(/\s+/).filter((p) => !NAME_STOPWORDS.test(p));
-    if (!parts.length) continue;
-    return parts.join(" ");
+  // Second pass over a version of the text with pure descriptors and
+  // punctuation removed, so "הוסף ליד חדש: דנה כהן" still resolves the name.
+  const DESCRIPTOR_ONLY =
+    /(?<![\p{L}])(חדש[הת]?|חדשים|חם|חמה|פוטנציאלי[תם]?|מעניינ[תה]?|רציני[ת]?|new|hot|potential)(?![\p{L}])/giu;
+  const stripped = s.replace(DESCRIPTOR_ONLY, " ").replace(/[:,–\-]+/g, " ").replace(/\s+/g, " ");
+
+  for (const variant of [s, stripped]) {
+    for (const re of patterns) {
+      const cand = variant.match(re)?.[1]?.trim();
+      if (!cand) continue;
+      const cleaned = cleanNameTokens(cand);
+      if (cleaned) return cleaned;
+    }
   }
   return null;
 }
@@ -157,14 +244,15 @@ export function extractEmailLoose(text: string | null | undefined): string | nul
 
 /** Deterministic pass over the raw text. */
 export function extractLeadDraftRegex(text: string): LeadDraft {
+  const dealType = extractDealTypeLoose(text);
   return {
     full_name: extractNameLoose(text),
     phone: extractPhoneLoose(text),
     email: extractEmailLoose(text),
     city: extractCityLoose(text),
     neighborhood: null,
-    deal_type: extractDealTypeLoose(text),
-    budget_max: extractBudgetLoose(text),
+    deal_type: dealType,
+    budget_max: extractBudgetLoose(text, dealType),
     rooms: extractRoomsLoose(text),
     requirements: null,
   };
@@ -217,8 +305,12 @@ export async function extractLeadDraftLLM(text: string): Promise<Partial<LeadDra
   const system = `אתה מחלץ נתונים ל-CRM נדל"ן ישראלי. קבל טקסט חופשי בעברית או אנגלית והחזר JSON בלבד.
 מפתחות: full_name, phone, email, city, neighborhood, deal_type ("sale" או "rent"), budget_max (מספר שקלים), rooms (מספר), requirements (תמצית דרישות במשפט אחד).
 חוקים:
+- full_name: שם פרטי ומשפחה של האדם עצמו בלבד. אסור לכלול תארים או תוספות תיאוריות כמו "לקוח", "לקוחה", "לקוח פוטנציאלי", "ליד", "מתעניין", "איש קשר", "חדש", "חם", "רציני". לדוגמה: "תוסיף לקוח פוטנציאלי חדש משה ישראלי" → full_name = "משה ישראלי". אם לא נאמר שם אמיתי של אדם, החזר null (אל תחזיר "לקוח חדש").
 - phone: החזר בדיוק כפי שנכתב, כולל מקפים. אם אין טלפון בטקסט החזר null.
-- budget_max: המר "2 מיליון" ל-2000000, "עד 5,500" ל-5500.
+- deal_type: "rent" אם מדובר בשכירות/להשכרה/שוכר, "sale" אם מדובר ברכישה/קנייה/מכירה. אם לא ברור, null.
+- budget_max: תמיד סכום בשקלים בשדה הזה, גם לשכירות (תקציב חודשי) וגם לרכישה.
+  * שכירות: הסכום הוא שכר דירה חודשי. "עד 15,000 ש״ח" → 15000. "עד 15 אלף" → 15000. "עד 12" → 12000. אסור להמיר למיליונים בשכירות.
+  * רכישה: "2 מיליון" → 2000000, "3.5" → 3500000, "עד 4.2 מיליון" → 4200000.
 - אל תמציא נתונים. שדה שלא הופיע בטקסט = null.
 - החזר JSON נקי, בלי markdown ובלי הסברים.`;
   try {
@@ -272,15 +364,24 @@ export async function extractLeadDraft(text: string): Promise<LeadDraft> {
   if (!llm) return base;
   const pick = <K extends keyof LeadDraft>(k: K): LeadDraft[K] =>
     (base[k] ?? (llm[k] as LeadDraft[K] | undefined) ?? null) as LeadDraft[K];
+
+  const dealType = base.deal_type ?? (llm.deal_type ?? null);
+  // Never let a descriptor phrase ("לקוח חדש") slip through as a name.
+  const modelName = llm.full_name ? cleanNameTokens(String(llm.full_name)) : null;
+  // Reconcile the budget against the resolved deal type: a rent figure parsed
+  // as millions is rejected and re-derived with the correct unit rules.
+  let budget = base.budget_max ?? (llm.budget_max ?? null);
+  budget = sanitizeBudget(budget, dealType) ?? extractBudgetLoose(text, dealType);
+
   return {
-    full_name: pick("full_name"),
+    full_name: base.full_name ?? modelName,
     // Regex phone is authoritative; the model is only a fallback.
     phone: base.phone ?? (llm.phone ?? null),
     email: pick("email"),
     city: pick("city"),
     neighborhood: (llm.neighborhood ?? null) as string | null,
-    deal_type: base.deal_type ?? (llm.deal_type ?? null),
-    budget_max: base.budget_max ?? (llm.budget_max ?? null),
+    deal_type: dealType,
+    budget_max: budget,
     rooms: base.rooms ?? (llm.rooms ?? null),
     requirements: (llm.requirements ?? null) as string | null,
   };
