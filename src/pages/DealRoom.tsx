@@ -100,6 +100,24 @@ type Lead = {
 
 type SortMode = 'recent' | 'priority';
 
+/** Advanced pipeline filters (drawer on the left of the search bar). */
+type DealFilters = {
+  stages: LeadStage[];
+  agent: string; // 'all' | 'unassigned' | user_id
+  days: string;  // 'all' | '7' | '30' | '90'
+  priceMin: string;
+  priceMax: string;
+};
+
+const EMPTY_FILTERS: DealFilters = {
+  stages: [],
+  agent: 'all',
+  days: 'all',
+  priceMin: '',
+  priceMax: '',
+};
+
+
 // Stage columns are pipeline-specific. The KEY (lead_stage value) is shared so
 // data lives in one column on the table; only the displayed TITLE differs per
 // pipeline (e.g. "סגירה" for Sale vs "חתימת חוזה שכירות" for Rent).
@@ -162,6 +180,8 @@ export default function DealRoom() {
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [searchText, setSearchText] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<DealFilters>(EMPTY_FILTERS);
+
   const [outreachLeadId, setOutreachLeadId] = useState<string | null>(null);
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [smartReply, setSmartReply] = useState<string>('');
@@ -252,6 +272,11 @@ export default function DealRoom() {
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-leads'],
+    // Keep the pipeline in sync with AI chat / CRM stage changes without
+    // Realtime (disabled on `leads` for privacy): short polling + focus refetch.
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+    staleTime: 5_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
@@ -271,28 +296,72 @@ export default function DealRoom() {
     return dt === 'rent' ? 'rent' : 'sale';
   }
 
-  // Only active, in-progress leads — exclude untouched (new_lead) and closed.
-  const ACTIVE_STAGES: LeadStage[] = ['listing_outreach', 'negotiation', 'awaiting_signature'];
-  const visibleLeads = useMemo(() => {
+  function leadBudget(l: Lead): number | null {
+    const p = (l.preferences ?? {}) as Record<string, unknown>;
+    const raw = p.budget_max ?? p.monthly_rent_max ?? p.budget ?? p.budget_min;
+    const n = typeof raw === 'string' ? Number(raw.replace(/[^\d.]/g, '')) : Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  /**
+   * Applies every active filter EXCEPT the pipeline (sale/rent) selection, so
+   * the tab badges always equal the number of cards actually rendered.
+   */
+  const filterLead = (l: Lead): boolean => {
     const q = searchText.trim().toLowerCase();
-    return (leads || []).filter((l) => {
-      if (resolveDealType(l) !== activeDealType) return false;
-      if (!ACTIVE_STAGES.includes(bucketFor(l.lead_stage))) return false;
-      if (!q) return true;
+    if (q) {
       const hay = [l.full_name, l.phone_number, l.city, l.interest_tag]
         .filter(Boolean).join(' ').toLowerCase();
-      return hay.includes(q);
-    });
-  }, [leads, activeDealType, searchText]);
+      if (!hay.includes(q)) return false;
+    }
+    if (filters.stages.length && !filters.stages.includes(bucketFor(l.lead_stage))) return false;
+    if (filters.agent !== 'all') {
+      if (filters.agent === 'unassigned') { if (l.assigned_to) return false; }
+      else if (l.assigned_to !== filters.agent) return false;
+    }
+    if (filters.days !== 'all') {
+      const ts = l.last_interaction_at ? new Date(l.last_interaction_at).getTime() : 0;
+      if (!ts) return false;
+      if (Date.now() - ts > Number(filters.days) * 86400000) return false;
+    }
+    if (filters.priceMin || filters.priceMax) {
+      const b = leadBudget(l);
+      if (b == null) return false;
+      if (filters.priceMin && b < Number(filters.priceMin)) return false;
+      if (filters.priceMax && b > Number(filters.priceMax)) return false;
+    }
+    return true;
+  };
+
+  const filtered = useMemo(
+    () => (leads || []).filter(filterLead),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [leads, searchText, filters],
+  );
+
+  const visibleLeads = useMemo(
+    () => filtered.filter((l) => resolveDealType(l) === activeDealType),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, activeDealType],
+  );
 
   const saleCount = useMemo(
-    () => (leads || []).filter((l) => resolveDealType(l) === 'sale').length,
-    [leads],
+    () => filtered.filter((l) => resolveDealType(l) === 'sale').length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered],
   );
   const rentCount = useMemo(
-    () => (leads || []).filter((l) => resolveDealType(l) === 'rent').length,
-    [leads],
+    () => filtered.filter((l) => resolveDealType(l) === 'rent').length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered],
   );
+
+  const activeFilterCount =
+    (filters.stages.length ? 1 : 0) +
+    (filters.agent !== 'all' ? 1 : 0) +
+    (filters.days !== 'all' ? 1 : 0) +
+    (filters.priceMin || filters.priceMax ? 1 : 0);
+
 
   const stageColumns = useMemo(() => columnsFor(activeDealType), [activeDealType]);
 
@@ -497,17 +566,170 @@ export default function DealRoom() {
             />
           </div>
           <Button
-            variant="outline"
+            variant={activeFilterCount ? 'default' : 'outline'}
             size="icon"
-            className="h-11 w-11 shrink-0"
-            onClick={() => setFiltersOpen((v) => !v)}
+            className="h-11 w-11 shrink-0 relative"
+            onClick={() => setFiltersOpen(true)}
             title="סינון מתקדם"
-            aria-pressed={filtersOpen}
+            aria-label="סינון מתקדם"
           >
             <SlidersHorizontal className="h-4 w-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-bold text-warning-foreground">
+                {activeFilterCount}
+              </span>
+            )}
           </Button>
         </div>
       </header>
+
+      {/* Advanced filters drawer — every control updates the visible cards
+          immediately (the tab badges stay in sync because they are computed
+          from the same filtered set). */}
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent side="left" className="w-full sm:max-w-md overflow-y-auto" dir="rtl">
+          <SheetHeader className="text-right">
+            <SheetTitle>סינון עסקאות</SheetTitle>
+            <SheetDescription>
+              {visibleLeads.length} מתעניינים מוצגים ב{activeDealType === 'rent' ? 'השכרה' : 'מכירה'}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-6">
+            {/* Stage */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">שלב בעסקה</div>
+              <div className="flex flex-wrap gap-2">
+                {stageColumns.map((col) => {
+                  const on = filters.stages.includes(col.key);
+                  return (
+                    <Button
+                      key={col.key}
+                      type="button"
+                      size="sm"
+                      variant={on ? 'default' : 'outline'}
+                      className="text-xs"
+                      onClick={() =>
+                        setFilters((f) => ({
+                          ...f,
+                          stages: on ? f.stages.filter((s) => s !== col.key) : [...f.stages, col.key],
+                        }))
+                      }
+                    >
+                      {col.title}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Deal type */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">סוג עסקה</div>
+              <Select
+                value={activeDealType}
+                onValueChange={(v) => {
+                  const next = (v === 'rent' ? 'rent' : 'sale') as DealType;
+                  setActiveDealType(next);
+                  const params = new URLSearchParams(searchParams);
+                  params.set('pipeline', next);
+                  setSearchParams(params, { replace: true });
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sale">מכירה ({saleCount})</SelectItem>
+                  <SelectItem value="rent">השכרה ({rentCount})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Budget range */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">טווח תקציב (₪)</div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="מ-"
+                  value={filters.priceMin}
+                  onChange={(e) => setFilters((f) => ({ ...f, priceMin: e.target.value }))}
+                />
+                <span className="text-muted-foreground">–</span>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="עד"
+                  value={filters.priceMax}
+                  onChange={(e) => setFilters((f) => ({ ...f, priceMax: e.target.value }))}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                מסנן לפי התקציב שנשמר בכרטיס המתעניין. מתעניינים ללא תקציב יוסתרו.
+              </p>
+            </div>
+
+            {/* Last interaction */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">אינטראקציה אחרונה</div>
+              <Select
+                value={filters.days}
+                onValueChange={(v) => setFilters((f) => ({ ...f, days: v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">בכל זמן</SelectItem>
+                  <SelectItem value="7">7 ימים אחרונים</SelectItem>
+                  <SelectItem value="30">30 ימים אחרונים</SelectItem>
+                  <SelectItem value="90">90 ימים אחרונים</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Agent */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">סוכן מטפל</div>
+              <Select
+                value={filters.agent}
+                onValueChange={(v) => setFilters((f) => ({ ...f, agent: v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל הסוכנים</SelectItem>
+                  <SelectItem value="unassigned">ללא הקצאה</SelectItem>
+                  {teamMembers.map((m) => (
+                    <SelectItem key={m.user_id} value={m.user_id}>
+                      {m.user_id.slice(0, 8)} · {m.role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">מיון</div>
+              <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">אינטראקציה אחרונה</SelectItem>
+                  <SelectItem value="priority">ציון עדיפות</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setFilters(EMPTY_FILTERS)}>
+                איפוס
+              </Button>
+              <Button className="flex-1" onClick={() => setFiltersOpen(false)}>
+                הצג {visibleLeads.length} תוצאות
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
 
 
 
@@ -544,7 +766,7 @@ export default function DealRoom() {
       </Tabs>
 
       <ErrorBoundary source="DealRoom.Grid">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4">
         {stageColumns.map((col) => {
           const Icon = col.icon;
           const items = grouped[col.key];
