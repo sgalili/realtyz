@@ -216,6 +216,46 @@ async function igAccountId(pageId: string, token: string): Promise<string | null
   return r.ok ? (r.payload?.instagram_business_account?.id ?? null) : null;
 }
 
+/**
+ * Upload one photo to the Page as an UNPUBLISHED attachment and return its
+ * media_fbid. Strategy: first let Facebook fetch the URL itself (`url=`), and
+ * if that fails (hot-link protection, signed CDN links, query strings, private
+ * storage) download the bytes here and re-upload them as a real multipart
+ * `source` file — which is what the Graph API expects for binary uploads.
+ */
+async function uploadUnpublishedPhoto(
+  pageId: string,
+  token: string,
+  url: string,
+): Promise<{ id: string } | { error: string }> {
+  const byUrl = new URLSearchParams({ url, published: "false", access_token: token });
+  const r1 = await graph(`/${pageId}/photos`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+    body: byUrl.toString(),
+  });
+  if (r1.ok && r1.payload?.id) return { id: String(r1.payload.id) };
+  const urlErr = humanize(r1.payload);
+  console.warn("[meta-publish] url upload failed, retrying binary", url, urlErr);
+
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (RealtyzBot)" } });
+    if (!res.ok) return { error: `הורדת התמונה נכשלה (${res.status})` };
+    const blob = await res.blob();
+    const type = blob.type && blob.type.startsWith("image/") ? blob.type : "image/jpeg";
+    const ext = type.includes("png") ? "png" : type.includes("webp") ? "webp" : "jpg";
+    const fd = new FormData();
+    fd.set("published", "false");
+    fd.set("access_token", token);
+    fd.set("source", new File([blob], `photo.${ext}`, { type }));
+    const r2 = await graph(`/${pageId}/photos`, { method: "POST", body: fd });
+    if (r2.ok && r2.payload?.id) return { id: String(r2.payload.id) };
+    return { error: humanize(r2.payload) || urlErr };
+  } catch (e) {
+    return { error: String((e as any)?.message ?? e) || urlErr };
+  }
+}
+
 /** Publish to a Facebook Page. Returns the post id. */
 async function publishFacebook(
   pageId: string,
@@ -223,8 +263,8 @@ async function publishFacebook(
   message: string,
   media: string[],
   link: string | null,
-): Promise<{ id: string } | { error: string }> {
-  if (media.length === 0) {
+): Promise<{ id: string; warning?: string } | { error: string }> {
+  const textOnly = async (): Promise<{ id: string } | { error: string }> => {
     const form = new URLSearchParams({ message, access_token: token });
     if (link) form.set("link", link);
     const r = await graph(`/${pageId}/feed`, {
@@ -234,31 +274,34 @@ async function publishFacebook(
     });
     if (!r.ok || !r.payload?.id) return { error: humanize(r.payload) };
     return { id: String(r.payload.id) };
-  }
+  };
 
-  if (media.length === 1) {
-    const form = new URLSearchParams({ url: media[0], caption: message, access_token: token });
-    const r = await graph(`/${pageId}/photos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
-      body: form.toString(),
-    });
-    if (!r.ok || !(r.payload?.post_id || r.payload?.id)) return { error: humanize(r.payload) };
-    return { id: String(r.payload.post_id ?? r.payload.id) };
-  }
+  if (media.length === 0) return await textOnly();
 
-  // Multi-photo: upload unpublished photos, then attach them to one feed post.
+  // Always stage the photos as unpublished attachments and then create ONE
+  // feed post that references them. This works for a single photo as well and
+  // keeps the caption/link intact.
   const attached: string[] = [];
+  const uploadErrors: string[] = [];
   for (const url of media.slice(0, 10)) {
-    const form = new URLSearchParams({ url, published: "false", access_token: token });
-    const r = await graph(`/${pageId}/photos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
-      body: form.toString(),
-    });
-    if (r.ok && r.payload?.id) attached.push(String(r.payload.id));
+    const up = await uploadUnpublishedPhoto(pageId, token, url);
+    if ("id" in up) attached.push(up.id);
+    else uploadErrors.push(up.error);
   }
-  if (attached.length === 0) return { error: "העלאת התמונות לפייסבוק נכשלה" };
+
+  if (attached.length === 0) {
+    // Never lose the post because of media: publish the text (and link) and
+    // surface the real Graph reason as a warning.
+    const fallback = await textOnly();
+    if ("error" in fallback) {
+      return { error: uploadErrors[0] ?? fallback.error ?? "העלאת התמונות לפייסבוק נכשלה" };
+    }
+    return {
+      id: fallback.id,
+      warning: `הפוסט פורסם ללא תמונות: ${uploadErrors[0] ?? "העלאת התמונות לפייסבוק נכשלה"}`,
+    };
+  }
+
   const form = new URLSearchParams({ message, access_token: token });
   attached.forEach((id, i) => form.set(`attached_media[${i}]`, JSON.stringify({ media_fbid: id })));
   const r = await graph(`/${pageId}/feed`, {
@@ -267,8 +310,12 @@ async function publishFacebook(
     body: form.toString(),
   });
   if (!r.ok || !r.payload?.id) return { error: humanize(r.payload) };
-  return { id: String(r.payload.id) };
+  const warning = uploadErrors.length
+    ? `${attached.length} מתוך ${media.length} תמונות הועלו (${uploadErrors[0]})`
+    : undefined;
+  return { id: String(r.payload.id), warning };
 }
+
 
 /** Publish to an Instagram Business account (image or carousel). */
 async function publishInstagram(
