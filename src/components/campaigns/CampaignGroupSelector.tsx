@@ -67,13 +67,21 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     try {
       const { data, error } = await supabase.functions.invoke("fb-groups-import", { body: {} });
       if (error) throw error;
-      if ((data as any)?.error) {
+      const returned: FacebookGroup[] = Array.isArray((data as any)?.groups)
+        ? (data as any).groups.filter((r: any) => r?.group_id).map(mapRow)
+        : [];
+      const imported = Number((data as any)?.imported ?? returned.length);
+      if (imported > 0) {
+        toast.success(`סונכרנו ${imported} קבוצות מפייסבוק`);
+      } else if ((data as any)?.error) {
         toast.error(String((data as any).error));
       } else {
-        const imported = Number((data as any)?.imported ?? 0);
-        toast.success(imported > 0 ? `סונכרנו ${imported} קבוצות מפייסבוק` : "לא נמצאו קבוצות בחשבון המחובר");
+        toast.error("לא נמצאו קבוצות בחשבון המחובר");
       }
-      setGroups(await fetchStoredGroups());
+      // Prefer the stored rows, but fall back to what the function returned
+      // (RLS can hide fb_user_groups from the browser session).
+      const stored = await fetchStoredGroups();
+      setGroups(stored.length > 0 ? stored : returned);
     } catch (e: any) {
       toast.error(e?.message || "סנכרון הקבוצות נכשל");
     } finally {

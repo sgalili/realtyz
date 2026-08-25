@@ -10,6 +10,7 @@
 // public.messenger_page_bindings and used by meta-publish for Graph publishing.
 import { corsHeaders } from "../_shared/cors.ts";
 import { adminClient, fbAppCredentials, GRAPH, humanizeGraphError, resolveCaller } from "../_shared/fbPersonal.ts";
+import { pickPrimaryPage } from "../_shared/metaPages.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -206,7 +207,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      const chosen = (wantedPageId ? pages.find((p) => String(p.id) === wantedPageId) : null) ?? pages[0];
+      const chosen = pickPrimaryPage(pages, wantedPageId) ?? pages[0];
       // One page per workspace: drop any previous binding, then upsert on page_id.
       await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
       const { error: upsertErr } = await admin.from("messenger_page_bindings").upsert(
