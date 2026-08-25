@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ensureFullPropertyImport, isListingFullyImported, ensureMetadataImport, isListingMetadataImported } from '@/lib/propertyFullSync';
+import { ensureMetadataImport, isListingMetadataImported } from '@/lib/propertyFullSync';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -118,6 +118,28 @@ type EditableFields = {
 };
 
 const draftStorageKey = (id: string | undefined) => (id ? `realtyz:property-draft:${id}` : null);
+
+async function invokeWithTimeout<T>(
+  fnName: string,
+  body: Record<string, unknown>,
+  timeoutMs: number,
+): Promise<{ data: T | null; error: unknown | null; timedOut: boolean }> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  try {
+    const timeout = new Promise<{ data: null; error: Error; timedOut: true }>((resolve) => {
+      timeoutHandle = setTimeout(() => {
+        resolve({ data: null, error: new Error('timeout'), timedOut: true });
+      }, timeoutMs);
+    });
+    const request = supabase.functions
+      .invoke(fnName, { body })
+      .then((res) => ({ data: (res.data as T | null) ?? null, error: res.error ?? null, timedOut: false as const }))
+      .catch((error) => ({ data: null, error, timedOut: false as const }));
+    return await Promise.race([request, timeout]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
+}
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -441,13 +463,13 @@ export default function PropertyDetail() {
   // ---- Background gallery hydration ---------------------------------------
   // Text/metadata render first; once they are on screen the gallery is pulled
   // in the background (one image at a time, appended as each arrives). Nothing
-  // here blocks the view — the arrows stay usable the whole time.
+  // here blocks the view — a slow image scraper is allowed to time out silently.
   const bgGalleryRef = useRef<string | null>(null);
   useEffect(() => {
     if (!id || !data || hydrating) return;
     if (bgGalleryRef.current === id) return;
     bgGalleryRef.current = id;
-    const t = setTimeout(() => { void ensureGalleryLoaded().catch(() => {}); }, 400);
+    const t = setTimeout(() => { void ensureGalleryLoaded({ silent: true }).catch(() => {}); }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, data, hydrating]);
@@ -699,7 +721,7 @@ export default function PropertyDetail() {
    *    carousel + thumbnail strip immediately, and the ring advances by a real
    *    imported/total fraction, so it always reaches 100%.
    */
-  const pullAllImages = async () => {
+  const pullAllImages = async (options: { silent?: boolean } = {}) => {
     if (!property?.id || pullingImages) return;
     setPullingImages(true);
     setImageProgress(2);
@@ -712,10 +734,13 @@ export default function PropertyDetail() {
       if (discoveryTimer) { clearInterval(discoveryTimer); discoveryTimer = null; }
     };
     try {
-      const { data: disc, error: discErr } = await supabase.functions.invoke('fetch-property-all-images', {
-        body: { listing_id: property.id, source_url: sourceUrl || undefined, discover: true },
-      });
+      const { data: disc, error: discErr, timedOut } = await invokeWithTimeout<{ candidates?: string[] }>(
+        'fetch-property-all-images',
+        { listing_id: property.id, source_url: sourceUrl || undefined, discover: true },
+        9000,
+      );
       stopDiscoveryCreep();
+      if (timedOut) return;
       if (discErr) throw discErr;
       const known = new Set(photos.map((u) => u.split('?')[0].toLowerCase()));
       const candidates = ((disc as { candidates?: string[] } | null)?.candidates ?? [])
@@ -726,9 +751,12 @@ export default function PropertyDetail() {
       let done = 0;
       for (const url of candidates) {
         try {
-          const { data: one } = await supabase.functions.invoke('fetch-property-all-images', {
-            body: { listing_id: property.id, only: [url], append: true },
-          });
+          const { data: one, timedOut: imageTimedOut } = await invokeWithTimeout<{ photos?: string[] }>(
+            'fetch-property-all-images',
+            { listing_id: property.id, only: [url], append: true },
+            7000,
+          );
+          if (imageTimedOut) continue;
           const added = (one as { photos?: string[] } | null)?.photos ?? [];
           if (added.length) {
             setStreamPhotos((prev) => Array.from(new Set([...prev, ...added])));
@@ -745,7 +773,7 @@ export default function PropertyDetail() {
       qc.invalidateQueries({ queryKey: ['properties-search'] });
       qc.invalidateQueries({ queryKey: ['listings'] });
     } catch (e: any) {
-      toast.error('טעינת התמונות נכשלה', { description: e?.message ?? String(e) });
+      if (!options.silent) toast.error('טעינת התמונות נכשלה', { description: e?.message ?? String(e) });
     } finally {
       // Counter stops the moment the work is done — no trailing animation.
       stopDiscoveryCreep();
@@ -764,16 +792,19 @@ export default function PropertyDetail() {
    * the full gallery from the source (ring loader over the main image), and
    * every later interaction just moves between already-loaded photos.
    */
-  const ensureGalleryLoaded = async (): Promise<boolean> => {
+  const ensureGalleryLoaded = async (options: { silent?: boolean } = {}): Promise<boolean> => {
     if (galleryPulledRef.current || pullingImages) return false;
     if (!sourceUrl || photos.length >= Math.max(2, totalSourcePhotos)) return false;
     galleryPulledRef.current = true;
-    await pullAllImages();
+    await pullAllImages(options);
     return true;
   };
 
   const stepPhoto = async (delta: number) => {
-    if (pullingImages) return;
+    if (pullingImages) {
+      if (photos.length > 1) setActivePhoto((i) => (i + delta + photos.length) % photos.length);
+      return;
+    }
     if (await ensureGalleryLoaded()) return;
     if (photos.length <= 1) return;
     setActivePhoto((i) => (i + delta + photos.length) % photos.length);
@@ -1127,20 +1158,18 @@ export default function PropertyDetail() {
                     <button
                       type="button"
                       onClick={() => stepPhoto(-1)}
-                      disabled={pullingImages}
                       aria-label="התמונה הקודמת"
                       title="התמונה הקודמת"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:opacity-40 disabled:pointer-events-none"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
                     >
                       <ChevronRight className="h-5 w-5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => stepPhoto(1)}
-                      disabled={pullingImages}
                       aria-label="התמונה הבאה"
                       title="התמונה הבאה"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:opacity-40 disabled:pointer-events-none"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
@@ -1152,10 +1181,10 @@ export default function PropertyDetail() {
                       </span>
                     )}
 
-                    {/* Percentage-only ring loader, dead center, while images load. */}
+                    {/* Non-blocking image loader: progress only, no click-blocking scrim. */}
                     {pullingImages && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/35">
-                        <ProgressRing value={imageProgress} size={80} onDark />
+                      <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-background/90 p-1.5 shadow ring-1 ring-border">
+                        <ProgressRing value={imageProgress} size={44} strokeWidth={4} />
                       </span>
                     )}
                   </>
