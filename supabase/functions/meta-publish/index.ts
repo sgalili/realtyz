@@ -558,8 +558,10 @@ Deno.serve(async (req) => {
       published_channels: channels,
       post_ids: postIds,
       failures,
+      warnings,
       group_results: groupResults,
-      message: failures.length ? failures[0].message : null,
+      message: failures.length ? failures[0].message : (warnings[0] ?? null),
+
     });
   } catch (e) {
     console.error("[meta-publish] fatal", e);
