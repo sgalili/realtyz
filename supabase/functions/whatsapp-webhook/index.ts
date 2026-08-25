@@ -386,14 +386,14 @@ ${text.slice(0, 3500)}
   }
 }
 
-// ---------- GreenAPI payload extraction ----------
+// ---------- Normalized inbound extraction (from the official Meta envelope) ----------
 
 type Extracted =
   | { kind: "text"; text: string }
   | { kind: "audio"; downloadUrl: string; mimeType?: string; fileName?: string; caption?: string }
   | { kind: "media"; downloadUrl: string; mimeType?: string; fileName?: string; caption?: string; mediaKind: "image" | "video" | "document" };
 
-function extractGreenApiMessage(payload: any):
+function extractNormalizedInboundMessage(payload: any):
   | { senderPhone: string; messageId?: string; extracted: Extracted }
   | null {
   if (!payload) return null;
@@ -1383,6 +1383,27 @@ Deno.serve(async (req) => {
 
 
   // ================================================================
+  // OFFICIAL PROVIDER GATE (HARD) — WhatsApp chat/inbox runs exclusively on
+  // the Official WhatsApp Business API (Meta Cloud API). Only Meta's official
+  // webhook envelope is accepted here; legacy third-party provider payloads
+  // (identified by their `typeWebhook` / `instanceData` envelope) are
+  // acknowledged with 200 so the sender stops retrying, and dropped without
+  // touching leads, `messages`, `chat_history` or the AI autopilot.
+  // ================================================================
+  const isOfficialMetaPayload =
+    payload?.object === "whatsapp_business_account" || Array.isArray(payload?.entry);
+  if (!isOfficialMetaPayload) {
+    console.log("whatsapp-webhook: rejected non-Meta payload", {
+      has_type_webhook: !!payload?.typeWebhook,
+      keys: Object.keys(payload ?? {}).slice(0, 8),
+    });
+    return jsonResponse(
+      { ok: true, ignored: "non_official_provider_payload", messaging_provider: "meta_cloud_api_only" },
+      200,
+    );
+  }
+
+  // ================================================================
   // META CLOUD API INBOUND — normalize the official WABA payload
   // (entry[].changes[].value.messages[]) into the internal envelope the
   // extractor below already understands. Status callbacks (`statuses[]`)
@@ -1476,21 +1497,10 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, ignored: "non_inbound_type", typeWebhook }, 200);
   }
 
-  // Observe instance ID, but do not reject at the route threshold: GreenAPI
-  // payload variants can omit/change this field and the broker still needs the
-  // raw inbound saved to the inbox.
-  const MASTER_INSTANCE_ID = "7103164675";
-  const incomingInstance = String(
-    payload?.instanceData?.idInstance ??
-      payload?.idInstance ??
-      payload?.instance_id ??
-      "",
-  ).replace(/\D/g, "");
-  if (incomingInstance && incomingInstance !== MASTER_INSTANCE_ID) {
-    console.warn("whatsapp-webhook: non-master instance observed but accepted", incomingInstance);
-  }
+  // Everything reaching this point came from the official Meta envelope, which
+  // carries no third-party instance identifier — nothing further to observe.
 
-  const extracted = extractGreenApiMessage(payload);
+  const extracted = extractNormalizedInboundMessage(payload);
   if (!extracted) {
     // Acknowledge but do NOT write a recovery row — only real human text
     // messages (with a clean sender phone and decoded text) belong in the inbox.

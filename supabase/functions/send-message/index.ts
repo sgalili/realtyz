@@ -340,7 +340,7 @@ serve(async (req) => {
     }
 
     // WhatsApp from the inbox composer must be delivered NOW through the
-    // official Meta WhatsApp Business API (send-whatsapp routes WBA/GreenAPI),
+    // official Meta WhatsApp Business API (send-whatsapp = Meta Cloud API only),
     // not parked in the human approval queue.
     if (channel === "whatsapp") {
       const destinationPhone = phone_number || voter?.phone_number || "";

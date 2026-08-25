@@ -26,7 +26,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { appendDisclosure } from "../_shared/compliance.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
-import { sendGreenApiText, type GreenApiCreds } from "../_shared/greenApi.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -102,7 +101,7 @@ const BodySchema = z
 
 type StdResponse = {
   success: boolean;
-  provider: "WBA" | "GREEN_API";
+  provider: "WBA";
   message_id: string | null;
   error?: string;
   details?: unknown;
@@ -238,17 +237,15 @@ async function resolveProvider(
 }
 
 /**
- * Resolve the workspace WhatsApp connection mode chosen in settings
- * (`workspace_whatsapp_settings.connection_type`).
- *  - 'official_meta' → central platform Meta Cloud API template system
- *  - 'qr_session'    → workspace's own connected number
- * Defaults to 'official_meta' when nothing was configured yet.
+ * Resolve the workspace that owns this send. The transport itself is fixed:
+ * WhatsApp always leaves through the official Meta Cloud API, so this only
+ * resolves the owning workspace id used for provider credentials and logging.
  */
-async function resolveWorkspaceMode(
+async function resolveWorkspaceOwner(
   admin: ReturnType<typeof createClient>,
   userId: string | null,
   tenantId: string | null,
-): Promise<{ mode: "official_meta" | "qr_session"; owner_id: string | null }> {
+): Promise<{ mode: "official_meta"; owner_id: string | null }> {
   const ids = [tenantId, userId].filter(Boolean) as string[];
   const candidates = [...ids];
   for (const id of ids) {
@@ -263,38 +260,12 @@ async function resolveWorkspaceMode(
   for (const id of candidates) {
     const { data } = await admin
       .from("workspace_whatsapp_settings")
-      .select("connection_type")
+      .select("workspace_owner_id")
       .eq("workspace_owner_id", id)
       .maybeSingle();
-    const mode = (data as any)?.connection_type as string | undefined;
-    if (mode === "official_meta" || mode === "qr_session") return { mode, owner_id: id };
+    if ((data as any)?.workspace_owner_id) return { mode: "official_meta", owner_id: id };
   }
   return { mode: "official_meta", owner_id: candidates[0] ?? null };
-}
-
-/**
- * Green API (QR-session) credentials for a workspace, only returned when the
- * personal number is actually linked (`qr_status = 'connected'`).
- */
-async function resolveGreenApiCreds(
-  admin: ReturnType<typeof createClient>,
-  ownerId: string | null,
-): Promise<GreenApiCreds | null> {
-  if (!ownerId) return null;
-  const { data } = await admin
-    .from("workspace_whatsapp_settings")
-    .select("green_api_instance_id, green_api_token, qr_status")
-    .eq("workspace_owner_id", ownerId)
-    .maybeSingle();
-  const row = data as any;
-  if (!row) return null;
-  const instance_id = String(row.green_api_instance_id ?? "").trim();
-  const token = String(row.green_api_token ?? "").trim();
-  if (!instance_id || !token) return null;
-  // Only a *successfully connected* QR session may take over routing; anything
-  // else (pending scan, expired, unknown) falls back to the official Meta number.
-  if (String(row.qr_status ?? "").toLowerCase() !== "connected") return null;
-  return { instance_id, token };
 }
 
 /**
@@ -425,26 +396,6 @@ async function buildTemplateVariables(
   return values;
 }
 
-
-/**
- * Green API has no template engine — flatten an already-populated Meta
- * template payload into readable text so QR-session workspaces still send
- * something meaningful.
- */
-function renderTemplateFallbackText(template: {
-  id: string;
-  components?: unknown[];
-}): string {
-  const parts: string[] = [];
-  for (const comp of template.components ?? []) {
-    const params = (comp as any)?.parameters ?? [];
-    for (const p of params) {
-      const t = String((p as any)?.text ?? "").trim();
-      if (t) parts.push(t);
-    }
-  }
-  return parts.join(" ").trim();
-}
 
 async function sendViaWba(
   cfg: Record<string, unknown>,
@@ -916,40 +867,15 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    // Workspace-chosen connection mode: 'official_meta' routes through the
-    // central platform Meta Cloud API number, 'qr_session' keeps the
-    // workspace's own connected number.
-    const routing = await resolveWorkspaceMode(admin, userId, routingTenantId);
+    // Owning workspace (credentials + logging). Transport is always Meta Cloud.
+    const routing = await resolveWorkspaceOwner(admin, userId, routingTenantId);
 
-    // Template sends (and explicit force_provider='WBA') MUST go through Meta's
-    // official Cloud API — Green API has no template concept, so falling back
-    // there would silently downgrade an approved-template send to plain text.
-    const forceMetaCloud =
-      parsed.data.force_provider === "WBA" || !!parsed.data.template_id;
+    // ARCHITECTURE (HARD): WhatsApp messaging is Meta Cloud API only. There is
+    // no alternative gateway and no fallback transport — every outbound message
+    // (free text, media, approved template) leaves through graph.facebook.com.
+    const provider = await resolveProvider(admin, userId, routingTenantId, true);
 
-    // QR-session workspaces dispatch through their own linked personal number
-    // (Green API) ONLY when that session is actually connected. Free-text only —
-    // Green API has no template concept.
-    const greenCreds =
-      routing.mode === "qr_session" && !forceMetaCloud
-        ? await resolveGreenApiCreds(admin, routing.owner_id)
-        : null;
-
-    if (routing.mode === "qr_session" && !greenCreds && !forceMetaCloud) {
-      console.info("send-whatsapp qr_session unavailable — routing via central Meta WABA", {
-        owner_id: routing.owner_id,
-      });
-    }
-
-    // Official Meta WhatsApp Business Cloud API credentials. Every non-QR path
-    // (default, unset, official_meta, or a disconnected QR session) prefers the
-    // central platform Meta WABA number.
-    const provider = greenCreds
-      ? null
-      : await resolveProvider(admin, userId, routingTenantId, true);
-
-
-    if (!greenCreds && !provider) {
+    if (!provider) {
       console.error("send-whatsapp no active WBA provider", {
         user_routed: !!userId,
         tenant_routed: !!routingTenantId,
@@ -1041,42 +967,13 @@ Deno.serve(async (req) => {
 
 
 
-    let result: StdResponse;
-    if (greenCreds) {
-      // Green API path: send the plain text body via waInstance/sendMessage.
-      const text =
-        outboundMessage ??
-        (template ? renderTemplateFallbackText(template) : "");
-      if (!text.trim()) {
-        result = {
-          success: false,
-          provider: "GREEN_API",
-          message_id: null,
-          error: "לא ניתן לשלוח הודעה ריקה מהמספר האישי",
-        };
-      } else {
-        const sent = await sendGreenApiText(greenCreds, phone, text);
-        result = {
-          success: sent.success,
-          provider: "GREEN_API",
-          message_id: sent.message_id,
-          error: sent.success
-            ? undefined
-            : humanizeWaError(sent.error ?? "Green API send failed"),
-          details: sent.details,
-        };
-      }
-      outboundMessage = outboundMessage ?? text;
-    } else {
-      result = await sendViaWba(
-        provider!.config,
-        phone,
-        outboundMessage,
-        parsed.data.file,
-        template,
-      );
-    }
-
+    let result: StdResponse = await sendViaWba(
+      provider.config,
+      phone,
+      outboundMessage,
+      parsed.data.file,
+      template,
+    );
 
     // Compliance audit + message-row logging. Best-effort; never blocks the send.
     const effectiveProvider = result.provider ?? provider?.name ?? "WBA";
@@ -1185,7 +1082,7 @@ Deno.serve(async (req) => {
         phone_last4: phone.slice(-4),
         message_id_present: !!result.message_id,
         connection_mode: routing.mode,
-        creds_source: greenCreds ? "green_api_qr" : provider?.source,
+        creds_source: provider?.source,
         tenant_routed: !!routingTenantId,
         template: parsed.data.template_id ?? null,
       });

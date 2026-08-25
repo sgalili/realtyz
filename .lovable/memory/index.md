@@ -47,3 +47,4 @@
 - [Metadata Backfill & Owner CRM](mem://features/metadata-backfill-owner-crm) — listings-metadata-backfill + owner-crm-sync edge fns, crons, Meta WhatsApp owner profile enrichment.
 - [Green API Inbound & Avatar Sync](mem://features/greenapi-inbound-and-avatars) — greenapi-webhook inbound AI auto-responder with real listing lookups; resumable background WhatsApp avatar sync jobs (wa_avatar_sync_jobs + useWaAvatarSync).
 - [Master Agent Prompt](mem://features/master-agent-prompt) — Dual-frontier internal/external AI directive in _shared/masterAgentPrompt.ts, wired into every agent surface.
+- [WhatsApp Meta-Only (HARD)](mem://constraints/whatsapp-meta-only) — Chat/inbox/sending/webhooks are Official Meta Cloud API only; Green API is avatars-only.
