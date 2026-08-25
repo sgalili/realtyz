@@ -754,7 +754,7 @@ export default function PropertyDetail() {
    * every later interaction just moves between already-loaded photos.
    */
   const ensureGalleryLoaded = async (): Promise<boolean> => {
-    if (galleryPulledRef.current || pullingImages || hydrating) return false;
+    if (galleryPulledRef.current || pullingImages) return false;
     if (!sourceUrl || photos.length >= Math.max(2, totalSourcePhotos)) return false;
     galleryPulledRef.current = true;
     await pullAllImages();
@@ -762,7 +762,7 @@ export default function PropertyDetail() {
   };
 
   const stepPhoto = async (delta: number) => {
-    if (pullingImages || hydrating) return;
+    if (pullingImages) return;
     if (await ensureGalleryLoaded()) return;
     if (photos.length <= 1) return;
     setActivePhoto((i) => (i + delta + photos.length) % photos.length);
@@ -1113,7 +1113,7 @@ export default function PropertyDetail() {
                     <button
                       type="button"
                       onClick={() => stepPhoto(-1)}
-                      disabled={hydrating || pullingImages}
+                      disabled={pullingImages}
                       aria-label="התמונה הקודמת"
                       title="התמונה הקודמת"
                       className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:opacity-40 disabled:pointer-events-none"
@@ -1123,7 +1123,7 @@ export default function PropertyDetail() {
                     <button
                       type="button"
                       onClick={() => stepPhoto(1)}
-                      disabled={hydrating || pullingImages}
+                      disabled={pullingImages}
                       aria-label="התמונה הבאה"
                       title="התמונה הבאה"
                       className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:opacity-40 disabled:pointer-events-none"
