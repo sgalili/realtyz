@@ -10,6 +10,7 @@
 // the workspace owner, with FB_PAGE_ID / FB_PAGE_ACCESS_TOKEN env fallback.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isBlockedPage, pickPrimaryPage, rankPages } from "../_shared/metaPages.ts";
 
 const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
@@ -88,7 +89,7 @@ async function discoverPageFromToken(
 ): Promise<ResolvedPage | null> {
   const r = await graph(`/me/accounts?fields=id,name,access_token&limit=25&access_token=${encodeURIComponent(token)}`);
   const list: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
-  const primary = list.find((p) => p?.id && p?.access_token) ?? list.find((p) => p?.id);
+  const primary = pickPrimaryPage(list);
   if (!primary?.id) {
     // Token may itself already be a Page token — verify against /me.
     const me = await graph(`/me?fields=id,name&access_token=${encodeURIComponent(token)}`);
@@ -251,10 +252,11 @@ async function alternatePages(
     const r = await graph(
       `/me/accounts?fields=id,name,access_token&limit=25&access_token=${encodeURIComponent(token)}`,
     );
-    const list: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
+    const list: any[] = rankPages(Array.isArray(r.payload?.data) ? r.payload.data : []);
     for (const p of list) {
       const id = String(p?.id ?? "").trim();
       if (!id || triedPageIds.includes(id) || out.some((x) => x.pageId === id)) continue;
+      if (isBlockedPage(p)) continue; // never fall back to Employee/business assets
       out.push({ pageId: id, pageName: p?.name ?? null, token: String(p?.access_token ?? token) });
     }
   }
