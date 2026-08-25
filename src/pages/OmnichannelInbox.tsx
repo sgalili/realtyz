@@ -1085,7 +1085,7 @@ const OmnichannelInbox = () => {
                         <p className="text-xs text-muted-foreground flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2">
                           {(voter as any)._noConversation
                             ? 'ללא שיחה פעילה — לחץ להתחלת צ׳אט'
-                            : (lastMsg?.content || 'אין הודעות')}
+                            : (sanitizeChatText(lastMsg?.content).replace(/\n+/g, ' · ') || 'אין הודעות')}
                         </p>
                       </div>
                     </div>
