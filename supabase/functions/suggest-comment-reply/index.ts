@@ -3,6 +3,7 @@
 // workspace KB + live CRM/listings snapshot, locked to the Udi Vitman persona,
 // with anti-spam high-entropy phrasing. Pure compose-and-return.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText, detectDominantLanguage } from "../_shared/textSanitize.ts";
 import {
@@ -598,6 +599,7 @@ Deno.serve(async (req) => {
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: [
+              externalMasterPrompt({ surface: "social_comment", compact: true }),
               // Owner-curated behavior rules (highest priority).
               await (await import("../_shared/system-rules.ts")).fetchSystemRulesBlock(userId, userPrompt),
               // Live web research + uploaded-document intel tied to THIS listing's location.

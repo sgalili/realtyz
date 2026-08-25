@@ -1,6 +1,7 @@
 // KB-only chat: retrieves chunks from the user's knowledge base via kb-query
 // and answers strictly using that context (no outside knowledge).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { internalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -87,7 +88,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: internalMasterPrompt({ surface: "knowledge_base" }) + "\n\n" + systemPrompt },
           ...messages,
         ],
       }),
