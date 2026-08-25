@@ -114,7 +114,7 @@ export default function NotificationCenter() {
       const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from('messages')
-        .select('id, content, created_at, lead_id, channel, platform, sender_type, leads!inner(id, full_name, user_id)')
+        .select('id, content, created_at, lead_id, channel, platform, sender_type, leads!inner(id, full_name)')
         .eq('sender_type', 'voter')
         .gte('created_at', since)
         .order('created_at', { ascending: false })
