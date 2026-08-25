@@ -83,22 +83,27 @@ Deno.serve(async (req) => {
 
     if (action === "start") {
       if (!redirectUri) return json({ error: "redirect_uri is required" }, 400);
+      // `basic: true` is the retry path when Meta rejects the full scope dialog
+      // (restricted group permissions pending App Review).
+      const scopes = body?.basic === true ? FB_BASIC_SCOPES : FB_PERSONAL_SCOPES;
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
         response_type: "code",
-        scope: FB_PERSONAL_SCOPES.join(","),
+        scope: scopes.join(","),
         state: `facebook_personal:${crypto.randomUUID()}`,
         auth_type: "rerequest",
-        config_id: "1741528006908878",
       });
+      // A Facebook Login-for-Business config_id makes Meta IGNORE `scope`, so it
+      // is opt-in through env only — never hardcoded.
+      const configId = Deno.env.get("META_PERSONAL_CONFIG_ID")?.trim();
+      if (configId) params.set("config_id", configId);
       return json({
-        auth_url: `https://www.facebook.com/${
-          (Deno.env.get("META_GRAPH_VERSION") || "v20.0")
-        }/dialog/oauth?${params}`,
-        scopes: FB_PERSONAL_SCOPES,
+        auth_url: `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params}`,
+        scopes,
       });
     }
+
 
     if (action === "exchange") {
       const code = String(body?.code ?? "").trim();
