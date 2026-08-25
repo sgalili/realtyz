@@ -18,6 +18,8 @@ import {
 } from "../_shared/persona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 import { maskMessages } from "../_shared/pii.ts";
+import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
+
 import {
   detectCreateLeadIntent,
   collectIntakeText,
