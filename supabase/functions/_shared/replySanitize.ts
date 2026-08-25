@@ -38,6 +38,9 @@ export function sanitizeReplyText(raw: string | null | undefined): string {
     } catch { /* not JSON — leave as-is */ }
   }
 
+  text = text.replace(/^\s*\[(?:whatsapp|instagram|facebook|messenger|email|sms|telegram|web)\]\s*/i, "");
+  text = text.replace(/\[[0-9a-f]{6,8}\]\s*/gi, "");
+
   return text
     .split("\n")
     .map((l) => l.replace(/[ \t]+$/g, ""))
