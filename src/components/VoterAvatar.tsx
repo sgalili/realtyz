@@ -50,12 +50,15 @@ const VoterAvatar = ({
   textClassName,
 }: VoterAvatarProps) => {
   const { isDemoMode } = useDemoMode();
+  const [broken, setBroken] = useState(false);
 
   // Use the real profile picture if WhatsApp/social fetched one.
   // In demo mode, fall back to bundled headshots for richer UX.
   // In a real account, NEVER fabricate a photo - show a clean line-art user icon.
   const realPicture = profilePictureUrl?.trim() || null;
   const imageUrl = realPicture || (isDemoMode ? getDemoHeadshot(fullName) : null);
+
+  useEffect(() => setBroken(false), [imageUrl]);
 
   const initials = (fullName || '')
     .trim()
@@ -68,12 +71,14 @@ const VoterAvatar = ({
 
   return (
     <Avatar className={cn('shrink-0', className)}>
-      {imageUrl ? (
+      {imageUrl && !broken ? (
         <img
           src={imageUrl}
           alt={fullName || 'lead'}
           loading="eager"
           decoding="sync"
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(true)}
           className="aspect-square h-full w-full object-cover"
         />
       ) : (
@@ -88,5 +93,6 @@ const VoterAvatar = ({
     </Avatar>
   );
 };
+
 
 export default VoterAvatar;
