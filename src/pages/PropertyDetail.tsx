@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ensureFullPropertyImport, isListingFullyImported, ensureMetadataImport, isListingMetadataImported } from '@/lib/propertyFullSync';
+import { ensureMetadataImport, isListingMetadataImported } from '@/lib/propertyFullSync';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -73,6 +73,17 @@ function formatMetaValue(key: string, value: unknown): string {
   return String(value);
 }
 
+function hasCorePropertyText(row: unknown): boolean {
+  if (!isRecord(row)) return false;
+  const hasText = Boolean(
+    (typeof row.description === 'string' && row.description.trim()) ||
+    (typeof row.long_description === 'string' && row.long_description.trim()) ||
+    (typeof row.short_description === 'string' && row.short_description.trim()),
+  );
+  const hasDetails = Boolean(row.asking_price || row.rooms || row.sqm || row.features || row.source_metadata);
+  return hasText && hasDetails;
+}
+
 function boolFromMeta(value: unknown): boolean | null {
   if (value == null || value === '') return null;
   if (typeof value === 'boolean') return value;
@@ -118,6 +129,28 @@ type EditableFields = {
 };
 
 const draftStorageKey = (id: string | undefined) => (id ? `realtyz:property-draft:${id}` : null);
+
+async function invokeWithTimeout<T>(
+  fnName: string,
+  body: Record<string, unknown>,
+  timeoutMs: number,
+): Promise<{ data: T | null; error: unknown | null; timedOut: boolean }> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  try {
+    const timeout = new Promise<{ data: null; error: Error; timedOut: true }>((resolve) => {
+      timeoutHandle = setTimeout(() => {
+        resolve({ data: null, error: new Error('timeout'), timedOut: true });
+      }, timeoutMs);
+    });
+    const request = supabase.functions
+      .invoke(fnName, { body })
+      .then((res) => ({ data: (res.data as T | null) ?? null, error: res.error ?? null, timedOut: false as const }))
+      .catch((error) => ({ data: null, error, timedOut: false as const }));
+    return await Promise.race([request, timeout]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
+}
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -413,9 +446,10 @@ export default function PropertyDetail() {
       }
       if (cancelled) return;
 
-      metaTargetRef.current = 0;
-      setHydrateProgress(0);
-      setHydrating(true);
+      const shouldShowHydrationProgress = !hasCorePropertyText(data.row);
+      metaTargetRef.current = shouldShowHydrationProgress ? 0 : 100;
+      setHydrateProgress(shouldShowHydrationProgress ? 0 : 100);
+      if (shouldShowHydrationProgress) setHydrating(true);
       try {
         // Metadata only — images stay lazy until the user touches the gallery.
         // Progress comes from real hydration milestones, capped at 95 until the
@@ -441,13 +475,13 @@ export default function PropertyDetail() {
   // ---- Background gallery hydration ---------------------------------------
   // Text/metadata render first; once they are on screen the gallery is pulled
   // in the background (one image at a time, appended as each arrives). Nothing
-  // here blocks the view — the arrows stay usable the whole time.
+  // here blocks the view — a slow image scraper is allowed to time out silently.
   const bgGalleryRef = useRef<string | null>(null);
   useEffect(() => {
     if (!id || !data || hydrating) return;
     if (bgGalleryRef.current === id) return;
     bgGalleryRef.current = id;
-    const t = setTimeout(() => { void ensureGalleryLoaded().catch(() => {}); }, 400);
+    const t = setTimeout(() => { void ensureGalleryLoaded({ silent: true }).catch(() => {}); }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, data, hydrating]);
@@ -699,10 +733,11 @@ export default function PropertyDetail() {
    *    carousel + thumbnail strip immediately, and the ring advances by a real
    *    imported/total fraction, so it always reaches 100%.
    */
-  const pullAllImages = async () => {
-    if (!property?.id || pullingImages) return;
+  const pullAllImages = async (options: { silent?: boolean } = {}): Promise<boolean> => {
+    if (!property?.id || pullingImages) return false;
     setPullingImages(true);
     setImageProgress(2);
+    let completed = false;
     // Discovery is a single slow scrape with no measurable sub-steps, so the
     // ring eases towards 25% while it runs instead of freezing on 3%.
     let discoveryTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
@@ -712,23 +747,32 @@ export default function PropertyDetail() {
       if (discoveryTimer) { clearInterval(discoveryTimer); discoveryTimer = null; }
     };
     try {
-      const { data: disc, error: discErr } = await supabase.functions.invoke('fetch-property-all-images', {
-        body: { listing_id: property.id, source_url: sourceUrl || undefined, discover: true },
-      });
+      const { data: disc, error: discErr, timedOut } = await invokeWithTimeout<{ candidates?: string[] }>(
+        'fetch-property-all-images',
+        { listing_id: property.id, source_url: sourceUrl || undefined, discover: true },
+        9000,
+      );
       stopDiscoveryCreep();
+      if (timedOut) return false;
       if (discErr) throw discErr;
       const known = new Set(photos.map((u) => u.split('?')[0].toLowerCase()));
       const candidates = ((disc as { candidates?: string[] } | null)?.candidates ?? [])
         .filter((u) => !known.has(u.split('?')[0].toLowerCase()));
-      if (!candidates.length) return;
+      if (!candidates.length) {
+        completed = true;
+        return true;
+      }
 
       setImageProgress(30);
       let done = 0;
       for (const url of candidates) {
         try {
-          const { data: one } = await supabase.functions.invoke('fetch-property-all-images', {
-            body: { listing_id: property.id, only: [url], append: true },
-          });
+          const { data: one, timedOut: imageTimedOut } = await invokeWithTimeout<{ photos?: string[] }>(
+            'fetch-property-all-images',
+            { listing_id: property.id, only: [url], append: true },
+            7000,
+          );
+          if (imageTimedOut) continue;
           const added = (one as { photos?: string[] } | null)?.photos ?? [];
           if (added.length) {
             setStreamPhotos((prev) => Array.from(new Set([...prev, ...added])));
@@ -744,8 +788,11 @@ export default function PropertyDetail() {
       await qc.refetchQueries({ queryKey: ['property-detail', id] });
       qc.invalidateQueries({ queryKey: ['properties-search'] });
       qc.invalidateQueries({ queryKey: ['listings'] });
+      completed = true;
+      return true;
     } catch (e: any) {
-      toast.error('טעינת התמונות נכשלה', { description: e?.message ?? String(e) });
+      if (!options.silent) toast.error('טעינת התמונות נכשלה', { description: e?.message ?? String(e) });
+      return false;
     } finally {
       // Counter stops the moment the work is done — no trailing animation.
       stopDiscoveryCreep();
@@ -753,7 +800,9 @@ export default function PropertyDetail() {
       setPullingImages(false);
       // Cache the "gallery already mirrored" flag so re-entering the page
       // never repeats the network work — photos come straight from the DB.
-      try { window.localStorage.setItem(`realtyz:gallery:${property.id}`, '1'); } catch { /* ignore */ }
+      if (completed) {
+        try { window.localStorage.setItem(`realtyz:gallery:${property.id}`, '1'); } catch { /* ignore */ }
+      }
     }
   };
 
@@ -764,16 +813,20 @@ export default function PropertyDetail() {
    * the full gallery from the source (ring loader over the main image), and
    * every later interaction just moves between already-loaded photos.
    */
-  const ensureGalleryLoaded = async (): Promise<boolean> => {
+  const ensureGalleryLoaded = async (options: { silent?: boolean } = {}): Promise<boolean> => {
     if (galleryPulledRef.current || pullingImages) return false;
     if (!sourceUrl || photos.length >= Math.max(2, totalSourcePhotos)) return false;
     galleryPulledRef.current = true;
-    await pullAllImages();
+    const completed = await pullAllImages(options);
+    if (!completed) galleryPulledRef.current = false;
     return true;
   };
 
   const stepPhoto = async (delta: number) => {
-    if (pullingImages) return;
+    if (pullingImages) {
+      if (photos.length > 1) setActivePhoto((i) => (i + delta + photos.length) % photos.length);
+      return;
+    }
     if (await ensureGalleryLoaded()) return;
     if (photos.length <= 1) return;
     setActivePhoto((i) => (i + delta + photos.length) % photos.length);
@@ -1127,20 +1180,18 @@ export default function PropertyDetail() {
                     <button
                       type="button"
                       onClick={() => stepPhoto(-1)}
-                      disabled={pullingImages}
                       aria-label="התמונה הקודמת"
                       title="התמונה הקודמת"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:opacity-40 disabled:pointer-events-none"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
                     >
                       <ChevronRight className="h-5 w-5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => stepPhoto(1)}
-                      disabled={pullingImages}
                       aria-label="התמונה הבאה"
                       title="התמונה הבאה"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:opacity-40 disabled:pointer-events-none"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
@@ -1152,10 +1203,10 @@ export default function PropertyDetail() {
                       </span>
                     )}
 
-                    {/* Percentage-only ring loader, dead center, while images load. */}
+                    {/* Non-blocking image loader: progress only, no click-blocking scrim. */}
                     {pullingImages && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/35">
-                        <ProgressRing value={imageProgress} size={80} onDark />
+                      <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-background/90 p-1.5 shadow ring-1 ring-border">
+                        <ProgressRing value={imageProgress} size={44} strokeWidth={4} />
                       </span>
                     )}
                   </>
