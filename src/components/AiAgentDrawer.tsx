@@ -901,6 +901,11 @@ ${shareUrl}
               placeholder={isListening ? '🎙️ מקשיב...' : researchMode ? 'מצב מחקר חי - שאל על שכונה/אזור/פרויקט' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
               className="flex-1 h-9 text-[18px]"
               disabled={isLoading}
+             />
+            <VoiceInputButton
+              disabled={isLoading}
+              title="דברו — ההקלטה תתומלל ותישלח לעוזר"
+              onTranscript={(t) => { setInput(''); void sendMessage(t); }}
             />
             <Button
               type="button"
