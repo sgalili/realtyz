@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Bot, Send, Mic, MicOff, Paperclip, Loader2, X, FileText, Sparkles } from 'lucide-react';
