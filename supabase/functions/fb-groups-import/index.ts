@@ -12,6 +12,7 @@ import {
   GRAPH,
   humanizeGraphError,
   loadConnection,
+  missingGroupScopes,
   resolveCaller,
 } from "../_shared/fbPersonal.ts";
 
@@ -102,6 +103,7 @@ Deno.serve(async (req) => {
     if (!caller) return json({ error: "unauthorized" }, 401);
     const ws = caller.workspaceOwnerId;
 
+    const conn = await loadConnection(admin, ws);
     const tokens = await candidateTokens(admin, ws);
     if (tokens.length === 0) {
       return json(
@@ -114,17 +116,31 @@ Deno.serve(async (req) => {
     let lastError: any = null;
 
     for (const token of tokens) {
-      // Resolve the token's own node so page tokens are not queried as /me.
+      // Resolve the nodes this token can query: itself (/me → user or page) plus
+      // every Page it manages, because a Page can expose its own groups edge.
       const meRes = await fetch(
         `${GRAPH}/me?fields=id&access_token=${encodeURIComponent(token)}`,
       );
       const me = await meRes.json().catch(() => ({}));
-      const nodes = ["me"];
+      if (!meRes.ok) lastError = me;
+      const nodes: string[] = ["me"];
       const meId = String(me?.id ?? "").trim();
       if (meId) nodes.push(meId);
 
+      try {
+        const accRes = await fetch(
+          `${GRAPH}/me/accounts?fields=id&limit=100&access_token=${encodeURIComponent(token)}`,
+        );
+        const acc = await accRes.json().catch(() => ({}));
+        for (const p of Array.isArray(acc?.data) ? acc.data : []) {
+          const pid = String((p as any)?.id ?? "").trim();
+          if (pid && !nodes.includes(pid)) nodes.push(pid);
+        }
+      } catch { /* ignore */ }
+
       for (const node of nodes) {
         for (const fields of [FULL_FIELDS, BASIC_FIELDS]) {
+          let matched = false;
           for (const adminOnly of [false, true]) {
             const { rows, error } = await readGroups(node, token, fields, adminOnly);
             if (error) { lastError = error; continue; }
@@ -144,12 +160,13 @@ Deno.serve(async (req) => {
                 updated_at: new Date().toISOString(),
               });
             }
-            if (rows.length > 0) break; // this shape worked for the node
+            if (rows.length > 0) matched = true;
           }
+          if (matched) break; // this field shape worked for the node
         }
       }
-      if (byId.size > 0) break; // first token that yields groups wins
     }
+
 
     const groups = [...byId.values()];
 
@@ -163,14 +180,18 @@ Deno.serve(async (req) => {
       }
     }
 
+    const scopeGap = missingGroupScopes(conn?.scopes);
     const message = groups.length === 0
-      ? (lastError
+      ? (scopeGap.length
+        ? `פייסבוק לא אישר את הרשאות הקבוצות (${scopeGap.join(", ")}). יש להתחבר מחדש ולאשר את בקשת ההרשאות, ולוודא שהאפליקציה מאושרת ב-App Review.`
+        : lastError
         ? humanizeGraphError(
           lastError,
           "פייסבוק לא החזיר קבוצות. יש לאשר את הרשאות הקבוצות (user_managed_groups) ולהתקין את האפליקציה בקבוצה.",
         )
         : "פייסבוק החזיר רשימת קבוצות ריקה עבור ההרשאות שאושרו.")
       : null;
+
 
     try {
       await admin

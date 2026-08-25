@@ -12,21 +12,36 @@
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-export const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v20.0";
+export const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 export const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
 /**
  * Scopes requested during Facebook Login for the personal profile.
  *
- * Meta's group permissions (user_managed_groups, groups_access_member_info,
- * publish_to_groups) are restricted and make the login dialog fail before the
- * user can approve anything, so we request ONLY the standard basic scope.
- * Group lists / group publishing are handled by the browser-extension &
- * automation workflow instead (the fb_user_groups data structure stays).
+ * The full set is requested so one click grants everything the app needs:
+ * page publishing/reading and group discovery. Meta only shows the scopes the
+ * app is actually approved for, and any scope the user declines is reported
+ * back through /me/permissions (see missingScopes) instead of breaking login.
+ *
+ * Override with FB_PERSONAL_SCOPES (comma separated) when the Meta app is
+ * still awaiting App Review for the restricted group permissions.
  */
-const rawScopes = (
-  Deno.env.get("FB_PERSONAL_SCOPES") || "public_profile"
-)
+const DEFAULT_PERSONAL_SCOPES = [
+  "public_profile",
+  "email",
+  "pages_show_list",
+  "pages_manage_posts",
+  "pages_read_engagement",
+  "pages_manage_engagement",
+  "user_managed_groups",
+  "groups_access_member_info",
+  "publish_to_groups",
+];
+
+/** Minimal scope set used when Meta rejects the full dialog request. */
+export const FB_BASIC_SCOPES = ["public_profile"];
+
+const rawScopes = (Deno.env.get("FB_PERSONAL_SCOPES") || DEFAULT_PERSONAL_SCOPES.join(","))
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
@@ -36,12 +51,13 @@ const rawScopes = (
  * Meta rejects an empty scope list, so we always fall back to the basic
  * required `public_profile` scope even if the env override is malformed.
  */
-export const FB_PERSONAL_SCOPES = rawScopes.length > 0 ? rawScopes : ["public_profile"];
-
+export const FB_PERSONAL_SCOPES = rawScopes.length > 0 ? rawScopes : FB_BASIC_SCOPES;
 
 /** Scopes that MUST be granted for the connection to be considered healthy. */
 export const FB_GROUP_REQUIRED_SCOPES = ["public_profile"];
 
+/** Scopes needed for Graph group discovery — advisory only, never blocking. */
+export const FB_GROUP_SCOPES = ["user_managed_groups", "groups_access_member_info"];
 
 /** Which required scopes Meta did NOT grant. */
 export function missingScopes(granted: string[] | null | undefined): string[] {
@@ -49,10 +65,32 @@ export function missingScopes(granted: string[] | null | undefined): string[] {
   return FB_GROUP_REQUIRED_SCOPES.filter((s) => !set.has(s));
 }
 
+/** Which group scopes are missing (used to explain empty group lists). */
+export function missingGroupScopes(granted: string[] | null | undefined): string[] {
+  const set = new Set((granted ?? []).map((s) => String(s)));
+  return FB_GROUP_SCOPES.filter((s) => !set.has(s));
+}
+
 /** Advisory shown when Meta withholds a basic permission. */
 export function scopeAdvisory(missing: string[]): string {
   return `פייסבוק לא אישר את ההרשאה הבסיסית (${missing.join(", ")}). יש להתחבר מחדש ולאשר את הבקשה.`;
 }
+
+/**
+ * Verify a Meta token is still usable. Returns `valid:false` with a Hebrew
+ * reason when the token expired or was revoked, so the UI can raise a banner.
+ */
+export async function checkTokenHealth(
+  token: string | null | undefined,
+): Promise<{ valid: boolean; reason: string | null; fbUserId: string | null }> {
+  const t = String(token ?? "").trim();
+  if (!t) return { valid: false, reason: "לא נמצא טוקן פייסבוק מחובר.", fbUserId: null };
+  const res = await fetch(`${GRAPH}/me?fields=id&access_token=${encodeURIComponent(t)}`);
+  const body = await res.json().catch(() => ({}));
+  if (res.ok && body?.id) return { valid: true, reason: null, fbUserId: String(body.id) };
+  return { valid: false, reason: humanizeGraphError(body, "החיבור לפייסבוק אינו תקין."), fbUserId: null };
+}
+
 
 
 

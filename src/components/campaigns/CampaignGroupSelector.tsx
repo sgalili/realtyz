@@ -27,6 +27,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const [groups, setGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncNote, setSyncNote] = useState<string | null>(null);
 
   const hasVisibleGroups = groups.length > 0;
 
@@ -71,18 +72,24 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         ? (data as any).groups.filter((r: any) => r?.group_id).map(mapRow)
         : [];
       const imported = Number((data as any)?.imported ?? returned.length);
+      const note = String((data as any)?.error || (data as any)?.advice || "").trim();
       if (imported > 0) {
+        setSyncNote(null);
         toast.success(`סונכרנו ${imported} קבוצות מפייסבוק`);
-      } else if ((data as any)?.error) {
-        toast.error(String((data as any).error));
+      } else if (note) {
+        setSyncNote(note);
+        toast.error(note);
       } else {
-        toast.error("לא נמצאו קבוצות בחשבון המחובר");
+        const fallback = "לא נמצאו קבוצות בחשבון המחובר. ודא שאתה מנהל הקבוצה ושאושרו ההרשאות user_managed_groups.";
+        setSyncNote(fallback);
+        toast.error(fallback);
       }
       // Prefer the stored rows, but fall back to what the function returned
       // (RLS can hide fb_user_groups from the browser session).
       const stored = await fetchStoredGroups();
       setGroups(stored.length > 0 ? stored : returned);
     } catch (e: any) {
+      setSyncNote(e?.message || "סנכרון הקבוצות נכשל");
       toast.error(e?.message || "סנכרון הקבוצות נכשל");
     } finally {
       setSyncing(false);
@@ -127,7 +134,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
       {!loading && !syncing && !hasVisibleGroups && (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-xs text-muted-foreground">
-          אין קבוצות זמינות. חבר את פרופיל הפייסבוק בעמוד החיבורים ולחץ "סנכרן קבוצות".
+          {syncNote || 'אין קבוצות זמינות. חבר את פרופיל הפייסבוק בעמוד החיבורים ולחץ "סנכרן קבוצות".'}
         </div>
       )}
 
