@@ -2159,6 +2159,12 @@ const ConfirmDispatchDialog = ({
             .maybeSingle();
           workspaceFbId = String((binding as any)?.page_id || '').trim();
           workspaceFbName = String((binding as any)?.page_name || '').trim();
+          // A cached "Employee" asset is never a publishing identity — drop it
+          // so the server resolver overwrites it with the business Page.
+          if (isBlockedFbPage(workspaceFbId, workspaceFbName)) {
+            workspaceFbId = '';
+            workspaceFbName = '';
+          }
           // RLS can hide the owner's binding from workspace members — ask the
           // server for the authoritative Page (it also auto-discovers via
           // /me/accounts when no binding row exists yet).
@@ -2167,6 +2173,7 @@ const ConfirmDispatchDialog = ({
             workspaceFbId = resolved.pageId || '';
             workspaceFbName = workspaceFbName || resolved.pageName || '';
           }
+
         }
 
         // `social_connections` column names vary between workspaces, so read
