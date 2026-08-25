@@ -1085,16 +1085,21 @@ Deno.serve(async (req) => {
       // Only persist the chat bubble when the gateway actually accepted the
       // message — a failed send must never look delivered in the inbox.
       if (result.success && parsed.data.lead_id && outboundMessage) {
-        await admin.from("messages").insert({
-          lead_id: parsed.data.lead_id,
-          channel: "whatsapp",
-          platform: "whatsapp",
-          content: outboundMessage,
-          direction: "outbound",
-          sender_type: parsed.data.ai_assisted ? "ai" : "agent",
-          ai_assisted: !!parsed.data.ai_assisted,
-          disclosure_appended: disclosureAppended,
-          metadata: { provider: effectiveProvider, message_id: result.message_id, status: "sent" },
+        await admin.rpc("record_interaction_message", {
+          _lead_id: parsed.data.lead_id,
+          _platform: "whatsapp",
+          _direction: "outbound",
+          _sender_type: parsed.data.ai_assisted ? "ai" : "agent",
+          _content: outboundMessage,
+          _external_id: result.message_id || `send-whatsapp:${crypto.randomUUID()}`,
+          _created_at: new Date().toISOString(),
+          _metadata: {
+            provider: effectiveProvider,
+            message_id: result.message_id,
+            status: "sent",
+            ai_assisted: !!parsed.data.ai_assisted,
+            disclosure_appended: disclosureAppended,
+          },
         });
       }
       if (actorId) {

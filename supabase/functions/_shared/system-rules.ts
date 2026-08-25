@@ -35,7 +35,7 @@ async function embed(text: string): Promise<number[] | null> {
   }
 }
 
-async function resolveWorkspaceOwner(client: ReturnType<typeof createClient>, userId: string): Promise<string> {
+async function resolveWorkspaceOwner(client: any, userId: string): Promise<string> {
   try {
     const { data } = await client
       .from("profiles")

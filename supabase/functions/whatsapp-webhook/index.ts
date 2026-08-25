@@ -903,22 +903,43 @@ async function handleLeadInboxInbound(
   }
 
 
-  // Build context (best-effort).
+  // Build persistent omnichannel context (best-effort). Use the unified
+  // messages table so WhatsApp, Messenger, Instagram, email, SMS, etc. stay in
+  // memory across sessions and channels.
   let aiMessages: Array<{ role: string; content: string }> = [{ role: "user", content: inboundText }];
   try {
-    const { data: hist } = await admin
-      .from("chat_history")
-      .select("role, content, created_at")
+    const { data: omni } = await admin
+      .from("messages")
+      .select("direction, sender_type, content, channel, platform, created_at")
       .eq("lead_id", lead.id)
       .order("created_at", { ascending: false })
-      .limit(12);
-    const built = (hist ?? [])
+      .limit(120);
+    const built = (omni ?? [])
       .reverse()
-      .map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content ?? "") }))
+      .map((m: any) => {
+        const role = m.direction === "outbound" || m.sender_type === "ai" || m.sender_type === "agent" ? "assistant" : "user";
+        const channel = String(m.channel || m.platform || "whatsapp");
+        return { role, content: `[${channel}] ${String(m.content ?? "")}`.trim() };
+      })
       .filter((m: any) => m.content.trim());
     if (built.length) aiMessages = built;
   } catch (e) {
-    console.warn("history fetch soft-fail:", e instanceof Error ? e.message : e);
+    console.warn("omnichannel history fetch soft-fail:", e instanceof Error ? e.message : e);
+    try {
+      const { data: hist } = await admin
+        .from("chat_history")
+        .select("role, content, created_at")
+        .eq("lead_id", lead.id)
+        .order("created_at", { ascending: false })
+        .limit(80);
+      const built = (hist ?? [])
+        .reverse()
+        .map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content ?? "") }))
+        .filter((m: any) => m.content.trim());
+      if (built.length) aiMessages = built;
+    } catch (inner) {
+      console.warn("chat_history fallback fetch soft-fail:", inner instanceof Error ? inner.message : inner);
+    }
   }
 
   // AI reply pipeline — runs even if storage above had issues.
@@ -981,6 +1002,41 @@ async function handleLeadInboxInbound(
     } catch (e) {
       console.warn("assistant chat_history insert soft-fail:", e instanceof Error ? e.message : e);
     }
+    try {
+      const externalId = sentMessageId || `ai-autoreply:${messageId || crypto.randomUUID()}`;
+      const { data: existing } = sentMessageId
+        ? await admin.from("messages").select("id").eq("metadata->>message_id", sentMessageId).limit(1).maybeSingle()
+        : { data: null } as any;
+      if (!existing?.id) {
+        await admin.rpc("record_interaction_message", {
+          _lead_id: lead.id,
+          _platform: "whatsapp",
+          _direction: "outbound",
+          _sender_type: "ai",
+          _content: reply,
+          _external_id: externalId,
+          _created_at: new Date().toISOString(),
+          _metadata: { provider: "send-whatsapp", message_id: sentMessageId, status: "sent", ai_assisted: true, fallback_logged_by: "whatsapp-webhook" },
+        });
+      }
+    } catch (e) {
+      console.warn("assistant message fallback insert soft-fail:", e instanceof Error ? e.message : e);
+    }
+  } else if (reply) {
+    try {
+      await admin.rpc("record_interaction_message", {
+        _lead_id: lead.id,
+        _platform: "whatsapp",
+        _direction: "outbound",
+        _sender_type: "ai",
+        _content: reply,
+        _external_id: `ai-send-failed:${messageId || crypto.randomUUID()}`,
+        _created_at: new Date().toISOString(),
+        _metadata: { status: "send_failed", ai_assisted: true, fallback_logged_by: "whatsapp-webhook" },
+      });
+    } catch (e) {
+      console.warn("assistant failed-send bubble insert soft-fail:", e instanceof Error ? e.message : e);
+    }
   }
 
   // Fire-and-forget hot-match scoring.
@@ -991,6 +1047,83 @@ async function handleLeadInboxInbound(
   }).catch((e) => console.warn("[match-and-alert] failed", e));
 
   return { ok: true, lead_id: lead.id, stored: true, auto_reply: sendOk ? "sent" : "send_failed", message_id: sentMessageId };
+}
+
+async function ensurePhoneConversationLead(
+  admin: ReturnType<typeof createClient>,
+  phone: string,
+  ownerUserId: string | null,
+  label?: string | null,
+): Promise<string | null> {
+  const normalized = normalizePhone(phone);
+  if (!normalized) return null;
+  try {
+    let query = admin
+      .from("leads")
+      .select("id")
+      .in("phone_number", phoneVariants(normalized))
+      .limit(1);
+    if (ownerUserId) query = query.eq("assigned_to", ownerUserId);
+    const existing = await query.maybeSingle();
+    if (existing.data?.id) return existing.data.id as string;
+  } catch (e) {
+    console.warn("phone conversation lead lookup failed:", e instanceof Error ? e.message : e);
+  }
+
+  try {
+    const { data, error } = await admin
+      .from("leads")
+      .insert({
+        assigned_to: ownerUserId,
+        full_name: label || null,
+        phone_number: normalized,
+        status: "contacted",
+        lead_stage: "engaging",
+        sentiment: "neutral",
+        preferences: { source: "whatsapp_companion", owner_assistant_thread: true },
+        is_demo: false,
+      })
+      .select("id")
+      .maybeSingle();
+    if (error) {
+      console.warn("phone conversation lead create failed:", error.message);
+      return null;
+    }
+    return (data?.id as string | undefined) ?? null;
+  } catch (e) {
+    console.warn("phone conversation lead create threw:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+async function persistCompanionBubble(
+  admin: ReturnType<typeof createClient>,
+  args: { phone: string; ownerUserId: string | null; label?: string | null; direction: "inbound" | "outbound"; content: string; messageId?: string | null; action?: string | null },
+): Promise<string | null> {
+  const leadId = await ensurePhoneConversationLead(admin, args.phone, args.ownerUserId, args.label);
+  if (!leadId || !args.content.trim()) return leadId;
+  try {
+    await admin.rpc("record_interaction_message", {
+      _lead_id: leadId,
+      _platform: "whatsapp",
+      _direction: args.direction,
+      _sender_type: args.direction === "outbound" ? "ai" : "voter",
+      _content: args.content.slice(0, 4096),
+      _external_id: args.messageId || `companion:${args.direction}:${crypto.randomUUID()}`,
+      _created_at: new Date().toISOString(),
+      _metadata: {
+        source: "whatsapp_companion",
+        owner_id: args.ownerUserId,
+        sender_phone: args.phone,
+        action: args.action ?? null,
+        status: args.direction === "outbound" ? "sent" : "received",
+        ai_assisted: args.direction === "outbound",
+      },
+    });
+  } catch (e) {
+    console.warn("companion bubble persist failed:", e instanceof Error ? e.message : e);
+  }
+  return leadId;
 }
 
 // ---------- main handler ----------
@@ -1257,6 +1390,15 @@ Deno.serve(async (req) => {
       console.log(`[ADMIN FLOW] No owner match for ${senderPhone} → falling through to lead pipeline`);
     } else {
       console.log(`[ADMIN FLOW] Owner identified: ${ownerLabel ?? ownerUserId} (phone=${senderPhone})`);
+      await persistCompanionBubble(admin, {
+        phone: senderPhone,
+        ownerUserId,
+        label: ownerLabel,
+        direction: "inbound",
+        content: msg.text,
+        messageId,
+        action: "owner_message",
+      });
 
       // Continuous-learning capture: if the owner's text looks like an explicit
       // behavior rule ("מעכשיו...", "תמיד...", "אל תשתמש..."), fire-and-forget
@@ -1297,6 +1439,7 @@ Deno.serve(async (req) => {
               SERVICE_KEY,
               senderPhone,
               `קצין המודיעין נכנס לפעולה.\nמתחיל מחקר חי על: ${subject}.\nאחזור אליך תוך כמה רגעים עם דוח מובנה.`,
+              { admin, ownerUserId, label: ownerLabel, action: "master_research_started", markAi: true },
             );
             const researchRes = await fetch(`${SUPABASE_URL}/functions/v1/master-research`, {
               method: "POST",
@@ -1330,7 +1473,13 @@ Deno.serve(async (req) => {
             } else {
               replyText = `לא הצלחתי להפיק דוח על "${subject}" כרגע. נסה ניסוח אחר או נסה שוב עוד מספר דקות.`;
             }
-            await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, replyText.slice(0, 3800));
+            await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, replyText.slice(0, 3800), {
+              admin,
+              ownerUserId,
+              label: ownerLabel,
+              action: "master_research",
+              markAi: true,
+            });
             return jsonResponse({
               ok: true,
               companion: "master_research",
@@ -1355,16 +1504,66 @@ Deno.serve(async (req) => {
           ownerUserId,
           text: msg.text,
         });
-        const replyText = routed.handled
-          ? routed.reply
-          : `לא הבנתי בדיוק את הבקשה. הנה מה שאני יודעת לעשות:\n• צור פוסט על [נושא/כתובת]\n• תגובה [טקסט]\n• פרסם\n\nנסה לנסח את זה בקצרה, או פתח את הדשבורד: https://realtyz.co.il`;
+        let replyText = routed.handled ? routed.reply : "";
+        let companionAction = routed.handled ? routed.action : "intelligence_agent";
+        let meta: Record<string, unknown> | null = routed.handled ? (routed.meta ?? null) : null;
 
-        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, replyText);
+        if (!routed.handled) {
+          const histLeadId = await ensurePhoneConversationLead(admin, senderPhone, ownerUserId, ownerLabel);
+          const { data: histRows } = histLeadId
+            ? await admin
+                .from("messages")
+                .select("direction, sender_type, content, channel, created_at")
+                .eq("lead_id", histLeadId)
+                .order("created_at", { ascending: false })
+                .limit(100)
+            : { data: [] } as any;
+          const ownerMessages = ((histRows ?? []) as any[])
+            .reverse()
+            .map((m) => ({
+              role: m.direction === "outbound" || m.sender_type === "ai" ? "assistant" : "user",
+              content: `[${m.channel || "whatsapp"}] ${String(m.content ?? "")}`.trim(),
+            }))
+            .filter((m) => m.content);
+          if (!ownerMessages.length) ownerMessages.push({ role: "user", content: msg.text });
+
+          const aiRes = await fetch(`${SUPABASE_URL}/functions/v1/ai-agent`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SERVICE_KEY}`,
+              apikey: SERVICE_KEY,
+            },
+            body: JSON.stringify({
+              mode: "master_agent",
+              workspace_owner_id: ownerUserId,
+              owner_phone: senderPhone,
+              messages: ownerMessages,
+              context: `WhatsApp owner command from ${ownerLabel ?? "workspace owner"}: ${msg.text}`,
+              enable_research: true,
+            }),
+          });
+          const aiJson: any = await aiRes.json().catch(() => ({}));
+          replyText = sanitizeAiReply(extractAiText(aiJson?.content ?? aiJson?.message ?? aiJson?.reply ?? aiJson));
+          if (!aiRes.ok || !replyText) {
+            replyText = "קצין המודיעין קלט את הבקשה וממשיך לעבד אותה על בסיס נתוני המשרד. שלח עוד פרט אחד אם תרצה דיוק נוסף.";
+            companionAction = "intelligence_agent_soft_fallback";
+          }
+          meta = { ai_status: aiRes.status, sources: aiJson?.sources ?? null, research_sources: aiJson?.research_sources ?? null };
+        }
+
+        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, replyText, {
+          admin,
+          ownerUserId,
+          label: ownerLabel,
+          action: companionAction,
+          markAi: true,
+        });
         return jsonResponse({
           ok: true,
-          companion: routed.handled ? routed.action : "owner_help",
+          companion: companionAction,
           owner_blocked_lead_autopilot: true,
-          meta: routed.handled ? (routed.meta ?? null) : null,
+          meta,
         });
       } catch (e) {
         const errMsg = e instanceof Error ? e.message : "unknown";
@@ -1375,6 +1574,7 @@ Deno.serve(async (req) => {
           SERVICE_KEY,
           senderPhone,
           "נתקלתי בשגיאה זמנית בהפקת התוכן. נסה שוב בעוד רגע.",
+          { admin, ownerUserId, label: ownerLabel, action: "owner_router_error", markAi: true },
         );
         return jsonResponse({ ok: false, owner_blocked_lead_autopilot: true, error: errMsg }, 200);
       }
@@ -1716,18 +1916,58 @@ async function sendRawWhatsApp(
   serviceKey: string,
   phone: string,
   body: string,
+  opts?: { admin?: ReturnType<typeof createClient>; ownerUserId?: string | null; label?: string | null; action?: string | null; markAi?: boolean },
 ): Promise<void> {
+  const leadId = opts?.admin
+    ? await ensurePhoneConversationLead(opts.admin, phone, opts.ownerUserId ?? null, opts.label ?? null)
+    : null;
   const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${serviceKey}`,
+      apikey: serviceKey,
     },
-    body: JSON.stringify({ phone_number: phone, body }),
+    body: JSON.stringify({
+      phone_number: phone,
+      lead_id: leadId ?? undefined,
+      tenant_id: opts?.ownerUserId ?? undefined,
+      body,
+      ai_assisted: opts?.markAi === true,
+      disclosure_language: opts?.markAi === true ? "he" : undefined,
+    }),
   });
-  if (!res.ok) {
-    const t = await res.text();
-    console.warn("send-whatsapp confirmation failed:", res.status, t.slice(0, 200));
+  const responseJson: any = await res.json().catch(() => ({}));
+  if (!res.ok || responseJson?.success === false) {
+    console.warn("send-whatsapp confirmation failed:", res.status, JSON.stringify(responseJson).slice(0, 200));
+  }
+  if (opts?.admin && opts.markAi && leadId) {
+    const sentId = responseJson?.message_id ? String(responseJson.message_id) : null;
+    try {
+      if (sentId) {
+        await opts.admin
+          .from("messages")
+          .update({ sender_type: "ai", ai_assisted: true })
+          .eq("lead_id", leadId)
+          .eq("metadata->>message_id", sentId);
+      }
+      const { data: existing } = sentId
+        ? await opts.admin.from("messages").select("id").eq("metadata->>message_id", sentId).limit(1).maybeSingle()
+        : { data: null } as any;
+      if (!existing?.id) {
+        await persistCompanionBubble(opts.admin, {
+          phone,
+          ownerUserId: opts.ownerUserId ?? null,
+          label: opts.label ?? null,
+          direction: "outbound",
+          content: body,
+          messageId: sentId || `companion-out:${crypto.randomUUID()}`,
+          action: opts.action ?? null,
+        });
+      }
+    } catch (e) {
+      console.warn("companion outbound bubble correction failed:", e instanceof Error ? e.message : e);
+    }
   }
 }
 
