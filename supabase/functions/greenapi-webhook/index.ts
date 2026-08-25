@@ -315,6 +315,9 @@ async function handleIncoming(admin: any, payload: any) {
         lead_id: leadId,
         lead_name: (lead as any)?.full_name ?? profileName,
         mode: "deal_room_reply",
+        // Server-to-server system context — no interactive user session exists,
+        // so the verified workspace owner is passed explicitly.
+        workspace_owner_id: aiOwner,
         context:
           `Inbound WhatsApp message (Green API personal number) from ${(lead as any)?.full_name ?? profileName ?? "the client"}: ${text}\n` +
           `DETECTED INTENT: ${intentLine}.\n` +
