@@ -11,28 +11,29 @@ export function ChatMessageText({ content, className }: { content: string | null
   if (!blocks.length) return null;
 
   return (
-    <div className={`max-w-full overflow-hidden break-words text-sm leading-relaxed ${className ?? ''}`}>
+    <div className={`max-w-full space-y-2 overflow-hidden break-words text-sm leading-relaxed ${className ?? ''}`}>
       {blocks.map((block, i) =>
         block.kind === 'list' ? (
           block.ordered ? (
-            <ol key={i} className="my-1 list-decimal space-y-0.5 pe-4 ps-4">
+            <ol key={i} className="list-decimal space-y-1 pe-1 ps-5">
               {block.items.map((item, j) => (
-                <li key={j} className="marker:text-muted-foreground">
+                <li key={j} className="ps-0.5 marker:text-muted-foreground">
                   <Inline text={item} />
                 </li>
               ))}
             </ol>
           ) : (
-            <ul key={i} className="my-1 list-disc space-y-0.5 pe-4 ps-4">
+            <ul key={i} className="list-disc space-y-1 pe-1 ps-5">
               {block.items.map((item, j) => (
-                <li key={j} className="marker:text-muted-foreground">
+                <li key={j} className="ps-0.5 marker:text-muted-foreground">
                   <Inline text={item} />
                 </li>
               ))}
             </ul>
           )
+
         ) : (
-          <p key={i} className={i > 0 ? 'mt-2' : undefined}>
+          <p key={i}>
             {block.lines.map((line, j) => (
               <Fragment key={j}>
                 {j > 0 && <br />}

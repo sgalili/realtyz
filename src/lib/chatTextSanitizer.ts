@@ -9,26 +9,18 @@ export function sanitizeChatText(raw: string | null | undefined): string {
   if (!raw) return '';
   let text = String(raw).trim();
 
-  // 1) Strip markdown code fences, keeping their inner content.
+  // 1) Drop the dispatcher's channel tag ("[whatsapp] ...") before anything else.
+  text = text.replace(/^\s*\[(?:whatsapp|instagram|facebook|messenger|email|sms|telegram|web)\]\s*/i, '');
+
+  // 2) Strip markdown code fences, keeping their inner content.
   text = text.replace(/```[a-zA-Z]*\s*([\s\S]*?)```/g, '$1').trim();
   // Orphan fence / language token left by a truncated stream.
   text = text.replace(/^```[a-zA-Z]*\s*/i, '').replace(/```$/, '').trim();
   text = text.replace(/^json\s*[\r\n]+/i, '').trim();
 
-  // 2) Unescape literal escape sequences.
-  const unescape = (s: string) =>
-    s
-      .replace(/\\r\\n|\\n|\\r/g, '\n')
-      .replace(/\\t/g, '  ')
-      .replace(/\\"/g, '"')
-      .replace(/\\'/g, "'")
-      .replace(/\\\\/g, '\\');
-
-  if (/\\n|\\"|\\t/.test(text)) text = unescape(text);
-
-  // 3) If the whole payload is a JSON wrapper, pull the human text out of it.
-  const jsonCandidate = text.startsWith('{') || text.startsWith('[');
-  if (jsonCandidate) {
+  // 3) If the payload is a JSON wrapper, pull the human text out of it FIRST —
+  //    unescaping before parsing would corrupt the JSON.
+  if (text.startsWith('{') || text.startsWith('[')) {
     const extracted = extractFromJson(text);
     if (extracted) text = extracted;
   } else {
@@ -36,18 +28,40 @@ export function sanitizeChatText(raw: string | null | undefined): string {
     const blob = text.match(/\{[\s\S]*"(?:reply|message|text|content|answer|response)"[\s\S]*\}/);
     if (blob) {
       const extracted = extractFromJson(blob[0]);
-      const rest = text.replace(blob[0], '').trim();
-      text = [rest, extracted].filter(Boolean).join('\n');
+      if (extracted) {
+        const rest = text.replace(blob[0], '').trim();
+        text = [rest, extracted].filter(Boolean).join('\n');
+      }
     }
   }
 
-  // 4) Tidy whitespace: no more than one blank line, trim each line.
+  // 4) Unescape any escape sequences that survived as literal text.
+  if (/\\n|\\"|\\t/.test(text)) {
+    text = text
+      .replace(/\\r\\n|\\n|\\r/g, '\n')
+      .replace(/\\t/g, '  ')
+      .replace(/\\"/g, '"')
+      .replace(/\\'/g, "'")
+      .replace(/\\\\/g, '\\');
+  }
+
+  // 5) Drop internal debug artefacts that mean nothing to a human: the short
+  //    listing-id tokens the agent emits ("[1fa196ce] הרצליה ...") and the
+  //    empty emphasis pairs they leave behind.
+  text = text.replace(/\[[0-9a-f]{6,8}\]\s*/gi, '');
+  text = text.replace(/\((?:id|listing|נכס)\s*[:=]?\s*[0-9a-f-]{6,36}\)/gi, '');
+  text = text.replace(/\*\*\s*\*\*/g, '').replace(/__\s*__/g, '');
+
+
+  // 5) Tidy whitespace: no more than one blank line, trim each line.
   text = text
     .split('\n')
-    .map((l) => l.replace(/[ \t]+$/g, ''))
+    .map((l) => l.replace(/[ \t]+$/g, '').replace(/^[ \t]+/, (m) => (m.length > 3 ? '' : m)))
     .join('\n')
+    .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+
 
   return text;
 }
