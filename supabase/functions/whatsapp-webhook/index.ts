@@ -622,7 +622,12 @@ async function handleLeadInboxInbound(
   senderPhone: string,
   messageId: string | undefined,
   inboundText: string,
+  // When true, the inbound row was ALREADY persisted upstream (meta-wa-webhook)
+  // and this call only runs the autopilot leg: lead resolution → AI → send.
+  opts?: { skipStore?: boolean },
 ) {
+  const skipStore = opts?.skipStore === true;
+
   // Detect short-link signature so we can auto-create / tag the lead before lookup.
   const shortLink = await resolveShortLinkListing(admin, inboundText);
   const hasShortLinkSignature = SHORTLINK_ANCHOR_RE.test(inboundText);
