@@ -14,3 +14,5 @@ Enforcement points:
 Column: `profiles.broker_license_number text`. UI: Profile → Personal tab → "מספר רישיון תיווך" field.
 
 When adding a NEW text generator: import `enforceOwnerLaws` + `fetchOwnerLicense` and run them on the buffer before returning / inserting into approval_queue / sending to a downstream API.
+
+- FORBIDDEN FOREVER: the line "📞 שיחה טלפונית 055-4329729" (and that phone number) must never appear in any component, message, or post. Owner footer is exactly 2 lines: byline + "ר.מ ... | WhatsApp 052-2973500".

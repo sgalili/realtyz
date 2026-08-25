@@ -2721,6 +2721,31 @@ const writeFbBindingFlag = (bound: boolean) => {
   } catch { /* ignore */ }
 };
 
+/**
+ * Authoritative Facebook Page resolution. The client table read on
+ * `messenger_page_bindings` can come back empty for workspace members (RLS
+ * scopes rows to the workspace owner), which used to render "לא מחובר" even
+ * though a valid Page token is stored. `meta-page-connect` resolves the
+ * workspace owner server-side, so we use it as the fallback source of truth.
+ */
+type ResolvedMetaPage = { pageId: string | null; pageName: string | null; instagram: boolean };
+const resolveMetaPageViaFunction = async (): Promise<ResolvedMetaPage> => {
+  try {
+    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'status' } });
+    const res = data as any;
+    if (res?.connected && res?.page?.id) {
+      return {
+        pageId: String(res.page.id),
+        pageName: res.page.name ?? null,
+        instagram: !!res?.instagram?.id,
+      };
+    }
+  } catch { /* ignore — caller falls back to the remembered flag */ }
+  return { pageId: null, pageName: null, instagram: false };
+};
+
+
+
 const readPersistedFeedCache = (): Record<string, CampaignRow[]> => {
   try {
     const raw = localStorage.getItem(FEED_CACHE_STORAGE_KEY) || sessionStorage.getItem(FEED_CACHE_STORAGE_KEY);
@@ -2975,23 +3000,28 @@ const PublishedFeed = () => {
       // A bound Facebook Page (OAuth or manual token) is by itself a valid
       // connected state — the manual path never writes to social_connections.
       try {
-        const { data: binding, error: bindingErr } = await supabase
+        const { data: binding } = await supabase
           .from('messenger_page_bindings')
           .select('page_id')
           .limit(1)
           .maybeSingle();
-        if ((binding as any)?.page_id) {
+        let pageId = ((binding as any)?.page_id as string | null) ?? null;
+        if (!pageId) {
+          // Fall back to the server-side resolver (workspace-owner scoped).
+          pageId = (await resolveMetaPageViaFunction()).pageId;
+        }
+        if (pageId) {
           next.add('facebook');
           writeFbBindingFlag(true);
-        } else if (!bindingErr) {
-          writeFbBindingFlag(false);
         } else if (readFbBindingFlag()) {
-          // Transient read failure — keep the remembered connected state.
           next.add('facebook');
+        } else {
+          writeFbBindingFlag(false);
         }
       } catch {
         if (readFbBindingFlag()) next.add('facebook');
       }
+
       const { data } = await supabase
         .from('social_connections')
         .select('platform, is_connected')
@@ -4886,23 +4916,32 @@ const CampaignCenter = () => {
           .select('page_id, page_name')
           .limit(1)
           .maybeSingle();
-        const hasOwnProfile = !!(wsp as any)?.page_id;
-        const wspFbId = (wsp as any)?.page_id as string | null;
-        const wspFbName = (wsp as any)?.page_name as string | null;
+        let wspFbId = ((wsp as any)?.page_id as string | null) ?? null;
+        let wspFbName = ((wsp as any)?.page_name as string | null) ?? null;
+        if (!wspFbId) {
+          // The client read is RLS-scoped to the workspace owner; the edge
+          // function resolves the same binding for every workspace member.
+          const resolved = await resolveMetaPageViaFunction();
+          if (resolved.pageId) {
+            wspFbId = resolved.pageId;
+            wspFbName = wspFbName ?? resolved.pageName;
+          }
+        }
+        const hasOwnProfile = !!wspFbId;
         if (hasOwnProfile) writeFbBindingFlag(true);
         if (!hasOwnProfile) {
           if (wspErr) {
             // Transient read failure (RLS blip / offline) — never downgrade a
             // known-good Facebook connection to "disconnected".
             console.warn('[CampaignCenter] page binding read failed:', wspErr.message);
-          } else {
+          } else if (!readFbBindingFlag()) {
             writeFbBindingFlag(false);
             if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
           }
           // continue — still derive direct channels (IVR/email) below
         } else {
           if (wspFbName && !cancelled) {
-            setChannelAccountNames((prev) => ({ ...prev, facebook: wspFbName }));
+            setChannelAccountNames((prev) => ({ ...prev, facebook: wspFbName as string }));
           }
 
         }
@@ -4912,7 +4951,8 @@ const CampaignCenter = () => {
 
         // A transient binding read failure must never disable Facebook: the
         // native Page token is the single source of truth and stays remembered.
-        if (!hasOwnProfile && wspErr && readFbBindingFlag()) set.add('facebook');
+        if (!hasOwnProfile && readFbBindingFlag()) set.add('facebook');
+
 
         if (hasOwnProfile) {
           // A bound Facebook Page is by itself a valid connected state — the

@@ -109,7 +109,6 @@ export function scrubForbiddenBylines(input: string): string {
 
 const FOOTER_RE = /ר\.?\s*מ\s*[:：]\s*3251767/i;
 const OWNER_PHONE = "052-2973500";
-const OWNER_OFFICE_PHONE = "055-4329729";
 const PHONE_RE = /052[\s\-]?297[\s\-]?3500/;
 
 // HARD compliance constants. Udi's real byline + license — never replace,
@@ -118,11 +117,10 @@ const DEFAULT_OWNER_LICENSE = "3251767";
 // STRICT canonical 3-line footer — exactly as the owner specified.
 const OWNER_BYLINE_LINE = 'אודי ויטמן | אנגלו סכסון הרצליה/רמ"ש';
 const OWNER_LICENSE_LINE = `ר.מ: ${DEFAULT_OWNER_LICENSE} | \u200fWhatsApp ${OWNER_PHONE}`;
-const OWNER_OFFICE_LINE = `📞 שיחה טלפונית ${OWNER_OFFICE_PHONE}`;
 
 function buildFooterBlock(_license?: string | null): string {
   // Byline + license + office phone are HARDCODED — ignore any caller value.
-  return `${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}\n${OWNER_OFFICE_LINE}`;
+  return `${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`;
 }
 
 /**
@@ -158,6 +156,7 @@ export function appendLicenseFooter(
     // any prior WhatsApp / שיחה טלפונית contact line the AI generated
     .replace(/\n*[^\n]*\bWhatsApp\b[^\n]*/gi, "")
     .replace(/\n*[^\n]*שיחה\s+טלפונית[^\n]*/gu, "")
+    .replace(/\n*\s*(?:📞|☎️|📱)?\s*055[\s\-]?432[\s\-]?9729[^\n]*/gu, "")
     .replace(/בהליך\s*אימות/gu, "")
     // STRICT: AI-assisted watermark is forbidden — purge every variant.
     .replace(/,\s*תוכן\s*בסיוע\s*AI/giu, "")
@@ -167,7 +166,7 @@ export function appendLicenseFooter(
     .replace(/\n{3,}/g, "\n\n")
     .replace(/\s+$/g, "");
 
-  return `${cleaned}\n\n${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}\n${OWNER_OFFICE_LINE}`;
+  return `${cleaned}\n\n${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`;
 }
 
 export function enforceOwnerLaws(
