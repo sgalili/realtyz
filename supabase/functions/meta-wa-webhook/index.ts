@@ -370,7 +370,14 @@ Deno.serve(async (req) => {
                   // @ts-ignore EdgeRuntime is provided by Supabase Edge Functions
                   EdgeRuntime.waitUntil(trigger);
                 } catch { /* older runtime — the await below covers it */ }
-                await trigger;
+                // Bounded wait: keeps the isolate alive long enough for the AI
+                // leg to finish in practice, while still acking Meta well inside
+                // its retry window (waitUntil carries any remainder).
+                await Promise.race([
+                  trigger,
+                  new Promise((res) => setTimeout(res, 15000)),
+                ]);
+
               }
 
             } catch (inner) {
