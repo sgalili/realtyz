@@ -2159,21 +2159,31 @@ const ConfirmDispatchDialog = ({
             .maybeSingle();
           workspaceFbId = String((binding as any)?.page_id || '').trim();
           workspaceFbName = String((binding as any)?.page_name || '').trim();
+          // RLS can hide the owner's binding from workspace members — ask the
+          // server for the authoritative Page (it also auto-discovers via
+          // /me/accounts when no binding row exists yet).
+          if (!workspaceFbId) {
+            const resolved = await resolveMetaPageViaFunction();
+            workspaceFbId = resolved.pageId || '';
+            workspaceFbName = workspaceFbName || resolved.pageName || '';
+          }
         }
 
-        const { data } = await supabase
+        // `social_connections` column names vary between workspaces, so read
+        // the row as-is and map defensively instead of failing the whole query.
+        const { data } = await (supabase as any)
           .from('social_connections')
-          .select('id, platform, account_name, account_id, avatar_url, is_connected')
+          .select('*')
           .eq('platform', channel.id)
-          .eq('is_connected', true)
           .order('updated_at', { ascending: false });
-        let rows = (data || [])
+        let rows = ((data || []) as any[])
+          .filter((r) => r?.is_connected !== false)
           .map((r: any) => ({
             id: r.id,
             platform: r.platform,
-            accountRef: r.account_id || workspaceFbId || '',
+            accountRef: r.account_id || r.page_id || workspaceFbId || '',
             profileKey: null as string | null,
-            name: workspaceFbName || r.account_name || channel.label,
+            name: workspaceFbName || r.account_name || r.display_name || r.page_name || channel.label,
             username: null as string | null,
             avatar: r.avatar_url || null,
             profileUrl: (r.account_id || workspaceFbId) ? buildAccountUrl(channel.id, r.account_id || workspaceFbId) : null,
@@ -2185,20 +2195,21 @@ const ConfirmDispatchDialog = ({
           seen.add(key);
           return true;
         });
-        if (channel.id === 'facebook' && rows.length === 0) {
+        if ((channel.id === 'facebook' || channel.id === 'instagram') && rows.length === 0) {
           if (workspaceFbId) {
             rows = [{
-              id: `workspace-facebook:${workspaceFbId}`,
-              platform: 'facebook',
+              id: `workspace-${channel.id}:${workspaceFbId}`,
+              platform: channel.id,
               accountRef: workspaceFbId,
               profileKey: null,
-              name: workspaceFbName || 'Facebook',
+              name: workspaceFbName || channel.label,
               username: null,
               avatar: null,
-              profileUrl: buildAccountUrl('facebook', workspaceFbId),
+              profileUrl: buildAccountUrl(channel.id, workspaceFbId),
             }];
           }
         }
+
         setPages(rows);
       } finally {
         setPagesLoading(false);
