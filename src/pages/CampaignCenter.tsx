@@ -2761,20 +2761,38 @@ const writeFbBindingFlag = (bound: boolean) => {
  * workspace owner server-side, so we use it as the fallback source of truth.
  */
 type ResolvedMetaPage = { pageId: string | null; pageName: string | null; instagram: boolean };
+
+/** Assets that must never be shown or used as the publishing identity. */
+const BLOCKED_FB_PAGE_IDS = new Set(['122096304951460522']);
+const BLOCKED_FB_NAME = /employee|עובד/i;
+const isBlockedFbPage = (id?: string | null, name?: string | null) =>
+  (!!id && BLOCKED_FB_PAGE_IDS.has(String(id))) || (!!name && BLOCKED_FB_NAME.test(name));
+
 const resolveMetaPageViaFunction = async (): Promise<ResolvedMetaPage> => {
-  try {
-    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'status' } });
+  const read = async (action: 'status' | 'repair'): Promise<ResolvedMetaPage> => {
+    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action } });
     const res = data as any;
-    if (res?.connected && res?.page?.id) {
-      return {
-        pageId: String(res.page.id),
-        pageName: res.page.name ?? null,
-        instagram: !!res?.instagram?.id,
-      };
+    const id = res?.page?.id ? String(res.page.id) : null;
+    if ((res?.connected || res?.ok) && id) {
+      return { pageId: id, pageName: res.page.name ?? null, instagram: !!res?.instagram?.id };
     }
+    return { pageId: null, pageName: null, instagram: false };
+  };
+
+  try {
+    const first = await read('status');
+    // A stale binding on the "Employee" asset gets overwritten with the real
+    // business Page instead of being surfaced as the connected identity.
+    if (isBlockedFbPage(first.pageId, first.pageName)) {
+      const fixed = await read('repair');
+      if (fixed.pageId && !isBlockedFbPage(fixed.pageId, fixed.pageName)) return fixed;
+      return { pageId: null, pageName: null, instagram: false };
+    }
+    return first;
   } catch { /* ignore — caller falls back to the remembered flag */ }
   return { pageId: null, pageName: null, instagram: false };
 };
+
 
 
 
