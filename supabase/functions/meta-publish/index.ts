@@ -411,7 +411,10 @@ async function publishFacebook(
     };
   }
 
-  const form = new URLSearchParams({ message, access_token: token });
+  // A feed post with attached_media cannot also carry `link`, so the URL is
+  // appended to the caption instead of being silently dropped.
+  const caption = link && !message.includes(link) ? `${message}\n\n${link}`.trim() : message;
+  const form = new URLSearchParams({ message: caption, access_token: token });
   attached.forEach((id, i) => form.set(`attached_media[${i}]`, JSON.stringify({ media_fbid: id })));
   const r = await graph(`/${pageId}/feed`, {
     method: "POST",
