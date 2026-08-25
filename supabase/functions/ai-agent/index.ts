@@ -358,6 +358,9 @@ serve(async (req) => {
             if (dealHint) preferences.listing_type = dealHint;
             if (budgetNum) preferences.budget_max = budgetNum;
             if (city) preferences.desired_city = city;
+            if (draft.neighborhood) preferences.neighborhood = draft.neighborhood;
+            if (draft.rooms) preferences.rooms = draft.rooms;
+            if (draft.requirements) preferences.requirements = draft.requirements;
 
             const { data: inserted, error: insErr } = await userClient
               .from("leads")
