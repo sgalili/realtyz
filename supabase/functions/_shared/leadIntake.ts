@@ -174,16 +174,32 @@ export function extractDealTypeLoose(text: string | null | undefined): "sale" | 
 const NAME_STOPWORDS =
   /^(חדש|חדשה|חדשים|חם|חמה|קר|קרה|פוטנציאלי|פוטנציאלית|פוטנציאלים|מעניין|מעניינת|רציני|רצינית|עם|של|את|בשם|שם|בעיר|מעיר|באזור|לשכירות|להשכרה|שכירות|למכירה|מכירה|לקנייה|לרכישה|טלפון|נייד|מספר|מייל|אימייל|תקציב|עד|חדרים|לקוח|לקוחה|לקוחות|מתעניין|מתעניינת|ליד|לידים|כרטיס|איש|אישה|קשר|בבקשה|תודה|new|hot|potential|client|clients|contact|contacts|lead|leads|customer|name|phone|budget|rent|rental|sale|buy)$/iu;
 
+/** Words that end a name: whatever follows describes the request, not the person. */
+const NAME_TERMINATORS =
+  /^(מחפש|מחפשת|מעוניין|מעוניינת|רוצה|רוצים|צריך|צריכה|מבקש|מבקשת|שוכר|שוכרת|קונה|גר|גרה|בעל|בעלת|שמעוניין|שמחפש|looking|wants|needs|interested|searching)$/iu;
+
 const NAME_TOKEN = /^[\p{L}][\p{L}'’\-]{1,25}$/u;
 
-/** Keep only plausible name tokens, dropping descriptors and labels. */
+/**
+ * Keep only plausible name tokens: skip leading descriptors/labels, then take
+ * the contiguous run of name words and stop at the first non-name word.
+ */
 function cleanNameTokens(candidate: string): string | null {
-  const parts = candidate
+  const tokens = candidate
     .split(/\s+/)
     .map((p) => p.replace(/^["'׳״,.:;-]+|["'׳״,.:;-]+$/g, ""))
-    .filter((p) => p && NAME_TOKEN.test(p) && !NAME_STOPWORDS.test(p));
-  if (!parts.length) return null;
-  return parts.slice(0, 3).join(" ");
+    .filter(Boolean);
+  const parts: string[] = [];
+  for (const t of tokens) {
+    const isName = NAME_TOKEN.test(t) && !NAME_STOPWORDS.test(t) && !NAME_TERMINATORS.test(t);
+    if (isName) {
+      parts.push(t);
+      if (parts.length === 3) break;
+      continue;
+    }
+    if (parts.length) break; // name already started → this word ends it
+  }
+  return parts.length ? parts.join(" ") : null;
 }
 
 export function extractNameLoose(text: string | null | undefined): string | null {
