@@ -2721,6 +2721,31 @@ const writeFbBindingFlag = (bound: boolean) => {
   } catch { /* ignore */ }
 };
 
+/**
+ * Authoritative Facebook Page resolution. The client table read on
+ * `messenger_page_bindings` can come back empty for workspace members (RLS
+ * scopes rows to the workspace owner), which used to render "לא מחובר" even
+ * though a valid Page token is stored. `meta-page-connect` resolves the
+ * workspace owner server-side, so we use it as the fallback source of truth.
+ */
+type ResolvedMetaPage = { pageId: string | null; pageName: string | null; instagram: boolean };
+const resolveMetaPageViaFunction = async (): Promise<ResolvedMetaPage> => {
+  try {
+    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'status' } });
+    const res = data as any;
+    if (res?.connected && res?.page?.id) {
+      return {
+        pageId: String(res.page.id),
+        pageName: res.page.name ?? null,
+        instagram: !!res?.instagram?.id,
+      };
+    }
+  } catch { /* ignore — caller falls back to the remembered flag */ }
+  return { pageId: null, pageName: null, instagram: false };
+};
+
+
+
 const readPersistedFeedCache = (): Record<string, CampaignRow[]> => {
   try {
     const raw = localStorage.getItem(FEED_CACHE_STORAGE_KEY) || sessionStorage.getItem(FEED_CACHE_STORAGE_KEY);
