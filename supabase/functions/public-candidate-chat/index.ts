@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,7 +68,9 @@ Deno.serve(async (req) => {
       console.warn("public KB lookup failed", e);
     }
 
-    const system = `אתה צ׳אטבוט ציבורי של עמוד מתעניין ב-Realtyz. ענה בעברית, ב-RTL, בקצרה ובאמינות. אל תמציא עובדות. אם אין מידע במאגר הידע, אמור זאת והצע לפנות לסוכן.\n\nמתעניין: ${page.candidate_name}\nכותרת: ${page.headline}\nתזה: ${page.thesis}\nעמודי תווך: ${JSON.stringify(page.pillars)}\n\nמאגר ידע רלוונטי:\n${kbContext}`;
+    const system = `${externalMasterPrompt({ surface: "public_page", compact: true })}
+
+אתה צ׳אטבוט ציבורי של עמוד מתעניין ב-Realtyz. ענה בעברית, ב-RTL, בקצרה ובאמינות. אל תמציא עובדות. אם אין מידע במאגר הידע, אמור זאת והצע לפנות לסוכן.\n\nמתעניין: ${page.candidate_name}\nכותרת: ${page.headline}\nתזה: ${page.thesis}\nעמודי תווך: ${JSON.stringify(page.pillars)}\n\nמאגר ידע רלוונטי:\n${kbContext}`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

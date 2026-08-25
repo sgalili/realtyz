@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { z } from "https://esm.sh/zod@3.25.76";
 import {
@@ -203,7 +204,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: finalSystemPrompt },
+          { role: "system", content: externalMasterPrompt({ surface: "outreach" }) + "\n\n" + finalSystemPrompt },
           { role: "user", content: userPrompt },
         ],
         tools: [

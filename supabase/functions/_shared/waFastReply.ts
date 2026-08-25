@@ -16,6 +16,7 @@
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 import { sanitizeReplyText } from "./replySanitize.ts";
+import { externalMasterPrompt } from "./masterAgentPrompt.ts";
 
 // Fast tier — Gemini Flash. Do NOT swap to a pro/thinking model here:
 // this path is latency-critical.
@@ -48,7 +49,9 @@ export function buildFastReplyPrompt(lead: FastReplyLead, contextBlock?: string)
   const name = (lead.full_name ?? "").trim();
   const deal = lead.deal_type === "rent" ? "שכירות" : lead.deal_type === "sale" ? "מכירה" : "לא ידוע";
 
-  return `אתה העוזר האישי של אודי ויטמן, המתווך והיועץ המוביל בהרצליה (אנגלו סכסון הרצליה) ובאזור השרון.
+  return `${externalMasterPrompt({ surface: "whatsapp", compact: true })}
+
+אתה העוזר האישי של אודי ויטמן, המתווך והיועץ המוביל בהרצליה (אנגלו סכסון הרצליה) ובאזור השרון.
 אתה מדבר בוואטסאפ עם מתעניין אמיתי, בזמן אמת. אתה מקצועי, חד, אנושי וענייני.
 
 זהות:
