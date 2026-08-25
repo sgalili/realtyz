@@ -1098,7 +1098,10 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-total'] });
       toast.success('מתעניין נוסף בהצלחה');
       // Fire-and-forget Green API avatar fetch so the new row gets a real WA photo.
-      supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 5 } }).catch(() => {});
+      supabase.functions
+        .invoke('fetch-wa-avatars', { body: { lead_ids: [(inserted as any).id], force: true } })
+        .then(() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }))
+        .catch(() => {});
       setAddVoterOpen(false);
       setNewVoter({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
 
