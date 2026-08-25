@@ -165,21 +165,51 @@ export function extractDealTypeLoose(text: string | null | undefined): "sale" | 
   return null;
 }
 
+/**
+ * Words that are never part of a person's name. These are descriptors
+ * ("לקוח פוטנציאלי חדש"), field labels, deal words and connectors. Anything
+ * matching is dropped from a name candidate, and a candidate that starts with
+ * one of them is scanned further to the right for the real name.
+ */
 const NAME_STOPWORDS =
-  /^(חדש|חדשה|עם|של|בשם|בעיר|לשכירות|למכירה|טלפון|נייד|תקציב|לקוח|לקוחה|מתעניין|ליד|contact|lead)$/u;
+  /^(חדש|חדשה|חדשים|חם|חמה|קר|קרה|פוטנציאלי|פוטנציאלית|פוטנציאלים|מעניין|מעניינת|רציני|רצינית|עם|של|את|בשם|שם|בעיר|מעיר|באזור|לשכירות|להשכרה|שכירות|למכירה|מכירה|לקנייה|לרכישה|טלפון|נייד|מספר|מייל|אימייל|תקציב|עד|חדרים|לקוח|לקוחה|לקוחות|מתעניין|מתעניינת|ליד|לידים|כרטיס|איש|אישה|קשר|בבקשה|תודה|new|hot|potential|client|clients|contact|contacts|lead|leads|customer|name|phone|budget|rent|rental|sale|buy)$/iu;
+
+const NAME_TOKEN = /^[\p{L}][\p{L}'’\-]{1,25}$/u;
+
+/** Keep only plausible name tokens, dropping descriptors and labels. */
+function cleanNameTokens(candidate: string): string | null {
+  const parts = candidate
+    .split(/\s+/)
+    .map((p) => p.replace(/^["'׳״,.:;-]+|["'׳״,.:;-]+$/g, ""))
+    .filter((p) => p && NAME_TOKEN.test(p) && !NAME_STOPWORDS.test(p));
+  if (!parts.length) return null;
+  return parts.slice(0, 3).join(" ");
+}
 
 export function extractNameLoose(text: string | null | undefined): string | null {
   const s = String(text ?? "");
+  // Widen each capture to up to 5 words so descriptors can be stripped and the
+  // real name is still reached ("לקוח פוטנציאלי חדש משה ישראלי" → "משה ישראלי").
+  const WORDS = `([\\p{L}][\\p{L}'’\\-]{1,25}(?:\\s+[\\p{L}][\\p{L}'’\\-]{1,25}){0,4})`;
   const patterns: RegExp[] = [
-    /(?:בשם|שם\s*מלא|שם|name)\s*[:\-]?\s*([\p{L}][\p{L}'\-]{1,25}(?:\s+[\p{L}][\p{L}'\-]{1,25}){0,2})/iu,
-    /(?:ליד|מתעניין|מתעניינת|איש\s*קשר|לקוח[הת]?|contact|lead)\s*(?:חדש[הת]?)?\s*[:,\-–]?\s*([\p{L}][\p{L}'\-]{1,25}(?:\s+[\p{L}][\p{L}'\-]{1,25})?)/u,
+    // Explicit name marker wins: "בשם משה ישראלי", "שם מלא: משה ישראלי".
+    new RegExp(`(?:בשם|שם\\s*מלא|שמו|שמה|full\\s*name|name)\\s*[:\\-]?\\s*${WORDS}`, "iu"),
+    // Entity noun followed by descriptors and then the name.
+    new RegExp(
+      `(?:ליד|לידים|מתעניינ[תה]?|איש\\s*קשר|לקוח[הת]?|contact|lead|client|customer)\\s*[:,\\-–]?\\s*${WORDS}`,
+      "iu",
+    ),
+    // Verb-first phrasing without any noun: "תוסיף את משה ישראלי 0541234567".
+    new RegExp(
+      `(?:הוסף|תוסיף|הוסיפי|תוסיפי|תכניס|תכניסי|צור|תיצור|תיצרי|רשום|תרשום|שמור|תשמור|add|create|save)\\s*(?:את|for)?\\s*${WORDS}`,
+      "iu",
+    ),
   ];
   for (const re of patterns) {
     const cand = s.match(re)?.[1]?.trim();
     if (!cand) continue;
-    const parts = cand.split(/\s+/).filter((p) => !NAME_STOPWORDS.test(p));
-    if (!parts.length) continue;
-    return parts.join(" ");
+    const cleaned = cleanNameTokens(cand);
+    if (cleaned) return cleaned;
   }
   return null;
 }
