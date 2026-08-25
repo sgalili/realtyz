@@ -265,6 +265,45 @@ async function alternatePages(
 const isPageScopeError = (msg: string) =>
   msg.includes("אין הרשאת פרסום") || msg.includes("פג תוקף");
 
+/**
+ * Guarantee we publish with a PAGE access token (never a User/system token).
+ * Verifies the token identity via /me: if it does not resolve to the target
+ * Page, we ask /me/accounts for the Page-scoped token of that page_id and swap
+ * it in (caching it so later runs start from the right token).
+ */
+async function ensurePageToken(
+  db: SupabaseClient,
+  ownerId: string | null,
+  page: ResolvedPage,
+): Promise<ResolvedPage> {
+  const me = await graph(`/me?fields=id&access_token=${encodeURIComponent(page.token)}`);
+  const meId = String(me.payload?.id ?? "").trim();
+  if (me.ok && meId && meId === String(page.pageId)) return page; // already a Page token
+
+  const seen = new Set<string>();
+  for (const token of [page.token, ...(await candidateTokens(db, ownerId))]) {
+    if (seen.has(token)) continue;
+    seen.add(token);
+    const r = await graph(
+      `/me/accounts?fields=id,name,access_token&limit=50&access_token=${encodeURIComponent(token)}`,
+    );
+    const list: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
+    const match = list.find((p) => String(p?.id ?? "") === String(page.pageId) && p?.access_token);
+    if (match) {
+      const upgraded: ResolvedPage = {
+        pageId: String(page.pageId),
+        pageName: match?.name ?? page.pageName,
+        token: String(match.access_token),
+      };
+      await cachePage(db, ownerId, upgraded);
+      return upgraded;
+    }
+  }
+  return page;
+}
+
+
+
 
 async function graph(path: string, init?: RequestInit) {
   const res = await fetch(`${GRAPH}${path}`, init);
