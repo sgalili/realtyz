@@ -18,6 +18,15 @@ import {
 } from "../_shared/persona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 import { maskMessages } from "../_shared/pii.ts";
+import {
+  detectCreateLeadIntent,
+  collectIntakeText,
+  extractLeadDraft,
+  extractPhoneLoose,
+  extractNameLoose,
+  EMPTY_DRAFT,
+  type LeadDraft,
+} from "../_shared/leadIntake.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
