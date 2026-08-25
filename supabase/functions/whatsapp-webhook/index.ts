@@ -1034,6 +1034,9 @@ async function handleLeadInboxInbound(
         lead_id: lead.id,
         lead_name: lead.full_name,
         mode: "deal_room_reply",
+        // System context: the webhook has no interactive user session, so we
+        // hand ai-agent the verified workspace owner explicitly.
+        workspace_owner_id: aiOwnerId || undefined,
         context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
         messages: aiMessages,
         enable_research: agentCommand ? true : undefined,
