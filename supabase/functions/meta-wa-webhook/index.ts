@@ -127,19 +127,43 @@ Deno.serve(async (req) => {
 
 
           // Resolve workspace owner from the receiving phone number id / WABA id.
+          // Inbound messages MUST end up on a lead with `assigned_to` set —
+          // RLS hides leads (and therefore their messages) whose owner is NULL,
+          // which is exactly how replies "arrive but never show in the UI".
           let ownerId: string | null = null;
           const { data: provRows } = await admin
             .from("wa_providers")
             .select("user_id, config")
             .eq("provider_name", "WBA");
-          const prov = (provRows ?? []).find((row: { config: Cfg }) => {
+          const provs = (provRows ?? []) as Array<{ user_id: string; config: Cfg }>;
+          const prov = provs.find((row) => {
             const cfg = (row.config ?? {}) as Cfg;
             return (
               (phoneNumberId && String(cfg.phone_number_id ?? "") === phoneNumberId) ||
               (wabaId && String(cfg.waba_id ?? "") === wabaId)
             );
-          }) as { user_id: string } | undefined;
+          });
           ownerId = prov?.user_id ?? null;
+
+          // Fallback: the central platform number serves every workspace, so an
+          // unmatched phone_number_id must not orphan the lead. Use the single
+          // configured WBA workspace when there is exactly one.
+          if (!ownerId && provs.length === 1) ownerId = provs[0].user_id ?? null;
+          if (!ownerId) {
+            const { data: adminRoles } = await admin
+              .from("user_roles")
+              .select("user_id")
+              .eq("role", "admin")
+              .limit(1);
+            ownerId = (adminRoles ?? [])[0]?.user_id ?? null;
+          }
+          if (!ownerId) {
+            console.warn(
+              "[meta-wa-webhook] no workspace owner resolved for inbound message",
+              { phoneNumberId, wabaId },
+            );
+          }
+
 
           for (const m of msgs) {
             try {
@@ -186,6 +210,21 @@ Deno.serve(async (req) => {
                 },
               );
               if (leadErr) console.error("[meta-wa-webhook] upsert lead failed", leadErr);
+              if (!leadId) {
+                console.error("[meta-wa-webhook] no lead resolved — message would be dropped", {
+                  from_last4: from.slice(-4),
+                });
+              }
+
+              // Make sure an existing lead without an owner gets adopted by the
+              // receiving workspace, otherwise RLS keeps the thread invisible.
+              if (leadId && ownerId) {
+                await admin
+                  .from("leads")
+                  .update({ assigned_to: ownerId })
+                  .eq("id", leadId)
+                  .is("assigned_to", null);
+              }
 
               // 2. Mirror into the unified omni-channel chat feed.
               const ts = m?.timestamp
@@ -205,6 +244,8 @@ Deno.serve(async (req) => {
                   phone_number_id: phoneNumberId,
                   waba_id: wabaId,
                   wa_from: from,
+                  sender_phone: from,
+                  message_id: String(m?.id ?? ""),
                   profile_name: profileName,
                   message_type: type,
                   raw: m,
