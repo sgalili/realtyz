@@ -6,3 +6,44 @@ verify_jwt = false
 [functions.meta-wa-webhook]
 verify_jwt = false
 
+
+# ── Inbound server-to-server webhooks ────────────────────────────────────────
+# These endpoints are called by external providers (Meta, Green API, Homely,
+# Resend, ElevenLabs, Vapi) which cannot attach a Supabase user JWT. They are
+# secured by verify tokens / webhook secrets / provider-instance bindings and
+# run their business logic with the service role, so JWT verification is off.
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.greenapi-webhook]
+verify_jwt = false
+
+[functions.greenapi-webhook-sync]
+verify_jwt = false
+
+[functions.meta-dm-webhook]
+verify_jwt = false
+
+[functions.meta-comments-webhook]
+verify_jwt = false
+
+[functions.wa-kb-webhook]
+verify_jwt = false
+
+[functions.homely-webhook]
+verify_jwt = false
+
+[functions.resend-inbound-webhook]
+verify_jwt = false
+
+[functions.elevenlabs-call-webhook]
+verify_jwt = false
+
+[functions.trial-inbound-webhook]
+verify_jwt = false
+
+[functions.vapi-tool-handler]
+verify_jwt = false
+
+[functions.test-webhook]
+verify_jwt = false
