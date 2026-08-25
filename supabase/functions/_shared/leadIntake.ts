@@ -172,7 +172,7 @@ export function extractDealTypeLoose(text: string | null | undefined): "sale" | 
  * one of them is scanned further to the right for the real name.
  */
 const NAME_STOPWORDS =
-  /^(חדש|חדשה|חדשים|חם|חמה|קר|קרה|פוטנציאלי|פוטנציאלית|פוטנציאלים|מעניין|מעניינת|רציני|רצינית|עם|של|את|בשם|שם|בעיר|מעיר|באזור|לשכירות|להשכרה|שכירות|למכירה|מכירה|לקנייה|לרכישה|טלפון|נייד|מספר|מייל|אימייל|תקציב|עד|חדרים|לקוח|לקוחה|לקוחות|מתעניין|מתעניינת|ליד|לידים|כרטיס|איש|אישה|קשר|בבקשה|תודה|new|hot|potential|client|clients|contact|contacts|lead|leads|customer|name|phone|budget|rent|rental|sale|buy)$/iu;
+  /^(חדש|חדשה|חדשים|חם|חמה|קר|קרה|פוטנציאלי|פוטנציאלית|פוטנציאלים|מעניין|מעניינת|רציני|רצינית|עם|של|את|לו|לה|להם|אותו|אותה|הזה|הזאת|הזו|בבקשה|תחליף|החלף|שנה|תשנה|תקן|תתקן|בשם|שם|בעיר|מעיר|באזור|לשכירות|להשכרה|שכירות|למכירה|מכירה|לקנייה|לרכישה|טלפון|נייד|מספר|מייל|אימייל|תקציב|עד|חדרים|לקוח|לקוחה|לקוחות|מתעניין|מתעניינת|ליד|לידים|כרטיס|איש|אישה|קשר|בבקשה|תודה|new|hot|potential|client|clients|contact|contacts|lead|leads|customer|name|phone|budget|rent|rental|sale|buy)$/iu;
 
 /** Words that end a name: whatever follows describes the request, not the person. */
 const NAME_TERMINATORS =
@@ -424,4 +424,66 @@ export async function extractLeadDraft(text: string): Promise<LeadDraft> {
     rooms: base.rooms ?? (llm.rooms ?? null),
     requirements: (llm.requirements ?? null) as string | null,
   };
+}
+
+/**
+ * Build the patch for an EXISTING contact from a fresh draft.
+ *
+ * Intake must never dead-end with "already exists": when the owner supplies a
+ * correction or extra details for a known phone number, those fields are
+ * applied to the existing row. Only non-empty new values are written, and
+ * `preferences` is merged so earlier requirements are not wiped.
+ */
+export function buildLeadUpdatePatch(
+  draft: LeadDraft,
+  existing: {
+    full_name?: string | null;
+    city?: string | null;
+    deal_type?: string | null;
+    preferences?: Record<string, unknown> | null;
+  },
+  nameOverride?: string | null,
+): { patch: Record<string, unknown>; changed: string[] } {
+  const patch: Record<string, unknown> = {};
+  const changed: string[] = [];
+
+  const newName = (nameOverride ?? draft.full_name ?? "").trim();
+  const isPlaceholder = (v: string | null | undefined) =>
+    !v || !v.trim() || /^(לקוח|לקוחה|ליד|מתעניין|מתעניינת|איש קשר|ללא שם|unknown|new lead)/i.test(v.trim());
+  if (newName && newName !== (existing.full_name ?? "").trim()) {
+    // A real name always replaces a placeholder; otherwise only an explicit
+    // correction (nameOverride) may overwrite an existing real name.
+    if (isPlaceholder(existing.full_name) || nameOverride) {
+      patch.full_name = newName;
+      changed.push(`שם → ${newName}`);
+    }
+  }
+
+  if (draft.city && draft.city !== existing.city) {
+    patch.city = draft.city;
+    changed.push(`עיר → ${draft.city}`);
+  }
+  if (draft.deal_type && draft.deal_type !== existing.deal_type) {
+    patch.deal_type = draft.deal_type;
+    changed.push(draft.deal_type === "rent" ? "סוג עסקה → שכירות" : "סוג עסקה → מכירה");
+  }
+
+  const prefs: Record<string, unknown> = { ...(existing.preferences ?? {}) };
+  let prefsTouched = false;
+  const setPref = (key: string, value: unknown, label: string) => {
+    if (value === null || value === undefined || value === "") return;
+    if (prefs[key] === value) return;
+    prefs[key] = value;
+    prefsTouched = true;
+    changed.push(label);
+  };
+  setPref("budget_max", draft.budget_max, draft.budget_max ? `תקציב → ${Number(draft.budget_max).toLocaleString("he-IL")} ₪` : "");
+  setPref("rooms", draft.rooms, `חדרים → ${draft.rooms}`);
+  setPref("desired_city", draft.city, `עיר מבוקשת → ${draft.city}`);
+  setPref("neighborhood", draft.neighborhood, `שכונה → ${draft.neighborhood}`);
+  setPref("requirements", draft.requirements, "עודכנו הדרישות");
+  if (draft.deal_type) setPref("listing_type", draft.deal_type, "");
+  if (prefsTouched) patch.preferences = prefs;
+
+  return { patch, changed: changed.filter(Boolean) };
 }
