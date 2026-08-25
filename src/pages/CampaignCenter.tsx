@@ -273,7 +273,10 @@ const ChannelGrid = ({
             { id: 'youtube',   label: 'YouTube',   brand: 'youtube' },
           ].map((p) => {
             const isConnected = connected.has(p.id);
-            const count = selectedIds.has(p.id) ? 1 : 0;
+            const isSelected = selectedIds.has(p.id);
+            // A selected channel always renders in full brand color, even while
+            // the connection probe is still resolving server-side.
+            const lit = isConnected || isSelected;
             return (
               <button
                 key={p.id}
@@ -281,20 +284,22 @@ const ChannelGrid = ({
                 onClick={() => setOpen((v) => !v)}
                 title={p.label}
                 aria-label={p.label}
+                aria-pressed={isSelected}
                 className={cn(
                   'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
-                  !isConnected && 'opacity-40 grayscale',
+                  lit ? 'opacity-100' : 'opacity-70 hover:opacity-100',
                 )}
               >
                 <BrandIcon
                   name={p.brand}
                   aria-label={p.label}
-                  className={cn('h-5 w-5', isConnected ? (BRAND_COLOR[p.id] ?? 'text-slate-600') : 'text-slate-500')}
+                  className={cn('h-5 w-5', lit ? (BRAND_COLOR[p.id] ?? 'text-slate-600') : 'text-slate-500')}
                 />
                 
               </button>
             );
           })}
+
         </div>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-transparent hover:text-foreground focus-visible:text-foreground active:text-foreground">
