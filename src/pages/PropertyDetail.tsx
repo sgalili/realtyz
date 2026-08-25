@@ -73,6 +73,17 @@ function formatMetaValue(key: string, value: unknown): string {
   return String(value);
 }
 
+function hasCorePropertyText(row: unknown): boolean {
+  if (!isRecord(row)) return false;
+  const hasText = Boolean(
+    (typeof row.description === 'string' && row.description.trim()) ||
+    (typeof row.long_description === 'string' && row.long_description.trim()) ||
+    (typeof row.short_description === 'string' && row.short_description.trim()),
+  );
+  const hasDetails = Boolean(row.asking_price || row.rooms || row.sqm || row.features || row.source_metadata);
+  return hasText && hasDetails;
+}
+
 function boolFromMeta(value: unknown): boolean | null {
   if (value == null || value === '') return null;
   if (typeof value === 'boolean') return value;
@@ -435,9 +446,10 @@ export default function PropertyDetail() {
       }
       if (cancelled) return;
 
-      metaTargetRef.current = 0;
-      setHydrateProgress(0);
-      setHydrating(true);
+      const shouldShowHydrationProgress = !hasCorePropertyText(data.row);
+      metaTargetRef.current = shouldShowHydrationProgress ? 0 : 100;
+      setHydrateProgress(shouldShowHydrationProgress ? 0 : 100);
+      if (shouldShowHydrationProgress) setHydrating(true);
       try {
         // Metadata only — images stay lazy until the user touches the gallery.
         // Progress comes from real hydration milestones, capped at 95 until the
