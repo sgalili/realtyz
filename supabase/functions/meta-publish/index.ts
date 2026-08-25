@@ -562,10 +562,14 @@ Deno.serve(async (req) => {
     const failures: Array<{ platform: string; message: string }> = [];
     const warnings: string[] = [];
 
+    // Never publish with a User/system token: upgrade to the Page-scoped token.
+    page = await ensurePageToken(db, ownerId, page);
+
     for (const ch of channels) {
       if (ch === "facebook") {
         let activePage = page;
         let res = await publishFacebook(activePage.pageId, activePage.token, text, media, link);
+
 
         // The stored page_id may not be a Page this token can publish to.
         // Instead of blocking with "אין הרשאת פרסום לדף הזה", resolve the real
