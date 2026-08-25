@@ -178,14 +178,18 @@ Deno.serve(async (req) => {
       }
     }
 
+    const scopeGap = missingGroupScopes(conn?.scopes);
     const message = groups.length === 0
-      ? (lastError
+      ? (scopeGap.length
+        ? `פייסבוק לא אישר את הרשאות הקבוצות (${scopeGap.join(", ")}). יש להתחבר מחדש ולאשר את בקשת ההרשאות, ולוודא שהאפליקציה מאושרת ב-App Review.`
+        : lastError
         ? humanizeGraphError(
           lastError,
           "פייסבוק לא החזיר קבוצות. יש לאשר את הרשאות הקבוצות (user_managed_groups) ולהתקין את האפליקציה בקבוצה.",
         )
         : "פייסבוק החזיר רשימת קבוצות ריקה עבור ההרשאות שאושרו.")
       : null;
+
 
     try {
       await admin
