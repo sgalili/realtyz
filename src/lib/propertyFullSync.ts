@@ -72,34 +72,64 @@ export async function isListingMetadataImported(listingId: string): Promise<bool
  */
 type ProgressFn = (percent: number) => void;
 
+/** Bounded invoke: never let one slow scrape hold the loader hostage. */
+async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T | null> {
+  return await Promise.race([
+    p.catch((e) => { console.warn(`[propertyFullSync] ${label} failed`, e); return null as T | null; }),
+    new Promise<null>((r) => setTimeout(() => r(null), ms)),
+  ]);
+}
+
 async function runMetadataSync(
   listingId: string,
   sourceUrl?: string | null,
   onProgress?: ProgressFn,
 ): Promise<void> {
-  const step = (p: number) => { try { onProgress?.(p); } catch { /* ignore */ } };
-  step(5);
+  let reported = 0;
+  const step = (p: number) => {
+    if (p <= reported) return;
+    reported = p;
+    try { onProgress?.(p); } catch { /* ignore */ }
+  };
+  step(8);
   if (await isListingMetadataImported(listingId)) { step(100); return; }
-  step(20);
+  step(18);
 
   if (sourceUrl && /yad2\.co\.il/i.test(sourceUrl)) {
-    try {
-      await supabase.functions.invoke('yad2-unlocker', { body: { url: sourceUrl, limit: 1 } });
-    } catch (e) {
-      console.warn('[propertyFullSync] metadata scrape failed', e);
-    }
+    // Fine-grained time-based progress while the (single) source parse runs, so
+    // the ring keeps moving instead of freezing at the milestone value.
+    const started = Date.now();
+    const creep = setInterval(() => {
+      const elapsed = Date.now() - started;
+      step(18 + Math.min(50, Math.round((elapsed / 12000) * 50)));
+    }, 150);
+    await withTimeout(
+      Promise.resolve(supabase.functions.invoke('yad2-unlocker', { body: { url: sourceUrl, limit: 1 } })),
+      14000,
+      'metadata scrape',
+    );
+    clearInterval(creep);
   }
-  step(55);
+  step(70);
 
   let settled = 0;
-  const tick = () => { settled += 1; step(55 + Math.round((settled / 2) * 40)); };
+  const tick = () => { settled += 1; step(70 + Math.round((settled / 2) * 25)); };
   await Promise.allSettled([
-    supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } }).finally(tick),
-    supabase.functions.invoke('owner-crm-sync', { body: { listing_id: listingId } }).finally(tick),
+    withTimeout(
+      Promise.resolve(supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } })),
+      12000,
+      'metadata backfill',
+    ).finally(tick),
+    withTimeout(
+      Promise.resolve(supabase.functions.invoke('owner-crm-sync', { body: { listing_id: listingId } })),
+      12000,
+      'owner crm sync',
+    ).finally(tick),
   ]);
   metaCachedIds.add(listingId);
   step(100);
 }
+
 
 const metaInFlight = new Map<string, Promise<void>>();
 

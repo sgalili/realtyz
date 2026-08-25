@@ -356,24 +356,26 @@ export default function PropertyDetail() {
       setHydrateProgress((p) => {
         const target = metaTargetRef.current;
         if (target >= 100) return 100;
-        // Soft ceiling: always some headroom ahead of the confirmed milestone.
-        const ceiling = Math.min(96, Math.max(target, target + 18));
+        // Generous soft ceiling so the ring never parks on a milestone value
+        // (the old "stuck at 38%" behaviour = milestone 20 + 18 headroom).
+        const ceiling = Math.min(97, target + 30);
         if (p >= ceiling) return p;
-        const stepSize = Math.max(0.6, (ceiling - p) * 0.06);
+        const stepSize = Math.max(0.8, (ceiling - p) * 0.07);
         return Math.min(ceiling, p + stepSize);
       });
-    }, 90);
-    // Safety valve: never keep the loader up for more than 20s.
+    }, 80);
+    // Safety valve: the text view is already usable, so close the loader fast.
     const bail = setTimeout(() => {
       metaTargetRef.current = 100;
       setHydrateProgress(100);
       setHydrating(false);
-    }, 20000);
+    }, 15000);
     return () => {
       clearInterval(timer);
       clearTimeout(bail);
     };
   }, [hydrating]);
+
 
 
 
@@ -436,8 +438,19 @@ export default function PropertyDetail() {
     return () => { cancelled = true; };
   }, [id, data, qc]);
 
-
-
+  // ---- Background gallery hydration ---------------------------------------
+  // Text/metadata render first; once they are on screen the gallery is pulled
+  // in the background (one image at a time, appended as each arrives). Nothing
+  // here blocks the view — the arrows stay usable the whole time.
+  const bgGalleryRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!id || !data || hydrating) return;
+    if (bgGalleryRef.current === id) return;
+    bgGalleryRef.current = id;
+    const t = setTimeout(() => { void ensureGalleryLoaded().catch(() => {}); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, data, hydrating]);
 
 
   // Initialize edit form when entering edit mode. Prefer a locally-persisted
@@ -752,7 +765,7 @@ export default function PropertyDetail() {
    * every later interaction just moves between already-loaded photos.
    */
   const ensureGalleryLoaded = async (): Promise<boolean> => {
-    if (galleryPulledRef.current || pullingImages || hydrating) return false;
+    if (galleryPulledRef.current || pullingImages) return false;
     if (!sourceUrl || photos.length >= Math.max(2, totalSourcePhotos)) return false;
     galleryPulledRef.current = true;
     await pullAllImages();
@@ -760,7 +773,7 @@ export default function PropertyDetail() {
   };
 
   const stepPhoto = async (delta: number) => {
-    if (pullingImages || hydrating) return;
+    if (pullingImages) return;
     if (await ensureGalleryLoaded()) return;
     if (photos.length <= 1) return;
     setActivePhoto((i) => (i + delta + photos.length) % photos.length);
@@ -892,13 +905,16 @@ export default function PropertyDetail() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* First-view metadata hydration: percentage-only ring, floating dead
-          center of the viewport. No scrim, no blur, no scroll lock. */}
+      {/* Metadata refresh runs in the background: the text view is already
+          usable, so the indicator is a small floating pill (bottom corner),
+          never a centered overlay. */}
       {hydrating && (
-        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
-          <ProgressRing value={hydrateProgress} size={96} strokeWidth={8} />
+        <div className="pointer-events-none fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full bg-card/95 px-3 py-2 shadow-lg ring-1 ring-border">
+          <ProgressRing value={hydrateProgress} size={34} strokeWidth={4} />
+          <span className="text-xs text-muted-foreground">מרענן נתוני נכס…</span>
         </div>
       )}
+
 
 
       {/* Headline · neighborhood · price · actions row */}
@@ -1111,7 +1127,7 @@ export default function PropertyDetail() {
                     <button
                       type="button"
                       onClick={() => stepPhoto(-1)}
-                      disabled={hydrating || pullingImages}
+                      disabled={pullingImages}
                       aria-label="התמונה הקודמת"
                       title="התמונה הקודמת"
                       className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:opacity-40 disabled:pointer-events-none"
@@ -1121,7 +1137,7 @@ export default function PropertyDetail() {
                     <button
                       type="button"
                       onClick={() => stepPhoto(1)}
-                      disabled={hydrating || pullingImages}
+                      disabled={pullingImages}
                       aria-label="התמונה הבאה"
                       title="התמונה הבאה"
                       className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:opacity-40 disabled:pointer-events-none"
