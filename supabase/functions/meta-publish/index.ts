@@ -472,8 +472,65 @@ async function publishInstagram(
   if (!pub.ok || !pub.payload?.id) return { error: humanize(pub.payload, "הפרסום לאינסטגרם נכשל") };
   return { id: String(pub.payload.id) };
 }
+/**
+ * Stable fingerprint of a publish attempt: same text + same media + same
+ * channel + same page = the same post. Used for strict idempotency so a
+ * double-click, a retry, or a re-invoke can never publish twice or spawn a
+ * second history row.
+ */
+async function contentHash(parts: (string | null | undefined)[]): Promise<string> {
+  const raw = parts.map((p) => String(p ?? "").trim()).join("\u0001");
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Recent successful publish of the exact same content on the same channel. */
+async function findRecentSent(
+  db: SupabaseClient,
+  ownerId: string,
+  channel: string,
+  hash: string,
+  windowMinutes = 30,
+): Promise<{ id: string; provider_message_id: string | null } | null> {
+  const since = new Date(Date.now() - windowMinutes * 60_000).toISOString();
+  const { data } = await db
+    .from("campaign_logs")
+    .select("id, provider_message_id, provider_response")
+    .eq("user_id", ownerId)
+    .eq("channel", channel)
+    .eq("status", "sent")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  const row = (data ?? []).find((r: any) => String(r?.provider_response?.content_hash ?? "") === hash);
+  return row ? { id: String(row.id), provider_message_id: row.provider_message_id ?? null } : null;
+}
+
+/** Latest failed/scheduled row for the same content, so retries reuse it. */
+async function findReusableRow(
+  db: SupabaseClient,
+  ownerId: string,
+  channel: string,
+  hash: string,
+  statuses: string[],
+  windowHours = 48,
+): Promise<string | null> {
+  const since = new Date(Date.now() - windowHours * 3_600_000).toISOString();
+  const { data } = await db
+    .from("campaign_logs")
+    .select("id, provider_response")
+    .eq("user_id", ownerId)
+    .eq("channel", channel)
+    .in("status", statuses)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  const row = (data ?? []).find((r: any) => String(r?.provider_response?.content_hash ?? "") === hash);
+  return row ? String(row.id) : null;
+}
 
 Deno.serve(async (req) => {
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const db = admin();
@@ -531,10 +588,18 @@ Deno.serve(async (req) => {
       return json({ success: false, error: "empty_post", message: "אין תוכן לפרסום" }, 200);
     }
 
+    // Idempotency fingerprint per channel (text + media + first comment).
+    const hashes: Record<string, string> = {};
+    for (const ch of channels) {
+      hashes[ch] = await contentHash([ch, text, media.join("|"), firstComment, scheduledIso]);
+    }
+
     // Scheduled posts are persisted and dispatched later by the queue drain.
     if (scheduledIso) {
-      await db.from("campaign_logs").insert(
-        channels.map((ch) => ({
+      for (const ch of channels) {
+        const existing = await findReusableRow(db, ownerId, ch, hashes[ch], ["scheduled"], 24 * 30);
+        if (existing) continue; // already queued for the same slot — never duplicate
+        await db.from("campaign_logs").insert({
           user_id: ownerId,
           campaign_name: campaignName,
           channel: ch,
@@ -543,10 +608,30 @@ Deno.serve(async (req) => {
           sent_at: scheduledIso,
           media_urls: media,
           first_comment: firstComment || null,
-          provider_response: { provider: "meta_graph", scheduled_at: scheduledIso },
-        })),
-      );
+          provider_response: { provider: "meta_graph", scheduled_at: scheduledIso, content_hash: hashes[ch] },
+        });
+      }
       return json({ success: true, verified: true, scheduled: true, post_ids: [] });
+    }
+
+    // Strict duplicate prevention: an identical post already live on the same
+    // channel within the last 30 minutes is reported back instead of published
+    // again (and no second history row is written).
+    const alreadySent: Array<{ platform: string; id: string }> = [];
+    const pendingChannels: string[] = [];
+    for (const ch of channels) {
+      const sent = await findRecentSent(db, ownerId, ch, hashes[ch]);
+      if (sent) alreadySent.push({ platform: ch, id: sent.provider_message_id ?? "" });
+      else pendingChannels.push(ch);
+    }
+    if (pendingChannels.length === 0) {
+      return json({
+        success: true,
+        verified: true,
+        duplicate: true,
+        post_ids: alreadySent,
+        message: "הפוסט הזה כבר פורסם בדקות האחרונות — לא נשלח שוב.",
+      });
     }
 
     if (!page) {
@@ -572,7 +657,8 @@ Deno.serve(async (req) => {
     // Never publish with a User/system token: upgrade to the Page-scoped token.
     page = await ensurePageToken(db, ownerId, page);
 
-    for (const ch of channels) {
+    for (const ch of pendingChannels) {
+
       if (ch === "facebook") {
         let activePage = page;
         let res = await publishFacebook(activePage.pageId, activePage.token, text, media, link);
@@ -647,10 +733,13 @@ Deno.serve(async (req) => {
       groupResults.push({ group_id: gid, ...r });
     }
 
-    const rows = channels.map((ch) => {
+    // One history row per channel attempt. A retry of the same content REUSES
+    // the previous failed row (updated in place) so the queue never fills with
+    // ghost duplicates of the same post.
+    for (const ch of pendingChannels) {
       const match = postIds.find((p) => p.platform === ch);
       const fail = failures.find((f) => f.platform === ch);
-      return {
+      const attemptRow = {
         user_id: ownerId,
         campaign_name: campaignName,
         channel: ch,
@@ -667,12 +756,18 @@ Deno.serve(async (req) => {
           media_urls: media,
           first_comment: firstComment || null,
           postIds,
+          content_hash: hashes[ch],
           error: fail?.message ?? null,
+          last_attempt_at: new Date().toISOString(),
         },
       };
-    });
-    const { error: insErr } = await db.from("campaign_logs").insert(rows);
-    if (insErr) console.warn("[meta-publish] campaign_logs insert", insErr.message);
+      const reuseId = await findReusableRow(db, ownerId, ch, hashes[ch], ["failed"]);
+      const { error: writeErr } = reuseId
+        ? await db.from("campaign_logs").update(attemptRow).eq("id", reuseId)
+        : await db.from("campaign_logs").insert(attemptRow);
+      if (writeErr) console.warn("[meta-publish] campaign_logs write", writeErr.message);
+    }
+
 
     if (postIds.length === 0) {
       return json(
@@ -689,14 +784,15 @@ Deno.serve(async (req) => {
     return json({
       success: failures.length === 0,
       verified: true,
-      published_channels: channels,
-      post_ids: postIds,
+      published_channels: pendingChannels,
+      duplicate_channels: alreadySent.map((p) => p.platform),
+      post_ids: [...postIds, ...alreadySent],
       failures,
       warnings,
       group_results: groupResults,
       message: failures.length ? failures[0].message : (warnings[0] ?? null),
-
     });
+
   } catch (e) {
     console.error("[meta-publish] fatal", e);
     return json(

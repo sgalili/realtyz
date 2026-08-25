@@ -2380,11 +2380,16 @@ const ConfirmDispatchDialog = ({
           throw new Error(payload?.message || payload?.error || 'פייסבוק לא אישר שהפוסט פורסם בפועל');
         }
         const groupFailures: any[] = results.flatMap((r) => Array.isArray((r.data as any)?.group_failures) ? (r.data as any).group_failures : []);
-
+        // Idempotency: the backend detected the exact same post already live and
+        // skipped a second publish (and a second history row).
+        const duplicateOnly = !scheduledAt && results.length > 0 &&
+          results.every((r) => (r.data as any)?.duplicate === true);
 
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
           toast.success(`הפוסט תוזמן ל-${when} ב-${targets.length} יעד(ים)`);
+        } else if (duplicateOnly) {
+          toast.info((results[0]?.data as any)?.message || 'הפוסט הזה כבר פורסם — לא נשלח שוב.');
         } else if (groupIds.length > 0 && groupFailures.length === 0) {
           toast.success('הפוסט שותף בהצלחה בכל הקבוצות שנבחרו!');
         } else if (groupIds.length > 0 && groupFailures.length > 0) {
@@ -2392,6 +2397,7 @@ const ConfirmDispatchDialog = ({
         } else {
           toast.success(`הקמפיין פורסם בהצלחה ב-${targets.length} יעד(ים)!`);
         }
+
       } else {
         // Direct-messaging channels (SMS / email / IVR / AI Voice) broadcast to leads.
         const { data: leads, error } = await supabase
@@ -2575,7 +2581,9 @@ type CampaignRow = {
   view_count?: number;
   metrics_updated_at?: string | null;
   status?: string | null;
+  failure_reason?: string | null;
   sent_at?: string | null;
+
   media_urls?: string[];
   external_url?: string | null;
   is_external?: boolean;
@@ -3136,7 +3144,7 @@ const PublishedFeed = () => {
     // instantly whatever was previously stored, never waiting on the provider.
     const { data } = await supabase
       .from('campaign_logs')
-      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, sent_at')
+      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at')
       .in('user_id', scopedUserIds)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
@@ -3890,6 +3898,13 @@ const PublishedFeed = () => {
 
         const isOpen = expanded[r.id] ?? false;
         const scheduled = isScheduledRow(r);
+        // A publish that Meta rejected: shown explicitly as "נכשל" with the exact
+        // provider reason, never as a normal published post.
+        const failed = String(r.status || '').toLowerCase() === 'failed';
+        const failureReason = failed
+          ? (r.failure_reason || (r.provider_response as any)?.error || 'הפרסום לפייסבוק נכשל')
+          : null;
+
         const seriesSlots = (r as any)._seriesSlots as Array<{ id: string; sent_at: string | null }> | undefined;
         const isSeries = Array.isArray(seriesSlots) && seriesSlots.length > 1;
         // Emergency override: never treat rows as paused in the UI so the
@@ -3985,7 +4000,16 @@ const PublishedFeed = () => {
                       {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
                     </span>
                   );
-                })() : isPaused ? null : scheduled ? (() => {
+                })() : isPaused ? null : failed ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive ring-1 ring-destructive/30 max-w-[60%]"
+                    title={failureReason ?? undefined}
+                  >
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                    <span className="truncate">נכשל · {failureReason}</span>
+                  </span>
+                ) : scheduled ? (() => {
+
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
                   const diff = Number.isFinite(target) ? target - Date.now() : NaN;
                   let label = 'מתוזמן';
