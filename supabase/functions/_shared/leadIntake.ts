@@ -139,7 +139,7 @@ export function extractNameLoose(text: string | null | undefined): string | null
   const s = String(text ?? "");
   const patterns: RegExp[] = [
     /(?:בשם|שם\s*מלא|שם|name)\s*[:\-]?\s*([\p{L}][\p{L}'\-]{1,25}(?:\s+[\p{L}][\p{L}'\-]{1,25}){0,2})/iu,
-    /(?:ליד|מתעניין|מתעניינת|איש\s*קשר|לקוח[הת]?|contact|lead)\s+(?:חדש[הת]?\s+)?([\p{L}][\p{L}'\-]{1,25}(?:\s+[\p{L}][\p{L}'\-]{1,25})?)/u,
+    /(?:ליד|מתעניין|מתעניינת|איש\s*קשר|לקוח[הת]?|contact|lead)\s*(?:חדש[הת]?)?\s*[:,\-–]?\s*([\p{L}][\p{L}'\-]{1,25}(?:\s+[\p{L}][\p{L}'\-]{1,25})?)/u,
   ];
   for (const re of patterns) {
     const cand = s.match(re)?.[1]?.trim();
