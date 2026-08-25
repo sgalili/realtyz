@@ -939,7 +939,7 @@ async function handleLeadInboxInbound(
       .select("direction, sender_type, content, channel, platform, created_at")
       .eq("lead_id", lead.id)
       .order("created_at", { ascending: false })
-      .limit(120);
+      .limit(agentCommand ? 60 : 24);
     const built = (omni ?? [])
       .reverse()
       .map((m: any) => {
