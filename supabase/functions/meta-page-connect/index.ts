@@ -10,7 +10,7 @@
 // public.messenger_page_bindings and used by meta-publish for Graph publishing.
 import { corsHeaders } from "../_shared/cors.ts";
 import { adminClient, fbAppCredentials, GRAPH, humanizeGraphError, resolveCaller } from "../_shared/fbPersonal.ts";
-import { pickPrimaryPage } from "../_shared/metaPages.ts";
+import { isBlockedPage, pickPrimaryPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -40,6 +40,102 @@ async function graph(path: string) {
   return { ok: res.ok, payload };
 }
 
+/**
+ * Every Meta token the workspace holds, best-first. A blocked/"Employee" page
+ * token cannot list /me/accounts, so the personal user token is what actually
+ * heals a bad binding.
+ */
+async function candidateTokens(admin: any, ownerId: string): Promise<string[]> {
+  const out: string[] = [];
+  const push = (t: unknown) => {
+    const v = String(t ?? "").trim();
+    if (v.length > 30 && !out.includes(v)) out.push(v);
+  };
+
+  const { data: personal } = await admin
+    .from("fb_personal_connections")
+    .select("access_token")
+    .eq("workspace_owner_id", ownerId)
+    .maybeSingle();
+  push(personal?.access_token);
+
+  const { data: conns } = await admin
+    .from("social_connections")
+    .select("credentials")
+    .in("platform", ["facebook", "facebook_page", "instagram", "meta"]);
+  for (const c of conns ?? []) {
+    const cr: any = (c as any)?.credentials ?? {};
+    push(cr.user_access_token);
+    push(cr.access_token);
+    push(cr.page_access_token);
+    push(cr.token);
+  }
+
+  const { data: bindings } = await admin
+    .from("messenger_page_bindings")
+    .select("page_access_token")
+    .eq("owner_id", ownerId);
+  for (const b of bindings ?? []) push((b as any)?.page_access_token);
+
+  push(Deno.env.get("META_USER_ACCESS_TOKEN"));
+  push(Deno.env.get("META_PAGE_ACCESS_TOKEN"));
+  push(Deno.env.get("FACEBOOK_ACCESS_TOKEN"));
+  return out;
+}
+
+/**
+ * Drop a cached binding that points at a blocked asset (e.g. "Employee") and
+ * re-resolve the workspace's primary business Page with a real Page token.
+ */
+async function repairBinding(admin: any, ownerId: string, wantedPageId?: string) {
+  const wanted = (wantedPageId ?? "").trim() || PRIMARY_PAGE_ID;
+  const tokens = await candidateTokens(admin, ownerId);
+  const tried: string[] = [];
+
+  for (const token of tokens) {
+    const r = await graph(
+      `/me/accounts?fields=id,name,access_token,tasks,picture.width(160).height(160)&limit=100&access_token=${
+        encodeURIComponent(token)
+      }`,
+    );
+    const pages: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
+    if (!r.ok || pages.length === 0) {
+      tried.push(String(r.payload?.error?.message ?? "no_pages"));
+      continue;
+    }
+
+    const chosen = pickPrimaryPage(pages, wanted);
+    if (!chosen?.access_token || isBlockedPage(chosen)) {
+      tried.push("only_blocked_assets");
+      continue;
+    }
+
+    await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+    await admin.from("messenger_page_bindings").delete().eq("page_id", String(chosen.id));
+    const { error } = await admin.from("messenger_page_bindings").insert({
+      owner_id: ownerId,
+      page_id: String(chosen.id),
+      page_name: chosen.name ?? null,
+      page_access_token: String(chosen.access_token),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) return { ok: false, error: error.message, tried };
+
+    return {
+      ok: true,
+      page: {
+        id: String(chosen.id),
+        name: chosen.name ?? null,
+        picture: (chosen as any)?.picture?.data?.url ?? null,
+        connected_at: new Date().toISOString(),
+      },
+      available: pages.map((p) => ({ id: String(p.id), name: p.name ?? null })),
+    };
+  }
+
+  return { ok: false, error: "לא הצלחנו לאתר את עמוד העסק דרך הטוקנים הקיימים. יש להתחבר מחדש לפייסבוק.", tried };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -53,16 +149,43 @@ Deno.serve(async (req) => {
     const action = String(body?.action ?? "status");
     const redirectUri = String(body?.redirect_uri ?? "").trim();
 
+    if (action === "repair") {
+      const res = await repairBinding(admin, ownerId, String(body?.page_id ?? ""));
+      return json(res, res.ok ? 200 : 400);
+    }
+
     if (action === "status") {
-      const { data } = await admin
+      let { data } = await admin
         .from("messenger_page_bindings")
         .select("page_id, page_name, page_access_token, updated_at")
         .eq("owner_id", ownerId)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      const row: any = data;
+      let row: any = data;
+
+      // Self-heal a cached binding that points at a blocked asset ("Employee"):
+      // never report it as the connected publishing identity.
+      if (row?.page_id && isBlockedPage({ id: row.page_id, name: row.page_name })) {
+        console.log("[meta-page-connect] blocked binding cached, repairing", { page_id: row.page_id });
+        const fixed = await repairBinding(admin, ownerId);
+        if (fixed.ok) {
+          const { data: fresh } = await admin
+            .from("messenger_page_bindings")
+            .select("page_id, page_name, page_access_token, updated_at")
+            .eq("owner_id", ownerId)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          row = fresh;
+        } else {
+          await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+          return json({ connected: false, page: null, needs_reconnect: true, error: (fixed as any).error });
+        }
+      }
+
       if (!row?.page_id) return json({ connected: false, page: null });
+
 
       let picture: string | null = null;
       let instagram: { id: string; username: string | null } | null = null;

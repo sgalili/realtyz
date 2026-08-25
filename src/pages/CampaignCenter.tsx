@@ -2159,6 +2159,12 @@ const ConfirmDispatchDialog = ({
             .maybeSingle();
           workspaceFbId = String((binding as any)?.page_id || '').trim();
           workspaceFbName = String((binding as any)?.page_name || '').trim();
+          // A cached "Employee" asset is never a publishing identity — drop it
+          // so the server resolver overwrites it with the business Page.
+          if (isBlockedFbPage(workspaceFbId, workspaceFbName)) {
+            workspaceFbId = '';
+            workspaceFbName = '';
+          }
           // RLS can hide the owner's binding from workspace members — ask the
           // server for the authoritative Page (it also auto-discovers via
           // /me/accounts when no binding row exists yet).
@@ -2167,6 +2173,7 @@ const ConfirmDispatchDialog = ({
             workspaceFbId = resolved.pageId || '';
             workspaceFbName = workspaceFbName || resolved.pageName || '';
           }
+
         }
 
         // `social_connections` column names vary between workspaces, so read
@@ -2761,20 +2768,38 @@ const writeFbBindingFlag = (bound: boolean) => {
  * workspace owner server-side, so we use it as the fallback source of truth.
  */
 type ResolvedMetaPage = { pageId: string | null; pageName: string | null; instagram: boolean };
+
+/** Assets that must never be shown or used as the publishing identity. */
+const BLOCKED_FB_PAGE_IDS = new Set(['122096304951460522']);
+const BLOCKED_FB_NAME = /employee|עובד/i;
+const isBlockedFbPage = (id?: string | null, name?: string | null) =>
+  (!!id && BLOCKED_FB_PAGE_IDS.has(String(id))) || (!!name && BLOCKED_FB_NAME.test(name));
+
 const resolveMetaPageViaFunction = async (): Promise<ResolvedMetaPage> => {
-  try {
-    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'status' } });
+  const read = async (action: 'status' | 'repair'): Promise<ResolvedMetaPage> => {
+    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action } });
     const res = data as any;
-    if (res?.connected && res?.page?.id) {
-      return {
-        pageId: String(res.page.id),
-        pageName: res.page.name ?? null,
-        instagram: !!res?.instagram?.id,
-      };
+    const id = res?.page?.id ? String(res.page.id) : null;
+    if ((res?.connected || res?.ok) && id) {
+      return { pageId: id, pageName: res.page.name ?? null, instagram: !!res?.instagram?.id };
     }
+    return { pageId: null, pageName: null, instagram: false };
+  };
+
+  try {
+    const first = await read('status');
+    // A stale binding on the "Employee" asset gets overwritten with the real
+    // business Page instead of being surfaced as the connected identity.
+    if (isBlockedFbPage(first.pageId, first.pageName)) {
+      const fixed = await read('repair');
+      if (fixed.pageId && !isBlockedFbPage(fixed.pageId, fixed.pageName)) return fixed;
+      return { pageId: null, pageName: null, instagram: false };
+    }
+    return first;
   } catch { /* ignore — caller falls back to the remembered flag */ }
   return { pageId: null, pageName: null, instagram: false };
 };
+
 
 
 
@@ -4952,7 +4977,9 @@ const CampaignCenter = () => {
           .maybeSingle();
         let wspFbId = ((wsp as any)?.page_id as string | null) ?? null;
         let wspFbName = ((wsp as any)?.page_name as string | null) ?? null;
+        if (isBlockedFbPage(wspFbId, wspFbName)) { wspFbId = null; wspFbName = null; }
         if (!wspFbId) {
+
           // The client read is RLS-scoped to the workspace owner; the edge
           // function resolves the same binding for every workspace member.
           const resolved = await resolveMetaPageViaFunction();
