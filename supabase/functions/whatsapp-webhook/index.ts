@@ -1383,6 +1383,27 @@ Deno.serve(async (req) => {
 
 
   // ================================================================
+  // OFFICIAL PROVIDER GATE (HARD) — WhatsApp chat/inbox runs exclusively on
+  // the Official WhatsApp Business API (Meta Cloud API). Only Meta's official
+  // webhook envelope is accepted here; legacy third-party provider payloads
+  // (identified by their `typeWebhook` / `instanceData` envelope) are
+  // acknowledged with 200 so the sender stops retrying, and dropped without
+  // touching leads, `messages`, `chat_history` or the AI autopilot.
+  // ================================================================
+  const isOfficialMetaPayload =
+    payload?.object === "whatsapp_business_account" || Array.isArray(payload?.entry);
+  if (!isOfficialMetaPayload) {
+    console.log("whatsapp-webhook: rejected non-Meta payload", {
+      has_type_webhook: !!payload?.typeWebhook,
+      keys: Object.keys(payload ?? {}).slice(0, 8),
+    });
+    return jsonResponse(
+      { ok: true, ignored: "non_official_provider_payload", messaging_provider: "meta_cloud_api_only" },
+      200,
+    );
+  }
+
+  // ================================================================
   // META CLOUD API INBOUND — normalize the official WABA payload
   // (entry[].changes[].value.messages[]) into the internal envelope the
   // extractor below already understands. Status callbacks (`statuses[]`)
