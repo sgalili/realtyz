@@ -205,11 +205,19 @@ export function extractNameLoose(text: string | null | undefined): string | null
       "iu",
     ),
   ];
-  for (const re of patterns) {
-    const cand = s.match(re)?.[1]?.trim();
-    if (!cand) continue;
-    const cleaned = cleanNameTokens(cand);
-    if (cleaned) return cleaned;
+  // Second pass over a version of the text with pure descriptors and
+  // punctuation removed, so "הוסף ליד חדש: דנה כהן" still resolves the name.
+  const DESCRIPTOR_ONLY =
+    /(?<![\p{L}])(חדש[הת]?|חדשים|חם|חמה|פוטנציאלי[תם]?|מעניינ[תה]?|רציני[ת]?|new|hot|potential)(?![\p{L}])/giu;
+  const stripped = s.replace(DESCRIPTOR_ONLY, " ").replace(/[:,–\-]+/g, " ").replace(/\s+/g, " ");
+
+  for (const variant of [s, stripped]) {
+    for (const re of patterns) {
+      const cand = variant.match(re)?.[1]?.trim();
+      if (!cand) continue;
+      const cleaned = cleanNameTokens(cand);
+      if (cleaned) return cleaned;
+    }
   }
   return null;
 }
