@@ -37,6 +37,7 @@ import VoterAvatar from '@/components/VoterAvatar';
 import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
 import { BrandIcon } from '@/components/BrandIcon';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { getDemoCandidateMessages, getDemoCandidateVoters } from '@/lib/demoData';
@@ -338,6 +339,7 @@ function EditableInlineText({
 
 const LeadCRM = () => {
   const { user } = useAuth();
+  const activeWorkspaceId = useActiveWorkspaceOwnerId();
   const { isDemoMode, demoCandidateId } = useDemoMode();
   const blockDemoAction = useDemoGuard();
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
@@ -557,12 +559,12 @@ const LeadCRM = () => {
     missing.forEach((id) => avatarTried.current.add(id));
     const t = window.setTimeout(() => {
       supabase.functions
-        .invoke('fetch-wa-avatars', { body: { lead_ids: missing } })
+        .invoke('fetch-wa-avatars', { body: { lead_ids: missing, owner_id: activeWorkspaceId } })
         .then(() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }))
         .catch(() => {});
     }, 400);
     return () => window.clearTimeout(t);
-  }, [leads, isDemoMode, queryClient]);
+  }, [leads, isDemoMode, queryClient, activeWorkspaceId]);
 
 
 
@@ -1073,6 +1075,7 @@ const LeadCRM = () => {
         phone_number: phone,
         city: newVoter.city.trim() || null,
         identity_number: newVoter.identity_number.trim() || null,
+        assigned_to: activeWorkspaceId ?? user?.id ?? null,
       };
       if (newVoter.instagram_handle.trim()) insertData.instagram_handle = newVoter.instagram_handle.trim();
       if (newVoter.telegram_username.trim()) insertData.telegram_username = newVoter.telegram_username.trim();
@@ -1099,7 +1102,7 @@ const LeadCRM = () => {
       toast.success('מתעניין נוסף בהצלחה');
       // Fire-and-forget Green API avatar fetch so the new row gets a real WA photo.
       supabase.functions
-        .invoke('fetch-wa-avatars', { body: { lead_ids: [(inserted as any).id], force: true } })
+        .invoke('fetch-wa-avatars', { body: { lead_ids: [(inserted as any).id], owner_id: activeWorkspaceId, force: true } })
         .then(() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }))
         .catch(() => {});
       setAddVoterOpen(false);
@@ -1315,7 +1318,7 @@ const LeadCRM = () => {
       toast.success(`ייבוא הושלם: ${totalInserted.toLocaleString('he-IL')} רשומות נשמרו במאגר`);
 
       // Background Green API avatar fetch for the freshly imported rows.
-      supabase.functions.invoke('fetch-wa-avatars', { body: { limit: Math.min(totalInserted + 50, 2000) } }).catch(() => {});
+      supabase.functions.invoke('fetch-wa-avatars', { body: { limit: Math.min(totalInserted + 50, 2000), owner_id: activeWorkspaceId } }).catch(() => {});
 
       const n8nResult = await sendToN8n('contacts_synced', { imported_count: totalInserted, phone_numbers: rows.map((r) => r.phone_number) });
       if (n8nResult.ok) toast.success('רשימות התפוצה עודכנו');
@@ -2487,7 +2490,7 @@ const LeadCRM = () => {
           queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
           queryClient.invalidateQueries({ queryKey: ['leads-total'] });
           // Immediately pull WA profile pictures for the freshly synced contacts.
-          supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 2000 } }).catch(() => {});
+          supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 2000, owner_id: activeWorkspaceId } }).catch(() => {});
         }}
         mode="contacts"
       />
