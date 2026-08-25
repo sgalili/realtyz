@@ -1236,7 +1236,7 @@ const OmnichannelInbox = () => {
                               const media = extractChatMedia(msg);
                               if (media) return <MediaMessage media={media} />;
                               return (
-                                <p className="max-w-full overflow-hidden whitespace-pre-wrap break-all text-sm leading-relaxed">{msg.content}</p>
+                                <ChatMessageText content={msg.content} />
                               );
                             })()}
                             <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
