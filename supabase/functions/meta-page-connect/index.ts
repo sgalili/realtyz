@@ -156,33 +156,70 @@ Deno.serve(async (req) => {
     const action = String(body?.action ?? "status");
     const redirectUri = String(body?.redirect_uri ?? "").trim();
 
+    // Unified connection state: one endpoint powering the collapsed header
+    // badge, the expanded card badge and the global warning banner.
     if (action === "health") {
-      const { data: row } = await admin
-        .from("messenger_page_bindings")
-        .select("page_id, page_name, page_access_token, updated_at")
-        .eq("owner_id", ownerId)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!(row as any)?.page_id) {
-        return json({
-          connected: false,
-          needs_reconnect: true,
-          page: null,
-          error: "עמוד הפייסבוק אינו מחובר. יש להתחבר בעמוד החיבורים.",
-        });
+      const readBinding = async () => {
+        const { data } = await admin
+          .from("messenger_page_bindings")
+          .select("page_id, page_name, page_access_token, updated_at")
+          .eq("owner_id", ownerId)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        return data as any;
+      };
+
+      let row = await readBinding();
+
+      // A cached blocked asset ("Employee") is not a publishing identity, and a
+      // missing binding may still be healable from an existing user token.
+      if (!row?.page_id || isBlockedPage({ id: row.page_id, name: row.page_name })) {
+        const fixed = await repairBinding(admin, ownerId);
+        if (fixed.ok) row = await readBinding();
+        else if (!row?.page_id) {
+          return json({
+            connected: false,
+            needs_reconnect: false,
+            never_connected: true,
+            page: null,
+            error: "עמוד הפייסבוק אינו מחובר. יש להתחבר בעמוד החיבורים.",
+          });
+        }
       }
+
+      // Always read the REAL page name from Meta so the UI never shows a stale
+      // or generic label, and refresh the stored name when it drifted.
       const probe = await graph(
-        `/${(row as any).page_id}?fields=id,name&access_token=${encodeURIComponent((row as any).page_access_token ?? "")}`,
+        `/${row.page_id}?fields=id,name,picture.width(160).height(160),instagram_business_account{id,username}&access_token=${
+          encodeURIComponent(row.page_access_token ?? "")
+        }`,
       );
       const ok = probe.ok && !!probe.payload?.id;
+      const liveName: string | null = ok ? (probe.payload?.name ?? null) : null;
+      if (ok && liveName && liveName !== row.page_name) {
+        await admin
+          .from("messenger_page_bindings")
+          .update({ page_name: liveName, updated_at: new Date().toISOString() })
+          .eq("owner_id", ownerId)
+          .eq("page_id", String(row.page_id));
+      }
+      const ig = ok ? probe.payload?.instagram_business_account : null;
       return json({
         connected: ok,
         needs_reconnect: !ok,
-        page: { id: String((row as any).page_id), name: (row as any).page_name ?? null },
+        never_connected: false,
+        page: {
+          id: String(row.page_id),
+          name: liveName ?? row.page_name ?? null,
+          picture: ok ? (probe.payload?.picture?.data?.url ?? null) : null,
+          connected_at: row.updated_at ?? null,
+        },
+        instagram: ig?.id ? { id: String(ig.id), username: ig.username ?? null } : null,
         error: ok ? null : humanizeGraphError(probe.payload, "תוקף החיבור לפייסבוק פג. יש להתחבר מחדש."),
       });
     }
+
 
     if (action === "repair") {
       const res = await repairBinding(admin, ownerId, String(body?.page_id ?? ""));
