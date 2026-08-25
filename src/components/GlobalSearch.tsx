@@ -5,6 +5,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Search, User, MapPin, Radio, LayoutDashboard, Building2, MessageSquare } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
 const QUICK_LINKS = [
   { label: 'לוח בקרה', path: '/', icon: LayoutDashboard },
