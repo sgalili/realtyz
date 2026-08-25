@@ -210,6 +210,21 @@ Deno.serve(async (req) => {
                 },
               );
               if (leadErr) console.error("[meta-wa-webhook] upsert lead failed", leadErr);
+              if (!leadId) {
+                console.error("[meta-wa-webhook] no lead resolved — message would be dropped", {
+                  from_last4: from.slice(-4),
+                });
+              }
+
+              // Make sure an existing lead without an owner gets adopted by the
+              // receiving workspace, otherwise RLS keeps the thread invisible.
+              if (leadId && ownerId) {
+                await admin
+                  .from("leads")
+                  .update({ assigned_to: ownerId })
+                  .eq("id", leadId)
+                  .is("assigned_to", null);
+              }
 
               // 2. Mirror into the unified omni-channel chat feed.
               const ts = m?.timestamp
@@ -229,6 +244,8 @@ Deno.serve(async (req) => {
                   phone_number_id: phoneNumberId,
                   waba_id: wabaId,
                   wa_from: from,
+                  sender_phone: from,
+                  message_id: String(m?.id ?? ""),
                   profile_name: profileName,
                   message_type: type,
                   raw: m,
