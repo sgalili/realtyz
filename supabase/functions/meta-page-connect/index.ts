@@ -149,16 +149,43 @@ Deno.serve(async (req) => {
     const action = String(body?.action ?? "status");
     const redirectUri = String(body?.redirect_uri ?? "").trim();
 
+    if (action === "repair") {
+      const res = await repairBinding(admin, ownerId, String(body?.page_id ?? ""));
+      return json(res, res.ok ? 200 : 400);
+    }
+
     if (action === "status") {
-      const { data } = await admin
+      let { data } = await admin
         .from("messenger_page_bindings")
         .select("page_id, page_name, page_access_token, updated_at")
         .eq("owner_id", ownerId)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      const row: any = data;
+      let row: any = data;
+
+      // Self-heal a cached binding that points at a blocked asset ("Employee"):
+      // never report it as the connected publishing identity.
+      if (row?.page_id && isBlockedPage({ id: row.page_id, name: row.page_name })) {
+        console.log("[meta-page-connect] blocked binding cached, repairing", { page_id: row.page_id });
+        const fixed = await repairBinding(admin, ownerId);
+        if (fixed.ok) {
+          const { data: fresh } = await admin
+            .from("messenger_page_bindings")
+            .select("page_id, page_name, page_access_token, updated_at")
+            .eq("owner_id", ownerId)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          row = fresh;
+        } else {
+          await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+          return json({ connected: false, page: null, needs_reconnect: true, error: (fixed as any).error });
+        }
+      }
+
       if (!row?.page_id) return json({ connected: false, page: null });
+
 
       let picture: string | null = null;
       let instagram: { id: string; username: string | null } | null = null;
