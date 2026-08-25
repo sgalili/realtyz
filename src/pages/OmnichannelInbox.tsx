@@ -1177,6 +1177,7 @@ const OmnichannelInbox = () => {
                   {chatMessages?.map((msg, idx) => {
                     const isOutbound = msg.direction === 'outbound';
                     const senderType = msg.sender_type || (isOutbound ? 'agent' : 'lead');
+                    const isAiMessage = isOutbound && (senderType === 'ai' || senderType === 'ai_agent' || (msg as any).ai_assisted === true);
                     const badge = senderBadge[senderType] || senderBadge.voter;
                     const prevMsg = idx > 0 ? chatMessages[idx - 1] : null;
                     const channelChanged = prevMsg && prevMsg.channel !== msg.channel && msg.channel;
@@ -1207,7 +1208,7 @@ const OmnichannelInbox = () => {
                               textClassName="text-[10px]"
                             />
                           )}
-                          <div className={`relative min-w-0 max-w-[78%] overflow-hidden rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
+                          <div className={`relative min-w-0 max-w-[78%] overflow-hidden rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isAiMessage ? 'border border-primary/20 bg-primary/10 text-foreground rounded-es-sm' : isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
                             {msg.id === lastAiMessageId && selectedVoterId && (
                               <UndoLastAiMessage
                                 messageId={msg.id as string}
@@ -1223,6 +1224,12 @@ const OmnichannelInbox = () => {
                               />
                             )}
                             <div className="mb-1 flex items-center justify-end gap-1.5">
+                              {isAiMessage && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-background/60 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                                  <Bot className="h-3 w-3" />
+                                  AI
+                                </span>
+                              )}
                               <ChannelIcon channel={msg.channel} />
                             </div>
                             {(() => {

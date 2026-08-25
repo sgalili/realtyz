@@ -38,6 +38,36 @@ function stripBrokerLicense(text: string): string {
     .trim();
 }
 
+function normalizeIsraeliPhone(raw: string): string | null {
+  let p = String(raw ?? "").replace(/\D/g, "");
+  if (!p) return null;
+  if (p.startsWith("0")) p = `972${p.slice(1)}`;
+  if (!p.startsWith("972") && p.length <= 10) p = `972${p}`;
+  return p.length >= 10 ? p : null;
+}
+
+function formatPhoneForHebrew(phone: string): string {
+  const p = normalizeIsraeliPhone(phone) ?? phone;
+  return p.startsWith("972") ? `0${p.slice(3, 5)}-${p.slice(5)}` : p;
+}
+
+function extractPhone(text: string): string | null {
+  const m = String(text ?? "").match(/(?:\+?972[-\s]?|0)5\d(?:[-\s]?\d){7}|\b0\d{1,2}[-\s]?\d{7}\b/);
+  return m ? normalizeIsraeliPhone(m[0]) : null;
+}
+
+function extractSimpleName(text: string): string | null {
+  const explicit = String(text ?? "").match(/(?:בשם|שם\s*[:\-]?\s*|name\s*[:\-]?\s*)([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF' \-]{1,60})/iu);
+  const value = explicit?.[1]?.trim().replace(/\s+(עם|בטלפון|טלפון|נייד|בעיר|לשכירות|למכירה).*$/u, "").trim();
+  return value || null;
+}
+
+function extractCity(text: string): string | null {
+  const cityList = ["הרצליה","תל אביב","תל-אביב","רמת גן","רמת-גן","רעננה","כפר סבא","נתניה","חיפה","ירושלים","ראשון לציון","חולון","בת ים","פתח תקווה","גבעתיים","אשדוד","אשקלון","באר שבע","מודיעין","רחובות","הוד השרון","רמת השרון"];
+  for (const c of cityList) if (String(text ?? "").includes(c)) return c;
+  return null;
+}
+
 const SCHEMA_CONTEXT = `
 You are the Agent's Virtual Twin, drafting messages AS the human Agent (e.g. "Udi") to Leads in the real-estate Deal Room. You are NEVER "Realtyz AI", a chatbot, or a generic assistant, your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
 You speak Hebrew and English. You are sharp, professional, warm, and consultative, strictly on real-estate topics.
@@ -131,7 +161,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { lead_id, lead_name, mode, context, variants: variantsReq, attachments: attachmentsReq, enable_research: enableResearchReq } = body ?? {};
+    const { lead_id, lead_name, mode, context, variants: variantsReq, attachments: attachmentsReq, enable_research: enableResearchReq, workspace_owner_id, owner_phone } = body ?? {};
     let { messages } = body ?? {};
     const variantCount = Math.max(1, Math.min(5, Number(variantsReq ?? 1) || 1));
     const attachments: Array<{ name?: string; mime?: string; data_url?: string; url?: string }> = Array.isArray(attachmentsReq) ? attachmentsReq : [];
@@ -195,12 +225,16 @@ serve(async (req) => {
         const supabaseUrlEarly = Deno.env.get("SUPABASE_URL")!;
         const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
         const authHeaderEarly = req.headers.get("Authorization") ?? "";
+        const serviceKeyEarly = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const bearerEarly = authHeaderEarly.replace(/^Bearer\s+/i, "").trim();
+        const serviceOwnerId = bearerEarly === serviceKeyEarly && workspace_owner_id ? String(workspace_owner_id) : null;
         const lastUser = [...(messages as Array<{ role: string; content: string }>)]
           .reverse().find((m) => m.role === "user")?.content ?? "";
         const text = String(lastUser);
         const intentRe = /(הוסף|תוסיף|תכניס|תכניסי|צור|תיצור|הוסיפי|תוסיפי|add|create|new)\s+(את\s+)?(ליד|מתעניין|איש\s*קשר|לקוח[הת]?|contact|lead)/i;
         const phoneMatch = text.match(/(?:\+?972[-\s]?|0)5\d(?:[-\s]?\d){7}|\b0\d{1,2}[-\s]?\d{7}\b/);
         const hasIntent = intentRe.test(text);
+        const updateIntent = /(עדכן|תעדכן|שנה|סמן|update|mark)\s+.*(מתעניין|לקוח|lead|סטטוס|שלב)/i.test(text);
 
         // Extract a candidate person name. Accepts explicit "בשם X" and also a
         // bare name that follows the intent verb ("הוסף ליד רוני מליאר").
@@ -258,10 +292,12 @@ serve(async (req) => {
         // No phone yet → try to resolve an existing contact first; only ask
         // for a phone number when the person truly isn't in the CRM.
         if (hasIntent && !phoneMatch && authHeaderEarly.startsWith("Bearer ")) {
-          const probeClient = createClient(supabaseUrlEarly, anonKey, {
-            global: { headers: { Authorization: authHeaderEarly } },
-          });
-          const { data: uProbe } = await probeClient.auth.getUser();
+          const probeClient = serviceOwnerId
+            ? createClient(supabaseUrlEarly, serviceKeyEarly)
+            : createClient(supabaseUrlEarly, anonKey, {
+                global: { headers: { Authorization: authHeaderEarly } },
+              });
+          const { data: uProbe } = serviceOwnerId ? { data: { user: { id: serviceOwnerId } } } as any : await probeClient.auth.getUser();
           const probeUid = uProbe?.user?.id;
           if (probeUid) {
             const found = await lookupExisting(probeClient, probeUid);
@@ -299,10 +335,12 @@ serve(async (req) => {
             return null;
           })();
 
-          const userClient = createClient(supabaseUrlEarly, anonKey, {
-            global: { headers: { Authorization: authHeaderEarly } },
-          });
-          const { data: uRes } = await userClient.auth.getUser();
+          const userClient = serviceOwnerId
+            ? createClient(supabaseUrlEarly, serviceKeyEarly)
+            : createClient(supabaseUrlEarly, anonKey, {
+                global: { headers: { Authorization: authHeaderEarly } },
+              });
+          const { data: uRes } = serviceOwnerId ? { data: { user: { id: serviceOwnerId } } } as any : await userClient.auth.getUser();
           const uid = uRes?.user?.id;
           if (uid) {
             const existing = await lookupExisting(userClient, uid);
@@ -328,7 +366,7 @@ serve(async (req) => {
                 full_name: fullName,
                 phone_number: normalized,
                 city,
-                deal_type: dealHint,
+                deal_type: dealHint ?? "sale",
                 preferences,
                 lead_stage: "new",
                 status: "new",
@@ -424,6 +462,71 @@ serve(async (req) => {
             }
           }
         }
+
+        if (updateIntent && authHeaderEarly.startsWith("Bearer ")) {
+          const userClient = serviceOwnerId
+            ? createClient(supabaseUrlEarly, serviceKeyEarly)
+            : createClient(supabaseUrlEarly, anonKey, {
+                global: { headers: { Authorization: authHeaderEarly } },
+              });
+          const { data: uRes } = serviceOwnerId ? { data: { user: { id: serviceOwnerId } } } as any : await userClient.auth.getUser();
+          const uid = uRes?.user?.id;
+          if (uid) {
+            const phone = extractPhone(text);
+            const name = candidateName ?? extractSimpleName(text);
+            let q = userClient
+              .from("leads")
+              .select("id, full_name, phone_number, city, status, lead_stage, deal_type")
+              .eq("assigned_to", uid)
+              .limit(1);
+            if (phone) {
+              const local = phone.startsWith("972") ? `0${phone.slice(3)}` : phone;
+              q = q.or(`phone_number.eq.${phone},phone_number.eq.${local}`);
+            } else if (name) {
+              q = q.ilike("full_name", `%${name}%`);
+            } else {
+              return new Response(JSON.stringify({
+                type: "text",
+                content: "מצאתי בקשת עדכון, אבל חסר לי מזהה ברור. שלח שם או טלפון של המתעניין ומה לעדכן.",
+              }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            const { data: row } = await q.maybeSingle();
+            if (!row?.id) {
+              return new Response(JSON.stringify({
+                type: "text",
+                content: "לא מצאתי כרטיס CRM מתאים בשם או בטלפון ששלחת. שלח שם מלא או מספר נייד ואעדכן מיד.",
+              }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            const payload: Record<string, unknown> = {};
+            const city = extractCity(text);
+            if (city) payload.city = city;
+            if (/חם|hot|דחוף/i.test(text)) payload.lead_stage = "hot";
+            else if (/חדש|new/i.test(text)) payload.lead_stage = "new";
+            else if (/מעקב|follow/i.test(text)) payload.lead_stage = "follow_up";
+            if (/סגור|נסגר|won/i.test(text)) payload.status = "closed";
+            if (/שכירות|rent/i.test(text)) payload.deal_type = "rent";
+            if (/מכירה|sale/i.test(text)) payload.deal_type = "sale";
+            if (!Object.keys(payload).length) {
+              return new Response(JSON.stringify({
+                type: "text",
+                content: `מצאתי את הכרטיס של ${row.full_name || formatPhoneForHebrew(row.phone_number)}, אבל לא זיהיתי איזה שדה לשנות. אפשר למשל: סמן כמעקב, עדכן עיר להרצליה, או שנה לשכירות.`,
+              }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+            const { data: updated, error: updateError } = await userClient
+              .from("leads")
+              .update(payload)
+              .eq("id", row.id)
+              .eq("assigned_to", uid)
+              .select("id, full_name, phone_number, city, status, lead_stage, deal_type")
+              .maybeSingle();
+            if (updateError) throw updateError;
+            return new Response(JSON.stringify({
+              type: "text",
+              content: `בוצע. עדכנתי את כרטיס המתעניין ואימתתי את הפעולה.\nפרטים לאחר עדכון: ${updated?.full_name || row.full_name || "ללא שם"}, ${formatPhoneForHebrew(updated?.phone_number || row.phone_number)}, עיר: ${updated?.city || "—"}, שלב: ${updated?.lead_stage || updated?.status || "—"}, סוג עסקה: ${updated?.deal_type || "—"}.`,
+              updated_lead: updated,
+            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
       }
     } catch (e) {
       console.warn("create-lead intent check failed:", e);
@@ -436,6 +539,19 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const requestAuthHeader = req.headers.get("Authorization") ?? "";
+    const requestBearer = requestAuthHeader.replace(/^Bearer\s+/i, "").trim();
+    const isServiceRequest = requestBearer === supabaseKey;
+    let currentOwnerId: string | null = isServiceRequest && workspace_owner_id ? String(workspace_owner_id) : null;
+    if (!currentOwnerId && requestAuthHeader.startsWith("Bearer ")) {
+      try {
+        const authClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+          global: { headers: { Authorization: requestAuthHeader } },
+        });
+        const { data: uRes } = await authClient.auth.getUser();
+        currentOwnerId = uRes?.user?.id ?? null;
+      } catch { /* service calls and public invocations may not map to a user */ }
+    }
 
     // Load Agent settings (real-estate). The legacy `campaign_settings` table is
     // kept for backward compat but only the AI tone is used; political fields
@@ -570,18 +686,11 @@ serve(async (req) => {
     // Workspace-scoped owner-authored behavior rules (continuous learning layer).
     let systemRulesBlock = "";
     try {
-      const authHeader = req.headers.get("Authorization") ?? "";
-      if (authHeader.startsWith("Bearer ")) {
-        const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-          global: { headers: { Authorization: authHeader } },
-        });
-        const { data: uRes } = await userClient.auth.getUser();
-        const uid = uRes?.user?.id;
-        if (uid) {
-          const lastUserText =
-            [...(messages as Array<{ role: string; content: string }>)].reverse().find((m) => m.role === "user")?.content ?? "";
-          systemRulesBlock = await fetchSystemRulesBlock(uid, String(lastUserText));
-        }
+      const uid = currentOwnerId;
+      if (uid) {
+        const lastUserText =
+          [...(messages as Array<{ role: string; content: string }>)].reverse().find((m) => m.role === "user")?.content ?? "";
+        systemRulesBlock = await fetchSystemRulesBlock(uid, String(lastUserText));
       }
     } catch (e) {
       console.warn("fetchSystemRulesBlock failed:", e instanceof Error ? e.message : e);
@@ -693,14 +802,11 @@ serve(async (req) => {
     let liveDataBlock = "";
     if (isInternalDashboard) {
       try {
-        const authHeader = req.headers.get("Authorization") ?? "";
-        if (authHeader.startsWith("Bearer ")) {
-          const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-            global: { headers: { Authorization: authHeader } },
-          });
-          const { data: uRes } = await userClient.auth.getUser();
-          const uid = uRes?.user?.id;
-          if (uid) {
+        const uid = currentOwnerId;
+        const userClient = isServiceRequest ? supabase : createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+          global: { headers: { Authorization: requestAuthHeader } },
+        });
+        if (uid) {
             // Detect rent/sale intent from the last user message so the
             // workspace snapshot never leaks a sale into a rental request
             // (and vice-versa). Israeli monthly rents never exceed ₪50k,
@@ -783,8 +889,6 @@ serve(async (req) => {
                   ? "\nHARD RULE — SALE MODE: Only surface sale listings. Never present a rental as a purchase alternative."
                   : "",
             ].join("\n");
-          }
-
         }
       } catch (e) {
         console.warn("master-agent live snapshot failed:", e);
@@ -872,22 +976,23 @@ serve(async (req) => {
       liveDataBlock = (liveDataBlock ? liveDataBlock + "\n\n" : "") + researchBlock;
     }
 
-    const MASTER_AGENT_PROMPT = `אתה ה-Master AI Agent — הרמטכ"ל הדיגיטלי (chief of staff) של בעל סביבת העבודה ב-Realtyz AI.
-אתה מדבר עם המנהל/בעלים עצמו (לא עם לקוח קצה). פנה אליו בכבוד בגוף שני, כאל המפקד שלך.
-אסור לך בשום אופן להציג את עצמך בשמו של בעל סביבת העבודה (למשל "היי, אני אודי ויטמן"). אינך מתחזה אליו — אתה הנכס התפעולי שלו.
+    const MASTER_AGENT_PROMPT = `אתה "קצין המודיעין" של Realtyz AI, סייען נדל"ן עילית עבור בעל סביבת העבודה.
+אתה מדבר עם המנהל/בעלים עצמו (לא עם לקוח קצה). פנה אליו בכבוד, חד וברור.
+אסור לך בשום אופן להציג את עצמך בשמו של בעל סביבת העבודה (למשל "היי, אני אודי ויטמן"). אינך מתחזה אליו, אתה הנכס התפעולי שלו.
 
 עקרונות ביצוע:
-1. עיגון בנתונים חיים: לפני שאתה עונה על שאלות על נכסים, לידים, מצב או מטריקות — קרא קודם את ה-LIVE WORKSPACE SNAPSHOT שמצורף למטה. אם חסר עומק, החזר שאילתת SELECT (LIMIT 50) על הטבלאות leads / listings / messages / chat_history / campaigns, ותמיד הוסף WHERE user_id = (המנהל הנוכחי) כשהעמודה קיימת.
-2. גישת פתרון: אל תשאל את המנהל שאלות פתיחה גנריות ("איזה אזור?", "מה התקציב?"). הוא המנהל. במקום זה, שלוף התאמות מהנתונים, סנתז אותן, והצג 1-3 פעולות הבאות מומלצות.
-3. סגנון: תכליתי, ישיר, עברית עסקית. ללא פתיחות AI גנריות, ללא התנצלויות, ללא בולטים מיותרים, ללא מקפים ארוכים.
-4. אם הנתונים החיים אכן ריקים — אמור זאת במשפט אחד והצע צעד תפעולי קונקרטי (ייבוא, חיבור מקור, יצירת ליד/נכס).
-5. אסור להמציא נכסים, לידים, מחירים או עסקאות שלא מופיעים ב-snapshot או בתוצאות ה-SQL.
+1. הבן כל ניסוח טבעי כפקודה או בקשת מודיעין. אין לענות בתבנית "לא הבנתי" ואין להחזיר תפריט יכולות קשיח.
+2. עיגון בנתונים חיים: קרא קודם את ה-LIVE WORKSPACE SNAPSHOT, היסטוריית השיחה הרב-ערוצית ובלוקי המחקר המצורפים. אם חסר עומק, החזר שאילתת SELECT עם LIMIT 50.
+3. CRUD בטוח: יצירה ועדכון של מתעניינים מתבצעים דרך הלוגיקה הדטרמיניסטית של הפונקציה, לא דרך SQL חופשי. אחרי פעולה שבוצעה, אשר בסוף בדיוק מה השתנה ובאילו פרמטרים.
+4. אם חסר נתון חיצוני, סנתז תשובה מקצועית מתוך הנתונים הזמינים והפעל מחקר כאשר יש טריגר מתאים. אל תכתוב "אני לא יודע".
+5. סגנון: תכליתי, ישיר, עברית עסקית. ללא פתיחות AI גנריות, ללא התנצלויות, ללא בולטים מיותרים, ללא מקפים ארוכים.
+6. אסור להמציא נכסים, מתעניינים, מחירים או עסקאות שלא מופיעים ב-snapshot, בתוצאות ה-SQL או במקורות מחקר חיים. מותר להסיק המלצות מקצועיות ולסמן אותן כהמלצה.
 
 RESPONSE FORMAT (JSON בלבד, ללא markdown):
-- אם נדרשת שאילתה: {"type":"sql","query":"SELECT ... LIMIT 50","explanation":"הסבר קצר למנהל"}
-- אם יש תשובה מוכנה מה-snapshot: {"type":"text","content":"תשובה תכליתית + הצעת פעולה"}
+- אם נדרשת שאילתת קריאה: {"type":"sql","query":"SELECT ... LIMIT 50","explanation":"הסבר קצר למנהל"}
+- אחרת: {"type":"text","content":"תשובה תכליתית, ביצועית, עם סיכום פעולה או צעד הבא"}
 
-${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למנהל לחבר מקור נתונים)"}\n`;
+${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כקצין מודיעין: תן הערכה מקצועית קצרה וצעד פעולה אחד."}\n`;
 
     // === PROACTIVE CROSS-PROPERTY MATCHING ===
     // For lead-facing chats, surface 3-5 alternative listings from THIS owner's
@@ -1714,7 +1819,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
         query = query.replace(/;?\s*$/, " LIMIT 50");
       } else {
         // Cap existing LIMIT to 50
-        query = query.replace(/\bLIMIT\s+(\d+)/i, (_, n) => `LIMIT ${Math.min(parseInt(n), 50)}`);
+        query = query.replace(/\bLIMIT\s+(\d+)/i, (_match: string, n: string) => `LIMIT ${Math.min(parseInt(n), 50)}`);
       }
 
       const { data, error } = await supabase.rpc("execute_readonly_query", {
