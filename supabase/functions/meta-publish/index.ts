@@ -458,6 +458,7 @@ Deno.serve(async (req) => {
 
     const postIds: Array<{ platform: string; id: string }> = [];
     const failures: Array<{ platform: string; message: string }> = [];
+    const warnings: string[] = [];
 
     for (const ch of channels) {
       if (ch === "facebook") {
@@ -465,6 +466,8 @@ Deno.serve(async (req) => {
         if ("error" in res) failures.push({ platform: ch, message: res.error });
         else {
           postIds.push({ platform: ch, id: res.id });
+          if (res.warning) warnings.push(res.warning);
+
           if (firstComment) {
             const form = new URLSearchParams({ message: firstComment, access_token: page.token });
             await graph(`/${res.id}/comments`, {
