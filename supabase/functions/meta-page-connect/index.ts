@@ -448,7 +448,13 @@ Deno.serve(async (req) => {
         );
       }
 
-      const chosen = pickPrimaryPage(pages, wantedPageId) ?? pages[0];
+      // Never bind a blocked business asset ("Employee") as the publishing page.
+      const publishable = pages.filter((p) => !isBlockedPage(p));
+      const pool = publishable.length ? publishable : pages;
+      const chosen = pickPrimaryPage(pool, wantedPageId) ?? pool[0];
+      if (!chosen?.access_token) {
+        return json({ error: "פייסבוק לא החזיר טוקן עמוד. יש להתחבר מחדש ולאשר את העמוד." }, 400);
+      }
       // One page per workspace: drop any previous binding, then upsert on page_id.
       await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
       const { error: upsertErr } = await admin.from("messenger_page_bindings").upsert(
