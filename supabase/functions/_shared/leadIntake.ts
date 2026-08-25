@@ -228,6 +228,9 @@ export function extractNameLoose(text: string | null | undefined): string | null
   const DESCRIPTOR_ONLY =
     /(?<![\p{L}])(חדש[הת]?|חדשים|חם|חמה|פוטנציאלי[תם]?|מעניינ[תה]?|רציני[ת]?|new|hot|potential)(?![\p{L}])/giu;
   const stripped = s.replace(DESCRIPTOR_ONLY, " ").replace(/[:,–\-]+/g, " ").replace(/\s+/g, " ");
+  // Same descriptor cleanup but commas survive, so late names after a comma
+  // ("הוסף ליד חם, 054-1234567, משה ישראלי") stay reachable per segment.
+  const segments = s.replace(DESCRIPTOR_ONLY, " ").replace(/\s+/g, " ");
 
   for (const variant of [s, stripped]) {
     for (const re of patterns) {
@@ -241,7 +244,7 @@ export function extractNameLoose(text: string | null | undefined): string | null
   // Late / comma-separated phrasing: "תוסיף לקוח חם, 0541234567, משה ישראלי".
   // Each segment is cleaned on its own and only a multi-word result is trusted,
   // so a stray verb ("מחפש") can never become the contact's name.
-  for (const seg of stripped.split(/[,;\n|]+/)) {
+  for (const seg of segments.split(/[,;\n|]+/)) {
     const segment = seg.replace(/[\d+()]/g, " ").trim();
     if (!segment) continue;
     const cleaned = cleanNameTokens(segment);
