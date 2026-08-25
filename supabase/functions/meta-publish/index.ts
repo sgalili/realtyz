@@ -212,7 +212,7 @@ async function candidateTokens(db: SupabaseClient, ownerId: string | null): Prom
   };
   try {
     const q = db.from("messenger_page_bindings").select("page_access_token").order("updated_at", { ascending: false }).limit(10);
-    const { data } = ownerId ? await q : await q;
+    const { data } = await q;
     for (const r of (data ?? []) as any[]) push(r?.page_access_token);
   } catch { /* ignore */ }
   try {
