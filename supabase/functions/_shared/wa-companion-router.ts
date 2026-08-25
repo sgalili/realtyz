@@ -75,6 +75,18 @@ function isPostCommand(t: string) {
 function isReplyCommand(t: string) { return REPLY_TRIGGERS.some((r) => r.test(t)); }
 function matchHeavy(t: string) { return HEAVY_DEEPLINKS.find((h) => h.test.test(t)); }
 
+// ----- greeting / small-talk detection ---------------------------------
+// Casual conversational inputs should never fall through to the harsh
+// "לא זיהיתי פקודה ברורה" fallback. Treat them as a friendly hello and
+// guide the owner toward what the assistant can do.
+const GREETING_TRIGGERS = [
+  /^\s*(הי[יי]|הי|היי|הייי|הלו|שלום|ערב\s*(טוב|נעים)|בוקר\s*(טוב|נעים)|צהריים\s*טובים|לילה\s*טוב|מה\s*נשמע|מה\s*שלומך|מה\s*המצב|איך\s*הולך|אהלן|היי\s*שם)\s*[.!?]*\s*$/i,
+  /^\s*(תודה|תודה\s*רבה|בכיף|בשמחה)\s*[.!?]*\s*$/i,
+];
+function isGreetingOrSmallTalk(t: string): boolean {
+  return GREETING_TRIGGERS.some((r) => r.test(t.trim()));
+}
+
 // Strip the leading trigger word so the remainder is the actual content.
 function stripTrigger(t: string): string {
   let out = t.trim();
@@ -445,11 +457,29 @@ function handleHeavyDeepLink(ctx: RouterContext): RouterResult {
   };
 }
 
+// ----- greeting / small-talk handler -----------------------------------
+
+async function handleGreeting(ctx: RouterContext): Promise<RouterResult> {
+  const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId, ctx.senderPhone);
+  const greet = firstName ? `היי ${firstName}` : "היי";
+  const reply = [
+    `${greet}, כאן העוזרת האישית שלך ב-Realtyz AI. 👋`,
+    "אני יכולה לעזור לך בכמה דברים מהירים ישירות מוואטסאפ:",
+    "• ליצור פוסט שיווקי — שלח 'צור פוסט על הדירה ברחוב החליל בהרצליה'",
+    "• להגיב לתגובה אחרונה בפייסבוק — שלח 'תגובה ואז הטקסט'",
+    "• לפרסם טיוטה מוכנה — שלח 'פרסם'",
+    "",
+    "אם צריך משהו מורכב יותר (ניהול נכסים, מתעניינים או הגדרות), אפשר תמיד לפתוח את הדשבורד כאן: https://realtyz.co.il",
+  ].join("\n");
+  return { handled: true, action: "greeting", reply };
+}
+
 // ----- entry point ------------------------------------------------------
 
 export async function routeOwnerCommand(ctx: RouterContext): Promise<RouterResult> {
   const t = ctx.text.trim();
   if (!t) return { handled: false };
+  if (isGreetingOrSmallTalk(t)) return handleGreeting(ctx);
   if (isPublishCommand(t)) return handlePublishCommand(ctx);
   if (isPostCommand(t)) return handlePostCommand(ctx);
   if (isReplyCommand(t)) return handleReplyCommand(ctx);
