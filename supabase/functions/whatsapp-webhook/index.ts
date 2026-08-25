@@ -1949,6 +1949,8 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             mode: "master_analysis",
+            // Service-role dispatch: identify the workspace owner explicitly.
+            workspace_owner_id: userId,
             context:
               `המשרד שלך קיבל קובץ ${sourceType === "image" ? "תמונה" : sourceType === "video" ? "וידאו" : "מסמך"} ב-WhatsApp` +
               (msg.caption ? ` עם הערה: "${msg.caption}"` : "") +
