@@ -4000,7 +4000,16 @@ const PublishedFeed = () => {
                       {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
                     </span>
                   );
-                })() : isPaused ? null : scheduled ? (() => {
+                })() : isPaused ? null : failed ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive ring-1 ring-destructive/30 max-w-[60%]"
+                    title={failureReason ?? undefined}
+                  >
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                    <span className="truncate">נכשל · {failureReason}</span>
+                  </span>
+                ) : scheduled ? (() => {
+
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
                   const diff = Number.isFinite(target) ? target - Date.now() : NaN;
                   let label = 'מתוזמן';
