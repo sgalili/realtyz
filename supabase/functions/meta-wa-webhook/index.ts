@@ -252,6 +252,62 @@ Deno.serve(async (req) => {
                 },
               });
               if (msgErr) console.error("[meta-wa-webhook] record message failed", msgErr);
+
+              // ── AI AUTOPILOT TRIGGER ──────────────────────────────────────
+              // Storing the inbound row is not enough: every message in an
+              // ongoing thread (not just the first greeting) must invoke the AI
+              // assistant. whatsapp-webhook owns that pipeline (autopilot gates,
+              // agent commands, owner router) and sends the reply back through
+              // send-whatsapp → official Meta Cloud API number.
+              const isTextLike = ["text", "button", "interactive"].includes(type);
+              if (isTextLike && String(content).trim() && !String(content).startsWith("[")) {
+                // Broker/owner phones keep the owner-command router: forward the
+                // original Meta payload so whatsapp-webhook classifies it itself.
+                let isOwnerPhone = false;
+                try {
+                  const variants = [from, `+${from}`, from.replace(/^972/, "0")];
+                  const { data: wl } = await admin
+                    .from("kb_whitelist")
+                    .select("user_id")
+                    .in("phone_number", variants)
+                    .limit(1)
+                    .maybeSingle();
+                  isOwnerPhone = Boolean(wl?.user_id);
+                } catch { /* treat as lead */ }
+
+                const forwardBody = isOwnerPhone
+                  ? JSON.stringify(payload)
+                  : JSON.stringify({
+                      autopilot_only: true,
+                      sender_phone: from,
+                      message_id: String(m?.id ?? ""),
+                      text: String(content),
+                    });
+
+                const trigger = fetch(`${supabaseUrl}/functions/v1/whatsapp-webhook`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${serviceRoleKey}`,
+                    apikey: serviceRoleKey,
+                  },
+                  body: forwardBody,
+                })
+                  .then(async (r) => {
+                    const j = await r.json().catch(() => ({}));
+                    console.log("[meta-wa-webhook] autopilot trigger", r.status, JSON.stringify(j).slice(0, 300));
+                  })
+                  .catch((e) => console.error("[meta-wa-webhook] autopilot trigger failed", e));
+
+                // Meta requires a fast 200 — let the AI leg finish in background.
+                try {
+                  // @ts-ignore EdgeRuntime is provided by Supabase Edge Functions
+                  EdgeRuntime.waitUntil(trigger);
+                } catch {
+                  await trigger;
+                }
+              }
+
             } catch (inner) {
               console.error("[meta-wa-webhook] message handling error", inner);
             }

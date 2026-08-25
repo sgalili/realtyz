@@ -622,7 +622,12 @@ async function handleLeadInboxInbound(
   senderPhone: string,
   messageId: string | undefined,
   inboundText: string,
+  // When true, the inbound row was ALREADY persisted upstream (meta-wa-webhook)
+  // and this call only runs the autopilot leg: lead resolution → AI → send.
+  opts?: { skipStore?: boolean },
 ) {
+  const skipStore = opts?.skipStore === true;
+
   // Detect short-link signature so we can auto-create / tag the lead before lookup.
   const shortLink = await resolveShortLinkListing(admin, inboundText);
   const hasShortLinkSignature = SHORTLINK_ANCHOR_RE.test(inboundText);
@@ -715,8 +720,9 @@ async function handleLeadInboxInbound(
     }
   }
 
-  // Duplicate guard (best-effort).
-  if (messageId && lead?.id) {
+  // Duplicate guard (best-effort). Skipped in autopilot-only mode — the row was
+  // stored upstream on purpose, so it must not be mistaken for a retry.
+  if (!skipStore && messageId && lead?.id) {
     try {
       const { data: existing } = await admin
         .from("messages")
@@ -733,7 +739,7 @@ async function handleLeadInboxInbound(
 
   // Content-signature dedup: drop identical inbound text from the same lead
   // within a 5-second window (provider retries, double webhooks, etc.).
-  if (lead?.id && inboundText) {
+  if (!skipStore && lead?.id && inboundText) {
     try {
       const since = new Date(Date.now() - 5000).toISOString();
       const { data: recent } = await admin
@@ -764,20 +770,23 @@ async function handleLeadInboxInbound(
 
   // ALWAYS persist the inbound message row, even if lead_id is null.
   // The inbox UI falls back to a phone-anchored synthetic thread for these.
-  try {
-    const { error: insertErr } = await admin.from("messages").insert({
-      lead_id: lead?.id ?? null,
-      channel: "whatsapp",
-      platform: "whatsapp",
-      content: inboundText,
-      direction: "inbound",
-      sender_type: "voter",
-      metadata,
-    });
-    if (insertErr) console.warn("inbound message insert soft-fail:", insertErr.message);
-  } catch (e) {
-    console.warn("inbound message insert threw:", e instanceof Error ? e.message : e);
+  if (!skipStore) {
+    try {
+      const { error: insertErr } = await admin.from("messages").insert({
+        lead_id: lead?.id ?? null,
+        channel: "whatsapp",
+        platform: "whatsapp",
+        content: inboundText,
+        direction: "inbound",
+        sender_type: "voter",
+        metadata,
+      });
+      if (insertErr) console.warn("inbound message insert soft-fail:", insertErr.message);
+    } catch (e) {
+      console.warn("inbound message insert threw:", e instanceof Error ? e.message : e);
+    }
   }
+
 
   if (lead?.id) {
     try {
@@ -981,6 +990,38 @@ Deno.serve(async (req) => {
     console.warn("whatsapp-webhook: unparseable payload, raw preview:", previewRawBody(rawBody));
     return jsonResponse({ ok: true, ignored: "unparseable_payload" }, 200);
   }
+
+  // ================================================================
+  // INTERNAL AUTOPILOT HOOK — meta-wa-webhook already persisted the
+  // inbound row (and the lead) for official Cloud API traffic; it calls
+  // us with autopilot_only so the AI assistant leg runs for EVERY
+  // message in the thread, not just the first greeting.
+  // ================================================================
+  if (payload?.autopilot_only === true) {
+    const senderPhone = String(payload?.sender_phone ?? "").replace(/\D/g, "");
+    const text = String(payload?.text ?? "").trim();
+    if (!senderPhone || !text) {
+      return jsonResponse({ ok: true, ignored: "autopilot_missing_input" }, 200);
+    }
+    try {
+      const result = await handleLeadInboxInbound(
+        admin,
+        SUPABASE_URL,
+        SERVICE_KEY,
+        senderPhone,
+        payload?.message_id ? String(payload.message_id) : undefined,
+        text,
+        { skipStore: true },
+      );
+      return jsonResponse({ ...result, mode: "autopilot_only" });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "unknown";
+      console.error("autopilot_only pipeline error:", message);
+      return jsonResponse({ ok: false, error: message, soft_fail: true }, 200);
+    }
+  }
+
+
 
   // ================================================================
   // META CLOUD API INBOUND — normalize the official WABA payload
