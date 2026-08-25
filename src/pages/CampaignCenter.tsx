@@ -359,23 +359,35 @@ const ChannelGrid = ({
 
                 <span className={cn(
                   'text-[13px] font-semibold leading-tight',
-                  isConnected ? 'text-foreground' : 'text-muted-foreground/70',
+                  lit ? 'text-foreground' : 'text-muted-foreground/70',
                 )}>
                   {c.label}
                 </span>
 
                 {c.free ? (
-                  <span className={cn('text-[11px] font-bold', isConnected ? 'text-primary' : 'text-muted-foreground/60')}>
+                  <span className={cn('text-[11px] font-bold', lit ? 'text-primary' : 'text-muted-foreground/60')}>
                     חינם
                   </span>
                 ) : (
-                  <span className={cn('text-[12px] font-bold', isConnected ? 'text-foreground' : 'text-muted-foreground/60')} dir="ltr">
+                  <span className={cn('text-[12px] font-bold', lit ? 'text-foreground' : 'text-muted-foreground/60')} dir="ltr">
                     <bdi dir="ltr">₪{c.price}</bdi>
                   </span>
                 )}
 
+                {!isConnected && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); onConnect(c); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onConnect(c); } }}
+                    className="mt-0.5 text-[10px] font-bold text-primary underline decoration-dotted"
+                  >
+                    חבר
+                  </span>
+                )}
 
                 {isConnected && profiles.length > 0 ? (
+
                   <span className="mt-0.5 flex w-full flex-col gap-1 overflow-hidden">
                     {profiles.slice(0, 2).map((profile) => {
                       const url = profile.profileUrl || buildAccountUrl(c.id, profile.accountRef || profile.name);
