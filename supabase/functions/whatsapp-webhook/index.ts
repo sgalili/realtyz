@@ -386,14 +386,14 @@ ${text.slice(0, 3500)}
   }
 }
 
-// ---------- GreenAPI payload extraction ----------
+// ---------- Normalized inbound extraction (from the official Meta envelope) ----------
 
 type Extracted =
   | { kind: "text"; text: string }
   | { kind: "audio"; downloadUrl: string; mimeType?: string; fileName?: string; caption?: string }
   | { kind: "media"; downloadUrl: string; mimeType?: string; fileName?: string; caption?: string; mediaKind: "image" | "video" | "document" };
 
-function extractGreenApiMessage(payload: any):
+function extractNormalizedInboundMessage(payload: any):
   | { senderPhone: string; messageId?: string; extracted: Extracted }
   | null {
   if (!payload) return null;
@@ -1511,7 +1511,7 @@ Deno.serve(async (req) => {
     console.warn("whatsapp-webhook: non-master instance observed but accepted", incomingInstance);
   }
 
-  const extracted = extractGreenApiMessage(payload);
+  const extracted = extractNormalizedInboundMessage(payload);
   if (!extracted) {
     // Acknowledge but do NOT write a recovery row — only real human text
     // messages (with a clean sender phone and decoded text) belong in the inbox.
