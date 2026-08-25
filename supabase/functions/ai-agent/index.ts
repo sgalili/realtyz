@@ -291,7 +291,7 @@ serve(async (req) => {
 
         // No phone yet → try to resolve an existing contact first; only ask
         // for a phone number when the person truly isn't in the CRM.
-        if (hasIntent && !phoneMatch && authHeaderEarly.startsWith("Bearer ")) {
+        if (hasIntent && !draft.phone && authHeaderEarly.startsWith("Bearer ")) {
           const probeClient = serviceOwnerId
             ? createClient(supabaseUrlEarly, serviceKeyEarly)
             : createClient(supabaseUrlEarly, anonKey, {
