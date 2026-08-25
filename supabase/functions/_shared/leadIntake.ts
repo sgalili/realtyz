@@ -92,29 +92,61 @@ export function extractCityLoose(text: string | null | undefined): string | null
   return labelled?.[1]?.trim() || null;
 }
 
-function parseAmount(numText: string, unitText: string | undefined): number | null {
+/**
+ * Convert "3.5 מיליון" / "15,000" / "12 אלף" to shekels.
+ *
+ * The bare-number heuristic is deal-type aware: for a RENTAL, a small number
+ * means thousands per month ("שכירות עד 15" → 15,000), never millions. Only a
+ * purchase budget may be expanded to millions ("תקציב 3.5" → 3,500,000).
+ */
+function parseAmount(
+  numText: string,
+  unitText: string | undefined,
+  dealType: "sale" | "rent" | null = null,
+): number | null {
   const n = parseFloat(String(numText).replace(/,/g, ""));
-  if (!isFinite(n)) return null;
+  if (!isFinite(n) || n <= 0) return null;
   const unit = String(unitText ?? "");
   if (/מיליון|מיל׳|מיל'|m/i.test(unit)) return Math.round(n * 1_000_000);
   if (/אלף|k/i.test(unit)) return Math.round(n * 1_000);
+  if (dealType === "rent") {
+    // A monthly rent is thousands, not millions. 15 → 15,000; 15,000 stays.
+    return n < 1_000 ? Math.round(n * 1_000) : Math.round(n);
+  }
   if (n < 100) return Math.round(n * 1_000_000); // "תקציב 3.5" → 3.5M
   return Math.round(n);
 }
 
-export function extractBudgetLoose(text: string | null | undefined): number | null {
+/** Plausibility gate so a rent figure never lands as a purchase price. */
+function sanitizeBudget(value: number | null, dealType: "sale" | "rent" | null): number | null {
+  if (!value || value < 500) return null;
+  if (dealType === "rent") {
+    // Monthly rent above ~150k ILS is a mis-parse (usually a purchase figure).
+    if (value > 150_000) return null;
+    return value;
+  }
+  return value;
+}
+
+export function extractBudgetLoose(
+  text: string | null | undefined,
+  dealType: "sale" | "rent" | null = null,
+): number | null {
   const s = String(text ?? "");
+  const effectiveType = dealType ?? extractDealTypeLoose(s);
   const withLabel = s.match(
     /(?:תקציב|עד|מקסימום|budget|up\s*to)\D{0,12}?([\d.,]+)\s*(מיליון|מיל׳|מיל'|אלף|k|m)?/iu,
   );
   if (withLabel) {
-    const v = parseAmount(withLabel[1], withLabel[2]);
-    if (v && v >= 1000) return v;
+    const v = sanitizeBudget(parseAmount(withLabel[1], withLabel[2], effectiveType), effectiveType);
+    if (v) return v;
   }
-  const shekel = s.match(/₪\s*([\d.,]+)\s*(מיליון|אלף|k|m)?/iu);
+  const shekel = s.match(/(?:₪|ש["״'׳]?ח|שקל(?:ים)?|nis|ils)/i.test(s)
+    ? /([\d.,]+)\s*(מיליון|מיל׳|מיל'|אלף|k|m)?\s*(?:₪|ש["״'׳]?ח|שקלים|שקל|nis|ils)/iu
+    : /₪\s*([\d.,]+)\s*(מיליון|אלף|k|m)?/iu);
   if (shekel) {
-    const v = parseAmount(shekel[1], shekel[2]);
-    if (v && v >= 1000) return v;
+    const v = sanitizeBudget(parseAmount(shekel[1], shekel[2], effectiveType), effectiveType);
+    if (v) return v;
   }
   return null;
 }
