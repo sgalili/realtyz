@@ -225,6 +225,9 @@ Deno.serve(async (req) => {
       const token = String(body?.page_access_token ?? "").trim();
       if (!/^\d{5,}$/.test(pageId)) return json({ error: "מזהה עמוד (Page ID) לא תקין." }, 400);
       if (token.length < 40) return json({ error: "טוקן העמוד קצר מדי או שגוי." }, 400);
+      if (isBlockedPage({ id: pageId })) {
+        return json({ error: `זהו נכס עסקי ולא עמוד פרסום. יש להזין את מזהה עמוד העסק (${PRIMARY_PAGE_ID}).` }, 400);
+      }
 
       const verify = await graph(
         `/${pageId}?fields=name,picture.width(160).height(160),instagram_business_account{id,username}&access_token=${encodeURIComponent(token)}`,
