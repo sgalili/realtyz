@@ -691,8 +691,13 @@ export default function Properties() {
                 aria-label="חיפוש נכסים"
                 className="flex-1 min-w-[90px] bg-transparent text-right text-sm outline-none placeholder:text-muted-foreground h-7"
                 dir="rtl"
+               />
+              <VoiceInputButton
+                size="sm"
+                title="חיפוש קולי"
+                onTranscript={(t) => { setQ((prev) => (prev ? `${prev} ${t}` : t)); setTimeout(() => submitQuery(), 0); }}
               />
-            </div>
+             </div>
             <Button
               type="button"
               size="sm"
