@@ -12,6 +12,7 @@ import {
   GRAPH,
   humanizeGraphError,
   loadConnection,
+  missingGroupScopes,
   resolveCaller,
 } from "../_shared/fbPersonal.ts";
 
@@ -102,6 +103,7 @@ Deno.serve(async (req) => {
     if (!caller) return json({ error: "unauthorized" }, 401);
     const ws = caller.workspaceOwnerId;
 
+    const conn = await loadConnection(admin, ws);
     const tokens = await candidateTokens(admin, ws);
     if (tokens.length === 0) {
       return json(
