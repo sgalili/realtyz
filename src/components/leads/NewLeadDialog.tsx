@@ -15,6 +15,7 @@
  */
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
