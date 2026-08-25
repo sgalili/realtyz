@@ -902,7 +902,7 @@ async function handleLeadInboxInbound(
     if (!aiRes.ok) {
       console.warn(`ai-agent failed ${aiRes.status}:`, JSON.stringify(aiJson).slice(0, 300));
     } else {
-      reply = sanitizeAiReply(String(aiJson?.content ?? aiJson?.message ?? ""));
+      reply = sanitizeAiReply(extractAiText(aiJson?.content ?? aiJson?.message ?? aiJson?.reply));
       // Append structured tool results in WhatsApp-friendly form so the lead
       // sees the actual property cards / market intel sources with the correct
       // images and links, not just narrative prose.
