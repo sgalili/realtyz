@@ -248,9 +248,14 @@ Deno.serve(async (req) => {
                   message_id: String(m?.id ?? ""),
                   profile_name: profileName,
                   message_type: type,
+                  // Inbound rows carry an explicit status so the chat window can
+                  // render delivery state consistently with outbound bubbles.
+                  status: "received",
+                  status_at: new Date().toISOString(),
                   raw: m,
                 },
               });
+
               if (msgErr) console.error("[meta-wa-webhook] record message failed", msgErr);
 
               // ── AI AUTOPILOT TRIGGER ──────────────────────────────────────
