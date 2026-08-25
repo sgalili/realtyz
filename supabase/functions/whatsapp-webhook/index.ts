@@ -972,7 +972,9 @@ async function handleLeadInboxInbound(
 
   // AI reply pipeline — runs even if storage above had issues.
   let reply = "";
+  const aiStartedAt = Date.now();
   try {
+    console.log("[autopilot] calling ai-agent", { lead_id: lead.id, history: aiMessages.length });
     const aiRes = await fetch(`${supabaseUrl}/functions/v1/ai-agent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
@@ -985,9 +987,23 @@ async function handleLeadInboxInbound(
         enable_research: agentCommand ? true : undefined,
       }),
     });
-    const aiJson = await aiRes.json().catch(() => ({}));
+    const aiRaw = await aiRes.text();
+    let aiJson: any = {};
+    try { aiJson = JSON.parse(aiRaw); } catch { /* non-json */ }
+    console.log("[autopilot] ai-agent responded", JSON.stringify({
+      status: aiRes.status,
+      elapsedMs: Date.now() - aiStartedAt,
+      lead_id: lead.id,
+    }));
     if (!aiRes.ok) {
-      console.warn(`ai-agent failed ${aiRes.status}:`, JSON.stringify(aiJson).slice(0, 300));
+      console.error(`[autopilot] ai-agent failed ${aiRes.status}:`, aiRaw.slice(0, 400));
+      await logIntegrationError({
+        integration: "ai_gateway",
+        functionName: "whatsapp-webhook",
+        errorCode: aiRes.status,
+        errorMessage: `ai-agent failed for WhatsApp autopilot (${aiRes.status})`,
+        context: { lead_id: lead.id, response: aiRaw.slice(0, 800) },
+      });
     } else {
       reply = sanitizeAiReply(extractAiText(aiJson?.content ?? aiJson?.message ?? aiJson?.reply));
       // Append structured tool results in WhatsApp-friendly form so the lead
@@ -999,11 +1015,27 @@ async function handleLeadInboxInbound(
       if (intelTail) reply = (reply || "הנה מה שמצאתי על השוק באזור:") + intelTail;
     }
   } catch (e) {
-    console.warn("ai-agent call threw:", e instanceof Error ? e.message : e);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[autopilot] ai-agent call threw:", msg);
+    await logIntegrationError({
+      integration: "ai_gateway",
+      functionName: "whatsapp-webhook",
+      errorMessage: `ai-agent call threw during WhatsApp autopilot: ${msg}`,
+      context: { lead_id: lead.id, elapsedMs: Date.now() - aiStartedAt },
+    });
   }
 
 
-  if (!reply) return { ok: true, lead_id: lead.id, stored: true, auto_reply: "empty_ai_reply" };
+  if (!reply) {
+    console.error("[autopilot] no AI text produced — nothing to send", { lead_id: lead.id });
+    await logIntegrationError({
+      integration: "ai_gateway",
+      functionName: "whatsapp-webhook",
+      errorMessage: "AI autopilot produced an empty reply",
+      context: { lead_id: lead.id, inbound_excerpt: inboundText.slice(0, 200) },
+    });
+    return { ok: true, lead_id: lead.id, stored: true, auto_reply: "empty_ai_reply" };
+  }
 
   let sendOk = false;
   let sentMessageId: string | null = null;
@@ -1013,16 +1045,34 @@ async function handleLeadInboxInbound(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
       body: JSON.stringify({ lead_id: lead.id, message: reply, ai_assisted: true, disclosure_language: "he" }),
     });
-    const sendJson = await sendRes.json().catch(() => ({}));
+    const sendRaw = await sendRes.text();
+    let sendJson: any = {};
+    try { sendJson = JSON.parse(sendRaw); } catch { /* non-json */ }
     if (!sendRes.ok || sendJson?.success === false) {
-      console.warn(`send-whatsapp failed ${sendRes.status}:`, JSON.stringify(sendJson).slice(0, 300));
+      console.error(`[autopilot] send-whatsapp failed ${sendRes.status}:`, sendRaw.slice(0, 400));
+      await logIntegrationError({
+        integration: "whatsapp",
+        functionName: "whatsapp-webhook",
+        errorCode: sendRes.status,
+        errorMessage: `autopilot reply dispatch failed (${sendRes.status})`,
+        context: { lead_id: lead.id, response: sendRaw.slice(0, 800) },
+      });
     } else {
       sendOk = true;
       sentMessageId = sendJson?.message_id ?? null;
+      console.log("[autopilot] reply sent via Cloud API", { lead_id: lead.id, message_id: sentMessageId });
     }
   } catch (e) {
-    console.warn("send-whatsapp threw:", e instanceof Error ? e.message : e);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[autopilot] send-whatsapp threw:", msg);
+    await logIntegrationError({
+      integration: "whatsapp",
+      functionName: "whatsapp-webhook",
+      errorMessage: `autopilot reply dispatch threw: ${msg}`,
+      context: { lead_id: lead.id },
+    });
   }
+
 
   if (sendOk) {
     try {
