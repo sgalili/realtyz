@@ -1077,6 +1077,21 @@ async function handleLeadInboxInbound(
     });
   }
 
+  // Last-resort: ai-agent produced nothing (empty text / tool-only turn).
+  // Rather than dropping the conversation, run the fast lane so the lead
+  // always gets a professional, on-brand answer.
+  if (!reply) {
+    console.warn("[autopilot] ai-agent produced no text — using fast lane as fallback", { lead_id: lead.id });
+    const rescue = await generateFastReply({
+      lead: { id: lead.id, full_name: lead.full_name, deal_type: lead.deal_type },
+      inboundText,
+      history: aiMessages,
+    });
+    if (rescue.text) {
+      reply = sanitizeAiReply(rescue.text);
+      console.log("[autopilot] fast lane rescue reply ready", { lead_id: lead.id, elapsedMs: rescue.elapsedMs });
+    }
+  }
 
   if (!reply) {
     console.error("[autopilot] no AI text produced — nothing to send", { lead_id: lead.id });
@@ -1088,6 +1103,7 @@ async function handleLeadInboxInbound(
     });
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "empty_ai_reply" };
   }
+
 
   let sendOk = false;
   let sentMessageId: string | null = null;
