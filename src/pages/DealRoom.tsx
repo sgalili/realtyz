@@ -162,6 +162,8 @@ export default function DealRoom() {
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [searchText, setSearchText] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<DealFilters>(EMPTY_FILTERS);
+
   const [outreachLeadId, setOutreachLeadId] = useState<string | null>(null);
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [smartReply, setSmartReply] = useState<string>('');
