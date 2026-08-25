@@ -438,8 +438,19 @@ export default function PropertyDetail() {
     return () => { cancelled = true; };
   }, [id, data, qc]);
 
-
-
+  // ---- Background gallery hydration ---------------------------------------
+  // Text/metadata render first; once they are on screen the gallery is pulled
+  // in the background (one image at a time, appended as each arrives). Nothing
+  // here blocks the view — the arrows stay usable the whole time.
+  const bgGalleryRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!id || !data || hydrating) return;
+    if (bgGalleryRef.current === id) return;
+    bgGalleryRef.current = id;
+    const t = setTimeout(() => { void ensureGalleryLoaded().catch(() => {}); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, data, hydrating]);
 
 
   // Initialize edit form when entering edit mode. Prefer a locally-persisted
