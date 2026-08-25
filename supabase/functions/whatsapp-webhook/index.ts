@@ -1036,7 +1036,7 @@ Deno.serve(async (req) => {
         senderPhone,
         payload?.message_id ? String(payload.message_id) : undefined,
         text,
-        { skipStore: true },
+        { skipStore: true, leadId: payload?.lead_id ? String(payload.lead_id) : null },
       );
       return jsonResponse({ ...result, mode: "autopilot_only" });
     } catch (e) {
