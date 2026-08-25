@@ -566,17 +566,170 @@ export default function DealRoom() {
             />
           </div>
           <Button
-            variant="outline"
+            variant={activeFilterCount ? 'default' : 'outline'}
             size="icon"
-            className="h-11 w-11 shrink-0"
-            onClick={() => setFiltersOpen((v) => !v)}
+            className="h-11 w-11 shrink-0 relative"
+            onClick={() => setFiltersOpen(true)}
             title="סינון מתקדם"
-            aria-pressed={filtersOpen}
+            aria-label="סינון מתקדם"
           >
             <SlidersHorizontal className="h-4 w-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-bold text-warning-foreground">
+                {activeFilterCount}
+              </span>
+            )}
           </Button>
         </div>
       </header>
+
+      {/* Advanced filters drawer — every control updates the visible cards
+          immediately (the tab badges stay in sync because they are computed
+          from the same filtered set). */}
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent side="left" className="w-full sm:max-w-md overflow-y-auto" dir="rtl">
+          <SheetHeader className="text-right">
+            <SheetTitle>סינון עסקאות</SheetTitle>
+            <SheetDescription>
+              {visibleLeads.length} מתעניינים מוצגים ב{activeDealType === 'rent' ? 'השכרה' : 'מכירה'}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-6">
+            {/* Stage */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">שלב בעסקה</div>
+              <div className="flex flex-wrap gap-2">
+                {stageColumns.map((col) => {
+                  const on = filters.stages.includes(col.key);
+                  return (
+                    <Button
+                      key={col.key}
+                      type="button"
+                      size="sm"
+                      variant={on ? 'default' : 'outline'}
+                      className="text-xs"
+                      onClick={() =>
+                        setFilters((f) => ({
+                          ...f,
+                          stages: on ? f.stages.filter((s) => s !== col.key) : [...f.stages, col.key],
+                        }))
+                      }
+                    >
+                      {col.title}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Deal type */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">סוג עסקה</div>
+              <Select
+                value={activeDealType}
+                onValueChange={(v) => {
+                  const next = (v === 'rent' ? 'rent' : 'sale') as DealType;
+                  setActiveDealType(next);
+                  const params = new URLSearchParams(searchParams);
+                  params.set('pipeline', next);
+                  setSearchParams(params, { replace: true });
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sale">מכירה ({saleCount})</SelectItem>
+                  <SelectItem value="rent">השכרה ({rentCount})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Budget range */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">טווח תקציב (₪)</div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="מ-"
+                  value={filters.priceMin}
+                  onChange={(e) => setFilters((f) => ({ ...f, priceMin: e.target.value }))}
+                />
+                <span className="text-muted-foreground">–</span>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="עד"
+                  value={filters.priceMax}
+                  onChange={(e) => setFilters((f) => ({ ...f, priceMax: e.target.value }))}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                מסנן לפי התקציב שנשמר בכרטיס המתעניין. מתעניינים ללא תקציב יוסתרו.
+              </p>
+            </div>
+
+            {/* Last interaction */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">אינטראקציה אחרונה</div>
+              <Select
+                value={filters.days}
+                onValueChange={(v) => setFilters((f) => ({ ...f, days: v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">בכל זמן</SelectItem>
+                  <SelectItem value="7">7 ימים אחרונים</SelectItem>
+                  <SelectItem value="30">30 ימים אחרונים</SelectItem>
+                  <SelectItem value="90">90 ימים אחרונים</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Agent */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">סוכן מטפל</div>
+              <Select
+                value={filters.agent}
+                onValueChange={(v) => setFilters((f) => ({ ...f, agent: v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל הסוכנים</SelectItem>
+                  <SelectItem value="unassigned">ללא הקצאה</SelectItem>
+                  {teamMembers.map((m) => (
+                    <SelectItem key={m.user_id} value={m.user_id}>
+                      {m.user_id.slice(0, 8)} · {m.role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">מיון</div>
+              <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">אינטראקציה אחרונה</SelectItem>
+                  <SelectItem value="priority">ציון עדיפות</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setFilters(EMPTY_FILTERS)}>
+                איפוס
+              </Button>
+              <Button className="flex-1" onClick={() => setFiltersOpen(false)}>
+                הצג {visibleLeads.length} תוצאות
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
 
 
 
