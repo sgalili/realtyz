@@ -968,11 +968,64 @@ async function handleLeadInboxInbound(
     }
   }
 
-  // AI reply pipeline — runs even if storage above had issues.
+  // ── FAST LANE ──────────────────────────────────────────────────────────
+  // Ordinary conversational replies go through a single Gemini Flash call with
+  // the expert real-estate persona. This is what keeps the reply within a few
+  // seconds instead of the multi-minute ai-agent pipeline. Only explicit agent
+  // commands (property search, CRM actions, market intel) fall through to
+  // ai-agent below.
   let reply = "";
   const aiStartedAt = Date.now();
-  try {
+  if (!agentCommand) {
+    let contextBlock = "";
+    try {
+      if (lead.interest_tag) {
+        const { data: listing } = await admin
+          .from("listings")
+          .select("property_title, asking_price, description, city, neighborhood, deal_type")
+          .eq("id", lead.interest_tag)
+          .maybeSingle();
+        if (listing) {
+          contextBlock = [
+            `נכס שהמתעניין פנה לגביו: ${listing.property_title ?? "-"}`,
+            listing.asking_price ? `מחיר מבוקש: ${Number(listing.asking_price).toLocaleString("he-IL")} ש"ח` : "",
+            `${listing.city ?? ""} ${listing.neighborhood ?? ""}`.trim(),
+            listing.description ? `תיאור: ${String(listing.description).slice(0, 600)}` : "",
+          ].filter(Boolean).join("\n");
+        }
+      }
+    } catch (e) {
+      console.warn("[autopilot] fast-lane listing context soft-fail:", e instanceof Error ? e.message : e);
+    }
+
+    const fast = await generateFastReply({
+      lead: {
+        id: lead.id,
+        full_name: lead.full_name,
+        deal_type: lead.deal_type,
+        interest_tag: lead.interest_tag,
+      },
+      inboundText,
+      history: aiMessages,
+      contextBlock,
+    });
+    if (fast.text) {
+      reply = sanitizeAiReply(fast.text);
+      console.log("[autopilot] fast lane reply ready", { lead_id: lead.id, elapsedMs: fast.elapsedMs });
+    } else {
+      console.error("[autopilot] fast lane failed, falling back to ai-agent:", fast.error);
+      await logIntegrationError({
+        integration: "ai_gateway",
+        functionName: "whatsapp-webhook",
+        errorMessage: `fast-lane WhatsApp reply failed: ${fast.error ?? "empty"}`,
+        context: { lead_id: lead.id, elapsedMs: fast.elapsedMs },
+      });
+    }
+  }
+
+  if (!reply) try {
     console.log("[autopilot] calling ai-agent", { lead_id: lead.id, history: aiMessages.length });
+
     const aiRes = await fetch(`${supabaseUrl}/functions/v1/ai-agent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
