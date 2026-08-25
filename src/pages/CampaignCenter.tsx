@@ -3144,7 +3144,7 @@ const PublishedFeed = () => {
     // instantly whatever was previously stored, never waiting on the provider.
     const { data } = await supabase
       .from('campaign_logs')
-      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, sent_at')
+      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at')
       .in('user_id', scopedUserIds)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
