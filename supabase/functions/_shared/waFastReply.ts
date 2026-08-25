@@ -112,7 +112,7 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
     }
     let json: any = {};
     try { json = JSON.parse(raw); } catch { /* non-json */ }
-    const text = String(json?.choices?.[0]?.message?.content ?? "").trim();
+    const text = sanitizeReplyText(String(json?.choices?.[0]?.message?.content ?? ""));
     return { text, elapsedMs: Date.now() - startedAt };
   } catch (e) {
     return { text: "", elapsedMs: Date.now() - startedAt, error: e instanceof Error ? e.message : String(e) };
