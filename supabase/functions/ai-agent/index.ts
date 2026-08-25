@@ -18,6 +18,8 @@ import {
 } from "../_shared/persona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 import { maskMessages } from "../_shared/pii.ts";
+import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
+
 import {
   detectCreateLeadIntent,
   collectIntakeText,
@@ -367,6 +369,14 @@ serve(async (req) => {
             if (insErr) {
               console.warn("create-lead intent insert failed:", insErr);
             } else {
+              // Hydrate the WhatsApp profile picture in the background.
+              triggerAvatarFetch(
+                supabaseUrlEarly,
+                Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+                (inserted as any)?.id,
+                uid,
+              );
+
               // Auto-search: fire Webtiv/Homely with the lead's city + deal
               // type so the drawer instantly shows matching properties with
               // "Send WhatsApp Offer" buttons wired to `phone_number`.

@@ -139,7 +139,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
 
     setSaving(true);
     try {
-      const { error } = await supabase.from('leads').insert({
+      const { data: created, error } = await supabase.from('leads').insert({
         full_name: fullName.trim(),
         phone_number: normalizedPhone,
         email: email.trim() || null,
@@ -149,8 +149,16 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         preferences,
         lead_stage: 'new',
         interest_tag: dealType === 'sale' ? 'דירה למכירה' : 'דירה להשכרה',
-      } as any);
+      } as any).select('id').maybeSingle();
       if (error) throw error;
+      // Background WhatsApp profile-picture hydration — never blocks the save.
+      if ((created as any)?.id) {
+        supabase.functions
+          .invoke('fetch-wa-avatars', { body: { lead_ids: [(created as any).id] } })
+          .then(() => queryClient.invalidateQueries({ queryKey: ['leads'] }))
+          .catch(() => {});
+      }
+
       toast.success('הליד נוצר בהצלחה', {
         description: `${fullName.trim()} נוסף לניהול מתעניינים ${dealType === 'sale' ? 'מכירה' : 'השכרה'}`,
       });

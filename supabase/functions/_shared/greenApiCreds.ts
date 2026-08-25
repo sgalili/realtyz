@@ -135,24 +135,61 @@ export async function fetchGreenAvatar(
   creds: { instance_id: string; token: string },
   chatId: string,
 ): Promise<string | null> {
-  try {
+  const call = async (method: string): Promise<any> => {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 12_000);
-    const res = await fetch(
-      `https://api.green-api.com/waInstance${creds.instance_id}/getAvatar/${creds.token}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId }),
-        signal: ctl.signal,
-      },
-    );
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const data: any = await res.json().catch(() => ({}));
-    const url = clean(data?.urlAvatar);
-    return url && data?.available !== false ? url : null;
+    try {
+      const res = await fetch(
+        `https://api.green-api.com/waInstance${creds.instance_id}/${method}/${creds.token}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chatId }),
+          signal: ctl.signal,
+        },
+      );
+      if (!res.ok) return null;
+      return await res.json().catch(() => null);
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  try {
+    // Primary: getAvatar (fast, dedicated endpoint).
+    const avatar: any = await call("getAvatar");
+    const direct = clean(avatar?.urlAvatar);
+    if (direct && avatar?.available !== false) return direct;
+
+    // Fallback: getContactInfo also carries the photo for many contacts,
+    // notably ones that were never in an active chat.
+    const info: any = await call("getContactInfo");
+    const fromInfo = clean(info?.avatar ?? info?.urlAvatar);
+    return fromInfo || null;
   } catch {
     return null;
   }
 }
+
+/**
+ * Fire-and-forget avatar hydration for a single lead. Safe to call from any
+ * webhook or agent path — never throws and never blocks the caller.
+ */
+export function triggerAvatarFetch(
+  supabaseUrl: string,
+  serviceKey: string,
+  leadId: string | null | undefined,
+  ownerId?: string | null,
+): void {
+  if (!leadId) return;
+  try {
+    fetch(`${supabaseUrl}/functions/v1/fetch-wa-avatars`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+      body: JSON.stringify({ lead_ids: [leadId], owner_id: ownerId ?? null }),
+    }).catch(() => {});
+  } catch { /* silent */ }
+}
+
