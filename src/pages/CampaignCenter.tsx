@@ -4916,23 +4916,32 @@ const CampaignCenter = () => {
           .select('page_id, page_name')
           .limit(1)
           .maybeSingle();
-        const hasOwnProfile = !!(wsp as any)?.page_id;
-        const wspFbId = (wsp as any)?.page_id as string | null;
-        const wspFbName = (wsp as any)?.page_name as string | null;
+        let wspFbId = ((wsp as any)?.page_id as string | null) ?? null;
+        let wspFbName = ((wsp as any)?.page_name as string | null) ?? null;
+        if (!wspFbId) {
+          // The client read is RLS-scoped to the workspace owner; the edge
+          // function resolves the same binding for every workspace member.
+          const resolved = await resolveMetaPageViaFunction();
+          if (resolved.pageId) {
+            wspFbId = resolved.pageId;
+            wspFbName = wspFbName ?? resolved.pageName;
+          }
+        }
+        const hasOwnProfile = !!wspFbId;
         if (hasOwnProfile) writeFbBindingFlag(true);
         if (!hasOwnProfile) {
           if (wspErr) {
             // Transient read failure (RLS blip / offline) — never downgrade a
             // known-good Facebook connection to "disconnected".
             console.warn('[CampaignCenter] page binding read failed:', wspErr.message);
-          } else {
+          } else if (!readFbBindingFlag()) {
             writeFbBindingFlag(false);
             if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
           }
           // continue — still derive direct channels (IVR/email) below
         } else {
           if (wspFbName && !cancelled) {
-            setChannelAccountNames((prev) => ({ ...prev, facebook: wspFbName }));
+            setChannelAccountNames((prev) => ({ ...prev, facebook: wspFbName as string }));
           }
 
         }
@@ -4942,7 +4951,8 @@ const CampaignCenter = () => {
 
         // A transient binding read failure must never disable Facebook: the
         // native Page token is the single source of truth and stays remembered.
-        if (!hasOwnProfile && wspErr && readFbBindingFlag()) set.add('facebook');
+        if (!hasOwnProfile && readFbBindingFlag()) set.add('facebook');
+
 
         if (hasOwnProfile) {
           // A bound Facebook Page is by itself a valid connected state — the
