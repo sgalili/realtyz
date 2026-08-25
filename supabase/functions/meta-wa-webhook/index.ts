@@ -285,9 +285,13 @@ Deno.serve(async (req) => {
                   : JSON.stringify({
                       autopilot_only: true,
                       sender_phone: from,
+                      // Hand over the exact lead we just resolved so the AI leg
+                      // never loses the thread to a phone-format mismatch.
+                      lead_id: leadId ?? null,
                       message_id: String(m?.id ?? ""),
                       text: String(content),
                     });
+
 
                 const trigger = fetch(`${supabaseUrl}/functions/v1/whatsapp-webhook`, {
                   method: "POST",
