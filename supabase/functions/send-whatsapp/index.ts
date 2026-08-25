@@ -296,30 +296,48 @@ async function resolveGreenApiCreds(
 }
 
 /**
+ * Meta rejects template parameters that are empty or contain newlines, tabs or
+ * runs of 4+ spaces — such a send fails (or gets dropped) even though the API
+ * may hand back a wamid. Normalize every value before it goes on the wire.
+ */
+function sanitizeTemplateParam(value: string): string {
+  return String(value ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s{4,}/g, "   ")
+    .trim()
+    .slice(0, 1024);
+}
+
+/**
  * Build the Meta `components` payload for an approved template.
  *
  * Supports both positional ({{1}}) and named ({{first_name}}) placeholders —
  * named ones require `parameter_name` per Meta's Cloud API spec.
+ * Returns the missing placeholder names so the caller can fail loudly instead
+ * of shipping empty parameters that Meta silently refuses to deliver.
  */
 function buildTemplateComponents(
   bodyText: string,
   values: Record<string, string>,
-): unknown[] {
+): { components: unknown[]; missing: string[] } {
   const keys: string[] = [];
   const re = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(bodyText)) !== null) {
     if (!keys.includes(m[1])) keys.push(m[1]);
   }
-  if (!keys.length) return [];
+  if (!keys.length) return { components: [], missing: [] };
+  const missing: string[] = [];
   const parameters = keys.map((key) => {
-    const text = values[key] ?? values[key.toLowerCase()] ?? "";
+    const text = sanitizeTemplateParam(values[key] ?? values[key.toLowerCase()] ?? "");
+    if (!text) missing.push(key);
     return /^\d+$/.test(key)
       ? { type: "text", text }
       : { type: "text", parameter_name: key, text };
   });
-  return [{ type: "body", parameters }];
+  return { components: [{ type: "body", parameters }], missing };
 }
+
 
 /**
  * Collect the dynamic values a template may reference: lead name, property
