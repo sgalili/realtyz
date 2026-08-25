@@ -15,9 +15,12 @@
 // ============================================================
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { sanitizeReplyText } from "./replySanitize.ts";
+
 // Fast tier — Gemini Flash. Do NOT swap to a pro/thinking model here:
 // this path is latency-critical.
 const FAST_MODEL = "google/gemini-3-flash-preview";
+
 
 export interface FastReplyLead {
   id: string;
