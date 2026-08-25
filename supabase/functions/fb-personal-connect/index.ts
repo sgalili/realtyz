@@ -10,7 +10,9 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   adminClient,
+  checkTokenHealth,
   FB_BASIC_SCOPES,
+
   fbAppCredentials,
   FB_PERSONAL_SCOPES,
   GRAPH,
