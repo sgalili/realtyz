@@ -877,9 +877,12 @@ Deno.serve(async (req) => {
     let rawPhone = parsed.data.phone_number ?? "";
     let routingTenantId = parsed.data.tenant_id ?? null;
     if (!rawPhone && parsed.data.lead_id) {
+      // NOTE: leads has no `user_id` column — the workspace owner is `assigned_to`.
+      // Selecting a non-existent column made EVERY lead_id-based send fail with
+      // "Lead not found", which silently killed the AI autopilot replies.
       const { data: lead, error: leadErr } = await admin
         .from("leads")
-        .select("phone_number, user_id")
+        .select("phone_number, assigned_to")
         .eq("id", parsed.data.lead_id)
         .maybeSingle();
       if (leadErr || !lead?.phone_number) {
@@ -887,19 +890,22 @@ Deno.serve(async (req) => {
           success: false,
           provider: "WBA",
           message_id: null,
-          error: "Lead not found or has no phone_number",
+          error: leadErr
+            ? `Lead lookup failed: ${leadErr.message}`
+            : "Lead not found or has no phone_number",
         }, 404);
       }
       rawPhone = lead.phone_number;
-      routingTenantId = routingTenantId ?? ((lead as any)?.user_id ?? null);
+      routingTenantId = routingTenantId ?? ((lead as any)?.assigned_to ?? null);
     } else if (parsed.data.lead_id && !routingTenantId) {
       const { data: lead } = await admin
         .from("leads")
-        .select("user_id")
+        .select("assigned_to")
         .eq("id", parsed.data.lead_id)
         .maybeSingle();
-      routingTenantId = ((lead as any)?.user_id ?? null) as string | null;
+      routingTenantId = ((lead as any)?.assigned_to ?? null) as string | null;
     }
+
     const phone = normalizePhone(rawPhone);
     if (!phone) {
       return json({
