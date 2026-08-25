@@ -1275,8 +1275,14 @@ Deno.serve(async (req) => {
     const senderPhone = String(payload?.sender_phone ?? "").replace(/\D/g, "");
     const text = String(payload?.text ?? "").trim();
     if (!senderPhone || !text) {
+      console.warn("[autopilot] missing input", { has_phone: Boolean(senderPhone), has_text: Boolean(text) });
       return jsonResponse({ ok: true, ignored: "autopilot_missing_input" }, 200);
     }
+    console.log("[autopilot] leg started", {
+      from_last4: senderPhone.slice(-4),
+      lead_id: payload?.lead_id ?? null,
+      wamid: payload?.message_id ?? null,
+    });
     try {
       const result = await handleLeadInboxInbound(
         admin,
@@ -1287,13 +1293,21 @@ Deno.serve(async (req) => {
         text,
         { skipStore: true, leadId: payload?.lead_id ? String(payload.lead_id) : null },
       );
+      console.log("[autopilot] leg finished", JSON.stringify(result));
       return jsonResponse({ ...result, mode: "autopilot_only" });
     } catch (e) {
       const message = e instanceof Error ? e.message : "unknown";
-      console.error("autopilot_only pipeline error:", message);
+      console.error("[autopilot] leg crashed:", message, e instanceof Error ? e.stack : "");
+      await logIntegrationError({
+        integration: "whatsapp",
+        functionName: "whatsapp-webhook",
+        errorMessage: `autopilot leg crashed: ${message}`,
+        context: { from_last4: senderPhone.slice(-4), lead_id: payload?.lead_id ?? null, wamid: payload?.message_id ?? null },
+      });
       return jsonResponse({ ok: false, error: message, soft_fail: true }, 200);
     }
   }
+
 
 
 
