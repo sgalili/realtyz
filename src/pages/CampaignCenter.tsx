@@ -3000,23 +3000,28 @@ const PublishedFeed = () => {
       // A bound Facebook Page (OAuth or manual token) is by itself a valid
       // connected state — the manual path never writes to social_connections.
       try {
-        const { data: binding, error: bindingErr } = await supabase
+        const { data: binding } = await supabase
           .from('messenger_page_bindings')
           .select('page_id')
           .limit(1)
           .maybeSingle();
-        if ((binding as any)?.page_id) {
+        let pageId = ((binding as any)?.page_id as string | null) ?? null;
+        if (!pageId) {
+          // Fall back to the server-side resolver (workspace-owner scoped).
+          pageId = (await resolveMetaPageViaFunction()).pageId;
+        }
+        if (pageId) {
           next.add('facebook');
           writeFbBindingFlag(true);
-        } else if (!bindingErr) {
-          writeFbBindingFlag(false);
         } else if (readFbBindingFlag()) {
-          // Transient read failure — keep the remembered connected state.
           next.add('facebook');
+        } else {
+          writeFbBindingFlag(false);
         }
       } catch {
         if (readFbBindingFlag()) next.add('facebook');
       }
+
       const { data } = await supabase
         .from('social_connections')
         .select('platform, is_connected')
