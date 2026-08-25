@@ -35,6 +35,7 @@ import { useTrialStatus } from '@/hooks/useTrialStatus';
 
 // DemoModeToggle removed from app
 import { PageHero } from '@/components/PageHero';
+import { FacebookConnectionBanner } from '@/components/social/FacebookConnectionBanner';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 const TUTORIAL_STEPS = [
@@ -480,6 +481,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </header>
           <PageHero />
           <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-6 pt-0">
+            <FacebookConnectionBanner />
             {children}
             <DemoSidebarPeek />
           </main>

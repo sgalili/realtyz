@@ -84,7 +84,13 @@ export const FacebookPersonalConnectCard = () => {
       if (!String(m.state || '').startsWith(STATE_PREFIX)) return;
       if (m.error) {
         setConnecting(false);
-        toast.error('החיבור לפייסבוק בוטל', { description: m.errorDescription || m.error });
+        toast.error('החיבור לפייסבוק בוטל', {
+          description: m.errorDescription || m.error,
+          action: {
+            label: 'נסה עם הרשאות בסיסיות',
+            onClick: () => void connect(true),
+          },
+        });
         return;
       }
       try {
@@ -97,6 +103,12 @@ export const FacebookPersonalConnectCard = () => {
           description: (res as any)?.identity?.fb_user_name ?? undefined,
         });
         await refetch();
+        // Pull the groups right away so "סנכרן קבוצות" is not needed manually.
+        void supabase.functions.invoke('fb-groups-import', { body: {} }).then(() => {
+          qc.invalidateQueries({ queryKey: ['fb-user-groups'] });
+          qc.invalidateQueries({ queryKey: ['custom-user-groups'] });
+        });
+        qc.invalidateQueries({ queryKey: ['facebook-health'] });
         qc.invalidateQueries({ queryKey: ['custom-user-groups'] });
       } catch (e: any) {
         toast.error('חיבור פייסבוק נכשל', { description: e?.message });
@@ -109,11 +121,12 @@ export const FacebookPersonalConnectCard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const connect = async () => {
+  const connect = async (basic = false) => {
     setConnecting(true);
     try {
       const res = await callFbPersonal<any>({
         action: 'start',
+        basic,
         redirect_uri: `${window.location.origin}/oauth/callback`,
       });
       const url = (res as any)?.auth_url;
@@ -196,7 +209,7 @@ export const FacebookPersonalConnectCard = () => {
               <Unlink className="h-4 w-4" /> ניתוק
             </Button>
           )}
-          <Button size="sm" onClick={connect} disabled={connecting} className="gap-1">
+          <Button size="sm" onClick={() => connect(false)} disabled={connecting} className="gap-1">
             {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
             {connected ? 'חיבור מחדש' : 'חיבור פרופיל פייסבוק'}
           </Button>
