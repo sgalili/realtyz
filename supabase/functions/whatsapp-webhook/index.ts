@@ -992,6 +992,38 @@ Deno.serve(async (req) => {
   }
 
   // ================================================================
+  // INTERNAL AUTOPILOT HOOK — meta-wa-webhook already persisted the
+  // inbound row (and the lead) for official Cloud API traffic; it calls
+  // us with autopilot_only so the AI assistant leg runs for EVERY
+  // message in the thread, not just the first greeting.
+  // ================================================================
+  if (payload?.autopilot_only === true) {
+    const senderPhone = String(payload?.sender_phone ?? "").replace(/\D/g, "");
+    const text = String(payload?.text ?? "").trim();
+    if (!senderPhone || !text) {
+      return jsonResponse({ ok: true, ignored: "autopilot_missing_input" }, 200);
+    }
+    try {
+      const result = await handleLeadInboxInbound(
+        admin,
+        SUPABASE_URL,
+        SERVICE_KEY,
+        senderPhone,
+        payload?.message_id ? String(payload.message_id) : undefined,
+        text,
+        { skipStore: true },
+      );
+      return jsonResponse({ ...result, mode: "autopilot_only" });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "unknown";
+      console.error("autopilot_only pipeline error:", message);
+      return jsonResponse({ ok: false, error: message, soft_fail: true }, 200);
+    }
+  }
+
+
+
+  // ================================================================
   // META CLOUD API INBOUND — normalize the official WABA payload
   // (entry[].changes[].value.messages[]) into the internal envelope the
   // extractor below already understands. Status callbacks (`statuses[]`)
