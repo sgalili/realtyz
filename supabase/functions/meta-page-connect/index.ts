@@ -350,6 +350,39 @@ Deno.serve(async (req) => {
       );
       if (longRes.ok && longRes.payload?.access_token) userToken = String(longRes.payload.access_token);
 
+      // Persist the long-lived USER token too: group discovery (/me/groups)
+      // requires a user token, and a page login already grants it.
+      try {
+        const meRes = await graph(
+          `/me?fields=id,name,picture.width(120).height(120)&access_token=${encodeURIComponent(userToken)}`,
+        );
+        const permRes = await graph(`/me/permissions?access_token=${encodeURIComponent(userToken)}`);
+        const granted: string[] = Array.isArray(permRes.payload?.data)
+          ? permRes.payload.data
+            .filter((p: any) => p?.status === "granted")
+            .map((p: any) => String(p.permission))
+          : [];
+        if (meRes.ok && meRes.payload?.id) {
+          await admin.from("fb_personal_connections").upsert(
+            {
+              workspace_owner_id: ownerId,
+              fb_user_id: String(meRes.payload.id),
+              fb_user_name: meRes.payload?.name ?? null,
+              fb_avatar_url: meRes.payload?.picture?.data?.url ?? null,
+              access_token: userToken,
+              scopes: granted,
+              connected_by: caller.userId,
+              connected_at: new Date().toISOString(),
+              last_error: null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "workspace_owner_id" },
+          );
+        }
+      } catch (e) {
+        console.warn("[meta-page-connect] user token persist failed", e);
+      }
+
       const pagesRes = await graph(
         `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${
           encodeURIComponent(userToken)
