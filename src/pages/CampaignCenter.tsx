@@ -5003,7 +5003,7 @@ const CampaignCenter = () => {
             .eq('is_connected', true);
           const { data: accountRows, error: accountRowsErr } = await supabase
             .from('social_connections')
-            .select('id, platform, account_id, account_name, avatar_url, is_connected')
+            .select('id, platform, display_name, credentials, is_connected')
             .eq('is_connected', true);
           if (cancelled) return;
 
