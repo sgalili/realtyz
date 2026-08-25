@@ -291,7 +291,9 @@ async function resolveGreenApiCreds(
   const instance_id = String(row.green_api_instance_id ?? "").trim();
   const token = String(row.green_api_token ?? "").trim();
   if (!instance_id || !token) return null;
-  if (row.qr_status && row.qr_status !== "connected") return null;
+  // Only a *successfully connected* QR session may take over routing; anything
+  // else (pending scan, expired, unknown) falls back to the official Meta number.
+  if (String(row.qr_status ?? "").toLowerCase() !== "connected") return null;
   return { instance_id, token };
 }
 
