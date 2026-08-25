@@ -121,16 +121,30 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
         redirect_uri: `${window.location.origin}/oauth/callback`,
       });
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      window.open(res.auth_url, 'realtyz-fb-page-oauth', 'width=560,height=680');
+      const popup = window.open(res.auth_url, 'realtyz-fb-page-oauth', 'width=560,height=680');
+      if (!popup) {
+        setConnecting(false);
+        toast.error('הדפדפן חסם את חלון פייסבוק', {
+          description: 'אפשר חלונות קופצים לאתר, או השתמש בחיבור ידני באמצעות טוקן.',
+        });
+        setManualOpen(true);
+      }
     } catch (e: any) {
       setConnecting(false);
-      toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: e?.message });
+      // App in development mode / missing app config → guide to the manual path.
+      setManualOpen(true);
+      toast.error('לא ניתן לפתוח את חיבור פייסבוק', {
+        description: `${e?.message ?? e} — ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
+      });
     }
   };
 
   const disconnect = async () => {
     try {
       await callPageConnect({ action: 'disconnect' });
+      setPage({ connected: false, page: null });
+      setStatus(null);
+      onStatus?.(null);
       toast.success('עמוד הפייסבוק נותק');
       await probe(false);
     } catch (e: any) {
@@ -146,6 +160,22 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
         page_id: manualPageId.trim(),
         page_access_token: manualToken.trim(),
       });
+      // Flip the pill to "connected" instantly from the verified response.
+      setPage({
+        connected: true,
+        page: {
+          id: String(res?.page?.id ?? manualPageId.trim()),
+          name: res?.page?.name ?? null,
+          picture: res?.page?.picture ?? null,
+          connected_at: new Date().toISOString(),
+        },
+        instagram: res?.instagram ?? null,
+      });
+      onStatus?.({
+        connected: true,
+        facebook: { id: String(res?.page?.id ?? manualPageId.trim()), name: res?.page?.name ?? null },
+        instagram: res?.instagram ?? null,
+      });
       toast.success('הטוקן נשמר והעמוד חובר', { description: res?.page?.name ?? undefined });
       setManualToken('');
       setManualOpen(false);
@@ -153,6 +183,7 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
     } catch (e: any) {
       toast.error('שמירת הטוקן נכשלה', { description: e?.message });
     } finally {
+
       setSavingManual(false);
     }
   };
