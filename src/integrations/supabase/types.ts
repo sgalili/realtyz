@@ -5396,6 +5396,10 @@ export type Database = {
         Args: { p_lead_id: string }
         Returns: undefined
       }
+      trigger_wa_avatar_fetch_for_lead: {
+        Args: { p_force?: boolean; p_lead_id: string; p_owner_id?: string }
+        Returns: undefined
+      }
       upsert_lead_by_social: {
         Args: {
           _email?: string
