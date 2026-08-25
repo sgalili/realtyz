@@ -1497,19 +1497,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, ignored: "non_inbound_type", typeWebhook }, 200);
   }
 
-  // Observe instance ID, but do not reject at the route threshold: GreenAPI
-  // payload variants can omit/change this field and the broker still needs the
-  // raw inbound saved to the inbox.
-  const MASTER_INSTANCE_ID = "7103164675";
-  const incomingInstance = String(
-    payload?.instanceData?.idInstance ??
-      payload?.idInstance ??
-      payload?.instance_id ??
-      "",
-  ).replace(/\D/g, "");
-  if (incomingInstance && incomingInstance !== MASTER_INSTANCE_ID) {
-    console.warn("whatsapp-webhook: non-master instance observed but accepted", incomingInstance);
-  }
+  // Everything reaching this point came from the official Meta envelope, which
+  // carries no third-party instance identifier — nothing further to observe.
 
   const extracted = extractNormalizedInboundMessage(payload);
   if (!extracted) {
