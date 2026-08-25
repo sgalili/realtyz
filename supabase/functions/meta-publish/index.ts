@@ -203,6 +203,69 @@ async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<
   return null;
 }
 
+/** Every Meta token we can try, most workspace-specific first. */
+async function candidateTokens(db: SupabaseClient, ownerId: string | null): Promise<string[]> {
+  const out: string[] = [];
+  const push = (t: unknown) => {
+    const s = String(t ?? "").trim();
+    if (s.length > 20 && !out.includes(s)) out.push(s);
+  };
+  try {
+    const q = db.from("messenger_page_bindings").select("page_access_token").order("updated_at", { ascending: false }).limit(10);
+    const { data } = ownerId ? await q : await q;
+    for (const r of (data ?? []) as any[]) push(r?.page_access_token);
+  } catch { /* ignore */ }
+  try {
+    const { data } = await db
+      .from("social_connections")
+      .select("credentials")
+      .in("platform", ["facebook", "meta", "instagram"])
+      .order("updated_at", { ascending: false })
+      .limit(10);
+    for (const c of (data ?? []) as any[]) {
+      const cred = (c?.credentials ?? {}) as Record<string, unknown>;
+      push(cred.page_access_token);
+      push(cred.access_token);
+      push(cred.token);
+      push(cred.user_access_token);
+    }
+  } catch { /* ignore */ }
+  for (const t of platformMetaTokens()) push(t);
+  return out;
+}
+
+/**
+ * Fallback page resolution used when the stored page_id turns out to lack
+ * publishing permission (Graph 200/10) or its token expired (190). Walks every
+ * available Meta token, asks /me/accounts for the Pages it actually manages,
+ * and returns the ones we have not tried yet — the primary Page from
+ * /me/accounts becomes the publishing target instead of hard-blocking.
+ */
+async function alternatePages(
+  db: SupabaseClient,
+  ownerId: string | null,
+  triedPageIds: string[],
+): Promise<ResolvedPage[]> {
+  const out: ResolvedPage[] = [];
+  for (const token of await candidateTokens(db, ownerId)) {
+    const r = await graph(
+      `/me/accounts?fields=id,name,access_token&limit=25&access_token=${encodeURIComponent(token)}`,
+    );
+    const list: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
+    for (const p of list) {
+      const id = String(p?.id ?? "").trim();
+      if (!id || triedPageIds.includes(id) || out.some((x) => x.pageId === id)) continue;
+      out.push({ pageId: id, pageName: p?.name ?? null, token: String(p?.access_token ?? token) });
+    }
+  }
+  return out;
+}
+
+/** Publish errors that mean "wrong page/token", i.e. worth retrying elsewhere. */
+const isPageScopeError = (msg: string) =>
+  msg.includes("אין הרשאת פרסום") || msg.includes("פג תוקף");
+
+
 async function graph(path: string, init?: RequestInit) {
   const res = await fetch(`${GRAPH}${path}`, init);
   const text = await res.text();
