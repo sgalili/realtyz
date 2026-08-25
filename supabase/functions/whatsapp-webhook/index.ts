@@ -879,7 +879,15 @@ async function handleLeadInboxInbound(
   // the AI agent so webtiv_search / Market Intel / CRM actions can run.
   const agentCommand = isAgentCommand(inboundText);
 
+  console.log("[autopilot] gates", JSON.stringify({
+    lead_id: lead.id,
+    lead_autopilot: lead.ai_autopilot,
+    assigned_to: lead.assigned_to ?? null,
+    agent_command: agentCommand,
+  }));
+
   if (!agentCommand && lead.ai_autopilot === false) {
+    console.log("[autopilot] blocked: contact-level ai_autopilot is off", { lead_id: lead.id });
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "disabled" };
   }
 
@@ -888,19 +896,39 @@ async function handleLeadInboxInbound(
   // commands skip this — a direct request is a direct request.
   const aiOwnerId = lead.assigned_to ? String(lead.assigned_to) : "";
   if (!aiOwnerId) {
+    console.warn("[autopilot] blocked: lead has no assigned_to owner", { lead_id: lead.id });
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "missing_owner_for_ai_autopilot" };
   }
   if (!agentCommand) {
     try {
-      const { data: globalAutopilot } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: aiOwnerId });
+      const { data: globalAutopilot, error: gErr } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: aiOwnerId });
+      if (gErr) {
+        console.error("[autopilot] is_ai_autopilot_enabled RPC error:", gErr.message);
+        await logIntegrationError({
+          integration: "whatsapp",
+          functionName: "whatsapp-webhook",
+          errorMessage: `autopilot gate RPC failed: ${gErr.message}`,
+          context: { lead_id: lead.id, owner_id: aiOwnerId },
+        });
+        return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_check_failed" };
+      }
       if (!globalAutopilot) {
+        console.log("[autopilot] blocked: workspace autopilot switch is off", { owner_id: aiOwnerId });
         return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_disabled" };
       }
     } catch (e) {
-      console.warn("global AI autopilot check failed:", e instanceof Error ? e.message : e);
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[autopilot] global gate threw:", msg);
+      await logIntegrationError({
+        integration: "whatsapp",
+        functionName: "whatsapp-webhook",
+        errorMessage: `autopilot gate threw: ${msg}`,
+        context: { lead_id: lead.id, owner_id: aiOwnerId },
+      });
       return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_check_failed" };
     }
   }
+
 
 
   // Build persistent omnichannel context (best-effort). Use the unified
