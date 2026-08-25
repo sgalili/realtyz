@@ -983,16 +983,19 @@ Deno.serve(async (req) => {
           .select("name, language, body_text, owner_user_id")
           .eq("name", parsed.data.template_id)
           .order("synced_at", { ascending: false })
-          .limit(5);
+          .limit(10);
         const { data: tplRows } = await tplQuery;
         const rows = (tplRows ?? []) as any[];
+        const sameLang = language ? rows.filter((r) => String(r.language) === language) : [];
+        const pool = sameLang.length ? sameLang : rows;
         const row =
-          rows.find((r) => routing.owner_id && r.owner_user_id === routing.owner_id) ??
-          rows.find((r) => !language || r.language === language) ??
-          rows[0];
+          pool.find((r) => routing.owner_id && r.owner_user_id === routing.owner_id) ?? pool[0];
         if (row) {
           bodyText = String(row.body_text ?? "");
-          language = language ?? String(row.language ?? "he");
+          // The approved template's own language ALWAYS wins. Guessing "he" for
+          // a template that Meta only approved in "en" makes the Cloud API
+          // reject the send (132001) or drop it after handing back a wamid.
+          language = String(row.language ?? language ?? "he");
         }
 
         if (bodyText && /\{\{\s*[A-Za-z0-9_]+\s*\}\}/.test(bodyText)) {
@@ -1002,7 +1005,17 @@ Deno.serve(async (req) => {
             ownerId: routing.owner_id,
             overrides: parsed.data.template_variables,
           });
-          components = buildTemplateComponents(bodyText, values);
+          const built = buildTemplateComponents(bodyText, values);
+          if (built.missing.length) {
+            return json({
+              success: false,
+              provider: "WBA",
+              message_id: null,
+              error: `חסרים משתנים בתבנית "${parsed.data.template_id}": ${built.missing.join(", ")}`,
+              details: { missing_variables: built.missing, template: parsed.data.template_id },
+            }, 400);
+          }
+          components = built.components;
         }
       }
 
@@ -1012,6 +1025,7 @@ Deno.serve(async (req) => {
         components,
       };
     }
+
 
 
     let result: StdResponse;
