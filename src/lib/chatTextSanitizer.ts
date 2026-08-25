@@ -41,13 +41,22 @@ export function sanitizeChatText(raw: string | null | undefined): string {
     }
   }
 
-  // 4) Tidy whitespace: no more than one blank line, trim each line.
+  // 4) Drop internal routing/debug artefacts that mean nothing to a human:
+  //    the "[whatsapp] " channel tag the dispatcher prepends and the short
+  //    listing-id tokens the agent emits ("[1fa196ce] הרצליה ...").
+  text = text.replace(/^\s*\[(?:whatsapp|instagram|facebook|messenger|email|sms|telegram|web)\]\s*/i, '');
+  text = text.replace(/\[[0-9a-f]{6,8}\]\s*/gi, '');
+  text = text.replace(/\((?:id|listing|נכס)\s*[:=]?\s*[0-9a-f-]{6,36}\)/gi, '');
+
+  // 5) Tidy whitespace: no more than one blank line, trim each line.
   text = text
     .split('\n')
-    .map((l) => l.replace(/[ \t]+$/g, ''))
+    .map((l) => l.replace(/[ \t]+$/g, '').replace(/^[ \t]+/, (m) => (m.length > 3 ? '' : m)))
     .join('\n')
+    .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+
 
   return text;
 }
