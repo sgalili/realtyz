@@ -4902,16 +4902,18 @@ const CampaignCenter = () => {
     try { localStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
   }, [channelAccountNames]);
 
-  // Default-select Facebook when it's connected and nothing is picked yet.
+  // Default-select Facebook when nothing is picked yet. Facebook publishes via
+  // the native Page token resolved server-side, so we never gate the default
+  // selection on the async connection probe.
   useEffect(() => {
     if (pickedChannel) return;
-    if (!connectedChannels.has('facebook')) return;
     const fb = CHANNEL_CARDS.find((c) => c.id === 'facebook');
     if (fb) {
       setPickedChannel(fb);
       setPickedChannelIds((prev) => (prev.has('facebook') ? prev : new Set(prev).add('facebook')));
     }
   }, [connectedChannels, pickedChannel]);
+
 
 
 
