@@ -784,14 +784,15 @@ Deno.serve(async (req) => {
     return json({
       success: failures.length === 0,
       verified: true,
-      published_channels: channels,
-      post_ids: postIds,
+      published_channels: pendingChannels,
+      duplicate_channels: alreadySent.map((p) => p.platform),
+      post_ids: [...postIds, ...alreadySent],
       failures,
       warnings,
       group_results: groupResults,
       message: failures.length ? failures[0].message : (warnings[0] ?? null),
-
     });
+
   } catch (e) {
     console.error("[meta-publish] fatal", e);
     return json(
