@@ -434,7 +434,7 @@ export default function DealRoom() {
     if (!activeLead || !smartReply.trim() || sending) return;
     setSending(true);
     try {
-      // Route through the unified send-whatsapp gateway (WBA → GreenAPI fallback).
+      // Route through the unified send-whatsapp gateway (Official Meta Cloud API only).
       // The gateway resolves the recipient phone from lead_id and inserts the
       // outbound row into `messages` on success — that becomes the Deal Room history entry.
       const { data, error } = await supabase.functions.invoke('send-whatsapp', {
