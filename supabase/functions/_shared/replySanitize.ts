@@ -40,6 +40,7 @@ export function sanitizeReplyText(raw: string | null | undefined): string {
 
   text = text.replace(/^\s*\[(?:whatsapp|instagram|facebook|messenger|email|sms|telegram|web)\]\s*/i, "");
   text = text.replace(/\[[0-9a-f]{6,8}\]\s*/gi, "");
+  text = text.replace(/\*\*\s*\*\*/g, "").replace(/__\s*__/g, "");
 
   return text
     .split("\n")

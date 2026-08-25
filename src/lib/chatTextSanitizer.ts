@@ -50,7 +50,7 @@ export function sanitizeChatText(raw: string | null | undefined): string {
   //    empty emphasis pairs they leave behind.
   text = text.replace(/\[[0-9a-f]{6,8}\]\s*/gi, '');
   text = text.replace(/\((?:id|listing|נכס)\s*[:=]?\s*[0-9a-f-]{6,36}\)/gi, '');
-  text = text.replace(/(\*\*|__|\*|_)\s*\1/g, '');
+  text = text.replace(/\*\*\s*\*\*/g, '').replace(/__\s*__/g, '');
 
 
   // 5) Tidy whitespace: no more than one blank line, trim each line.
