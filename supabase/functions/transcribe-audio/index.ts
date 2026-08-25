@@ -1,7 +1,8 @@
-// Audio transcription via Lovable AI Gateway (Gemini supports audio inputs).
-// Accepts { audio_data_url: string, mime_type?: string, language?: string }
+// Speech-to-text via Lovable AI Gateway (/v1/audio/transcriptions).
+// Accepts EITHER:
+//   - multipart/form-data with a `file` part (+ optional `language`)
+//   - JSON { audio_data_url: string, mime_type?: string, language?: string }
 // Returns { text: string }
-import { z } from "https://esm.sh/zod@3.25.76";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const corsHeaders = {
@@ -9,73 +10,110 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const Body = z.object({
-  audio_data_url: z.string().min(20).max(30_000_000),
-  mime_type: z.string().max(120).optional(),
-  language: z.string().max(20).optional().default("he"),
-});
+const MODEL = "openai/gpt-4o-transcribe";
+const MAX_BYTES = 24 * 1024 * 1024;
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+function extFor(mime: string): string {
+  const m = (mime || "").split(";")[0].toLowerCase();
+  return ({
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/wave": "wav",
+    "audio/webm": "webm",
+    "audio/mp4": "m4a",
+    "audio/m4a": "m4a",
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/ogg": "ogg",
+    "audio/flac": "flac",
+  } as Record<string, string>)[m] ?? "wav";
+}
+
+function dataUrlToBlob(dataUrl: string, fallbackMime?: string): Blob {
+  const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(dataUrl);
+  if (!match) throw new Error("audio_data_url is not a valid data URL");
+  const mime = match[1] || fallbackMime || "audio/wav";
+  const raw = match[3];
+  if (match[2]) {
+    const bin = atob(raw);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }
+  return new Blob([decodeURIComponent(raw)], { type: mime });
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!LOVABLE_API_KEY) return json({ error: "LOVABLE_API_KEY not configured" }, 500);
 
-    const parsed = Body.safeParse(await req.json());
-    if (!parsed.success) {
-      return new Response(JSON.stringify({ error: parsed.error.flatten() }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const contentType = req.headers.get("content-type") ?? "";
+    let audio: Blob;
+    let language: string | undefined;
+
+    if (contentType.includes("multipart/form-data")) {
+      const form = await req.formData();
+      const file = form.get("file");
+      if (!(file instanceof File)) return json({ error: "missing `file` part" }, 400);
+      audio = file;
+      const lang = form.get("language");
+      language = typeof lang === "string" ? lang : undefined;
+    } else {
+      const body = await req.json().catch(() => null) as
+        | { audio_data_url?: string; mime_type?: string; language?: string }
+        | null;
+      if (!body?.audio_data_url) return json({ error: "missing `audio_data_url`" }, 400);
+      audio = dataUrlToBlob(body.audio_data_url, body.mime_type);
+      language = body.language;
     }
-    const { audio_data_url, language } = parsed.data;
 
-    const prompt = language === "he"
-      ? "תמלל את הקובץ הקולי הזה במדויק לעברית. החזר טקסט בלבד, ללא הקדמה או הערות."
-      : `Transcribe this audio file accurately to ${language}. Return text only, no preamble or commentary.`;
+    if (audio.size < 1024) return json({ error: "empty_recording" }, 400);
+    if (audio.size > MAX_BYTES) return json({ error: "audio too large (max 24MB)" }, 400);
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const upstream = new FormData();
+    upstream.append("model", MODEL);
+    upstream.append("file", audio, `recording.${extFor(audio.type)}`);
+    // Bare ISO-639-1 only; anything else (or "auto") must be omitted so the model detects it.
+    const lang = (language ?? "").trim().slice(0, 2).toLowerCase();
+    if (/^(he|en)$/.test(lang)) upstream.append("language", lang);
+
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [{
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: audio_data_url } },
-          ],
-        }],
-      }),
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}` },
+      body: upstream,
     });
 
     if (!res.ok) {
-      const t = await res.text();
+      const detail = (await res.text().catch(() => "")).slice(0, 600);
       await logIntegrationError({
         integration: "transcription",
         functionName: "transcribe-audio",
         errorCode: res.status,
-        errorMessage: t.slice(0, 500),
+        errorMessage: detail,
       });
-      return new Response(JSON.stringify({ error: `transcription failed ${res.status}: ${t}` }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: `transcription failed: ${detail || res.status}` }, res.status);
     }
 
-    const j = await res.json();
-    const text: string = j?.choices?.[0]?.message?.content?.trim?.() ?? "";
-    return new Response(JSON.stringify({ text }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const out = await res.json().catch(() => ({}));
+    const text: string = (out?.text ?? "").trim();
+    return json({ text });
   } catch (e) {
-    console.error("transcribe-audio error:", e);
+    const message = e instanceof Error ? e.message : "unknown";
+    console.error("transcribe-audio error:", message);
     await logIntegrationError({
       integration: "transcription",
       functionName: "transcribe-audio",
-      errorMessage: e instanceof Error ? e.message : "unknown",
+      errorMessage: message,
     });
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "unknown" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: message }, 500);
   }
 });
