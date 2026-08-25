@@ -3898,6 +3898,13 @@ const PublishedFeed = () => {
 
         const isOpen = expanded[r.id] ?? false;
         const scheduled = isScheduledRow(r);
+        // A publish that Meta rejected: shown explicitly as "נכשל" with the exact
+        // provider reason, never as a normal published post.
+        const failed = String(r.status || '').toLowerCase() === 'failed';
+        const failureReason = failed
+          ? (r.failure_reason || (r.provider_response as any)?.error || 'הפרסום לפייסבוק נכשל')
+          : null;
+
         const seriesSlots = (r as any)._seriesSlots as Array<{ id: string; sent_at: string | null }> | undefined;
         const isSeries = Array.isArray(seriesSlots) && seriesSlots.length > 1;
         // Emergency override: never treat rows as paused in the UI so the
