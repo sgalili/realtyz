@@ -4977,7 +4977,9 @@ const CampaignCenter = () => {
           .maybeSingle();
         let wspFbId = ((wsp as any)?.page_id as string | null) ?? null;
         let wspFbName = ((wsp as any)?.page_name as string | null) ?? null;
+        if (isBlockedFbPage(wspFbId, wspFbName)) { wspFbId = null; wspFbName = null; }
         if (!wspFbId) {
+
           // The client read is RLS-scoped to the workspace owner; the edge
           // function resolves the same binding for every workspace member.
           const resolved = await resolveMetaPageViaFunction();
