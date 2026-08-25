@@ -136,8 +136,13 @@ async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<
       .limit(1)
       .maybeSingle();
     const row: any = data;
-    if (row?.page_id && row?.page_access_token) {
+    if (row?.page_id && row?.page_access_token && !isBlockedPage({ id: row.page_id, name: row.page_name })) {
       return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
+    }
+    // A previously cached Employee/business asset must be re-resolved.
+    if (row?.page_access_token) {
+      const rediscovered = await discoverPageFromToken(db, ownerId, String(row.page_access_token));
+      if (rediscovered) return rediscovered;
     }
   }
 
@@ -158,7 +163,7 @@ async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<
           .limit(1)
           .maybeSingle();
         const row: any = data;
-        if (row?.page_id && row?.page_access_token) {
+        if (row?.page_id && row?.page_access_token && !isBlockedPage({ id: row.page_id, name: row.page_name })) {
           return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
         }
       }
@@ -180,7 +185,7 @@ async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<
       ).trim();
       if (!token) continue;
       const pageId = String(cred.page_id ?? cred.pageId ?? cred.fb_page_id ?? "").trim();
-      if (pageId) {
+      if (pageId && !isBlockedPage({ id: pageId, name: c?.display_name })) {
         const page = { pageId, pageName: (c?.display_name as string) ?? null, token };
         await cachePage(db, ownerId, page);
         return page;
