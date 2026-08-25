@@ -17,6 +17,7 @@ import {
   type DealType,
 } from "../_shared/persona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
+import { resolveAgentIdentity, buildMasterAgentPrompt } from "../_shared/masterAgentPrompt.ts";
 import { maskMessages } from "../_shared/pii.ts";
 import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
 
@@ -1505,7 +1506,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     ].join("\n");
 
 
-    const systemPrompt = (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
+    const systemPrompt = masterDirective + "\n\n" + (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
       ? MASTER_AGENT_PROMPT + (webtivBlock ? "\n\n" + webtivBlock : "") + (marketIntelBlock ? "\n\n" + marketIntelBlock : "")
       : SCHEMA_CONTEXT
           .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
