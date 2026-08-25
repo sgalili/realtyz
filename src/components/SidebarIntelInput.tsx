@@ -165,7 +165,11 @@ export function SidebarIntelInput() {
   const handleVoiceResult = useCallback((text: string) => {
     setInput(prev => (prev ? prev + ' ' + text : text));
   }, []);
-  const { isListening, toggle: toggleVoice } = useHebrewVoiceInput(handleVoiceResult);
+  // Server-side STT (Hebrew + English) replaces the browser SpeechRecognition path,
+  // which is missing on Firefox/Safari and unreliable for Hebrew.
+  const voice = useVoiceRecorder({ onTranscript: handleVoiceResult, onError: (m) => toast.error(m) });
+  const isListening = voice.isRecording;
+  const toggleVoice = () => { void voice.toggle(); };
 
   const useSuggestion = () => {
     setInput(SUGGESTED_PROMPTS[suggestionIdx]);
