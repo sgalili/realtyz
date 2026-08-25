@@ -5003,7 +5003,7 @@ const CampaignCenter = () => {
             .eq('is_connected', true);
           const { data: accountRows, error: accountRowsErr } = await supabase
             .from('social_connections')
-            .select('id, platform, account_id, account_name, avatar_url, is_connected')
+            .select('id, platform, display_name, credentials, is_connected')
             .eq('is_connected', true);
           if (cancelled) return;
 
@@ -5015,16 +5015,21 @@ const CampaignCenter = () => {
           // imports don't render the same page twice on the FB card.
           const seenAcct = new Set<string>();
           const profiles = ((accountRows as any[]) || [])
-            .map((r) => ({
-              id: r?.id,
-              platform: String(r?.platform || '').toLowerCase(),
-              accountRef: r?.account_id || '',
-              profileKey: null as string | null,
-              name: r?.account_name || r?.account_id || 'Facebook',
-              username: null as string | null,
-              avatar: r?.avatar_url || null,
-              profileUrl: r?.account_id ? buildAccountUrl(String(r?.platform || '').toLowerCase(), r.account_id) : null,
-            }))
+            .map((r) => {
+              const cred = (r?.credentials || {}) as Record<string, any>;
+              const acctRef = String(cred.page_id || cred.account_id || cred.id || '').trim();
+              const platform = String(r?.platform || '').toLowerCase();
+              return {
+                id: r?.id,
+                platform,
+                accountRef: acctRef,
+                profileKey: null as string | null,
+                name: cred.page_name || cred.account_name || r?.display_name || acctRef || 'Facebook',
+                username: null as string | null,
+                avatar: cred.avatar_url || cred.picture_url || null,
+                profileUrl: acctRef ? buildAccountUrl(platform, acctRef) : null,
+              };
+            })
             .filter((p) => {
               const k = `${p.platform}:${p.accountRef}`;
               if (seenAcct.has(k)) return false;
