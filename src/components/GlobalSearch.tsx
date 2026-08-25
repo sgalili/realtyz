@@ -159,8 +159,9 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
             placeholder="חפש מתעניינים, נכסים, או הודעות..."
             className="border-0 focus-visible:ring-0 h-12 text-base"
             autoFocus
-          />
-          <kbd className="hidden sm:inline-flex text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">ESC</kbd>
+           />
+          <VoiceInputButton size="sm" onTranscript={(t) => setQuery((q) => (q ? `${q} ${t}` : t))} />
+           <kbd className="hidden sm:inline-flex text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">ESC</kbd>
         </div>
 
         <div className="max-h-96 overflow-y-auto p-2 scrollbar-thin">
