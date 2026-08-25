@@ -624,7 +624,9 @@ async function handleLeadInboxInbound(
   inboundText: string,
   // When true, the inbound row was ALREADY persisted upstream (meta-wa-webhook)
   // and this call only runs the autopilot leg: lead resolution → AI → send.
-  opts?: { skipStore?: boolean },
+  // `leadId` lets the upstream webhook hand us the exact lead it resolved so we
+  // never lose the thread to a phone-format mismatch.
+  opts?: { skipStore?: boolean; leadId?: string | null },
 ) {
   const skipStore = opts?.skipStore === true;
 
@@ -637,18 +639,41 @@ async function handleLeadInboxInbound(
   // workspace scoping, constraint) NEVER halts the AI reply path.
   // The inbox is restored by always inserting the message row with the
   // sender_phone in metadata, even when lead resolution fails.
+  const LEAD_COLS = "id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type";
   let lead: any = null;
-  try {
-    const r = await admin
-      .from("leads")
-      .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
-      .eq("phone_number", senderPhone)
-      .maybeSingle();
-    lead = r.data;
-    if (r.error) console.warn("lead lookup soft-fail:", r.error.message);
-  } catch (e) {
-    console.warn("lead lookup threw:", e instanceof Error ? e.message : e);
+  if (opts?.leadId) {
+    try {
+      const r = await admin.from("leads").select(LEAD_COLS).eq("id", opts.leadId).maybeSingle();
+      lead = r.data;
+    } catch (e) {
+      console.warn("lead-by-id lookup threw:", e instanceof Error ? e.message : e);
+    }
   }
+  if (!lead?.id) {
+    // Phone formats differ per gateway (972…, +972…, 05…) — match every variant
+    // so an existing thread is never split or silently skipped.
+    const digits = senderPhone.replace(/\D/g, "");
+    const variants = Array.from(new Set([
+      senderPhone,
+      digits,
+      `+${digits}`,
+      digits.startsWith("972") ? `0${digits.slice(3)}` : digits,
+      digits.startsWith("0") ? `972${digits.slice(1)}` : digits,
+    ].filter(Boolean)));
+    try {
+      const r = await admin
+        .from("leads")
+        .select(LEAD_COLS)
+        .in("phone_number", variants)
+        .limit(1)
+        .maybeSingle();
+      lead = r.data;
+      if (r.error) console.warn("lead lookup soft-fail:", r.error.message);
+    } catch (e) {
+      console.warn("lead lookup threw:", e instanceof Error ? e.message : e);
+    }
+  }
+
 
   // Auto-create lead from short-link inbound when none exists yet.
   if (!lead?.id && (shortLink || hasShortLinkSignature)) {
