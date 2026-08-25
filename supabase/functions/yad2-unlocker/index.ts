@@ -202,13 +202,19 @@ async function brightDataRequest(
 // searches jump straight to the browser transport instead of burning ~4s on
 // four guaranteed-to-fail endpoints.
 let bdZoneBroken = false;
+// Bright Data's residential/Unlocker product refuses gw.yad2.co.il without a
+// KYC approval (`policy_20140`). The public www.yad2.co.il HTML IS allowed and
+// carries the full feed in __NEXT_DATA__, so once we see this we stop paying
+// for gateway attempts on the REST transport and go straight to HTML.
+let bdGatewayRestBlocked = false;
 
 function zoneModeError(bdHeaders: Record<string, string>): string | null {
-  const code = bdHeaders["x-brd-err-code"] ?? "";
+  const code = bdHeaders["x-brd-err-code"] ?? bdHeaders["x-brd-error-code"] ?? "";
   const msg = bdHeaders["x-brd-err-msg"] ?? bdHeaders["x-brd-error"] ?? "";
   if (!code && !msg) return null;
   return `${code || "brd_error"}: ${msg}`;
 }
+
 
 
 // Rolling trace of every Bright Data hop in the current invocation. Returned
