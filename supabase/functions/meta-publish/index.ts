@@ -394,11 +394,16 @@ Deno.serve(async (req) => {
     }
 
     if (!page) {
+      // No Page token could be resolved from the workspace, workspace members,
+      // the social connection, or the platform Meta credentials. Report the
+      // real cause (missing/expired Meta token) instead of a generic
+      // "not connected" wall that used to block publishing entirely.
       return json(
         {
           success: false,
-          error: "not_connected",
-          message: "דף הפייסבוק לא מחובר. יש לחבר את דף הפייסבוק בהגדרות החיבורים.",
+          error: "meta_token_unavailable",
+          message:
+            "לא נמצא טוקן Meta פעיל לפרסום. יש לחבר מחדש את חשבון ה-Meta (או להזין Page ID וטוקן ידני) בעמוד החיבורים.",
         },
         200,
       );
