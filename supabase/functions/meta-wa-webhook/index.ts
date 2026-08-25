@@ -226,6 +226,12 @@ Deno.serve(async (req) => {
                   .is("assigned_to", null);
               }
 
+              // Pull the WhatsApp profile photo (Green API) in the background so
+              // the inbox shows the real picture instead of initials.
+              triggerAvatarFetch(supabaseUrl, serviceRoleKey, leadId as string | null, ownerId);
+
+
+
               // 2. Mirror into the unified omni-channel chat feed.
               const ts = m?.timestamp
                 ? new Date(Number(m.timestamp) * 1000).toISOString()
