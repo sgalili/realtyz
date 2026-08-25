@@ -74,10 +74,12 @@ function friendlyYad2Error(raw: string): string {
   const s = raw.toLowerCase();
   if (/non-2xx|546|worker_resource_limit|memory/.test(s)) return 'שירות יד-2 עמוס כרגע — נסה שוב בעוד רגע';
   if (/timeout|idle_timeout|504/.test(s)) return 'יד-2 לא הגיב בזמן';
-  if (/suspend|billing|zone|misconfigured|402|403/.test(s)) return 'חשבון הגישה ליד-2 אינו פעיל';
+  if (/suspend|billing|402/.test(s)) return 'חשבון הגישה ליד-2 אינו פעיל';
+  if (/zone|misconfigured|kyc|policy_20140|403/.test(s)) return 'הגישה ליד-2 דרך Bright Data נחסמה זמנית — נסה שוב';
   if (/429|rate/.test(s)) return 'יותר מדי בקשות ליד-2 — נסה שוב בקרוב';
   return raw.slice(0, 120);
 }
+
 
 function tokenize(q: string | null | undefined): string[] {
   return String(q ?? '')
