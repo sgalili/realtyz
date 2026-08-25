@@ -2380,11 +2380,16 @@ const ConfirmDispatchDialog = ({
           throw new Error(payload?.message || payload?.error || 'פייסבוק לא אישר שהפוסט פורסם בפועל');
         }
         const groupFailures: any[] = results.flatMap((r) => Array.isArray((r.data as any)?.group_failures) ? (r.data as any).group_failures : []);
-
+        // Idempotency: the backend detected the exact same post already live and
+        // skipped a second publish (and a second history row).
+        const duplicateOnly = !scheduledAt && results.length > 0 &&
+          results.every((r) => (r.data as any)?.duplicate === true);
 
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
           toast.success(`הפוסט תוזמן ל-${when} ב-${targets.length} יעד(ים)`);
+        } else if (duplicateOnly) {
+          toast.info((results[0]?.data as any)?.message || 'הפוסט הזה כבר פורסם — לא נשלח שוב.');
         } else if (groupIds.length > 0 && groupFailures.length === 0) {
           toast.success('הפוסט שותף בהצלחה בכל הקבוצות שנבחרו!');
         } else if (groupIds.length > 0 && groupFailures.length > 0) {
@@ -2392,6 +2397,7 @@ const ConfirmDispatchDialog = ({
         } else {
           toast.success(`הקמפיין פורסם בהצלחה ב-${targets.length} יעד(ים)!`);
         }
+
       } else {
         // Direct-messaging channels (SMS / email / IVR / AI Voice) broadcast to leads.
         const { data: leads, error } = await supabase
