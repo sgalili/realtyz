@@ -17,6 +17,7 @@ import {
   type DealType,
 } from "../_shared/persona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
+import { resolveAgentIdentity, buildMasterAgentPrompt } from "../_shared/masterAgentPrompt.ts";
 import { maskMessages } from "../_shared/pii.ts";
 import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
 
@@ -793,7 +794,24 @@ serve(async (req) => {
       pivotAttempts,
     });
 
-    const isInternalDashboard = !lead_id;
+    // === DUAL-FRONTIER TRUST RESOLUTION ===
+    // Internal mode is granted ONLY by a verified token + role (or a trusted
+    // service dispatch that names the workspace owner). A written claim of
+    // identity inside the message never changes this.
+    const identity = await resolveAgentIdentity({
+      supabaseUrl,
+      anonKey: Deno.env.get("SUPABASE_ANON_KEY")!,
+      serviceKey: supabaseKey,
+      authHeader: requestAuthHeader,
+      leadFacing: Boolean(lead_id),
+      workspaceOwnerId: currentOwnerId,
+    });
+    const isInternalDashboard = !lead_id && identity.mode === "internal";
+    const masterDirective = buildMasterAgentPrompt(identity.mode, {
+      surface: lead_id ? "lead_conversation" : "internal_dashboard",
+      roles: identity.roles,
+    });
+    console.log("agent identity:", identity.mode, "-", identity.reason);
 
     // === MASTER AGENT MODE (internal dashboard chief-of-staff) ===
     // When the workspace owner/manager chats from the dashboard sidebar (no lead_id),
@@ -1488,7 +1506,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     ].join("\n");
 
 
-    const systemPrompt = (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
+    const systemPrompt = masterDirective + "\n\n" + (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
       ? MASTER_AGENT_PROMPT + (webtivBlock ? "\n\n" + webtivBlock : "") + (marketIntelBlock ? "\n\n" + marketIntelBlock : "")
       : SCHEMA_CONTEXT
           .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)

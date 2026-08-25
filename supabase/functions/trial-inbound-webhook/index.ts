@@ -13,6 +13,7 @@
  * webhook. Auth is enforced via a shared secret header.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 import { classifyEscalation } from "../_shared/guardrails.ts";
 
 const corsHeaders = {
@@ -100,7 +101,8 @@ Deno.serve(async (req) => {
                 {
                   role: "system",
                   content:
-                    "אתה עוזר תקשורת לקמפיין פוליטי. ענה בעברית, חם, מקצועי וקצר (עד 200 תווים). אל תזכיר 'Realtyz' או כל ספק חיצוני. ענה לבוחר באישיות. השתמש במידע ההקשר אם רלוונטי.",
+                    externalMasterPrompt({ surface: "whatsapp_trial", compact: true }) +
+                    "\n\nענה בעברית, חם, מקצועי וקצר (עד 200 תווים). אל תזכיר ספק חיצוני. השתמש במידע ההקשר אם רלוונטי, ואל תחשוף מידע פנימי.",
                 },
                 {
                   role: "user",

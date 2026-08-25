@@ -15,6 +15,7 @@
 // Idempotency: a partial unique index on (lead_id, trigger_type) WHERE status='pending' prevents dupes.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 
@@ -89,7 +90,7 @@ Write a single short follow-up message in Hebrew. Do not invent prices or addres
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: sysPrompt },
+          { role: "system", content: externalMasterPrompt({ surface: "outreach_suggest" }) + "\n\n" + sysPrompt },
           { role: "user", content: userPrompt },
         ],
       }),
