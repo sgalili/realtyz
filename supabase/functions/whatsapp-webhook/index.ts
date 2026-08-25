@@ -27,6 +27,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
+import { generateFastReply } from "../_shared/waFastReply.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -852,21 +853,19 @@ async function handleLeadInboxInbound(
 
 
   if (lead?.id) {
-    try {
-      await admin.from("chat_history").insert({ lead_id: lead.id, role: "user", content: inboundText, is_demo: false });
-    } catch (e) {
-      console.warn("chat_history insert soft-fail:", e instanceof Error ? e.message : e);
-    }
-    try {
-      await admin.from("leads").update({ last_interaction_at: now, status: "contacted" }).eq("id", lead.id);
-    } catch (e) {
-      console.warn("lead touch soft-fail:", e instanceof Error ? e.message : e);
-    }
+    // Fire-and-forget bookkeeping — never block the reply on these writes.
+    admin.from("chat_history").insert({ lead_id: lead.id, role: "user", content: inboundText, is_demo: false })
+      .then(({ error }: any) => { if (error) console.warn("chat_history insert soft-fail:", error.message); })
+      .catch?.((e: unknown) => console.warn("chat_history insert threw:", e));
+    admin.from("leads").update({ last_interaction_at: now, status: "contacted" }).eq("id", lead.id)
+      .then(({ error }: any) => { if (error) console.warn("lead touch soft-fail:", error.message); })
+      .catch?.((e: unknown) => console.warn("lead touch threw:", e));
     // Fire-and-forget AI metadata extraction from inbound text.
     extractAndApplyLeadMetadata(admin, lead, inboundText).catch((e) =>
       console.warn("[lead-metadata-extract] failed:", e instanceof Error ? e.message : e),
     );
   }
+
 
   // Without any lead row we cannot run autopilot (ai-agent + send require lead_id).
   if (!lead?.id) {
@@ -941,7 +940,7 @@ async function handleLeadInboxInbound(
       .select("direction, sender_type, content, channel, platform, created_at")
       .eq("lead_id", lead.id)
       .order("created_at", { ascending: false })
-      .limit(120);
+      .limit(agentCommand ? 60 : 24);
     const built = (omni ?? [])
       .reverse()
       .map((m: any) => {
@@ -970,11 +969,64 @@ async function handleLeadInboxInbound(
     }
   }
 
-  // AI reply pipeline — runs even if storage above had issues.
+  // ── FAST LANE ──────────────────────────────────────────────────────────
+  // Ordinary conversational replies go through a single Gemini Flash call with
+  // the expert real-estate persona. This is what keeps the reply within a few
+  // seconds instead of the multi-minute ai-agent pipeline. Only explicit agent
+  // commands (property search, CRM actions, market intel) fall through to
+  // ai-agent below.
   let reply = "";
   const aiStartedAt = Date.now();
-  try {
+  if (!agentCommand) {
+    let contextBlock = "";
+    try {
+      if (lead.interest_tag) {
+        const { data: listing } = await admin
+          .from("listings")
+          .select("property_title, asking_price, description, city, neighborhood, deal_type")
+          .eq("id", lead.interest_tag)
+          .maybeSingle();
+        if (listing) {
+          contextBlock = [
+            `נכס שהמתעניין פנה לגביו: ${listing.property_title ?? "-"}`,
+            listing.asking_price ? `מחיר מבוקש: ${Number(listing.asking_price).toLocaleString("he-IL")} ש"ח` : "",
+            `${listing.city ?? ""} ${listing.neighborhood ?? ""}`.trim(),
+            listing.description ? `תיאור: ${String(listing.description).slice(0, 600)}` : "",
+          ].filter(Boolean).join("\n");
+        }
+      }
+    } catch (e) {
+      console.warn("[autopilot] fast-lane listing context soft-fail:", e instanceof Error ? e.message : e);
+    }
+
+    const fast = await generateFastReply({
+      lead: {
+        id: lead.id,
+        full_name: lead.full_name,
+        deal_type: lead.deal_type,
+        interest_tag: lead.interest_tag,
+      },
+      inboundText,
+      history: aiMessages,
+      contextBlock,
+    });
+    if (fast.text) {
+      reply = sanitizeAiReply(fast.text);
+      console.log("[autopilot] fast lane reply ready", { lead_id: lead.id, elapsedMs: fast.elapsedMs });
+    } else {
+      console.error("[autopilot] fast lane failed, falling back to ai-agent:", fast.error);
+      await logIntegrationError({
+        integration: "ai_gateway",
+        functionName: "whatsapp-webhook",
+        errorMessage: `fast-lane WhatsApp reply failed: ${fast.error ?? "empty"}`,
+        context: { lead_id: lead.id, elapsedMs: fast.elapsedMs },
+      });
+    }
+  }
+
+  if (!reply) try {
     console.log("[autopilot] calling ai-agent", { lead_id: lead.id, history: aiMessages.length });
+
     const aiRes = await fetch(`${supabaseUrl}/functions/v1/ai-agent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
@@ -1025,6 +1077,21 @@ async function handleLeadInboxInbound(
     });
   }
 
+  // Last-resort: ai-agent produced nothing (empty text / tool-only turn).
+  // Rather than dropping the conversation, run the fast lane so the lead
+  // always gets a professional, on-brand answer.
+  if (!reply) {
+    console.warn("[autopilot] ai-agent produced no text — using fast lane as fallback", { lead_id: lead.id });
+    const rescue = await generateFastReply({
+      lead: { id: lead.id, full_name: lead.full_name, deal_type: lead.deal_type },
+      inboundText,
+      history: aiMessages,
+    });
+    if (rescue.text) {
+      reply = sanitizeAiReply(rescue.text);
+      console.log("[autopilot] fast lane rescue reply ready", { lead_id: lead.id, elapsedMs: rescue.elapsedMs });
+    }
+  }
 
   if (!reply) {
     console.error("[autopilot] no AI text produced — nothing to send", { lead_id: lead.id });
@@ -1036,6 +1103,7 @@ async function handleLeadInboxInbound(
     });
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "empty_ai_reply" };
   }
+
 
   let sendOk = false;
   let sentMessageId: string | null = null;
