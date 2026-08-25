@@ -11,6 +11,7 @@
 // Public endpoint: Meta cannot send an Authorization header, so this function
 // authenticates the payload with the verify token / app secret instead.
 import { corsHeaders } from "../_shared/cors.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { graphCall, metaAdminClient, ownerForPage } from "../_shared/metaPage.ts";
 import {
   COMMENT_FIELDS,
@@ -122,7 +123,14 @@ Deno.serve(async (req) => {
         }
       }
     } catch (e) {
-      console.error("[meta-comments-webhook] processing failed", e);
+      const message = e instanceof Error ? e.message : String(e);
+      console.error("[meta-comments-webhook] processing failed", message, e instanceof Error ? e.stack : "");
+      await logIntegrationError({
+        integration: "meta",
+        functionName: "meta-comments-webhook",
+        errorMessage: `${message}${e instanceof Error && e.stack ? `\n${e.stack}` : ""}`,
+        context: { object: payload?.object ?? null },
+      });
     }
   };
 

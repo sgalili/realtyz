@@ -6,6 +6,7 @@
 // Public endpoint (verify_jwt = false). Validates HMAC signature when
 // ELEVENLABS_WEBHOOK_SECRET is configured.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -182,7 +183,13 @@ Deno.serve(async (req) => {
 
     return json({ ok: true, lead_id: leadId, needs_callback: needsCallback });
   } catch (e) {
-    console.error("[elevenlabs-call-webhook] fatal", e);
-    return json({ error: (e as Error).message }, 500);
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[elevenlabs-call-webhook] fatal", message, e instanceof Error ? e.stack : "");
+    await logIntegrationError({
+      integration: "transcription",
+      functionName: "elevenlabs-call-webhook",
+      errorMessage: `${message}${e instanceof Error && e.stack ? `\n${e.stack}` : ""}`,
+    });
+    return json({ error: message }, 500);
   }
 });

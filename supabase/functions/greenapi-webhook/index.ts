@@ -27,6 +27,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { ownerForInstance, toIntlDigits } from "../_shared/greenApiCreds.ts";
 import { getStateInstance, mapStateToStatus } from "../_shared/greenApi.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -315,6 +316,9 @@ async function handleIncoming(admin: any, payload: any) {
         lead_id: leadId,
         lead_name: (lead as any)?.full_name ?? profileName,
         mode: "deal_room_reply",
+        // Server-to-server system context — no interactive user session exists,
+        // so the verified workspace owner is passed explicitly.
+        workspace_owner_id: aiOwner,
         context:
           `Inbound WhatsApp message (Green API personal number) from ${(lead as any)?.full_name ?? profileName ?? "the client"}: ${text}\n` +
           `DETECTED INTENT: ${intentLine}.\n` +
@@ -476,8 +480,17 @@ Deno.serve(async (req) => {
     // Always 200 — Green API retries aggressively on any non-2xx.
     return json({ received: true, type, ...result });
   } catch (e) {
-    console.error("[greenapi-webhook] handler error", e);
-    return json({ received: true, type, error: e instanceof Error ? e.message : "unknown_error" });
+    const message = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error ? e.stack : undefined;
+    // Full trace to Edge Function logs + persisted row so nothing fails silently.
+    console.error("[greenapi-webhook] handler error", message, stack ?? "");
+    await logIntegrationError({
+      integration: "whatsapp",
+      functionName: "greenapi-webhook",
+      errorMessage: `${message}${stack ? `\n${stack}` : ""}`,
+      context: { webhook_type: type, instance: payload?.instanceData?.idInstance ?? null },
+    });
+    return json({ received: true, type, error: message });
   }
 });
 

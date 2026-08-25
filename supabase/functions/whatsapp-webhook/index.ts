@@ -1034,6 +1034,9 @@ async function handleLeadInboxInbound(
         lead_id: lead.id,
         lead_name: lead.full_name,
         mode: "deal_room_reply",
+        // System context: the webhook has no interactive user session, so we
+        // hand ai-agent the verified workspace owner explicitly.
+        workspace_owner_id: aiOwnerId || undefined,
         context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
         messages: aiMessages,
         enable_research: agentCommand ? true : undefined,
@@ -1946,6 +1949,8 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             mode: "master_analysis",
+            // Service-role dispatch: identify the workspace owner explicitly.
+            workspace_owner_id: userId,
             context:
               `המשרד שלך קיבל קובץ ${sourceType === "image" ? "תמונה" : sourceType === "video" ? "וידאו" : "מסמך"} ב-WhatsApp` +
               (msg.caption ? ` עם הערה: "${msg.caption}"` : "") +
