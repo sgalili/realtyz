@@ -27,9 +27,16 @@ const PAGE_SCOPES = [
   "pages_manage_engagement",
   "instagram_basic",
   "instagram_content_publish",
+  // Group discovery/publishing (restricted — Meta simply omits them from the
+  // dialog until App Review approves, it does not break the login).
+  "user_managed_groups",
+  "groups_access_member_info",
+  "publish_to_groups",
 ];
 
-const CONFIG_ID = Deno.env.get("META_PAGE_CONFIG_ID")?.trim() || "1741528006908878";
+// A Login-for-Business config_id makes Meta IGNORE `scope`, which is why the
+// page/group permissions were never granted. It is opt-in through env only.
+const CONFIG_ID = Deno.env.get("META_PAGE_CONFIG_ID")?.trim() || "";
 const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 
 async function graph(path: string) {
@@ -148,6 +155,34 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({} as any));
     const action = String(body?.action ?? "status");
     const redirectUri = String(body?.redirect_uri ?? "").trim();
+
+    if (action === "health") {
+      const { data: row } = await admin
+        .from("messenger_page_bindings")
+        .select("page_id, page_name, page_access_token, updated_at")
+        .eq("owner_id", ownerId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!(row as any)?.page_id) {
+        return json({
+          connected: false,
+          needs_reconnect: true,
+          page: null,
+          error: "עמוד הפייסבוק אינו מחובר. יש להתחבר בעמוד החיבורים.",
+        });
+      }
+      const probe = await graph(
+        `/${(row as any).page_id}?fields=id,name&access_token=${encodeURIComponent((row as any).page_access_token ?? "")}`,
+      );
+      const ok = probe.ok && !!probe.payload?.id;
+      return json({
+        connected: ok,
+        needs_reconnect: !ok,
+        page: { id: String((row as any).page_id), name: (row as any).page_name ?? null },
+        error: ok ? null : humanizeGraphError(probe.payload, "תוקף החיבור לפייסבוק פג. יש להתחבר מחדש."),
+      });
+    }
 
     if (action === "repair") {
       const res = await repairBinding(admin, ownerId, String(body?.page_id ?? ""));
@@ -277,8 +312,8 @@ Deno.serve(async (req) => {
         scope: PAGE_SCOPES.join(","),
         state: `facebook_page:${crypto.randomUUID()}`,
         auth_type: "rerequest",
-        config_id: CONFIG_ID,
       });
+      if (CONFIG_ID) params.set("config_id", CONFIG_ID);
       return json({
         auth_url: `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params}`,
         scopes: PAGE_SCOPES,
