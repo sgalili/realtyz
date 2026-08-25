@@ -565,9 +565,21 @@ function extractAiText(raw: unknown, depth = 0): string {
     if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
       try {
         return extractAiText(JSON.parse(s), depth + 1);
-      } catch { /* plain text that merely looks like JSON */ }
+      } catch {
+        // The agent sometimes emits a JSON-ish block with literal newlines,
+        // which JSON.parse rejects — pull the text field out by hand.
+        const m = s.match(/"(?:content|text|message)"\s*:\s*"([\s\S]*?)"\s*\}?\s*\]?\s*$/);
+        if (m?.[1]) {
+          return m[1]
+            .replace(/\\n/g, "\n")
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, "\\")
+            .trim();
+        }
+      }
     }
     return s;
+
   }
   if (Array.isArray(raw)) {
     return raw.map((p) => extractAiText(p, depth + 1)).filter(Boolean).join("\n").trim();
