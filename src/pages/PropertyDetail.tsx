@@ -894,13 +894,16 @@ export default function PropertyDetail() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* First-view metadata hydration: percentage-only ring, floating dead
-          center of the viewport. No scrim, no blur, no scroll lock. */}
+      {/* Metadata refresh runs in the background: the text view is already
+          usable, so the indicator is a small floating pill (bottom corner),
+          never a centered overlay. */}
       {hydrating && (
-        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
-          <ProgressRing value={hydrateProgress} size={96} strokeWidth={8} />
+        <div className="pointer-events-none fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full bg-card/95 px-3 py-2 shadow-lg ring-1 ring-border">
+          <ProgressRing value={hydrateProgress} size={34} strokeWidth={4} />
+          <span className="text-xs text-muted-foreground">מרענן נתוני נכס…</span>
         </div>
       )}
+
 
 
       {/* Headline · neighborhood · price · actions row */}
