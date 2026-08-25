@@ -721,10 +721,11 @@ export default function PropertyDetail() {
    *    carousel + thumbnail strip immediately, and the ring advances by a real
    *    imported/total fraction, so it always reaches 100%.
    */
-  const pullAllImages = async (options: { silent?: boolean } = {}) => {
-    if (!property?.id || pullingImages) return;
+  const pullAllImages = async (options: { silent?: boolean } = {}): Promise<boolean> => {
+    if (!property?.id || pullingImages) return false;
     setPullingImages(true);
     setImageProgress(2);
+    let completed = false;
     // Discovery is a single slow scrape with no measurable sub-steps, so the
     // ring eases towards 25% while it runs instead of freezing on 3%.
     let discoveryTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
@@ -740,12 +741,15 @@ export default function PropertyDetail() {
         9000,
       );
       stopDiscoveryCreep();
-      if (timedOut) return;
+      if (timedOut) return false;
       if (discErr) throw discErr;
       const known = new Set(photos.map((u) => u.split('?')[0].toLowerCase()));
       const candidates = ((disc as { candidates?: string[] } | null)?.candidates ?? [])
         .filter((u) => !known.has(u.split('?')[0].toLowerCase()));
-      if (!candidates.length) return;
+      if (!candidates.length) {
+        completed = true;
+        return true;
+      }
 
       setImageProgress(30);
       let done = 0;
@@ -772,8 +776,11 @@ export default function PropertyDetail() {
       await qc.refetchQueries({ queryKey: ['property-detail', id] });
       qc.invalidateQueries({ queryKey: ['properties-search'] });
       qc.invalidateQueries({ queryKey: ['listings'] });
+      completed = true;
+      return true;
     } catch (e: any) {
       if (!options.silent) toast.error('טעינת התמונות נכשלה', { description: e?.message ?? String(e) });
+      return false;
     } finally {
       // Counter stops the moment the work is done — no trailing animation.
       stopDiscoveryCreep();
@@ -781,7 +788,9 @@ export default function PropertyDetail() {
       setPullingImages(false);
       // Cache the "gallery already mirrored" flag so re-entering the page
       // never repeats the network work — photos come straight from the DB.
-      try { window.localStorage.setItem(`realtyz:gallery:${property.id}`, '1'); } catch { /* ignore */ }
+      if (completed) {
+        try { window.localStorage.setItem(`realtyz:gallery:${property.id}`, '1'); } catch { /* ignore */ }
+      }
     }
   };
 
@@ -796,7 +805,8 @@ export default function PropertyDetail() {
     if (galleryPulledRef.current || pullingImages) return false;
     if (!sourceUrl || photos.length >= Math.max(2, totalSourcePhotos)) return false;
     galleryPulledRef.current = true;
-    await pullAllImages(options);
+    const completed = await pullAllImages(options);
+    if (!completed) galleryPulledRef.current = false;
     return true;
   };
 
