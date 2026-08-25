@@ -37,6 +37,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BrandIcon } from '@/components/BrandIcon';
 import UndoLastAiMessage from '@/components/inbox/UndoLastAiMessage';
 import { MediaMessage, extractChatMedia } from '@/components/inbox/MediaMessage';
+import { ChatMessageText } from '@/components/inbox/ChatMessageText';
+
 
 const ACCEPTED_ATTACHMENT_TYPES = [
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
