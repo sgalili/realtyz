@@ -234,11 +234,16 @@ async function unlock(
   url: string,
   opts: { accept?: string; maxAttempts?: number } = {},
 ): Promise<string> {
+  const isGw = /(^|\/\/)gw\.yad2\.co\.il/i.test(url);
   if (bdZoneBroken && BD_WS) {
     // Known-bad REST zone + a usable browser endpoint: fail instantly so the
     // caller falls through to the Scraping Browser transport.
     throw new Error("brightdata_zone_mode: client_10090 (cached) — skipping REST unlocker");
   }
+  if (isGw && bdGatewayRestBlocked) {
+    throw new Error("brightdata_kyc_gateway: policy_20140 (cached) — gw.yad2 not allowed on this zone");
+  }
+
   if (!BD_TOKEN) throw new Error("BRIGHTDATA_API_TOKEN is not configured");
   const maxAttempts = opts.maxAttempts ?? 4;
   let lastErr: unknown = null;
