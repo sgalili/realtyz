@@ -75,6 +75,18 @@ function isPostCommand(t: string) {
 function isReplyCommand(t: string) { return REPLY_TRIGGERS.some((r) => r.test(t)); }
 function matchHeavy(t: string) { return HEAVY_DEEPLINKS.find((h) => h.test.test(t)); }
 
+// ----- greeting / small-talk detection ---------------------------------
+// Casual conversational inputs should never fall through to the harsh
+// "לא זיהיתי פקודה ברורה" fallback. Treat them as a friendly hello and
+// guide the owner toward what the assistant can do.
+const GREETING_TRIGGERS = [
+  /^\s*(הי[יי]|הי|היי|הייי|הלו|שלום|ערב\s*(טוב|נעים)|בוקר\s*(טוב|נעים)|צהריים\s*טובים|לילה\s*טוב|מה\s*נשמע|מה\s*שלומך|מה\s*המצב|איך\s*הולך|אהלן|היי\s*שם)\s*[.!?]*\s*$/i,
+  /^\s*(תודה|תודה\s*רבה|בכיף|בשמחה)\s*[.!?]*\s*$/i,
+];
+function isGreetingOrSmallTalk(t: string): boolean {
+  return GREETING_TRIGGERS.some((r) => r.test(t.trim()));
+}
+
 // Strip the leading trigger word so the remainder is the actual content.
 function stripTrigger(t: string): string {
   let out = t.trim();
