@@ -61,7 +61,71 @@ async function resolveOwner(req: Request, body: any, db: SupabaseClient): Promis
   return String((profile as any)?.active_workspace_owner_id || data.user.id);
 }
 
-async function resolvePage(db: SupabaseClient, ownerId: string | null) {
+type ResolvedPage = { pageId: string; pageName: string | null; token: string };
+
+/** Any platform-level Meta token we can use to auto-discover the primary Page. */
+function platformMetaTokens(): string[] {
+  return [
+    Deno.env.get("FB_PAGE_ACCESS_TOKEN"),
+    Deno.env.get("META_PAGE_ACCESS_TOKEN"),
+    Deno.env.get("META_SYSTEM_USER_TOKEN"),
+    Deno.env.get("META_WA_ACCESS_TOKEN"),
+  ]
+    .map((t) => (t ?? "").trim())
+    .filter((t) => t.length > 20);
+}
+
+/**
+ * Auto-discovers the primary Facebook Page for a token via /me/accounts and
+ * caches it into messenger_page_bindings so subsequent publishes are instant.
+ * This is what removes the old "דף הפייסבוק לא מחובר" dead end: as long as the
+ * workspace (or the platform) has a valid Meta token, we resolve a Page.
+ */
+async function discoverPageFromToken(
+  db: SupabaseClient,
+  ownerId: string | null,
+  token: string,
+): Promise<ResolvedPage | null> {
+  const r = await graph(`/me/accounts?fields=id,name,access_token&limit=25&access_token=${encodeURIComponent(token)}`);
+  const list: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
+  const primary = list.find((p) => p?.id && p?.access_token) ?? list.find((p) => p?.id);
+  if (!primary?.id) {
+    // Token may itself already be a Page token — verify against /me.
+    const me = await graph(`/me?fields=id,name&access_token=${encodeURIComponent(token)}`);
+    if (me.ok && me.payload?.id) {
+      const page = { pageId: String(me.payload.id), pageName: me.payload?.name ?? null, token };
+      await cachePage(db, ownerId, page);
+      return page;
+    }
+    return null;
+  }
+  const page: ResolvedPage = {
+    pageId: String(primary.id),
+    pageName: primary?.name ?? null,
+    token: String(primary.access_token ?? token),
+  };
+  await cachePage(db, ownerId, page);
+  return page;
+}
+
+async function cachePage(db: SupabaseClient, ownerId: string | null, page: ResolvedPage) {
+  if (!ownerId) return;
+  try {
+    await db.from("messenger_page_bindings").upsert(
+      {
+        owner_id: ownerId,
+        page_id: page.pageId,
+        page_name: page.pageName,
+        page_access_token: page.token,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "page_id" },
+    );
+  } catch { /* caching is best-effort */ }
+}
+
+async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<ResolvedPage | null> {
+  // 1) Explicit binding for this workspace owner.
   if (ownerId) {
     const { data } = await db
       .from("messenger_page_bindings")
@@ -75,9 +139,67 @@ async function resolvePage(db: SupabaseClient, ownerId: string | null) {
       return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
     }
   }
+
+  // 2) Binding belonging to any member of the same workspace.
+  if (ownerId) {
+    try {
+      const { data: members } = await db
+        .from("workspace_memberships")
+        .select("user_id")
+        .eq("workspace_owner_id", ownerId);
+      const ids = (members ?? []).map((m: any) => m.user_id).filter(Boolean);
+      if (ids.length > 0) {
+        const { data } = await db
+          .from("messenger_page_bindings")
+          .select("page_id, page_name, page_access_token")
+          .in("owner_id", ids)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const row: any = data;
+        if (row?.page_id && row?.page_access_token) {
+          return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  // 3) Meta credentials stored on the workspace social connection.
+  try {
+    const { data: conns } = await db
+      .from("social_connections")
+      .select("credentials, display_name, platform, is_connected, updated_at")
+      .in("platform", ["facebook", "meta", "instagram"])
+      .order("updated_at", { ascending: false })
+      .limit(10);
+    for (const c of (conns ?? []) as any[]) {
+      const cred = (c?.credentials ?? {}) as Record<string, unknown>;
+      const token = String(
+        cred.page_access_token ?? cred.access_token ?? cred.token ?? cred.user_access_token ?? "",
+      ).trim();
+      if (!token) continue;
+      const pageId = String(cred.page_id ?? cred.pageId ?? cred.fb_page_id ?? "").trim();
+      if (pageId) {
+        const page = { pageId, pageName: (c?.display_name as string) ?? null, token };
+        await cachePage(db, ownerId, page);
+        return page;
+      }
+      const discovered = await discoverPageFromToken(db, ownerId, token);
+      if (discovered) return discovered;
+    }
+  } catch { /* ignore */ }
+
+  // 4) Explicit platform env pair.
   const envId = Deno.env.get("FB_PAGE_ID")?.trim();
   const envToken = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim();
   if (envId && envToken) return { pageId: envId, pageName: null, token: envToken };
+
+  // 5) Platform token only -> auto-discover the primary Page/Business account.
+  for (const token of platformMetaTokens()) {
+    const discovered = await discoverPageFromToken(db, ownerId, token);
+    if (discovered) return discovered;
+  }
+
   return null;
 }
 
@@ -272,11 +394,16 @@ Deno.serve(async (req) => {
     }
 
     if (!page) {
+      // No Page token could be resolved from the workspace, workspace members,
+      // the social connection, or the platform Meta credentials. Report the
+      // real cause (missing/expired Meta token) instead of a generic
+      // "not connected" wall that used to block publishing entirely.
       return json(
         {
           success: false,
-          error: "not_connected",
-          message: "דף הפייסבוק לא מחובר. יש לחבר את דף הפייסבוק בהגדרות החיבורים.",
+          error: "meta_token_unavailable",
+          message:
+            "לא נמצא טוקן Meta פעיל לפרסום. יש לחבר מחדש את חשבון ה-Meta (או להזין Page ID וטוקן ידני) בעמוד החיבורים.",
         },
         200,
       );
