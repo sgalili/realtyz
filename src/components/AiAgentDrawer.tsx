@@ -929,17 +929,6 @@ ${shareUrl}
             >
               <Paperclip className="h-4 w-4" />
             </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant={isListening ? 'destructive' : 'outline'}
-              className="h-9 w-9 shrink-0"
-              onClick={toggleVoice}
-              disabled={isLoading}
-              title={isListening ? 'הפסק הקלטה' : 'הקלט קול'}
-            >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
           </form>
         </div>
       </SheetContent>
