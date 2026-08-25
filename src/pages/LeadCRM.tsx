@@ -544,6 +544,28 @@ const LeadCRM = () => {
   }, [isDemoMode, dbVoters, demoVoters]);
   const totalCount = isDemoMode ? Math.max(1_000_000, leads.length) : (voterPages?.pages[0]?.total ?? 0);
 
+  // Hydrate WhatsApp avatars for the rows actually on screen. Each lead is
+  // attempted once per session so scrolling never re-hammers the edge function.
+  const avatarTried = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (isDemoMode) return;
+    const missing = leads
+      .filter((l: any) => !l.profile_picture_url && l.phone_number && !avatarTried.current.has(l.id))
+      .map((l: any) => l.id as string)
+      .slice(0, 50);
+    if (!missing.length) return;
+    missing.forEach((id) => avatarTried.current.add(id));
+    const t = window.setTimeout(() => {
+      supabase.functions
+        .invoke('fetch-wa-avatars', { body: { lead_ids: missing } })
+        .then(() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }))
+        .catch(() => {});
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [leads, isDemoMode, queryClient]);
+
+
+
   // Discover extra columns dynamically from imported preferences.extra_fields.
   // Keep keys that don't duplicate an already-shown native column, ordered by frequency.
   const SKIP_EXTRA_KEYS = new Set([
@@ -1076,7 +1098,10 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-total'] });
       toast.success('מתעניין נוסף בהצלחה');
       // Fire-and-forget Green API avatar fetch so the new row gets a real WA photo.
-      supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 5 } }).catch(() => {});
+      supabase.functions
+        .invoke('fetch-wa-avatars', { body: { lead_ids: [(inserted as any).id], force: true } })
+        .then(() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }))
+        .catch(() => {});
       setAddVoterOpen(false);
       setNewVoter({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
 
