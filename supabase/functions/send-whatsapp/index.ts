@@ -237,17 +237,15 @@ async function resolveProvider(
 }
 
 /**
- * Resolve the workspace WhatsApp connection mode chosen in settings
- * (`workspace_whatsapp_settings.connection_type`).
- *  - 'official_meta' → central platform Meta Cloud API template system
- *  - 'qr_session'    → workspace's own connected number
- * Defaults to 'official_meta' when nothing was configured yet.
+ * Resolve the workspace that owns this send. The transport itself is fixed:
+ * WhatsApp always leaves through the official Meta Cloud API, so this only
+ * resolves the owning workspace id used for provider credentials and logging.
  */
-async function resolveWorkspaceMode(
+async function resolveWorkspaceOwner(
   admin: ReturnType<typeof createClient>,
   userId: string | null,
   tenantId: string | null,
-): Promise<{ mode: "official_meta" | "qr_session"; owner_id: string | null }> {
+): Promise<{ mode: "official_meta"; owner_id: string | null }> {
   const ids = [tenantId, userId].filter(Boolean) as string[];
   const candidates = [...ids];
   for (const id of ids) {
@@ -262,11 +260,10 @@ async function resolveWorkspaceMode(
   for (const id of candidates) {
     const { data } = await admin
       .from("workspace_whatsapp_settings")
-      .select("connection_type")
+      .select("workspace_owner_id")
       .eq("workspace_owner_id", id)
       .maybeSingle();
-    const mode = (data as any)?.connection_type as string | undefined;
-    if (mode === "official_meta" || mode === "qr_session") return { mode, owner_id: id };
+    if ((data as any)?.workspace_owner_id) return { mode: "official_meta", owner_id: id };
   }
   return { mode: "official_meta", owner_id: candidates[0] ?? null };
 }
@@ -399,26 +396,6 @@ async function buildTemplateVariables(
   return values;
 }
 
-
-/**
- * Green API has no template engine — flatten an already-populated Meta
- * template payload into readable text so QR-session workspaces still send
- * something meaningful.
- */
-function renderTemplateFallbackText(template: {
-  id: string;
-  components?: unknown[];
-}): string {
-  const parts: string[] = [];
-  for (const comp of template.components ?? []) {
-    const params = (comp as any)?.parameters ?? [];
-    for (const p of params) {
-      const t = String((p as any)?.text ?? "").trim();
-      if (t) parts.push(t);
-    }
-  }
-  return parts.join(" ").trim();
-}
 
 async function sendViaWba(
   cfg: Record<string, unknown>,
@@ -890,10 +867,8 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    // Workspace-chosen connection mode: 'official_meta' routes through the
-    // central platform Meta Cloud API number, 'qr_session' keeps the
-    // workspace's own connected number.
-    const routing = await resolveWorkspaceMode(admin, userId, routingTenantId);
+    // Owning workspace (credentials + logging). Transport is always Meta Cloud.
+    const routing = await resolveWorkspaceOwner(admin, userId, routingTenantId);
 
     // ARCHITECTURE (HARD): WhatsApp messaging is Meta Cloud API only. There is
     // no alternative gateway and no fallback transport — every outbound message
