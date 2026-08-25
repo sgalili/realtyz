@@ -265,21 +265,31 @@ Deno.serve(async (req) => {
               // agent commands, owner router) and sends the reply back through
               // send-whatsapp → official Meta Cloud API number.
               const isTextLike = ["text", "button", "interactive"].includes(type);
-              if (isTextLike && String(content).trim() && !String(content).startsWith("[")) {
+              if (!isTextLike || !String(content).trim() || String(content).startsWith("[")) {
+                console.log("[autopilot] skipped non-text inbound", {
+                  type,
+                  from_last4: from.slice(-4),
+                  wamid: String(m?.id ?? ""),
+                });
+              } else {
                 // Broker/owner phones keep the owner-command router: forward the
                 // original Meta payload so whatsapp-webhook classifies it itself.
                 let isOwnerPhone = false;
                 try {
                   const variants = [from, `+${from}`, from.replace(/^972/, "0")];
-                  const { data: wl } = await admin
+                  const { data: wl, error: wlErr } = await admin
                     .from("kb_whitelist")
                     .select("user_id")
                     .in("phone_number", variants)
                     .limit(1)
                     .maybeSingle();
+                  if (wlErr) console.warn("[autopilot] whitelist lookup soft-fail", wlErr.message);
                   isOwnerPhone = Boolean(wl?.user_id);
-                } catch { /* treat as lead */ }
+                } catch (wlEx) {
+                  console.warn("[autopilot] whitelist lookup threw", wlEx);
+                }
 
+                const mode = isOwnerPhone ? "owner_router" : "autopilot_only";
                 const forwardBody = isOwnerPhone
                   ? JSON.stringify(payload)
                   : JSON.stringify({
@@ -292,34 +302,95 @@ Deno.serve(async (req) => {
                       text: String(content),
                     });
 
+                const wamid = String(m?.id ?? "");
+                const traceCtx = {
+                  mode,
+                  wamid,
+                  lead_id: leadId ?? null,
+                  owner_id: ownerId,
+                  from_last4: from.slice(-4),
+                };
+                console.log("[autopilot] dispatching AI leg", traceCtx);
 
-                const trigger = fetch(`${supabaseUrl}/functions/v1/whatsapp-webhook`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${serviceRoleKey}`,
-                    apikey: serviceRoleKey,
-                  },
-                  body: forwardBody,
-                })
-                  .then(async (r) => {
-                    const j = await r.json().catch(() => ({}));
-                    console.log("[meta-wa-webhook] autopilot trigger", r.status, JSON.stringify(j).slice(0, 300));
-                  })
-                  .catch((e) => console.error("[meta-wa-webhook] autopilot trigger failed", e));
+                const startedAt = Date.now();
+                const trigger = (async () => {
+                  try {
+                    const r = await fetch(`${supabaseUrl}/functions/v1/whatsapp-webhook`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${serviceRoleKey}`,
+                        apikey: serviceRoleKey,
+                      },
+                      body: forwardBody,
+                    });
+                    const raw = await r.text();
+                    let j: any = {};
+                    try { j = JSON.parse(raw); } catch { /* non-json body */ }
+                    const elapsedMs = Date.now() - startedAt;
+                    console.log(
+                      "[autopilot] AI leg result",
+                      JSON.stringify({ ...traceCtx, status: r.status, elapsedMs, body: raw.slice(0, 500) }),
+                    );
 
-                // Meta requires a fast 200 — let the AI leg finish in background.
+                    // A 200 with `auto_reply` != "sent" means the reply never left
+                    // the building (gate off, no lead, empty AI text, send error).
+                    // Record it so nothing fails silently.
+                    const outcome = String(j?.auto_reply ?? (j?.companion ? "owner_router" : ""));
+                    const delivered =
+                      r.ok &&
+                      (outcome === "sent" ||
+                        Boolean(j?.companion) ||
+                        j?.duplicate === true);
+                    if (!delivered) {
+                      await logIntegrationError({
+                        integration: "whatsapp",
+                        functionName: "meta-wa-webhook",
+                        errorCode: r.status,
+                        errorMessage: `AI autopilot produced no reply (${outcome || "unknown"})`,
+                        context: { ...traceCtx, status: r.status, elapsedMs, response: raw.slice(0, 800) },
+                      });
+                    }
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : String(e);
+                    console.error("[autopilot] AI leg dispatch failed", msg);
+                    await logIntegrationError({
+                      integration: "whatsapp",
+                      functionName: "meta-wa-webhook",
+                      errorMessage: `AI autopilot dispatch failed: ${msg}`,
+                      context: { ...traceCtx, elapsedMs: Date.now() - startedAt },
+                    });
+                  }
+                })();
+
+                // Meta requires a fast 200, but a background task can be killed
+                // when the isolate shuts down — which is exactly how replies went
+                // missing. Register with waitUntil AND await as a hard guarantee.
                 try {
                   // @ts-ignore EdgeRuntime is provided by Supabase Edge Functions
                   EdgeRuntime.waitUntil(trigger);
-                } catch {
-                  await trigger;
-                }
+                } catch { /* older runtime — the await below covers it */ }
+                // Bounded wait: keeps the isolate alive long enough for the AI
+                // leg to finish in practice, while still acking Meta well inside
+                // its retry window (waitUntil carries any remainder).
+                await Promise.race([
+                  trigger,
+                  new Promise((res) => setTimeout(res, 15000)),
+                ]);
+
               }
 
             } catch (inner) {
-              console.error("[meta-wa-webhook] message handling error", inner);
+              const msg = inner instanceof Error ? inner.message : String(inner);
+              console.error("[meta-wa-webhook] message handling error", msg);
+              await logIntegrationError({
+                integration: "whatsapp",
+                functionName: "meta-wa-webhook",
+                errorMessage: `inbound message handling error: ${msg}`,
+                context: { wamid: String(m?.id ?? ""), phone_number_id: phoneNumberId, waba_id: wabaId },
+              });
             }
+
           }
           continue;
         }
