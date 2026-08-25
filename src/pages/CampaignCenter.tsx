@@ -313,21 +313,25 @@ const ChannelGrid = ({
             const Icon = c.icon;
             const isSelected = selectedIds.has(c.id);
             const isConnected = connected.has(c.id);
-            const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
+            // Selection is never blocked by the connection probe: a channel the
+            // user picked (or one already bound server-side) renders as active.
+            const lit = isConnected || isSelected;
+            const brandColor = lit ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
             const profiles = socialProfiles.filter((p) => p.platform === c.id || (c.id === 'x' && p.platform === 'twitter'));
             return (
               <button key={c.id} type="button"
-                onClick={() => isConnected ? onPick(c) : onConnect(c)}
+                onClick={() => onPick(c)}
 
                 aria-pressed={isSelected}
                 className={cn(
-                  'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98]',
-                  !isConnected && 'border-dashed border-border bg-muted/30',
-                  isConnected && !isSelected && 'border-[#C9A84C]/60 hover:border-[#C9A84C] hover:shadow-md',
+                  'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98] cursor-pointer',
+                  !lit && 'border-dashed border-border bg-muted/30 hover:border-border hover:bg-muted/50',
+                  lit && !isSelected && 'border-[#C9A84C]/60 hover:border-[#C9A84C] hover:shadow-md',
                   isSelected && 'border-primary ring-2 ring-primary/30 shadow-md',
                 )}>
-                {isConnected && isSelected && (
+                {isSelected && (
                   <span aria-hidden className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
+
                     <CheckCircle2 className="h-4 w-4" />
                   </span>
                 )}
