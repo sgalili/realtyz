@@ -554,7 +554,45 @@ async function resolveShortLinkListing(
 
 // Strip raw template markers / system prefixes that occasionally leak from the
 // LLM into customer-facing WhatsApp replies. Output must be pure conversational Hebrew.
+// The agent can answer with a plain string, a JSON-encoded block, or a
+// structured content part ({type:'text', content|text:'…'}) / array of parts.
+// Sending the raw JSON to WhatsApp is what produced `{"type":"text",...}`
+// bubbles, so unwrap every shape down to human text before dispatch.
+function extractAiText(raw: unknown, depth = 0): string {
+  if (raw == null || depth > 4) return "";
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
+      try {
+        return extractAiText(JSON.parse(s), depth + 1);
+      } catch {
+        // The agent sometimes emits a JSON-ish block with literal newlines,
+        // which JSON.parse rejects — pull the text field out by hand.
+        const m = s.match(/"(?:content|text|message)"\s*:\s*"([\s\S]*?)"\s*\}?\s*\]?\s*$/);
+        if (m?.[1]) {
+          return m[1]
+            .replace(/\\n/g, "\n")
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, "\\")
+            .trim();
+        }
+      }
+    }
+    return s;
+
+  }
+  if (Array.isArray(raw)) {
+    return raw.map((p) => extractAiText(p, depth + 1)).filter(Boolean).join("\n").trim();
+  }
+  if (typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    return extractAiText(o.content ?? o.text ?? o.message ?? o.reply ?? "", depth + 1);
+  }
+  return String(raw);
+}
+
 function sanitizeAiReply(raw: string): string {
+
   let s = String(raw ?? "").trim();
   if (!s) return "";
   // Drop leading wrappers like:  תגובה:  / תשובה:  / Response:  / Reply:
@@ -624,7 +662,9 @@ async function handleLeadInboxInbound(
   inboundText: string,
   // When true, the inbound row was ALREADY persisted upstream (meta-wa-webhook)
   // and this call only runs the autopilot leg: lead resolution → AI → send.
-  opts?: { skipStore?: boolean },
+  // `leadId` lets the upstream webhook hand us the exact lead it resolved so we
+  // never lose the thread to a phone-format mismatch.
+  opts?: { skipStore?: boolean; leadId?: string | null },
 ) {
   const skipStore = opts?.skipStore === true;
 
@@ -637,18 +677,41 @@ async function handleLeadInboxInbound(
   // workspace scoping, constraint) NEVER halts the AI reply path.
   // The inbox is restored by always inserting the message row with the
   // sender_phone in metadata, even when lead resolution fails.
+  const LEAD_COLS = "id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type";
   let lead: any = null;
-  try {
-    const r = await admin
-      .from("leads")
-      .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
-      .eq("phone_number", senderPhone)
-      .maybeSingle();
-    lead = r.data;
-    if (r.error) console.warn("lead lookup soft-fail:", r.error.message);
-  } catch (e) {
-    console.warn("lead lookup threw:", e instanceof Error ? e.message : e);
+  if (opts?.leadId) {
+    try {
+      const r = await admin.from("leads").select(LEAD_COLS).eq("id", opts.leadId).maybeSingle();
+      lead = r.data;
+    } catch (e) {
+      console.warn("lead-by-id lookup threw:", e instanceof Error ? e.message : e);
+    }
   }
+  if (!lead?.id) {
+    // Phone formats differ per gateway (972…, +972…, 05…) — match every variant
+    // so an existing thread is never split or silently skipped.
+    const digits = senderPhone.replace(/\D/g, "");
+    const variants = Array.from(new Set([
+      senderPhone,
+      digits,
+      `+${digits}`,
+      digits.startsWith("972") ? `0${digits.slice(3)}` : digits,
+      digits.startsWith("0") ? `972${digits.slice(1)}` : digits,
+    ].filter(Boolean)));
+    try {
+      const r = await admin
+        .from("leads")
+        .select(LEAD_COLS)
+        .in("phone_number", variants)
+        .limit(1)
+        .maybeSingle();
+      lead = r.data;
+      if (r.error) console.warn("lead lookup soft-fail:", r.error.message);
+    } catch (e) {
+      console.warn("lead lookup threw:", e instanceof Error ? e.message : e);
+    }
+  }
+
 
   // Auto-create lead from short-link inbound when none exists yet.
   if (!lead?.id && (shortLink || hasShortLinkSignature)) {
@@ -877,7 +940,7 @@ async function handleLeadInboxInbound(
     if (!aiRes.ok) {
       console.warn(`ai-agent failed ${aiRes.status}:`, JSON.stringify(aiJson).slice(0, 300));
     } else {
-      reply = sanitizeAiReply(String(aiJson?.content ?? aiJson?.message ?? ""));
+      reply = sanitizeAiReply(extractAiText(aiJson?.content ?? aiJson?.message ?? aiJson?.reply));
       // Append structured tool results in WhatsApp-friendly form so the lead
       // sees the actual property cards / market intel sources with the correct
       // images and links, not just narrative prose.
@@ -1011,7 +1074,7 @@ Deno.serve(async (req) => {
         senderPhone,
         payload?.message_id ? String(payload.message_id) : undefined,
         text,
-        { skipStore: true },
+        { skipStore: true, leadId: payload?.lead_id ? String(payload.lead_id) : null },
       );
       return jsonResponse({ ...result, mode: "autopilot_only" });
     } catch (e) {

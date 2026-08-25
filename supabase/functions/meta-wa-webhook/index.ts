@@ -248,9 +248,14 @@ Deno.serve(async (req) => {
                   message_id: String(m?.id ?? ""),
                   profile_name: profileName,
                   message_type: type,
+                  // Inbound rows carry an explicit status so the chat window can
+                  // render delivery state consistently with outbound bubbles.
+                  status: "received",
+                  status_at: new Date().toISOString(),
                   raw: m,
                 },
               });
+
               if (msgErr) console.error("[meta-wa-webhook] record message failed", msgErr);
 
               // ── AI AUTOPILOT TRIGGER ──────────────────────────────────────
@@ -280,9 +285,13 @@ Deno.serve(async (req) => {
                   : JSON.stringify({
                       autopilot_only: true,
                       sender_phone: from,
+                      // Hand over the exact lead we just resolved so the AI leg
+                      // never loses the thread to a phone-format mismatch.
+                      lead_id: leadId ?? null,
                       message_id: String(m?.id ?? ""),
                       text: String(content),
                     });
+
 
                 const trigger = fetch(`${supabaseUrl}/functions/v1/whatsapp-webhook`, {
                   method: "POST",
