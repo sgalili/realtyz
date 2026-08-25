@@ -766,7 +766,7 @@ export default function DealRoom() {
       </Tabs>
 
       <ErrorBoundary source="DealRoom.Grid">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4">
         {stageColumns.map((col) => {
           const Icon = col.icon;
           const items = grouped[col.key];
