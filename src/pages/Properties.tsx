@@ -695,7 +695,7 @@ export default function Properties() {
               <VoiceInputButton
                 size="sm"
                 title="חיפוש קולי"
-                onTranscript={(t) => { setQ((prev) => (prev ? `${prev} ${t}` : t)); setTimeout(() => submitQuery(), 0); }}
+                onTranscript={(t) => setQ((prev) => (prev ? `${prev} ${t}` : t))}
               />
              </div>
             <Button
