@@ -53,28 +53,32 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
 
   const probe = useCallback(async (notify = false) => {
     setLoading(true);
-    try {
-      const [pubRes, pageRes] = await Promise.all([
-        supabase.functions.invoke('meta-publish', { body: { action: 'status' } }),
-        callPageConnect<PageStatus>({ action: 'status' }).catch(() => null),
-      ]);
-      if (pubRes.error) throw pubRes.error;
-      const s = pubRes.data as MetaStatus;
-      setStatus(s);
-      setPage(pageRes);
-      onStatus?.(s);
-      if (notify) {
-        if (s?.connected) toast.success('החיבור לפייסבוק תקין');
-        else toast.error(s?.message || 'דף הפייסבוק אינו מחובר');
-      }
-    } catch (e: any) {
-      setStatus(null);
-      onStatus?.(null);
-      if (notify) toast.error(`בדיקת החיבור נכשלה: ${e?.message ?? e}`);
-    } finally {
-      setLoading(false);
+    // The stored page binding is the source of truth for "connected".
+    // meta-publish/status is only an extra health probe: if it fails we must
+    // NOT drop the binding-based connected state.
+    const [pubRes, pageRes] = await Promise.all([
+      supabase.functions.invoke('meta-publish', { body: { action: 'status' } }).catch((e: any) => ({ data: null, error: e })),
+      callPageConnect<PageStatus>({ action: 'status' }).catch(() => null),
+    ]);
+    setPage(pageRes);
+
+    const s = (pubRes as any).error ? null : ((pubRes as any).data as MetaStatus | null);
+    setStatus(s);
+    onStatus?.(s ?? (pageRes?.connected
+      ? {
+          connected: true,
+          facebook: { id: pageRes.page?.id ?? '', name: pageRes.page?.name ?? null },
+          instagram: pageRes.instagram ?? null,
+        }
+      : null));
+
+    if (notify) {
+      if (pageRes?.connected || s?.connected) toast.success('החיבור לפייסבוק תקין');
+      else toast.error(s?.message || 'דף הפייסבוק אינו מחובר');
     }
+    setLoading(false);
   }, [onStatus]);
+
 
   useEffect(() => { probe(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
