@@ -525,14 +525,34 @@ Deno.serve(async (req) => {
 
     for (const ch of channels) {
       if (ch === "facebook") {
-        const res = await publishFacebook(page.pageId, page.token, text, media, link);
+        let activePage = page;
+        let res = await publishFacebook(activePage.pageId, activePage.token, text, media, link);
+
+        // The stored page_id may not be a Page this token can publish to.
+        // Instead of blocking with "אין הרשאת פרסום לדף הזה", resolve the real
+        // Pages from /me/accounts and publish to the primary one.
+        if ("error" in res && isPageScopeError(res.error)) {
+          const tried = [activePage.pageId];
+          for (const alt of await alternatePages(db, ownerId, tried)) {
+            const retry = await publishFacebook(alt.pageId, alt.token, text, media, link);
+            tried.push(alt.pageId);
+            if (!("error" in retry)) {
+              activePage = alt;
+              res = retry;
+              await cachePage(db, ownerId, alt);
+              break;
+            }
+            if (!isPageScopeError(retry.error)) { res = retry; break; }
+          }
+        }
+
         if ("error" in res) failures.push({ platform: ch, message: res.error });
         else {
           postIds.push({ platform: ch, id: res.id });
           if (res.warning) warnings.push(res.warning);
 
           if (firstComment) {
-            const form = new URLSearchParams({ message: firstComment, access_token: page.token });
+            const form = new URLSearchParams({ message: firstComment, access_token: activePage.token });
             await graph(`/${res.id}/comments`, {
               method: "POST",
               headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
@@ -540,6 +560,7 @@ Deno.serve(async (req) => {
             });
           }
         }
+
       } else if (ch === "instagram") {
         const igId = await igAccountId(page.pageId, page.token);
         if (!igId) {
