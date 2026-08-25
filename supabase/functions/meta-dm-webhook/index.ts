@@ -11,6 +11,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { graphCall, metaAdminClient, ownerForPage } from "../_shared/metaPage.ts";
 import { dmText, type InboundDm, persistInboundDm } from "../_shared/metaDm.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const verifyToken = () =>
   Deno.env.get("META_DM_VERIFY_TOKEN") ??
@@ -110,7 +111,14 @@ Deno.serve(async (req) => {
         }
       }
     } catch (e) {
-      console.error("[meta-dm-webhook] processing failed", e);
+      const message = e instanceof Error ? e.message : String(e);
+      console.error("[meta-dm-webhook] processing failed", message, e instanceof Error ? e.stack : "");
+      await logIntegrationError({
+        integration: "meta",
+        functionName: "meta-dm-webhook",
+        errorMessage: `${message}${e instanceof Error && e.stack ? `\n${e.stack}` : ""}`,
+        context: { object: payload?.object ?? null },
+      });
     }
   };
 
