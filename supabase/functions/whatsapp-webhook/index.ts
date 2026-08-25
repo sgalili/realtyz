@@ -554,7 +554,33 @@ async function resolveShortLinkListing(
 
 // Strip raw template markers / system prefixes that occasionally leak from the
 // LLM into customer-facing WhatsApp replies. Output must be pure conversational Hebrew.
+// The agent can answer with a plain string, a JSON-encoded block, or a
+// structured content part ({type:'text', content|text:'…'}) / array of parts.
+// Sending the raw JSON to WhatsApp is what produced `{"type":"text",...}`
+// bubbles, so unwrap every shape down to human text before dispatch.
+function extractAiText(raw: unknown, depth = 0): string {
+  if (raw == null || depth > 4) return "";
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
+      try {
+        return extractAiText(JSON.parse(s), depth + 1);
+      } catch { /* plain text that merely looks like JSON */ }
+    }
+    return s;
+  }
+  if (Array.isArray(raw)) {
+    return raw.map((p) => extractAiText(p, depth + 1)).filter(Boolean).join("\n").trim();
+  }
+  if (typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    return extractAiText(o.content ?? o.text ?? o.message ?? o.reply ?? "", depth + 1);
+  }
+  return String(raw);
+}
+
 function sanitizeAiReply(raw: string): string {
+
   let s = String(raw ?? "").trim();
   if (!s) return "";
   // Drop leading wrappers like:  תגובה:  / תשובה:  / Response:  / Reply:
