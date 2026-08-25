@@ -10,7 +10,7 @@
 // public.messenger_page_bindings and used by meta-publish for Graph publishing.
 import { corsHeaders } from "../_shared/cors.ts";
 import { adminClient, fbAppCredentials, GRAPH, humanizeGraphError, resolveCaller } from "../_shared/fbPersonal.ts";
-import { pickPrimaryPage } from "../_shared/metaPages.ts";
+import { isBlockedPage, pickPrimaryPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
