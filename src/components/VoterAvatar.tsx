@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
 import { cn } from '@/lib/utils';
 import { User } from 'lucide-react';
 import { useDemoMode } from '@/hooks/useDemoMode';
