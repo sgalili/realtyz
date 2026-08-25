@@ -273,7 +273,10 @@ const ChannelGrid = ({
             { id: 'youtube',   label: 'YouTube',   brand: 'youtube' },
           ].map((p) => {
             const isConnected = connected.has(p.id);
-            const count = selectedIds.has(p.id) ? 1 : 0;
+            const isSelected = selectedIds.has(p.id);
+            // A selected channel always renders in full brand color, even while
+            // the connection probe is still resolving server-side.
+            const lit = isConnected || isSelected;
             return (
               <button
                 key={p.id}
@@ -281,20 +284,22 @@ const ChannelGrid = ({
                 onClick={() => setOpen((v) => !v)}
                 title={p.label}
                 aria-label={p.label}
+                aria-pressed={isSelected}
                 className={cn(
                   'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
-                  !isConnected && 'opacity-40 grayscale',
+                  lit ? 'opacity-100' : 'opacity-70 hover:opacity-100',
                 )}
               >
                 <BrandIcon
                   name={p.brand}
                   aria-label={p.label}
-                  className={cn('h-5 w-5', isConnected ? (BRAND_COLOR[p.id] ?? 'text-slate-600') : 'text-slate-500')}
+                  className={cn('h-5 w-5', lit ? (BRAND_COLOR[p.id] ?? 'text-slate-600') : 'text-slate-500')}
                 />
                 
               </button>
             );
           })}
+
         </div>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-transparent hover:text-foreground focus-visible:text-foreground active:text-foreground">
@@ -308,21 +313,25 @@ const ChannelGrid = ({
             const Icon = c.icon;
             const isSelected = selectedIds.has(c.id);
             const isConnected = connected.has(c.id);
-            const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
+            // Selection is never blocked by the connection probe: a channel the
+            // user picked (or one already bound server-side) renders as active.
+            const lit = isConnected || isSelected;
+            const brandColor = lit ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
             const profiles = socialProfiles.filter((p) => p.platform === c.id || (c.id === 'x' && p.platform === 'twitter'));
             return (
               <button key={c.id} type="button"
-                onClick={() => isConnected ? onPick(c) : onConnect(c)}
+                onClick={() => onPick(c)}
 
                 aria-pressed={isSelected}
                 className={cn(
-                  'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98]',
-                  !isConnected && 'border-dashed border-border bg-muted/30',
-                  isConnected && !isSelected && 'border-[#C9A84C]/60 hover:border-[#C9A84C] hover:shadow-md',
+                  'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98] cursor-pointer',
+                  !lit && 'border-dashed border-border bg-muted/30 hover:border-border hover:bg-muted/50',
+                  lit && !isSelected && 'border-[#C9A84C]/60 hover:border-[#C9A84C] hover:shadow-md',
                   isSelected && 'border-primary ring-2 ring-primary/30 shadow-md',
                 )}>
-                {isConnected && isSelected && (
+                {isSelected && (
                   <span aria-hidden className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
+
                     <CheckCircle2 className="h-4 w-4" />
                   </span>
                 )}
@@ -350,23 +359,35 @@ const ChannelGrid = ({
 
                 <span className={cn(
                   'text-[13px] font-semibold leading-tight',
-                  isConnected ? 'text-foreground' : 'text-muted-foreground/70',
+                  lit ? 'text-foreground' : 'text-muted-foreground/70',
                 )}>
                   {c.label}
                 </span>
 
                 {c.free ? (
-                  <span className={cn('text-[11px] font-bold', isConnected ? 'text-primary' : 'text-muted-foreground/60')}>
+                  <span className={cn('text-[11px] font-bold', lit ? 'text-primary' : 'text-muted-foreground/60')}>
                     חינם
                   </span>
                 ) : (
-                  <span className={cn('text-[12px] font-bold', isConnected ? 'text-foreground' : 'text-muted-foreground/60')} dir="ltr">
+                  <span className={cn('text-[12px] font-bold', lit ? 'text-foreground' : 'text-muted-foreground/60')} dir="ltr">
                     <bdi dir="ltr">₪{c.price}</bdi>
                   </span>
                 )}
 
+                {!isConnected && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); onConnect(c); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onConnect(c); } }}
+                    className="mt-0.5 text-[10px] font-bold text-primary underline decoration-dotted"
+                  >
+                    חבר
+                  </span>
+                )}
 
                 {isConnected && profiles.length > 0 ? (
+
                   <span className="mt-0.5 flex w-full flex-col gap-1 overflow-hidden">
                     {profiles.slice(0, 2).map((profile) => {
                       const url = profile.profileUrl || buildAccountUrl(c.id, profile.accountRef || profile.name);
@@ -4881,16 +4902,18 @@ const CampaignCenter = () => {
     try { localStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
   }, [channelAccountNames]);
 
-  // Default-select Facebook when it's connected and nothing is picked yet.
+  // Default-select Facebook when nothing is picked yet. Facebook publishes via
+  // the native Page token resolved server-side, so we never gate the default
+  // selection on the async connection probe.
   useEffect(() => {
     if (pickedChannel) return;
-    if (!connectedChannels.has('facebook')) return;
     const fb = CHANNEL_CARDS.find((c) => c.id === 'facebook');
     if (fb) {
       setPickedChannel(fb);
       setPickedChannelIds((prev) => (prev.has('facebook') ? prev : new Set(prev).add('facebook')));
     }
   }, [connectedChannels, pickedChannel]);
+
 
 
 
