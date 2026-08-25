@@ -315,25 +315,13 @@ serve(async (req) => {
           }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        if (hasIntent && phoneMatch && authHeaderEarly.startsWith("Bearer ")) {
-          const rawPhone = phoneMatch[0].replace(/\D/g, "");
-          const normalized = rawPhone.startsWith("972")
-            ? rawPhone
-            : rawPhone.startsWith("0") ? `972${rawPhone.slice(1)}` : rawPhone;
-          const fullName = candidateName;
-          const cityMatch = text.match(/(?:בעיר|עיר\s*[:\-]?\s*|city\s*[:\-]?\s*|ב([\u0590-\u05FF][\u0590-\u05FF' \-]{2,30}))/u);
-          const city = (cityMatch?.[1] || cityMatch?.[2] || "").trim() || null;
-          const dealHint =
-            /(שכירות|להשכרה|לשכר|rent)/i.test(text) ? "rent" :
-            /(קנייה|למכירה|לרכישה|sale|buy)/i.test(text) ? "sale" : null;
-          // Best-effort budget extraction — "עד 5500", "עד 2 מיליון".
-          const budgetNum = (() => {
-            const m1 = text.match(/עד\s*([\d,\.]+)\s*(?:מיליון|מ׳|m)/i);
-            if (m1) return Math.round(parseFloat(m1[1].replace(/,/g, "")) * 1_000_000);
-            const m2 = text.match(/עד\s*([\d,]{3,})/);
-            if (m2) return parseInt(m2[1].replace(/,/g, ""), 10) || null;
-            return null;
-          })();
+        if (hasIntent && draft.phone && authHeaderEarly.startsWith("Bearer ")) {
+          const normalized = draft.phone;
+          const fullName = draft.full_name;
+          const city = draft.city;
+          const dealHint = draft.deal_type;
+          const budgetNum = draft.budget_max;
+
 
           const userClient = serviceOwnerId
             ? createClient(supabaseUrlEarly, serviceKeyEarly)
