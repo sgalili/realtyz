@@ -38,6 +38,8 @@ import { BrandIcon } from '@/components/BrandIcon';
 import UndoLastAiMessage from '@/components/inbox/UndoLastAiMessage';
 import { MediaMessage, extractChatMedia } from '@/components/inbox/MediaMessage';
 import { ChatMessageText } from '@/components/inbox/ChatMessageText';
+import { sanitizeChatText } from '@/lib/chatTextSanitizer';
+
 
 
 const ACCEPTED_ATTACHMENT_TYPES = [
