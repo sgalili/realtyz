@@ -339,15 +339,24 @@ export async function extractLeadDraft(text: string): Promise<LeadDraft> {
   if (!llm) return base;
   const pick = <K extends keyof LeadDraft>(k: K): LeadDraft[K] =>
     (base[k] ?? (llm[k] as LeadDraft[K] | undefined) ?? null) as LeadDraft[K];
+
+  const dealType = base.deal_type ?? (llm.deal_type ?? null);
+  // Never let a descriptor phrase ("לקוח חדש") slip through as a name.
+  const modelName = llm.full_name ? cleanNameTokens(String(llm.full_name)) : null;
+  // Reconcile the budget against the resolved deal type: a rent figure parsed
+  // as millions is rejected and re-derived with the correct unit rules.
+  let budget = base.budget_max ?? (llm.budget_max ?? null);
+  budget = sanitizeBudget(budget, dealType) ?? extractBudgetLoose(text, dealType);
+
   return {
-    full_name: pick("full_name"),
+    full_name: base.full_name ?? modelName,
     // Regex phone is authoritative; the model is only a fallback.
     phone: base.phone ?? (llm.phone ?? null),
     email: pick("email"),
     city: pick("city"),
     neighborhood: (llm.neighborhood ?? null) as string | null,
-    deal_type: base.deal_type ?? (llm.deal_type ?? null),
-    budget_max: base.budget_max ?? (llm.budget_max ?? null),
+    deal_type: dealType,
+    budget_max: budget,
     rooms: base.rooms ?? (llm.rooms ?? null),
     requirements: (llm.requirements ?? null) as string | null,
   };
