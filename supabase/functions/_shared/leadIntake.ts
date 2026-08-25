@@ -220,14 +220,15 @@ export function extractEmailLoose(text: string | null | undefined): string | nul
 
 /** Deterministic pass over the raw text. */
 export function extractLeadDraftRegex(text: string): LeadDraft {
+  const dealType = extractDealTypeLoose(text);
   return {
     full_name: extractNameLoose(text),
     phone: extractPhoneLoose(text),
     email: extractEmailLoose(text),
     city: extractCityLoose(text),
     neighborhood: null,
-    deal_type: extractDealTypeLoose(text),
-    budget_max: extractBudgetLoose(text),
+    deal_type: dealType,
+    budget_max: extractBudgetLoose(text, dealType),
     rooms: extractRoomsLoose(text),
     requirements: null,
   };
