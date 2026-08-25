@@ -934,7 +934,11 @@ Deno.serve(async (req) => {
     const challenge = url.searchParams.get("hub.challenge");
     const verifyToken = url.searchParams.get("hub.verify_token");
     if (mode === "subscribe" && challenge) {
-      const expected = Deno.env.get("META_WA_VERIFY_TOKEN") ?? "";
+      const expected =
+        Deno.env.get("META_WA_VERIFY_TOKEN") ??
+        Deno.env.get("WA_VERIFY_TOKEN") ??
+        Deno.env.get("MESSENGER_VERIFY_TOKEN") ??
+        "";
       if (!expected || verifyToken === expected) {
         return new Response(challenge, {
           status: 200,
