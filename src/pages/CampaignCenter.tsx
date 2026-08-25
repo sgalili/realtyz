@@ -2581,7 +2581,9 @@ type CampaignRow = {
   view_count?: number;
   metrics_updated_at?: string | null;
   status?: string | null;
+  failure_reason?: string | null;
   sent_at?: string | null;
+
   media_urls?: string[];
   external_url?: string | null;
   is_external?: boolean;
