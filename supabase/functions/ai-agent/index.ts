@@ -228,31 +228,21 @@ serve(async (req) => {
         const serviceKeyEarly = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const bearerEarly = authHeaderEarly.replace(/^Bearer\s+/i, "").trim();
         const serviceOwnerId = bearerEarly === serviceKeyEarly && workspace_owner_id ? String(workspace_owner_id) : null;
-        const lastUser = [...(messages as Array<{ role: string; content: string }>)]
-          .reverse().find((m) => m.role === "user")?.content ?? "";
+        const convo = messages as Array<{ role: string; content: string }>;
+        const lastUser = [...convo].reverse().find((m) => m.role === "user")?.content ?? "";
         const text = String(lastUser);
-        const intentRe = /(הוסף|תוסיף|תכניס|תכניסי|צור|תיצור|הוסיפי|תוסיפי|add|create|new)\s+(את\s+)?(ליד|מתעניין|איש\s*קשר|לקוח[הת]?|contact|lead)/i;
-        const phoneMatch = text.match(/(?:\+?972[-\s]?|0)5\d(?:[-\s]?\d){7}|\b0\d{1,2}[-\s]?\d{7}\b/);
-        const hasIntent = intentRe.test(text);
+        // Intent is evaluated across the last few user turns so "add a client"
+        // followed by a bare phone number in the next message still creates the
+        // lead instead of the assistant asking again.
+        const hasIntent = detectCreateLeadIntent(convo);
         const updateIntent = /(עדכן|תעדכן|שנה|סמן|update|mark)\s+.*(מתעניין|לקוח|lead|סטטוס|שלב)/i.test(text);
 
-        // Extract a candidate person name. Accepts explicit "בשם X" and also a
-        // bare name that follows the intent verb ("הוסף ליד רוני מליאר").
-        const extractName = (): string | null => {
-          const explicit = text.match(
-            /(?:בשם|שם\s*[:\-]?\s*|name\s*[:\-]?\s*)([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF' \-]{1,60})/iu,
-          );
-          if (explicit?.[1]) return explicit[1].trim().replace(/\s+(עם|בטלפון|טלפון|נייד|ל?שכירות|למכירה|בעיר).*$/u, "").trim();
-          const after = text.match(
-            /(?:ליד|מתעניין|איש\s*קשר|לקוח[הת]?|contact|lead)\s+(?:חדש[ה]?\s+)?([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF'\-]{1,25}(?:\s+[\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF'\-]{1,25})?)/u,
-          );
-          const cand = after?.[1]?.trim() ?? null;
-          if (!cand) return null;
-          // Reject stop-words that are not names.
-          if (/^(חדש|חדשה|עם|של|בשם|בעיר|לשכירות|למכירה)$/u.test(cand)) return null;
-          return cand;
-        };
-        const candidateName = extractName();
+        // Structured extraction (regex + Gemini Flash JSON pass) over the recent
+        // conversation: name, phone, city, deal type, budget, rooms, requirements.
+        const draft: LeadDraft = hasIntent
+          ? await extractLeadDraft(collectIntakeText(convo))
+          : { ...EMPTY_DRAFT, phone: extractPhoneLoose(text), full_name: extractNameLoose(text) };
+        const candidateName = draft.full_name;
 
         // Look up an existing CRM contact by name (fuzzy) or phone before
         // doing anything else, so "רוני מליאר" resolves to the real card
