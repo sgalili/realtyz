@@ -1350,6 +1350,10 @@ const OmnichannelInbox = () => {
                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                         className="h-11 flex-1 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
                       />
+                      <VoiceInputButton
+                        onTranscript={(t) => setNewMessage((m) => (m ? `${m} ${t}` : t))}
+                        className="me-1"
+                      />
                       {attachment && (
                         <button
                           type="button"
