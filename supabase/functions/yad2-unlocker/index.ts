@@ -25,8 +25,17 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const BD_TOKEN = Deno.env.get("BRIGHTDATA_API_TOKEN") ?? "";
-const BD_ZONE = Deno.env.get("BRIGHTDATA_ZONE") ?? "yad2";
+// Two DIFFERENT Bright Data products are in play and they are not interchangeable:
+//   * Web Unlocker zone  -> REST https://api.brightdata.com/request  (default: "reatyz_yad2")
+//   * Browser API zone   -> WS puppeteer endpoint                    (zone "yad2")
+// Pointing the REST call at the Browser API zone returns 200 with an empty
+// body + x-brd-err-code: client_10090, which is what made every Yad2 search
+// silently return zero rows.
+const BD_ZONE = Deno.env.get("BRIGHTDATA_UNLOCKER_ZONE") ??
+  Deno.env.get("BRIGHTDATA_ZONE") ??
+  "reatyz_yad2";
 const BD_WS = Deno.env.get("BRIGHTDATA_WS_ENDPOINT") ?? "";
+
 
 type DealType = "sale" | "rent";
 
