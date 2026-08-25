@@ -479,8 +479,17 @@ Deno.serve(async (req) => {
     // Always 200 — Green API retries aggressively on any non-2xx.
     return json({ received: true, type, ...result });
   } catch (e) {
-    console.error("[greenapi-webhook] handler error", e);
-    return json({ received: true, type, error: e instanceof Error ? e.message : "unknown_error" });
+    const message = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error ? e.stack : undefined;
+    // Full trace to Edge Function logs + persisted row so nothing fails silently.
+    console.error("[greenapi-webhook] handler error", message, stack ?? "");
+    await logIntegrationError({
+      integration: "whatsapp",
+      functionName: "greenapi-webhook",
+      errorMessage: `${message}${stack ? `\n${stack}` : ""}`,
+      context: { webhook_type: type, instance: payload?.instanceData?.idInstance ?? null },
+    });
+    return json({ received: true, type, error: message });
   }
 });
 
