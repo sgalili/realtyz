@@ -76,7 +76,55 @@ Deno.serve(async (req) => {
           const phoneNumberId = String(value?.metadata?.phone_number_id ?? "");
           const contacts = Array.isArray(value?.contacts) ? value.contacts : [];
           const msgs = Array.isArray(value?.messages) ? value.messages : [];
+
+          // ── Delivery statuses ──────────────────────────────────────────────
+          // A template/free-text send can return a wamid and still never reach
+          // the recipient (undelivered, blocked, out of the 24h window, param
+          // mismatch). Meta reports that only here, so record it on the message
+          // row and surface real failures in the integration error log.
+          const statuses = Array.isArray(value?.statuses) ? value.statuses : [];
+          for (const st of statuses) {
+            const wamid = String(st?.id ?? "");
+            const status = String(st?.status ?? "");
+            if (!wamid || !status) continue;
+            try {
+              const { data: rows } = await admin
+                .from("messages")
+                .select("id, metadata")
+                .eq("metadata->>message_id", wamid)
+                .limit(1);
+              const row = (rows ?? [])[0] as { id: string; metadata: Record<string, unknown> } | undefined;
+              if (row) {
+                await admin
+                  .from("messages")
+                  .update({
+                    metadata: {
+                      ...(row.metadata ?? {}),
+                      status,
+                      status_at: new Date().toISOString(),
+                      status_errors: st?.errors ?? null,
+                    },
+                  })
+                  .eq("id", row.id);
+              }
+              if (status === "failed") {
+                const err = Array.isArray(st?.errors) ? st.errors[0] : null;
+                await logIntegrationError({
+                  integration: "whatsapp",
+                  functionName: "meta-wa-webhook",
+                  errorMessage: `WhatsApp delivery failed (${err?.code ?? "?"}): ${
+                    err?.title ?? err?.message ?? "unknown"
+                  }`,
+                  context: { wamid, recipient_last4: String(st?.recipient_id ?? "").slice(-4), errors: st?.errors ?? null },
+                });
+              }
+            } catch (stErr) {
+              console.error("[meta-wa-webhook] status handling error", stErr);
+            }
+          }
+
           if (!msgs.length) continue;
+
 
           // Resolve workspace owner from the receiving phone number id / WABA id.
           let ownerId: string | null = null;
