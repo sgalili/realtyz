@@ -441,6 +441,8 @@ serve(async (req) => {
                 city ? `• עיר: ${city}` : null,
                 dealHint ? `• סוג עסקה: ${dealHint === "rent" ? "שכירות" : "מכירה"}` : null,
                 budgetNum ? `• תקציב: עד ₪${budgetNum.toLocaleString("he-IL")}` : null,
+                draft.rooms ? `• חדרים: ${draft.rooms}` : null,
+                draft.requirements ? `• דרישות: ${draft.requirements}` : null,
                 "",
                 webtivResults.length
                   ? `מצאתי ${webtivResults.length} נכסים מתאימים מיד — לחץ על כפתור ה-WhatsApp כדי לשלוח הצעה ישירות.`
