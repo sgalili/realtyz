@@ -1,0 +1,287 @@
+// ============================================================
+// leadIntake
+// ------------------------------------------------------------
+// Natural-language → CRM lead extraction.
+//
+// The old inline regexes in `ai-agent` only matched a very narrow phrasing
+// ("הוסף ליד בשם X עם 0541234567") which is why the assistant kept claiming
+// "no phone number was provided" even though the owner clearly typed one.
+// This module does three things properly:
+//
+//   1. Loose but validated Israeli phone detection (any separator style,
+//      +972 / 972 / 0 prefixes, mobiles, 07X and landlines).
+//   2. A structured LLM extraction pass (Gemini Flash, JSON out) that reads
+//      the whole recent conversation and maps free text to CRM fields.
+//   3. Deterministic regex extraction used both as a pre-fill and as a
+//      fallback when the model call fails — the model can never remove a
+//      phone number the regex already found.
+// ============================================================
+
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const FAST_MODEL = "google/gemini-3-flash-preview";
+
+export interface LeadDraft {
+  full_name: string | null;
+  phone: string | null; // normalized 9725XXXXXXXX
+  email: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  deal_type: "sale" | "rent" | null;
+  budget_max: number | null;
+  rooms: number | null;
+  requirements: string | null;
+}
+
+export const EMPTY_DRAFT: LeadDraft = {
+  full_name: null, phone: null, email: null, city: null, neighborhood: null,
+  deal_type: null, budget_max: null, rooms: null, requirements: null,
+};
+
+/** Normalize any Israeli phone shape to 972XXXXXXXXX, or null when invalid. */
+export function normalizePhone(raw: string | null | undefined): string | null {
+  let d = String(raw ?? "").replace(/\D/g, "");
+  if (!d) return null;
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.startsWith("972")) d = `0${d.slice(3)}`;
+  if (!d.startsWith("0")) d = `0${d}`;
+  const ok =
+    /^05\d{8}$/.test(d) ||      // mobile
+    /^07\d{8}$/.test(d) ||      // VoIP / virtual
+    /^0[2-489]\d{7}$/.test(d) || // landline 9 digits
+    /^0[2-489]\d{6}$/.test(d);   // short landline
+  if (!ok) return null;
+  return `972${d.slice(1)}`;
+}
+
+export function formatPhoneHe(normalized: string | null): string {
+  if (!normalized) return "—";
+  const local = normalized.startsWith("972") ? `0${normalized.slice(3)}` : normalized;
+  return /^0[57]\d{8}$/.test(local) ? `${local.slice(0, 3)}-${local.slice(3)}` : local;
+}
+
+/**
+ * Find the first valid Israeli phone number anywhere in free text, tolerating
+ * spaces, dashes, dots, parentheses, "טלפון:" labels and +972 prefixes.
+ */
+export function extractPhoneLoose(text: string | null | undefined): string | null {
+  const s = String(text ?? "");
+  const candidates = s.match(/(?:\+?972|0)[\d\s\-.()]{6,16}\d/g) ?? [];
+  for (const c of candidates) {
+    const n = normalizePhone(c);
+    if (n) return n;
+  }
+  // Last resort: any 9-10 digit run (e.g. "541234567" without the leading 0).
+  for (const c of s.match(/\d{9,10}/g) ?? []) {
+    const n = normalizePhone(c.length === 9 ? `0${c}` : c);
+    if (n) return n;
+  }
+  return null;
+}
+
+const CITY_LIST = [
+  "הרצליה", "רמת השרון", "תל אביב", "תל-אביב", "רמת גן", "רמת-גן", "רעננה", "כפר סבא",
+  "נתניה", "חיפה", "ירושלים", "ראשון לציון", "חולון", "בת ים", "פתח תקווה", "גבעתיים",
+  "אשדוד", "אשקלון", "באר שבע", "מודיעין", "רחובות", "הוד השרון", "גבעת שמואל",
+  "כפר שמריהו", "רעננה", "צהלה", "סביון",
+];
+
+export function extractCityLoose(text: string | null | undefined): string | null {
+  const s = String(text ?? "");
+  for (const c of CITY_LIST) if (s.includes(c)) return c;
+  const labelled = s.match(/(?:עיר|ב?אזור|city)\s*[:\-]?\s*([\u0590-\u05FF][\u0590-\u05FF' -]{2,25})/u);
+  return labelled?.[1]?.trim() || null;
+}
+
+function parseAmount(numText: string, unitText: string | undefined): number | null {
+  const n = parseFloat(String(numText).replace(/,/g, ""));
+  if (!isFinite(n)) return null;
+  const unit = String(unitText ?? "");
+  if (/מיליון|מיל׳|מיל'|m/i.test(unit)) return Math.round(n * 1_000_000);
+  if (/אלף|k/i.test(unit)) return Math.round(n * 1_000);
+  if (n < 100) return Math.round(n * 1_000_000); // "תקציב 3.5" → 3.5M
+  return Math.round(n);
+}
+
+export function extractBudgetLoose(text: string | null | undefined): number | null {
+  const s = String(text ?? "");
+  const withLabel = s.match(
+    /(?:תקציב|עד|מקסימום|budget|up\s*to)\D{0,12}?([\d.,]+)\s*(מיליון|מיל׳|מיל'|אלף|k|m)?/iu,
+  );
+  if (withLabel) {
+    const v = parseAmount(withLabel[1], withLabel[2]);
+    if (v && v >= 1000) return v;
+  }
+  const shekel = s.match(/₪\s*([\d.,]+)\s*(מיליון|אלף|k|m)?/iu);
+  if (shekel) {
+    const v = parseAmount(shekel[1], shekel[2]);
+    if (v && v >= 1000) return v;
+  }
+  return null;
+}
+
+export function extractRoomsLoose(text: string | null | undefined): number | null {
+  const m = String(text ?? "").match(/([\d.]+)\s*(?:חדרים|חד'|חד׳|חד\b|rooms?)/iu);
+  const n = m ? parseFloat(m[1]) : NaN;
+  return isFinite(n) && n > 0 && n < 15 ? n : null;
+}
+
+export function extractDealTypeLoose(text: string | null | undefined): "sale" | "rent" | null {
+  const s = String(text ?? "");
+  if (/שכירות|להשכרה|לשכור|שוכר|rent/i.test(s)) return "rent";
+  if (/מכירה|למכירה|לקנות|לרכוש|רכישה|קנייה|sale|buy/i.test(s)) return "sale";
+  return null;
+}
+
+const NAME_STOPWORDS =
+  /^(חדש|חדשה|עם|של|בשם|בעיר|לשכירות|למכירה|טלפון|נייד|תקציב|לקוח|לקוחה|מתעניין|ליד|contact|lead)$/u;
+
+export function extractNameLoose(text: string | null | undefined): string | null {
+  const s = String(text ?? "");
+  const patterns: RegExp[] = [
+    /(?:בשם|שם\s*מלא|שם|name)\s*[:\-]?\s*([\p{L}][\p{L}'\-]{1,25}(?:\s+[\p{L}][\p{L}'\-]{1,25}){0,2})/iu,
+    /(?:ליד|מתעניין|מתעניינת|איש\s*קשר|לקוח[הת]?|contact|lead)\s*(?:חדש[הת]?)?\s*[:,\-–]?\s*([\p{L}][\p{L}'\-]{1,25}(?:\s+[\p{L}][\p{L}'\-]{1,25})?)/u,
+  ];
+  for (const re of patterns) {
+    const cand = s.match(re)?.[1]?.trim();
+    if (!cand) continue;
+    const parts = cand.split(/\s+/).filter((p) => !NAME_STOPWORDS.test(p));
+    if (!parts.length) continue;
+    return parts.join(" ");
+  }
+  return null;
+}
+
+export function extractEmailLoose(text: string | null | undefined): string | null {
+  return String(text ?? "").match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
+}
+
+/** Deterministic pass over the raw text. */
+export function extractLeadDraftRegex(text: string): LeadDraft {
+  return {
+    full_name: extractNameLoose(text),
+    phone: extractPhoneLoose(text),
+    email: extractEmailLoose(text),
+    city: extractCityLoose(text),
+    neighborhood: null,
+    deal_type: extractDealTypeLoose(text),
+    budget_max: extractBudgetLoose(text),
+    rooms: extractRoomsLoose(text),
+    requirements: null,
+  };
+}
+
+/** Intent verbs/nouns, checked independently so word order does not matter. */
+const VERB_RE = /(הוסף|תוסיף|הוסיפי|תוסיפי|תכניס|תכניסי|צור|תיצור|תיצרי|רשום|תרשום|שמור|תשמור|פתח|תפתח|add|create|new|save|register)/i;
+const NOUN_RE = /(ליד|לידים|מתעניין|מתעניינת|איש\s*קשר|לקוח[הת]?|כרטיס|crm|contact|lead|client)/i;
+
+/**
+ * Does this conversation ask to create a lead?
+ * Looks at the last few user turns (so "add a client" followed by a bare
+ * phone number in the next message still counts) and also treats a message
+ * that is essentially "name + phone" right after the assistant asked for a
+ * phone number as a create-lead continuation.
+ */
+export function detectCreateLeadIntent(
+  messages: Array<{ role: string; content: string }>,
+): boolean {
+  const userTurns = messages.filter((m) => m.role === "user").map((m) => String(m.content ?? ""));
+  const recent = userTurns.slice(-4);
+  for (const t of recent) {
+    if (VERB_RE.test(t) && NOUN_RE.test(t)) return true;
+  }
+  const last = userTurns[userTurns.length - 1] ?? "";
+  if (!extractPhoneLoose(last)) return false;
+  // Assistant just asked for a phone number to add the contact.
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
+  if (/(טלפון|נייד|phone)/i.test(String(lastAssistant)) && NOUN_RE.test(String(lastAssistant))) return true;
+  // Earlier turn asked to add someone, this turn supplies the details.
+  return recent.slice(0, -1).some((t) => VERB_RE.test(t) && NOUN_RE.test(t));
+}
+
+/** Join the recent conversation into one extraction blob. */
+export function collectIntakeText(
+  messages: Array<{ role: string; content: string }>,
+  turns = 6,
+): string {
+  return messages
+    .slice(-turns)
+    .filter((m) => m.role === "user")
+    .map((m) => String(m.content ?? ""))
+    .join("\n");
+}
+
+/** Structured LLM extraction. Returns null on any failure. */
+export async function extractLeadDraftLLM(text: string): Promise<Partial<LeadDraft> | null> {
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey || !text.trim()) return null;
+  const system = `אתה מחלץ נתונים ל-CRM נדל"ן ישראלי. קבל טקסט חופשי בעברית או אנגלית והחזר JSON בלבד.
+מפתחות: full_name, phone, email, city, neighborhood, deal_type ("sale" או "rent"), budget_max (מספר שקלים), rooms (מספר), requirements (תמצית דרישות במשפט אחד).
+חוקים:
+- phone: החזר בדיוק כפי שנכתב, כולל מקפים. אם אין טלפון בטקסט החזר null.
+- budget_max: המר "2 מיליון" ל-2000000, "עד 5,500" ל-5500.
+- אל תמציא נתונים. שדה שלא הופיע בטקסט = null.
+- החזר JSON נקי, בלי markdown ובלי הסברים.`;
+  try {
+    const res = await fetch(GATEWAY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey },
+      body: JSON.stringify({
+        model: FAST_MODEL,
+        temperature: 0,
+        messages: [{ role: "system", content: system }, { role: "user", content: text.slice(0, 4000) }],
+      }),
+    });
+    if (!res.ok) return null;
+    const raw = String((await res.json())?.choices?.[0]?.message?.content ?? "");
+    const jsonText = raw.replace(/```(?:json)?/gi, "").trim();
+    const start = jsonText.indexOf("{");
+    const end = jsonText.lastIndexOf("}");
+    if (start < 0 || end <= start) return null;
+    const parsed = JSON.parse(jsonText.slice(start, end + 1));
+    const num = (v: unknown) => {
+      const n = typeof v === "number" ? v : parseFloat(String(v ?? "").replace(/[^\d.]/g, ""));
+      return isFinite(n) && n > 0 ? n : null;
+    };
+    const str = (v: unknown) => {
+      const s = String(v ?? "").trim();
+      return s && !/^(null|undefined|-|—)$/i.test(s) ? s : null;
+    };
+    return {
+      full_name: str(parsed.full_name),
+      phone: normalizePhone(str(parsed.phone) ?? ""),
+      email: str(parsed.email),
+      city: str(parsed.city),
+      neighborhood: str(parsed.neighborhood),
+      deal_type: parsed.deal_type === "rent" ? "rent" : parsed.deal_type === "sale" ? "sale" : null,
+      budget_max: num(parsed.budget_max),
+      rooms: num(parsed.rooms),
+      requirements: str(parsed.requirements),
+    };
+  } catch (_e) {
+    return null;
+  }
+}
+
+/**
+ * Full extraction: regex first (never lost), LLM fills the gaps and adds the
+ * requirements summary. Deterministic values win on conflict for phone.
+ */
+export async function extractLeadDraft(text: string): Promise<LeadDraft> {
+  const base = extractLeadDraftRegex(text);
+  const llm = await extractLeadDraftLLM(text);
+  if (!llm) return base;
+  const pick = <K extends keyof LeadDraft>(k: K): LeadDraft[K] =>
+    (base[k] ?? (llm[k] as LeadDraft[K] | undefined) ?? null) as LeadDraft[K];
+  return {
+    full_name: pick("full_name"),
+    // Regex phone is authoritative; the model is only a fallback.
+    phone: base.phone ?? (llm.phone ?? null),
+    email: pick("email"),
+    city: pick("city"),
+    neighborhood: (llm.neighborhood ?? null) as string | null,
+    deal_type: base.deal_type ?? (llm.deal_type ?? null),
+    budget_max: base.budget_max ?? (llm.budget_max ?? null),
+    rooms: base.rooms ?? (llm.rooms ?? null),
+    requirements: (llm.requirements ?? null) as string | null,
+  };
+}

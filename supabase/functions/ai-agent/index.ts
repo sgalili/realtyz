@@ -18,6 +18,15 @@ import {
 } from "../_shared/persona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 import { maskMessages } from "../_shared/pii.ts";
+import {
+  detectCreateLeadIntent,
+  collectIntakeText,
+  extractLeadDraft,
+  extractPhoneLoose,
+  extractNameLoose,
+  EMPTY_DRAFT,
+  type LeadDraft,
+} from "../_shared/leadIntake.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -228,45 +237,34 @@ serve(async (req) => {
         const serviceKeyEarly = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const bearerEarly = authHeaderEarly.replace(/^Bearer\s+/i, "").trim();
         const serviceOwnerId = bearerEarly === serviceKeyEarly && workspace_owner_id ? String(workspace_owner_id) : null;
-        const lastUser = [...(messages as Array<{ role: string; content: string }>)]
-          .reverse().find((m) => m.role === "user")?.content ?? "";
+        const convo = messages as Array<{ role: string; content: string }>;
+        const lastUser = [...convo].reverse().find((m) => m.role === "user")?.content ?? "";
         const text = String(lastUser);
-        const intentRe = /(הוסף|תוסיף|תכניס|תכניסי|צור|תיצור|הוסיפי|תוסיפי|add|create|new)\s+(את\s+)?(ליד|מתעניין|איש\s*קשר|לקוח[הת]?|contact|lead)/i;
-        const phoneMatch = text.match(/(?:\+?972[-\s]?|0)5\d(?:[-\s]?\d){7}|\b0\d{1,2}[-\s]?\d{7}\b/);
-        const hasIntent = intentRe.test(text);
+        // Intent is evaluated across the last few user turns so "add a client"
+        // followed by a bare phone number in the next message still creates the
+        // lead instead of the assistant asking again.
+        const hasIntent = detectCreateLeadIntent(convo);
         const updateIntent = /(עדכן|תעדכן|שנה|סמן|update|mark)\s+.*(מתעניין|לקוח|lead|סטטוס|שלב)/i.test(text);
 
-        // Extract a candidate person name. Accepts explicit "בשם X" and also a
-        // bare name that follows the intent verb ("הוסף ליד רוני מליאר").
-        const extractName = (): string | null => {
-          const explicit = text.match(
-            /(?:בשם|שם\s*[:\-]?\s*|name\s*[:\-]?\s*)([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF' \-]{1,60})/iu,
-          );
-          if (explicit?.[1]) return explicit[1].trim().replace(/\s+(עם|בטלפון|טלפון|נייד|ל?שכירות|למכירה|בעיר).*$/u, "").trim();
-          const after = text.match(
-            /(?:ליד|מתעניין|איש\s*קשר|לקוח[הת]?|contact|lead)\s+(?:חדש[ה]?\s+)?([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF'\-]{1,25}(?:\s+[\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF'\-]{1,25})?)/u,
-          );
-          const cand = after?.[1]?.trim() ?? null;
-          if (!cand) return null;
-          // Reject stop-words that are not names.
-          if (/^(חדש|חדשה|עם|של|בשם|בעיר|לשכירות|למכירה)$/u.test(cand)) return null;
-          return cand;
-        };
-        const candidateName = extractName();
+        // Structured extraction (regex + Gemini Flash JSON pass) over the recent
+        // conversation: name, phone, city, deal type, budget, rooms, requirements.
+        const draft: LeadDraft = hasIntent
+          ? await extractLeadDraft(collectIntakeText(convo))
+          : { ...EMPTY_DRAFT, phone: extractPhoneLoose(text), full_name: extractNameLoose(text) };
+        const candidateName = draft.full_name;
 
         // Look up an existing CRM contact by name (fuzzy) or phone before
         // doing anything else, so "רוני מליאר" resolves to the real card
         // instead of spawning a blank "לקוח חדש" duplicate.
         const lookupExisting = async (client: any, uid: string) => {
-          if (phoneMatch) {
-            const raw = phoneMatch[0].replace(/\D/g, "");
-            const norm = raw.startsWith("972") ? raw : raw.startsWith("0") ? `972${raw.slice(1)}` : raw;
-            const local = norm.startsWith("972") ? `0${norm.slice(3)}` : norm;
+          if (draft.phone) {
+            const norm = draft.phone;
+            const local = `0${norm.slice(3)}`;
             const { data } = await client
               .from("leads")
               .select("id, full_name, phone_number, city, deal_type")
               .eq("assigned_to", uid)
-              .or(`phone_number.eq.${norm},phone_number.eq.${local},phone_number.eq.${raw}`)
+              .or(`phone_number.eq.${norm},phone_number.eq.${local}`)
               .limit(1);
             if (data?.[0]) return data[0];
           }
@@ -291,7 +289,7 @@ serve(async (req) => {
 
         // No phone yet → try to resolve an existing contact first; only ask
         // for a phone number when the person truly isn't in the CRM.
-        if (hasIntent && !phoneMatch && authHeaderEarly.startsWith("Bearer ")) {
+        if (hasIntent && !draft.phone && authHeaderEarly.startsWith("Bearer ")) {
           const probeClient = serviceOwnerId
             ? createClient(supabaseUrlEarly, serviceKeyEarly)
             : createClient(supabaseUrlEarly, anonKey, {
@@ -315,25 +313,13 @@ serve(async (req) => {
           }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        if (hasIntent && phoneMatch && authHeaderEarly.startsWith("Bearer ")) {
-          const rawPhone = phoneMatch[0].replace(/\D/g, "");
-          const normalized = rawPhone.startsWith("972")
-            ? rawPhone
-            : rawPhone.startsWith("0") ? `972${rawPhone.slice(1)}` : rawPhone;
-          const fullName = candidateName;
-          const cityMatch = text.match(/(?:בעיר|עיר\s*[:\-]?\s*|city\s*[:\-]?\s*|ב([\u0590-\u05FF][\u0590-\u05FF' \-]{2,30}))/u);
-          const city = (cityMatch?.[1] || cityMatch?.[2] || "").trim() || null;
-          const dealHint =
-            /(שכירות|להשכרה|לשכר|rent)/i.test(text) ? "rent" :
-            /(קנייה|למכירה|לרכישה|sale|buy)/i.test(text) ? "sale" : null;
-          // Best-effort budget extraction — "עד 5500", "עד 2 מיליון".
-          const budgetNum = (() => {
-            const m1 = text.match(/עד\s*([\d,\.]+)\s*(?:מיליון|מ׳|m)/i);
-            if (m1) return Math.round(parseFloat(m1[1].replace(/,/g, "")) * 1_000_000);
-            const m2 = text.match(/עד\s*([\d,]{3,})/);
-            if (m2) return parseInt(m2[1].replace(/,/g, ""), 10) || null;
-            return null;
-          })();
+        if (hasIntent && draft.phone && authHeaderEarly.startsWith("Bearer ")) {
+          const normalized = draft.phone;
+          const fullName = draft.full_name;
+          const city = draft.city;
+          const dealHint = draft.deal_type;
+          const budgetNum = draft.budget_max;
+
 
           const userClient = serviceOwnerId
             ? createClient(supabaseUrlEarly, serviceKeyEarly)
@@ -358,6 +344,9 @@ serve(async (req) => {
             if (dealHint) preferences.listing_type = dealHint;
             if (budgetNum) preferences.budget_max = budgetNum;
             if (city) preferences.desired_city = city;
+            if (draft.neighborhood) preferences.neighborhood = draft.neighborhood;
+            if (draft.rooms) preferences.rooms = draft.rooms;
+            if (draft.requirements) preferences.requirements = draft.requirements;
 
             const { data: inserted, error: insErr } = await userClient
               .from("leads")
@@ -441,6 +430,8 @@ serve(async (req) => {
                 city ? `• עיר: ${city}` : null,
                 dealHint ? `• סוג עסקה: ${dealHint === "rent" ? "שכירות" : "מכירה"}` : null,
                 budgetNum ? `• תקציב: עד ₪${budgetNum.toLocaleString("he-IL")}` : null,
+                draft.rooms ? `• חדרים: ${draft.rooms}` : null,
+                draft.requirements ? `• דרישות: ${draft.requirements}` : null,
                 "",
                 webtivResults.length
                   ? `מצאתי ${webtivResults.length} נכסים מתאימים מיד — לחץ על כפתור ה-WhatsApp כדי לשלוח הצעה ישירות.`
