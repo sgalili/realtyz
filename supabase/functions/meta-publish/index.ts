@@ -588,10 +588,18 @@ Deno.serve(async (req) => {
       return json({ success: false, error: "empty_post", message: "אין תוכן לפרסום" }, 200);
     }
 
+    // Idempotency fingerprint per channel (text + media + first comment).
+    const hashes: Record<string, string> = {};
+    for (const ch of channels) {
+      hashes[ch] = await contentHash([ch, text, media.join("|"), firstComment, scheduledIso]);
+    }
+
     // Scheduled posts are persisted and dispatched later by the queue drain.
     if (scheduledIso) {
-      await db.from("campaign_logs").insert(
-        channels.map((ch) => ({
+      for (const ch of channels) {
+        const existing = await findReusableRow(db, ownerId, ch, hashes[ch], ["scheduled"], 24 * 30);
+        if (existing) continue; // already queued for the same slot — never duplicate
+        await db.from("campaign_logs").insert({
           user_id: ownerId,
           campaign_name: campaignName,
           channel: ch,
@@ -600,10 +608,30 @@ Deno.serve(async (req) => {
           sent_at: scheduledIso,
           media_urls: media,
           first_comment: firstComment || null,
-          provider_response: { provider: "meta_graph", scheduled_at: scheduledIso },
-        })),
-      );
+          provider_response: { provider: "meta_graph", scheduled_at: scheduledIso, content_hash: hashes[ch] },
+        });
+      }
       return json({ success: true, verified: true, scheduled: true, post_ids: [] });
+    }
+
+    // Strict duplicate prevention: an identical post already live on the same
+    // channel within the last 30 minutes is reported back instead of published
+    // again (and no second history row is written).
+    const alreadySent: Array<{ platform: string; id: string }> = [];
+    const pendingChannels: string[] = [];
+    for (const ch of channels) {
+      const sent = await findRecentSent(db, ownerId, ch, hashes[ch]);
+      if (sent) alreadySent.push({ platform: ch, id: sent.provider_message_id ?? "" });
+      else pendingChannels.push(ch);
+    }
+    if (pendingChannels.length === 0) {
+      return json({
+        success: true,
+        verified: true,
+        duplicate: true,
+        post_ids: alreadySent,
+        message: "הפוסט הזה כבר פורסם בדקות האחרונות — לא נשלח שוב.",
+      });
     }
 
     if (!page) {
@@ -629,7 +657,8 @@ Deno.serve(async (req) => {
     // Never publish with a User/system token: upgrade to the Page-scoped token.
     page = await ensurePageToken(db, ownerId, page);
 
-    for (const ch of channels) {
+    for (const ch of pendingChannels) {
+
       if (ch === "facebook") {
         let activePage = page;
         let res = await publishFacebook(activePage.pageId, activePage.token, text, media, link);
