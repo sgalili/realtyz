@@ -986,10 +986,48 @@ Deno.serve(async (req) => {
   // ================================================================
   if (payload?.object === "whatsapp_business_account" || Array.isArray(payload?.entry)) {
     const value = payload?.entry?.[0]?.changes?.[0]?.value ?? {};
+
+    // Delivery receipts: a send can return a wamid and still never arrive
+    // (undelivered / blocked / outside the 24h window / template mismatch).
+    // Persist the real state on the message row instead of dropping it.
+    const statuses = Array.isArray(value?.statuses) ? value.statuses : [];
+    for (const st of statuses) {
+      const wamid = String(st?.id ?? "");
+      const status = String(st?.status ?? "");
+      if (!wamid || !status) continue;
+      try {
+        const { data: rows } = await admin
+          .from("messages")
+          .select("id, metadata")
+          .eq("metadata->>message_id", wamid)
+          .limit(1);
+        const row = (rows ?? [])[0] as { id: string; metadata: Record<string, unknown> } | undefined;
+        if (row) {
+          await admin
+            .from("messages")
+            .update({
+              metadata: {
+                ...(row.metadata ?? {}),
+                status,
+                status_at: new Date().toISOString(),
+                status_errors: (st as any)?.errors ?? null,
+              },
+            })
+            .eq("id", row.id);
+        }
+        if (status === "failed") {
+          console.error("whatsapp-webhook: delivery failed", JSON.stringify({ wamid, errors: (st as any)?.errors ?? null }));
+        }
+      } catch (stErr) {
+        console.error("whatsapp-webhook: status handling error", stErr);
+      }
+    }
+
     const metaMsg = value?.messages?.[0];
     if (!metaMsg) {
-      return jsonResponse({ ok: true, ignored: "meta_no_message" }, 200);
+      return jsonResponse({ ok: true, ignored: statuses.length ? "meta_status_only" : "meta_no_message" }, 200);
     }
+
     const from = String(metaMsg.from ?? "").replace(/\D/g, "");
     const text =
       metaMsg?.text?.body ??
