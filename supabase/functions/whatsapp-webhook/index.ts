@@ -720,8 +720,9 @@ async function handleLeadInboxInbound(
     }
   }
 
-  // Duplicate guard (best-effort).
-  if (messageId && lead?.id) {
+  // Duplicate guard (best-effort). Skipped in autopilot-only mode — the row was
+  // stored upstream on purpose, so it must not be mistaken for a retry.
+  if (!skipStore && messageId && lead?.id) {
     try {
       const { data: existing } = await admin
         .from("messages")
@@ -738,7 +739,7 @@ async function handleLeadInboxInbound(
 
   // Content-signature dedup: drop identical inbound text from the same lead
   // within a 5-second window (provider retries, double webhooks, etc.).
-  if (lead?.id && inboundText) {
+  if (!skipStore && lead?.id && inboundText) {
     try {
       const since = new Date(Date.now() - 5000).toISOString();
       const { data: recent } = await admin
@@ -769,20 +770,23 @@ async function handleLeadInboxInbound(
 
   // ALWAYS persist the inbound message row, even if lead_id is null.
   // The inbox UI falls back to a phone-anchored synthetic thread for these.
-  try {
-    const { error: insertErr } = await admin.from("messages").insert({
-      lead_id: lead?.id ?? null,
-      channel: "whatsapp",
-      platform: "whatsapp",
-      content: inboundText,
-      direction: "inbound",
-      sender_type: "voter",
-      metadata,
-    });
-    if (insertErr) console.warn("inbound message insert soft-fail:", insertErr.message);
-  } catch (e) {
-    console.warn("inbound message insert threw:", e instanceof Error ? e.message : e);
+  if (!skipStore) {
+    try {
+      const { error: insertErr } = await admin.from("messages").insert({
+        lead_id: lead?.id ?? null,
+        channel: "whatsapp",
+        platform: "whatsapp",
+        content: inboundText,
+        direction: "inbound",
+        sender_type: "voter",
+        metadata,
+      });
+      if (insertErr) console.warn("inbound message insert soft-fail:", insertErr.message);
+    } catch (e) {
+      console.warn("inbound message insert threw:", e instanceof Error ? e.message : e);
+    }
   }
+
 
   if (lead?.id) {
     try {
