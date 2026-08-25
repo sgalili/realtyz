@@ -252,6 +252,11 @@ export default function DealRoom() {
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-leads'],
+    // Keep the pipeline in sync with AI chat / CRM stage changes without
+    // Realtime (disabled on `leads` for privacy): short polling + focus refetch.
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+    staleTime: 5_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
@@ -271,28 +276,72 @@ export default function DealRoom() {
     return dt === 'rent' ? 'rent' : 'sale';
   }
 
-  // Only active, in-progress leads — exclude untouched (new_lead) and closed.
-  const ACTIVE_STAGES: LeadStage[] = ['listing_outreach', 'negotiation', 'awaiting_signature'];
-  const visibleLeads = useMemo(() => {
+  function leadBudget(l: Lead): number | null {
+    const p = (l.preferences ?? {}) as Record<string, unknown>;
+    const raw = p.budget_max ?? p.monthly_rent_max ?? p.budget ?? p.budget_min;
+    const n = typeof raw === 'string' ? Number(raw.replace(/[^\d.]/g, '')) : Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  /**
+   * Applies every active filter EXCEPT the pipeline (sale/rent) selection, so
+   * the tab badges always equal the number of cards actually rendered.
+   */
+  const filterLead = (l: Lead): boolean => {
     const q = searchText.trim().toLowerCase();
-    return (leads || []).filter((l) => {
-      if (resolveDealType(l) !== activeDealType) return false;
-      if (!ACTIVE_STAGES.includes(bucketFor(l.lead_stage))) return false;
-      if (!q) return true;
+    if (q) {
       const hay = [l.full_name, l.phone_number, l.city, l.interest_tag]
         .filter(Boolean).join(' ').toLowerCase();
-      return hay.includes(q);
-    });
-  }, [leads, activeDealType, searchText]);
+      if (!hay.includes(q)) return false;
+    }
+    if (filters.stages.length && !filters.stages.includes(bucketFor(l.lead_stage))) return false;
+    if (filters.agent !== 'all') {
+      if (filters.agent === 'unassigned') { if (l.assigned_to) return false; }
+      else if (l.assigned_to !== filters.agent) return false;
+    }
+    if (filters.days !== 'all') {
+      const ts = l.last_interaction_at ? new Date(l.last_interaction_at).getTime() : 0;
+      if (!ts) return false;
+      if (Date.now() - ts > Number(filters.days) * 86400000) return false;
+    }
+    if (filters.priceMin || filters.priceMax) {
+      const b = leadBudget(l);
+      if (b == null) return false;
+      if (filters.priceMin && b < Number(filters.priceMin)) return false;
+      if (filters.priceMax && b > Number(filters.priceMax)) return false;
+    }
+    return true;
+  };
+
+  const filtered = useMemo(
+    () => (leads || []).filter(filterLead),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [leads, searchText, filters],
+  );
+
+  const visibleLeads = useMemo(
+    () => filtered.filter((l) => resolveDealType(l) === activeDealType),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, activeDealType],
+  );
 
   const saleCount = useMemo(
-    () => (leads || []).filter((l) => resolveDealType(l) === 'sale').length,
-    [leads],
+    () => filtered.filter((l) => resolveDealType(l) === 'sale').length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered],
   );
   const rentCount = useMemo(
-    () => (leads || []).filter((l) => resolveDealType(l) === 'rent').length,
-    [leads],
+    () => filtered.filter((l) => resolveDealType(l) === 'rent').length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered],
   );
+
+  const activeFilterCount =
+    (filters.stages.length ? 1 : 0) +
+    (filters.agent !== 'all' ? 1 : 0) +
+    (filters.days !== 'all' ? 1 : 0) +
+    (filters.priceMin || filters.priceMax ? 1 : 0);
+
 
   const stageColumns = useMemo(() => columnsFor(activeDealType), [activeDealType]);
 
