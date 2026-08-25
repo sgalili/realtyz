@@ -733,10 +733,13 @@ Deno.serve(async (req) => {
       groupResults.push({ group_id: gid, ...r });
     }
 
-    const rows = channels.map((ch) => {
+    // One history row per channel attempt. A retry of the same content REUSES
+    // the previous failed row (updated in place) so the queue never fills with
+    // ghost duplicates of the same post.
+    for (const ch of pendingChannels) {
       const match = postIds.find((p) => p.platform === ch);
       const fail = failures.find((f) => f.platform === ch);
-      return {
+      const attemptRow = {
         user_id: ownerId,
         campaign_name: campaignName,
         channel: ch,
@@ -753,12 +756,18 @@ Deno.serve(async (req) => {
           media_urls: media,
           first_comment: firstComment || null,
           postIds,
+          content_hash: hashes[ch],
           error: fail?.message ?? null,
+          last_attempt_at: new Date().toISOString(),
         },
       };
-    });
-    const { error: insErr } = await db.from("campaign_logs").insert(rows);
-    if (insErr) console.warn("[meta-publish] campaign_logs insert", insErr.message);
+      const reuseId = await findReusableRow(db, ownerId, ch, hashes[ch], ["failed"]);
+      const { error: writeErr } = reuseId
+        ? await db.from("campaign_logs").update(attemptRow).eq("id", reuseId)
+        : await db.from("campaign_logs").insert(attemptRow);
+      if (writeErr) console.warn("[meta-publish] campaign_logs write", writeErr.message);
+    }
+
 
     if (postIds.length === 0) {
       return json(
