@@ -36,6 +36,7 @@ import { DeliverySettings } from '@/components/DeliverySettings';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrandIcon } from '@/components/BrandIcon';
 import UndoLastAiMessage from '@/components/inbox/UndoLastAiMessage';
+import { MediaMessage, extractChatMedia } from '@/components/inbox/MediaMessage';
 
 const ACCEPTED_ATTACHMENT_TYPES = [
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
@@ -1224,7 +1225,13 @@ const OmnichannelInbox = () => {
                             <div className="mb-1 flex items-center justify-end gap-1.5">
                               <ChannelIcon channel={msg.channel} />
                             </div>
-                            <p className="max-w-full overflow-hidden whitespace-pre-wrap break-all text-sm leading-relaxed">{msg.content}</p>
+                            {(() => {
+                              const media = extractChatMedia(msg);
+                              if (media) return <MediaMessage media={media} />;
+                              return (
+                                <p className="max-w-full overflow-hidden whitespace-pre-wrap break-all text-sm leading-relaxed">{msg.content}</p>
+                              );
+                            })()}
                             <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
                               <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
                               {isOutbound && <WhatsAppTicks status={((msg as any)?.metadata?.status as 'sent' | 'delivered' | 'read') || 'delivered'} />}
