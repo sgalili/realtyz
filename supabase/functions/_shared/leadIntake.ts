@@ -141,9 +141,10 @@ export function extractBudgetLoose(
     const v = sanitizeBudget(parseAmount(withLabel[1], withLabel[2], effectiveType), effectiveType);
     if (v) return v;
   }
-  const shekel = s.match(/(?:₪|ש["״'׳]?ח|שקל(?:ים)?|nis|ils)/i.test(s)
-    ? /([\d.,]+)\s*(מיליון|מיל׳|מיל'|אלף|k|m)?\s*(?:₪|ש["״'׳]?ח|שקלים|שקל|nis|ils)/iu
-    : /₪\s*([\d.,]+)\s*(מיליון|אלף|k|m)?/iu);
+  const CURRENCY = /(?:₪|ש["״'׳]{0,2}ח|שקלים|שקל|nis|ils)/;
+  const shekel =
+    s.match(new RegExp(`([\\d.,]+)\\s*(מיליון|מיל׳|מיל'|אלף|k|m)?\\s*${CURRENCY.source}`, "iu")) ??
+    s.match(new RegExp(`${CURRENCY.source}\\s*([\\d.,]+)\\s*(מיליון|מיל׳|מיל'|אלף|k|m)?`, "iu"));
   if (shekel) {
     const v = sanitizeBudget(parseAmount(shekel[1], shekel[2], effectiveType), effectiveType);
     if (v) return v;
