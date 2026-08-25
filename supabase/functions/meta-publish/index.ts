@@ -476,7 +476,7 @@ Deno.serve(async (req) => {
     const ownerId = await resolveOwner(req, body, db);
     if (!ownerId) return json({ success: false, error: "unauthorized", message: "יש להתחבר מחדש" }, 401);
 
-    const page = await resolvePage(db, ownerId);
+    let page = await resolvePage(db, ownerId);
 
     // ---- Connection status probe -------------------------------------------
     if (body?.action === "status") {
