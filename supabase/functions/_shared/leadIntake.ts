@@ -371,6 +371,8 @@ export async function extractLeadDraft(text: string): Promise<LeadDraft> {
   // Reconcile the budget against the resolved deal type: a rent figure parsed
   // as millions is rejected and re-derived with the correct unit rules.
   let budget = base.budget_max ?? (llm.budget_max ?? null);
+  // A rent figure the model returned in bare thousands ("15") means 15,000/month.
+  if (dealType === "rent" && budget && budget < 1_000) budget = Math.round(budget * 1_000);
   budget = sanitizeBudget(budget, dealType) ?? extractBudgetLoose(text, dealType);
 
   return {
