@@ -4,6 +4,7 @@ import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { useState, useRef, useEffect, useMemo, cloneElement, type ReactElement } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { NewWhatsAppChatDialog } from '@/components/whatsapp/NewWhatsAppChatDialog';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -1349,6 +1350,10 @@ const OmnichannelInbox = () => {
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                         className="h-11 flex-1 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+                      />
+                      <VoiceInputButton
+                        onTranscript={(t) => setNewMessage((m) => (m ? `${m} ${t}` : t))}
+                        className="me-1"
                       />
                       {attachment && (
                         <button

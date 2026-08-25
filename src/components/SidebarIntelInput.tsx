@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Bot, Send, Mic, MicOff, Paperclip, Loader2, X, FileText, Sparkles } from 'lucide-react';
@@ -164,7 +165,11 @@ export function SidebarIntelInput() {
   const handleVoiceResult = useCallback((text: string) => {
     setInput(prev => (prev ? prev + ' ' + text : text));
   }, []);
-  const { isListening, toggle: toggleVoice } = useHebrewVoiceInput(handleVoiceResult);
+  // Server-side STT (Hebrew + English) replaces the browser SpeechRecognition path,
+  // which is missing on Firefox/Safari and unreliable for Hebrew.
+  const voice = useVoiceRecorder({ onTranscript: handleVoiceResult, onError: (m) => toast.error(m) });
+  const isListening = voice.isRecording;
+  const toggleVoice = () => { void voice.toggle(); };
 
   const useSuggestion = () => {
     setInput(SUGGESTED_PROMPTS[suggestionIdx]);

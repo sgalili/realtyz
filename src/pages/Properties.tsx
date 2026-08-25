@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
@@ -690,8 +691,13 @@ export default function Properties() {
                 aria-label="חיפוש נכסים"
                 className="flex-1 min-w-[90px] bg-transparent text-right text-sm outline-none placeholder:text-muted-foreground h-7"
                 dir="rtl"
+               />
+              <VoiceInputButton
+                size="sm"
+                title="חיפוש קולי"
+                onTranscript={(t) => setQ((prev) => (prev ? `${prev} ${t}` : t))}
               />
-            </div>
+             </div>
             <Button
               type="button"
               size="sm"

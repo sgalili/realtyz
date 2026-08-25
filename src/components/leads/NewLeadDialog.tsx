@@ -15,6 +15,7 @@
  */
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -324,7 +325,14 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           )}
 
           <div className="col-span-2">
-            <Label htmlFor="nl-notes">הערות</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="nl-notes">הערות</Label>
+              <VoiceInputButton
+                size="sm"
+                title="הכתבה קולית להערות"
+                onTranscript={(t) => setNotes((prev) => (prev ? `${prev} ${t}` : t))}
+              />
+            </div>
             <Textarea
               id="nl-notes"
               rows={2}

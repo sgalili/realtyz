@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useAuth } from '@/hooks/useAuth';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -900,6 +901,11 @@ ${shareUrl}
               placeholder={isListening ? '🎙️ מקשיב...' : researchMode ? 'מצב מחקר חי - שאל על שכונה/אזור/פרויקט' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
               className="flex-1 h-9 text-[18px]"
               disabled={isLoading}
+             />
+            <VoiceInputButton
+              disabled={isLoading}
+              title="דברו — ההקלטה תתומלל ותישלח לעוזר"
+              onTranscript={(t) => { setInput(''); void sendMessage(t); }}
             />
             <Button
               type="button"
@@ -922,17 +928,6 @@ ${shareUrl}
               title="צרף קבצים (PDF/תמונות)"
             >
               <Paperclip className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant={isListening ? 'destructive' : 'outline'}
-              className="h-9 w-9 shrink-0"
-              onClick={toggleVoice}
-              disabled={isLoading}
-              title={isListening ? 'הפסק הקלטה' : 'הקלט קול'}
-            >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </Button>
           </form>
         </div>
