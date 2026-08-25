@@ -100,6 +100,24 @@ type Lead = {
 
 type SortMode = 'recent' | 'priority';
 
+/** Advanced pipeline filters (drawer on the left of the search bar). */
+type DealFilters = {
+  stages: LeadStage[];
+  agent: string; // 'all' | 'unassigned' | user_id
+  days: string;  // 'all' | '7' | '30' | '90'
+  priceMin: string;
+  priceMax: string;
+};
+
+const EMPTY_FILTERS: DealFilters = {
+  stages: [],
+  agent: 'all',
+  days: 'all',
+  priceMin: '',
+  priceMax: '',
+};
+
+
 // Stage columns are pipeline-specific. The KEY (lead_stage value) is shared so
 // data lives in one column on the table; only the displayed TITLE differs per
 // pipeline (e.g. "סגירה" for Sale vs "חתימת חוזה שכירות" for Rent).
