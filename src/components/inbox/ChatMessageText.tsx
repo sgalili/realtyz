@@ -33,7 +33,7 @@ export function ChatMessageText({ content, className }: { content: string | null
           )
 
         ) : (
-          <p key={i} className={i > 0 ? 'mt-2' : undefined}>
+          <p key={i}>
             {block.lines.map((line, j) => (
               <Fragment key={j}>
                 {j > 0 && <br />}
