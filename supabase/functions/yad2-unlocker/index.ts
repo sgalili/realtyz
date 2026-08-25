@@ -25,8 +25,17 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const BD_TOKEN = Deno.env.get("BRIGHTDATA_API_TOKEN") ?? "";
-const BD_ZONE = Deno.env.get("BRIGHTDATA_ZONE") ?? "yad2";
+// Two DIFFERENT Bright Data products are in play and they are not interchangeable:
+//   * Web Unlocker zone  -> REST https://api.brightdata.com/request  (default: "reatyz_yad2")
+//   * Browser API zone   -> WS puppeteer endpoint                    (zone "yad2")
+// Pointing the REST call at the Browser API zone returns 200 with an empty
+// body + x-brd-err-code: client_10090, which is what made every Yad2 search
+// silently return zero rows.
+const BD_ZONE = Deno.env.get("BRIGHTDATA_UNLOCKER_ZONE") ??
+  Deno.env.get("BRIGHTDATA_ZONE") ??
+  "reatyz_yad2";
 const BD_WS = Deno.env.get("BRIGHTDATA_WS_ENDPOINT") ?? "";
+
 
 type DealType = "sale" | "rent";
 
@@ -193,13 +202,19 @@ async function brightDataRequest(
 // searches jump straight to the browser transport instead of burning ~4s on
 // four guaranteed-to-fail endpoints.
 let bdZoneBroken = false;
+// Bright Data's residential/Unlocker product refuses gw.yad2.co.il without a
+// KYC approval (`policy_20140`). The public www.yad2.co.il HTML IS allowed and
+// carries the full feed in __NEXT_DATA__, so once we see this we stop paying
+// for gateway attempts on the REST transport and go straight to HTML.
+let bdGatewayRestBlocked = false;
 
 function zoneModeError(bdHeaders: Record<string, string>): string | null {
-  const code = bdHeaders["x-brd-err-code"] ?? "";
+  const code = bdHeaders["x-brd-err-code"] ?? bdHeaders["x-brd-error-code"] ?? "";
   const msg = bdHeaders["x-brd-err-msg"] ?? bdHeaders["x-brd-error"] ?? "";
   if (!code && !msg) return null;
   return `${code || "brd_error"}: ${msg}`;
 }
+
 
 
 // Rolling trace of every Bright Data hop in the current invocation. Returned
@@ -219,11 +234,16 @@ async function unlock(
   url: string,
   opts: { accept?: string; maxAttempts?: number } = {},
 ): Promise<string> {
+  const isGw = /(^|\/\/)gw\.yad2\.co\.il/i.test(url);
   if (bdZoneBroken && BD_WS) {
     // Known-bad REST zone + a usable browser endpoint: fail instantly so the
     // caller falls through to the Scraping Browser transport.
     throw new Error("brightdata_zone_mode: client_10090 (cached) — skipping REST unlocker");
   }
+  if (isGw && bdGatewayRestBlocked) {
+    throw new Error("brightdata_kyc_gateway: policy_20140 (cached) — gw.yad2 not allowed on this zone");
+  }
+
   if (!BD_TOKEN) throw new Error("BRIGHTDATA_API_TOKEN is not configured");
   const maxAttempts = opts.maxAttempts ?? 4;
   let lastErr: unknown = null;
@@ -250,10 +270,14 @@ async function unlock(
         // Permanent configuration fault — fail fast so the caller can switch
         // transports instead of burning 4 retries per endpoint.
         if (/client_10090/.test(zoneErr)) bdZoneBroken = true;
-        const e = new Error(`brightdata_zone_mode: ${zoneErr}`);
+        if (/policy_20140|KYC/i.test(zoneErr) && isGw) bdGatewayRestBlocked = true;
+        const e = new Error(
+          /policy_20140|KYC/i.test(zoneErr) ? `brightdata_kyc_gateway: ${zoneErr}` : `brightdata_zone_mode: ${zoneErr}`,
+        );
         (e as Error & { permanent?: boolean }).permanent = true;
         throw e;
       }
+
       if (status >= 200 && status < 300) {
         // A 2xx with an empty body means the unlocker handed back nothing —
         // treat it as a failure instead of "0 results", which is what made
