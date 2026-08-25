@@ -922,21 +922,26 @@ Deno.serve(async (req) => {
       parsed.data.force_provider === "WBA" || !!parsed.data.template_id;
 
     // QR-session workspaces dispatch through their own linked personal number
-    // (Green API). Free-text only — Green API has no template concept.
+    // (Green API) ONLY when that session is actually connected. Free-text only —
+    // Green API has no template concept.
     const greenCreds =
       routing.mode === "qr_session" && !forceMetaCloud
         ? await resolveGreenApiCreds(admin, routing.owner_id)
         : null;
 
-    // Official Meta WhatsApp Business Cloud API credentials for this workspace.
+    if (routing.mode === "qr_session" && !greenCreds && !forceMetaCloud) {
+      console.info("send-whatsapp qr_session unavailable — routing via central Meta WABA", {
+        owner_id: routing.owner_id,
+      });
+    }
+
+    // Official Meta WhatsApp Business Cloud API credentials. Every non-QR path
+    // (default, unset, official_meta, or a disconnected QR session) prefers the
+    // central platform Meta WABA number.
     const provider = greenCreds
       ? null
-      : await resolveProvider(
-          admin,
-          userId,
-          routingTenantId,
-          routing.mode === "official_meta",
-        );
+      : await resolveProvider(admin, userId, routingTenantId, true);
+
 
     if (!greenCreds && !provider) {
       console.error("send-whatsapp no active WBA provider", {
