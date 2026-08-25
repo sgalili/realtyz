@@ -41,11 +41,11 @@ Deno.serve(async (req) => {
     const action = String(body?.action ?? "status");
     const redirectUri = String(body?.redirect_uri ?? "").trim();
 
-    if (action === "status") {
+    if (action === "status" || action === "health") {
       const { data } = await admin
         .from("fb_personal_connections")
         .select(
-          "fb_user_id, fb_user_name, fb_avatar_url, token_expires_at, scopes, connected_at, last_import_at, last_error",
+          "fb_user_id, fb_user_name, fb_avatar_url, token_expires_at, scopes, connected_at, last_import_at, last_error, access_token",
         )
         .eq("workspace_owner_id", caller.workspaceOwnerId)
         .maybeSingle();
@@ -53,17 +53,40 @@ Deno.serve(async (req) => {
         .from("fb_user_groups")
         .select("id", { count: "exact", head: true })
         .eq("workspace_owner_id", caller.workspaceOwnerId);
-      const missing = (data as any)?.fb_user_id
-        ? missingScopes((data as any)?.scopes)
-        : [];
+      const row = (data ?? null) as any;
+      const missing = row?.fb_user_id ? missingScopes(row?.scopes) : [];
+      const groupScopeGap = row?.fb_user_id ? missingGroupScopes(row?.scopes) : [];
+
+      // Live token probe — the only reliable way to detect an expired/revoked
+      // token so the UI can raise the reconnect banner.
+      let tokenValid: boolean | null = null;
+      let tokenReason: string | null = null;
+      if (row?.access_token) {
+        const health = await checkTokenHealth(row.access_token);
+        tokenValid = health.valid;
+        tokenReason = health.reason;
+        if (!health.valid) {
+          await admin
+            .from("fb_personal_connections")
+            .update({ last_error: health.reason, updated_at: new Date().toISOString() })
+            .eq("workspace_owner_id", caller.workspaceOwnerId);
+        }
+      }
+      if (row) delete row.access_token;
+
       return json({
-        connected: !!(data as any)?.fb_user_id,
-        identity: data ?? null,
+        connected: !!row?.fb_user_id,
+        identity: row,
         groups_count: count ?? 0,
         missing_scopes: missing,
+        missing_group_scopes: groupScopeGap,
+        token_valid: tokenValid,
+        token_error: tokenValid === false ? tokenReason : null,
+        needs_reconnect: tokenValid === false,
         scope_advisory: missing.length ? scopeAdvisory(missing) : null,
       });
     }
+
 
     if (action === "disconnect") {
       await admin
