@@ -91,6 +91,8 @@ export function WhatsAppTwoWayTestCard() {
         mode === 'template'
           ? {
               phone_number: normalized,
+              // Force Meta's official WhatsApp Cloud API (Graph API) — never Green API.
+              force_provider: 'WBA' as const,
               template_id: template!.name,
               template_language: template!.language,
               template_components: buildTemplateComponents(

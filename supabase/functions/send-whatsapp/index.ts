@@ -148,7 +148,7 @@ function centralMetaConfig(): Record<string, unknown> | null {
       Deno.env.get("META_WA_API_VERSION") ??
       Deno.env.get("META_API_VERSION") ??
       Deno.env.get("WHATSAPP_API_VERSION") ??
-      "v20.0",
+      "v26.0",
   };
 }
 
@@ -435,7 +435,7 @@ async function sendViaWba(
 ): Promise<StdResponse> {
   const phoneNumberId = String(cfg.phone_number_id ?? "");
   const accessToken = String(cfg.access_token ?? "");
-  const apiVersion = String(cfg.api_version ?? "v20.0");
+  const apiVersion = String(cfg.api_version ?? "v26.0");
   if (!phoneNumberId || !accessToken) {
     return {
       success: false,
@@ -895,10 +895,16 @@ Deno.serve(async (req) => {
     // workspace's own connected number.
     const routing = await resolveWorkspaceMode(admin, userId, routingTenantId);
 
+    // Template sends (and explicit force_provider='WBA') MUST go through Meta's
+    // official Cloud API — Green API has no template concept, so falling back
+    // there would silently downgrade an approved-template send to plain text.
+    const forceMetaCloud =
+      parsed.data.force_provider === "WBA" || !!parsed.data.template_id;
+
     // QR-session workspaces dispatch through their own linked personal number
     // (Green API). Free-text only — Green API has no template concept.
     const greenCreds =
-      routing.mode === "qr_session"
+      routing.mode === "qr_session" && !forceMetaCloud
         ? await resolveGreenApiCreds(admin, routing.owner_id)
         : null;
 
