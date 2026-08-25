@@ -10,14 +10,18 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   adminClient,
+  FB_BASIC_SCOPES,
   fbAppCredentials,
   FB_PERSONAL_SCOPES,
   GRAPH,
+  GRAPH_VERSION,
   resolveCaller,
   humanizeGraphError,
   missingScopes,
+  missingGroupScopes,
   scopeAdvisory,
 } from "../_shared/fbPersonal.ts";
+
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
