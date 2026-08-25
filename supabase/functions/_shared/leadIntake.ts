@@ -208,6 +208,8 @@ export function extractNameLoose(text: string | null | undefined): string | null
   // real name is still reached ("לקוח פוטנציאלי חדש משה ישראלי" → "משה ישראלי").
   const WORDS = `([\\p{L}][\\p{L}'’\\-]{1,25}(?:\\s+[\\p{L}][\\p{L}'’\\-]{1,25}){0,4})`;
   const patterns: RegExp[] = [
+    // Rename/correction phrasing: "תחליף לו את השם ל-משה ישראלי".
+    new RegExp(`(?:שם\\s*מלא|השם|שמו|שמה)\\s*(?:ל|ל[-\u2013]|to|is|הוא)?\\s*[:\\-]?\\s*${WORDS}`, "iu"),
     // Explicit name marker wins: "בשם משה ישראלי", "שם מלא: משה ישראלי".
     new RegExp(`(?:בשם|שם\\s*מלא|שמו|שמה|full\\s*name|name)\\s*[:\\-]?\\s*${WORDS}`, "iu"),
     // Entity noun followed by descriptors and then the name.
@@ -234,6 +236,41 @@ export function extractNameLoose(text: string | null | undefined): string | null
       const cleaned = cleanNameTokens(cand);
       if (cleaned) return cleaned;
     }
+  }
+
+  // Late / comma-separated phrasing: "תוסיף לקוח חם, 0541234567, משה ישראלי".
+  // Each segment is cleaned on its own and only a multi-word result is trusted,
+  // so a stray verb ("מחפש") can never become the contact's name.
+  for (const seg of stripped.split(/[,;\n|]+/)) {
+    const segment = seg.replace(/[\d+()]/g, " ").trim();
+    if (!segment) continue;
+    const cleaned = cleanNameTokens(segment);
+    if (cleaned && cleaned.split(/\s+/).length >= 2) return cleaned;
+  }
+  return null;
+}
+
+/**
+ * Explicit rename instruction: "תחליף לו את השם ל-משה ישראלי",
+ * "שנה את השם למשה ישראלי", "rename to Moshe Israeli".
+ * Returns the corrected name only, so an update can be applied to an existing
+ * contact without re-running full intake.
+ */
+export function extractNameCorrection(text: string | null | undefined): string | null {
+  const s = String(text ?? "");
+  const WORDS = `([\\p{L}][\\p{L}'\u2019\\-]{1,25}(?:\\s+[\\p{L}][\\p{L}'\u2019\\-]{1,25}){0,3})`;
+  const res = [
+    new RegExp(`(?:שם\\s*מלא|השם|שמו|שמה|שם)\\s*(?:הוא|ל|ל[-\u2013]|to|is)?\\s*[:\\-]?\\s*${WORDS}`, "iu"),
+    new RegExp(`(?:תחליף|החלף|שנה|תשנה|תקן|תתקן|עדכן|תעדכן|rename|change|correct)\\b[^\\n]{0,40}?(?:שם|name)[^\\n]{0,10}?${WORDS}`, "iu"),
+  ];
+  const hasCorrectionVerb =
+    /(תחליף|החלף|שנה|תשנה|תקן|תתקן|עדכן|תעדכן|rename|change|correct|fix)/iu.test(s) &&
+    /(שם|name)/iu.test(s);
+  if (!hasCorrectionVerb) return null;
+  for (const re of res) {
+    const cand = re.exec(s)?.[1];
+    const cleaned = cand ? cleanNameTokens(cand) : null;
+    if (cleaned) return cleaned;
   }
   return null;
 }
