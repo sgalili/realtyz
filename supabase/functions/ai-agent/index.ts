@@ -440,7 +440,9 @@ serve(async (req) => {
                 `• טלפון: ${dispPhone}`,
                 city ? `• עיר: ${city}` : null,
                 dealHint ? `• סוג עסקה: ${dealHint === "rent" ? "שכירות" : "מכירה"}` : null,
-                budgetNum ? `• תקציב: עד ₪${budgetNum.toLocaleString("he-IL")}` : null,
+                budgetNum
+                  ? `• ${dealHint === "rent" ? "תקציב שכירות חודשי" : "תקציב רכישה"}: עד ₪${budgetNum.toLocaleString("he-IL")}`
+                  : null,
                 draft.rooms ? `• חדרים: ${draft.rooms}` : null,
                 draft.requirements ? `• דרישות: ${draft.requirements}` : null,
                 "",
