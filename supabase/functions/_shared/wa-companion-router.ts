@@ -457,11 +457,29 @@ function handleHeavyDeepLink(ctx: RouterContext): RouterResult {
   };
 }
 
+// ----- greeting / small-talk handler -----------------------------------
+
+async function handleGreeting(ctx: RouterContext): Promise<RouterResult> {
+  const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId, ctx.senderPhone);
+  const greet = firstName ? `היי ${firstName}` : "היי";
+  const reply = [
+    `${greet}, כאן העוזרת האישית שלך ב-Realtyz AI. 👋`,
+    "אני יכולה לעזור לך בכמה דברים מהירים ישירות מוואטסאפ:",
+    "• ליצור פוסט שיווקי — שלח 'צור פוסט על הדירה ברחוב החליל בהרצליה'",
+    "• להגיב לתגובה אחרונה בפייסבוק — שלח 'תגובה ואז הטקסט'",
+    "• לפרסם טיוטה מוכנה — שלח 'פרסם'",
+    "",
+    "אם צריך משהו מורכב יותר (ניהול נכסים, מתעניינים או הגדרות), אפשר תמיד לפתוח את הדשבורד כאן: https://realtyz.co.il",
+  ].join("\n");
+  return { handled: true, action: "greeting", reply };
+}
+
 // ----- entry point ------------------------------------------------------
 
 export async function routeOwnerCommand(ctx: RouterContext): Promise<RouterResult> {
   const t = ctx.text.trim();
   if (!t) return { handled: false };
+  if (isGreetingOrSmallTalk(t)) return handleGreeting(ctx);
   if (isPublishCommand(t)) return handlePublishCommand(ctx);
   if (isPostCommand(t)) return handlePostCommand(ctx);
   if (isReplyCommand(t)) return handleReplyCommand(ctx);
