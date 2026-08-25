@@ -270,10 +270,14 @@ async function unlock(
         // Permanent configuration fault — fail fast so the caller can switch
         // transports instead of burning 4 retries per endpoint.
         if (/client_10090/.test(zoneErr)) bdZoneBroken = true;
-        const e = new Error(`brightdata_zone_mode: ${zoneErr}`);
+        if (/policy_20140|KYC/i.test(zoneErr) && isGw) bdGatewayRestBlocked = true;
+        const e = new Error(
+          /policy_20140|KYC/i.test(zoneErr) ? `brightdata_kyc_gateway: ${zoneErr}` : `brightdata_zone_mode: ${zoneErr}`,
+        );
         (e as Error & { permanent?: boolean }).permanent = true;
         throw e;
       }
+
       if (status >= 200 && status < 300) {
         // A 2xx with an empty body means the unlocker handed back nothing —
         // treat it as a failure instead of "0 results", which is what made
