@@ -172,7 +172,7 @@ export function extractDealTypeLoose(text: string | null | undefined): "sale" | 
  * one of them is scanned further to the right for the real name.
  */
 const NAME_STOPWORDS =
-  /^(חדש|חדשה|חדשים|חם|חמה|קר|קרה|פוטנציאלי|פוטנציאלית|פוטנציאלים|מעניין|מעניינת|רציני|רצינית|עם|של|את|בשם|שם|בעיר|מעיר|באזור|לשכירות|להשכרה|שכירות|למכירה|מכירה|לקנייה|לרכישה|טלפון|נייד|מספר|מייל|אימייל|תקציב|עד|חדרים|לקוח|לקוחה|לקוחות|מתעניין|מתעניינת|ליד|לידים|כרטיס|איש|אישה|קשר|בבקשה|תודה|new|hot|potential|client|clients|contact|contacts|lead|leads|customer|name|phone|budget|rent|rental|sale|buy)$/iu;
+  /^(חדש|חדשה|חדשים|חם|חמה|קר|קרה|פוטנציאלי|פוטנציאלית|פוטנציאלים|מעניין|מעניינת|רציני|רצינית|עם|של|את|לו|לה|להם|אותו|אותה|הזה|הזאת|הזו|בבקשה|תחליף|החלף|שנה|תשנה|תקן|תתקן|בשם|שם|בעיר|מעיר|באזור|לשכירות|להשכרה|שכירות|למכירה|מכירה|לקנייה|לרכישה|טלפון|נייד|מספר|מייל|אימייל|תקציב|עד|חדרים|לקוח|לקוחה|לקוחות|מתעניין|מתעניינת|ליד|לידים|כרטיס|איש|אישה|קשר|בבקשה|תודה|new|hot|potential|client|clients|contact|contacts|lead|leads|customer|name|phone|budget|rent|rental|sale|buy)$/iu;
 
 /** Words that end a name: whatever follows describes the request, not the person. */
 const NAME_TERMINATORS =
@@ -208,6 +208,8 @@ export function extractNameLoose(text: string | null | undefined): string | null
   // real name is still reached ("לקוח פוטנציאלי חדש משה ישראלי" → "משה ישראלי").
   const WORDS = `([\\p{L}][\\p{L}'’\\-]{1,25}(?:\\s+[\\p{L}][\\p{L}'’\\-]{1,25}){0,4})`;
   const patterns: RegExp[] = [
+    // Rename/correction phrasing: "תחליף לו את השם ל-משה ישראלי".
+    new RegExp(`(?:שם\\s*מלא|השם|שמו|שמה)\\s*(?:ל|ל[-\u2013]|to|is|הוא)?\\s*[:\\-]?\\s*${WORDS}`, "iu"),
     // Explicit name marker wins: "בשם משה ישראלי", "שם מלא: משה ישראלי".
     new RegExp(`(?:בשם|שם\\s*מלא|שמו|שמה|full\\s*name|name)\\s*[:\\-]?\\s*${WORDS}`, "iu"),
     // Entity noun followed by descriptors and then the name.
@@ -226,6 +228,9 @@ export function extractNameLoose(text: string | null | undefined): string | null
   const DESCRIPTOR_ONLY =
     /(?<![\p{L}])(חדש[הת]?|חדשים|חם|חמה|פוטנציאלי[תם]?|מעניינ[תה]?|רציני[ת]?|new|hot|potential)(?![\p{L}])/giu;
   const stripped = s.replace(DESCRIPTOR_ONLY, " ").replace(/[:,–\-]+/g, " ").replace(/\s+/g, " ");
+  // Same descriptor cleanup but commas survive, so late names after a comma
+  // ("הוסף ליד חם, 054-1234567, משה ישראלי") stay reachable per segment.
+  const segments = s.replace(DESCRIPTOR_ONLY, " ").replace(/\s+/g, " ");
 
   for (const variant of [s, stripped]) {
     for (const re of patterns) {
@@ -234,6 +239,41 @@ export function extractNameLoose(text: string | null | undefined): string | null
       const cleaned = cleanNameTokens(cand);
       if (cleaned) return cleaned;
     }
+  }
+
+  // Late / comma-separated phrasing: "תוסיף לקוח חם, 0541234567, משה ישראלי".
+  // Each segment is cleaned on its own and only a multi-word result is trusted,
+  // so a stray verb ("מחפש") can never become the contact's name.
+  for (const seg of segments.split(/[,;\n|]+/)) {
+    const segment = seg.replace(/[\d+()]/g, " ").trim();
+    if (!segment) continue;
+    const cleaned = cleanNameTokens(segment);
+    if (cleaned && cleaned.split(/\s+/).length >= 2) return cleaned;
+  }
+  return null;
+}
+
+/**
+ * Explicit rename instruction: "תחליף לו את השם ל-משה ישראלי",
+ * "שנה את השם למשה ישראלי", "rename to Moshe Israeli".
+ * Returns the corrected name only, so an update can be applied to an existing
+ * contact without re-running full intake.
+ */
+export function extractNameCorrection(text: string | null | undefined): string | null {
+  const s = String(text ?? "");
+  const WORDS = `([\\p{L}][\\p{L}'\u2019\\-]{1,25}(?:\\s+[\\p{L}][\\p{L}'\u2019\\-]{1,25}){0,3})`;
+  const res = [
+    new RegExp(`(?:שם\\s*מלא|השם|שמו|שמה|שם)\\s*(?:הוא|ל|ל[-\u2013]|to|is)?\\s*[:\\-]?\\s*${WORDS}`, "iu"),
+    new RegExp(`(?:תחליף|החלף|שנה|תשנה|תקן|תתקן|עדכן|תעדכן|rename|change|correct)\\b[^\\n]{0,40}?(?:שם|name)[^\\n]{0,10}?${WORDS}`, "iu"),
+  ];
+  const hasCorrectionVerb =
+    /(תחליף|החלף|שנה|תשנה|תקן|תתקן|עדכן|תעדכן|rename|change|correct|fix)/iu.test(s) &&
+    /(שם|name)/iu.test(s);
+  if (!hasCorrectionVerb) return null;
+  for (const re of res) {
+    const cand = re.exec(s)?.[1];
+    const cleaned = cand ? cleanNameTokens(cand) : null;
+    if (cleaned) return cleaned;
   }
   return null;
 }
@@ -387,4 +427,66 @@ export async function extractLeadDraft(text: string): Promise<LeadDraft> {
     rooms: base.rooms ?? (llm.rooms ?? null),
     requirements: (llm.requirements ?? null) as string | null,
   };
+}
+
+/**
+ * Build the patch for an EXISTING contact from a fresh draft.
+ *
+ * Intake must never dead-end with "already exists": when the owner supplies a
+ * correction or extra details for a known phone number, those fields are
+ * applied to the existing row. Only non-empty new values are written, and
+ * `preferences` is merged so earlier requirements are not wiped.
+ */
+export function buildLeadUpdatePatch(
+  draft: LeadDraft,
+  existing: {
+    full_name?: string | null;
+    city?: string | null;
+    deal_type?: string | null;
+    preferences?: Record<string, unknown> | null;
+  },
+  nameOverride?: string | null,
+): { patch: Record<string, unknown>; changed: string[] } {
+  const patch: Record<string, unknown> = {};
+  const changed: string[] = [];
+
+  const newName = (nameOverride ?? draft.full_name ?? "").trim();
+  const isPlaceholder = (v: string | null | undefined) =>
+    !v || !v.trim() || /^(לקוח|לקוחה|ליד|מתעניין|מתעניינת|איש קשר|ללא שם|unknown|new lead)/i.test(v.trim());
+  if (newName && newName !== (existing.full_name ?? "").trim()) {
+    // A real name always replaces a placeholder; otherwise only an explicit
+    // correction (nameOverride) may overwrite an existing real name.
+    if (isPlaceholder(existing.full_name) || nameOverride) {
+      patch.full_name = newName;
+      changed.push(`שם → ${newName}`);
+    }
+  }
+
+  if (draft.city && draft.city !== existing.city) {
+    patch.city = draft.city;
+    changed.push(`עיר → ${draft.city}`);
+  }
+  if (draft.deal_type && draft.deal_type !== existing.deal_type) {
+    patch.deal_type = draft.deal_type;
+    changed.push(draft.deal_type === "rent" ? "סוג עסקה → שכירות" : "סוג עסקה → מכירה");
+  }
+
+  const prefs: Record<string, unknown> = { ...(existing.preferences ?? {}) };
+  let prefsTouched = false;
+  const setPref = (key: string, value: unknown, label: string) => {
+    if (value === null || value === undefined || value === "") return;
+    if (prefs[key] === value) return;
+    prefs[key] = value;
+    prefsTouched = true;
+    changed.push(label);
+  };
+  setPref("budget_max", draft.budget_max, draft.budget_max ? `תקציב → ${Number(draft.budget_max).toLocaleString("he-IL")} ₪` : "");
+  setPref("rooms", draft.rooms, `חדרים → ${draft.rooms}`);
+  setPref("desired_city", draft.city, `עיר מבוקשת → ${draft.city}`);
+  setPref("neighborhood", draft.neighborhood, `שכונה → ${draft.neighborhood}`);
+  setPref("requirements", draft.requirements, "עודכנו הדרישות");
+  if (draft.deal_type) setPref("listing_type", draft.deal_type, "");
+  if (prefsTouched) patch.preferences = prefs;
+
+  return { patch, changed: changed.filter(Boolean) };
 }

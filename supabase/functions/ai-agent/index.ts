@@ -27,6 +27,9 @@ import {
   extractLeadDraft,
   extractPhoneLoose,
   extractNameLoose,
+  extractNameCorrection,
+  buildLeadUpdatePatch,
+  formatPhoneHe,
   EMPTY_DRAFT,
   type LeadDraft,
 } from "../_shared/leadIntake.ts";
@@ -246,7 +249,10 @@ serve(async (req) => {
         // Intent is evaluated across the last few user turns so "add a client"
         // followed by a bare phone number in the next message still creates the
         // lead instead of the assistant asking again.
-        const hasIntent = detectCreateLeadIntent(convo);
+        const nameCorrection = extractNameCorrection(text);
+        // A correction ("תחליף לו את השם ל-משה ישראלי") is also intake work:
+        // it resolves to an UPDATE of the existing card, never a dead end.
+        const hasIntent = detectCreateLeadIntent(convo) || !!nameCorrection;
         const updateIntent = /(עדכן|תעדכן|שנה|סמן|update|mark)\s+.*(מתעניין|לקוח|lead|סטטוס|שלב)/i.test(text);
 
         // Structured extraction (regex + Gemini Flash JSON pass) over the recent
@@ -265,7 +271,7 @@ serve(async (req) => {
             const local = `0${norm.slice(3)}`;
             const { data } = await client
               .from("leads")
-              .select("id, full_name, phone_number, city, deal_type")
+              .select("id, full_name, phone_number, city, deal_type, preferences")
               .eq("assigned_to", uid)
               .or(`phone_number.eq.${norm},phone_number.eq.${local}`)
               .limit(1);
@@ -276,7 +282,7 @@ serve(async (req) => {
             const filters = [`full_name.ilike.%${candidateName}%`, ...parts.map((p) => `full_name.ilike.%${p}%`)];
             const { data } = await client
               .from("leads")
-              .select("id, full_name, phone_number, city, deal_type")
+              .select("id, full_name, phone_number, city, deal_type, preferences")
               .eq("assigned_to", uid)
               .or(filters.join(","))
               .limit(5);
@@ -288,6 +294,40 @@ serve(async (req) => {
             }
           }
           return null;
+        };
+
+        /**
+         * Apply the freshly extracted details to an EXISTING contact.
+         * "Already in the CRM" is never an abort: a correction or new detail is
+         * written to the row and confirmed back to the owner.
+         */
+        const updateExisting = async (client: any, existingRow: any) => {
+          const { patch, changed } = buildLeadUpdatePatch(draft, existingRow, nameCorrection);
+          const displayPhone = formatPhoneHe(existingRow.phone_number ?? draft.phone);
+          if (Object.keys(patch).length === 0) {
+            return {
+              content: `איש הקשר ${existingRow.full_name || displayPhone} כבר קיים ב-CRM (${displayPhone}) ולא היה מה לעדכן. אפשר לעדכן פרטים או לחפש עבורו נכסים מתאימים.`,
+              phone: existingRow.phone_number ?? draft.phone ?? null,
+            };
+          }
+          const { data: updated, error: updErr } = await client
+            .from("leads")
+            .update({ ...patch, updated_at: new Date().toISOString() })
+            .eq("id", existingRow.id)
+            .select("id, full_name, phone_number, city, deal_type")
+            .maybeSingle();
+          if (updErr) {
+            console.warn("[ai-agent] existing lead update failed:", updErr);
+            return {
+              content: `איש הקשר ${existingRow.full_name || displayPhone} קיים ב-CRM אבל העדכון נכשל: ${updErr.message}`,
+              phone: existingRow.phone_number ?? null,
+            };
+          }
+          const finalName = (updated as any)?.full_name || existingRow.full_name || displayPhone;
+          return {
+            content: `עדכנתי את הכרטיס הקיים של ${finalName} (${displayPhone}): ${changed.join(", ")}.`,
+            phone: (updated as any)?.phone_number ?? existingRow.phone_number ?? null,
+          };
         };
 
         // No phone yet → try to resolve an existing contact first; only ask
@@ -303,10 +343,11 @@ serve(async (req) => {
           if (probeUid) {
             const found = await lookupExisting(probeClient, probeUid);
             if (found) {
+              const result = await updateExisting(probeClient, found);
               return new Response(JSON.stringify({
                 type: "text",
-                content: `מצאתי את איש הקשר הקיים ב-CRM: ${found.full_name || found.phone_number}${found.city ? ` (${found.city})` : ""}. לא יצרתי כרטיס חדש. אפשר לעדכן את הכרטיס הקיים או לחפש עבורו נכסים מתאימים.`,
-                recipient_phone: found.phone_number ?? null,
+                content: result.content,
+                recipient_phone: result.phone,
               }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
             }
           }
@@ -335,10 +376,13 @@ serve(async (req) => {
             const existing = await lookupExisting(userClient, uid);
 
             if (existing) {
+              // Existing phone → UPDATE the row with the new details instead of
+              // refusing, then confirm exactly what changed.
+              const result = await updateExisting(userClient, existing);
               return new Response(JSON.stringify({
                 type: "text",
-                content: `המתעניין כבר קיים ב-CRM: ${existing.full_name || normalized}. לא נוצר כפיל.`,
-                recipient_phone: existing.phone_number ?? normalized,
+                content: result.content,
+                recipient_phone: result.phone ?? normalized,
               }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
             }
 
@@ -364,7 +408,7 @@ serve(async (req) => {
                 status: "new",
                 ai_autopilot: false,
               })
-              .select("id, full_name, phone_number, city, deal_type")
+              .select("id, full_name, phone_number, city, deal_type, preferences")
               .single();
 
             if (insErr) {
