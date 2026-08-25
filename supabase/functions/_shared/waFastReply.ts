@@ -15,9 +15,12 @@
 // ============================================================
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+import { sanitizeReplyText } from "./replySanitize.ts";
+
 // Fast tier — Gemini Flash. Do NOT swap to a pro/thinking model here:
 // this path is latency-critical.
 const FAST_MODEL = "google/gemini-3-flash-preview";
+
 
 export interface FastReplyLead {
   id: string;
@@ -112,7 +115,7 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
     }
     let json: any = {};
     try { json = JSON.parse(raw); } catch { /* non-json */ }
-    const text = String(json?.choices?.[0]?.message?.content ?? "").trim();
+    const text = sanitizeReplyText(String(json?.choices?.[0]?.message?.content ?? ""));
     return { text, elapsedMs: Date.now() - startedAt };
   } catch (e) {
     return { text: "", elapsedMs: Date.now() - startedAt, error: e instanceof Error ? e.message : String(e) };

@@ -37,6 +37,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BrandIcon } from '@/components/BrandIcon';
 import UndoLastAiMessage from '@/components/inbox/UndoLastAiMessage';
 import { MediaMessage, extractChatMedia } from '@/components/inbox/MediaMessage';
+import { ChatMessageText } from '@/components/inbox/ChatMessageText';
+import { sanitizeChatText } from '@/lib/chatTextSanitizer';
+
+
 
 const ACCEPTED_ATTACHMENT_TYPES = [
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
@@ -1083,7 +1087,7 @@ const OmnichannelInbox = () => {
                         <p className="text-xs text-muted-foreground flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2">
                           {(voter as any)._noConversation
                             ? 'ללא שיחה פעילה — לחץ להתחלת צ׳אט'
-                            : (lastMsg?.content || 'אין הודעות')}
+                            : (sanitizeChatText(lastMsg?.content).replace(/\n+/g, ' · ') || 'אין הודעות')}
                         </p>
                       </div>
                     </div>
@@ -1236,7 +1240,7 @@ const OmnichannelInbox = () => {
                               const media = extractChatMedia(msg);
                               if (media) return <MediaMessage media={media} />;
                               return (
-                                <p className="max-w-full overflow-hidden whitespace-pre-wrap break-all text-sm leading-relaxed">{msg.content}</p>
+                                <ChatMessageText content={msg.content} />
                               );
                             })()}
                             <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
