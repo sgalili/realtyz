@@ -9,6 +9,7 @@ import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
 import { EmailAliasCard } from '@/components/profile/EmailAliasCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
+import { useFacebookHealth } from '@/hooks/useFacebookHealth';
 
 type Tone = 'ok' | 'idle';
 
@@ -91,6 +92,7 @@ export function ConnectionsTab() {
   const [greenReady, setGreenReady] = useState(false);
   const [voiceReady, setVoiceReady] = useState(false);
   const [emailAlias, setEmailAlias] = useState<string | null>(null);
+  const { data: fbHealth } = useFacebookHealth();
 
   useEffect(() => {
     (async () => {
@@ -121,9 +123,16 @@ export function ConnectionsTab() {
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
-  const metaStatus: [string, Tone] = meta?.connected
-    ? [meta.instagram ? 'פייסבוק ואינסטגרם מחוברים' : 'פייסבוק מחובר', 'ok']
-    : ['לא מחובר', 'idle'];
+  // Collapsed header badge reads the exact same shared state as the expanded
+  // card badge and the global banner, and shows the real page name.
+  const fbConnected = !!(fbHealth?.pageConnected || meta?.connected);
+  const fbName = fbHealth?.pageName ?? meta?.facebook?.name ?? null;
+  const fbHasIg = !!(fbHealth?.instagram || meta?.instagram);
+  const metaStatus: [string, Tone] = fbConnected
+    ? [fbName ? `מחובר · ${fbName}` : fbHasIg ? 'פייסבוק ואינסטגרם מחוברים' : 'פייסבוק מחובר', 'ok']
+    : fbHealth?.needsReconnect
+      ? ['נדרש חיבור מחדש', 'idle']
+      : ['לא מחובר', 'idle'];
 
   const sections: Array<{ id: string; title: string; status: string; tone: Tone; node: ReactNode }> = [
     {

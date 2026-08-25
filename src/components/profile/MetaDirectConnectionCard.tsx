@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
+import { useFacebookHealth, useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
 
 export type MetaStatus = {
   connected: boolean;
@@ -49,6 +50,10 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
   const [manualPageId, setManualPageId] = useState('');
   const [manualToken, setManualToken] = useState('');
   const [savingManual, setSavingManual] = useState(false);
+  // Shared reactive connection state (same cache as the collapsed header badge
+  // and the global warning banner).
+  const { data: health } = useFacebookHealth();
+  const refreshHealth = useRefreshFacebookHealth();
 
 
   const probe = useCallback(async (notify = false) => {
@@ -72,12 +77,14 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
         }
       : null));
 
+    refreshHealth();
+
     if (notify) {
       if (pageRes?.connected || s?.connected) toast.success('החיבור לפייסבוק תקין');
       else toast.error(s?.message || 'דף הפייסבוק אינו מחובר');
     }
     setLoading(false);
-  }, [onStatus]);
+  }, [onStatus, refreshHealth]);
 
 
   useEffect(() => { probe(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
@@ -188,9 +195,12 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
     }
   };
 
-  const pageName = page?.page?.name ?? status?.facebook?.name ?? status?.facebook?.id ?? null;
-  const igHandle = page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
-  const isConnected = !!(page?.connected || status?.facebook);
+  const pageName =
+    health?.pageName ?? page?.page?.name ?? status?.facebook?.name ?? health?.pageId ?? status?.facebook?.id ?? null;
+  const igHandle =
+    health?.instagram?.username ?? page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
+  const pagePicture = page?.page?.picture ?? health?.pagePicture ?? null;
+  const isConnected = !!(health?.pageConnected || page?.connected || status?.facebook);
 
   return (
     <Card dir="rtl" className="text-right">
@@ -204,8 +214,8 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
 
         {isConnected ? (
           <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
-            {page?.page?.picture ? (
-              <img src={page.page.picture} alt={pageName ?? 'עמוד פייסבוק'} className="h-11 w-11 rounded-full object-cover" />
+            {pagePicture ? (
+              <img src={pagePicture} alt={pageName ?? 'עמוד פייסבוק'} className="h-11 w-11 rounded-full object-cover" />
             ) : (
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
                 <Facebook className="h-5 w-5 text-primary" />
