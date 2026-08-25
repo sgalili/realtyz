@@ -472,8 +472,65 @@ async function publishInstagram(
   if (!pub.ok || !pub.payload?.id) return { error: humanize(pub.payload, "הפרסום לאינסטגרם נכשל") };
   return { id: String(pub.payload.id) };
 }
+/**
+ * Stable fingerprint of a publish attempt: same text + same media + same
+ * channel + same page = the same post. Used for strict idempotency so a
+ * double-click, a retry, or a re-invoke can never publish twice or spawn a
+ * second history row.
+ */
+async function contentHash(parts: (string | null | undefined)[]): Promise<string> {
+  const raw = parts.map((p) => String(p ?? "").trim()).join("\u0001");
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Recent successful publish of the exact same content on the same channel. */
+async function findRecentSent(
+  db: SupabaseClient,
+  ownerId: string,
+  channel: string,
+  hash: string,
+  windowMinutes = 30,
+): Promise<{ id: string; provider_message_id: string | null } | null> {
+  const since = new Date(Date.now() - windowMinutes * 60_000).toISOString();
+  const { data } = await db
+    .from("campaign_logs")
+    .select("id, provider_message_id, provider_response")
+    .eq("user_id", ownerId)
+    .eq("channel", channel)
+    .eq("status", "sent")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  const row = (data ?? []).find((r: any) => String(r?.provider_response?.content_hash ?? "") === hash);
+  return row ? { id: String(row.id), provider_message_id: row.provider_message_id ?? null } : null;
+}
+
+/** Latest failed/scheduled row for the same content, so retries reuse it. */
+async function findReusableRow(
+  db: SupabaseClient,
+  ownerId: string,
+  channel: string,
+  hash: string,
+  statuses: string[],
+  windowHours = 48,
+): Promise<string | null> {
+  const since = new Date(Date.now() - windowHours * 3_600_000).toISOString();
+  const { data } = await db
+    .from("campaign_logs")
+    .select("id, provider_response")
+    .eq("user_id", ownerId)
+    .eq("channel", channel)
+    .in("status", statuses)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  const row = (data ?? []).find((r: any) => String(r?.provider_response?.content_hash ?? "") === hash);
+  return row ? String(row.id) : null;
+}
 
 Deno.serve(async (req) => {
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const db = admin();
