@@ -258,15 +258,14 @@ serve(async (req) => {
         // doing anything else, so "רוני מליאר" resolves to the real card
         // instead of spawning a blank "לקוח חדש" duplicate.
         const lookupExisting = async (client: any, uid: string) => {
-          if (phoneMatch) {
-            const raw = phoneMatch[0].replace(/\D/g, "");
-            const norm = raw.startsWith("972") ? raw : raw.startsWith("0") ? `972${raw.slice(1)}` : raw;
-            const local = norm.startsWith("972") ? `0${norm.slice(3)}` : norm;
+          if (draft.phone) {
+            const norm = draft.phone;
+            const local = `0${norm.slice(3)}`;
             const { data } = await client
               .from("leads")
               .select("id, full_name, phone_number, city, deal_type")
               .eq("assigned_to", uid)
-              .or(`phone_number.eq.${norm},phone_number.eq.${local},phone_number.eq.${raw}`)
+              .or(`phone_number.eq.${norm},phone_number.eq.${local}`)
               .limit(1);
             if (data?.[0]) return data[0];
           }
