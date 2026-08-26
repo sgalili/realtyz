@@ -30,6 +30,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
+import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
@@ -3134,7 +3135,9 @@ const PublishedFeed = () => {
       if (error) throw new Error((error as any)?.message || 'יצירת חיבור נכשלה');
       const url = (data as any)?.auth_url;
       if (!url) { toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Meta'); return; }
-      window.top.location.href = String(url);
+      if (!openOAuthWindow(String(url))) {
+        toast.error('הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים ונסו שוב.');
+      }
     } catch (e: any) {
       toast.dismiss('meta-connect-feed');
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
@@ -5260,9 +5263,10 @@ const CampaignCenter = () => {
           toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Meta');
         return;
       }
-      // Full-page redirect (no popup) so Facebook returns into the main window.
-      // Use window.top so the outer browser window navigates when rendered in a preview iframe.
-      window.top.location.href = String(url);
+      // Popup / new tab: window.top.location is blocked by the preview iframe sandbox.
+      if (!openOAuthWindow(String(url))) {
+        toast.error('הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים ונסו שוב.');
+      }
     } catch (e: any) {
       toast.dismiss('meta-connect');
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');

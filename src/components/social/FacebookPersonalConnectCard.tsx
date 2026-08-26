@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 import { useResetFacebookHealth } from '@/hooks/useFacebookHealth';
@@ -59,6 +60,7 @@ async function callFbPersonal<T = any>(body: Record<string, unknown>): Promise<T
 export const FacebookPersonalConnectCard = () => {
   const qc = useQueryClient();
   const [connecting, setConnecting] = useState(false);
+  const [pendingAuthUrl, setPendingAuthUrl] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const resetFacebookHealth = useResetFacebookHealth();
 
@@ -132,9 +134,15 @@ export const FacebookPersonalConnectCard = () => {
       });
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      // Full-page redirect only: no popup, so there is no window-closure race.
-      // Navigate the top-level window so preview iframe environments break out.
-      window.top.location.href = String(url);
+      // Popup / new tab: window.top.location is blocked by the preview iframe sandbox.
+      const authUrl = String(url);
+      setPendingAuthUrl(authUrl);
+      if (!openOAuthWindow(authUrl)) {
+        setConnecting(false);
+        toast.error('הדפדפן חסם את חלון ההתחברות', {
+          description: 'לחצו על "פתחו את דף האישור" כדי להמשיך בלשונית חדשה.',
+        });
+      }
     } catch (e: any) {
       setConnecting(false);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: String(e?.message ?? 'החיבור לפייסבוק נכשל.') });
@@ -236,6 +244,16 @@ export const FacebookPersonalConnectCard = () => {
             {connected ? 'חיבור מחדש' : 'חיבור פרופיל פייסבוק'}
           </Button>
         </div>
+        {pendingAuthUrl && (
+          <a
+            href={pendingAuthUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block pt-1 text-center text-xs text-primary underline underline-offset-2"
+          >
+            פתחו את דף האישור של פייסבוק בלשונית חדשה
+          </a>
+        )}
       </CardContent>
     </Card>
   );
