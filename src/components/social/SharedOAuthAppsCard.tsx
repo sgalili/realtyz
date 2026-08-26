@@ -72,7 +72,7 @@ const PLATFORMS: PlatformConfig[] = [
     consoleUrl: 'https://developers.facebook.com/apps/',
     clientIdLabel: 'App ID',
     clientSecretLabel: 'App Secret',
-    scopes: ['public_profile', 'email', 'pages_show_list', 'pages_manage_posts', 'pages_read_engagement'],
+    scopes: ['public_profile', 'pages_show_list', 'pages_manage_posts', 'pages_read_engagement'],
   },
 ];
 

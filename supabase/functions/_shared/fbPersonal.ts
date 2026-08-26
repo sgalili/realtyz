@@ -28,7 +28,6 @@ export const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
  */
 const DEFAULT_PERSONAL_SCOPES = [
   "public_profile",
-  "email",
   "pages_show_list",
   "pages_manage_posts",
   "pages_read_engagement",
