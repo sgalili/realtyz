@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
-import { clearPendingOAuth, describeOAuthFailure, isSameOriginOAuthRedirect, logOAuthRedirectUri, oauthRedirectUri, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
+import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, oauthReturnOrigin, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 type Identity = {
@@ -148,13 +148,10 @@ export const FacebookPersonalConnectCard = () => {
         action: 'start',
         basic,
         redirect_uri: logOAuthRedirectUri('facebook-personal'),
+        return_origin: oauthReturnOrigin(),
       });
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      if (!isSameOriginOAuthRedirect()) {
-        window.location.assign(url);
-        return;
-      }
       const popup = window.open(url, 'realtyz-fb-personal-oauth', 'width=560,height=680');
       if (!popup) window.location.href = url;
     } catch (e: any) {

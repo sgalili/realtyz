@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
-import { clearPendingOAuth, describeOAuthFailure, isSameOriginOAuthRedirect, logOAuthRedirectUri, oauthRedirectUri, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
+import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, oauthReturnOrigin, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 export type MetaStatus = {
@@ -154,15 +154,9 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
       const res = await callPageConnect<any>({
         action: 'start',
         redirect_uri: logOAuthRedirectUri('facebook-page'),
+        return_origin: oauthReturnOrigin(),
       });
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      // A cross-origin canonical callback cannot postMessage/localStorage back
-      // into this origin. Use a full-page redirect so the callback finishes on
-      // the approved production domain instead of producing Meta's URL Blocked.
-      if (!isSameOriginOAuthRedirect()) {
-        window.location.assign(res.auth_url);
-        return;
-      }
       const popup = window.open(res.auth_url, 'realtyz-fb-page-oauth', 'width=560,height=680');
       if (!popup) {
         // No popup: go full-page; /oauth/callback stashes the result and returns.

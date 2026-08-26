@@ -39,6 +39,15 @@ const PAGE_SCOPES = [
 const CONFIG_ID = Deno.env.get("META_PAGE_CONFIG_ID")?.trim() || "";
 const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 
+function oauthState(prefix: string, returnOrigin: string): string {
+  let encoded = "";
+  try {
+    const normalized = new URL(returnOrigin).origin;
+    encoded = btoa(encodeURIComponent(normalized)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  } catch { /* no return origin */ }
+  return `${prefix}:${crypto.randomUUID()}:${encoded}`;
+}
+
 async function graph(path: string) {
   const res = await fetch(`${GRAPH}${path}`);
   const text = await res.text();
@@ -355,6 +364,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({} as any));
     const action = String(body?.action ?? "status");
     const redirectUri = String(body?.redirect_uri ?? "").trim();
+    const returnOrigin = String(body?.return_origin ?? "").trim();
 
     // Unified connection state: one endpoint powering the collapsed header
     // badge, the expanded card badge and the global warning banner.
@@ -582,7 +592,7 @@ Deno.serve(async (req) => {
         redirect_uri: redirectUri,
         response_type: "code",
         scope: PAGE_SCOPES.join(","),
-        state: `facebook_page:${crypto.randomUUID()}`,
+        state: oauthState("facebook_page", returnOrigin),
         auth_type: "rerequest",
       });
       if (CONFIG_ID) params.set("config_id", CONFIG_ID);

@@ -31,6 +31,15 @@ const json = (b: unknown, s = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+function oauthState(prefix: string, returnOrigin: string): string {
+  let encoded = "";
+  try {
+    const normalized = new URL(returnOrigin).origin;
+    encoded = btoa(encodeURIComponent(normalized)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  } catch { /* no return origin */ }
+  return `${prefix}:${crypto.randomUUID()}:${encoded}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -42,6 +51,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({} as any));
     const action = String(body?.action ?? "status");
     const redirectUri = String(body?.redirect_uri ?? "").trim();
+    const returnOrigin = String(body?.return_origin ?? "").trim();
 
     if (action === "status" || action === "health") {
       const { data } = await admin
@@ -120,7 +130,7 @@ Deno.serve(async (req) => {
         redirect_uri: redirectUri,
         response_type: "code",
         scope: scopes.join(","),
-        state: `facebook_personal:${crypto.randomUUID()}`,
+        state: oauthState("facebook_personal", returnOrigin),
         auth_type: "rerequest",
       });
       // A Facebook Login-for-Business config_id makes Meta IGNORE `scope`, so it

@@ -74,6 +74,25 @@ export function isSameOriginOAuthRedirect(): boolean {
   return normalizeOrigin(oauthRedirectUri()) === currentOrigin();
 }
 
+/** Origin to return to after Meta lands on the canonical callback domain. */
+export function oauthReturnOrigin(): string {
+  return currentOrigin();
+}
+
+/** Read the return origin embedded server-side in the OAuth state value. */
+export function returnOriginFromOAuthState(state: string): string | null {
+  const encoded = state.split(':').at(-1) ?? '';
+  try {
+    const value = decodeURIComponent(atob(encoded.replace(/-/g, '+').replace(/_/g, '/')));
+    const origin = normalizeOrigin(value);
+    const host = new URL(origin).hostname;
+    const safe = isApprovedOrigin(origin) || host.endsWith('.lovable.app');
+    return safe ? origin : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Hebrew warning for an origin Meta does not know yet — shown before the popup
  * opens so a "URL Blocked" refusal is self-explanatory.
