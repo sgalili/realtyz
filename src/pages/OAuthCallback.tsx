@@ -133,7 +133,24 @@ export default function OAuthCallback() {
           'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
         );
         if (fnError) throw new Error(String(fnError.message ?? fnError));
-        if ((data as any)?.error) throw new Error(String((data as any).error));
+        const payload = (data as any) ?? {};
+        if (payload.error) {
+          // Surface Facebook's own wording (message / code / fbtrace_id) instead
+          // of a generic failure sentence.
+          const d = payload.error_detail ?? {};
+          const parts = [String(payload.error)];
+          if (d.message && !String(payload.error).includes(String(d.message))) parts.push(String(d.message));
+          if (d.code) parts.push(`code ${d.code}${d.subcode ? `/${d.subcode}` : ''}`);
+          if (d.trace) parts.push(`trace ${d.trace}`);
+          console.error('[oauth-callback] facebook exchange failed', payload);
+          throw new Error(parts.join(' · '));
+        }
+        // Automatic page selection failed — hand off to the picker in the card
+        // instead of aborting the connection (the user token is already saved).
+        if (payload.needs_page_selection) {
+          finish(`${CONNECTIONS_PATH}&fb=choose`, { ok: false, reason: 'needs_page_selection' });
+          return;
+        }
         const pageName = String((data as any)?.page?.name ?? '');
         if (cancelled) return;
         // Best-effort group import so the publishing targets list is populated.

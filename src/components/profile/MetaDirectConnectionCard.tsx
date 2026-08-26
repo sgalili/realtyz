@@ -74,6 +74,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [manualPageId, setManualPageId] = useState('');
   const [manualToken, setManualToken] = useState('');
   const [savingManual, setSavingManual] = useState(false);
+  // Fallback picker: shown when Meta returned pages but none could be auto-selected.
+  const [pageOptions, setPageOptions] = useState<{ id: string; name: string | null; picture?: string | null }[]>([]);
+  const [selectingPageId, setSelectingPageId] = useState<string | null>(null);
 
   // Shared reactive connection state (same cache as the collapsed header badge
   // and the global warning banner).
@@ -130,6 +133,34 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
 
   useEffect(() => { probe(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  const loadPageOptions = useCallback(async () => {
+    try {
+      const data = await callPageConnect<{ pages?: { id: string; name: string | null; picture?: string | null }[] }>({
+        action: 'list_pages',
+      });
+      setPageOptions(data?.pages ?? []);
+      if (!data?.pages?.length) toast.error('לא נמצאו עמודים לבחירה בחשבון המחובר');
+    } catch (e: any) {
+      toast.error('טעינת רשימת העמודים נכשלה', { description: e?.message });
+    }
+  }, []);
+
+  const selectPage = useCallback(async (pageId: string) => {
+    setSelectingPageId(pageId);
+    try {
+      const data = await callPageConnect<{ page?: { name?: string | null } }>({ action: 'select_page', page_id: pageId });
+      setPageOptions([]);
+      toast.success('עמוד הפרסום חובר', { description: data?.page?.name || undefined });
+      refreshBinding();
+      refreshHealth();
+      void probe(false).catch(() => undefined);
+    } catch (e: any) {
+      toast.error('שמירת בחירת העמוד נכשלה', { description: e?.message });
+    } finally {
+      setSelectingPageId(null);
+    }
+  }, [probe, refreshBinding, refreshHealth]);
 
   const finishExchange = useCallback(
     async (grant: { code?: string | null; accessToken?: string | null }, redirectUri: string) => {
@@ -211,12 +242,15 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         refreshBinding();
         refreshHealth();
         void probe(false).catch(() => undefined);
+      } else if (result.reason === 'needs_page_selection') {
+        toast.message('בחר את עמוד הפרסום', { description: 'לא הצלחנו לבחור עמוד אוטומטית.' });
+        void loadPageOptions();
       } else {
         setManualOpen(true);
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: result.reason || 'החיבור לפייסבוק נכשל.' });
       }
     });
-  }, [probe, refreshBinding, refreshHealth]);
+  }, [probe, refreshBinding, refreshHealth, loadPageOptions]);
 
   // Full-page redirect result: /oauth/callback exchanged the code in the main
   // app context and came back here with an explicit success/error state.
@@ -240,6 +274,15 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       refreshBinding();
       refreshHealth();
       void probe(false).catch(() => undefined);
+      return;
+    }
+
+    if (outcome === 'choose') {
+      strip();
+      clearPendingOAuth();
+      setConnecting(false);
+      toast.message('בחר את עמוד הפרסום', { description: 'לא הצלחנו לבחור עמוד אוטומטית.' });
+      void loadPageOptions();
       return;
     }
 
