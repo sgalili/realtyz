@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
@@ -197,6 +198,25 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   );
 
 
+
+  // Popup / separate-tab result: the callback window already exchanged the code
+  // and saved the page binding, so we only refresh the local state here.
+  useEffect(() => {
+    return onOAuthResult('facebook_page', (result) => {
+      setConnecting(false);
+      if (result.ok) {
+        clearPendingOAuth();
+        setManualOpen(false);
+        toast.success('עמוד הפייסבוק חובר', { description: result.name || undefined });
+        refreshBinding();
+        refreshHealth();
+        void probe(false).catch(() => undefined);
+      } else {
+        setManualOpen(true);
+        toast.error('חיבור עמוד הפייסבוק נכשל', { description: result.reason || 'החיבור לפייסבוק נכשל.' });
+      }
+    });
+  }, [probe, refreshBinding, refreshHealth]);
 
   // Full-page redirect result: /oauth/callback exchanged the code in the main
   // app context and came back here with an explicit success/error state.
