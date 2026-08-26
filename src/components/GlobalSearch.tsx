@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Search, User, MapPin, Radio, LayoutDashboard, Building2, MessageSquare } from 'lucide-react';
+import { Search, User, MapPin, Radio, LayoutDashboard, Building2, MessageSquare, CalendarClock } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
@@ -17,7 +17,7 @@ const QUICK_LINKS = [
 
 interface SearchResult {
   id: string;
-  type: 'lead' | 'listing' | 'message' | 'page';
+  type: 'lead' | 'listing' | 'message' | 'inquiry' | 'meeting' | 'tour' | 'page';
   title: string;
   subtitle?: string;
   path: string;
@@ -234,6 +234,9 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
       case 'lead': return User;
       case 'listing': return Building2;
       case 'message': return MessageSquare;
+      case 'inquiry': return MessageSquare;
+      case 'meeting': return CalendarClock;
+      case 'tour': return CalendarClock;
       default: return LayoutDashboard;
     }
   };
@@ -243,6 +246,9 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
       case 'lead': return 'מתעניין';
       case 'listing': return 'נכס';
       case 'message': return 'הודעה';
+      case 'inquiry': return 'פנייה';
+      case 'meeting': return 'פגישה';
+      case 'tour': return 'סיור';
       default: return 'עמוד';
     }
   };
@@ -255,7 +261,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="חפש מתעניינים, נכסים, או הודעות..."
+            placeholder="חיפוש בכל המערכת — מתעניינים, נכסים, פניות, פגישות, הודעות..."
             className="border-0 focus-visible:ring-0 h-12 text-base"
             autoFocus
            />
