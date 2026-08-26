@@ -259,8 +259,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     setConnecting(true);
     try {
       clearPendingOAuth();
-      const hint = redirectWhitelistHint();
-      if (hint) toast.info('שים לב לכתובת החזרה של Meta', { description: hint });
       const res = await withTimeout(
         callPageConnect<any>({
           action: 'start',
@@ -271,6 +269,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         'שירות החיבור לפייסבוק לא הגיב בזמן. נסה שוב.',
       );
 
+      if (res?.app_id) setAppId(String(res.app_id));
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       // Direct full-page redirect: no popup, no postMessage, no cross-origin
       // closure races. /oauth/callback finishes the exchange and returns here.
@@ -282,13 +281,17 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       setLoading(false);
 
       // App in development mode / missing app config → guide to the manual path.
+      // Only open the redirect-URI help when the failure really is a blocked URL;
+      // the production callback is whitelisted, so a generic error must not raise
+      // a false "URL Blocked" alarm.
       setManualOpen(true);
-      setRedirectHelp(true);
+      if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', {
         description: `${describeOAuthFailure(e?.message)} — ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
       });
     }
   };
+
 
 
   const disconnect = async () => {
