@@ -34,6 +34,13 @@ function envOverride(): string | null {
   return null;
 }
 
+/** Canonicalize a callback URI once so start and exchange use identical bytes. */
+export function normalizeOAuthRedirectUri(href: string): string {
+  const url = new URL(href, window.location.origin);
+  const origin = normalizeOrigin(url.href);
+  return `${origin}${OAUTH_CALLBACK_PATH}`;
+}
+
 /** lowercase scheme+host, no trailing slash, no default port, no query/hash. */
 function normalizeOrigin(href: string): string {
   const url = new URL(href);
@@ -64,7 +71,7 @@ export function isApprovedOrigin(origin = currentOrigin()): boolean {
  */
 export function oauthRedirectUri(): string {
   const override = envOverride();
-  if (override) return override;
+  if (override) return normalizeOAuthRedirectUri(override);
   const origin = currentOrigin();
   return `${isApprovedOrigin(origin) ? origin : CANONICAL_OAUTH_ORIGIN}${OAUTH_CALLBACK_PATH}`;
 }
