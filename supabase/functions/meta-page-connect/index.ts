@@ -91,12 +91,6 @@ function pageAvatar(pageId: string): string {
   return `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/picture?type=normal`;
 }
 
-/** Any Page with a valid numeric id is an acceptable publishing identity. */
-function isInvalidPublishingIdentity(pageId: unknown, _pageName?: unknown): boolean {
-  const id = String(pageId ?? "").trim();
-  return !id || isBlockedPage({ id });
-}
-
 /** Remove every credential that could resurrect a rejected Page binding. */
 async function purgeFacebookState(admin: any, ownerId: string): Promise<string[]> {
   const failures: string[] = [];
