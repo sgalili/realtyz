@@ -12,6 +12,7 @@ import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPa
 import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 
 import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, metaConsoleSetupSteps, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
+import { META_APP_ID } from '@/lib/metaApp';
 
 
 export type MetaStatus = {
