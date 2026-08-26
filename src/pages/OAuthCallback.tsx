@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { oauthRedirectUri, storePendingOAuth } from '@/lib/oauthRedirect';
+import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from '@/lib/oauthRedirect';
 
 /**
  * Popup landing page for Facebook / Google OAuth.
@@ -17,6 +17,15 @@ export default function OAuthCallback() {
     const state = params.get('state') ?? '';
     const error = params.get('error');
     const errorDescription = params.get('error_description');
+    const returnOrigin = returnOriginFromOAuthState(state);
+
+    // Meta may require a canonical whitelisted callback. Bounce from there to
+    // the origin that initiated login before touching opener/localStorage, so
+    // preview and custom-domain sessions remain intact.
+    if (returnOrigin && returnOrigin !== window.location.origin) {
+      window.location.replace(`${returnOrigin}/oauth/callback?${params.toString()}`);
+      return;
+    }
 
     const payload = {
       type: 'realtyz-oauth-callback' as const,

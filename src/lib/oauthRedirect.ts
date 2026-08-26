@@ -22,6 +22,8 @@ const APPROVED_ORIGINS = [
   'http://localhost:8080',
 ];
 
+const CANONICAL_OAUTH_ORIGIN = 'https://realtyz.co.il';
+
 /** Optional hard override, e.g. VITE_OAUTH_REDIRECT_URI=https://app.example.com/oauth/callback */
 function envOverride(): string | null {
   const env = (import.meta as any)?.env ?? {};
@@ -61,7 +63,35 @@ export function isApprovedOrigin(origin = currentOrigin()): boolean {
  * `isApprovedOrigin`) rather than silently rewritten.
  */
 export function oauthRedirectUri(): string {
-  return envOverride() ?? `${currentOrigin()}${OAUTH_CALLBACK_PATH}`;
+  const override = envOverride();
+  if (override) return override;
+  const origin = currentOrigin();
+  return `${isApprovedOrigin(origin) ? origin : CANONICAL_OAUTH_ORIGIN}${OAUTH_CALLBACK_PATH}`;
+}
+
+/** Whether the callback can safely communicate with the current window. */
+export function isSameOriginOAuthRedirect(): boolean {
+  return normalizeOrigin(oauthRedirectUri()) === currentOrigin();
+}
+
+/** Origin to return to after Meta lands on the canonical callback domain. */
+export function oauthReturnOrigin(): string {
+  return currentOrigin();
+}
+
+/** Read the return origin embedded server-side in the OAuth state value. */
+export function returnOriginFromOAuthState(state: string): string | null {
+  const encoded = state.split(':').at(-1) ?? '';
+  try {
+    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(encoded.length / 4) * 4, '=');
+    const value = decodeURIComponent(atob(base64));
+    const origin = normalizeOrigin(value);
+    const host = new URL(origin).hostname;
+    const safe = isApprovedOrigin(origin) || host.endsWith('.lovable.app');
+    return safe ? origin : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -70,7 +100,7 @@ export function oauthRedirectUri(): string {
  */
 export function redirectWhitelistHint(): string | null {
   if (envOverride() || isApprovedOrigin()) return null;
-  return `הדומיין הנוכחי (${currentOrigin()}) אינו מופיע ברשימת Valid OAuth Redirect URIs באפליקציית Meta. יש להוסיף את ${oauthRedirectUri()} או להתחבר ידנית באמצעות Page Access Token.`;
+  return `ההתחברות תושלם דרך הכתובת המאושרת ${oauthRedirectUri()} כדי למנוע חסימת כתובת על ידי Meta.`;
 }
 
 /** Every URI that must exist in Meta's whitelist, for support messages. */
@@ -111,6 +141,15 @@ export function storePendingOAuth(p: Omit<PendingOAuth, 'at'>): void {
     localStorage.setItem(PENDING_OAUTH_KEY, JSON.stringify({ ...p, at: Date.now() }));
   } catch {
     /* storage disabled — popup path still works */
+  }
+}
+
+/** Remove stale codes/errors before starting a fresh authorization session. */
+export function clearPendingOAuth(): void {
+  try {
+    localStorage.removeItem(PENDING_OAUTH_KEY);
+  } catch {
+    /* storage disabled */
   }
 }
 

@@ -7,8 +7,8 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
-import { useFacebookHealth, useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
-import { describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
+import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
+import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, oauthReturnOrigin, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 export type MetaStatus = {
@@ -56,6 +56,8 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
   // and the global warning banner).
   const { data: health } = useFacebookHealth();
   const refreshHealth = useRefreshFacebookHealth();
+  const resetHealth = useResetFacebookHealth();
+  const [disconnecting, setDisconnecting] = useState(false);
 
 
   const probe = useCallback(async (notify = false) => {
@@ -145,21 +147,29 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
 
   const connect = async () => {
     setConnecting(true);
+    // Reserve the popup synchronously while the click still has browser user
+    // activation. Opening it after the backend request is blocked by Safari and
+    // some mobile browsers.
+    const popup = window.open('', 'realtyz-fb-page-oauth', 'width=560,height=680');
     try {
+      clearPendingOAuth();
       const hint = redirectWhitelistHint();
       if (hint) toast.info('שים לב לכתובת החזרה של Meta', { description: hint });
       const res = await callPageConnect<any>({
         action: 'start',
         redirect_uri: logOAuthRedirectUri('facebook-page'),
+        return_origin: oauthReturnOrigin(),
       });
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      const popup = window.open(res.auth_url, 'realtyz-fb-page-oauth', 'width=560,height=680');
-      if (!popup) {
+      if (popup) {
+        popup.location.href = res.auth_url;
+      } else {
         // No popup: go full-page; /oauth/callback stashes the result and returns.
         window.location.href = res.auth_url;
         return;
       }
     } catch (e: any) {
+      popup?.close();
       setConnecting(false);
       // App in development mode / missing app config → guide to the manual path.
       setManualOpen(true);
@@ -171,15 +181,20 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
 
 
   const disconnect = async () => {
+    if (disconnecting) return;
+    setDisconnecting(true);
     try {
       await callPageConnect({ action: 'disconnect' });
       setPage({ connected: false, page: null });
       setStatus(null);
       onStatus?.(null);
+      clearPendingOAuth();
+      await resetHealth();
       toast.success('עמוד הפייסבוק נותק');
-      await probe(false);
     } catch (e: any) {
       toast.error('ניתוק נכשל', { description: e?.message });
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -341,8 +356,8 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
               <Button variant="outline" size="sm" onClick={connect} disabled={connecting} className="gap-1.5">
                 <Facebook className="h-4 w-4" /> החלף עמוד
               </Button>
-              <Button variant="ghost" size="sm" onClick={disconnect} className="gap-1.5 text-destructive">
-                <Unlink className="h-4 w-4" /> נתק
+              <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting} className="gap-1.5 text-destructive">
+                {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />} נתק
               </Button>
             </>
           )}
