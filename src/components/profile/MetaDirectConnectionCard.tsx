@@ -133,32 +133,52 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   useEffect(() => { probe(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const finishExchange = useCallback(
-    async (code: string, redirectUri: string) => {
+    async (grant: { code?: string | null; accessToken?: string | null }, redirectUri: string) => {
       if (exchangingRef.current) return;
       exchangingRef.current = true;
       setConnecting(true);
-      // Emergency safety net: whatever happens to the request, the spinner is
-      // released after 5s so the user can retry or use the manual token path.
+      // Emergency safety net: the spinner is released after 5s so the user can
+      // retry or use the manual token path. The request itself keeps running —
+      // if it succeeds afterwards the connected state still lands.
       const safety = window.setTimeout(() => {
-        exchangingRef.current = false;
         setConnecting(false);
         setLoading(false);
         setManualOpen(true);
-        try { popupRef.current?.close(); } catch { /* ignore */ }
-        popupRef.current = null;
         toast.error('החיבור לפייסבוק לא הושלם בזמן', {
           description: 'נסה להתחבר שוב, או חבר את העמוד ידנית באמצעות Page Access Token.',
         });
       }, SPINNER_SAFETY_MS);
       try {
-        if (!code) throw new Error('פייסבוק לא החזיר קוד אימות. נסה להתחבר שוב.');
+        if (!grant.code && !grant.accessToken) {
+          throw new Error('פייסבוק לא החזיר קוד אימות. נסה להתחבר שוב.');
+        }
         const res = await withTimeout(
-          callPageConnect<any>({ action: 'exchange', code, redirect_uri: redirectUri }),
+          callPageConnect<any>({
+            action: 'exchange',
+            code: grant.code ?? undefined,
+            user_access_token: grant.accessToken ?? undefined,
+            redirect_uri: redirectUri,
+          }),
           EXCHANGE_TIMEOUT_MS,
           'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
         );
         window.clearTimeout(safety);
+        setManualOpen(false);
+        if (res?.page?.id) {
+          setPage({
+            connected: true,
+            page: {
+              id: String(res.page.id),
+              name: res.page?.name ?? null,
+              picture: res.page?.picture ?? null,
+              connected_at: new Date().toISOString(),
+            },
+            instagram: res?.instagram ?? null,
+          });
+        }
         toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
+        refreshBinding();
+        refreshHealth();
         await probe(false).catch(() => undefined);
       } catch (e: any) {
         window.clearTimeout(safety);
@@ -175,8 +195,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         popupRef.current = null;
       }
     },
-    [probe],
+    [probe, refreshBinding, refreshHealth],
   );
+
 
 
   // Watchdog: release the spinner if the popup is closed/abandoned or the whole
