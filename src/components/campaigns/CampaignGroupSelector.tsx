@@ -123,7 +123,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         setSyncNote(note);
         toast.error(note);
       } else {
-        const fallback = "לא נמצאו קבוצות בחשבון המחובר. ודא שאתה מנהל הקבוצה ושאושרו ההרשאות user_managed_groups.";
+        const fallback = "לא נמצאו קבוצות בחשבון המחובר. ודא שאתה מנהל הקבוצה.";
         setSyncNote(fallback);
         toast.error(fallback);
       }
