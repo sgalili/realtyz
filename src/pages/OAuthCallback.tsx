@@ -12,7 +12,8 @@ import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from 
  * the user is then redirected back to the connections screen with an explicit
  * success/error state in the query string.
  */
-const FACEBOOK_STATE_PREFIX = 'facebook';
+/** Page-binding logins are exchanged here; other flows stash and hand back. */
+const FACEBOOK_PAGE_STATE_PREFIX = 'facebook_page';
 const CONNECTIONS_PATH = '/profile?tab=connections';
 /** Ceiling for the server-side exchange so the page never spins forever. */
 const EXCHANGE_TIMEOUT_MS = 20_000;
@@ -48,8 +49,8 @@ export default function OAuthCallback() {
       // Exactly the URI Meta returned to — the exchange requires byte-for-byte
       // equality with the URI used to start the login.
       const redirectUri = pick('_oauth_redirect_uri') || `${window.location.origin}/oauth/callback`;
-      const isFacebook = state.startsWith(FACEBOOK_STATE_PREFIX);
-      const backPath = isFacebook ? CONNECTIONS_PATH : '/profile';
+      const isFacebook = state.startsWith(FACEBOOK_PAGE_STATE_PREFIX);
+      const backPath = state.startsWith('facebook') ? CONNECTIONS_PATH : '/profile';
 
       // Meta may require a canonical whitelisted callback. Bounce from there to
       // the origin that initiated login before touching anything else, so the
@@ -85,7 +86,8 @@ export default function OAuthCallback() {
         return;
       }
 
-      // Non-Facebook providers keep the stash-and-return contract.
+      // Personal-profile / calendar / other providers keep the stash-and-return
+      // contract: their own card performs the exchange after the redirect.
       if (!isFacebook) {
         storePendingOAuth({ code, accessToken, state, error: null, errorDescription: null, redirectUri });
         window.location.replace(backPath);
