@@ -57,52 +57,50 @@ Deno.serve(async (req) => {
 
     // Bright Data exposes the account balance on the official customer endpoint.
     // The token must be sent as a Bearer token in the Authorization header.
-    // We try the canonical route first, then a couple of legacy aliases.
-    const endpoints = [
-      'https://api.brightdata.com/client/balance',
-      'https://api.brightdata.com/customer/balance',
-      'https://api.brightdata.com/dca/customer/balance',
-    ];
+    const url = 'https://api.brightdata.com/client/balance';
 
-    let parsed: any = null;
-    let lastStatus = 0;
-    let lastBody = '';
-
-    for (const url of endpoints) {
-      let res: Response;
-      try {
-        res = await fetch(url, { method: 'GET', headers });
-      } catch (err) {
-        lastBody = (err as Error)?.message ?? 'network_error';
-        continue;
-      }
-      const text = await res.text();
-      lastStatus = res.status;
-      lastBody = text;
-      if (!res.ok) continue;
-      try {
-        const body = JSON.parse(text);
-        const candidate = body?.balance ?? body?.available ?? body?.customer_balance ?? body?.data?.balance;
-        if (candidate !== undefined && candidate !== null && Number.isFinite(Number(candidate))) {
-          parsed = body;
-          break;
-        }
-        // Valid JSON but unexpected shape — keep it as a weak fallback.
-        if (!parsed) parsed = body;
-      } catch {
-        // not JSON, try the next endpoint
-      }
-    }
-
-    if (!parsed) {
+    let res: Response;
+    try {
+      res = await fetch(url, { method: 'GET', headers });
+    } catch (err) {
       return json(
         {
           ok: false,
-          error: lastStatus === 401 || lastStatus === 403 ? 'invalid_token' : 'balance_failed',
-          status: lastStatus,
+          error: 'network_error',
           token_source: tokenSource,
           token_masked: maskedToken,
-          message: String(lastBody).slice(0, 300),
+          message: (err as Error)?.message ?? 'Network error reaching Bright Data',
+        },
+        200,
+      );
+    }
+
+    const text = await res.text();
+    if (!res.ok) {
+      return json(
+        {
+          ok: false,
+          error: res.status === 401 || res.status === 403 ? 'invalid_token' : 'balance_failed',
+          status: res.status,
+          token_source: tokenSource,
+          token_masked: maskedToken,
+          message: `Bright Data API error (${res.status}). Please check your API token.`,
+        },
+        200,
+      );
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return json(
+        {
+          ok: false,
+          error: 'balance_failed',
+          token_source: tokenSource,
+          token_masked: maskedToken,
+          message: 'Bright Data returned an unexpected non-JSON response.',
         },
         200,
       );
