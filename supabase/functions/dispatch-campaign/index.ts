@@ -50,7 +50,7 @@ function toLocalIL(raw: string | null | undefined): string | null {
   return d;
 }
 
-// 9725XXXXXXXX (no plus) for WhatsApp / Green API
+// 9725XXXXXXXX (no plus) for the official Meta WhatsApp Cloud API
 function toIntlIL(raw: string | null | undefined): string | null {
   const local = toLocalIL(raw);
   if (!local) return null;
