@@ -4979,7 +4979,7 @@ const CampaignCenter = () => {
     const handleDisconnect = () => clearSocialConnectionState(['facebook']);
     window.addEventListener('realtyz:facebook-disconnected', handleDisconnect);
     return () => window.removeEventListener('realtyz:facebook-disconnected', handleDisconnect);
-  });
+  }, []);
 
   // Persist whenever the resolved connection state changes — keeps the grid
   // "remembered" across reloads and new tabs.
