@@ -58,6 +58,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const refreshHealth = useRefreshFacebookHealth();
   const resetHealth = useResetFacebookHealth();
   const [disconnecting, setDisconnecting] = useState(false);
+  const [connectionEpoch, setConnectionEpoch] = useState(0);
   const disconnectedRef = useRef(false);
   const expectedStateRef = useRef<string | null>(null);
 
@@ -195,13 +196,20 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     if (disconnecting) return;
     setDisconnecting(true);
     disconnectedRef.current = true;
+    // Optimistic atomic wipe: all badges and cached names disappear on the
+    // click, while the backend performs the definitive credential deletion.
+    setPage({ connected: false, page: null });
+    setStatus(null);
+    setManualPageId('');
+    setManualToken('');
+    setManualOpen(false);
+    onStatus?.(null);
+    clearPendingOAuth();
+    await resetHealth();
+    setConnectionEpoch((value) => value + 1);
     try {
-      await callPageConnect({ action: 'disconnect' });
-      setPage({ connected: false, page: null });
-      setStatus(null);
-      onStatus?.(null);
-      clearPendingOAuth();
-      await resetHealth();
+      const result = await callPageConnect<{ ok?: boolean }>({ action: 'disconnect' });
+      if (!result?.ok) throw new Error('השרת לא אישר שהחיבור נמחק');
       toast.success('עמוד הפייסבוק נותק');
     } catch (e: any) {
       toast.error('ניתוק נכשל', { description: e?.message });
@@ -254,7 +262,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const isConnected = !!(health?.pageConnected || page?.connected || status?.facebook);
 
   return (
-    <Card ref={ref} dir="rtl" className="text-right">
+    <Card key={connectionEpoch} ref={ref} dir="rtl" className="text-right">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-right">
           <Facebook className="h-5 w-5 text-primary" />

@@ -61,6 +61,27 @@ function pageAvatar(pageId: string): string {
   return `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/picture?type=normal`;
 }
 
+function isInvalidPublishingIdentity(pageId: unknown, pageName: unknown): boolean {
+  const id = String(pageId ?? "").trim();
+  const name = String(pageName ?? "").trim();
+  return id !== PRIMARY_PAGE_ID || isBlockedPage({ id, name });
+}
+
+/** Remove every credential that could resurrect a rejected Page binding. */
+async function purgeFacebookState(admin: any, ownerId: string): Promise<string[]> {
+  const failures: string[] = [];
+  const operations = [
+    admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId),
+    admin.from("fb_user_groups").delete().eq("workspace_owner_id", ownerId),
+    admin.from("fb_personal_connections").delete().eq("workspace_owner_id", ownerId),
+    admin.from("social_connections").delete().eq("created_by", ownerId)
+      .in("platform", ["facebook", "facebook_page", "instagram", "meta"]),
+  ];
+  const results = await Promise.all(operations);
+  for (const result of results) if (result.error) failures.push(result.error.message);
+  return failures;
+}
+
 /** Persist the real page name + official avatar so the UI has them instantly. */
 async function persistPageIdentity(
   admin: any,
@@ -109,6 +130,11 @@ async function fetchPageIdentity(
     const r = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(token)}`);
     lastPayload = r.payload;
     if (r.ok && r.payload?.id) {
+      if (isInvalidPublishingIdentity(r.payload.id, r.payload?.name)) {
+        await purgeFacebookState(admin, ownerId);
+        return { ok: false, name: null, picture: null, instagram: null, token: null,
+          errorPayload: { error: { code: 190, message: "A Facebook Business Page token is required" } } };
+      }
       const ig = r.payload?.instagram_business_account;
       const pic = r.payload?.picture?.data?.url ?? pageAvatar(pageId);
       await persistPageIdentity(admin, ownerId, pageId, r.payload?.name ?? null, pic);
@@ -272,6 +298,11 @@ async function forcePageBinding(
       // A page-scoped token is required for publishing; verify by asking the
       // page for itself (already done) and keep the token that worked.
       const name = r.payload?.name ?? null;
+      if (isInvalidPublishingIdentity(r.payload?.id, name)) {
+        await purgeFacebookState(admin, ownerId);
+        tried.push(`${pageId}: rejected_non_page_identity`);
+        continue;
+      }
       const picture = r.payload?.picture?.data?.url ?? pageAvatar(pageId);
       await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
       await admin.from("messenger_page_bindings").delete().eq("page_id", String(pageId));
@@ -539,25 +570,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === "disconnect") {
-      const failures: string[] = [];
-      const bindingDelete = await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
-      if (bindingDelete.error) failures.push(bindingDelete.error.message);
-
-      // The Page OAuth exchange also stores its long-lived user token for group
-      // discovery. Clear it and imported groups so health/status cannot rebuild
-      // the just-disconnected Page from residual credentials.
-      const groupsDelete = await admin.from("fb_user_groups").delete().eq("workspace_owner_id", ownerId);
-      if (groupsDelete.error) failures.push(groupsDelete.error.message);
-      const personalDelete = await admin.from("fb_personal_connections").delete().eq("workspace_owner_id", ownerId);
-      if (personalDelete.error) failures.push(personalDelete.error.message);
-      const socialDelete = await admin
-        .from("social_connections")
-        .delete()
-        .eq("created_by", ownerId)
-        .in("platform", ["facebook", "facebook_page", "instagram", "meta"]);
-      if (socialDelete.error) failures.push(socialDelete.error.message);
-
+      const failures = await purgeFacebookState(admin, ownerId);
       if (failures.length) return json({ error: `disconnect_failed: ${failures.join("; ")}` }, 500);
+      const { count, error: verifyError } = await admin
+        .from("messenger_page_bindings")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", ownerId);
+      if (verifyError || Number(count ?? 0) !== 0) {
+        return json({ error: `disconnect_failed: ${verifyError?.message ?? "binding still exists"}` }, 500);
+      }
       return json({ ok: true });
     }
 
@@ -578,6 +599,10 @@ Deno.serve(async (req) => {
       );
       if (!verify.ok || !verify.payload?.id) {
         return json({ error: humanizeGraphError(verify.payload, "הטוקן נדחה על ידי פייסבוק. ודא שזה Page Access Token של אותו עמוד.") }, 400);
+      }
+      if (isInvalidPublishingIdentity(verify.payload.id, verify.payload?.name)) {
+        await purgeFacebookState(admin, ownerId);
+        return json({ error: "הטוקן שייך למשתמש או לנכס Employee ולא לעמוד העסקי. הנתונים נמחקו, ויש להתחבר מחדש עם Page Access Token תקין." }, 400);
       }
 
       await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
@@ -723,6 +748,10 @@ Deno.serve(async (req) => {
       }
       if (!chosen?.access_token) {
         return json({ error: "פייסבוק לא החזיר טוקן עמוד. יש להתחבר מחדש ולאשר את העמוד." }, 400);
+      }
+      if (isInvalidPublishingIdentity(chosen.id, chosen.name)) {
+        await purgeFacebookState(admin, ownerId);
+        return json({ error: "Meta החזירה זהות משתמש או Employee במקום עמוד עסקי. החיבור נדחה והנתונים נמחקו." }, 400);
       }
       // One page per workspace: drop any previous binding, then upsert on page_id.
       await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
