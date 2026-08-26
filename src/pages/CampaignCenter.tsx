@@ -2758,9 +2758,6 @@ const FEED_CACHE_MAX_PERSISTED = 120;
 // Remembers that this account has a bound Facebook Page so the card renders
 // "מחובר" instantly on mount, before the async DB verification resolves.
 const FB_BINDING_FLAG_KEY = 'realtyz.campaigns.fb_page_bound.v1';
-const readFbBindingFlag = (): boolean => {
-  try { return localStorage.getItem(FB_BINDING_FLAG_KEY) === '1'; } catch { return false; }
-};
 const writeFbBindingFlag = (bound: boolean) => {
   try {
     if (bound) localStorage.setItem(FB_BINDING_FLAG_KEY, '1');

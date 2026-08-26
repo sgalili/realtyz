@@ -6,8 +6,8 @@
 // POST  { action: 'status' }              -> connection status (page + IG account)
 // DELETE { external_post_id }             -> removes the post from Meta
 //
-// Credentials: public.messenger_page_bindings (page_id + page_access_token) for
-// the workspace owner, with FB_PAGE_ID / FB_PAGE_ACCESS_TOKEN env fallback.
+// Credentials: only the workspace owner's explicit page binding in
+// public.messenger_page_bindings. Publishing never discovers or restores one.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 import { isBlockedPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
