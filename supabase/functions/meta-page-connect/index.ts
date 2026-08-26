@@ -196,6 +196,11 @@ Deno.serve(async (req) => {
         }`,
       );
       const ok = probe.ok && !!probe.payload?.id;
+      // Only a genuine token failure (revoked / expired / permissions) may drop
+      // the stored binding to "needs reconnect". Rate limits, transient 5xx and
+      // network hiccups keep the persisted connection intact.
+      const errCode = Number(probe.payload?.error?.code ?? 0);
+      const authFailure = !ok && [102, 190, 458, 459, 463, 464, 467, 492].includes(errCode);
       const liveName: string | null = ok ? (probe.payload?.name ?? null) : null;
       if (ok && liveName && liveName !== row.page_name) {
         await admin
@@ -206,8 +211,9 @@ Deno.serve(async (req) => {
       }
       const ig = ok ? probe.payload?.instagram_business_account : null;
       return json({
-        connected: ok,
-        needs_reconnect: !ok,
+        connected: ok || !authFailure,
+        stale: !ok && !authFailure,
+        needs_reconnect: authFailure,
         never_connected: false,
         page: {
           id: String(row.page_id),
@@ -216,8 +222,11 @@ Deno.serve(async (req) => {
           connected_at: row.updated_at ?? null,
         },
         instagram: ig?.id ? { id: String(ig.id), username: ig.username ?? null } : null,
-        error: ok ? null : humanizeGraphError(probe.payload, "תוקף החיבור לפייסבוק פג. יש להתחבר מחדש."),
+        error: authFailure
+          ? humanizeGraphError(probe.payload, "תוקף החיבור לפייסבוק פג. יש להתחבר מחדש.")
+          : null,
       });
+
     }
 
 

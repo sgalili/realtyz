@@ -21,6 +21,28 @@ export type FacebookHealth = {
 
 export const FACEBOOK_HEALTH_KEY = 'facebook-health';
 
+const CACHE_KEY = 'realtyz:fb-health';
+
+/** Last verified-good connection, so a refresh never flashes "not connected". */
+function readCache(userId?: string): FacebookHealth | null {
+  try {
+    const raw = localStorage.getItem(`${CACHE_KEY}:${userId ?? 'anon'}`);
+    return raw ? (JSON.parse(raw) as FacebookHealth) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(userId: string | undefined, value: FacebookHealth | null) {
+  try {
+    const key = `${CACHE_KEY}:${userId ?? 'anon'}`;
+    if (value) localStorage.setItem(key, JSON.stringify(value));
+    else localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Single source of truth for Facebook connection state across the app:
  * the collapsed section badge, the expanded card badge and the global warning
@@ -35,6 +57,7 @@ export function useFacebookHealth() {
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
     retry: 1,
+    placeholderData: () => readCache(user?.id) ?? undefined,
     queryFn: async () => {
       const [pageRes, personalRes] = await Promise.all([
         supabase.functions
@@ -47,6 +70,10 @@ export function useFacebookHealth() {
 
       const page = (pageRes as any)?.data ?? null;
       const personal = (personalRes as any)?.data ?? null;
+      const cached = readCache(user?.id);
+
+      // A transport failure must never revoke a previously verified connection.
+      if (!page && !personal && cached) return cached;
 
       const hasBinding = !!page?.page?.id;
       const pageOk = !!page?.connected;
@@ -54,25 +81,32 @@ export function useFacebookHealth() {
 
       // Only warn about a BROKEN connection: a verified page token must never
       // raise the banner, and "never connected" is an empty state, not a fault.
-      const needsReconnect = (hasBinding && !pageOk) || (!pageOk && personalBroken);
+      const needsReconnect =
+        (hasBinding && !pageOk && page?.needs_reconnect === true) ||
+        (!pageOk && personalBroken);
 
-      return {
+      const value: FacebookHealth = {
         pageConnected: pageOk,
         needsReconnect,
         reason: needsReconnect
           ? String(page?.error || personal?.token_error || 'תוקף החיבור לפייסבוק פג. יש להתחבר מחדש.')
           : null,
-        pageName: page?.page?.name ?? null,
-        pageId: page?.page?.id ? String(page.page.id) : null,
-        pagePicture: page?.page?.picture ?? null,
+        pageName: page?.page?.name ?? (pageOk ? null : cached?.pageName ?? null),
+        pageId: page?.page?.id ? String(page.page.id) : cached?.pageId ?? null,
+        pagePicture: page?.page?.picture ?? cached?.pagePicture ?? null,
         instagram: page?.instagram?.id
           ? { id: String(page.instagram.id), username: page.instagram.username ?? null }
           : null,
         neverConnected: !hasBinding && !personal?.connected,
       };
+
+      // Persist only a healthy state; a broken one should not survive a fix.
+      writeCache(user?.id, value.pageConnected ? value : null);
+      return value;
     },
   });
 }
+
 
 /** Invalidate the shared Facebook state after connect / manual token / disconnect. */
 export function useRefreshFacebookHealth() {
