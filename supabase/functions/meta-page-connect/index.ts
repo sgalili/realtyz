@@ -384,33 +384,45 @@ Deno.serve(async (req) => {
 
     if (action === "exchange") {
       const code = String(body?.code ?? "").trim();
-      if (!code || !redirectUri) return json({ error: "code and redirect_uri are required" }, 400);
-      console.log("[meta-page-connect] exchange redirect_uri =", JSON.stringify(redirectUri));
-      if (!clientSecret) return json({ error: "פייסבוק לא מוגדר: חסר App Secret." }, 400);
-
-      const tokenRes = await graph(
-        `/oauth/access_token?${new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          redirect_uri: redirectUri,
-          code,
-        })}`,
-      );
-      if (!tokenRes.ok || !tokenRes.payload?.access_token) {
-        return json({ error: humanizeGraphError(tokenRes.payload, "פייסבוק דחה את ההתחברות. יש לנסות להתחבר מחדש ולאשר את הרשאות העמוד.") }, 400);
+      // The Facebook dialog may return an implicit user access token in the URL
+      // fragment instead of a code (e.g. "Continue as ..." on an existing grant).
+      const suppliedToken = String(body?.user_access_token ?? "").trim();
+      if (!suppliedToken && (!code || !redirectUri)) {
+        return json({ error: "code and redirect_uri are required" }, 400);
       }
-      let userToken = String(tokenRes.payload.access_token);
+      console.log("[meta-page-connect] exchange redirect_uri =", JSON.stringify(redirectUri), "mode =", suppliedToken ? "implicit_token" : "code");
+
+      let userToken = suppliedToken;
+      if (!userToken) {
+        if (!clientSecret) return json({ error: "פייסבוק לא מוגדר: חסר App Secret." }, 400);
+        const tokenRes = await graph(
+          `/oauth/access_token?${new URLSearchParams({
+            client_id: clientId,
+            client_secret: clientSecret,
+            redirect_uri: redirectUri,
+            code,
+          })}`,
+        );
+        if (!tokenRes.ok || !tokenRes.payload?.access_token) {
+          return json({ error: humanizeGraphError(tokenRes.payload, "פייסבוק דחה את ההתחברות. יש לנסות להתחבר מחדש ולאשר את הרשאות העמוד.") }, 400);
+        }
+        userToken = String(tokenRes.payload.access_token);
+      }
+
 
       // Long-lived user token so page tokens do not expire in an hour.
-      const longRes = await graph(
-        `/oauth/access_token?${new URLSearchParams({
-          grant_type: "fb_exchange_token",
-          client_id: clientId,
-          client_secret: clientSecret,
-          fb_exchange_token: userToken,
-        })}`,
-      );
-      if (longRes.ok && longRes.payload?.access_token) userToken = String(longRes.payload.access_token);
+      if (clientSecret) {
+        const longRes = await graph(
+          `/oauth/access_token?${new URLSearchParams({
+            grant_type: "fb_exchange_token",
+            client_id: clientId,
+            client_secret: clientSecret,
+            fb_exchange_token: userToken,
+          })}`,
+        );
+        if (longRes.ok && longRes.payload?.access_token) userToken = String(longRes.payload.access_token);
+      }
+
 
       // Persist the long-lived USER token too: group discovery (/me/groups)
       // requires a user token, and a page login already grants it.
