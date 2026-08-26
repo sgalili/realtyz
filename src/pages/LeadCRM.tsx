@@ -68,6 +68,30 @@ function isOwnerLead(lead: any): boolean {
   return false;
 }
 
+/**
+ * Map a numeric budget (preferences.budget_max) to the CRM dropdown token so a
+ * budget captured by chat/WhatsApp intake shows up pre-selected.
+ * Kept in sync with the budget option lists in the profile sheet.
+ */
+function budgetTokenFromAmount(amount: number, isRental: boolean): string {
+  const v = Number(amount ?? 0);
+  if (!isFinite(v) || v <= 0) return '';
+  if (isRental) {
+    if (v <= 3500) return '0-3500';
+    if (v <= 5000) return '3500-5000';
+    if (v <= 7000) return '5000-7000';
+    if (v <= 10000) return '7000-10000';
+    if (v <= 15000) return '10000-15000';
+    return '15000+';
+  }
+  if (v <= 1500000) return '0-1500000';
+  if (v <= 2500000) return '1500000-2500000';
+  if (v <= 4000000) return '2500000-4000000';
+  if (v <= 6000000) return '4000000-6000000';
+  if (v <= 10000000) return '6000000-10000000';
+  return '10000000+';
+}
+
 /** Hebrew display dictionary for the "ערוץ הגעה" (source) dropdown. */
 const SOURCE_LABEL_HE: Record<string, string> = {
   webtiv_stream: 'סטרים ובטיב',
@@ -1984,31 +2008,6 @@ const LeadCRM = () => {
                           toast.success('השם עודכן');
                         }}
                       />
-                      <EditableInlineText
-                        value={formatPhoneDisplay(selectedVoter.phone_number) === '-' ? '' : formatPhoneDisplay(selectedVoter.phone_number)}
-                        placeholder="הוסף טלפון"
-                        ariaLabel="ערוך טלפון"
-                        inputMode="tel"
-                        dir="ltr"
-                        className="text-sm text-muted-foreground font-normal"
-                        validate={(v) => {
-                          if (!v) return null;
-                          const digits = v.replace(/\D/g, '');
-                          if (digits.length < 9) return 'מספר טלפון לא תקין';
-                          return null;
-                        }}
-                        onSave={async (next) => {
-                          let normalized: string | null = null;
-                          if (next) {
-                            const digits = next.replace(/\D/g, '');
-                            normalized = digits.startsWith('0') ? '972' + digits.slice(1) : digits.startsWith('972') ? digits : digits;
-                          }
-                          const { error } = await supabase.from('leads').update({ phone_number: normalized }).eq('id', selectedVoter.id);
-                          if (error) throw error;
-                          await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-                          toast.success('הטלפון עודכן');
-                        }}
-                      />
                       {(() => {
                         const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
                         const email = (selectedVoter as any).email as string | undefined;
@@ -2041,6 +2040,32 @@ const LeadCRM = () => {
                           }));
                         return (
                           <div className="flex items-center gap-1 mt-2">
+                            {/* Phone sits inline with the action buttons, middle-aligned */}
+                        <EditableInlineText
+                          value={formatPhoneDisplay(selectedVoter.phone_number) === '-' ? '' : formatPhoneDisplay(selectedVoter.phone_number)}
+                          placeholder="הוסף טלפון"
+                          ariaLabel="ערוך טלפון"
+                          inputMode="tel"
+                          dir="ltr"
+                          className="text-sm text-muted-foreground font-normal"
+                          validate={(v) => {
+                            if (!v) return null;
+                            const digits = v.replace(/\D/g, '');
+                            if (digits.length < 9) return 'מספר טלפון לא תקין';
+                            return null;
+                          }}
+                          onSave={async (next) => {
+                            let normalized: string | null = null;
+                            if (next) {
+                              const digits = next.replace(/\D/g, '');
+                              normalized = digits.startsWith('0') ? '972' + digits.slice(1) : digits.startsWith('972') ? digits : digits;
+                            }
+                            const { error } = await supabase.from('leads').update({ phone_number: normalized }).eq('id', selectedVoter.id);
+                            if (error) throw error;
+                            await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                            toast.success('הטלפון עודכן');
+                          }}
+                        />
                             {channels.map((c) => {
                               const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55'}`;
                               const aria = { 'aria-label': c.label, title: c.label } as const;
