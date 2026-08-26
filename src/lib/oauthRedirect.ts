@@ -7,10 +7,29 @@
  */
 export const OAUTH_CALLBACK_PATH = '/oauth/callback';
 
-/** The redirect URI to send to the provider, built from the live origin. */
+/**
+ * The redirect URI to send to the provider, built from the live origin.
+ *
+ * Normalised so it can be pasted 1:1 into Meta's "Valid OAuth Redirect URIs":
+ * lowercase scheme+host, no trailing slash, no query/hash, no default port.
+ */
 export function oauthRedirectUri(): string {
-  const origin = window.location.origin.replace(/\/+$/, '');
-  return `${origin}${OAUTH_CALLBACK_PATH}`;
+  const url = new URL(window.location.href);
+  const scheme = url.protocol.toLowerCase();
+  const host = url.hostname.toLowerCase();
+  const port = url.port && url.port !== '80' && url.port !== '443' ? `:${url.port}` : '';
+  return `${scheme}//${host}${port}${OAUTH_CALLBACK_PATH}`;
+}
+
+/**
+ * Log the exact URI handed to the provider so a "URL Blocked" error can be
+ * matched character-for-character against the Meta Developer Console entry.
+ */
+export function logOAuthRedirectUri(provider: string): string {
+  const uri = oauthRedirectUri();
+  // eslint-disable-next-line no-console
+  console.info(`[oauth:${provider}] redirect_uri =`, uri);
+  return uri;
 }
 
 export type PendingOAuth = {
