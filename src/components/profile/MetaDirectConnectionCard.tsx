@@ -25,10 +25,13 @@ type PageStatus = {
 };
 
 const STATE_PREFIX = 'facebook_page:';
-/** Hard ceiling for the server-side code exchange (Graph calls + DB write). */
-const EXCHANGE_TIMEOUT_MS = 25_000;
+/** Emergency ceiling for the callback token exchange — spinner never outlives it. */
+const EXCHANGE_TIMEOUT_MS = 5_000;
 /** Hard ceiling for the whole popup round-trip before we release the spinner. */
 const OAUTH_WATCHDOG_MS = 120_000;
+/** Absolute safety net: the spinner is force-cleared this long after it starts. */
+const SPINNER_SAFETY_MS = 5_000;
+
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
