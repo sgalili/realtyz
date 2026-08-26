@@ -57,7 +57,9 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     try {
       const { data } = await (supabase as any)
         .from("fb_user_groups")
-        .select("group_id, group_name, group_icon, group_url")
+        .select("group_id, group_name, group_icon, group_url, is_selected")
+        // Only groups the broker approved in the connections screen are targets.
+        .neq("is_selected", false)
         .order("group_name", { ascending: true });
       for (const r of (data ?? []) as any[]) {
         if (!r?.group_id) continue;
