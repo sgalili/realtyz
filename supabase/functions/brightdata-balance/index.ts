@@ -55,10 +55,11 @@ Deno.serve(async (req) => {
       Accept: 'application/json',
     };
 
-    // Bright Data exposes the balance on a couple of equivalent endpoints
-    // depending on the account generation. Try them in order and take the
-    // first JSON payload that actually carries a numeric balance.
+    // Bright Data exposes the account balance on the official customer endpoint.
+    // The token must be sent as a Bearer token in the Authorization header.
+    // We try the canonical route first, then a couple of legacy aliases.
     const endpoints = [
+      'https://api.brightdata.com/client/balance',
       'https://api.brightdata.com/customer/balance',
       'https://api.brightdata.com/dca/customer/balance',
     ];
