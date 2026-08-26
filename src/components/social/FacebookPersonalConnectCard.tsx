@@ -60,6 +60,7 @@ async function callFbPersonal<T = any>(body: Record<string, unknown>): Promise<T
 export const FacebookPersonalConnectCard = () => {
   const qc = useQueryClient();
   const [connecting, setConnecting] = useState(false);
+  const [pendingAuthUrl, setPendingAuthUrl] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const resetFacebookHealth = useResetFacebookHealth();
 
@@ -243,6 +244,16 @@ export const FacebookPersonalConnectCard = () => {
             {connected ? 'חיבור מחדש' : 'חיבור פרופיל פייסבוק'}
           </Button>
         </div>
+        {pendingAuthUrl && (
+          <a
+            href={pendingAuthUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block pt-1 text-center text-xs text-primary underline underline-offset-2"
+          >
+            פתחו את דף האישור של פייסבוק בלשונית חדשה
+          </a>
+        )}
       </CardContent>
     </Card>
   );
