@@ -16,21 +16,50 @@ export const OAUTH_CALLBACK_PATH = '/oauth/callback';
  * canonical production origin instead of sending a URI that is certain to fail.
  */
 const APPROVED_ORIGINS = [
+  'https://realtyzai.lovable.app',
   'https://realtyz.co.il',
   'https://www.realtyz.co.il',
-  'https://realtyzai.lovable.app',
   'http://localhost:8080',
 ];
 
-const CANONICAL_OAUTH_ORIGIN = 'https://realtyz.co.il';
+/**
+ * The single origin whose callback URI is guaranteed to exist in the Meta
+ * Developer Console. Any origin that is not byte-for-byte in APPROVED_ORIGINS
+ * (ephemeral preview sandboxes, LAN IPs, in-app browsers) is redirected
+ * through this one instead of sending a URI Meta will refuse.
+ */
+const CANONICAL_OAUTH_ORIGIN = 'https://realtyzai.lovable.app';
+
+/** Manual per-browser override, set from the connection card when Meta refuses a URI. */
+const REDIRECT_OVERRIDE_KEY = 'realtyz:oauth-redirect-origin';
+
+export function setOAuthRedirectOverride(origin: string | null): void {
+  try {
+    if (origin) localStorage.setItem(REDIRECT_OVERRIDE_KEY, normalizeOrigin(origin));
+    else localStorage.removeItem(REDIRECT_OVERRIDE_KEY);
+  } catch {
+    /* storage disabled */
+  }
+}
+
+export function oauthRedirectOverride(): string | null {
+  try {
+    const raw = localStorage.getItem(REDIRECT_OVERRIDE_KEY);
+    return raw ? normalizeOrigin(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Optional hard override, e.g. VITE_OAUTH_REDIRECT_URI=https://app.example.com/oauth/callback */
 function envOverride(): string | null {
   const env = (import.meta as any)?.env ?? {};
   const explicit = String(env.VITE_OAUTH_REDIRECT_URI ?? '').trim();
-  if (explicit) return explicit.replace(/\/+$/, '');
+  if (explicit) return `${normalizeOrigin(explicit)}${OAUTH_CALLBACK_PATH}`;
   const origin = String(env.VITE_OAUTH_REDIRECT_ORIGIN ?? '').trim();
   if (origin) return `${normalizeOrigin(origin)}${OAUTH_CALLBACK_PATH}`;
+  const manual = oauthRedirectOverride();
+  if (manual) return `${manual}${OAUTH_CALLBACK_PATH}`;
   return null;
 }
 
