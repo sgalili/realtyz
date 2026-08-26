@@ -123,19 +123,60 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
   const finishExchange = useCallback(
     async (code: string, redirectUri: string) => {
+      if (exchangingRef.current) return;
+      exchangingRef.current = true;
+      setConnecting(true);
       try {
-        const res = await callPageConnect<any>({ action: 'exchange', code, redirect_uri: redirectUri });
+        if (!code) throw new Error('פייסבוק לא החזיר קוד אימות. נסה להתחבר שוב.');
+        const res = await withTimeout(
+          callPageConnect<any>({ action: 'exchange', code, redirect_uri: redirectUri }),
+          EXCHANGE_TIMEOUT_MS,
+          'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
+        );
         toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
-        await probe(false);
+        await probe(false).catch(() => undefined);
       } catch (e: any) {
         if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
+        // Never leave the user trapped: offer the manual token path immediately.
+        setManualOpen(true);
       } finally {
+        exchangingRef.current = false;
         setConnecting(false);
+        setLoading(false);
+        try { popupRef.current?.close(); } catch { /* ignore */ }
+        popupRef.current = null;
       }
     },
     [probe],
   );
+
+  // Watchdog: release the spinner if the popup is closed/abandoned or the whole
+  // round-trip stalls, so "connecting" can never hang indefinitely.
+  useEffect(() => {
+    if (!connecting) return;
+    const started = Date.now();
+    const poll = window.setInterval(() => {
+      const stalled = Date.now() - started > OAUTH_WATCHDOG_MS;
+      const popupGone = !!popupRef.current && popupRef.current.closed;
+      if (exchangingRef.current) return;
+      if (popupGone || stalled) {
+        window.clearInterval(poll);
+        popupRef.current = null;
+        setConnecting(false);
+        setLoading(false);
+        toast.error('חיבור פייסבוק לא הושלם', {
+          description: stalled
+            ? 'התהליך נמשך יותר מהצפוי. נסה שוב או חבר את העמוד ידנית באמצעות טוקן.'
+            : 'חלון ההתחברות נסגר לפני סיום התהליך. נסה שוב.',
+        });
+        void probe(false).catch(() => undefined);
+      }
+    }, 1000);
+    return () => window.clearInterval(poll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connecting]);
+
 
   // Receive the OAuth code from the popup and exchange it server-side.
   useEffect(() => {
