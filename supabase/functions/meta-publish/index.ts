@@ -10,7 +10,7 @@
 // public.messenger_page_bindings. Publishing never discovers or restores one.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isBlockedPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
+import { isBlockedPage } from "../_shared/metaPages.ts";
 
 const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
@@ -65,7 +65,7 @@ async function resolveOwner(req: Request, body: any, db: SupabaseClient): Promis
 type ResolvedPage = { pageId: string; pageName: string | null; token: string };
 
 async function cachePage(db: SupabaseClient, ownerId: string | null, page: ResolvedPage) {
-  if (!ownerId || page.pageId !== PRIMARY_PAGE_ID || isBlockedPage({ id: page.pageId, name: page.pageName })) return;
+  if (!ownerId || isBlockedPage({ id: page.pageId })) return;
   try {
     await db.from("messenger_page_bindings").upsert(
       {
@@ -93,7 +93,7 @@ async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<
     const row: any = data;
     // A page the broker de-selected in the connections screen is never a target.
     if (row?.is_selected === false) return null;
-    if (String(row?.page_id ?? '') === PRIMARY_PAGE_ID && row?.page_access_token && !isBlockedPage({ id: row.page_id, name: row.page_name })) {
+    if (row?.page_id && row?.page_access_token && !isBlockedPage({ id: row.page_id })) {
       return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
     }
   }
@@ -109,7 +109,7 @@ async function candidateTokens(db: SupabaseClient, ownerId: string | null): Prom
   };
   try {
     if (!ownerId) return out;
-    const q = db.from("messenger_page_bindings").select("page_access_token").eq("owner_id", ownerId).eq("page_id", PRIMARY_PAGE_ID).limit(1);
+    const q = db.from("messenger_page_bindings").select("page_access_token").eq("owner_id", ownerId).order("updated_at", { ascending: false }).limit(1);
     const { data } = await q;
     for (const r of (data ?? []) as any[]) push(r?.page_access_token);
   } catch { /* ignore */ }

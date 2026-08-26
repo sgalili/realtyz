@@ -91,10 +91,10 @@ function pageAvatar(pageId: string): string {
   return `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/picture?type=normal`;
 }
 
-function isInvalidPublishingIdentity(pageId: unknown, pageName: unknown): boolean {
+/** Any Page with a valid numeric id is an acceptable publishing identity. */
+function isInvalidPublishingIdentity(pageId: unknown, _pageName?: unknown): boolean {
   const id = String(pageId ?? "").trim();
-  const name = String(pageName ?? "").trim();
-  return id !== PRIMARY_PAGE_ID || isBlockedPage({ id, name });
+  return !id || isBlockedPage({ id });
 }
 
 /** Remove every credential that could resurrect a rejected Page binding. */
@@ -213,21 +213,7 @@ Deno.serve(async (req) => {
 
       const row = await readBinding();
 
-      // Enforce the configured business Page as the sole publishing identity.
-      if (row?.page_id && String(row.page_id) !== PRIMARY_PAGE_ID) {
-        await purgeFacebookState(admin, ownerId);
-        return json({ connected: false, needs_reconnect: true, never_connected: false, page: null,
-          error: `יש להתחבר מחדש ולאשר גישה לעמוד ${PRIMARY_PAGE_ID}.` });
-      }
-
-      // A cached blocked asset ("Employee") is not a publishing identity.
-      // Never auto-create a missing binding: an explicit disconnect must stay
-      // disconnected until the user starts OAuth/manual connection again.
-      if (row?.page_id && isBlockedPage({ id: row.page_id, name: row.page_name })) {
-        await purgeFacebookState(admin, ownerId);
-        return json({ connected: false, needs_reconnect: true, never_connected: false, page: null,
-          error: `החיבור הנוכחי אינו עמוד הפרסום (${PRIMARY_PAGE_ID}). הנתונים נמחקו ויש להתחבר מחדש.` });
-      }
+      // Any bound Page is accepted; never auto-create a missing binding.
 
       if (!row?.page_id) {
         return json({ connected: false, needs_reconnect: false, never_connected: true, page: null, error: null });
@@ -286,19 +272,6 @@ Deno.serve(async (req) => {
         .maybeSingle();
       const row: any = data;
 
-      if (row?.page_id && String(row.page_id) !== PRIMARY_PAGE_ID) {
-        await purgeFacebookState(admin, ownerId);
-        return json({ connected: false, page: null, needs_reconnect: true,
-          error: `יש להתחבר מחדש ולאשר גישה לעמוד ${PRIMARY_PAGE_ID}.` });
-      }
-
-      // Self-heal a cached binding that points at a blocked asset ("Employee"):
-      // never report it as the connected publishing identity.
-      if (row?.page_id && isBlockedPage({ id: row.page_id, name: row.page_name })) {
-        await purgeFacebookState(admin, ownerId);
-        return json({ connected: false, page: null, needs_reconnect: true,
-          error: "זהות Facebook לא תקינה נמחקה. יש להתחבר מחדש." });
-      }
 
       if (!row?.page_id) {
         return json({ connected: false, page: null, needs_reconnect: false });
@@ -346,11 +319,7 @@ Deno.serve(async (req) => {
       const pageId = String(body?.page_id ?? "").trim();
       const token = String(body?.page_access_token ?? "").trim();
       if (!/^\d{5,}$/.test(pageId)) return json({ error: "מזהה עמוד (Page ID) לא תקין." }, 400);
-      if (pageId !== PRIMARY_PAGE_ID) return json({ error: `יש להזין את מזהה עמוד העסק ${PRIMARY_PAGE_ID}.` }, 400);
       if (token.length < 40) return json({ error: "טוקן העמוד קצר מדי או שגוי." }, 400);
-      if (isBlockedPage({ id: pageId })) {
-        return json({ error: `זהו נכס עסקי ולא עמוד פרסום. יש להזין את מזהה עמוד העסק (${PRIMARY_PAGE_ID}).` }, 400);
-      }
 
       const verify = await graph(
         `/${pageId}?fields=name,picture.width(160).height(160),instagram_business_account{id,username}&access_token=${encodeURIComponent(token)}`,
@@ -541,9 +510,10 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Never bind a blocked business asset ("Employee") as the publishing page.
       const selectable = pages.filter((p) => !isBlockedPage(p) && p?.access_token);
-      let chosen = pages.find((p) => String(p?.id) === PRIMARY_PAGE_ID && p?.access_token);
+      let chosen = PRIMARY_PAGE_ID
+        ? pages.find((p) => String(p?.id) === PRIMARY_PAGE_ID && p?.access_token)
+        : undefined;
       // Automatic selection failed: keep the (already persisted) user token and
       // let the UI show a picker instead of aborting the whole connection.
       if (!chosen && selectable.length === 1) chosen = selectable[0];
@@ -558,10 +528,6 @@ Deno.serve(async (req) => {
           message: `לא הצלחנו לבחור עמוד אוטומטית. בחר את עמוד הפרסום מתוך הרשימה.`,
           pages: selectable.map((p) => ({ id: String(p.id), name: p.name ?? null, picture: p?.picture?.data?.url ?? null })),
         });
-      }
-      if (isBlockedPage({ id: String(chosen.id), name: String(chosen.name ?? "") })) {
-        await purgeFacebookState(admin, ownerId);
-        return json({ error: "Meta החזירה זהות משתמש או Employee במקום עמוד עסקי. החיבור נדחה והנתונים נמחקו." }, 400);
       }
       // One page per workspace: drop any previous binding, then upsert on page_id.
       await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
@@ -658,9 +624,6 @@ Deno.serve(async (req) => {
 
       if (!target?.id || !target?.token) {
         return json({ ok: false, error: "חסרים מזהה עמוד או טוקן עמוד.", stage: "select_page" }, 200);
-      }
-      if (isBlockedPage({ id: target.id, name: target.name ?? "" })) {
-        return json({ ok: false, error: "העמוד שנבחר אינו עמוד עסקי חוקי.", stage: "select_page" }, 200);
       }
 
       try {
