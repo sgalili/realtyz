@@ -7,7 +7,20 @@
 
 /** The broker's primary business Page (override with META_PRIMARY_PAGE_ID). */
 export const PRIMARY_PAGE_ID =
-  (Deno.env.get("META_PRIMARY_PAGE_ID") || "729806313557785").trim();
+  (Deno.env.get("META_PRIMARY_PAGE_ID") || "61580625810292").trim();
+
+/**
+ * Every Page id that belongs to the broker, best-first. The primary id is the
+ * publishing identity; the rest stay preferred over any other asset so an
+ * older/renamed Page still beats a business "Employee" asset.
+ */
+export const KNOWN_PAGE_IDS = [
+  PRIMARY_PAGE_ID,
+  ...(Deno.env.get("META_KNOWN_PAGE_IDS") || "61580625810292,729806313557785")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+].filter((id, i, a) => a.indexOf(id) === i);
 
 /** Assets that are never valid publishing targets. */
 const BLOCKED_PAGE_IDS = new Set(
@@ -44,6 +57,7 @@ function score(p: MetaAccount): number {
   const name = String((p as any).name ?? "");
   let s = 0;
   if (id === PRIMARY_PAGE_ID) s += 1000;
+  else if (KNOWN_PAGE_IDS.includes(id)) s += 500;
   if (PREFERRED_NAME.test(name)) s += 200;
   if ((p as any).access_token) s += 50;
   const tasks = Array.isArray((p as any).tasks) ? (p as any).tasks.map(String) : [];
