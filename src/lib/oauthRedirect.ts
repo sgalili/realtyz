@@ -215,3 +215,26 @@ export function describeOAuthFailure(message?: string | null): string {
   }
   return raw || 'החיבור לפייסבוק נכשל.';
 }
+
+/** True when a provider/message failure looks like a redirect-URI whitelist refusal. */
+export function isRedirectUriFailure(message?: string | null): boolean {
+  return /blocked|redirect_uri|redirect uri|not allowed|url חסומה/i.test(String(message ?? ''));
+}
+
+/**
+ * Hebrew, copy-paste ready instructions naming the exact URI that must be
+ * whitelisted in the Meta Developer Console.
+ */
+export function metaConsoleSetupSteps(): { title: string; uri: string; steps: string[]; allUris: string[] } {
+  return {
+    title: 'הוסף את כתובת החזרה הבאה באפליקציית Meta',
+    uri: oauthRedirectUri(),
+    allUris: approvedRedirectUris(),
+    steps: [
+      'היכנס ל‑developers.facebook.com ובחר את האפליקציה של Realtyz.',
+      'פתח Facebook Login ← Settings.',
+      'הדבק את הכתובת המדויקת בשדה Valid OAuth Redirect URIs (בלי לוכסן בסוף).',
+      'שמור את השינויים (Save Changes) ונסה שוב להתחבר.',
+    ],
+  };
+}
