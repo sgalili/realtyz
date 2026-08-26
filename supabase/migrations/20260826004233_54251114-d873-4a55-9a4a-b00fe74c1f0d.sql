@@ -1,0 +1,1 @@
+ALTER TABLE public.messenger_page_bindings ADD COLUMN IF NOT EXISTS page_avatar_url text;

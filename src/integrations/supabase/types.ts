@@ -3249,6 +3249,7 @@ export type Database = {
           id: string
           owner_id: string
           page_access_token: string
+          page_avatar_url: string | null
           page_id: string
           page_name: string | null
           updated_at: string
@@ -3258,6 +3259,7 @@ export type Database = {
           id?: string
           owner_id: string
           page_access_token: string
+          page_avatar_url?: string | null
           page_id: string
           page_name?: string | null
           updated_at?: string
@@ -3267,6 +3269,7 @@ export type Database = {
           id?: string
           owner_id?: string
           page_access_token?: string
+          page_avatar_url?: string | null
           page_id?: string
           page_name?: string | null
           updated_at?: string
