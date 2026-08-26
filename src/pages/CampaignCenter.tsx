@@ -2791,9 +2791,8 @@ type ResolvedMetaPage = { pageId: string | null; pageName: string | null; instag
 
 /** Assets that must never be shown or used as the publishing identity. */
 const BLOCKED_FB_PAGE_IDS = new Set<string>();
-const BLOCKED_FB_NAME = /employee|עובד/i;
-const isBlockedFbPage = (id?: string | null, name?: string | null) =>
-  (!!id && BLOCKED_FB_PAGE_IDS.has(String(id))) || (!!name && BLOCKED_FB_NAME.test(name));
+const isBlockedFbPage = (id?: string | null, _name?: string | null) =>
+  !!id && BLOCKED_FB_PAGE_IDS.has(String(id));
 
 const resolveMetaPageViaFunction = async (): Promise<ResolvedMetaPage> => {
   const read = async (): Promise<ResolvedMetaPage> => {
