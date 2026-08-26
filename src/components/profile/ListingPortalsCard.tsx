@@ -35,11 +35,9 @@ const PORTALS: Portal[] = [
   {
     id: 'yad2',
     label: 'יד2',
-    description: 'סנכרון נכסים ולידים מ-yad2.co.il',
+    description: 'סנכרון נכסים ולידים מ-yad2.co.il באמצעות Bright Data',
     link: 'https://www.yad2.co.il/',
     fields: [
-      { col: 'yad2_username', label: 'שם משתמש / Email', dir: 'ltr' },
-      { col: 'yad2_api_key', label: 'API Key / Token', type: 'password' },
       { col: 'brightdata_api_token', label: 'Bright Data API Token', type: 'password', dir: 'ltr', placeholder: 'bd_xxxxxxxx' },
       { col: 'brightdata_zone', label: 'Bright Data Zone / Dataset ID', dir: 'ltr', placeholder: 'yad2' },
     ],
@@ -52,8 +50,6 @@ export function ListingPortalsCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
-  const [yad2Verifying, setYad2Verifying] = useState(false);
-  const [yad2Status, setYad2Status] = useState<'idle' | 'pending' | 'verified' | 'failed'>('idle');
   const [homelyHasPassword, setHomelyHasPassword] = useState(false);
   const [homelyStatus, setHomelyStatus] = useState<string>('not_configured');
   const [shown, setShown] = useState<Record<string, boolean>>({});
@@ -65,7 +61,18 @@ export function ListingPortalsCard() {
     try {
       const { data, error } = await supabase.functions.invoke('brightdata-balance', { body: {} });
       if (error) throw error;
-      setBdBalance(data as BrightDataBalance);
+      const payload = data as BrightDataBalance;
+      setBdBalance(payload);
+      // Auto-fill the Bright Data fields with the active project credentials
+      // (token stays masked — the real value lives server-side).
+      setValues((s) => {
+        const next = { ...s };
+        if (!(next.brightdata_zone ?? '').trim() && payload?.zone) next.brightdata_zone = payload.zone;
+        if (!(next.brightdata_api_token ?? '').trim() && payload?.token_masked) {
+          next.brightdata_api_token = payload.token_masked;
+        }
+        return next;
+      });
     } catch (e: any) {
       setBdBalance({ ok: false, message: e?.message ?? 'שליפת היתרה נכשלה' });
     } finally {
@@ -83,7 +90,7 @@ export function ListingPortalsCard() {
         .eq('user_id', user.id)
         .maybeSingle();
       const v: Record<string, string> = {};
-      ['yad2_username', 'yad2_api_key', 'homely_api_key', 'brightdata_api_token', 'brightdata_zone'].forEach((c) => {
+      ['homely_api_key', 'brightdata_api_token', 'brightdata_zone'].forEach((c) => {
         v[c] = (keys as any)?.[c] ?? '';
       });
 
@@ -179,34 +186,6 @@ export function ListingPortalsCard() {
     }
   };
 
-  const verifyYad2 = async () => {
-    const email = (values.yad2_username ?? '').trim();
-    const token = (values.yad2_api_key ?? '').trim();
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if (!emailOk) { toast.error('יש להזין כתובת Email תקינה של Yad2'); return; }
-    if (!token) { toast.error('יש להזין API Token של Yad2'); return; }
-    setYad2Verifying(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('yad2-verify-login', { body: {} });
-      if (error) throw error;
-      const status = (data as any)?.status;
-      if (status === 'verified') {
-        setYad2Status('verified');
-        toast.success('החיבור ל-Yad2 בוצע בהצלחה!');
-      } else if (status === 'pending' || token === 'test_pending') {
-        setYad2Status('pending');
-        toast.warning('החיבור בהמתנה לאישור יד2. נתוני הרצליה ורמת השרון יימשכו אוטומטית עם הזנת הטוקן הרשמי.');
-      } else {
-        setYad2Status('failed');
-        toast.error((data as any)?.note ?? 'שגיאה באימות מול יד2');
-      }
-    } catch (e: any) {
-      setYad2Status('failed');
-      toast.error(e?.message ?? 'שגיאה באימות מול יד2');
-    } finally {
-      setYad2Verifying(false);
-    }
-  };
 
 
 
@@ -216,7 +195,12 @@ export function ListingPortalsCard() {
     setSaving(p.id);
     try {
       const patch: Record<string, any> = { user_id: user.id, updated_at: new Date().toISOString() };
-      p.fields.forEach((f) => { patch[f.col] = (values[f.col] ?? '').trim() || null; });
+      p.fields.forEach((f) => {
+        const raw = (values[f.col] ?? '').trim();
+        // Never persist the masked project token placeholder over the real value.
+        if (f.col === 'brightdata_api_token' && raw.includes('••')) return;
+        patch[f.col] = raw || null;
+      });
       const { error } = await supabase
         .from('user_api_keys')
         .upsert(patch as any, { onConflict: 'user_id' });
@@ -256,12 +240,6 @@ export function ListingPortalsCard() {
                   <div className="flex items-center gap-2 justify-end">
                     {isHomely && homelyStatus === 'ok' && (
                       <Badge variant="outline" className="text-emerald-700 border-emerald-300">מאומת</Badge>
-                    )}
-                    {p.id === 'yad2' && yad2Status === 'verified' && (
-                      <Badge variant="outline" className="text-emerald-700 border-emerald-300">מאומת</Badge>
-                    )}
-                    {p.id === 'yad2' && yad2Status === 'pending' && (
-                      <Badge variant="outline" className="text-amber-700 border-amber-300">ממתין לטוקן</Badge>
                     )}
                     {configured && <Badge variant="outline" className="text-emerald-700 border-emerald-300">מחובר</Badge>}
                     <span className="font-semibold">{p.label}</span>
@@ -324,22 +302,6 @@ export function ListingPortalsCard() {
                   <Button size="sm" variant="outline" onClick={verifyHomely} disabled={verifying || !(values.homely_agency ?? '').trim()} className="gap-2">
                     {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                     {verifying ? 'בודק חיבור…' : 'בדיקת התחברות'}
-                  </Button>
-                )}
-                {p.id === 'yad2' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={verifyYad2}
-                    disabled={
-                      yad2Verifying ||
-                      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((values.yad2_username ?? '').trim()) ||
-                      !(values.yad2_api_key ?? '').trim()
-                    }
-                    className="gap-2"
-                  >
-                    {yad2Verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                    {yad2Verifying ? 'בודק חיבור…' : 'בדיקת התחברות'}
                   </Button>
                 )}
 

@@ -35,9 +35,20 @@ Deno.serve(async (req) => {
     token = (keys?.brightdata_api_token ?? '').trim();
     zone = (keys?.brightdata_zone ?? '').trim();
 
-    if (!token) token = (Deno.env.get('BRIGHTDATA_API_TOKEN') ?? '').trim();
-    if (!zone) zone = (Deno.env.get('BRIGHTDATA_ZONE') ?? '').trim();
-    if (!token) return json({ ok: false, error: 'missing_token', message: 'Bright Data API token is not configured' }, 400);
+    let tokenSource: 'user' | 'project' = 'user';
+    if (!token) {
+      token = (Deno.env.get('BRIGHTDATA_API_TOKEN') ?? '').trim();
+      if (token) tokenSource = 'project';
+    }
+    if (!zone) {
+      zone = (Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'yad2').trim();
+    }
+    // Masked hint so the UI can show that a project-level token is active
+    // without ever exposing the secret value.
+    const maskedToken = token ? `${token.slice(0, 4)}••••${token.slice(-4)}` : '';
+    if (!token) {
+      return json({ ok: false, error: 'missing_token', zone, token_source: null, message: 'Bright Data API token is not configured' }, 200);
+    }
 
     const headers = { Authorization: `Bearer ${token}` };
 
@@ -82,6 +93,8 @@ Deno.serve(async (req) => {
       available: balance - pendingCosts,
       currency: 'USD',
       zone: zone || null,
+      token_source: tokenSource,
+      token_masked: maskedToken,
       zone_status: zoneStatus,
       fetched_at: new Date().toISOString(),
     });
