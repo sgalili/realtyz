@@ -30,11 +30,13 @@ export interface LeadDraft {
   budget_max: number | null;
   rooms: number | null;
   requirements: string | null;
+  /** "male" | "female" when the text or the first name makes it unambiguous. */
+  gender: string | null;
 }
 
 export const EMPTY_DRAFT: LeadDraft = {
   full_name: null, phone: null, email: null, city: null, neighborhood: null,
-  deal_type: null, budget_max: null, rooms: null, requirements: null,
+  deal_type: null, budget_max: null, rooms: null, requirements: null, gender: null,
 };
 
 /** Normalize any Israeli phone shape to 972XXXXXXXXX, or null when invalid. */
@@ -286,11 +288,54 @@ export function extractEmailLoose(text: string | null | undefined): string | nul
   return String(text ?? "").match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
 }
 
+
+/** Common Israeli female first names that do not end with a female suffix. */
+const FEMALE_NAMES = new Set([
+  "רות", "אסתר", "מרים", "יעל", "תמר", "נועה", "שיר", "רבקה", "לאה", "חן",
+  "אביגיל", "הדס", "עדן", "רחל", "שרון", "דנה", "מיכל", "אור", "רונית", "אפרת",
+  "טל", "גל", "ליאור", "שני", "סיגל", "מירב", "ענת", "עינת", "הילה", "נטע",
+]);
+
+/** Common Israeli male first names (including ones ending in a vowel). */
+const MALE_NAMES = new Set([
+  "משה", "יוסי", "יוסף", "דוד", "אבי", "אורי", "יונתן", "איתי", "איתן", "עמית",
+  "נועם", "ניר", "עידו", "עידן", "רועי", "רן", "גיא", "תומר", "שמואל", "יעקב",
+  "אליהו", "חיים", "יהודה", "מאיר", "שלמה", "אהרון", "ישראל", "אלון", "ברק",
+  "יובל", "אסף", "עומר", "שחר", "שי", "בר", "אדם", "אלי", "עמוס", "אודי", "אהוד",
+]);
+
+/**
+ * Gender from explicit conversational cues first ("לקוחה", "היא מחפשת"), then
+ * from the first name ("משה" → male, "דנה"/"מיכל" → female, female suffixes).
+ */
+export function extractGenderLoose(
+  text: string | null | undefined,
+  fullName?: string | null,
+): string | null {
+  const s = String(text ?? "");
+
+  if (/\b(לקוחה|מתעניינת|גברת|אישה|בחורה|היא\s|שלה\b|מחפשת|מעוניינת|רוצה\s+לשכור\s+היא)/u.test(s)) {
+    return "female";
+  }
+  if (/\b(לקוח\b|מתעניין\b|אדון|בחור|גבר|הוא\s|שלו\b|מחפש\b|מעוניין\b)/u.test(s)) {
+    return "male";
+  }
+
+  const first = String(fullName ?? "").trim().split(/\s+/)[0] ?? "";
+  if (!first) return null;
+  if (FEMALE_NAMES.has(first)) return "female";
+  if (MALE_NAMES.has(first)) return "male";
+  // Hebrew female suffixes (ה/ת/ית) — only when the name is not a known male one.
+  if (/(ית|ה|ת)$/u.test(first) && first.length >= 3) return "female";
+  return null;
+}
+
 /** Deterministic pass over the raw text. */
 export function extractLeadDraftRegex(text: string): LeadDraft {
   const dealType = extractDealTypeLoose(text);
+  const fullName = extractNameLoose(text);
   return {
-    full_name: extractNameLoose(text),
+    full_name: fullName,
     phone: extractPhoneLoose(text),
     email: extractEmailLoose(text),
     city: extractCityLoose(text),
@@ -299,6 +344,7 @@ export function extractLeadDraftRegex(text: string): LeadDraft {
     budget_max: extractBudgetLoose(text, dealType),
     rooms: extractRoomsLoose(text),
     requirements: null,
+    gender: extractGenderLoose(text, fullName),
   };
 }
 
