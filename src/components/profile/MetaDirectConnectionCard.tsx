@@ -369,11 +369,17 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   };
 
   const pageName =
-    health?.pageName ?? page?.page?.name ?? status?.facebook?.name ?? health?.pageId ?? status?.facebook?.id ?? null;
+    health?.pageName ?? page?.page?.name ?? status?.facebook?.name ?? binding?.pageName
+    ?? health?.pageId ?? status?.facebook?.id ?? binding?.pageId ?? null;
   const igHandle =
     health?.instagram?.username ?? page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
-  const pagePicture = page?.page?.picture ?? health?.pagePicture ?? null;
-  const isConnected = disconnectedRef.current ? false : !!health?.pageConnected;
+  const pagePicture = page?.page?.picture ?? health?.pagePicture ?? binding?.pageAvatarUrl ?? null;
+  // The stored DB binding (page id + token) renders "connected" instantly,
+  // without waiting for the Graph health probe to come back.
+  const isConnected = disconnectedRef.current
+    ? false
+    : !!health?.pageConnected || !!page?.connected || !!(binding?.hasToken && binding?.pageId);
+
 
   return (
     <Card key={connectionEpoch} ref={ref} dir="rtl" className="text-right">
