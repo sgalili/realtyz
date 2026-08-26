@@ -129,6 +129,19 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (exchangingRef.current) return;
       exchangingRef.current = true;
       setConnecting(true);
+      // Emergency safety net: whatever happens to the request, the spinner is
+      // released after 5s so the user can retry or use the manual token path.
+      const safety = window.setTimeout(() => {
+        exchangingRef.current = false;
+        setConnecting(false);
+        setLoading(false);
+        setManualOpen(true);
+        try { popupRef.current?.close(); } catch { /* ignore */ }
+        popupRef.current = null;
+        toast.error('החיבור לפייסבוק לא הושלם בזמן', {
+          description: 'נסה להתחבר שוב, או חבר את העמוד ידנית באמצעות Page Access Token.',
+        });
+      }, SPINNER_SAFETY_MS);
       try {
         if (!code) throw new Error('פייסבוק לא החזיר קוד אימות. נסה להתחבר שוב.');
         const res = await withTimeout(
@@ -136,14 +149,17 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           EXCHANGE_TIMEOUT_MS,
           'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
         );
+        window.clearTimeout(safety);
         toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
         await probe(false).catch(() => undefined);
       } catch (e: any) {
+        window.clearTimeout(safety);
         if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
         // Never leave the user trapped: offer the manual token path immediately.
         setManualOpen(true);
       } finally {
+        window.clearTimeout(safety);
         exchangingRef.current = false;
         setConnecting(false);
         setLoading(false);
@@ -153,6 +169,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     },
     [probe],
   );
+
 
   // Watchdog: release the spinner if the popup is closed/abandoned or the whole
   // round-trip stalls, so "connecting" can never hang indefinitely.
