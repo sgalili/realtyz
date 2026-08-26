@@ -6,13 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown, Copy, AlertTriangle } from 'lucide-react';
+import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 
-import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, metaConsoleSetupSteps, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
-import { META_APP_ID } from '@/lib/metaApp';
+import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 export type MetaStatus = {
@@ -72,13 +71,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [manualPageId, setManualPageId] = useState('');
   const [manualToken, setManualToken] = useState('');
   const [savingManual, setSavingManual] = useState(false);
-  // Shown when Meta refuses the redirect URI (or the popup could not open) so
-  // the exact URI to whitelist is always one copy-click away.
-  const [redirectHelp, setRedirectHelp] = useState(false);
-  // Meta App ID actually used by the backend when building the login dialog —
-  // shown in the help panel so it can be compared with the Meta Developer app
-  // where the production redirect URIs are registered.
-  const [appId, setAppId] = useState<string>(META_APP_ID);
 
   // Shared reactive connection state (same cache as the collapsed header badge
   // and the global warning banner).
@@ -189,7 +181,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         await probe(false).catch(() => undefined);
       } catch (e: any) {
         window.clearTimeout(safety);
-        toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
+        toast.error('חיבור עמוד הפייסבוק נכשל', { description: String(e?.message ?? 'החיבור לפייסבוק נכשל.') });
         // Never leave the user trapped: offer the manual token path immediately.
         setManualOpen(true);
       } finally {
@@ -235,7 +227,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       setConnecting(false);
       const reason = params.get('fb_reason');
       setManualOpen(true);
-      toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(reason) });
+      toast.error('חיבור עמוד הפייסבוק נכשל', { description: reason || 'החיבור לפייסבוק נכשל.' });
       return;
     }
 
@@ -244,7 +236,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     if (!pending) return;
     if (pending.error || !(pending.code || pending.accessToken)) {
       toast.error('חיבור עמוד הפייסבוק בוטל', {
-        description: describeOAuthFailure(pending.errorDescription || pending.error),
+        description: pending.errorDescription || pending.error || 'החיבור לפייסבוק נכשל.',
       });
       return;
     }
@@ -266,14 +258,13 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       const res = await withTimeout(
         callPageConnect<any>({
           action: 'start',
-          redirect_uri: logOAuthRedirectUri('facebook-page'),
+          redirect_uri: oauthRedirectUri(),
           return_origin: oauthReturnOrigin(),
         }),
         EXCHANGE_TIMEOUT_MS,
         'שירות החיבור לפייסבוק לא הגיב בזמן. נסה שוב.',
       );
 
-      if (res?.app_id) setAppId(String(res.app_id));
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       // Direct full-page redirect: no popup, no postMessage, no cross-origin
       // closure races. /oauth/callback finishes the exchange and returns here.
@@ -284,13 +275,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       setConnecting(false);
       setLoading(false);
 
-      // App in development mode / missing app config → guide to the manual path.
-      // No automatic redirect-URI warning: the production callback is pinned and
-      // whitelisted in the Meta app, so any auto-opened "URL Blocked" panel would
-      // be a false positive. The reference panel stays available manually.
       setManualOpen(true);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', {
-        description: `${describeOAuthFailure(e?.message)} — ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
+        description: `${String(e?.message ?? 'החיבור לפייסבוק נכשל.')} ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
       });
     }
   };
@@ -363,17 +350,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     }
   };
 
-  const redirectSetup = metaConsoleSetupSteps();
-
-  const copyUri = async (uri: string) => {
-    try {
-      await navigator.clipboard.writeText(uri);
-      toast.success('הכתובת הועתקה');
-    } catch {
-      toast.info('העתק ידנית', { description: uri });
-    }
-  };
-
   const pageName =
     health?.pageName ?? page?.page?.name ?? status?.facebook?.name ?? binding?.pageName
     ?? health?.pageId ?? status?.facebook?.id ?? binding?.pageId ?? null;
@@ -441,74 +417,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         {status && !status.connected && status.message && (
           <p className="text-xs text-destructive">{status.message}</p>
         )}
-
-        {/* Pinned Meta app identity + the exact whitelisted redirect URI */}
-        <div className="rounded-xl border">
-          <button
-            type="button"
-            onClick={() => {
-              setRedirectHelp((v) => !v);
-              // Confirm the backend uses the same pinned app (diagnostic only).
-              void callPageConnect<any>({ action: 'app_info' })
-                .then((r) => { if (r?.app_id) setAppId(String(r.app_id)); })
-                .catch(() => undefined);
-            }}
-            aria-expanded={redirectHelp}
-            className="flex w-full items-center justify-between gap-2 p-3 text-right"
-          >
-            <span className="flex items-center gap-2 text-xs font-medium">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              הגדרות Meta (App ID וכתובת חזרה)
-            </span>
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${redirectHelp ? 'rotate-180' : ''}`} />
-          </button>
-          {redirectHelp && (
-            <div className="space-y-3 border-t p-3">
-              <div className="space-y-1">
-                <p className="text-[11px] font-medium">Meta App ID בשימוש:</p>
-                <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
-                  <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{appId}</code>
-                  <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(appId)}>
-                    <Copy className="h-3.5 w-3.5" /> העתק
-                  </Button>
-                </div>
-                {appId !== META_APP_ID && (
-                  <p className="text-[11px] text-destructive">
-                    השרת מדווח על App ID שונה מהמוגדר ({META_APP_ID}).
-                  </p>
-                )}
-                <p className="text-[11px] text-muted-foreground">
-                  זו האפליקציה שבה רשומה כתובת החזרה לפרודקשן.
-                </p>
-              </div>
-
-              <p className="text-[11px] font-medium">{redirectSetup.title}:</p>
-
-              <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
-                <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{redirectSetup.uri}</code>
-                <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(redirectSetup.uri)}>
-                  <Copy className="h-3.5 w-3.5" /> העתק
-                </Button>
-              </div>
-              <ol className="list-inside list-decimal space-y-1 text-[11px] text-muted-foreground">
-                {redirectSetup.steps.map((step) => (
-                  <li key={step}>{step}</li>
-                ))}
-              </ol>
-              <div className="space-y-1">
-                <p className="text-[11px] text-muted-foreground">מומלץ להוסיף את כל הכתובות הבאות בבת אחת:</p>
-                {redirectSetup.allUris.map((uri) => (
-                  <div key={uri} className="flex items-center gap-2">
-                    <code dir="ltr" className="flex-1 truncate text-left text-[10px] text-muted-foreground">{uri}</code>
-                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2" onClick={() => copyUri(uri)}>
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* Manual token fallback for apps blocked in development/testing mode */}
         <div className="rounded-xl border">

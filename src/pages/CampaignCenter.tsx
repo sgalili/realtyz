@@ -50,7 +50,7 @@ import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampa
 import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurrentPostDialog';
 import { PostImage } from '@/components/campaigns/PostImage';
 import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/SupportRequiredDialog';
-import { logOAuthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
+import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 
 import { searchAllSources } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
@@ -5231,7 +5231,7 @@ const CampaignCenter = () => {
       const { data, error } = await supabase.functions.invoke('meta-page-connect', {
         body: {
           action: 'start',
-          redirect_uri: logOAuthRedirectUri('facebook-page'),
+          redirect_uri: oauthRedirectUri(),
           return_origin: oauthReturnOrigin(),
         },
       });

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
-import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
+import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 import { useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 
 
@@ -95,7 +95,7 @@ export const FacebookPersonalConnectCard = () => {
       qc.invalidateQueries({ queryKey: ['facebook-health'] });
       qc.invalidateQueries({ queryKey: ['custom-user-groups'] });
     } catch (e: any) {
-      toast.error('חיבור פייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
+      toast.error('חיבור פייסבוק נכשל', { description: String(e?.message ?? 'החיבור לפייסבוק נכשל.') });
     } finally {
       setConnecting(false);
     }
@@ -108,7 +108,7 @@ export const FacebookPersonalConnectCard = () => {
     if (!pending) return;
     if (pending.error || !pending.code) {
       toast.error('החיבור לפייסבוק בוטל', {
-        description: describeOAuthFailure(pending.errorDescription || pending.error),
+        description: pending.errorDescription || pending.error || 'החיבור לפייסבוק נכשל.',
       });
       return;
     }
@@ -127,7 +127,7 @@ export const FacebookPersonalConnectCard = () => {
       const res = await callFbPersonal<any>({
         action: 'start',
         basic,
-        redirect_uri: logOAuthRedirectUri('facebook-personal'),
+        redirect_uri: oauthRedirectUri(),
         return_origin: oauthReturnOrigin(),
       });
       const url = (res as any)?.auth_url;
@@ -137,7 +137,7 @@ export const FacebookPersonalConnectCard = () => {
       window.top.location.href = String(url);
     } catch (e: any) {
       setConnecting(false);
-      toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: describeOAuthFailure(e?.message) });
+      toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: String(e?.message ?? 'החיבור לפייסבוק נכשל.') });
     }
   };
 
