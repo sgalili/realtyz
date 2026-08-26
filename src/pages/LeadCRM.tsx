@@ -2066,7 +2066,8 @@ const LeadCRM = () => {
                             await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
                             toast.success('הטלפון עודכן');
                           }}
-                        />
+                         />
+                            </span>
                             {channels.map((c) => {
                               const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55'}`;
                               const aria = { 'aria-label': c.label, title: c.label } as const;
