@@ -30,11 +30,13 @@ export interface LeadDraft {
   budget_max: number | null;
   rooms: number | null;
   requirements: string | null;
+  /** "male" | "female" when the text or the first name makes it unambiguous. */
+  gender: string | null;
 }
 
 export const EMPTY_DRAFT: LeadDraft = {
   full_name: null, phone: null, email: null, city: null, neighborhood: null,
-  deal_type: null, budget_max: null, rooms: null, requirements: null,
+  deal_type: null, budget_max: null, rooms: null, requirements: null, gender: null,
 };
 
 /** Normalize any Israeli phone shape to 972XXXXXXXXX, or null when invalid. */
@@ -286,11 +288,54 @@ export function extractEmailLoose(text: string | null | undefined): string | nul
   return String(text ?? "").match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
 }
 
+
+/** Common Israeli female first names that do not end with a female suffix. */
+const FEMALE_NAMES = new Set([
+  "רות", "אסתר", "מרים", "יעל", "תמר", "נועה", "שיר", "רבקה", "לאה", "חן",
+  "אביגיל", "הדס", "עדן", "רחל", "שרון", "דנה", "מיכל", "אור", "רונית", "אפרת",
+  "טל", "גל", "ליאור", "שני", "סיגל", "מירב", "ענת", "עינת", "הילה", "נטע",
+]);
+
+/** Common Israeli male first names (including ones ending in a vowel). */
+const MALE_NAMES = new Set([
+  "משה", "יוסי", "יוסף", "דוד", "אבי", "אורי", "יונתן", "איתי", "איתן", "עמית",
+  "נועם", "ניר", "עידו", "עידן", "רועי", "רן", "גיא", "תומר", "שמואל", "יעקב",
+  "אליהו", "חיים", "יהודה", "מאיר", "שלמה", "אהרון", "ישראל", "אלון", "ברק",
+  "יובל", "אסף", "עומר", "שחר", "שי", "בר", "אדם", "אלי", "עמוס", "אודי", "אהוד",
+]);
+
+/**
+ * Gender from explicit conversational cues first ("לקוחה", "היא מחפשת"), then
+ * from the first name ("משה" → male, "דנה"/"מיכל" → female, female suffixes).
+ */
+export function extractGenderLoose(
+  text: string | null | undefined,
+  fullName?: string | null,
+): string | null {
+  const s = String(text ?? "");
+
+  if (/\b(לקוחה|מתעניינת|גברת|אישה|בחורה|היא\s|שלה\b|מחפשת|מעוניינת|רוצה\s+לשכור\s+היא)/u.test(s)) {
+    return "female";
+  }
+  if (/\b(לקוח\b|מתעניין\b|אדון|בחור|גבר|הוא\s|שלו\b|מחפש\b|מעוניין\b)/u.test(s)) {
+    return "male";
+  }
+
+  const first = String(fullName ?? "").trim().split(/\s+/)[0] ?? "";
+  if (!first) return null;
+  if (FEMALE_NAMES.has(first)) return "female";
+  if (MALE_NAMES.has(first)) return "male";
+  // Hebrew female suffixes (ה/ת/ית) — only when the name is not a known male one.
+  if (/(ית|ה|ת)$/u.test(first) && first.length >= 3) return "female";
+  return null;
+}
+
 /** Deterministic pass over the raw text. */
 export function extractLeadDraftRegex(text: string): LeadDraft {
   const dealType = extractDealTypeLoose(text);
+  const fullName = extractNameLoose(text);
   return {
-    full_name: extractNameLoose(text),
+    full_name: fullName,
     phone: extractPhoneLoose(text),
     email: extractEmailLoose(text),
     city: extractCityLoose(text),
@@ -299,6 +344,7 @@ export function extractLeadDraftRegex(text: string): LeadDraft {
     budget_max: extractBudgetLoose(text, dealType),
     rooms: extractRoomsLoose(text),
     requirements: null,
+    gender: extractGenderLoose(text, fullName),
   };
 }
 
@@ -392,6 +438,7 @@ export async function extractLeadDraftLLM(text: string): Promise<Partial<LeadDra
       budget_max: num(parsed.budget_max),
       rooms: num(parsed.rooms),
       requirements: str(parsed.requirements),
+      gender: parsed.gender === "female" ? "female" : parsed.gender === "male" ? "male" : null,
     };
   } catch (_e) {
     return null;
@@ -430,7 +477,37 @@ export async function extractLeadDraft(text: string): Promise<LeadDraft> {
     budget_max: budget,
     rooms: base.rooms ?? (llm.rooms ?? null),
     requirements: (llm.requirements ?? null) as string | null,
+    gender: base.gender ?? (llm.gender ?? null) ??
+      extractGenderLoose(text, base.full_name ?? modelName),
   };
+}
+
+
+/**
+ * Map a numeric budget to the exact CRM dropdown token so the
+ * "שכר דירה חודשי" / "תקציב מבוקש" select renders pre-selected instead of blank.
+ * Must stay in sync with the option lists in src/pages/LeadCRM.tsx.
+ */
+export function budgetRangeToken(
+  budget: number | null | undefined,
+  dealType: "sale" | "rent" | null | undefined,
+): string | null {
+  const v = Number(budget ?? 0);
+  if (!isFinite(v) || v <= 0) return null;
+  if (dealType === "rent") {
+    if (v <= 3_500) return "0-3500";
+    if (v <= 5_000) return "3500-5000";
+    if (v <= 7_000) return "5000-7000";
+    if (v <= 10_000) return "7000-10000";
+    if (v <= 15_000) return "10000-15000";
+    return "15000+";
+  }
+  if (v <= 1_500_000) return "0-1500000";
+  if (v <= 2_500_000) return "1500000-2500000";
+  if (v <= 4_000_000) return "2500000-4000000";
+  if (v <= 6_000_000) return "4000000-6000000";
+  if (v <= 10_000_000) return "6000000-10000000";
+  return "10000000+";
 }
 
 /**
@@ -489,6 +566,8 @@ export function buildLeadUpdatePatch(
   setPref("desired_city", draft.city, `עיר מבוקשת → ${draft.city}`);
   setPref("neighborhood", draft.neighborhood, `שכונה → ${draft.neighborhood}`);
   setPref("requirements", draft.requirements, "עודכנו הדרישות");
+  setPref("budget_range", budgetRangeToken(draft.budget_max, draft.deal_type ?? (existing.deal_type as any)), "");
+  setPref("gender", draft.gender, draft.gender === "female" ? "מגדר → נקבה" : "מגדר → זכר");
   if (draft.deal_type) setPref("listing_type", draft.deal_type, "");
   if (prefsTouched) patch.preferences = prefs;
 

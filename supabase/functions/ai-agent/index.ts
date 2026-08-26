@@ -29,6 +29,7 @@ import {
   extractNameLoose,
   extractNameCorrection,
   buildLeadUpdatePatch,
+  budgetRangeToken,
   formatPhoneHe,
   EMPTY_DRAFT,
   type LeadDraft,
@@ -389,7 +390,15 @@ serve(async (req) => {
 
             const preferences: Record<string, unknown> = {};
             if (dealHint) preferences.listing_type = dealHint;
-            if (budgetNum) preferences.budget_max = budgetNum;
+            if (budgetNum) {
+              preferences.budget_max = budgetNum;
+              // Pre-select the CRM budget dropdown instead of leaving it blank.
+              const token = budgetRangeToken(budgetNum, (dealHint ?? "sale") as any);
+              if (token) preferences.budget_range = token;
+            }
+            if (draft.gender) preferences.gender = draft.gender;
+            // Arrival channel ("ערוץ הגעה") so the CRM shows a real source.
+            preferences.source = preferences.source ?? "whatsapp";
             if (city) preferences.desired_city = city;
             if (draft.neighborhood) preferences.neighborhood = draft.neighborhood;
             if (draft.rooms) preferences.rooms = draft.rooms;
@@ -406,7 +415,8 @@ serve(async (req) => {
                 preferences,
                 lead_stage: "new",
                 status: "new",
-                ai_autopilot: false,
+                // New contacts start with the digital agent ON.
+                ai_autopilot: true,
               })
               .select("id, full_name, phone_number, city, deal_type, preferences")
               .single();

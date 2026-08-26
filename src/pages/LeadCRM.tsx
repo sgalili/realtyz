@@ -68,6 +68,30 @@ function isOwnerLead(lead: any): boolean {
   return false;
 }
 
+/**
+ * Map a numeric budget (preferences.budget_max) to the CRM dropdown token so a
+ * budget captured by chat/WhatsApp intake shows up pre-selected.
+ * Kept in sync with the budget option lists in the profile sheet.
+ */
+function budgetTokenFromAmount(amount: number, isRental: boolean): string {
+  const v = Number(amount ?? 0);
+  if (!isFinite(v) || v <= 0) return '';
+  if (isRental) {
+    if (v <= 3500) return '0-3500';
+    if (v <= 5000) return '3500-5000';
+    if (v <= 7000) return '5000-7000';
+    if (v <= 10000) return '7000-10000';
+    if (v <= 15000) return '10000-15000';
+    return '15000+';
+  }
+  if (v <= 1500000) return '0-1500000';
+  if (v <= 2500000) return '1500000-2500000';
+  if (v <= 4000000) return '2500000-4000000';
+  if (v <= 6000000) return '4000000-6000000';
+  if (v <= 10000000) return '6000000-10000000';
+  return '10000000+';
+}
+
 /** Hebrew display dictionary for the "ערוץ הגעה" (source) dropdown. */
 const SOURCE_LABEL_HE: Record<string, string> = {
   webtiv_stream: 'סטרים ובטיב',
@@ -1984,31 +2008,6 @@ const LeadCRM = () => {
                           toast.success('השם עודכן');
                         }}
                       />
-                      <EditableInlineText
-                        value={formatPhoneDisplay(selectedVoter.phone_number) === '-' ? '' : formatPhoneDisplay(selectedVoter.phone_number)}
-                        placeholder="הוסף טלפון"
-                        ariaLabel="ערוך טלפון"
-                        inputMode="tel"
-                        dir="ltr"
-                        className="text-sm text-muted-foreground font-normal"
-                        validate={(v) => {
-                          if (!v) return null;
-                          const digits = v.replace(/\D/g, '');
-                          if (digits.length < 9) return 'מספר טלפון לא תקין';
-                          return null;
-                        }}
-                        onSave={async (next) => {
-                          let normalized: string | null = null;
-                          if (next) {
-                            const digits = next.replace(/\D/g, '');
-                            normalized = digits.startsWith('0') ? '972' + digits.slice(1) : digits.startsWith('972') ? digits : digits;
-                          }
-                          const { error } = await supabase.from('leads').update({ phone_number: normalized }).eq('id', selectedVoter.id);
-                          if (error) throw error;
-                          await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-                          toast.success('הטלפון עודכן');
-                        }}
-                      />
                       {(() => {
                         const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
                         const email = (selectedVoter as any).email as string | undefined;
@@ -2040,7 +2039,35 @@ const LeadCRM = () => {
                                 : <Mail className="h-4 w-4" strokeWidth={1.8} />,
                           }));
                         return (
-                          <div className="flex items-center gap-1 mt-2">
+                          <div className="flex flex-wrap items-center gap-1 mt-2">
+                            {/* Phone sits inline with the action buttons, middle-aligned */}
+                            <span className="shrink-0 pe-1 leading-none">
+                        <EditableInlineText
+                          value={formatPhoneDisplay(selectedVoter.phone_number) === '-' ? '' : formatPhoneDisplay(selectedVoter.phone_number)}
+                          placeholder="הוסף טלפון"
+                          ariaLabel="ערוך טלפון"
+                          inputMode="tel"
+                          dir="ltr"
+                          className="text-sm text-muted-foreground font-normal"
+                          validate={(v) => {
+                            if (!v) return null;
+                            const digits = v.replace(/\D/g, '');
+                            if (digits.length < 9) return 'מספר טלפון לא תקין';
+                            return null;
+                          }}
+                          onSave={async (next) => {
+                            let normalized: string | null = null;
+                            if (next) {
+                              const digits = next.replace(/\D/g, '');
+                              normalized = digits.startsWith('0') ? '972' + digits.slice(1) : digits.startsWith('972') ? digits : digits;
+                            }
+                            const { error } = await supabase.from('leads').update({ phone_number: normalized }).eq('id', selectedVoter.id);
+                            if (error) throw error;
+                            await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                            toast.success('הטלפון עודכן');
+                          }}
+                         />
+                            </span>
                             {channels.map((c) => {
                               const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55'}`;
                               const aria = { 'aria-label': c.label, title: c.label } as const;
@@ -2108,8 +2135,13 @@ const LeadCRM = () => {
                   {(() => {
                     const prefs = ((selectedVoter as any).preferences ?? {}) as Record<string, any>;
                     const dealType: string = (selectedVoter as any).deal_type ?? '';
-                    const propertyType: string = prefs.property_type || prefs.listing_type || '';
-                    const budgetRange: string = prefs.budget_range || '';
+                    // Rent/sale budget captured by the AI intake lands in
+                    // preferences.budget_max — derive the dropdown token from it
+                    // so the field is never left unselected.
+                    const budgetRange: string = prefs.budget_range || budgetTokenFromAmount(
+                      Number(prefs.budget_max ?? 0),
+                      ((selectedVoter as any).deal_type ?? '') === 'rent',
+                    ) || '';
                     const source: string = prefs.source || prefs.lead_source || (selectedVoter as any).source || '';
                     const stage: string = (selectedVoter as any).lead_stage || selectedVoter.status || '';
                     const area: string = (selectedVoter as any).neighborhood || selectedVoter.city || '';
@@ -2117,11 +2149,6 @@ const LeadCRM = () => {
                     const dealTypeOpts = [
                       { v: 'sale', l: 'קנייה' }, { v: 'rent', l: 'שכירות' },
                       { v: 'investment', l: 'השקעה' }, { v: 'sell', l: 'מכירה' },
-                    ];
-                    const propertyOpts = [
-                      { v: 'apartment', l: 'דירת מגורים' }, { v: 'penthouse', l: 'פנטהאוז' },
-                      { v: 'cottage', l: "קוטג'" }, { v: 'house', l: 'בית פרטי' },
-                      { v: 'studio', l: 'סטודיו' }, { v: 'office', l: 'משרד' },
                     ];
                     // Rental leads see monthly-rent ranges (₪/month); buyers see sale-price ranges.
                     const isRental = dealType === 'rent';
@@ -2208,13 +2235,12 @@ const LeadCRM = () => {
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                           <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
-                          <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v })} />
+                          <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v, lead_source: v })} />
                           <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
                           {/* Buyer/renter preference fields — hidden entirely for property owners */}
                           {!ownerLead && (
                             <>
                               <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label={isRental ? 'שכר דירה חודשי' : 'תקציב מבוקש'} value={budgetRange} placeholder={isRental ? 'בחר טווח שכר' : 'בחר תקציב'} options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
-                              <SelectCell icon={<HomeIcon className="h-3.5 w-3.5 text-slate-700" />} label="סוג נכס מועדף" value={propertyType} placeholder="בחר נכס" options={propertyOpts} onChange={(v) => savePref({ property_type: v })} />
                               <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
                             </>
                           )}

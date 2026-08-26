@@ -14,7 +14,7 @@ import {
   Sparkles, Facebook, Instagram, Linkedin, Music2,
   User, Users as GenderIcon, Loader2,
   ChevronDown, ChevronUp, Plus, Trash2, Globe,
-  AtSign, MapPin, Building2,
+  AtSign, MapPin, Building2, Phone as PhoneIcon,
 } from 'lucide-react';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import LeadEnrichmentDialog from '@/components/leads/LeadEnrichmentDialog';
@@ -75,6 +75,7 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   const [age, setAge] = useState<string>(prefs.age ? String(prefs.age) : '');
   const [gender, setGender] = useState<string>(prefs.gender ?? '');
   const [email, setEmail] = useState<string>(lead.email ?? '');
+  const [phone, setPhone] = useState<string>(lead.phone_number ?? '');
   const [city, setCity] = useState<string>(lead.city ?? '');
   const [address, setAddress] = useState<string>(lead.address ?? '');
   const [savingField, setSavingField] = useState<string | null>(null);
@@ -89,9 +90,10 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
     setAge(prefs.age ? String(prefs.age) : '');
     setGender(prefs.gender ?? '');
     setEmail(lead.email ?? '');
+    setPhone(lead.phone_number ?? '');
     setCity(lead.city ?? '');
     setAddress(lead.address ?? '');
-  }, [lead.id, prefs.age, prefs.gender, lead.email, lead.city, lead.address]);
+  }, [lead.id, prefs.age, prefs.gender, lead.email, lead.phone_number, lead.city, lead.address]);
 
   // Re-sync socials whenever the parent lead's preferences change (e.g. after
   // the enrichment dialog writes new social profiles to the DB), so the panel
@@ -155,29 +157,58 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   return (
     <div className="space-y-3">
 
-      {/* Contact & Location — email full-width, city + address side-by-side */}
+      {/* Contact & Location — phone sits in the same row, right before email */}
       <div>
 
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <AtSign className="h-3.5 w-3.5 text-slate-700" /> דוא״ל
-              {savingField === 'email' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-            </Label>
-            <Input
-              type="email"
-              value={email}
-              placeholder=""
-              onChange={(e) => setEmail(e.target.value)}
-              onBlur={() => {
-                const v = email.trim();
-                if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { toast.error('דוא״ל לא תקין'); return; }
-                if ((v || null) !== (lead.email ?? null)) persist({ col: { email: v || null } }, 'email');
-              }}
-              className="h-8 text-sm"
-              dir="ltr"
-              maxLength={255}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <PhoneIcon className="h-3.5 w-3.5 text-slate-700" /> טלפון
+                {savingField === 'phone' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              </Label>
+              <Input
+                type="tel"
+                inputMode="tel"
+                value={phone}
+                placeholder=""
+                onChange={(e) => setPhone(e.target.value)}
+                onBlur={() => {
+                  const digits = phone.replace(/\D/g, '');
+                  if (digits && digits.length < 9) { toast.error('מספר טלפון לא תקין'); return; }
+                  // Stored canonically as 9725XXXXXXXX.
+                  const normalized = digits
+                    ? (digits.startsWith('0') ? '972' + digits.slice(1) : digits)
+                    : null;
+                  if (normalized !== (lead.phone_number ?? null)) {
+                    persist({ col: { phone_number: normalized } }, 'phone');
+                  }
+                }}
+                className="h-8 text-sm"
+                dir="ltr"
+                maxLength={20}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <AtSign className="h-3.5 w-3.5 text-slate-700" /> דוא״ל
+                {savingField === 'email' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              </Label>
+              <Input
+                type="email"
+                value={email}
+                placeholder=""
+                onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => {
+                  const v = email.trim();
+                  if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { toast.error('דוא״ל לא תקין'); return; }
+                  if ((v || null) !== (lead.email ?? null)) persist({ col: { email: v || null } }, 'email');
+                }}
+                className="h-8 text-sm"
+                dir="ltr"
+                maxLength={255}
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
