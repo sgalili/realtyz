@@ -127,7 +127,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       else toast.error(s?.message || 'דף הפייסבוק אינו מחובר');
     }
     setLoading(false);
-  }, [onStatus, refreshHealth]);
+  }, [onStatus, refreshHealth, refreshBinding]);
 
 
   useEffect(() => { probe(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
