@@ -409,15 +409,14 @@ const Dashboard = () => {
 
 
       {/* Market Alerts */}
+      <CollapsibleSection
+        id="market-alerts"
+        title="התראות שוק"
+        description="אירועים שדורשים את תשומת הלב שלך כעת"
+        icon={<AlertCircle className="h-4 w-4 text-warning" />}
+      >
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-warning" />
-            התראות שוק
-          </CardTitle>
-          <CardDescription>אירועים שדורשים את תשומת הלב שלך כעת</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {!marketAlerts ? (
             <Skeleton className="h-24 w-full" />
           ) : marketAlerts.length === 0 ? (
@@ -448,6 +447,8 @@ const Dashboard = () => {
           )}
         </CardContent>
       </Card>
+      </CollapsibleSection>
+
     </div>
   );
 };
