@@ -47,6 +47,89 @@ async function graph(path: string) {
   return { ok: res.ok, payload };
 }
 
+/** Deterministic Page avatar (works even when the field probe is rate limited). */
+function pageAvatar(pageId: string): string {
+  return `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/picture?type=normal`;
+}
+
+/**
+ * Real PAGE identity — never /me (which returns the personal user, e.g.
+ * "Employee"). Reads /{page_id}?fields=id,name,picture with the stored Page
+ * token, and if that token is not page-scoped, locates the page inside
+ * /{user}/accounts to recover both the true name and a real Page token.
+ */
+async function fetchPageIdentity(
+  admin: any,
+  ownerId: string,
+  pageId: string,
+  storedToken: string | null,
+): Promise<{
+  ok: boolean;
+  name: string | null;
+  picture: string | null;
+  instagram: { id: string; username: string | null } | null;
+  token: string | null;
+  errorPayload: any;
+}> {
+  const fields = "id,name,picture.width(160).height(160),instagram_business_account{id,username}";
+  const tokens: string[] = [];
+  if (storedToken && storedToken.trim().length > 30) tokens.push(storedToken.trim());
+
+  let lastPayload: any = null;
+  for (const token of tokens) {
+    const r = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(token)}`);
+    lastPayload = r.payload;
+    if (r.ok && r.payload?.id) {
+      const ig = r.payload?.instagram_business_account;
+      return {
+        ok: true,
+        name: r.payload?.name ?? null,
+        picture: r.payload?.picture?.data?.url ?? pageAvatar(pageId),
+        instagram: ig?.id ? { id: String(ig.id), username: ig.username ?? null } : null,
+        token,
+        errorPayload: null,
+      };
+    }
+  }
+
+  // Page-scoped recovery: walk every workspace token's /me/accounts list and
+  // pull the entry whose id matches the bound page.
+  for (const token of await candidateTokens(admin, ownerId)) {
+    const r = await graph(
+      `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&limit=100&access_token=${
+        encodeURIComponent(token)
+      }`,
+    );
+    const pages: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
+    const hit = pages.find((p) => String(p?.id) === String(pageId));
+    if (!hit?.access_token) continue;
+
+    await admin
+      .from("messenger_page_bindings")
+      .update({
+        page_name: hit.name ?? null,
+        page_access_token: String(hit.access_token),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("owner_id", ownerId)
+      .eq("page_id", String(pageId));
+
+    const probe = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(String(hit.access_token))}`);
+    const ig = probe.ok ? probe.payload?.instagram_business_account : null;
+    return {
+      ok: true,
+      name: probe.payload?.name ?? hit.name ?? null,
+      picture: probe.payload?.picture?.data?.url ?? hit?.picture?.data?.url ?? pageAvatar(pageId),
+      instagram: ig?.id ? { id: String(ig.id), username: ig.username ?? null } : null,
+      token: String(hit.access_token),
+      errorPayload: null,
+    };
+  }
+
+  return { ok: false, name: null, picture: null, instagram: null, token: null, errorPayload: lastPayload };
+}
+
+
 /**
  * Every Meta token the workspace holds, best-first. A blocked/"Employee" page
  * token cannot list /me/accounts, so the personal user token is what actually
@@ -188,44 +271,41 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Always read the REAL page name from Meta so the UI never shows a stale
-      // or generic label, and refresh the stored name when it drifted.
-      const probe = await graph(
-        `/${row.page_id}?fields=id,name,picture.width(160).height(160),instagram_business_account{id,username}&access_token=${
-          encodeURIComponent(row.page_access_token ?? "")
-        }`,
-      );
-      const ok = probe.ok && !!probe.payload?.id;
+      // A stored page id + page token IS a connection: report connected first,
+      // then enrich with the REAL page name/picture read from /{page_id}
+      // (never /me, which returns the personal "Employee" profile).
+      const hasToken = String(row.page_access_token ?? "").trim().length > 30;
+      const identity = await fetchPageIdentity(admin, ownerId, String(row.page_id), row.page_access_token ?? null);
+      const ok = identity.ok;
       // Only a genuine token failure (revoked / expired / permissions) may drop
       // the stored binding to "needs reconnect". Rate limits, transient 5xx and
       // network hiccups keep the persisted connection intact.
-      const errCode = Number(probe.payload?.error?.code ?? 0);
-      const authFailure = !ok && [102, 190, 458, 459, 463, 464, 467, 492].includes(errCode);
-      const liveName: string | null = ok ? (probe.payload?.name ?? null) : null;
-      if (ok && liveName && liveName !== row.page_name) {
+      const errCode = Number(identity.errorPayload?.error?.code ?? 0);
+      const authFailure = !ok && hasToken && [190, 458, 459, 463, 464, 467, 492].includes(errCode);
+      if (ok && identity.name && identity.name !== row.page_name) {
         await admin
           .from("messenger_page_bindings")
-          .update({ page_name: liveName, updated_at: new Date().toISOString() })
+          .update({ page_name: identity.name, updated_at: new Date().toISOString() })
           .eq("owner_id", ownerId)
           .eq("page_id", String(row.page_id));
       }
-      const ig = ok ? probe.payload?.instagram_business_account : null;
       return json({
-        connected: ok || !authFailure,
+        connected: hasToken && !authFailure,
         stale: !ok && !authFailure,
         needs_reconnect: authFailure,
         never_connected: false,
         page: {
           id: String(row.page_id),
-          name: liveName ?? row.page_name ?? null,
-          picture: ok ? (probe.payload?.picture?.data?.url ?? null) : null,
+          name: identity.name ?? row.page_name ?? null,
+          picture: identity.picture ?? pageAvatar(String(row.page_id)),
           connected_at: row.updated_at ?? null,
         },
-        instagram: ig?.id ? { id: String(ig.id), username: ig.username ?? null } : null,
+        instagram: identity.instagram,
         error: authFailure
-          ? humanizeGraphError(probe.payload, "תוקף החיבור לפייסבוק פג. יש להתחבר מחדש.")
+          ? humanizeGraphError(identity.errorPayload, "תוקף החיבור לפייסבוק פג. יש להתחבר מחדש.")
           : null,
       });
+
 
     }
 
@@ -268,39 +348,25 @@ Deno.serve(async (req) => {
       if (!row?.page_id) return json({ connected: false, page: null });
 
 
-      let picture: string | null = null;
-      let liveName: string | null = null;
-      let instagram: { id: string; username: string | null } | null = null;
-      if (row.page_access_token) {
-        const r = await graph(
-          `/${row.page_id}?fields=name,picture.width(160).height(160),instagram_business_account{id,username}&access_token=${
-            encodeURIComponent(row.page_access_token)
-          }`,
-        );
-        if (r.ok) {
-          picture = r.payload?.picture?.data?.url ?? null;
-          liveName = r.payload?.name ?? null;
-          const ig = r.payload?.instagram_business_account;
-          if (ig?.id) instagram = { id: String(ig.id), username: ig.username ?? null };
-          if (liveName && liveName !== row.page_name) {
-            await admin
-              .from("messenger_page_bindings")
-              .update({ page_name: liveName, updated_at: new Date().toISOString() })
-              .eq("owner_id", ownerId)
-              .eq("page_id", String(row.page_id));
-          }
-        }
+      const ident = await fetchPageIdentity(admin, ownerId, String(row.page_id), row.page_access_token ?? null);
+      if (ident.ok && ident.name && ident.name !== row.page_name) {
+        await admin
+          .from("messenger_page_bindings")
+          .update({ page_name: ident.name, updated_at: new Date().toISOString() })
+          .eq("owner_id", ownerId)
+          .eq("page_id", String(row.page_id));
       }
       return json({
         connected: true,
         page: {
           id: String(row.page_id),
-          name: liveName ?? row.page_name ?? null,
-          picture,
+          name: ident.name ?? row.page_name ?? null,
+          picture: ident.picture ?? pageAvatar(String(row.page_id)),
           connected_at: row.updated_at ?? null,
         },
-        instagram,
+        instagram: ident.instagram,
       });
+
 
     }
 

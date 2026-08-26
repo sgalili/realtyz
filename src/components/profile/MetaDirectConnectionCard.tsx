@@ -250,9 +250,10 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
                 מחובר ומוכן לפרסום
               </div>
             </div>
-            <Badge className="gap-1 rounded-full border border-emerald-400/40 bg-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm shadow-emerald-500/30 hover:bg-emerald-500">
-              <CheckCircle2 className="h-3.5 w-3.5" /> פעיל
+            <Badge className="gap-1 rounded-full border-0 bg-emerald-500 px-3 py-1 text-[12px] font-bold text-white shadow-md shadow-emerald-500/40 ring-2 ring-emerald-500/20 hover:bg-emerald-600">
+              <CheckCircle2 className="h-4 w-4" strokeWidth={2.75} /> פעיל
             </Badge>
+
 
           </div>
         ) : (

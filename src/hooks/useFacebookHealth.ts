@@ -76,14 +76,16 @@ export function useFacebookHealth() {
       if (!page && !personal && cached) return cached;
 
       const hasBinding = !!page?.page?.id;
-      const pageOk = !!page?.connected;
+      // A stored, non-expired page binding IS a live connection — the banner
+      // must disappear the moment the DB holds a valid page id + token.
+      const pageOk = !!page?.connected || (hasBinding && page?.needs_reconnect !== true);
       const personalBroken = personal?.connected === true && personal?.token_valid === false;
 
-      // Only warn about a BROKEN connection: a verified page token must never
-      // raise the banner, and "never connected" is an empty state, not a fault.
+      // Only warn about a BROKEN page connection: a verified page token must
+      // never raise the banner, and "never connected" is an empty state.
       const needsReconnect =
-        (hasBinding && !pageOk && page?.needs_reconnect === true) ||
-        (!pageOk && personalBroken);
+        (hasBinding && page?.needs_reconnect === true) ||
+        (!hasBinding && !pageOk && personalBroken);
 
       const value: FacebookHealth = {
         pageConnected: pageOk,
@@ -91,7 +93,7 @@ export function useFacebookHealth() {
         reason: needsReconnect
           ? String(page?.error || personal?.token_error || 'תוקף החיבור לפייסבוק פג. יש להתחבר מחדש.')
           : null,
-        pageName: page?.page?.name ?? (pageOk ? null : cached?.pageName ?? null),
+        pageName: page?.page?.name ?? (pageOk ? cached?.pageName ?? null : null),
         pageId: page?.page?.id ? String(page.page.id) : cached?.pageId ?? null,
         pagePicture: page?.page?.picture ?? cached?.pagePicture ?? null,
         instagram: page?.instagram?.id
@@ -99,6 +101,7 @@ export function useFacebookHealth() {
           : null,
         neverConnected: !hasBinding && !personal?.connected,
       };
+
 
       // Persist only a healthy state; a broken one should not survive a fix.
       writeCache(user?.id, value.pageConnected ? value : null);
