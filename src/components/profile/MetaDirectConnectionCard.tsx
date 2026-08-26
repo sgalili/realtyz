@@ -25,6 +25,20 @@ type PageStatus = {
 };
 
 const STATE_PREFIX = 'facebook_page:';
+/** Hard ceiling for the server-side code exchange (Graph calls + DB write). */
+const EXCHANGE_TIMEOUT_MS = 25_000;
+/** Hard ceiling for the whole popup round-trip before we release the spinner. */
+const OAUTH_WATCHDOG_MS = 120_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (v) => { window.clearTimeout(timer); resolve(v); },
+      (e) => { window.clearTimeout(timer); reject(e); },
+    );
+  });
+}
 
 async function callPageConnect<T = any>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('meta-page-connect', { body });
@@ -37,6 +51,7 @@ async function callPageConnect<T = any>(body: Record<string, unknown>): Promise<
   if (data && (data as any).error) throw new Error(String((data as any).error));
   return data as T;
 }
+
 
 /**
  * MetaDirectConnectionCard — connects a Facebook Page (and its linked
