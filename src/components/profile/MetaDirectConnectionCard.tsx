@@ -120,6 +120,8 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
     refreshHealth();
 
+    refreshBinding();
+
     if (notify) {
       if (pageRes?.connected || s?.connected) toast.success('החיבור לפייסבוק תקין');
       else toast.error(s?.message || 'דף הפייסבוק אינו מחובר');
@@ -319,6 +321,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (!result?.ok) throw new Error('השרת לא אישר שהחיבור נמחק');
       await resetHealth();
       refreshHealth();
+      refreshBinding();
       toast.success('עמוד הפייסבוק נותק');
     } catch (e: any) {
       toast.error('ניתוק נכשל', { description: e?.message });
