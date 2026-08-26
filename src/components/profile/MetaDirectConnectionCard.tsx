@@ -404,11 +404,21 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed p-3">
+          <div className="rounded-xl border border-dashed p-3 space-y-2">
             <Button onClick={connect} disabled={connecting} className="w-full gap-2 bg-[#1877F2] text-white hover:bg-[#1877F2]/90">
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
               חבר עמוד פייסבוק
             </Button>
+            {pendingAuthUrl && (
+              <a
+                href={pendingAuthUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center text-xs text-primary underline underline-offset-2"
+              >
+                פתחו את דף האישור של פייסבוק בלשונית חדשה
+              </a>
+            )}
           </div>
         )}
 
