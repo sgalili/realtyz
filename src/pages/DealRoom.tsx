@@ -66,6 +66,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 type LeadStage = 'new_lead' | 'listing_outreach' | 'negotiation' | 'awaiting_signature' | 'closed';
 
@@ -842,7 +843,7 @@ export default function DealRoom() {
                           {p.phone_number && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground" dir="ltr">
                               <Phone className="h-3 w-3" />
-                              <span className="truncate">{p.phone_number}</span>
+                              <span className="truncate" dir="ltr">{formatPhoneDisplay(p.phone_number)}</span>
                             </div>
                           )}
                         </div>

@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { BadgeCheck, Building2, ShieldCheck, Smartphone } from 'lucide-react';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 /**
  * WhatsApp messaging runs exclusively on the Official WhatsApp Business API
@@ -75,7 +76,7 @@ export function WhatsAppConnectionModeCard() {
                 </Badge>
                 {phone && (
                   <Badge variant="outline" className="gap-1 border-emerald-300 bg-emerald-50 text-emerald-700">
-                    <span dir="ltr">{phone}</span>
+                    <span dir="ltr">{formatPhoneDisplay(phone)}</span>
                   </Badge>
                 )}
               </div>

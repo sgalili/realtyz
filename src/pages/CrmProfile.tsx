@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowRight, ExternalLink, Mail, Phone, User } from 'lucide-react';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 type Profile = {
   id: string;
@@ -88,7 +89,7 @@ export default function CrmProfile() {
             <div className="mt-3 flex flex-wrap gap-4 text-sm">
               {profile.phone && (
                 <a href={`tel:${profile.phone}`} className="inline-flex items-center gap-1.5 text-foreground hover:text-primary">
-                  <Phone className="h-4 w-4" /> {profile.phone}
+                  <Phone className="h-4 w-4" /> <span dir="ltr">{formatPhoneDisplay(profile.phone)}</span>
                 </a>
               )}
               {profile.email && (

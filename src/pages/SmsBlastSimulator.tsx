@@ -30,6 +30,7 @@ import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { DeliverySettings } from '@/components/DeliverySettings';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 type ChannelId = 'whatsapp' | 'sms' | 'email' | 'voice' | 'ivr' | 'linkedin' | 'instagram' | 'tiktok' | 'telegram' | 'messenger' | 'twitter' | 'youtube' | 'facebook';
 
@@ -2495,7 +2496,7 @@ function DetailedLogTable({ detailedLog, totalRecipients, logStats }: { detailed
                     {detailedLog.filter((entry) => tab === 'all' || entry.status === tab).map((entry) => (
                       <TableRow key={entry.id} className="text-xs">
                         <TableCell className="text-muted-foreground">{entry.id}</TableCell>
-                        <TableCell className="font-mono" dir="ltr">{entry.phone}</TableCell>
+                        <TableCell className="font-mono" dir="ltr">{formatPhoneDisplay(entry.phone)}</TableCell>
                         <TableCell>{entry.city}</TableCell>
                         <TableCell>{entry.channel}</TableCell>
                         <TableCell>

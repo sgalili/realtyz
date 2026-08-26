@@ -17,6 +17,7 @@ import { Search, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { ListingOutreachDialog } from '@/components/dealroom/ListingOutreachDialog';
 import type { HomelyProperty } from '@/lib/homelyMockProperties';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 type Lead = {
   id: string;
@@ -70,7 +71,7 @@ export function ShareWithLeadDialog({ property, open, onOpenChange }: Props) {
     setOutreachLeadId(lead.id);
     setOutreachOpen(true);
     onOpenChange(false);
-    toast.success(`טיוטת פנייה נפתחת עבור ${lead.full_name || lead.phone_number}`);
+    toast.success(`טיוטת פנייה נפתחת עבור ${lead.full_name || formatPhoneDisplay(lead.phone_number)}`);
   }
 
   return (
@@ -123,10 +124,10 @@ export function ShareWithLeadDialog({ property, open, onOpenChange }: Props) {
                   >
                     <div className="min-w-0">
                       <div className="font-medium text-sm truncate">
-                        {p.full_name || p.phone_number}
+                        {p.full_name || formatPhoneDisplay(p.phone_number)}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
-                        {p.city || '—'} · {p.phone_number}
+                        {p.city || '—'} · <span dir="ltr">{formatPhoneDisplay(p.phone_number)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

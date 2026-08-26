@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { RefreshCw, MapPin, Phone, Mail, Home, SlidersHorizontal, Loader2, CheckCircle2, Building2, Users, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 // 60s client-side debounce shared across both fetch actions to protect Homely.
 const lastCallRef = { ts: 0 };
@@ -469,7 +470,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
                         </div>
                         <div dir="rtl" className="text-[11px] sm:text-xs text-muted-foreground flex flex-row items-center gap-2 sm:gap-3 mt-1 flex-wrap break-all text-right">
                           {c.city && (<span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.city}</span>)}
-                          {c.phone && (<span className="inline-flex items-center gap-1" dir="ltr"><Phone className="h-3 w-3" />{c.phone}</span>)}
+                          {c.phone && (<span className="inline-flex items-center gap-1" dir="ltr"><Phone className="h-3 w-3" />{formatPhoneDisplay(c.phone)}</span>)}
                           {c.email && (<span className="inline-flex items-center gap-1" dir="ltr"><Mail className="h-3 w-3" />{c.email}</span>)}
                         </div>
                       </div>

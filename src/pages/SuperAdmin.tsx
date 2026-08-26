@@ -22,6 +22,7 @@ import { DEMO_CANDIDATES } from '@/lib/demoData';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 interface ProfileRow {
   id: string;
@@ -395,7 +396,7 @@ const SuperAdmin = () => {
         </TabsContent>
 
         <TabsContent value="leads" className="mt-4">
-          <Card><CardHeader><CardTitle>Captured Leads</CardTitle><CardDescription>מתעניינים שנלכדו מ-Send Report value traps בדמו.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Email / Phone</TableHead><TableHead>זמן כניסה</TableHead><TableHead>ארכיטיפ</TableHead><TableHead>Engagement</TableHead></TableRow></TableHeader><TableBody>{(capturedLeads ?? []).map((lead, index) => <TableRow key={lead.id}><TableCell><div className="font-mono text-xs">{lead.email || lead.phone_number}</div><div className="text-xs text-muted-foreground">{lead.value_trap_type || 'send_report'}</div></TableCell><TableCell>{format(new Date(lead.created_at), 'dd/MM HH:mm')}</TableCell><TableCell><Badge variant="secondary">{lead.archetype || DEMO_CANDIDATES[index % DEMO_CANDIDATES.length]?.name}</Badge></TableCell><TableCell><span className="font-black tabular-nums text-primary">{lead.engagement_score}</span></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+          <Card><CardHeader><CardTitle>Captured Leads</CardTitle><CardDescription>מתעניינים שנלכדו מ-Send Report value traps בדמו.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Email / Phone</TableHead><TableHead>זמן כניסה</TableHead><TableHead>ארכיטיפ</TableHead><TableHead>Engagement</TableHead></TableRow></TableHeader><TableBody>{(capturedLeads ?? []).map((lead, index) => <TableRow key={lead.id}><TableCell><div className="font-mono text-xs">{lead.email || formatPhoneDisplay(lead.phone_number)}</div><div className="text-xs text-muted-foreground">{lead.value_trap_type || 'send_report'}</div></TableCell><TableCell>{format(new Date(lead.created_at), 'dd/MM HH:mm')}</TableCell><TableCell><Badge variant="secondary">{lead.archetype || DEMO_CANDIDATES[index % DEMO_CANDIDATES.length]?.name}</Badge></TableCell><TableCell><span className="font-black tabular-nums text-primary">{lead.engagement_score}</span></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
         </TabsContent>
 
         <TabsContent value="users" className="mt-4 space-y-4">

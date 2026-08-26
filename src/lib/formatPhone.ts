@@ -55,3 +55,15 @@ export function isValidIsraeliPhone(phone: string | null | undefined): boolean {
   else if (!local.startsWith('0')) local = '0' + local;
   return /^05\d{8}$/.test(local) || /^07\d{8}$/.test(local) || /^0[2-489]\d{6,7}$/.test(local);
 }
+
+/** Canonical global alias — use this everywhere phones are displayed. */
+export const formatPhoneNumber = formatPhoneDisplay;
+
+/** Normalizes any Israeli phone input to the E.164-less storage form 9725XXXXXXXX. */
+export function normalizePhoneForStorage(phone: string | null | undefined): string {
+  const digits = String(phone ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('972')) return digits;
+  if (digits.startsWith('0')) return '972' + digits.slice(1);
+  return '972' + digits;
+}

@@ -34,6 +34,7 @@ import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { sourcePhotoCount } from '@/lib/photoCount';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { buildDescriptionBlocks, sanitizeDescription } from '@/lib/descriptionBlocks';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -1466,7 +1467,7 @@ export default function PropertyDetail() {
               </div>
               <div className="space-y-2">
                 <a href={`tel:${property.agent.phone}`} className="flex items-center gap-2 text-xl text-foreground hover:text-primary transition-colors">
-                  <Phone className="h-4 w-4 text-primary" /> {property.agent.phone}
+                  <Phone className="h-4 w-4 text-primary" /> <span dir="ltr">{formatPhoneDisplay(property.agent.phone)}</span>
                 </a>
                 <a href={`mailto:${property.agent.email}`} className="flex items-center gap-2 text-xl text-foreground hover:text-primary transition-colors">
                   <Mail className="h-4 w-4 text-primary" /> {property.agent.email}
