@@ -79,6 +79,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [connectionEpoch, setConnectionEpoch] = useState(0);
   const disconnectedRef = useRef(false);
   const expectedStateRef = useRef<string | null>(null);
+  const popupRef = useRef<Window | null>(null);
+  const exchangingRef = useRef(false);
+
 
 
   const probe = useCallback(async (notify = false) => {
