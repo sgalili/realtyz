@@ -94,7 +94,6 @@ export const OAUTH_SCOPES: Record<string, string[]> = {
   ],
   facebook:  [
     'public_profile',
-    'email',
     'pages_show_list',
     'pages_manage_posts',
     'pages_read_engagement',
