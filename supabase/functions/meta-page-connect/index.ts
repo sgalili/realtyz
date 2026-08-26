@@ -595,61 +595,123 @@ Deno.serve(async (req) => {
     // Fallback picker support: list the pages reachable with the stored USER
     // token (saved during exchange) and bind whichever one the user selects.
     if (action === "list_pages" || action === "select_page") {
-      const { data: personal } = await admin
-        .from("fb_personal_connections")
-        .select("access_token")
-        .eq("workspace_owner_id", ownerId)
-        .maybeSingle();
-      const userToken = String((personal as any)?.access_token ?? "");
-      if (!userToken) {
-        return json({ error: "לא נמצא טוקן משתמש שמור. יש להתחבר מחדש לפייסבוק." }, 400);
-      }
-      const listRes = await graph(
-        `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${encodeURIComponent(userToken)}`,
-      );
-      const list: any[] = Array.isArray(listRes.payload?.data) ? listRes.payload.data : [];
-      if (!listRes.ok) {
-        const detail = logGraphFailure("list_pages", listRes.payload);
-        return json({
-          error: humanizeGraphError(listRes.payload, "לא הצלחנו לקרוא את רשימת העמודים."),
-          error_detail: detail,
-          fb_message: detail.message,
-          stage: "list_pages",
-        }, 400);
-      }
-      const selectable = list.filter((p) => !isBlockedPage(p) && p?.access_token);
+      const wantedId = String(body?.page_id ?? "").trim();
+      const providedToken = String(body?.page_access_token ?? "").trim();
+      const providedName = String(body?.page_name ?? "").trim();
 
-      if (action === "list_pages") {
+      // A caller can hand us the page token directly (manual path). Otherwise
+      // we resolve it from the stored user token via /me/accounts.
+      let target: { id: string; name: string | null; token: string; picture: string | null } | null = null;
+
+      if (action === "select_page" && wantedId && providedToken) {
+        target = { id: wantedId, name: providedName || null, token: providedToken, picture: pageAvatar(wantedId) };
+      } else {
+        const { data: personal } = await admin
+          .from("fb_personal_connections")
+          .select("access_token")
+          .eq("workspace_owner_id", ownerId)
+          .maybeSingle();
+        const userToken = String((personal as any)?.access_token ?? "");
+        if (!userToken) {
+          // 200 so the client can read the message instead of a bare non-2xx.
+          return json({ ok: false, error: "לא נמצא טוקן משתמש שמור. יש להתחבר מחדש לפייסבוק.", stage: "user_token" }, 200);
+        }
+        const listRes = await graph(
+          `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${encodeURIComponent(userToken)}`,
+        );
+        const list: any[] = Array.isArray(listRes.payload?.data) ? listRes.payload.data : [];
+        if (!listRes.ok) {
+          const detail = logGraphFailure("list_pages", listRes.payload);
+          return json({
+            ok: false,
+            error: humanizeGraphError(listRes.payload, "לא הצלחנו לקרוא את רשימת העמודים."),
+            error_detail: detail,
+            fb_message: detail.message,
+            stage: "list_pages",
+          }, 200);
+        }
+        const selectable = list.filter((p) => !isBlockedPage(p) && p?.access_token);
+
+        if (action === "list_pages") {
+          return json({
+            ok: true,
+            pages: selectable.map((p) => ({ id: String(p.id), name: p.name ?? null, picture: p?.picture?.data?.url ?? null })),
+          });
+        }
+
+        const found = selectable.find((p) => String(p.id) === wantedId);
+        if (!found) {
+          return json({
+            ok: false,
+            error: "העמוד שנבחר אינו זמין בחשבון המחובר.",
+            stage: "select_page",
+            available: selectable.map((p) => String(p.id)),
+          }, 200);
+        }
+        target = {
+          id: String(found.id),
+          name: found.name ?? null,
+          token: String(found.access_token),
+          picture: found?.picture?.data?.url ?? pageAvatar(String(found.id)),
+        };
+      }
+
+      if (!target?.id || !target?.token) {
+        return json({ ok: false, error: "חסרים מזהה עמוד או טוקן עמוד.", stage: "select_page" }, 200);
+      }
+      if (isBlockedPage({ id: target.id, name: target.name ?? "" })) {
+        return json({ ok: false, error: "העמוד שנבחר אינו עמוד עסקי חוקי.", stage: "select_page" }, 200);
+      }
+
+      try {
+        // One page per workspace: clear the previous binding first.
+        const { error: delErr } = await admin
+          .from("messenger_page_bindings")
+          .delete()
+          .eq("owner_id", ownerId);
+        if (delErr) throw delErr;
+
+        const { data: saved, error: selectErr } = await admin
+          .from("messenger_page_bindings")
+          .upsert(
+            {
+              owner_id: ownerId,
+              page_id: target.id,
+              page_name: target.name,
+              page_avatar_url: target.picture,
+              page_access_token: target.token,
+              is_selected: true,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "page_id" },
+          )
+          .select("page_id, page_name, page_avatar_url")
+          .maybeSingle();
+        if (selectErr) throw selectErr;
+
         return json({
           ok: true,
-          pages: selectable.map((p) => ({ id: String(p.id), name: p.name ?? null, picture: p?.picture?.data?.url ?? null })),
+          page: {
+            id: String(saved?.page_id ?? target.id),
+            name: saved?.page_name ?? target.name,
+            picture: saved?.page_avatar_url ?? target.picture,
+          },
         });
+      } catch (dbErr) {
+        const e = dbErr as { message?: string; code?: string; details?: string; hint?: string };
+        console.error("[meta-page-connect] select_page save failed", e);
+        return json({
+          ok: false,
+          error: `שמירת העמוד בבסיס הנתונים נכשלה: ${e?.message ?? String(dbErr)}`,
+          stage: "db_save",
+          error_detail: {
+            message: e?.message ?? String(dbErr),
+            code: e?.code ?? null,
+            details: e?.details ?? null,
+            hint: e?.hint ?? null,
+          },
+        }, 200);
       }
-
-      const wantedId = String(body?.page_id ?? "").trim();
-      const target = selectable.find((p) => String(p.id) === wantedId);
-      if (!target) return json({ error: "העמוד שנבחר אינו זמין בחשבון המחובר." }, 400);
-
-      await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
-      const { error: selectErr } = await admin.from("messenger_page_bindings").upsert(
-        {
-          owner_id: ownerId,
-          page_id: String(target.id),
-          page_name: target.name ?? null,
-          page_avatar_url: target?.picture?.data?.url ?? pageAvatar(String(target.id)),
-          page_access_token: String(target.access_token),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "page_id" },
-      );
-      if (selectErr) {
-        console.error("[meta-page-connect] select_page upsert failed", selectErr);
-        return json({ error: selectErr.message }, 500);
-      }
-      return json({
-        ok: true,
-        page: { id: String(target.id), name: target.name ?? null, picture: target?.picture?.data?.url ?? null },
-      });
     }
 
     return json({ error: "unknown_action" }, 400);
