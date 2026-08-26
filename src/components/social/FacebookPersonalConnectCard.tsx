@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
-import { describeOAuthFailure, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
+import { describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 type Identity = {
@@ -144,7 +144,7 @@ export const FacebookPersonalConnectCard = () => {
       const res = await callFbPersonal<any>({
         action: 'start',
         basic,
-        redirect_uri: oauthRedirectUri(),
+        redirect_uri: logOAuthRedirectUri('facebook-personal'),
       });
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');

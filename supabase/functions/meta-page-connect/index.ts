@@ -448,6 +448,7 @@ Deno.serve(async (req) => {
       const code = String(body?.code ?? "").trim();
       const wantedPageId = String(body?.page_id ?? "").trim();
       if (!code || !redirectUri) return json({ error: "code and redirect_uri are required" }, 400);
+      console.log("[meta-page-connect] exchange redirect_uri =", JSON.stringify(redirectUri));
       if (!clientSecret) return json({ error: "פייסבוק לא מוגדר: חסר App Secret." }, 400);
 
       const tokenRes = await graph(

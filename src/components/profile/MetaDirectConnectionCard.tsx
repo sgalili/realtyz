@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
 import { useFacebookHealth, useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
-import { describeOAuthFailure, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
+import { describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 export type MetaStatus = {
@@ -148,7 +148,7 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
     try {
       const res = await callPageConnect<any>({
         action: 'start',
-        redirect_uri: oauthRedirectUri(),
+        redirect_uri: logOAuthRedirectUri('facebook-page'),
       });
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       const popup = window.open(res.auth_url, 'realtyz-fb-page-oauth', 'width=560,height=680');
