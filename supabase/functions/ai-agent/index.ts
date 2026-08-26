@@ -29,6 +29,7 @@ import {
   extractNameLoose,
   extractNameCorrection,
   buildLeadUpdatePatch,
+  budgetRangeToken,
   formatPhoneHe,
   EMPTY_DRAFT,
   type LeadDraft,
