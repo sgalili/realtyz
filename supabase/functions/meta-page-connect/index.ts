@@ -36,6 +36,39 @@ const PAGE_SCOPES = [
 const CONFIG_ID = Deno.env.get("META_PAGE_CONFIG_ID")?.trim() || "";
 const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 
+/**
+ * The ONLY redirect URI registered in the Meta app. Both `start` and `exchange`
+ * force it, so the value Facebook signs the code against is byte-for-byte the
+ * value we send back during the token exchange (Meta rejects any difference,
+ * including a trailing slash or a preview host).
+ */
+const CANONICAL_REDIRECT_URI = "https://realtyz.co.il/oauth/callback";
+
+/** Structured Graph error so failures are never a generic Hebrew sentence. */
+function graphErrorDetail(payload: any): {
+  message: string | null;
+  type: string | null;
+  code: number | null;
+  subcode: number | null;
+  trace: string | null;
+} {
+  const e = payload?.error ?? {};
+  return {
+    message: e?.message ? String(e.message) : (payload?.raw ? String(payload.raw).slice(0, 500) : null),
+    type: e?.type ? String(e.type) : null,
+    code: typeof e?.code === "number" ? e.code : null,
+    subcode: typeof e?.error_subcode === "number" ? e.error_subcode : null,
+    trace: e?.fbtrace_id ? String(e.fbtrace_id) : null,
+  };
+}
+
+/** Logs the verbatim Graph payload and returns the structured detail. */
+function logGraphFailure(stage: string, payload: any) {
+  const detail = graphErrorDetail(payload);
+  console.error(`[meta-page-connect] ${stage} failed`, JSON.stringify({ detail, payload }));
+  return detail;
+}
+
 function oauthState(prefix: string, returnOrigin: string): string {
   let encoded = "";
   try {
@@ -371,12 +404,16 @@ Deno.serve(async (req) => {
     }
 
     if (action === "start") {
-      if (!redirectUri) return json({ error: "redirect_uri is required" }, 400);
       // Logged verbatim so it can be diffed against Meta's Valid OAuth Redirect URIs.
-      console.log("[meta-page-connect] start redirect_uri =", JSON.stringify(redirectUri));
+      console.log(
+        "[meta-page-connect] start redirect_uri requested =",
+        JSON.stringify(redirectUri),
+        "using =",
+        JSON.stringify(CANONICAL_REDIRECT_URI),
+      );
       const params = new URLSearchParams({
         client_id: clientId,
-        redirect_uri: redirectUri,
+        redirect_uri: CANONICAL_REDIRECT_URI,
         response_type: "code",
         scope: PAGE_SCOPES.join(","),
         state: oauthState("facebook_page", returnOrigin),
@@ -387,6 +424,7 @@ Deno.serve(async (req) => {
         auth_url: `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params}`,
         scopes: PAGE_SCOPES,
         app_id: clientId,
+        redirect_uri: CANONICAL_REDIRECT_URI,
       });
 
     }
@@ -396,10 +434,17 @@ Deno.serve(async (req) => {
       // The Facebook dialog may return an implicit user access token in the URL
       // fragment instead of a code (e.g. "Continue as ..." on an existing grant).
       const suppliedToken = String(body?.user_access_token ?? "").trim();
-      if (!suppliedToken && (!code || !redirectUri)) {
-        return json({ error: "code and redirect_uri are required" }, 400);
+      if (!suppliedToken && !code) {
+        return json({ error: "code or user_access_token is required" }, 400);
       }
-      console.log("[meta-page-connect] exchange redirect_uri =", JSON.stringify(redirectUri), "mode =", suppliedToken ? "implicit_token" : "code");
+      console.log(
+        "[meta-page-connect] exchange redirect_uri received =",
+        JSON.stringify(redirectUri),
+        "using =",
+        JSON.stringify(CANONICAL_REDIRECT_URI),
+        "mode =",
+        suppliedToken ? "implicit_token" : "code",
+      );
 
       let userToken = suppliedToken;
       if (!userToken) {
@@ -408,12 +453,19 @@ Deno.serve(async (req) => {
           `/oauth/access_token?${new URLSearchParams({
             client_id: clientId,
             client_secret: clientSecret,
-            redirect_uri: redirectUri,
+            redirect_uri: CANONICAL_REDIRECT_URI,
             code,
           })}`,
         );
         if (!tokenRes.ok || !tokenRes.payload?.access_token) {
-          return json({ error: humanizeGraphError(tokenRes.payload, "פייסבוק דחה את ההתחברות. יש לנסות להתחבר מחדש ולאשר את הרשאות העמוד.") }, 400);
+          const detail = logGraphFailure("code_exchange", tokenRes.payload);
+          return json({
+            error: humanizeGraphError(tokenRes.payload, "פייסבוק דחה את ההתחברות. יש לנסות להתחבר מחדש ולאשר את הרשאות העמוד."),
+            error_detail: detail,
+            fb_message: detail.message,
+            stage: "code_exchange",
+            redirect_uri_used: CANONICAL_REDIRECT_URI,
+          }, 400);
         }
         userToken = String(tokenRes.payload.access_token);
       }
@@ -430,6 +482,7 @@ Deno.serve(async (req) => {
           })}`,
         );
         if (longRes.ok && longRes.payload?.access_token) userToken = String(longRes.payload.access_token);
+        else logGraphFailure("long_lived_token", longRes.payload);
       }
 
 
@@ -473,11 +526,15 @@ Deno.serve(async (req) => {
       );
       const pages: any[] = Array.isArray(pagesRes.payload?.data) ? pagesRes.payload.data : [];
       if (!pagesRes.ok || pages.length === 0) {
+        const detail = logGraphFailure("list_pages", pagesRes.payload);
         return json(
           {
             error: pagesRes.ok
               ? "לא נמצא עמוד פייסבוק שאתה מנהל. ודא שאישרת את העמוד במסך ההרשאות של פייסבוק."
               : humanizeGraphError(pagesRes.payload, "לא הצלחנו לקרוא את רשימת העמודים שאתה מנהל. ודא שאישרת הרשאות ניהול עמוד (pages_show_list, pages_manage_posts)."),
+            error_detail: detail,
+            fb_message: detail.message,
+            stage: "list_pages",
             pages: [],
           },
           400,
@@ -485,17 +542,24 @@ Deno.serve(async (req) => {
       }
 
       // Never bind a blocked business asset ("Employee") as the publishing page.
-      const chosen = pages.find((p) => String(p?.id) === PRIMARY_PAGE_ID);
+      const selectable = pages.filter((p) => !isBlockedPage(p) && p?.access_token);
+      let chosen = pages.find((p) => String(p?.id) === PRIMARY_PAGE_ID && p?.access_token);
+      // Automatic selection failed: keep the (already persisted) user token and
+      // let the UI show a picker instead of aborting the whole connection.
+      if (!chosen && selectable.length === 1) chosen = selectable[0];
       if (!chosen) {
+        console.warn(
+          "[meta-page-connect] automatic page selection failed",
+          JSON.stringify({ pages: pages.map((p: any) => ({ id: String(p?.id), name: p?.name ?? null })) }),
+        );
         return json({
-          error: `החשבון שאושר אינו מנהל את עמוד ${PRIMARY_PAGE_ID}. יש להתחבר עם משתמש Meta שמנהל את העמוד ולאשר pages_show_list.`,
-          pages: pages.filter((p) => !isBlockedPage(p)).map((p) => ({ id: String(p.id), name: p.name ?? null })),
-        }, 400);
+          needs_page_selection: true,
+          error: null,
+          message: `לא הצלחנו לבחור עמוד אוטומטית. בחר את עמוד הפרסום מתוך הרשימה.`,
+          pages: selectable.map((p) => ({ id: String(p.id), name: p.name ?? null, picture: p?.picture?.data?.url ?? null })),
+        });
       }
-      if (!chosen?.access_token) {
-        return json({ error: "פייסבוק לא החזיר טוקן עמוד. יש להתחבר מחדש ולאשר את העמוד." }, 400);
-      }
-      if (isInvalidPublishingIdentity(chosen.id, chosen.name)) {
+      if (isBlockedPage({ id: String(chosen.id), name: String(chosen.name ?? "") })) {
         await purgeFacebookState(admin, ownerId);
         return json({ error: "Meta החזירה זהות משתמש או Employee במקום עמוד עסקי. החיבור נדחה והנתונים נמחקו." }, 400);
       }
@@ -525,6 +589,66 @@ Deno.serve(async (req) => {
           picture: chosen?.picture?.data?.url ?? null,
         },
         pages: pages.map((p) => ({ id: String(p.id), name: p.name ?? null })),
+      });
+    }
+
+    // Fallback picker support: list the pages reachable with the stored USER
+    // token (saved during exchange) and bind whichever one the user selects.
+    if (action === "list_pages" || action === "select_page") {
+      const { data: personal } = await admin
+        .from("fb_personal_connections")
+        .select("access_token")
+        .eq("workspace_owner_id", ownerId)
+        .maybeSingle();
+      const userToken = String((personal as any)?.access_token ?? "");
+      if (!userToken) {
+        return json({ error: "לא נמצא טוקן משתמש שמור. יש להתחבר מחדש לפייסבוק." }, 400);
+      }
+      const listRes = await graph(
+        `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${encodeURIComponent(userToken)}`,
+      );
+      const list: any[] = Array.isArray(listRes.payload?.data) ? listRes.payload.data : [];
+      if (!listRes.ok) {
+        const detail = logGraphFailure("list_pages", listRes.payload);
+        return json({
+          error: humanizeGraphError(listRes.payload, "לא הצלחנו לקרוא את רשימת העמודים."),
+          error_detail: detail,
+          fb_message: detail.message,
+          stage: "list_pages",
+        }, 400);
+      }
+      const selectable = list.filter((p) => !isBlockedPage(p) && p?.access_token);
+
+      if (action === "list_pages") {
+        return json({
+          ok: true,
+          pages: selectable.map((p) => ({ id: String(p.id), name: p.name ?? null, picture: p?.picture?.data?.url ?? null })),
+        });
+      }
+
+      const wantedId = String(body?.page_id ?? "").trim();
+      const target = selectable.find((p) => String(p.id) === wantedId);
+      if (!target) return json({ error: "העמוד שנבחר אינו זמין בחשבון המחובר." }, 400);
+
+      await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+      const { error: selectErr } = await admin.from("messenger_page_bindings").upsert(
+        {
+          owner_id: ownerId,
+          page_id: String(target.id),
+          page_name: target.name ?? null,
+          page_avatar_url: target?.picture?.data?.url ?? pageAvatar(String(target.id)),
+          page_access_token: String(target.access_token),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "page_id" },
+      );
+      if (selectErr) {
+        console.error("[meta-page-connect] select_page upsert failed", selectErr);
+        return json({ error: selectErr.message }, 500);
+      }
+      return json({
+        ok: true,
+        page: { id: String(target.id), name: target.name ?? null, picture: target?.picture?.data?.url ?? null },
       });
     }
 
