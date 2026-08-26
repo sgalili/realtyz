@@ -52,6 +52,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [manualPageId, setManualPageId] = useState('');
   const [manualToken, setManualToken] = useState('');
   const [savingManual, setSavingManual] = useState(false);
+  // Shown when Meta refuses the redirect URI (or the popup could not open) so
+  // the exact URI to whitelist is always one copy-click away.
+  const [redirectHelp, setRedirectHelp] = useState(false);
   // Shared reactive connection state (same cache as the collapsed header badge
   // and the global warning banner).
   const { data: health } = useFacebookHealth();
