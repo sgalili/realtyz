@@ -363,6 +363,13 @@ Deno.serve(async (req) => {
       return json({ error: "פייסבוק לא מוגדר: חסר Facebook App ID." }, 400);
     }
 
+    // Read-only diagnostic: which Meta app the backend actually uses. The App ID
+    // is public (it appears in every login URL), so returning it is safe and lets
+    // the UI verify it matches the app where the redirect URIs are registered.
+    if (action === "app_info") {
+      return json({ app_id: clientId, has_secret: !!clientSecret, graph_version: GRAPH_VERSION });
+    }
+
     if (action === "start") {
       if (!redirectUri) return json({ error: "redirect_uri is required" }, 400);
       // Logged verbatim so it can be diffed against Meta's Valid OAuth Redirect URIs.
@@ -379,7 +386,9 @@ Deno.serve(async (req) => {
       return json({
         auth_url: `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params}`,
         scopes: PAGE_SCOPES,
+        app_id: clientId,
       });
+
     }
 
     if (action === "exchange") {
