@@ -141,6 +141,8 @@ export const FacebookPersonalConnectCard = () => {
   const connect = async (basic = false) => {
     setConnecting(true);
     try {
+      const hint = redirectWhitelistHint();
+      if (hint) toast.info('שים לב לכתובת החזרה של Meta', { description: hint });
       const res = await callFbPersonal<any>({
         action: 'start',
         basic,
