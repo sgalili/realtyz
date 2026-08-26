@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Users, Check, Loader2, RefreshCw, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 
 export type FacebookGroup = {
   group_id: string;
@@ -30,6 +31,7 @@ type Props = {
  * `fb-groups-import` edge function against the connected Facebook profile.
  */
 export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Props) => {
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [groups, setGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -151,7 +153,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     setAddingManual(true);
     try {
       const { data: auth } = await supabase.auth.getUser();
-      const uid = auth?.user?.id;
+      const uid = workspaceOwnerId || auth?.user?.id;
       const { error } = await (supabase as any).from("custom_user_groups").insert({
         workspace_owner_id: uid,
         group_name: name,
