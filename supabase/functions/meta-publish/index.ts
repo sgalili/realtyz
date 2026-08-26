@@ -10,7 +10,7 @@
 // the workspace owner, with FB_PAGE_ID / FB_PAGE_ACCESS_TOKEN env fallback.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isBlockedPage, pickPrimaryPage, rankPages } from "../_shared/metaPages.ts";
+import { isBlockedPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
 
 const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
@@ -64,53 +64,8 @@ async function resolveOwner(req: Request, body: any, db: SupabaseClient): Promis
 
 type ResolvedPage = { pageId: string; pageName: string | null; token: string };
 
-/** Any platform-level Meta token we can use to auto-discover the primary Page. */
-function platformMetaTokens(): string[] {
-  return [
-    Deno.env.get("FB_PAGE_ACCESS_TOKEN"),
-    Deno.env.get("META_PAGE_ACCESS_TOKEN"),
-    Deno.env.get("META_SYSTEM_USER_TOKEN"),
-    Deno.env.get("META_WA_ACCESS_TOKEN"),
-  ]
-    .map((t) => (t ?? "").trim())
-    .filter((t) => t.length > 20);
-}
-
-/**
- * Auto-discovers the primary Facebook Page for a token via /me/accounts and
- * caches it into messenger_page_bindings so subsequent publishes are instant.
- * This is what removes the old "דף הפייסבוק לא מחובר" dead end: as long as the
- * workspace (or the platform) has a valid Meta token, we resolve a Page.
- */
-async function discoverPageFromToken(
-  db: SupabaseClient,
-  ownerId: string | null,
-  token: string,
-): Promise<ResolvedPage | null> {
-  const r = await graph(`/me/accounts?fields=id,name,access_token&limit=25&access_token=${encodeURIComponent(token)}`);
-  const list: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
-  const primary = pickPrimaryPage(list);
-  if (!primary?.id) {
-    // Token may itself already be a Page token — verify against /me.
-    const me = await graph(`/me?fields=id,name&access_token=${encodeURIComponent(token)}`);
-    if (me.ok && me.payload?.id) {
-      const page = { pageId: String(me.payload.id), pageName: me.payload?.name ?? null, token };
-      await cachePage(db, ownerId, page);
-      return page;
-    }
-    return null;
-  }
-  const page: ResolvedPage = {
-    pageId: String(primary.id),
-    pageName: primary?.name ?? null,
-    token: String(primary.access_token ?? token),
-  };
-  await cachePage(db, ownerId, page);
-  return page;
-}
-
 async function cachePage(db: SupabaseClient, ownerId: string | null, page: ResolvedPage) {
-  if (!ownerId) return;
+  if (!ownerId || page.pageId !== PRIMARY_PAGE_ID || isBlockedPage({ id: page.pageId, name: page.pageName })) return;
   try {
     await db.from("messenger_page_bindings").upsert(
       {
@@ -136,76 +91,10 @@ async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<
       .limit(1)
       .maybeSingle();
     const row: any = data;
-    if (row?.page_id && row?.page_access_token && !isBlockedPage({ id: row.page_id, name: row.page_name })) {
+    if (String(row?.page_id ?? '') === PRIMARY_PAGE_ID && row?.page_access_token && !isBlockedPage({ id: row.page_id, name: row.page_name })) {
       return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
     }
-    // A previously cached Employee/business asset must be re-resolved.
-    if (row?.page_access_token) {
-      const rediscovered = await discoverPageFromToken(db, ownerId, String(row.page_access_token));
-      if (rediscovered) return rediscovered;
-    }
   }
-
-  // 2) Binding belonging to any member of the same workspace.
-  if (ownerId) {
-    try {
-      const { data: members } = await db
-        .from("workspace_memberships")
-        .select("user_id")
-        .eq("workspace_owner_id", ownerId);
-      const ids = (members ?? []).map((m: any) => m.user_id).filter(Boolean);
-      if (ids.length > 0) {
-        const { data } = await db
-          .from("messenger_page_bindings")
-          .select("page_id, page_name, page_access_token")
-          .in("owner_id", ids)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const row: any = data;
-        if (row?.page_id && row?.page_access_token && !isBlockedPage({ id: row.page_id, name: row.page_name })) {
-          return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
-        }
-      }
-    } catch { /* ignore */ }
-  }
-
-  // 3) Meta credentials stored on the workspace social connection.
-  try {
-    const { data: conns } = await db
-      .from("social_connections")
-      .select("credentials, display_name, platform, is_connected, updated_at")
-      .in("platform", ["facebook", "meta", "instagram"])
-      .order("updated_at", { ascending: false })
-      .limit(10);
-    for (const c of (conns ?? []) as any[]) {
-      const cred = (c?.credentials ?? {}) as Record<string, unknown>;
-      const token = String(
-        cred.page_access_token ?? cred.access_token ?? cred.token ?? cred.user_access_token ?? "",
-      ).trim();
-      if (!token) continue;
-      const pageId = String(cred.page_id ?? cred.pageId ?? cred.fb_page_id ?? "").trim();
-      if (pageId && !isBlockedPage({ id: pageId, name: c?.display_name })) {
-        const page = { pageId, pageName: (c?.display_name as string) ?? null, token };
-        await cachePage(db, ownerId, page);
-        return page;
-      }
-      const discovered = await discoverPageFromToken(db, ownerId, token);
-      if (discovered) return discovered;
-    }
-  } catch { /* ignore */ }
-
-  // 4) Explicit platform env pair.
-  const envId = Deno.env.get("FB_PAGE_ID")?.trim();
-  const envToken = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim();
-  if (envId && envToken) return { pageId: envId, pageName: null, token: envToken };
-
-  // 5) Platform token only -> auto-discover the primary Page/Business account.
-  for (const token of platformMetaTokens()) {
-    const discovered = await discoverPageFromToken(db, ownerId, token);
-    if (discovered) return discovered;
-  }
-
   return null;
 }
 
@@ -217,26 +106,11 @@ async function candidateTokens(db: SupabaseClient, ownerId: string | null): Prom
     if (s.length > 20 && !out.includes(s)) out.push(s);
   };
   try {
-    const q = db.from("messenger_page_bindings").select("page_access_token").order("updated_at", { ascending: false }).limit(10);
+    if (!ownerId) return out;
+    const q = db.from("messenger_page_bindings").select("page_access_token").eq("owner_id", ownerId).eq("page_id", PRIMARY_PAGE_ID).limit(1);
     const { data } = await q;
     for (const r of (data ?? []) as any[]) push(r?.page_access_token);
   } catch { /* ignore */ }
-  try {
-    const { data } = await db
-      .from("social_connections")
-      .select("credentials")
-      .in("platform", ["facebook", "meta", "instagram"])
-      .order("updated_at", { ascending: false })
-      .limit(10);
-    for (const c of (data ?? []) as any[]) {
-      const cred = (c?.credentials ?? {}) as Record<string, unknown>;
-      push(cred.page_access_token);
-      push(cred.access_token);
-      push(cred.token);
-      push(cred.user_access_token);
-    }
-  } catch { /* ignore */ }
-  for (const t of platformMetaTokens()) push(t);
   return out;
 }
 
@@ -252,20 +126,8 @@ async function alternatePages(
   ownerId: string | null,
   triedPageIds: string[],
 ): Promise<ResolvedPage[]> {
-  const out: ResolvedPage[] = [];
-  for (const token of await candidateTokens(db, ownerId)) {
-    const r = await graph(
-      `/me/accounts?fields=id,name,access_token&limit=25&access_token=${encodeURIComponent(token)}`,
-    );
-    const list: any[] = rankPages(Array.isArray(r.payload?.data) ? r.payload.data : []);
-    for (const p of list) {
-      const id = String(p?.id ?? "").trim();
-      if (!id || triedPageIds.includes(id) || out.some((x) => x.pageId === id)) continue;
-      if (isBlockedPage(p)) continue; // never fall back to Employee/business assets
-      out.push({ pageId: id, pageName: p?.name ?? null, token: String(p?.access_token ?? token) });
-    }
-  }
-  return out;
+  void db; void ownerId; void triedPageIds;
+  return [];
 }
 
 /** Publish errors that mean "wrong page/token", i.e. worth retrying elsewhere. */

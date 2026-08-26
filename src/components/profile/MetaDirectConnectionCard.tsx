@@ -210,6 +210,8 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     try {
       const result = await callPageConnect<{ ok?: boolean }>({ action: 'disconnect' });
       if (!result?.ok) throw new Error('השרת לא אישר שהחיבור נמחק');
+      await resetHealth();
+      refreshHealth();
       toast.success('עמוד הפייסבוק נותק');
     } catch (e: any) {
       toast.error('ניתוק נכשל', { description: e?.message });
@@ -259,7 +261,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const igHandle =
     health?.instagram?.username ?? page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
   const pagePicture = page?.page?.picture ?? health?.pagePicture ?? null;
-  const isConnected = !!(health?.pageConnected || page?.connected || status?.facebook);
+  const isConnected = disconnectedRef.current ? false : !!health?.pageConnected;
 
   return (
     <Card key={connectionEpoch} ref={ref} dir="rtl" className="text-right">

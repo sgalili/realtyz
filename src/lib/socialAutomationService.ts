@@ -335,6 +335,17 @@ export const SocialAutomationService = {
 
   /** Fully wipes session material - immediate UX reset. */
   async disconnect(platform: string) {
+    if (['facebook', 'facebook_page', 'instagram', 'meta'].includes(platform.toLowerCase())) {
+      const { data, error } = await supabase.functions.invoke('meta-page-connect', {
+        body: { action: 'disconnect' },
+      });
+      if (error) throw error;
+      if (!(data as { ok?: boolean } | null)?.ok) throw new Error('Facebook disconnect was not confirmed');
+      try {
+        window.dispatchEvent(new CustomEvent('realtyz:facebook-disconnected'));
+      } catch { /* non-browser caller */ }
+      return;
+    }
     const { error } = await supabase
       .from('social_connections')
       .update({

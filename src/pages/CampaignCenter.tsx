@@ -2797,8 +2797,8 @@ const isBlockedFbPage = (id?: string | null, name?: string | null) =>
   (!!id && BLOCKED_FB_PAGE_IDS.has(String(id))) || (!!name && BLOCKED_FB_NAME.test(name));
 
 const resolveMetaPageViaFunction = async (): Promise<ResolvedMetaPage> => {
-  const read = async (action: 'status' | 'repair'): Promise<ResolvedMetaPage> => {
-    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action } });
+  const read = async (): Promise<ResolvedMetaPage> => {
+    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'status' } });
     const res = data as any;
     const id = res?.page?.id ? String(res.page.id) : null;
     if ((res?.connected || res?.ok) && id) {
@@ -2808,14 +2808,8 @@ const resolveMetaPageViaFunction = async (): Promise<ResolvedMetaPage> => {
   };
 
   try {
-    const first = await read('status');
-    // A stale binding on the "Employee" asset gets overwritten with the real
-    // business Page instead of being surfaced as the connected identity.
-    if (isBlockedFbPage(first.pageId, first.pageName)) {
-      const fixed = await read('repair');
-      if (fixed.pageId && !isBlockedFbPage(fixed.pageId, fixed.pageName)) return fixed;
-      return { pageId: null, pageName: null, instagram: false };
-    }
+    const first = await read();
+    if (isBlockedFbPage(first.pageId, first.pageName)) return { pageId: null, pageName: null, instagram: false };
     return first;
   } catch { /* ignore — caller falls back to the remembered flag */ }
   return { pageId: null, pageName: null, instagram: false };
@@ -3064,11 +3058,7 @@ const PublishedFeed = () => {
 
 
   const [activeChannel, setActiveChannel] = useState<string>('all');
-  // Start from the remembered Facebook binding so the card never flashes
-  // "חבר" while the async verification runs.
-  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(
-    () => (readFbBindingFlag() ? new Set<string>(['facebook']) : new Set<string>()),
-  );
+  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const handleDisconnect = () => {
@@ -3100,13 +3090,11 @@ const PublishedFeed = () => {
         if (pageId) {
           next.add('facebook');
           writeFbBindingFlag(true);
-        } else if (readFbBindingFlag()) {
-          next.add('facebook');
         } else {
           writeFbBindingFlag(false);
         }
       } catch {
-        if (readFbBindingFlag()) next.add('facebook');
+        writeFbBindingFlag(false);
       }
 
       const { data } = await supabase
@@ -5047,7 +5035,7 @@ const CampaignCenter = () => {
             // Transient read failure (RLS blip / offline) — never downgrade a
             // known-good Facebook connection to "disconnected".
             console.warn('[CampaignCenter] page binding read failed:', wspErr.message);
-          } else if (!readFbBindingFlag()) {
+          } else {
             writeFbBindingFlag(false);
             if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
           }
@@ -5061,11 +5049,6 @@ const CampaignCenter = () => {
         if (cancelled) return;
 
         const set = new Set<string>();
-
-        // A transient binding read failure must never disable Facebook: the
-        // native Page token is the single source of truth and stays remembered.
-        if (!hasOwnProfile && readFbBindingFlag()) set.add('facebook');
-
 
         if (hasOwnProfile) {
           // A bound Facebook Page is by itself a valid connected state — the

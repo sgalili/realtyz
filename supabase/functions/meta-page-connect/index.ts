@@ -149,72 +149,6 @@ async function fetchPageIdentity(
     }
   }
 
-  // Direct recovery: try EVERY workspace token straight against /{page_id}.
-  // A token that can read the page can also publish with it, and this path
-  // works even when /me/accounts is empty (system-user tokens).
-  for (const token of await candidateTokens(admin, ownerId)) {
-    if (tokens.includes(token)) continue;
-    const r = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(token)}`);
-    if (!r.ok || !r.payload?.id) { lastPayload = r.payload ?? lastPayload; continue; }
-    const pic = r.payload?.picture?.data?.url ?? pageAvatar(pageId);
-    await admin
-      .from("messenger_page_bindings")
-      .update({ page_access_token: token, updated_at: new Date().toISOString() })
-      .eq("owner_id", ownerId)
-      .eq("page_id", String(pageId));
-    await persistPageIdentity(admin, ownerId, pageId, r.payload?.name ?? null, pic);
-    const igDirect = r.payload?.instagram_business_account;
-    return {
-      ok: true,
-      name: r.payload?.name ?? null,
-      picture: pic,
-      instagram: igDirect?.id ? { id: String(igDirect.id), username: igDirect.username ?? null } : null,
-      token,
-      errorPayload: null,
-    };
-  }
-
-  // Page-scoped recovery: walk every workspace token's /me/accounts list and
-  // pull the entry whose id matches the bound page.
-  for (const token of await candidateTokens(admin, ownerId)) {
-    const r = await graph(
-      `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&limit=100&access_token=${
-        encodeURIComponent(token)
-      }`,
-    );
-    const pages: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
-    const hit = pages.find((p) => String(p?.id) === String(pageId));
-    if (!hit?.access_token) continue;
-
-    await admin
-      .from("messenger_page_bindings")
-      .update({
-        page_name: hit.name ?? null,
-        page_access_token: String(hit.access_token),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("owner_id", ownerId)
-      .eq("page_id", String(pageId));
-
-    const probe = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(String(hit.access_token))}`);
-    const ig = probe.ok ? probe.payload?.instagram_business_account : null;
-    await persistPageIdentity(
-      admin,
-      ownerId,
-      pageId,
-      probe.payload?.name ?? hit.name ?? null,
-      probe.payload?.picture?.data?.url ?? hit?.picture?.data?.url ?? pageAvatar(pageId),
-    );
-    return {
-      ok: true,
-      name: probe.payload?.name ?? hit.name ?? null,
-      picture: probe.payload?.picture?.data?.url ?? hit?.picture?.data?.url ?? pageAvatar(pageId),
-      instagram: ig?.id ? { id: String(ig.id), username: ig.username ?? null } : null,
-      token: String(hit.access_token),
-      errorPayload: null,
-    };
-  }
-
   return { ok: false, name: null, picture: null, instagram: null, token: null, errorPayload: lastPayload };
 }
 
@@ -257,9 +191,6 @@ async function candidateTokens(admin: any, ownerId: string): Promise<string[]> {
     .eq("owner_id", ownerId);
   for (const b of bindings ?? []) push((b as any)?.page_access_token);
 
-  push(Deno.env.get("META_USER_ACCESS_TOKEN"));
-  push(Deno.env.get("META_PAGE_ACCESS_TOKEN"));
-  push(Deno.env.get("FACEBOOK_ACCESS_TOKEN"));
   return out;
 }
 
@@ -413,39 +344,22 @@ Deno.serve(async (req) => {
         return data as any;
       };
 
-      let row = await readBinding();
+      const row = await readBinding();
 
       // Enforce the configured business Page as the sole publishing identity.
       if (row?.page_id && String(row.page_id) !== PRIMARY_PAGE_ID) {
-        const fixed = await forcePageBinding(admin, ownerId, PRIMARY_PAGE_ID);
-        if (fixed.ok) row = await readBinding();
-        else {
-          await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
-          return json({ connected: false, needs_reconnect: true, never_connected: false, page: null,
-            error: `יש להתחבר מחדש ולאשר גישה לעמוד ${PRIMARY_PAGE_ID}.` });
-        }
+        await purgeFacebookState(admin, ownerId);
+        return json({ connected: false, needs_reconnect: true, never_connected: false, page: null,
+          error: `יש להתחבר מחדש ולאשר גישה לעמוד ${PRIMARY_PAGE_ID}.` });
       }
 
       // A cached blocked asset ("Employee") is not a publishing identity.
       // Never auto-create a missing binding: an explicit disconnect must stay
       // disconnected until the user starts OAuth/manual connection again.
       if (row?.page_id && isBlockedPage({ id: row.page_id, name: row.page_name })) {
-        const blocked = !!row?.page_id;
-        const fixed = await repairBinding(admin, ownerId);
-        if (fixed.ok) row = await readBinding();
-        else {
-          // Never surface a business/"Employee" asset as the publishing page.
-          if (blocked) await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
-          return json({
-            connected: false,
-            needs_reconnect: blocked,
-            never_connected: !blocked,
-            page: null,
-            error: blocked
-              ? `החיבור הנוכחי מצביע על נכס עסקי ולא על עמוד הפרסום (${PRIMARY_PAGE_ID}). יש להתחבר מחדש לפייסבוק ולאשר את העמוד.`
-              : "עמוד הפייסבוק אינו מחובר. יש להתחבר בעמוד החיבורים.",
-          });
-        }
+        await purgeFacebookState(admin, ownerId);
+        return json({ connected: false, needs_reconnect: true, never_connected: false, page: null,
+          error: `החיבור הנוכחי אינו עמוד הפרסום (${PRIMARY_PAGE_ID}). הנתונים נמחקו ויש להתחבר מחדש.` });
       }
 
       if (!row?.page_id) {
@@ -492,54 +406,31 @@ Deno.serve(async (req) => {
 
 
     if (action === "repair") {
-      const res = await repairBinding(admin, ownerId, String(body?.page_id ?? ""));
-      return json(res, res.ok ? 200 : 400);
+      return json({ ok: false, error: "Automatic repair is disabled. Reconnect explicitly through OAuth or a verified Page token." }, 400);
     }
 
     if (action === "status") {
-      let { data } = await admin
+      const { data } = await admin
         .from("messenger_page_bindings")
         .select("page_id, page_name, page_avatar_url, page_access_token, updated_at")
         .eq("owner_id", ownerId)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      let row: any = data;
+      const row: any = data;
 
       if (row?.page_id && String(row.page_id) !== PRIMARY_PAGE_ID) {
-        const fixed = await forcePageBinding(admin, ownerId, PRIMARY_PAGE_ID);
-        if (!fixed.ok) {
-          await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
-          return json({ connected: false, page: null, needs_reconnect: true,
-            error: `יש להתחבר מחדש ולאשר גישה לעמוד ${PRIMARY_PAGE_ID}.` });
-        }
-        const { data: fresh } = await admin
-          .from("messenger_page_bindings")
-          .select("page_id, page_name, page_avatar_url, page_access_token, updated_at")
-          .eq("owner_id", ownerId)
-          .eq("page_id", PRIMARY_PAGE_ID)
-          .maybeSingle();
-        row = fresh;
+        await purgeFacebookState(admin, ownerId);
+        return json({ connected: false, page: null, needs_reconnect: true,
+          error: `יש להתחבר מחדש ולאשר גישה לעמוד ${PRIMARY_PAGE_ID}.` });
       }
 
       // Self-heal a cached binding that points at a blocked asset ("Employee"):
       // never report it as the connected publishing identity.
       if (row?.page_id && isBlockedPage({ id: row.page_id, name: row.page_name })) {
-        console.log("[meta-page-connect] blocked binding cached, repairing", { page_id: row.page_id });
-        const fixed = await repairBinding(admin, ownerId);
-        if (fixed.ok) {
-          const { data: fresh } = await admin
-            .from("messenger_page_bindings")
-            .select("page_id, page_name, page_avatar_url, page_access_token, updated_at")
-            .eq("owner_id", ownerId)
-            .order("updated_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          row = fresh;
-        } else {
-          await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
-          return json({ connected: false, page: null, needs_reconnect: true, error: (fixed as any).error });
-        }
+        await purgeFacebookState(admin, ownerId);
+        return json({ connected: false, page: null, needs_reconnect: true,
+          error: "זהות Facebook לא תקינה נמחקה. יש להתחבר מחדש." });
       }
 
       if (!row?.page_id) {
