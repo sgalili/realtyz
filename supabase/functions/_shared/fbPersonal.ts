@@ -51,20 +51,12 @@ export const FB_PERSONAL_SCOPES = rawScopes.length > 0 ? rawScopes : FB_BASIC_SC
 /** Scopes that MUST be granted for the connection to be considered healthy. */
 export const FB_GROUP_REQUIRED_SCOPES = ["public_profile"];
 
-/** Scopes needed for Graph group discovery — advisory only, never blocking. */
-export const FB_GROUP_SCOPES = ["user_managed_groups", "groups_access_member_info"];
-
 /** Which required scopes Meta did NOT grant. */
 export function missingScopes(granted: string[] | null | undefined): string[] {
   const set = new Set((granted ?? []).map((s) => String(s)));
   return FB_GROUP_REQUIRED_SCOPES.filter((s) => !set.has(s));
 }
 
-/** Which group scopes are missing (used to explain empty group lists). */
-export function missingGroupScopes(granted: string[] | null | undefined): string[] {
-  const set = new Set((granted ?? []).map((s) => String(s)));
-  return FB_GROUP_SCOPES.filter((s) => !set.has(s));
-}
 
 /** Advisory shown when Meta withholds a basic permission. */
 export function scopeAdvisory(missing: string[]): string {

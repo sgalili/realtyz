@@ -85,19 +85,16 @@ export function useFacebookHealth() {
       // A stored, non-expired page binding IS a live connection — the banner
       // must disappear the moment the DB holds a valid page id + token.
       const pageOk = !!page?.connected && hasBinding;
-      const personalBroken = personal?.connected === true && personal?.token_valid === false;
-
-      // Only warn about a BROKEN page connection: a verified page token must
-      // never raise the banner, and "never connected" is an empty state.
-      const needsReconnect =
-        (hasBinding && page?.needs_reconnect === true) ||
-        (!hasBinding && !pageOk && personalBroken);
+      // Only warn about a BROKEN page connection (Page/Instagram publishing):
+      // a verified page token must never raise the banner, and "never
+      // connected" is an empty state. Group permissions are not checked.
+      const needsReconnect = hasBinding && page?.needs_reconnect === true;
 
       const value: FacebookHealth = {
         pageConnected: pageOk,
         needsReconnect,
         reason: needsReconnect
-          ? String(page?.error || personal?.token_error || 'תוקף החיבור לפייסבוק פג. יש להתחבר מחדש.')
+          ? String(page?.error || 'תוקף החיבור לפייסבוק פג. יש להתחבר מחדש.')
           : null,
         pageName: pageOk ? page?.page?.name ?? null : null,
         pageId: pageOk && page?.page?.id ? String(page.page.id) : null,
