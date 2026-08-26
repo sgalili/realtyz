@@ -25,10 +25,13 @@ type PageStatus = {
 };
 
 const STATE_PREFIX = 'facebook_page:';
-/** Hard ceiling for the server-side code exchange (Graph calls + DB write). */
-const EXCHANGE_TIMEOUT_MS = 25_000;
+/** Emergency ceiling for the callback token exchange — spinner never outlives it. */
+const EXCHANGE_TIMEOUT_MS = 5_000;
 /** Hard ceiling for the whole popup round-trip before we release the spinner. */
 const OAUTH_WATCHDOG_MS = 120_000;
+/** Absolute safety net: the spinner is force-cleared this long after it starts. */
+const SPINNER_SAFETY_MS = 5_000;
+
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -126,6 +129,19 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (exchangingRef.current) return;
       exchangingRef.current = true;
       setConnecting(true);
+      // Emergency safety net: whatever happens to the request, the spinner is
+      // released after 5s so the user can retry or use the manual token path.
+      const safety = window.setTimeout(() => {
+        exchangingRef.current = false;
+        setConnecting(false);
+        setLoading(false);
+        setManualOpen(true);
+        try { popupRef.current?.close(); } catch { /* ignore */ }
+        popupRef.current = null;
+        toast.error('החיבור לפייסבוק לא הושלם בזמן', {
+          description: 'נסה להתחבר שוב, או חבר את העמוד ידנית באמצעות Page Access Token.',
+        });
+      }, SPINNER_SAFETY_MS);
       try {
         if (!code) throw new Error('פייסבוק לא החזיר קוד אימות. נסה להתחבר שוב.');
         const res = await withTimeout(
@@ -133,14 +149,17 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           EXCHANGE_TIMEOUT_MS,
           'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
         );
+        window.clearTimeout(safety);
         toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
         await probe(false).catch(() => undefined);
       } catch (e: any) {
+        window.clearTimeout(safety);
         if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
         // Never leave the user trapped: offer the manual token path immediately.
         setManualOpen(true);
       } finally {
+        window.clearTimeout(safety);
         exchangingRef.current = false;
         setConnecting(false);
         setLoading(false);
@@ -150,6 +169,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     },
     [probe],
   );
+
 
   // Watchdog: release the spinner if the popup is closed/abandoned or the whole
   // round-trip stalls, so "connecting" can never hang indefinitely.
