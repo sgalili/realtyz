@@ -120,6 +120,14 @@ export async function resolveCaller(
   return { userId, workspaceOwnerId: String(ws) };
 }
 
+/**
+ * The single Meta Developer app that owns this integration — the app where
+ * https://realtyz.co.il/oauth/callback is registered under Valid OAuth Redirect
+ * URIs. Pinned so every login trigger, token exchange and callback verification
+ * uses the same app, regardless of stale DB rows or leftover env values.
+ */
+export const CANONICAL_FB_APP_ID = "2885631568443536";
+
 /** Shared Facebook OAuth app credentials (super-admin managed). */
 export async function fbAppCredentials(admin: SupabaseClient): Promise<{
   clientId: string | null;
@@ -140,13 +148,28 @@ export async function fbAppCredentials(admin: SupabaseClient): Promise<{
     const v = Deno.env.get(k);
     return v && v.trim() ? v.trim() : null;
   };
+
+  const configuredId =
+    row?.client_id ||
+    env("FACEBOOK_APP_ID") ||
+    env("META_APP_ID") ||
+    env("FB_APP_ID") ||
+    null;
+
+  // Surface (but never honor) a drifting App ID: using a different app would
+  // send the login to a Meta app where the production callback is not
+  // whitelisted, producing the opaque "URL Blocked" error.
+  if (configuredId && configuredId !== CANONICAL_FB_APP_ID) {
+    console.warn(
+      "[fbAppCredentials] ignoring non-canonical Facebook App ID",
+      configuredId,
+      "-> using",
+      CANONICAL_FB_APP_ID,
+    );
+  }
+
   return {
-    clientId:
-      row?.client_id ||
-      env("FACEBOOK_APP_ID") ||
-      env("META_APP_ID") ||
-      env("FB_APP_ID") ||
-      null,
+    clientId: CANONICAL_FB_APP_ID,
     clientSecret:
       row?.client_secret ||
       env("FACEBOOK_APP_SECRET") ||
@@ -155,6 +178,7 @@ export async function fbAppCredentials(admin: SupabaseClient): Promise<{
       null,
   };
 }
+
 
 
 /** Load the workspace's stored personal-profile token. */
