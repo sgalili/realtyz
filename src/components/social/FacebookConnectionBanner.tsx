@@ -10,9 +10,13 @@ import { useFacebookHealth } from '@/hooks/useFacebookHealth';
  * failure) and silent while the connection is healthy.
  */
 export function FacebookConnectionBanner() {
-  const { data } = useFacebookHealth();
+  const { data: health } = useFacebookHealth();
+  const needsReconnect = health?.needsReconnect === true;
 
-  if (!data?.needsReconnect) return null;
+  // Strict hide: the backend only sets needs_reconnect when zero bound pages
+  // have a working token. If it is false — or any page binding is healthy —
+  // the banner must disappear immediately.
+  if (!needsReconnect || health?.pageConnected) return null;
 
   return (
     <div
@@ -24,7 +28,7 @@ export function FacebookConnectionBanner() {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-destructive">החיבור לפייסבוק אינו פעיל</p>
         <p className="text-xs text-muted-foreground">
-          {data.reason} פרסום לעמוד ולאינסטגרם לא יעבוד עד לחיבור מחדש.
+          {health.reason} פרסום לעמוד ולאינסטגרם לא יעבוד עד לחיבור מחדש.
         </p>
       </div>
       <Button asChild size="sm" className="gap-1">
