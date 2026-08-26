@@ -448,19 +448,41 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         <div className="rounded-xl border">
           <button
             type="button"
-            onClick={() => setRedirectHelp((v) => !v)}
+            onClick={() => {
+              setRedirectHelp((v) => !v);
+              if (!appId) {
+                void callPageConnect<any>({ action: 'app_info' })
+                  .then((r) => { if (r?.app_id) setAppId(String(r.app_id)); })
+                  .catch(() => undefined);
+              }
+            }}
             aria-expanded={redirectHelp}
             className="flex w-full items-center justify-between gap-2 p-3 text-right"
           >
             <span className="flex items-center gap-2 text-xs font-medium">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              כתובת חזרה ל‑Meta (פתרון שגיאת "URL Blocked")
+              הגדרות Meta (App ID וכתובת חזרה)
             </span>
             <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${redirectHelp ? 'rotate-180' : ''}`} />
           </button>
           {redirectHelp && (
             <div className="space-y-3 border-t p-3">
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium">Meta App ID בשימוש:</p>
+                <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
+                  <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{appId ?? '—'}</code>
+                  {appId && (
+                    <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(appId)}>
+                      <Copy className="h-3.5 w-3.5" /> העתק
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  ודא שזו אותה אפליקציה שבה רשומות כתובות החזרה לפרודקשן.
+                </p>
+              </div>
               <p className="text-[11px] font-medium">{redirectSetup.title}:</p>
+
               <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
                 <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{redirectSetup.uri}</code>
                 <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(redirectSetup.uri)}>
