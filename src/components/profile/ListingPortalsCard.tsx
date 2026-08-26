@@ -195,7 +195,12 @@ export function ListingPortalsCard() {
     setSaving(p.id);
     try {
       const patch: Record<string, any> = { user_id: user.id, updated_at: new Date().toISOString() };
-      p.fields.forEach((f) => { patch[f.col] = (values[f.col] ?? '').trim() || null; });
+      p.fields.forEach((f) => {
+        const raw = (values[f.col] ?? '').trim();
+        // Never persist the masked project token placeholder over the real value.
+        if (f.col === 'brightdata_api_token' && raw.includes('••')) return;
+        patch[f.col] = raw || null;
+      });
       const { error } = await supabase
         .from('user_api_keys')
         .upsert(patch as any, { onConflict: 'user_id' });
