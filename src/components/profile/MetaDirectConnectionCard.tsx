@@ -78,8 +78,12 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   // Shared reactive connection state (same cache as the collapsed header badge
   // and the global warning banner).
   const { data: health } = useFacebookHealth();
+  // DB-direct binding: renders the saved page instantly (no Graph round-trip).
+  const { data: binding } = useMetaPageBinding();
+  const refreshBinding = useRefreshMetaPageBinding();
   const refreshHealth = useRefreshFacebookHealth();
   const resetHealth = useResetFacebookHealth();
+
   const [disconnecting, setDisconnecting] = useState(false);
   const [connectionEpoch, setConnectionEpoch] = useState(0);
   const disconnectedRef = useRef(false);
