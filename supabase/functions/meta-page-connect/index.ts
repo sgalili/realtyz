@@ -52,6 +52,26 @@ function pageAvatar(pageId: string): string {
   return `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/picture?type=normal`;
 }
 
+/** Persist the real page name + official avatar so the UI has them instantly. */
+async function persistPageIdentity(
+  admin: any,
+  ownerId: string,
+  pageId: string,
+  name: string | null,
+  picture: string | null,
+) {
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (name) patch.page_name = name;
+  if (picture) patch.page_avatar_url = picture;
+  try {
+    await admin
+      .from("messenger_page_bindings")
+      .update(patch)
+      .eq("owner_id", ownerId)
+      .eq("page_id", String(pageId));
+  } catch { /* best effort */ }
+}
+
 /**
  * Real PAGE identity — never /me (which returns the personal user, e.g.
  * "Employee"). Reads /{page_id}?fields=id,name,picture with the stored Page
@@ -81,6 +101,8 @@ async function fetchPageIdentity(
     lastPayload = r.payload;
     if (r.ok && r.payload?.id) {
       const ig = r.payload?.instagram_business_account;
+      const pic = r.payload?.picture?.data?.url ?? pageAvatar(pageId);
+      await persistPageIdentity(admin, ownerId, pageId, r.payload?.name ?? null, pic);
       return {
         ok: true,
         name: r.payload?.name ?? null,
@@ -116,6 +138,13 @@ async function fetchPageIdentity(
 
     const probe = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(String(hit.access_token))}`);
     const ig = probe.ok ? probe.payload?.instagram_business_account : null;
+    await persistPageIdentity(
+      admin,
+      ownerId,
+      pageId,
+      probe.payload?.name ?? hit.name ?? null,
+      probe.payload?.picture?.data?.url ?? hit?.picture?.data?.url ?? pageAvatar(pageId),
+    );
     return {
       ok: true,
       name: probe.payload?.name ?? hit.name ?? null,
@@ -245,7 +274,7 @@ Deno.serve(async (req) => {
       const readBinding = async () => {
         const { data } = await admin
           .from("messenger_page_bindings")
-          .select("page_id, page_name, page_access_token, updated_at")
+          .select("page_id, page_name, page_avatar_url, page_access_token, updated_at")
           .eq("owner_id", ownerId)
           .order("updated_at", { ascending: false })
           .limit(1)
@@ -297,7 +326,7 @@ Deno.serve(async (req) => {
         page: {
           id: String(row.page_id),
           name: identity.name ?? row.page_name ?? null,
-          picture: identity.picture ?? pageAvatar(String(row.page_id)),
+          picture: identity.picture ?? row.page_avatar_url ?? pageAvatar(String(row.page_id)),
           connected_at: row.updated_at ?? null,
         },
         instagram: identity.instagram,
@@ -318,7 +347,7 @@ Deno.serve(async (req) => {
     if (action === "status") {
       let { data } = await admin
         .from("messenger_page_bindings")
-        .select("page_id, page_name, page_access_token, updated_at")
+        .select("page_id, page_name, page_avatar_url, page_access_token, updated_at")
         .eq("owner_id", ownerId)
         .order("updated_at", { ascending: false })
         .limit(1)
@@ -333,7 +362,7 @@ Deno.serve(async (req) => {
         if (fixed.ok) {
           const { data: fresh } = await admin
             .from("messenger_page_bindings")
-            .select("page_id, page_name, page_access_token, updated_at")
+            .select("page_id, page_name, page_avatar_url, page_access_token, updated_at")
             .eq("owner_id", ownerId)
             .order("updated_at", { ascending: false })
             .limit(1)
@@ -361,7 +390,7 @@ Deno.serve(async (req) => {
         page: {
           id: String(row.page_id),
           name: ident.name ?? row.page_name ?? null,
-          picture: ident.picture ?? pageAvatar(String(row.page_id)),
+          picture: ident.picture ?? row.page_avatar_url ?? pageAvatar(String(row.page_id)),
           connected_at: row.updated_at ?? null,
         },
         instagram: ident.instagram,
@@ -427,6 +456,8 @@ Deno.serve(async (req) => {
 
     if (action === "start") {
       if (!redirectUri) return json({ error: "redirect_uri is required" }, 400);
+      // Logged verbatim so it can be diffed against Meta's Valid OAuth Redirect URIs.
+      console.log("[meta-page-connect] start redirect_uri =", JSON.stringify(redirectUri));
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
@@ -446,6 +477,7 @@ Deno.serve(async (req) => {
       const code = String(body?.code ?? "").trim();
       const wantedPageId = String(body?.page_id ?? "").trim();
       if (!code || !redirectUri) return json({ error: "code and redirect_uri are required" }, 400);
+      console.log("[meta-page-connect] exchange redirect_uri =", JSON.stringify(redirectUri));
       if (!clientSecret) return json({ error: "פייסבוק לא מוגדר: חסר App Secret." }, 400);
 
       const tokenRes = await graph(

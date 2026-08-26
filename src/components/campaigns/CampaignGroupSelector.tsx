@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Users, Check, Loader2, RefreshCw } from "lucide-react";
+import { Users, Check, Loader2, RefreshCw, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 
 export type FacebookGroup = {
   group_id: string;
@@ -11,6 +12,12 @@ export type FacebookGroup = {
   connected: boolean;
   group_url?: string | null;
 };
+
+/** Pull the numeric/slug group id out of a facebook.com/groups/... URL. */
+function groupIdFromUrl(url: string): string | null {
+  const m = url.match(/groups\/([^/?#]+)/i);
+  return m?.[1] ? decodeURIComponent(m[1]) : null;
+}
 
 type Props = {
   selectedIds: string[];
@@ -24,10 +31,14 @@ type Props = {
  * `fb-groups-import` edge function against the connected Facebook profile.
  */
 export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Props) => {
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [groups, setGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncNote, setSyncNote] = useState<string | null>(null);
+  const [manualName, setManualName] = useState("");
+  const [manualUrl, setManualUrl] = useState("");
+  const [addingManual, setAddingManual] = useState(false);
 
   const hasVisibleGroups = groups.length > 0;
 
@@ -39,17 +50,41 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     connected: true,
   });
 
+  /** Graph-imported groups plus manually added ones, de-duplicated by id. */
   const fetchStoredGroups = async (): Promise<FacebookGroup[]> => {
+    const byId = new Map<string, FacebookGroup>();
+
     try {
-      const { data, error } = await (supabase as any)
+      const { data } = await (supabase as any)
         .from("fb_user_groups")
         .select("group_id, group_name, group_icon, group_url")
         .order("group_name", { ascending: true });
-      if (error) return [];
-      return (data ?? []).filter((r: any) => r.group_id).map(mapRow);
-    } catch {
-      return [];
-    }
+      for (const r of (data ?? []) as any[]) {
+        if (!r?.group_id) continue;
+        byId.set(String(r.group_id), mapRow(r));
+      }
+    } catch { /* Graph cache unavailable — manual groups still render */ }
+
+    try {
+      const { data } = await (supabase as any)
+        .from("custom_user_groups")
+        .select("group_name, group_url")
+        .eq("platform", "facebook")
+        .order("created_at", { ascending: false });
+      for (const r of (data ?? []) as any[]) {
+        const id = groupIdFromUrl(String(r?.group_url ?? ""));
+        if (!id || byId.has(id)) continue;
+        byId.set(id, {
+          group_id: id,
+          group_name: String(r?.group_name || "קבוצה"),
+          group_icon: null,
+          group_url: String(r?.group_url ?? ""),
+          connected: true,
+        });
+      }
+    } catch { /* ignore */ }
+
+    return [...byId.values()];
   };
 
   const load = async () => {
@@ -66,7 +101,13 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const syncFromGraph = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("fb-groups-import", { body: {} });
+      // Bounded: a Graph permission stall must never hang the card.
+      const { data, error } = (await Promise.race([
+        supabase.functions.invoke("fb-groups-import", { body: {} }),
+        new Promise((_r, rej) =>
+          setTimeout(() => rej(new Error("סנכרון הקבוצות ארך זמן רב מדי. ניתן להוסיף קבוצות ידנית.")), 20000)
+        ),
+      ])) as any;
       if (error) throw error;
       const returned: FacebookGroup[] = Array.isArray((data as any)?.groups)
         ? (data as any).groups.filter((r: any) => r?.group_id).map(mapRow)
@@ -89,10 +130,45 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       const stored = await fetchStoredGroups();
       setGroups(stored.length > 0 ? stored : returned);
     } catch (e: any) {
-      setSyncNote(e?.message || "סנכרון הקבוצות נכשל");
-      toast.error(e?.message || "סנכרון הקבוצות נכשל");
+      // Meta App Review can restrict user_managed_groups entirely — degrade to
+      // the stored/manual list instead of leaving the card spinning.
+      const note = String(e?.message || "").trim() ||
+        "פייסבוק לא אישר את הרשאת הקבוצות (App Review). ניתן להוסיף קבוצות ידנית ולפרסם דרכן.";
+      setSyncNote(note);
+      toast.error(note);
+      try { setGroups(await fetchStoredGroups()); } catch { /* keep current list */ }
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const addManualGroup = async () => {
+    const name = manualName.trim();
+    const url = manualUrl.trim();
+    const id = groupIdFromUrl(url);
+    if (!name || !id) {
+      toast.error("יש להזין שם קבוצה וקישור בפורמט https://www.facebook.com/groups/...");
+      return;
+    }
+    setAddingManual(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = workspaceOwnerId || auth?.user?.id;
+      const { error } = await (supabase as any).from("custom_user_groups").insert({
+        workspace_owner_id: uid,
+        group_name: name,
+        group_url: url,
+        platform: "facebook",
+      });
+      if (error) throw error;
+      setManualName("");
+      setManualUrl("");
+      toast.success("הקבוצה נוספה");
+      setGroups(await fetchStoredGroups());
+    } catch (e: any) {
+      toast.error(e?.message || "הוספת הקבוצה נכשלה");
+    } finally {
+      setAddingManual(false);
     }
   };
 
@@ -134,9 +210,36 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
       {!loading && !syncing && !hasVisibleGroups && (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-xs text-muted-foreground">
-          {syncNote || 'אין קבוצות זמינות. חבר את פרופיל הפייסבוק בעמוד החיבורים ולחץ "סנכרן קבוצות".'}
+          {syncNote || 'אין קבוצות זמינות. חבר את פרופיל הפייסבוק בעמוד החיבורים ולחץ "סנכרן קבוצות", או הוסף קבוצה ידנית.'}
         </div>
       )}
+
+      <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr_auto]">
+        <input
+          value={manualName}
+          onChange={(e) => setManualName(e.target.value)}
+          placeholder="שם קבוצה"
+          maxLength={120}
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+        />
+        <input
+          value={manualUrl}
+          onChange={(e) => setManualUrl(e.target.value)}
+          placeholder="https://www.facebook.com/groups/..."
+          dir="ltr"
+          maxLength={500}
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+        />
+        <button
+          type="button"
+          onClick={addManualGroup}
+          disabled={addingManual}
+          className="inline-flex items-center justify-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+        >
+          <Plus className="h-3 w-3" />
+          {addingManual ? "מוסיף…" : "הוסף ידנית"}
+        </button>
+      </div>
 
       {hasVisibleGroups && (
         <div className="rounded-lg border border-border overflow-hidden">
