@@ -47,6 +47,89 @@ async function graph(path: string) {
   return { ok: res.ok, payload };
 }
 
+/** Deterministic Page avatar (works even when the field probe is rate limited). */
+function pageAvatar(pageId: string): string {
+  return `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/picture?type=normal`;
+}
+
+/**
+ * Real PAGE identity — never /me (which returns the personal user, e.g.
+ * "Employee"). Reads /{page_id}?fields=id,name,picture with the stored Page
+ * token, and if that token is not page-scoped, locates the page inside
+ * /{user}/accounts to recover both the true name and a real Page token.
+ */
+async function fetchPageIdentity(
+  admin: any,
+  ownerId: string,
+  pageId: string,
+  storedToken: string | null,
+): Promise<{
+  ok: boolean;
+  name: string | null;
+  picture: string | null;
+  instagram: { id: string; username: string | null } | null;
+  token: string | null;
+  errorPayload: any;
+}> {
+  const fields = "id,name,picture.width(160).height(160),instagram_business_account{id,username}";
+  const tokens: string[] = [];
+  if (storedToken && storedToken.trim().length > 30) tokens.push(storedToken.trim());
+
+  let lastPayload: any = null;
+  for (const token of tokens) {
+    const r = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(token)}`);
+    lastPayload = r.payload;
+    if (r.ok && r.payload?.id) {
+      const ig = r.payload?.instagram_business_account;
+      return {
+        ok: true,
+        name: r.payload?.name ?? null,
+        picture: r.payload?.picture?.data?.url ?? pageAvatar(pageId),
+        instagram: ig?.id ? { id: String(ig.id), username: ig.username ?? null } : null,
+        token,
+        errorPayload: null,
+      };
+    }
+  }
+
+  // Page-scoped recovery: walk every workspace token's /me/accounts list and
+  // pull the entry whose id matches the bound page.
+  for (const token of await candidateTokens(admin, ownerId)) {
+    const r = await graph(
+      `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&limit=100&access_token=${
+        encodeURIComponent(token)
+      }`,
+    );
+    const pages: any[] = Array.isArray(r.payload?.data) ? r.payload.data : [];
+    const hit = pages.find((p) => String(p?.id) === String(pageId));
+    if (!hit?.access_token) continue;
+
+    await admin
+      .from("messenger_page_bindings")
+      .update({
+        page_name: hit.name ?? null,
+        page_access_token: String(hit.access_token),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("owner_id", ownerId)
+      .eq("page_id", String(pageId));
+
+    const probe = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(String(hit.access_token))}`);
+    const ig = probe.ok ? probe.payload?.instagram_business_account : null;
+    return {
+      ok: true,
+      name: probe.payload?.name ?? hit.name ?? null,
+      picture: probe.payload?.picture?.data?.url ?? hit?.picture?.data?.url ?? pageAvatar(pageId),
+      instagram: ig?.id ? { id: String(ig.id), username: ig.username ?? null } : null,
+      token: String(hit.access_token),
+      errorPayload: null,
+    };
+  }
+
+  return { ok: false, name: null, picture: null, instagram: null, token: null, errorPayload: lastPayload };
+}
+
+
 /**
  * Every Meta token the workspace holds, best-first. A blocked/"Employee" page
  * token cannot list /me/accounts, so the personal user token is what actually
