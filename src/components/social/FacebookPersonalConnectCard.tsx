@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
+import { describeOAuthFailure, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
+
 
 type Identity = {
   fb_user_id: string | null;
