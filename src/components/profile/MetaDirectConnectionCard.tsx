@@ -46,15 +46,32 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
+function describeConnectError(payload: any): string {
+  const parts = [payload?.error, payload?.fb_message, payload?.error_detail?.details, payload?.error_detail?.hint]
+    .filter((p) => typeof p === 'string' && p.trim().length > 0);
+  const unique = Array.from(new Set(parts));
+  return unique.join(' — ');
+}
+
 async function callPageConnect<T = any>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('meta-page-connect', { body });
   if (error) {
-    const raw = String(error?.message ?? error);
+    // Non-2xx responses hide the JSON body behind error.context — read it so the
+    // user sees the real reason instead of "non-2xx status code".
+    let detailed = '';
+    try {
+      const ctx: any = (error as any)?.context;
+      const payload = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
+      detailed = describeConnectError(payload);
+    } catch {
+      detailed = '';
+    }
+    const raw = detailed || String(error?.message ?? error);
     throw new Error(
       /failed to (send|fetch)/i.test(raw) ? 'לא ניתן להגיע לשירות החיבור לפייסבוק. נסה שוב בעוד רגע.' : raw,
     );
   }
-  if (data && (data as any).error) throw new Error(String((data as any).error));
+  if (data && (data as any).error) throw new Error(describeConnectError(data) || String((data as any).error));
   return data as T;
 }
 
