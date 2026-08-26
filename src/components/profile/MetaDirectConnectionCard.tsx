@@ -11,7 +11,7 @@ import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } f
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 
-import { clearPendingOAuth, describeOAuthFailure, isRedirectUriFailure, logOAuthRedirectUri, metaConsoleSetupSteps, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
+import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, metaConsoleSetupSteps, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 export type MetaStatus = {
@@ -77,7 +77,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   // Meta App ID actually used by the backend when building the login dialog —
   // shown in the help panel so it can be compared with the Meta Developer app
   // where the production redirect URIs are registered.
-  const [appId, setAppId] = useState<string | null>(null);
+  const [appId, setAppId] = useState<string>(META_APP_ID);
 
   // Shared reactive connection state (same cache as the collapsed header badge
   // and the global warning banner).
@@ -188,7 +188,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         await probe(false).catch(() => undefined);
       } catch (e: any) {
         window.clearTimeout(safety);
-        if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
         // Never leave the user trapped: offer the manual token path immediately.
         setManualOpen(true);
@@ -234,7 +233,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       clearPendingOAuth();
       setConnecting(false);
       const reason = params.get('fb_reason');
-      if (isRedirectUriFailure(reason)) setRedirectHelp(true);
       setManualOpen(true);
       toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(reason) });
       return;
@@ -286,11 +284,10 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       setLoading(false);
 
       // App in development mode / missing app config → guide to the manual path.
-      // Only open the redirect-URI help when the failure really is a blocked URL;
-      // the production callback is whitelisted, so a generic error must not raise
-      // a false "URL Blocked" alarm.
+      // No automatic redirect-URI warning: the production callback is pinned and
+      // whitelisted in the Meta app, so any auto-opened "URL Blocked" panel would
+      // be a false positive. The reference panel stays available manually.
       setManualOpen(true);
-      if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', {
         description: `${describeOAuthFailure(e?.message)} — ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
       });
