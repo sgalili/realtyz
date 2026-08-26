@@ -110,6 +110,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
         await probe(false);
       } catch (e: any) {
+        if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
       } finally {
         setConnecting(false);
@@ -127,6 +128,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (!String(m.state || '').startsWith(STATE_PREFIX)) return;
       if (m.error) {
         setConnecting(false);
+        if (isRedirectUriFailure(m.errorDescription || m.error)) setRedirectHelp(true);
         toast.error('חיבור עמוד הפייסבוק בוטל', {
           description: describeOAuthFailure(m.errorDescription || m.error),
         });
@@ -179,7 +181,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (popup) {
         popup.location.href = res.auth_url;
       } else {
-        // No popup: go full-page; /oauth/callback stashes the result and returns.
+        // No popup (blocked / in-app browser): go full-page; /oauth/callback
+        // stashes the result and returns here.
+        setRedirectHelp(true);
         window.location.href = res.auth_url;
         return;
       }
@@ -188,6 +192,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       setConnecting(false);
       // App in development mode / missing app config → guide to the manual path.
       setManualOpen(true);
+      setRedirectHelp(true);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', {
         description: `${describeOAuthFailure(e?.message)} — ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
       });
@@ -259,6 +264,17 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     }
   };
 
+  const redirectSetup = metaConsoleSetupSteps();
+
+  const copyUri = async (uri: string) => {
+    try {
+      await navigator.clipboard.writeText(uri);
+      toast.success('הכתובת הועתקה');
+    } catch {
+      toast.info('העתק ידנית', { description: uri });
+    }
+  };
+
   const pageName =
     health?.pageName ?? page?.page?.name ?? status?.facebook?.name ?? health?.pageId ?? status?.facebook?.id ?? null;
   const igHandle =
@@ -320,6 +336,49 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         {status && !status.connected && status.message && (
           <p className="text-xs text-destructive">{status.message}</p>
         )}
+
+        {/* Exact redirect URI that must be whitelisted in the Meta app */}
+        <div className="rounded-xl border">
+          <button
+            type="button"
+            onClick={() => setRedirectHelp((v) => !v)}
+            aria-expanded={redirectHelp}
+            className="flex w-full items-center justify-between gap-2 p-3 text-right"
+          >
+            <span className="flex items-center gap-2 text-xs font-medium">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              כתובת חזרה ל‑Meta (פתרון שגיאת "URL Blocked")
+            </span>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${redirectHelp ? 'rotate-180' : ''}`} />
+          </button>
+          {redirectHelp && (
+            <div className="space-y-3 border-t p-3">
+              <p className="text-[11px] font-medium">{redirectSetup.title}:</p>
+              <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
+                <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{redirectSetup.uri}</code>
+                <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(redirectSetup.uri)}>
+                  <Copy className="h-3.5 w-3.5" /> העתק
+                </Button>
+              </div>
+              <ol className="list-inside list-decimal space-y-1 text-[11px] text-muted-foreground">
+                {redirectSetup.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">מומלץ להוסיף את כל הכתובות הבאות בבת אחת:</p>
+                {redirectSetup.allUris.map((uri) => (
+                  <div key={uri} className="flex items-center gap-2">
+                    <code dir="ltr" className="flex-1 truncate text-left text-[10px] text-muted-foreground">{uri}</code>
+                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2" onClick={() => copyUri(uri)}>
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Manual token fallback for apps blocked in development/testing mode */}
         <div className="rounded-xl border">
