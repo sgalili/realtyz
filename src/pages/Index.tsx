@@ -275,12 +275,28 @@ const Dashboard = () => {
         </p>
       </div>
 
+      {/* Scheduled tours (top of page) */}
+      <CollapsibleSection
+        id="scheduled-tours"
+        title="סיורים מתוזמנים"
+        description="סיורים שנקבעו על ידי מתעניינים מדפי הנכס הציבוריים"
+        icon={<CalendarCheck2 className="h-4 w-4 text-primary" />}
+      >
+        <ScheduledToursCard />
+      </CollapsibleSection>
+
       {/* Global search */}
       <div className="space-y-3">
         <GlobalSearchTrigger />
       </div>
 
       {/* 4 KPI widgets */}
+      <CollapsibleSection
+        id="kpis"
+        title="מדדים מרכזיים"
+        description="נכסים, מתעניינים, פגישות ועסקאות"
+        icon={<Building2 className="h-4 w-4 text-primary" />}
+      >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
         <KpiCard
           icon={Building2}
@@ -317,6 +333,8 @@ const Dashboard = () => {
           to="/deal-room"
         />
       </div>
+      </CollapsibleSection>
+
 
       {/* Real-Estate Activity Feed + Neighborhood Pie */}
       <CollapsibleSection
