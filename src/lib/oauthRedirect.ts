@@ -157,6 +157,9 @@ export function logOAuthRedirectUri(provider: string): string {
 
 export type PendingOAuth = {
   code: string | null;
+  /** Implicit user access token, when the provider returned one in the fragment. */
+  accessToken?: string | null;
+
   state: string;
   error?: string | null;
   errorDescription?: string | null;
