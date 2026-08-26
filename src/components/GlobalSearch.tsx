@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Search, User, MapPin, Radio, LayoutDashboard, Building2, MessageSquare } from 'lucide-react';
+import { Search, User, MapPin, Radio, LayoutDashboard, Building2, MessageSquare, CalendarClock } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
@@ -17,7 +17,7 @@ const QUICK_LINKS = [
 
 interface SearchResult {
   id: string;
-  type: 'lead' | 'listing' | 'message' | 'page';
+  type: 'lead' | 'listing' | 'message' | 'inquiry' | 'meeting' | 'tour' | 'page';
   title: string;
   subtitle?: string;
   path: string;
@@ -62,26 +62,83 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
     setLoading(true);
     try {
       const like = `%${term}%`;
+      const digits = term.replace(/\D/g, '');
+      const phoneLike = digits.length >= 3 ? `%${digits.replace(/^0/, '')}%` : null;
 
-      const [leadsRes, listingsRes, messagesRes] = await Promise.all([
-        supabase
-          .from('leads')
-          .select('id, full_name, phone_number, city')
-          .or(`full_name.ilike.${like},phone_number.ilike.${like},city.ilike.${like},email.ilike.${like}`)
-          .limit(8),
-        supabase
-          .from('listings')
-          .select('id, property_title, city, neighborhood, slug')
-          .eq('status', 'live')
-          .or(`property_title.ilike.${like},city.ilike.${like},neighborhood.ilike.${like},address.ilike.${like}`)
-          .limit(6),
-        supabase
-          .from('messages')
-          .select('id, content, lead_id, created_at')
-          .ilike('content', like)
-          .order('created_at', { ascending: false })
-          .limit(6),
-      ]);
+      const leadOr = [
+        `full_name.ilike.${like}`,
+        `phone_number.ilike.${like}`,
+        `city.ilike.${like}`,
+        `email.ilike.${like}`,
+        `neighborhood.ilike.${like}`,
+        `notes.ilike.${like}`,
+        `interest_tag.ilike.${like}`,
+        `lead_stage.ilike.${like}`,
+        `status.ilike.${like}`,
+        ...(phoneLike ? [`phone_number.ilike.${phoneLike}`] : []),
+      ].join(',');
+
+      const listingOr = [
+        `property_title.ilike.${like}`,
+        `city.ilike.${like}`,
+        `neighborhood.ilike.${like}`,
+        `address.ilike.${like}`,
+        `description.ilike.${like}`,
+        `property_type.ilike.${like}`,
+      ].join(',');
+
+      const [leadsRes, listingsRes, messagesRes, inquiriesRes, meetingsRes, toursRes] =
+        await Promise.all([
+          (supabase as any)
+            .from('leads')
+            .select('id, full_name, phone_number, city, neighborhood')
+            .or(leadOr)
+            .limit(10),
+          (supabase as any)
+            .from('listings')
+            .select('id, property_title, city, neighborhood, slug, address, status')
+            .or(listingOr)
+            .limit(10),
+          (supabase as any)
+            .from('messages')
+            .select('id, content, lead_id, created_at')
+            .ilike('content', like)
+            .order('created_at', { ascending: false })
+            .limit(8),
+          (supabase as any)
+            .from('contact_submissions')
+            .select('id, lead_name, lead_phone, lead_email, lead_message, created_at')
+            .or(
+              [
+                `lead_name.ilike.${like}`,
+                `lead_phone.ilike.${like}`,
+                `lead_email.ilike.${like}`,
+                `lead_message.ilike.${like}`,
+              ].join(','),
+            )
+            .limit(6),
+          (supabase as any)
+            .from('meetings')
+            .select('id, title, lead_name, location, starts_at')
+            .or(
+              [`title.ilike.${like}`, `lead_name.ilike.${like}`, `location.ilike.${like}`].join(','),
+            )
+            .order('starts_at', { ascending: false })
+            .limit(6),
+          (supabase as any)
+            .from('property_tours')
+            .select('id, client_name, client_phone, property_title, property_address, scheduled_at')
+            .or(
+              [
+                `client_name.ilike.${like}`,
+                `client_phone.ilike.${like}`,
+                `property_title.ilike.${like}`,
+                `property_address.ilike.${like}`,
+              ].join(','),
+            )
+            .order('scheduled_at', { ascending: false })
+            .limit(6),
+        ]);
 
       const leadResults: SearchResult[] = (leadsRes.data ?? []).map((v: any) => ({
         id: `lead-${v.id}`,
@@ -94,7 +151,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
       const listingResults: SearchResult[] = (listingsRes.data ?? []).map((l: any) => ({
         id: `listing-${l.id}`,
         type: 'listing',
-        title: l.property_title,
+        title: l.property_title || l.address || 'נכס',
         subtitle: [l.neighborhood, l.city].filter(Boolean).join(' · ') || undefined,
         path: l.slug ? `/p/${l.slug}` : `/properties`,
       }));
@@ -107,11 +164,53 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
         path: m.lead_id ? `/inbox?lead=${m.lead_id}` : '/inbox',
       }));
 
+      const inquiryResults: SearchResult[] = (inquiriesRes.data ?? []).map((c: any) => ({
+        id: `inq-${c.id}`,
+        type: 'inquiry',
+        title: c.lead_name || 'פנייה חדשה',
+        subtitle:
+          [formatPhoneDisplay(c.lead_phone), (c.lead_message || '').slice(0, 40)]
+            .filter(Boolean)
+            .join(' · ') || undefined,
+        path: '/admin-leads',
+      }));
+
+      const meetingResults: SearchResult[] = (meetingsRes.data ?? []).map((m: any) => ({
+        id: `meet-${m.id}`,
+        type: 'meeting',
+        title: m.title || 'פגישה',
+        subtitle:
+          [m.lead_name, m.starts_at ? new Date(m.starts_at).toLocaleString('he-IL') : null]
+            .filter(Boolean)
+            .join(' · ') || undefined,
+        path: '/calendar',
+      }));
+
+      const tourResults: SearchResult[] = (toursRes.data ?? []).map((t: any) => ({
+        id: `tour-${t.id}`,
+        type: 'tour',
+        title: `סיור · ${t.client_name || 'מתעניין'}`,
+        subtitle:
+          [t.property_title || t.property_address, t.scheduled_at ? new Date(t.scheduled_at).toLocaleString('he-IL') : null]
+            .filter(Boolean)
+            .join(' · ') || undefined,
+        path: '/dashboard#tours',
+      }));
+
       const pageResults: SearchResult[] = QUICK_LINKS
         .filter((l) => l.label.includes(term))
         .map((l) => ({ id: `page-${l.path}`, type: 'page', title: l.label, path: l.path }));
 
-      setResults([...pageResults, ...leadResults, ...listingResults, ...messageResults]);
+      setResults([
+        ...pageResults,
+        ...leadResults,
+        ...listingResults,
+        ...inquiryResults,
+        ...meetingResults,
+        ...tourResults,
+        ...messageResults,
+      ]);
+
     } catch {
       setResults([]);
     } finally {
@@ -135,6 +234,9 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
       case 'lead': return User;
       case 'listing': return Building2;
       case 'message': return MessageSquare;
+      case 'inquiry': return MessageSquare;
+      case 'meeting': return CalendarClock;
+      case 'tour': return CalendarClock;
       default: return LayoutDashboard;
     }
   };
@@ -144,6 +246,9 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
       case 'lead': return 'מתעניין';
       case 'listing': return 'נכס';
       case 'message': return 'הודעה';
+      case 'inquiry': return 'פנייה';
+      case 'meeting': return 'פגישה';
+      case 'tour': return 'סיור';
       default: return 'עמוד';
     }
   };
@@ -156,7 +261,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="חפש מתעניינים, נכסים, או הודעות..."
+            placeholder="חיפוש בכל המערכת — מתעניינים, נכסים, פניות, פגישות, הודעות..."
             className="border-0 focus-visible:ring-0 h-12 text-base"
             autoFocus
            />

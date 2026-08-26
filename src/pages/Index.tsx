@@ -19,6 +19,8 @@ import { he } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { PendingListingsCard } from '@/components/PendingListingsCard';
 import { ScheduledToursCard } from '@/components/dashboard/ScheduledToursCard';
+import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
+
 
 import { MatchProgressCard } from '@/components/dashboard/MatchProgressCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
@@ -275,12 +277,28 @@ const Dashboard = () => {
         </p>
       </div>
 
+      {/* Scheduled tours (top of page) */}
+      <CollapsibleSection
+        id="scheduled-tours"
+        title="סיורים מתוזמנים"
+        description="סיורים שנקבעו על ידי מתעניינים מדפי הנכס הציבוריים"
+        icon={<CalendarCheck2 className="h-4 w-4 text-primary" />}
+      >
+        <ScheduledToursCard />
+      </CollapsibleSection>
+
       {/* Global search */}
       <div className="space-y-3">
         <GlobalSearchTrigger />
       </div>
 
       {/* 4 KPI widgets */}
+      <CollapsibleSection
+        id="kpis"
+        title="מדדים מרכזיים"
+        description="נכסים, מתעניינים, פגישות ועסקאות"
+        icon={<Building2 className="h-4 w-4 text-primary" />}
+      >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
         <KpiCard
           icon={Building2}
@@ -317,9 +335,18 @@ const Dashboard = () => {
           to="/deal-room"
         />
       </div>
+      </CollapsibleSection>
+
 
       {/* Real-Estate Activity Feed + Neighborhood Pie */}
+      <CollapsibleSection
+        id="activity-and-neighborhoods"
+        title="פעילות נדל״ן והתפלגות שכונות"
+        description="פניות, סיורים, חוזים ותגובות מתעניינים"
+        icon={<Home className="h-4 w-4 text-primary" />}
+      >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -400,24 +427,31 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      </CollapsibleSection>
+
 
       {/* AI-detected pending listings */}
-      <PendingListingsCard />
-      <ScheduledToursCard />
-      <MatchProgressCard />
-      <ListingVisibilityManagerCard />
+      <CollapsibleSection id="pending-listings" title="נכסים שזוהו אוטומטית" description="אישור, עריכה או מחיקה של נכסים שהופקו על ידי ה-AI">
+        <PendingListingsCard />
+      </CollapsibleSection>
+      <CollapsibleSection id="match-progress" title="התאמות לקוחות ונכסים" description="מצב ההתאמות בין מתעניינים לנכסים">
+        <MatchProgressCard />
+      </CollapsibleSection>
+      <CollapsibleSection id="listing-visibility" title="ניהול חשיפת נכסים" description="נכסים מקודמים ומודגשים">
+        <ListingVisibilityManagerCard />
+      </CollapsibleSection>
+
 
 
       {/* Market Alerts */}
+      <CollapsibleSection
+        id="market-alerts"
+        title="התראות שוק"
+        description="אירועים שדורשים את תשומת הלב שלך כעת"
+        icon={<AlertCircle className="h-4 w-4 text-warning" />}
+      >
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-warning" />
-            התראות שוק
-          </CardTitle>
-          <CardDescription>אירועים שדורשים את תשומת הלב שלך כעת</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {!marketAlerts ? (
             <Skeleton className="h-24 w-full" />
           ) : marketAlerts.length === 0 ? (
@@ -448,6 +482,8 @@ const Dashboard = () => {
           )}
         </CardContent>
       </Card>
+      </CollapsibleSection>
+
     </div>
   );
 };
