@@ -255,7 +255,10 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       }
     } catch (e: any) {
       popup?.close();
+      popupRef.current = null;
       setConnecting(false);
+      setLoading(false);
+
       // App in development mode / missing app config → guide to the manual path.
       setManualOpen(true);
       setRedirectHelp(true);
