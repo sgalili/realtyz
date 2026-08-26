@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown, Copy, AlertTriangle } from 'lucide-react';
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
+import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
+
 import { clearPendingOAuth, describeOAuthFailure, isRedirectUriFailure, logOAuthRedirectUri, metaConsoleSetupSteps, oauthRedirectUri, oauthReturnOrigin, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
@@ -76,8 +78,12 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   // Shared reactive connection state (same cache as the collapsed header badge
   // and the global warning banner).
   const { data: health } = useFacebookHealth();
+  // DB-direct binding: renders the saved page instantly (no Graph round-trip).
+  const { data: binding } = useMetaPageBinding();
+  const refreshBinding = useRefreshMetaPageBinding();
   const refreshHealth = useRefreshFacebookHealth();
   const resetHealth = useResetFacebookHealth();
+
   const [disconnecting, setDisconnecting] = useState(false);
   const [connectionEpoch, setConnectionEpoch] = useState(0);
   const disconnectedRef = useRef(false);
@@ -114,12 +120,14 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
     refreshHealth();
 
+    refreshBinding();
+
     if (notify) {
       if (pageRes?.connected || s?.connected) toast.success('החיבור לפייסבוק תקין');
       else toast.error(s?.message || 'דף הפייסבוק אינו מחובר');
     }
     setLoading(false);
-  }, [onStatus, refreshHealth]);
+  }, [onStatus, refreshHealth, refreshBinding]);
 
 
   useEffect(() => { probe(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
@@ -313,6 +321,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (!result?.ok) throw new Error('השרת לא אישר שהחיבור נמחק');
       await resetHealth();
       refreshHealth();
+      refreshBinding();
       toast.success('עמוד הפייסבוק נותק');
     } catch (e: any) {
       toast.error('ניתוק נכשל', { description: e?.message });
@@ -369,11 +378,17 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   };
 
   const pageName =
-    health?.pageName ?? page?.page?.name ?? status?.facebook?.name ?? health?.pageId ?? status?.facebook?.id ?? null;
+    health?.pageName ?? page?.page?.name ?? status?.facebook?.name ?? binding?.pageName
+    ?? health?.pageId ?? status?.facebook?.id ?? binding?.pageId ?? null;
   const igHandle =
     health?.instagram?.username ?? page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
-  const pagePicture = page?.page?.picture ?? health?.pagePicture ?? null;
-  const isConnected = disconnectedRef.current ? false : !!health?.pageConnected;
+  const pagePicture = page?.page?.picture ?? health?.pagePicture ?? binding?.pageAvatarUrl ?? null;
+  // The stored DB binding (page id + token) renders "connected" instantly,
+  // without waiting for the Graph health probe to come back.
+  const isConnected = disconnectedRef.current
+    ? false
+    : !!health?.pageConnected || !!page?.connected || !!(binding?.hasToken && binding?.pageId);
+
 
   return (
     <Card key={connectionEpoch} ref={ref} dir="rtl" className="text-right">
