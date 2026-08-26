@@ -28,7 +28,7 @@ export function FacebookConnectionBanner() {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-destructive">החיבור לפייסבוק אינו פעיל</p>
         <p className="text-xs text-muted-foreground">
-          {data.reason} פרסום לעמוד ולאינסטגרם לא יעבוד עד לחיבור מחדש.
+          {health.reason} פרסום לעמוד ולאינסטגרם לא יעבוד עד לחיבור מחדש.
         </p>
       </div>
       <Button asChild size="sm" className="gap-1">
