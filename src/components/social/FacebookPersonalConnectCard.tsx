@@ -140,6 +140,7 @@ export const FacebookPersonalConnectCard = () => {
 
   const connect = async (basic = false) => {
     setConnecting(true);
+    const popup = window.open('', 'realtyz-fb-personal-oauth', 'width=560,height=680');
     try {
       clearPendingOAuth();
       const hint = redirectWhitelistHint();
@@ -152,9 +153,10 @@ export const FacebookPersonalConnectCard = () => {
       });
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      const popup = window.open(url, 'realtyz-fb-personal-oauth', 'width=560,height=680');
-      if (!popup) window.location.href = url;
+      if (popup) popup.location.href = url;
+      else window.location.href = url;
     } catch (e: any) {
+      popup?.close();
       setConnecting(false);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: describeOAuthFailure(e?.message) });
     }

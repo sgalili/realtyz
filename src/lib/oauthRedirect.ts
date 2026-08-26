@@ -83,7 +83,8 @@ export function oauthReturnOrigin(): string {
 export function returnOriginFromOAuthState(state: string): string | null {
   const encoded = state.split(':').at(-1) ?? '';
   try {
-    const value = decodeURIComponent(atob(encoded.replace(/-/g, '+').replace(/_/g, '/')));
+    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(encoded.length / 4) * 4, '=');
+    const value = decodeURIComponent(atob(base64));
     const origin = normalizeOrigin(value);
     const host = new URL(origin).hostname;
     const safe = isApprovedOrigin(origin) || host.endsWith('.lovable.app');

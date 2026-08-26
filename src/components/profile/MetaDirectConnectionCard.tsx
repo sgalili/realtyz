@@ -147,6 +147,10 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
 
   const connect = async () => {
     setConnecting(true);
+    // Reserve the popup synchronously while the click still has browser user
+    // activation. Opening it after the backend request is blocked by Safari and
+    // some mobile browsers.
+    const popup = window.open('', 'realtyz-fb-page-oauth', 'width=560,height=680');
     try {
       clearPendingOAuth();
       const hint = redirectWhitelistHint();
@@ -157,13 +161,15 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
         return_origin: oauthReturnOrigin(),
       });
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      const popup = window.open(res.auth_url, 'realtyz-fb-page-oauth', 'width=560,height=680');
-      if (!popup) {
+      if (popup) {
+        popup.location.href = res.auth_url;
+      } else {
         // No popup: go full-page; /oauth/callback stashes the result and returns.
         window.location.href = res.auth_url;
         return;
       }
     } catch (e: any) {
+      popup?.close();
       setConnecting(false);
       // App in development mode / missing app config → guide to the manual path.
       setManualOpen(true);
