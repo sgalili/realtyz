@@ -274,7 +274,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       // Direct full-page redirect: no popup, no postMessage, no cross-origin
       // closure races. /oauth/callback finishes the exchange and returns here.
-      window.location.href = String(res.auth_url);
+      // Use window.top so the outer browser window navigates when the app is
+      // rendered inside a preview iframe.
+      window.top.location.href = String(res.auth_url);
     } catch (e: any) {
       setConnecting(false);
       setLoading(false);

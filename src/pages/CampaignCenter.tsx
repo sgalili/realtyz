@@ -5248,7 +5248,8 @@ const CampaignCenter = () => {
         return;
       }
       // Full-page redirect (no popup) so Facebook returns into the main window.
-      window.location.href = String(url);
+      // Use window.top so the outer browser window navigates when rendered in a preview iframe.
+      window.top.location.href = String(url);
     } catch (e: any) {
       toast.dismiss('meta-connect');
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');

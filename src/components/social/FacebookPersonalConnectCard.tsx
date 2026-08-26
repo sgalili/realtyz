@@ -132,7 +132,8 @@ export const FacebookPersonalConnectCard = () => {
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       // Full-page redirect only: no popup, so there is no window-closure race.
-      window.location.href = String(url);
+      // Navigate the top-level window so preview iframe environments break out.
+      window.top.location.href = String(url);
     } catch (e: any) {
       setConnecting(false);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: describeOAuthFailure(e?.message) });
