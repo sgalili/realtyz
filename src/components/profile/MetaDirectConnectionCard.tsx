@@ -11,7 +11,8 @@ import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } f
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 
-import { clearPendingOAuth, describeOAuthFailure, isRedirectUriFailure, logOAuthRedirectUri, metaConsoleSetupSteps, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
+import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, metaConsoleSetupSteps, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
+import { META_APP_ID } from '@/lib/metaApp';
 
 
 export type MetaStatus = {
@@ -77,7 +78,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   // Meta App ID actually used by the backend when building the login dialog —
   // shown in the help panel so it can be compared with the Meta Developer app
   // where the production redirect URIs are registered.
-  const [appId, setAppId] = useState<string | null>(null);
+  const [appId, setAppId] = useState<string>(META_APP_ID);
 
   // Shared reactive connection state (same cache as the collapsed header badge
   // and the global warning banner).
@@ -188,7 +189,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         await probe(false).catch(() => undefined);
       } catch (e: any) {
         window.clearTimeout(safety);
-        if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
         // Never leave the user trapped: offer the manual token path immediately.
         setManualOpen(true);
@@ -234,7 +234,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       clearPendingOAuth();
       setConnecting(false);
       const reason = params.get('fb_reason');
-      if (isRedirectUriFailure(reason)) setRedirectHelp(true);
       setManualOpen(true);
       toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(reason) });
       return;
@@ -286,11 +285,10 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       setLoading(false);
 
       // App in development mode / missing app config → guide to the manual path.
-      // Only open the redirect-URI help when the failure really is a blocked URL;
-      // the production callback is whitelisted, so a generic error must not raise
-      // a false "URL Blocked" alarm.
+      // No automatic redirect-URI warning: the production callback is pinned and
+      // whitelisted in the Meta app, so any auto-opened "URL Blocked" panel would
+      // be a false positive. The reference panel stays available manually.
       setManualOpen(true);
-      if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', {
         description: `${describeOAuthFailure(e?.message)} — ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
       });
@@ -444,17 +442,16 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           <p className="text-xs text-destructive">{status.message}</p>
         )}
 
-        {/* Exact redirect URI that must be whitelisted in the Meta app */}
+        {/* Pinned Meta app identity + the exact whitelisted redirect URI */}
         <div className="rounded-xl border">
           <button
             type="button"
             onClick={() => {
               setRedirectHelp((v) => !v);
-              if (!appId) {
-                void callPageConnect<any>({ action: 'app_info' })
-                  .then((r) => { if (r?.app_id) setAppId(String(r.app_id)); })
-                  .catch(() => undefined);
-              }
+              // Confirm the backend uses the same pinned app (diagnostic only).
+              void callPageConnect<any>({ action: 'app_info' })
+                .then((r) => { if (r?.app_id) setAppId(String(r.app_id)); })
+                .catch(() => undefined);
             }}
             aria-expanded={redirectHelp}
             className="flex w-full items-center justify-between gap-2 p-3 text-right"
@@ -470,17 +467,21 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
               <div className="space-y-1">
                 <p className="text-[11px] font-medium">Meta App ID בשימוש:</p>
                 <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
-                  <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{appId ?? '—'}</code>
-                  {appId && (
-                    <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(appId)}>
-                      <Copy className="h-3.5 w-3.5" /> העתק
-                    </Button>
-                  )}
+                  <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{appId}</code>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(appId)}>
+                    <Copy className="h-3.5 w-3.5" /> העתק
+                  </Button>
                 </div>
+                {appId !== META_APP_ID && (
+                  <p className="text-[11px] text-destructive">
+                    השרת מדווח על App ID שונה מהמוגדר ({META_APP_ID}).
+                  </p>
+                )}
                 <p className="text-[11px] text-muted-foreground">
-                  ודא שזו אותה אפליקציה שבה רשומות כתובות החזרה לפרודקשן.
+                  זו האפליקציה שבה רשומה כתובת החזרה לפרודקשן.
                 </p>
               </div>
+
               <p className="text-[11px] font-medium">{redirectSetup.title}:</p>
 
               <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
