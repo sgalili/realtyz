@@ -4591,6 +4591,8 @@ export type Database = {
       }
       user_api_keys: {
         Row: {
+          brightdata_api_token: string | null
+          brightdata_zone: string | null
           created_at: string
           homely_api_key: string | null
           homely_auto_push: boolean
@@ -4606,6 +4608,8 @@ export type Database = {
           yad2_username: string | null
         }
         Insert: {
+          brightdata_api_token?: string | null
+          brightdata_zone?: string | null
           created_at?: string
           homely_api_key?: string | null
           homely_auto_push?: boolean
@@ -4621,6 +4625,8 @@ export type Database = {
           yad2_username?: string | null
         }
         Update: {
+          brightdata_api_token?: string | null
+          brightdata_zone?: string | null
           created_at?: string
           homely_api_key?: string | null
           homely_auto_push?: boolean

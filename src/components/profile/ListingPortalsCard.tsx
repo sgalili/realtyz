@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Loader2, Save, Link2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { BrightDataBalanceWidget, type BrightDataBalance } from './BrightDataBalanceWidget';
 
 type Field = { col: string; label: string; type?: 'text' | 'password'; dir?: 'ltr' | 'rtl'; placeholder?: string };
 type Portal = {
@@ -39,6 +40,8 @@ const PORTALS: Portal[] = [
     fields: [
       { col: 'yad2_username', label: 'שם משתמש / Email', dir: 'ltr' },
       { col: 'yad2_api_key', label: 'API Key / Token', type: 'password' },
+      { col: 'brightdata_api_token', label: 'Bright Data API Token', type: 'password', dir: 'ltr', placeholder: 'bd_xxxxxxxx' },
+      { col: 'brightdata_zone', label: 'Bright Data Zone / Dataset ID', dir: 'ltr', placeholder: 'yad2' },
     ],
   },
 ];
@@ -54,6 +57,21 @@ export function ListingPortalsCard() {
   const [homelyHasPassword, setHomelyHasPassword] = useState(false);
   const [homelyStatus, setHomelyStatus] = useState<string>('not_configured');
   const [shown, setShown] = useState<Record<string, boolean>>({});
+  const [bdBalance, setBdBalance] = useState<BrightDataBalance | null>(null);
+  const [bdLoading, setBdLoading] = useState(false);
+
+  const refreshBrightDataBalance = useCallback(async () => {
+    setBdLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('brightdata-balance', { body: {} });
+      if (error) throw error;
+      setBdBalance(data as BrightDataBalance);
+    } catch (e: any) {
+      setBdBalance({ ok: false, message: e?.message ?? 'שליפת היתרה נכשלה' });
+    } finally {
+      setBdLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -65,7 +83,7 @@ export function ListingPortalsCard() {
         .eq('user_id', user.id)
         .maybeSingle();
       const v: Record<string, string> = {};
-      ['yad2_username', 'yad2_api_key', 'homely_api_key'].forEach((c) => {
+      ['yad2_username', 'yad2_api_key', 'homely_api_key', 'brightdata_api_token', 'brightdata_zone'].forEach((c) => {
         v[c] = (keys as any)?.[c] ?? '';
       });
 
@@ -83,8 +101,9 @@ export function ListingPortalsCard() {
 
       setValues(v);
       setLoading(false);
+      void refreshBrightDataBalance();
     })();
-  }, [user?.id]);
+  }, [user?.id, refreshBrightDataBalance]);
 
   const saveHomely = async () => {
     if (!user?.id) return;
@@ -203,6 +222,7 @@ export function ListingPortalsCard() {
         .upsert(patch as any, { onConflict: 'user_id' });
       if (error) throw error;
       toast.success(`חיבור ${p.label} נשמר`);
+      if (p.id === 'yad2') void refreshBrightDataBalance();
     } catch (e: any) {
       toast.error(e?.message ?? 'שמירה נכשלה');
     } finally {
@@ -292,6 +312,9 @@ export function ListingPortalsCard() {
                   </div>
                 ))}
               </div>
+              {p.id === 'yad2' && (
+                <BrightDataBalanceWidget data={bdBalance} loading={bdLoading} onRefresh={refreshBrightDataBalance} />
+              )}
               <div className="flex justify-start gap-2">
                 <Button size="sm" onClick={() => savePortal(p)} disabled={saving === p.id} className="gap-2">
                   {saving === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
