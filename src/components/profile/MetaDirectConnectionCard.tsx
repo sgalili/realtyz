@@ -246,8 +246,13 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         return;
       }
 
-       if (expectedStateRef.current && m.state !== expectedStateRef.current) return;
-       await finishExchange(String(m.code), String(m.redirectUri || oauthRedirectUri()));
+      if (expectedStateRef.current && m.state !== expectedStateRef.current) return;
+      // Acknowledge immediately so the popup does not close before we took over.
+      try { (ev.source as Window | null)?.postMessage({ type: 'realtyz-oauth-ack' }, ev.origin); } catch { /* ignore */ }
+      await finishExchange(
+        { code: m.code ? String(m.code) : null, accessToken: m.accessToken ? String(m.accessToken) : null },
+        String(m.redirectUri || oauthRedirectUri()),
+      );
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
@@ -259,14 +264,18 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   useEffect(() => {
     const pending = takePendingOAuth(STATE_PREFIX);
     if (!pending) return;
-    if (pending.error || !pending.code) {
+    if (pending.error || !(pending.code || pending.accessToken)) {
       toast.error('חיבור עמוד הפייסבוק בוטל', {
         description: describeOAuthFailure(pending.errorDescription || pending.error),
       });
       return;
     }
     setConnecting(true);
-    void finishExchange(pending.code, pending.redirectUri || oauthRedirectUri());
+    void finishExchange(
+      { code: pending.code, accessToken: pending.accessToken ?? null },
+      pending.redirectUri || oauthRedirectUri(),
+    );
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
