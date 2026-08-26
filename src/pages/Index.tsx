@@ -400,6 +400,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      </CollapsibleSection>
+
 
       {/* AI-detected pending listings */}
       <CollapsibleSection id="pending-listings" title="נכסים שזוהו אוטומטית" description="אישור, עריכה או מחיקה של נכסים שהופקו על ידי ה-AI">
