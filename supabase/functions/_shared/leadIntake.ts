@@ -438,6 +438,7 @@ export async function extractLeadDraftLLM(text: string): Promise<Partial<LeadDra
       budget_max: num(parsed.budget_max),
       rooms: num(parsed.rooms),
       requirements: str(parsed.requirements),
+      gender: parsed.gender === "female" ? "female" : parsed.gender === "male" ? "male" : null,
     };
   } catch (_e) {
     return null;
@@ -476,6 +477,8 @@ export async function extractLeadDraft(text: string): Promise<LeadDraft> {
     budget_max: budget,
     rooms: base.rooms ?? (llm.rooms ?? null),
     requirements: (llm.requirements ?? null) as string | null,
+    gender: base.gender ?? (llm.gender ?? null) ??
+      extractGenderLoose(text, base.full_name ?? modelName),
   };
 }
 
