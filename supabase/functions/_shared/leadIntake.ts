@@ -482,6 +482,34 @@ export async function extractLeadDraft(text: string): Promise<LeadDraft> {
   };
 }
 
+
+/**
+ * Map a numeric budget to the exact CRM dropdown token so the
+ * "שכר דירה חודשי" / "תקציב מבוקש" select renders pre-selected instead of blank.
+ * Must stay in sync with the option lists in src/pages/LeadCRM.tsx.
+ */
+export function budgetRangeToken(
+  budget: number | null | undefined,
+  dealType: "sale" | "rent" | null | undefined,
+): string | null {
+  const v = Number(budget ?? 0);
+  if (!isFinite(v) || v <= 0) return null;
+  if (dealType === "rent") {
+    if (v <= 3_500) return "0-3500";
+    if (v <= 5_000) return "3500-5000";
+    if (v <= 7_000) return "5000-7000";
+    if (v <= 10_000) return "7000-10000";
+    if (v <= 15_000) return "10000-15000";
+    return "15000+";
+  }
+  if (v <= 1_500_000) return "0-1500000";
+  if (v <= 2_500_000) return "1500000-2500000";
+  if (v <= 4_000_000) return "2500000-4000000";
+  if (v <= 6_000_000) return "4000000-6000000";
+  if (v <= 10_000_000) return "6000000-10000000";
+  return "10000000+";
+}
+
 /**
  * Build the patch for an EXISTING contact from a fresh draft.
  *
@@ -538,6 +566,8 @@ export function buildLeadUpdatePatch(
   setPref("desired_city", draft.city, `עיר מבוקשת → ${draft.city}`);
   setPref("neighborhood", draft.neighborhood, `שכונה → ${draft.neighborhood}`);
   setPref("requirements", draft.requirements, "עודכנו הדרישות");
+  setPref("budget_range", budgetRangeToken(draft.budget_max, draft.deal_type ?? (existing.deal_type as any)), "");
+  setPref("gender", draft.gender, draft.gender === "female" ? "מגדר → נקבה" : "מגדר → זכר");
   if (draft.deal_type) setPref("listing_type", draft.deal_type, "");
   if (prefsTouched) patch.preferences = prefs;
 
