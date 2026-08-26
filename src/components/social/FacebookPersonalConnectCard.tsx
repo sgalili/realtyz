@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
 import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, oauthReturnOrigin, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
+import { useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 
 
 type Identity = {
@@ -58,6 +59,8 @@ async function callFbPersonal<T = any>(body: Record<string, unknown>): Promise<T
 export const FacebookPersonalConnectCard = () => {
   const qc = useQueryClient();
   const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const resetFacebookHealth = useResetFacebookHealth();
 
   const { data, refetch, isLoading } = useQuery({
     queryKey: ['fb-personal-connection'],
@@ -164,12 +167,30 @@ export const FacebookPersonalConnectCard = () => {
 
 
   const disconnect = async () => {
+    if (disconnecting) return;
+    setDisconnecting(true);
     try {
-      await callFbPersonal({ action: 'disconnect' });
+      // Use the authoritative Page disconnect, which atomically clears the Page
+      // binding, personal token, imported groups and legacy Meta credentials.
+      const { data: result, error } = await supabase.functions.invoke('meta-page-connect', {
+        body: { action: 'disconnect' },
+      });
+      if (error) throw error;
+      if ((result as any)?.error) throw new Error(String((result as any).error));
+      clearPendingOAuth();
+      await resetFacebookHealth();
+      qc.setQueryData(['fb-personal-connection'], {
+        connected: false,
+        identity: null,
+        groups_count: 0,
+      });
+      qc.removeQueries({ queryKey: ['fb-user-groups'] });
+      qc.removeQueries({ queryKey: ['custom-user-groups'] });
       toast.success('פרופיל הפייסבוק נותק');
-      refetch();
     } catch (e: any) {
       toast.error('ניתוק נכשל', { description: e?.message });
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -230,8 +251,8 @@ export const FacebookPersonalConnectCard = () => {
 
         <div className="flex items-center justify-end gap-2 pt-1">
           {connected && (
-            <Button variant="ghost" size="sm" onClick={disconnect} className="gap-1 text-red-600 hover:text-red-700">
-              <Unlink className="h-4 w-4" /> ניתוק
+            <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting} className="gap-1 text-red-600 hover:text-red-700">
+              {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />} ניתוק
             </Button>
           )}
           <Button size="sm" onClick={() => connect(false)} disabled={connecting} className="gap-1">
