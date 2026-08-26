@@ -83,17 +83,6 @@ export function returnOriginFromOAuthState(state: string): string | null {
   }
 }
 
-/**
- * Log the exact URI handed to the provider so a "URL Blocked" error can be
- * matched character-for-character against the Meta Developer Console entry.
- */
-export function logOAuthRedirectUri(provider: string): string {
-  const uri = oauthRedirectUri();
-  // eslint-disable-next-line no-console
-  console.info(`[oauth:${provider}] redirect_uri =`, uri, '| live origin =', currentOrigin());
-  return uri;
-}
-
 export type PendingOAuth = {
   code: string | null;
   /** Implicit user access token, when the provider returned one in the fragment. */
