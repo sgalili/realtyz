@@ -160,11 +160,6 @@ async function fetchPageIdentity(
     const r = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(token)}`);
     lastPayload = r.payload;
     if (r.ok && r.payload?.id) {
-      if (isInvalidPublishingIdentity(r.payload.id, r.payload?.name)) {
-        await purgeFacebookState(admin, ownerId);
-        return { ok: false, name: null, picture: null, instagram: null, token: null,
-          errorPayload: { error: { code: 190, message: "A Facebook Business Page token is required" } } };
-      }
       const ig = r.payload?.instagram_business_account;
       const pic = r.payload?.picture?.data?.url ?? pageAvatar(pageId);
       await persistPageIdentity(admin, ownerId, pageId, r.payload?.name ?? null, pic);
@@ -229,7 +224,17 @@ Deno.serve(async (req) => {
       // the stored binding to "needs reconnect". Rate limits, transient 5xx and
       // network hiccups keep the persisted connection intact.
       const errCode = Number(identity.errorPayload?.error?.code ?? 0);
-      const authFailure = !ok && hasToken && [190, 458, 459, 463, 464, 467, 492].includes(errCode);
+      let authFailure = !ok && hasToken && [190, 458, 459, 463, 464, 467, 492].includes(errCode);
+      // Second opinion before invalidating a stored binding: a single failed
+      // field probe (partial outage, missing field permission) must never mark
+      // a live Page token as expired. Only a token that also fails a bare
+      // /{page_id} read is genuinely revoked/expired.
+      if (authFailure) {
+        const confirm = await graph(
+          `/${row.page_id}?fields=id&access_token=${encodeURIComponent(String(row.page_access_token ?? ""))}`,
+        );
+        if (confirm.ok && confirm.payload?.id) authFailure = false;
+      }
       if (ok && identity.name && identity.name !== row.page_name) {
         await admin
           .from("messenger_page_bindings")
@@ -326,10 +331,6 @@ Deno.serve(async (req) => {
       );
       if (!verify.ok || !verify.payload?.id) {
         return json({ error: humanizeGraphError(verify.payload, "הטוקן נדחה על ידי פייסבוק. ודא שזה Page Access Token של אותו עמוד.") }, 400);
-      }
-      if (isInvalidPublishingIdentity(verify.payload.id, verify.payload?.name)) {
-        await purgeFacebookState(admin, ownerId);
-        return json({ error: "הטוקן שייך למשתמש או לנכס Employee ולא לעמוד העסקי. הנתונים נמחקו, ויש להתחבר מחדש עם Page Access Token תקין." }, 400);
       }
 
       await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
