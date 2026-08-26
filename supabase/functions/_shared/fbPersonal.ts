@@ -18,13 +18,13 @@ export const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 /**
  * Scopes requested during Facebook Login for the personal profile.
  *
- * The full set is requested so one click grants everything the app needs:
- * page publishing/reading and group discovery. Meta only shows the scopes the
- * app is actually approved for, and any scope the user declines is reported
- * back through /me/permissions (see missingScopes) instead of breaking login.
+ * Only core Page management scopes are requested by default. Advanced/restricted
+ * permissions such as group publishing or Instagram publishing are omitted until
+ * they are approved in the Meta app dashboard; requesting them before approval
+ * causes Meta to reject the login dialog with a "Blocked URL" or permission error.
  *
- * Override with FB_PERSONAL_SCOPES (comma separated) when the Meta app is
- * still awaiting App Review for the restricted group permissions.
+ * Override with FB_PERSONAL_SCOPES (comma separated) if the Meta app is later
+ * approved for additional permissions.
  */
 const DEFAULT_PERSONAL_SCOPES = [
   "public_profile",
@@ -33,9 +33,6 @@ const DEFAULT_PERSONAL_SCOPES = [
   "pages_manage_posts",
   "pages_read_engagement",
   "pages_manage_engagement",
-  "user_managed_groups",
-  "groups_access_member_info",
-  "publish_to_groups",
 ];
 
 /** Minimal scope set used when Meta rejects the full dialog request. */

@@ -18,20 +18,19 @@ const json = (b: unknown, s = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-/** Page-level publishing scopes (Instagram included so IG carousels work). */
+/**
+ * Core Page-level publishing scopes.
+ * We intentionally do NOT request advanced/restricted permissions such as
+ * Instagram publishing or group publishing here. Those require Meta App Review
+ * and, when requested before approval, cause the login dialog to fail.
+ */
 const PAGE_SCOPES = [
   "public_profile",
+  "email",
   "pages_show_list",
   "pages_manage_posts",
   "pages_read_engagement",
   "pages_manage_engagement",
-  "instagram_basic",
-  "instagram_content_publish",
-  // Group discovery/publishing (restricted — Meta simply omits them from the
-  // dialog until App Review approves, it does not break the login).
-  "user_managed_groups",
-  "groups_access_member_info",
-  "publish_to_groups",
 ];
 
 // A Login-for-Business config_id makes Meta IGNORE `scope`, which is why the
