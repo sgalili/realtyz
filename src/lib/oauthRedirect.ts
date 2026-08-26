@@ -1,34 +1,31 @@
 /**
  * Shared OAuth redirect helpers.
  *
- * Every provider popup lands on /oauth/callback of the CURRENTLY ACTIVE origin
- * (preview domain, custom domain or localhost) — never a hardcoded host — so
- * the redirect_uri sent to Meta always matches the domain the user is on.
+ * The Facebook / Meta redirect_uri is ALWAYS pinned to the production domain
+ * (https://realtyz.co.il/oauth/callback). This guarantees the URI sent to Meta
+ * matches the exact allowed URI configured in the Meta Developer Console and
+ * bypasses rejections caused by temporary preview URLs or localhost.
  */
 export const OAUTH_CALLBACK_PATH = '/oauth/callback';
 
 /**
- * Redirect URIs that are whitelisted in the Meta Developer Console.
- *
- * Meta refuses any redirect_uri that is not listed there character-for-character
- * ("URL Blocked"), so when the app runs on an origin that Meta does not know
- * (ephemeral preview sandboxes, LAN IPs, in-app browsers) we fall back to the
- * canonical production origin instead of sending a URI that is certain to fail.
+ * Origins that may appear as return targets after Meta lands on the canonical
+ * production callback. These are validated when decoding the OAuth state so
+ * the user is bounced back only to known Realtyz domains.
  */
 const APPROVED_ORIGINS = [
-  'https://realtyzai.lovable.app',
   'https://realtyz.co.il',
   'https://www.realtyz.co.il',
+  'https://realtyzai.lovable.app',
   'http://localhost:8080',
 ];
 
 /**
- * The single origin whose callback URI is guaranteed to exist in the Meta
- * Developer Console. Any origin that is not byte-for-byte in APPROVED_ORIGINS
- * (ephemeral preview sandboxes, LAN IPs, in-app browsers) is redirected
- * through this one instead of sending a URI Meta will refuse.
+ * The single production origin whose callback URI is whitelisted in Meta.
+ * The redirect_uri sent to Meta is always this origin + /oauth/callback,
+ * regardless of the origin the user is currently browsing from.
  */
-const CANONICAL_OAUTH_ORIGIN = 'https://realtyzai.lovable.app';
+const CANONICAL_OAUTH_ORIGIN = 'https://realtyz.co.il';
 
 /** Manual per-browser override, set from the connection card when Meta refuses a URI. */
 const REDIRECT_OVERRIDE_KEY = 'realtyz:oauth-redirect-origin';
