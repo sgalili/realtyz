@@ -85,12 +85,14 @@ async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<
   if (ownerId) {
     const { data } = await db
       .from("messenger_page_bindings")
-      .select("page_id, page_name, page_access_token")
+      .select("page_id, page_name, page_access_token, is_selected")
       .eq("owner_id", ownerId)
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     const row: any = data;
+    // A page the broker de-selected in the connections screen is never a target.
+    if (row?.is_selected === false) return null;
     if (String(row?.page_id ?? '') === PRIMARY_PAGE_ID && row?.page_access_token && !isBlockedPage({ id: row.page_id, name: row.page_name })) {
       return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
     }
@@ -447,7 +449,24 @@ Deno.serve(async (req) => {
     const campaignName = String(body?.campaign_name ?? "Realtyz").trim();
     const scheduledIso = body?.scheduled_at ? String(body.scheduled_at) : null;
     const firstComment = String(body?.first_comment ?? "").trim();
-    const groupIds: string[] = (Array.isArray(body?.group_ids) ? body.group_ids : []).map((g: unknown) => String(g));
+    const requestedGroupIds: string[] = (Array.isArray(body?.group_ids) ? body.group_ids : []).map((g: unknown) => String(g));
+    // Targeted publishing: imported groups the broker de-selected are dropped.
+    const groupIds: string[] = await (async () => {
+      if (requestedGroupIds.length === 0 || !ownerId) return requestedGroupIds;
+      try {
+        const { data } = await db
+          .from("fb_user_groups")
+          .select("group_id, is_selected")
+          .eq("workspace_owner_id", ownerId)
+          .in("group_id", requestedGroupIds);
+        const excluded = new Set(
+          ((data ?? []) as any[]).filter((r) => r?.is_selected === false).map((r) => String(r.group_id)),
+        );
+        return requestedGroupIds.filter((g) => !excluded.has(g));
+      } catch {
+        return requestedGroupIds;
+      }
+    })();
 
     if (!text && media.length === 0) {
       return json({ success: false, error: "empty_post", message: "אין תוכן לפרסום" }, 200);
