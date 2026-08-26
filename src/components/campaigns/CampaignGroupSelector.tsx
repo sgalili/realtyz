@@ -99,7 +99,13 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const syncFromGraph = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("fb-groups-import", { body: {} });
+      // Bounded: a Graph permission stall must never hang the card.
+      const { data, error } = (await Promise.race([
+        supabase.functions.invoke("fb-groups-import", { body: {} }),
+        new Promise((_r, rej) =>
+          setTimeout(() => rej(new Error("סנכרון הקבוצות ארך זמן רב מדי. ניתן להוסיף קבוצות ידנית.")), 20000)
+        ),
+      ])) as any;
       if (error) throw error;
       const returned: FacebookGroup[] = Array.isArray((data as any)?.groups)
         ? (data as any).groups.filter((r: any) => r?.group_id).map(mapRow)
