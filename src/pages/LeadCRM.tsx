@@ -2108,8 +2108,13 @@ const LeadCRM = () => {
                   {(() => {
                     const prefs = ((selectedVoter as any).preferences ?? {}) as Record<string, any>;
                     const dealType: string = (selectedVoter as any).deal_type ?? '';
-                    const propertyType: string = prefs.property_type || prefs.listing_type || '';
-                    const budgetRange: string = prefs.budget_range || '';
+                    // Rent/sale budget captured by the AI intake lands in
+                    // preferences.budget_max — derive the dropdown token from it
+                    // so the field is never left unselected.
+                    const budgetRange: string = prefs.budget_range || budgetTokenFromAmount(
+                      Number(prefs.budget_max ?? 0),
+                      ((selectedVoter as any).deal_type ?? '') === 'rent',
+                    ) || '';
                     const source: string = prefs.source || prefs.lead_source || (selectedVoter as any).source || '';
                     const stage: string = (selectedVoter as any).lead_stage || selectedVoter.status || '';
                     const area: string = (selectedVoter as any).neighborhood || selectedVoter.city || '';
@@ -2117,11 +2122,6 @@ const LeadCRM = () => {
                     const dealTypeOpts = [
                       { v: 'sale', l: 'קנייה' }, { v: 'rent', l: 'שכירות' },
                       { v: 'investment', l: 'השקעה' }, { v: 'sell', l: 'מכירה' },
-                    ];
-                    const propertyOpts = [
-                      { v: 'apartment', l: 'דירת מגורים' }, { v: 'penthouse', l: 'פנטהאוז' },
-                      { v: 'cottage', l: "קוטג'" }, { v: 'house', l: 'בית פרטי' },
-                      { v: 'studio', l: 'סטודיו' }, { v: 'office', l: 'משרד' },
                     ];
                     // Rental leads see monthly-rent ranges (₪/month); buyers see sale-price ranges.
                     const isRental = dealType === 'rent';
@@ -2208,13 +2208,12 @@ const LeadCRM = () => {
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                           <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
-                          <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v })} />
+                          <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v, lead_source: v })} />
                           <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
                           {/* Buyer/renter preference fields — hidden entirely for property owners */}
                           {!ownerLead && (
                             <>
                               <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label={isRental ? 'שכר דירה חודשי' : 'תקציב מבוקש'} value={budgetRange} placeholder={isRental ? 'בחר טווח שכר' : 'בחר תקציב'} options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
-                              <SelectCell icon={<HomeIcon className="h-3.5 w-3.5 text-slate-700" />} label="סוג נכס מועדף" value={propertyType} placeholder="בחר נכס" options={propertyOpts} onChange={(v) => savePref({ property_type: v })} />
                               <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
                             </>
                           )}
