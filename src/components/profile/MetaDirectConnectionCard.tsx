@@ -441,17 +441,16 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           <p className="text-xs text-destructive">{status.message}</p>
         )}
 
-        {/* Exact redirect URI that must be whitelisted in the Meta app */}
+        {/* Pinned Meta app identity + the exact whitelisted redirect URI */}
         <div className="rounded-xl border">
           <button
             type="button"
             onClick={() => {
               setRedirectHelp((v) => !v);
-              if (!appId) {
-                void callPageConnect<any>({ action: 'app_info' })
-                  .then((r) => { if (r?.app_id) setAppId(String(r.app_id)); })
-                  .catch(() => undefined);
-              }
+              // Confirm the backend uses the same pinned app (diagnostic only).
+              void callPageConnect<any>({ action: 'app_info' })
+                .then((r) => { if (r?.app_id) setAppId(String(r.app_id)); })
+                .catch(() => undefined);
             }}
             aria-expanded={redirectHelp}
             className="flex w-full items-center justify-between gap-2 p-3 text-right"
@@ -467,17 +466,21 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
               <div className="space-y-1">
                 <p className="text-[11px] font-medium">Meta App ID בשימוש:</p>
                 <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
-                  <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{appId ?? '—'}</code>
-                  {appId && (
-                    <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(appId)}>
-                      <Copy className="h-3.5 w-3.5" /> העתק
-                    </Button>
-                  )}
+                  <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{appId}</code>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(appId)}>
+                    <Copy className="h-3.5 w-3.5" /> העתק
+                  </Button>
                 </div>
+                {appId !== META_APP_ID && (
+                  <p className="text-[11px] text-destructive">
+                    השרת מדווח על App ID שונה מהמוגדר ({META_APP_ID}).
+                  </p>
+                )}
                 <p className="text-[11px] text-muted-foreground">
-                  ודא שזו אותה אפליקציה שבה רשומות כתובות החזרה לפרודקשן.
+                  זו האפליקציה שבה רשומה כתובת החזרה לפרודקשן.
                 </p>
               </div>
+
               <p className="text-[11px] font-medium">{redirectSetup.title}:</p>
 
               <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
