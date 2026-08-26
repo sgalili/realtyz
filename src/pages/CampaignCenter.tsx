@@ -3071,6 +3071,15 @@ const PublishedFeed = () => {
   );
 
   useEffect(() => {
+    const handleDisconnect = () => {
+      clearCachedFacebookChannel();
+      setConnectedChannels((previous) => new Set([...previous].filter((id) => id !== 'facebook')));
+    };
+    window.addEventListener('realtyz:facebook-disconnected', handleDisconnect);
+    return () => window.removeEventListener('realtyz:facebook-disconnected', handleDisconnect);
+  }, []);
+
+  useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -4965,6 +4974,12 @@ const CampaignCenter = () => {
     queryClient.invalidateQueries({ queryKey: ['social-connections'] });
     queryClient.invalidateQueries({ queryKey: ['meta-page-binding'] });
   };
+
+  useEffect(() => {
+    const handleDisconnect = () => clearSocialConnectionState(['facebook']);
+    window.addEventListener('realtyz:facebook-disconnected', handleDisconnect);
+    return () => window.removeEventListener('realtyz:facebook-disconnected', handleDisconnect);
+  });
 
   // Persist whenever the resolved connection state changes — keeps the grid
   // "remembered" across reloads and new tabs.
