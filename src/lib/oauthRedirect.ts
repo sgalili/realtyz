@@ -22,9 +22,6 @@ const APPROVED_ORIGINS = [
   'http://localhost:8080',
 ];
 
-/** Canonical origin used when the live origin is not approved in Meta. */
-const CANONICAL_ORIGIN = 'https://realtyz.co.il';
-
 /** Optional hard override, e.g. VITE_OAUTH_REDIRECT_URI=https://app.example.com/oauth/callback */
 function envOverride(): string | null {
   const env = (import.meta as any)?.env ?? {};
@@ -57,15 +54,23 @@ export function isApprovedOrigin(origin = currentOrigin()): boolean {
 /**
  * The redirect URI to send to the provider.
  *
- * Order: explicit env override → the live origin when it is approved in Meta →
- * the canonical production origin. Always safe to paste 1:1 into Meta's
- * "Valid OAuth Redirect URIs".
+ * Order: explicit env override (`VITE_OAUTH_REDIRECT_URI` /
+ * `VITE_OAUTH_REDIRECT_ORIGIN`) → the live origin. The callback must land on
+ * the SAME origin the user is browsing, otherwise the popup cannot hand the
+ * code back, so unknown origins are surfaced as a warning (see
+ * `isApprovedOrigin`) rather than silently rewritten.
  */
 export function oauthRedirectUri(): string {
-  const override = envOverride();
-  if (override) return override;
-  const origin = currentOrigin();
-  return `${isApprovedOrigin(origin) ? origin : CANONICAL_ORIGIN}${OAUTH_CALLBACK_PATH}`;
+  return envOverride() ?? `${currentOrigin()}${OAUTH_CALLBACK_PATH}`;
+}
+
+/**
+ * Hebrew warning for an origin Meta does not know yet — shown before the popup
+ * opens so a "URL Blocked" refusal is self-explanatory.
+ */
+export function redirectWhitelistHint(): string | null {
+  if (envOverride() || isApprovedOrigin()) return null;
+  return `הדומיין הנוכחי (${currentOrigin()}) אינו מופיע ברשימת Valid OAuth Redirect URIs באפליקציית Meta. יש להוסיף את ${oauthRedirectUri()} או להתחבר ידנית באמצעות Page Access Token.`;
 }
 
 /** Every URI that must exist in Meta's whitelist, for support messages. */
