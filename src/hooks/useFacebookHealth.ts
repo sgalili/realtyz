@@ -154,6 +154,9 @@ export function useResetFacebookHealth() {
     }
     qc.removeQueries({ queryKey: ['meta-page-binding'] });
     qc.removeQueries({ queryKey: ['social-connections'] });
+    qc.removeQueries({ queryKey: ['fb-personal-connection'] });
+    qc.removeQueries({ queryKey: ['fb-user-groups'] });
+    qc.removeQueries({ queryKey: ['custom-user-groups'] });
     qc.setQueryData([FACEBOOK_HEALTH_KEY, user?.id], DISCONNECTED_HEALTH);
   }, [qc, user?.id]);
 }

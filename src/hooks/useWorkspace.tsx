@@ -113,7 +113,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const [pageRes, socialRes, personalRes] = await Promise.all([
         supabase.from('messenger_page_bindings').select('id, page_id').limit(1),
         supabase.from('social_connections').select('id').limit(1),
-        supabase.from('fb_personal_connections').select('id, access_token, expires_at').limit(1),
+        supabase.from('fb_personal_connections').select('id, access_token, token_expires_at').limit(1),
       ]);
 
       // Errors == unknown state, not broken state.
@@ -123,7 +123,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const hasAccounts = (socialRes.data?.length ?? 0) > 0;
       const personal = (personalRes.data ?? [])[0] as any;
       const personalValid = !!personal?.access_token
-        && (!personal.expires_at || new Date(personal.expires_at).getTime() > Date.now());
+        && (!personal.token_expires_at || new Date(personal.token_expires_at).getTime() > Date.now());
 
       if (hasKey || hasAccounts || personalValid) return; // healthy — stay silent
 
