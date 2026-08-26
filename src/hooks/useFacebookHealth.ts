@@ -82,12 +82,10 @@ export function useFacebookHealth() {
       }
 
       const hasBinding = !!page?.page?.id;
-      // A stored, non-expired page binding IS a live connection — the banner
-      // must disappear the moment the DB holds a valid page id + token.
+      // A stored page binding with a working page token IS a live connection.
+      // The backend now scans every binding and only sets needs_reconnect when
+      // zero bindings have a valid token AND at least one token failed auth.
       const pageOk = !!page?.connected && hasBinding;
-      // Only warn about a BROKEN page connection (Page/Instagram publishing):
-      // a verified page token must never raise the banner, and "never
-      // connected" is an empty state. Group permissions are not checked.
       const needsReconnect = hasBinding && page?.needs_reconnect === true;
 
       const value: FacebookHealth = {
@@ -104,7 +102,6 @@ export function useFacebookHealth() {
           : null,
         neverConnected: !hasBinding && !personal?.connected,
       };
-
 
       // Persist only a healthy state; a broken one should not survive a fix.
       writeCache(user?.id, value.pageConnected ? value : null);
