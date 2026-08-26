@@ -220,20 +220,27 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const connect = async () => {
     disconnectedRef.current = false;
     expectedStateRef.current = null;
+    exchangingRef.current = false;
     setConnecting(true);
     // Reserve the popup synchronously while the click still has browser user
     // activation. Opening it after the backend request is blocked by Safari and
     // some mobile browsers.
     const popup = window.open('', 'realtyz-fb-page-oauth', 'width=560,height=680');
+    popupRef.current = popup;
     try {
       clearPendingOAuth();
       const hint = redirectWhitelistHint();
       if (hint) toast.info('שים לב לכתובת החזרה של Meta', { description: hint });
-      const res = await callPageConnect<any>({
-        action: 'start',
-        redirect_uri: logOAuthRedirectUri('facebook-page'),
-        return_origin: oauthReturnOrigin(),
-      });
+      const res = await withTimeout(
+        callPageConnect<any>({
+          action: 'start',
+          redirect_uri: logOAuthRedirectUri('facebook-page'),
+          return_origin: oauthReturnOrigin(),
+        }),
+        EXCHANGE_TIMEOUT_MS,
+        'שירות החיבור לפייסבוק לא הגיב בזמן. נסה שוב.',
+      );
+
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       const authUrl = new URL(res.auth_url);
       expectedStateRef.current = authUrl.searchParams.get('state');
