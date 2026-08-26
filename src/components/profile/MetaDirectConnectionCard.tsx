@@ -25,6 +25,20 @@ type PageStatus = {
 };
 
 const STATE_PREFIX = 'facebook_page:';
+/** Hard ceiling for the server-side code exchange (Graph calls + DB write). */
+const EXCHANGE_TIMEOUT_MS = 25_000;
+/** Hard ceiling for the whole popup round-trip before we release the spinner. */
+const OAUTH_WATCHDOG_MS = 120_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (v) => { window.clearTimeout(timer); resolve(v); },
+      (e) => { window.clearTimeout(timer); reject(e); },
+    );
+  });
+}
 
 async function callPageConnect<T = any>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('meta-page-connect', { body });
@@ -37,6 +51,7 @@ async function callPageConnect<T = any>(body: Record<string, unknown>): Promise<
   if (data && (data as any).error) throw new Error(String((data as any).error));
   return data as T;
 }
+
 
 /**
  * MetaDirectConnectionCard — connects a Facebook Page (and its linked
@@ -64,6 +79,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [connectionEpoch, setConnectionEpoch] = useState(0);
   const disconnectedRef = useRef(false);
   const expectedStateRef = useRef<string | null>(null);
+  const popupRef = useRef<Window | null>(null);
+  const exchangingRef = useRef(false);
+
 
 
   const probe = useCallback(async (notify = false) => {
@@ -105,19 +123,60 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
   const finishExchange = useCallback(
     async (code: string, redirectUri: string) => {
+      if (exchangingRef.current) return;
+      exchangingRef.current = true;
+      setConnecting(true);
       try {
-        const res = await callPageConnect<any>({ action: 'exchange', code, redirect_uri: redirectUri });
+        if (!code) throw new Error('פייסבוק לא החזיר קוד אימות. נסה להתחבר שוב.');
+        const res = await withTimeout(
+          callPageConnect<any>({ action: 'exchange', code, redirect_uri: redirectUri }),
+          EXCHANGE_TIMEOUT_MS,
+          'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
+        );
         toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
-        await probe(false);
+        await probe(false).catch(() => undefined);
       } catch (e: any) {
         if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
+        // Never leave the user trapped: offer the manual token path immediately.
+        setManualOpen(true);
       } finally {
+        exchangingRef.current = false;
         setConnecting(false);
+        setLoading(false);
+        try { popupRef.current?.close(); } catch { /* ignore */ }
+        popupRef.current = null;
       }
     },
     [probe],
   );
+
+  // Watchdog: release the spinner if the popup is closed/abandoned or the whole
+  // round-trip stalls, so "connecting" can never hang indefinitely.
+  useEffect(() => {
+    if (!connecting) return;
+    const started = Date.now();
+    const poll = window.setInterval(() => {
+      const stalled = Date.now() - started > OAUTH_WATCHDOG_MS;
+      const popupGone = !!popupRef.current && popupRef.current.closed;
+      if (exchangingRef.current) return;
+      if (popupGone || stalled) {
+        window.clearInterval(poll);
+        popupRef.current = null;
+        setConnecting(false);
+        setLoading(false);
+        toast.error('חיבור פייסבוק לא הושלם', {
+          description: stalled
+            ? 'התהליך נמשך יותר מהצפוי. נסה שוב או חבר את העמוד ידנית באמצעות טוקן.'
+            : 'חלון ההתחברות נסגר לפני סיום התהליך. נסה שוב.',
+        });
+        void probe(false).catch(() => undefined);
+      }
+    }, 1000);
+    return () => window.clearInterval(poll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connecting]);
+
 
   // Receive the OAuth code from the popup and exchange it server-side.
   useEffect(() => {
@@ -128,12 +187,16 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (!String(m.state || '').startsWith(STATE_PREFIX)) return;
       if (m.error) {
         setConnecting(false);
+        setLoading(false);
+        try { popupRef.current?.close(); } catch { /* ignore */ }
+        popupRef.current = null;
         if (isRedirectUriFailure(m.errorDescription || m.error)) setRedirectHelp(true);
         toast.error('חיבור עמוד הפייסבוק בוטל', {
           description: describeOAuthFailure(m.errorDescription || m.error),
         });
         return;
       }
+
        if (expectedStateRef.current && m.state !== expectedStateRef.current) return;
        await finishExchange(String(m.code), String(m.redirectUri || oauthRedirectUri()));
     };
@@ -161,20 +224,27 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const connect = async () => {
     disconnectedRef.current = false;
     expectedStateRef.current = null;
+    exchangingRef.current = false;
     setConnecting(true);
     // Reserve the popup synchronously while the click still has browser user
     // activation. Opening it after the backend request is blocked by Safari and
     // some mobile browsers.
     const popup = window.open('', 'realtyz-fb-page-oauth', 'width=560,height=680');
+    popupRef.current = popup;
     try {
       clearPendingOAuth();
       const hint = redirectWhitelistHint();
       if (hint) toast.info('שים לב לכתובת החזרה של Meta', { description: hint });
-      const res = await callPageConnect<any>({
-        action: 'start',
-        redirect_uri: logOAuthRedirectUri('facebook-page'),
-        return_origin: oauthReturnOrigin(),
-      });
+      const res = await withTimeout(
+        callPageConnect<any>({
+          action: 'start',
+          redirect_uri: logOAuthRedirectUri('facebook-page'),
+          return_origin: oauthReturnOrigin(),
+        }),
+        EXCHANGE_TIMEOUT_MS,
+        'שירות החיבור לפייסבוק לא הגיב בזמן. נסה שוב.',
+      );
+
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       const authUrl = new URL(res.auth_url);
       expectedStateRef.current = authUrl.searchParams.get('state');
@@ -189,7 +259,10 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       }
     } catch (e: any) {
       popup?.close();
+      popupRef.current = null;
       setConnecting(false);
+      setLoading(false);
+
       // App in development mode / missing app config → guide to the manual path.
       setManualOpen(true);
       setRedirectHelp(true);

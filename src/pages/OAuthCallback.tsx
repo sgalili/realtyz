@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from '@/lib/oauthRedirect';
 
 /**
@@ -9,8 +9,14 @@ import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from 
  * When there is NO opener (blocked popup, in-app browser, provider forced a
  * full-page redirect) the result is stashed locally and the user is sent back
  * into the app, where the connection card completes the exchange.
+ *
+ * This page never hangs: any missing parameter, delivery failure or a browser
+ * that refuses window.close() falls back to returning the user into the app
+ * with the pending result (or a clear error) stashed.
  */
 export default function OAuthCallback() {
+  const [stuck, setStuck] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
@@ -21,6 +27,7 @@ export default function OAuthCallback() {
     // This is the exact URI Meta returned to. Pass it through unchanged to the
     // code exchange: Meta requires byte-for-byte equality with the login URI.
     const redirectUri = params.get('_oauth_redirect_uri') || `${window.location.origin}/oauth/callback`;
+    const backPath = state.startsWith('facebook') ? '/profile?tab=connections' : '/profile';
 
     // Meta may require a canonical whitelisted callback. Bounce from there to
     // the origin that initiated login before touching opener/localStorage, so
@@ -31,12 +38,18 @@ export default function OAuthCallback() {
       return;
     }
 
+    // Neither a code nor an explicit provider error: the provider (or a stale
+    // tab) landed here with nothing usable. Report it instead of spinning.
+    const effectiveError = error || (code ? null : 'missing_code');
+    const effectiveDescription =
+      errorDescription || (code || error ? null : 'הספק לא החזיר קוד אימות. נסה להתחבר שוב.');
+
     const payload = {
       type: 'realtyz-oauth-callback' as const,
       code,
       state,
-      error,
-      errorDescription,
+      error: effectiveError,
+      errorDescription: effectiveDescription,
       redirectUri,
     };
 
@@ -51,14 +64,19 @@ export default function OAuthCallback() {
     }
 
     if (!delivered) {
-      storePendingOAuth({ code, state, error, errorDescription, redirectUri: oauthRedirectUri() });
-      const back = state.startsWith('facebook') ? '/profile?tab=connections' : '/profile';
-      window.location.replace(back);
+      storePendingOAuth({
+        code,
+        state,
+        error: effectiveError,
+        errorDescription: effectiveDescription,
+        redirectUri: oauthRedirectUri(),
+      });
+      window.location.replace(backPath);
       return;
     }
 
     // Give the parent a tick to receive, then close.
-    const t = window.setTimeout(() => {
+    const closeTimer = window.setTimeout(() => {
       try {
         window.close();
       } catch {
@@ -66,9 +84,15 @@ export default function OAuthCallback() {
       }
     }, 250);
 
-    return () => window.clearTimeout(t);
-  }, []);
+    // Some browsers refuse to close a window they did not script-open. After a
+    // short grace period, surface a manual way back into the app.
+    const stuckTimer = window.setTimeout(() => setStuck(true), 2500);
 
+    return () => {
+      window.clearTimeout(closeTimer);
+      window.clearTimeout(stuckTimer);
+    };
+  }, []);
 
   return (
     <div
@@ -76,12 +100,25 @@ export default function OAuthCallback() {
       className="min-h-screen flex items-center justify-center bg-background text-foreground"
     >
       <div className="text-center space-y-2">
-        <div className="mx-auto h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-        <p className="text-sm text-muted-foreground">מסיים אימות מול Google...</p>
-        <p className="text-[11px] text-muted-foreground/70">
-          חלון זה ייסגר אוטומטית
+        {!stuck && (
+          <div className="mx-auto h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        )}
+        <p className="text-sm text-muted-foreground">
+          {stuck ? 'האימות הושלם. אפשר לסגור את החלון.' : 'מסיים אימות...'}
         </p>
+        {stuck ? (
+          <button
+            type="button"
+            onClick={() => window.close()}
+            className="text-xs font-medium text-primary underline"
+          >
+            סגור חלון
+          </button>
+        ) : (
+          <p className="text-[11px] text-muted-foreground/70">חלון זה ייסגר אוטומטית</p>
+        )}
       </div>
     </div>
   );
 }
+
