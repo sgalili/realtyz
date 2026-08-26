@@ -50,6 +50,7 @@ import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampa
 import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurrentPostDialog';
 import { PostImage } from '@/components/campaigns/PostImage';
 import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/SupportRequiredDialog';
+import { logOAuthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 
 import { searchAllSources } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
@@ -5227,7 +5228,13 @@ const CampaignCenter = () => {
 
     try {
       toast.loading('פותח חיבור לפייסבוק…', { id: 'meta-connect' });
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'start' } });
+      const { data, error } = await supabase.functions.invoke('meta-page-connect', {
+        body: {
+          action: 'start',
+          redirect_uri: logOAuthRedirectUri('facebook-page'),
+          return_origin: oauthReturnOrigin(),
+        },
+      });
       toast.dismiss('meta-connect');
       if (error) {
         let backendMsg: string | null = null;

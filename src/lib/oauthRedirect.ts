@@ -1,34 +1,31 @@
 /**
  * Shared OAuth redirect helpers.
  *
- * Every provider popup lands on /oauth/callback of the CURRENTLY ACTIVE origin
- * (preview domain, custom domain or localhost) — never a hardcoded host — so
- * the redirect_uri sent to Meta always matches the domain the user is on.
+ * The Facebook / Meta redirect_uri is ALWAYS pinned to the production domain
+ * (https://realtyz.co.il/oauth/callback). This guarantees the URI sent to Meta
+ * matches the exact allowed URI configured in the Meta Developer Console and
+ * bypasses rejections caused by temporary preview URLs or localhost.
  */
 export const OAUTH_CALLBACK_PATH = '/oauth/callback';
 
 /**
- * Redirect URIs that are whitelisted in the Meta Developer Console.
- *
- * Meta refuses any redirect_uri that is not listed there character-for-character
- * ("URL Blocked"), so when the app runs on an origin that Meta does not know
- * (ephemeral preview sandboxes, LAN IPs, in-app browsers) we fall back to the
- * canonical production origin instead of sending a URI that is certain to fail.
+ * Origins that may appear as return targets after Meta lands on the canonical
+ * production callback. These are validated when decoding the OAuth state so
+ * the user is bounced back only to known Realtyz domains.
  */
 const APPROVED_ORIGINS = [
-  'https://realtyzai.lovable.app',
   'https://realtyz.co.il',
   'https://www.realtyz.co.il',
+  'https://realtyzai.lovable.app',
   'http://localhost:8080',
 ];
 
 /**
- * The single origin whose callback URI is guaranteed to exist in the Meta
- * Developer Console. Any origin that is not byte-for-byte in APPROVED_ORIGINS
- * (ephemeral preview sandboxes, LAN IPs, in-app browsers) is redirected
- * through this one instead of sending a URI Meta will refuse.
+ * The single production origin whose callback URI is whitelisted in Meta.
+ * The redirect_uri sent to Meta is always this origin + /oauth/callback,
+ * regardless of the origin the user is currently browsing from.
  */
-const CANONICAL_OAUTH_ORIGIN = 'https://realtyzai.lovable.app';
+const CANONICAL_OAUTH_ORIGIN = 'https://realtyz.co.il';
 
 /** Manual per-browser override, set from the connection card when Meta refuses a URI. */
 const REDIRECT_OVERRIDE_KEY = 'realtyz:oauth-redirect-origin';
@@ -92,20 +89,17 @@ export function isApprovedOrigin(origin = currentOrigin()): boolean {
 /**
  * The redirect URI to send to the provider.
  *
- * Order: explicit env override (`VITE_OAUTH_REDIRECT_URI` /
- * `VITE_OAUTH_REDIRECT_ORIGIN`) → the live origin. The callback must land on
- * the SAME origin the user is browsing, otherwise the popup cannot hand the
- * code back, so unknown origins are surfaced as a warning (see
- * `isApprovedOrigin`) rather than silently rewritten.
+ * Always returns the canonical production callback URI so Meta receives the
+ * exact whitelisted URL. Explicit env overrides are still honored for local
+ * testing or emergency reconfiguration.
  */
 export function oauthRedirectUri(): string {
   const override = envOverride();
   if (override) return normalizeOAuthRedirectUri(override);
-  const origin = currentOrigin();
-  return `${isApprovedOrigin(origin) ? origin : CANONICAL_OAUTH_ORIGIN}${OAUTH_CALLBACK_PATH}`;
+  return `${CANONICAL_OAUTH_ORIGIN}${OAUTH_CALLBACK_PATH}`;
 }
 
-/** Whether the callback can safely communicate with the current window. */
+/** Whether the callback lands on the same origin the user is browsing. */
 export function isSameOriginOAuthRedirect(): boolean {
   return normalizeOrigin(oauthRedirectUri()) === currentOrigin();
 }
@@ -131,17 +125,16 @@ export function returnOriginFromOAuthState(state: string): string | null {
 }
 
 /**
- * Hebrew warning for an origin Meta does not know yet — shown before the popup
- * opens so a "URL Blocked" refusal is self-explanatory.
+ * The redirect_uri is always the production domain, so no whitelist warning
+ * is needed. This helper is kept for API compatibility.
  */
 export function redirectWhitelistHint(): string | null {
-  if (envOverride() || isApprovedOrigin()) return null;
-  return `ההתחברות תושלם דרך הכתובת המאושרת ${oauthRedirectUri()} כדי למנוע חסימת כתובת על ידי Meta.`;
+  return null;
 }
 
-/** Every URI that must exist in Meta's whitelist, for support messages. */
+/** The canonical production URI that must exist in Meta's whitelist. */
 export function approvedRedirectUris(): string[] {
-  return APPROVED_ORIGINS.map((o) => `${o}${OAUTH_CALLBACK_PATH}`);
+  return [`${CANONICAL_OAUTH_ORIGIN}${OAUTH_CALLBACK_PATH}`];
 }
 
 /**
