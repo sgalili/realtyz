@@ -114,6 +114,31 @@ async function fetchPageIdentity(
     }
   }
 
+  // Direct recovery: try EVERY workspace token straight against /{page_id}.
+  // A token that can read the page can also publish with it, and this path
+  // works even when /me/accounts is empty (system-user tokens).
+  for (const token of await candidateTokens(admin, ownerId)) {
+    if (tokens.includes(token)) continue;
+    const r = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(token)}`);
+    if (!r.ok || !r.payload?.id) { lastPayload = r.payload ?? lastPayload; continue; }
+    const pic = r.payload?.picture?.data?.url ?? pageAvatar(pageId);
+    await admin
+      .from("messenger_page_bindings")
+      .update({ page_access_token: token, updated_at: new Date().toISOString() })
+      .eq("owner_id", ownerId)
+      .eq("page_id", String(pageId));
+    await persistPageIdentity(admin, ownerId, pageId, r.payload?.name ?? null, pic);
+    const igDirect = r.payload?.instagram_business_account;
+    return {
+      ok: true,
+      name: r.payload?.name ?? null,
+      picture: pic,
+      instagram: igDirect?.id ? { id: String(igDirect.id), username: igDirect.username ?? null } : null,
+      token,
+      errorPayload: null,
+    };
+  }
+
   // Page-scoped recovery: walk every workspace token's /me/accounts list and
   // pull the entry whose id matches the bound page.
   for (const token of await candidateTokens(admin, ownerId)) {
