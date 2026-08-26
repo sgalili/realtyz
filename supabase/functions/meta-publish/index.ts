@@ -10,7 +10,7 @@
 // public.messenger_page_bindings. Publishing never discovers or restores one.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
-import { isBlockedPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
+import { isBlockedPage } from "../_shared/metaPages.ts";
 
 const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
