@@ -188,68 +188,98 @@ Deno.serve(async (req) => {
 
     // Unified connection state: one endpoint powering the collapsed header
     // badge, the expanded card badge and the global warning banner.
+    // Health rule: if ANY stored page binding has a token that can read its own
+    // page ID, the workspace Facebook connection is healthy. Only when ZERO
+    // page bindings have a working token do we surface a reconnect banner.
     if (action === "health") {
-      const readBinding = async () => {
-        const { data } = await admin
-          .from("messenger_page_bindings")
-          .select("page_id, page_name, page_avatar_url, page_access_token, updated_at")
-          .eq("owner_id", ownerId)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        return data as any;
-      };
+      const { data: rows } = await admin
+        .from("messenger_page_bindings")
+        .select("page_id, page_name, page_avatar_url, page_access_token, updated_at")
+        .eq("owner_id", ownerId)
+        .order("updated_at", { ascending: false });
 
-      const row = await readBinding();
+      const bindings = (rows ?? []) as any[];
 
-      // Any bound Page is accepted; never auto-create a missing binding.
-
-      if (!row?.page_id) {
+      if (bindings.length === 0) {
         return json({ connected: false, needs_reconnect: false, never_connected: true, page: null, error: null });
       }
 
-      // A stored page id + page token IS a connection: report connected first,
-      // then enrich with the REAL page name/picture read from /{page_id}
-      // (never /me, which returns the personal "Employee" profile).
-      const hasToken = String(row.page_access_token ?? "").trim().length > 30;
-      const identity = await fetchPageIdentity(admin, ownerId, String(row.page_id), row.page_access_token ?? null);
-      const ok = identity.ok;
-      // Only a genuine token failure (revoked / expired / permissions) may drop
-      // the stored binding to "needs reconnect". Rate limits, transient 5xx and
-      // network hiccups keep the persisted connection intact.
-      const errCode = Number(identity.errorPayload?.error?.code ?? 0);
-      let authFailure = !ok && hasToken && [190, 458, 459, 463, 464, 467, 492].includes(errCode);
-      // Second opinion before invalidating a stored binding: a single failed
-      // field probe (partial outage, missing field permission) must never mark
-      // a live Page token as expired. Only a token that also fails a bare
-      // /{page_id} read is genuinely revoked/expired.
-      if (authFailure) {
-        const confirm = await graph(
-          `/${row.page_id}?fields=id&access_token=${encodeURIComponent(String(row.page_access_token ?? ""))}`,
-        );
-        if (confirm.ok && confirm.payload?.id) authFailure = false;
+      const AUTH_FAILURE_CODES = [190, 458, 459, 463, 464, 467, 492];
+
+      // Lightweight token check: can this page token read its own page ID?
+      const checkToken = async (pageId: string, token: string) => {
+        const r = await graph(`/${pageId}?fields=id&access_token=${encodeURIComponent(token)}`);
+        const errCode = Number(r.payload?.error?.code ?? 0);
+        const ok = r.ok && r.payload?.id;
+        return {
+          ok,
+          authFailure: !ok && AUTH_FAILURE_CODES.includes(errCode),
+          errorPayload: r.payload,
+        };
+      };
+
+      let firstWorking: { row: any; tokenCheck: Awaited<ReturnType<typeof checkToken>> } | null = null;
+      let lastAuthFailure: any = null;
+
+      for (const row of bindings) {
+        const token = String(row.page_access_token ?? "").trim();
+        if (token.length <= 30) continue;
+        const tokenCheck = await checkToken(String(row.page_id), token);
+        if (tokenCheck.ok) {
+          firstWorking = { row, tokenCheck };
+          break;
+        }
+        if (tokenCheck.authFailure) {
+          lastAuthFailure = tokenCheck.errorPayload;
+        }
       }
-      if (ok && identity.name && identity.name !== row.page_name) {
-        await admin
-          .from("messenger_page_bindings")
-          .update({ page_name: identity.name, updated_at: new Date().toISOString() })
-          .eq("owner_id", ownerId)
-          .eq("page_id", String(row.page_id));
+
+      // At least one bound page has a working token → healthy, no banner.
+      if (firstWorking) {
+        const { row } = firstWorking;
+        // Best-effort enrichment with real name/picture/instagram (may fail for
+        // missing field permissions, but the token itself is proven valid).
+        const identity = await fetchPageIdentity(admin, ownerId, String(row.page_id), row.page_access_token ?? null);
+        if (identity.ok && identity.name && identity.name !== row.page_name) {
+          await admin
+            .from("messenger_page_bindings")
+            .update({ page_name: identity.name, updated_at: new Date().toISOString() })
+            .eq("owner_id", ownerId)
+            .eq("page_id", String(row.page_id));
+        }
+        return json({
+          connected: true,
+          stale: false,
+          needs_reconnect: false,
+          never_connected: false,
+          page: {
+            id: String(row.page_id),
+            name: identity.name ?? row.page_name ?? null,
+            picture: identity.picture ?? row.page_avatar_url ?? pageAvatar(String(row.page_id)),
+            connected_at: row.updated_at ?? null,
+          },
+          instagram: identity.instagram,
+          error: null,
+        });
       }
+
+      // No working page token found. Only warn when we confirmed an auth failure.
+      const authFailure = !!lastAuthFailure;
+      const primaryRow = bindings[0];
       return json({
-        connected: hasToken && !authFailure,
-        stale: !ok && !authFailure,
+        connected: false,
+        stale: !authFailure,
         needs_reconnect: authFailure,
         never_connected: false,
         page: {
-          id: String(row.page_id),
-          name: identity.name ?? row.page_name ?? null,
-          picture: identity.picture ?? row.page_avatar_url ?? pageAvatar(String(row.page_id)),
-          connected_at: row.updated_at ?? null,
+          id: String(primaryRow.page_id),
+          name: primaryRow.page_name ?? null,
+          picture: primaryRow.page_avatar_url ?? pageAvatar(String(primaryRow.page_id)),
+          connected_at: primaryRow.updated_at ?? null,
         },
-        instagram: identity.instagram,
+        instagram: null,
         error: authFailure
-          ? humanizeGraphError(identity.errorPayload, "תוקף החיבור לפייסבוק פג. יש להתחבר מחדש.")
+          ? humanizeGraphError(lastAuthFailure, "תוקף החיבור לפייסבוק פג. יש להתחבר מחדש.")
           : null,
       });
 
