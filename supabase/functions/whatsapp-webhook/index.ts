@@ -743,6 +743,8 @@ async function handleLeadInboxInbound(
           interest_tag: shortLink?.listing_id ?? null,
           deal_type: dealType,
           lead_stage: "engaging",
+          // New contacts start with the digital agent ON.
+          ai_autopilot: true,
           loyalty_tier: "Hot Lead",
           status: "contacted",
           sentiment: "positive",
@@ -763,8 +765,9 @@ async function handleLeadInboxInbound(
       if (createErr) console.warn("auto lead create soft-fail:", createErr.message);
       else {
         lead = created as any;
-        // Note: the official Meta WhatsApp Business API does not expose contact
-        // profile photos, so no avatar fetch is performed here.
+        // The WhatsApp profile picture is hydrated automatically: the
+        // `trg_leads_wa_avatar_after_write` trigger on `leads` fires the
+        // `fetch-wa-avatars` function for the new phone number.
       }
     } catch (e) {
       console.warn("auto lead create threw:", e instanceof Error ? e.message : e);
