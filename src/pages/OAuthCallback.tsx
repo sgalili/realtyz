@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from '@/lib/oauthRedirect';
+import { isOAuthPopup, notifyOAuthOpener } from '@/lib/oauthPopupBridge';
 
 /**
  * Full-page OAuth landing page for Facebook / Google.
@@ -28,6 +29,24 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
+/**
+ * Ends the callback: when we were opened in a popup / separate tab, hand the
+ * result to the original app window and close. Otherwise (or if closing was
+ * blocked) redirect this window to the connections screen.
+ */
+function finish(path: string, result: { ok: boolean; name?: string | null; reason?: string | null }) {
+  if (isOAuthPopup()) {
+    notifyOAuthOpener({ provider: 'facebook_page', ...result });
+    // If the browser refused to close the window, fall back to a redirect so
+    // the user never stares at a spinner.
+    window.setTimeout(() => {
+      if (!window.closed) window.location.replace(path);
+    }, 600);
+    return;
+  }
+  window.location.replace(path);
+}
+
 export default function OAuthCallback() {
   const [message, setMessage] = useState('מסיים אימות...');
   const [failed, setFailed] = useState(false);
@@ -49,7 +68,12 @@ export default function OAuthCallback() {
       // Exactly the URI Meta returned to — the exchange requires byte-for-byte
       // equality with the URI used to start the login.
       const redirectUri = pick('_oauth_redirect_uri') || `${window.location.origin}/oauth/callback`;
-      const isFacebook = state.startsWith(FACEBOOK_PAGE_STATE_PREFIX);
+      // Some provider round-trips (implicit re-confirm, custom-domain hops)
+      // drop `state`. Treat a bare grant that came from Facebook as the page
+      // flow so the exchange still happens instead of silently stashing.
+      const isFacebook =
+        state.startsWith(FACEBOOK_PAGE_STATE_PREFIX) ||
+        (!state && !!(code || accessToken) && /facebook\.com/i.test(document.referrer || ''));
       const backPath = state.startsWith('facebook') ? CONNECTIONS_PATH : '/profile';
 
       // Meta may require a canonical whitelisted callback. Bounce from there to
@@ -71,7 +95,7 @@ export default function OAuthCallback() {
       if (error || !hasGrant) {
         const reason = errorDescription || error || 'הספק לא החזיר קוד אימות. נסה להתחבר שוב.';
         if (isFacebook) {
-          window.location.replace(`${CONNECTIONS_PATH}&fb=error&fb_reason=${encodeURIComponent(reason)}`);
+          finish(`${CONNECTIONS_PATH}&fb=error&fb_reason=${encodeURIComponent(reason)}`, { ok: false, reason });
           return;
         }
         storePendingOAuth({
@@ -114,16 +138,16 @@ export default function OAuthCallback() {
         if (cancelled) return;
         // Best-effort group import so the publishing targets list is populated.
         void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
-        window.location.replace(
+        finish(
           `${CONNECTIONS_PATH}&fb=connected${pageName ? `&fb_page=${encodeURIComponent(pageName)}` : ''}`,
+          { ok: true, name: pageName || null },
         );
       } catch (e: any) {
         if (cancelled) return;
         setFailed(true);
         setMessage('החיבור לפייסבוק נכשל. מחזיר אותך להגדרות...');
-        window.location.replace(
-          `${CONNECTIONS_PATH}&fb=error&fb_reason=${encodeURIComponent(String(e?.message ?? 'unknown'))}`,
-        );
+        const reason = String(e?.message ?? 'unknown');
+        finish(`${CONNECTIONS_PATH}&fb=error&fb_reason=${encodeURIComponent(reason)}`, { ok: false, reason });
       }
     };
 
