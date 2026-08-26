@@ -10,7 +10,7 @@
 // public.messenger_page_bindings and used by meta-publish for Graph publishing.
 import { corsHeaders } from "../_shared/cors.ts";
 import { adminClient, fbAppCredentials, GRAPH, humanizeGraphError, resolveCaller } from "../_shared/fbPersonal.ts";
-import { isBlockedPage, pickPrimaryPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
+import { isBlockedPage, KNOWN_PAGE_IDS, pickPrimaryPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -114,6 +114,31 @@ async function fetchPageIdentity(
     }
   }
 
+  // Direct recovery: try EVERY workspace token straight against /{page_id}.
+  // A token that can read the page can also publish with it, and this path
+  // works even when /me/accounts is empty (system-user tokens).
+  for (const token of await candidateTokens(admin, ownerId)) {
+    if (tokens.includes(token)) continue;
+    const r = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(token)}`);
+    if (!r.ok || !r.payload?.id) { lastPayload = r.payload ?? lastPayload; continue; }
+    const pic = r.payload?.picture?.data?.url ?? pageAvatar(pageId);
+    await admin
+      .from("messenger_page_bindings")
+      .update({ page_access_token: token, updated_at: new Date().toISOString() })
+      .eq("owner_id", ownerId)
+      .eq("page_id", String(pageId));
+    await persistPageIdentity(admin, ownerId, pageId, r.payload?.name ?? null, pic);
+    const igDirect = r.payload?.instagram_business_account;
+    return {
+      ok: true,
+      name: r.payload?.name ?? null,
+      picture: pic,
+      instagram: igDirect?.id ? { id: String(igDirect.id), username: igDirect.username ?? null } : null,
+      token,
+      errorPayload: null,
+    };
+  }
+
   // Page-scoped recovery: walk every workspace token's /me/accounts list and
   // pull the entry whose id matches the bound page.
   for (const token of await candidateTokens(admin, ownerId)) {
@@ -203,13 +228,74 @@ async function candidateTokens(admin: any, ownerId: string): Promise<string[]> {
 }
 
 /**
+ * Force-bind the broker's real business Page by querying it DIRECTLY
+ * (GET /{page_id}?fields=id,name,picture) with every token the workspace holds.
+ *
+ * This never trusts /me — a business system-user token resolves to a personal
+ * asset ("Employee") which is not a publishing identity. Only a token that can
+ * actually read /{page_id} is stored, together with the real page name and the
+ * official page picture, so the UI can never fall back to "Employee".
+ */
+async function forcePageBinding(
+  admin: any,
+  ownerId: string,
+  wantedPageId?: string,
+): Promise<
+  | { ok: true; page: { id: string; name: string | null; picture: string | null; connected_at: string } }
+  | { ok: false; tried: string[] }
+> {
+  const fields = "id,name,picture.width(160).height(160),instagram_business_account{id,username}";
+  const wanted = (wantedPageId ?? "").trim();
+  const pageIds = [wanted, ...KNOWN_PAGE_IDS].filter(Boolean).filter((id, i, a) => a.indexOf(id) === i);
+  const tokens = await candidateTokens(admin, ownerId);
+  const tried: string[] = [];
+
+  for (const pageId of pageIds) {
+    for (const token of tokens) {
+      const r = await graph(`/${pageId}?fields=${fields}&access_token=${encodeURIComponent(token)}`);
+      if (!r.ok || !r.payload?.id) {
+        tried.push(`${pageId}: ${String(r.payload?.error?.message ?? "unknown").slice(0, 120)}`);
+        continue;
+      }
+      // A page-scoped token is required for publishing; verify by asking the
+      // page for itself (already done) and keep the token that worked.
+      const name = r.payload?.name ?? null;
+      const picture = r.payload?.picture?.data?.url ?? pageAvatar(pageId);
+      await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+      await admin.from("messenger_page_bindings").delete().eq("page_id", String(pageId));
+      const { error } = await admin.from("messenger_page_bindings").insert({
+        owner_id: ownerId,
+        page_id: String(pageId),
+        page_name: name,
+        page_avatar_url: picture,
+        page_access_token: token,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) {
+        tried.push(`db: ${error.message}`);
+        continue;
+      }
+      console.log("[meta-page-connect] force-bound page", { page_id: pageId, name });
+      return { ok: true, page: { id: String(pageId), name, picture, connected_at: new Date().toISOString() } };
+    }
+  }
+  return { ok: false, tried };
+}
+
+/**
  * Drop a cached binding that points at a blocked asset (e.g. "Employee") and
  * re-resolve the workspace's primary business Page with a real Page token.
  */
 async function repairBinding(admin: any, ownerId: string, wantedPageId?: string) {
   const wanted = (wantedPageId ?? "").trim() || PRIMARY_PAGE_ID;
+
+  // Direct /{page_id} probe first: it binds the real Page even when
+  // /me/accounts is empty (system-user / limited tokens).
+  const forced = await forcePageBinding(admin, ownerId, wanted);
+  if (forced.ok) return { ok: true, page: forced.page, available: [] as any[] };
+
   const tokens = await candidateTokens(admin, ownerId);
-  const tried: string[] = [];
+  const tried: string[] = [...forced.tried];
 
   for (const token of tokens) {
     const r = await graph(
@@ -235,6 +321,7 @@ async function repairBinding(admin: any, ownerId: string, wantedPageId?: string)
       owner_id: ownerId,
       page_id: String(chosen.id),
       page_name: chosen.name ?? null,
+      page_avatar_url: (chosen as any)?.picture?.data?.url ?? pageAvatar(String(chosen.id)),
       page_access_token: String(chosen.access_token),
       updated_at: new Date().toISOString(),
     });
@@ -287,15 +374,20 @@ Deno.serve(async (req) => {
       // A cached blocked asset ("Employee") is not a publishing identity, and a
       // missing binding may still be healable from an existing user token.
       if (!row?.page_id || isBlockedPage({ id: row.page_id, name: row.page_name })) {
+        const blocked = !!row?.page_id;
         const fixed = await repairBinding(admin, ownerId);
         if (fixed.ok) row = await readBinding();
-        else if (!row?.page_id) {
+        else {
+          // Never surface a business/"Employee" asset as the publishing page.
+          if (blocked) await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
           return json({
             connected: false,
-            needs_reconnect: false,
-            never_connected: true,
+            needs_reconnect: blocked,
+            never_connected: !blocked,
             page: null,
-            error: "עמוד הפייסבוק אינו מחובר. יש להתחבר בעמוד החיבורים.",
+            error: blocked
+              ? `החיבור הנוכחי מצביע על נכס עסקי ולא על עמוד הפרסום (${PRIMARY_PAGE_ID}). יש להתחבר מחדש לפייסבוק ולאשר את העמוד.`
+              : "עמוד הפייסבוק אינו מחובר. יש להתחבר בעמוד החיבורים.",
           });
         }
       }
@@ -374,7 +466,12 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (!row?.page_id) return json({ connected: false, page: null });
+      if (!row?.page_id) {
+        // Last resort: try to bind the known business Page directly.
+        const forcedStatus = await forcePageBinding(admin, ownerId, String(body?.page_id ?? ""));
+        if (!forcedStatus.ok) return json({ connected: false, page: null });
+        return json({ connected: true, page: forcedStatus.page });
+      }
 
 
       const ident = await fetchPageIdentity(admin, ownerId, String(row.page_id), row.page_access_token ?? null);
@@ -428,6 +525,7 @@ Deno.serve(async (req) => {
           owner_id: ownerId,
           page_id: pageId,
           page_name: verify.payload?.name ?? null,
+          page_avatar_url: verify.payload?.picture?.data?.url ?? pageAvatar(pageId),
           page_access_token: token,
           updated_at: new Date().toISOString(),
         },
@@ -569,6 +667,7 @@ Deno.serve(async (req) => {
           owner_id: ownerId,
           page_id: String(chosen.id),
           page_name: chosen.name ?? null,
+          page_avatar_url: chosen?.picture?.data?.url ?? pageAvatar(String(chosen.id)),
           page_access_token: String(chosen.access_token),
           updated_at: new Date().toISOString(),
         },

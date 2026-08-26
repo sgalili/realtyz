@@ -8,17 +8,74 @@
 export const OAUTH_CALLBACK_PATH = '/oauth/callback';
 
 /**
- * The redirect URI to send to the provider, built from the live origin.
+ * Redirect URIs that are whitelisted in the Meta Developer Console.
  *
- * Normalised so it can be pasted 1:1 into Meta's "Valid OAuth Redirect URIs":
- * lowercase scheme+host, no trailing slash, no query/hash, no default port.
+ * Meta refuses any redirect_uri that is not listed there character-for-character
+ * ("URL Blocked"), so when the app runs on an origin that Meta does not know
+ * (ephemeral preview sandboxes, LAN IPs, in-app browsers) we fall back to the
+ * canonical production origin instead of sending a URI that is certain to fail.
  */
-export function oauthRedirectUri(): string {
-  const url = new URL(window.location.href);
+const APPROVED_ORIGINS = [
+  'https://realtyz.co.il',
+  'https://www.realtyz.co.il',
+  'https://realtyzai.lovable.app',
+  'http://localhost:8080',
+];
+
+/** Optional hard override, e.g. VITE_OAUTH_REDIRECT_URI=https://app.example.com/oauth/callback */
+function envOverride(): string | null {
+  const env = (import.meta as any)?.env ?? {};
+  const explicit = String(env.VITE_OAUTH_REDIRECT_URI ?? '').trim();
+  if (explicit) return explicit.replace(/\/+$/, '');
+  const origin = String(env.VITE_OAUTH_REDIRECT_ORIGIN ?? '').trim();
+  if (origin) return `${normalizeOrigin(origin)}${OAUTH_CALLBACK_PATH}`;
+  return null;
+}
+
+/** lowercase scheme+host, no trailing slash, no default port, no query/hash. */
+function normalizeOrigin(href: string): string {
+  const url = new URL(href);
   const scheme = url.protocol.toLowerCase();
   const host = url.hostname.toLowerCase();
   const port = url.port && url.port !== '80' && url.port !== '443' ? `:${url.port}` : '';
-  return `${scheme}//${host}${port}${OAUTH_CALLBACK_PATH}`;
+  return `${scheme}//${host}${port}`;
+}
+
+/** The live origin the user is actually browsing, normalised. */
+export function currentOrigin(): string {
+  return normalizeOrigin(window.location.href);
+}
+
+/** True when the live origin is whitelisted in the Meta app configuration. */
+export function isApprovedOrigin(origin = currentOrigin()): boolean {
+  return APPROVED_ORIGINS.includes(origin);
+}
+
+/**
+ * The redirect URI to send to the provider.
+ *
+ * Order: explicit env override (`VITE_OAUTH_REDIRECT_URI` /
+ * `VITE_OAUTH_REDIRECT_ORIGIN`) → the live origin. The callback must land on
+ * the SAME origin the user is browsing, otherwise the popup cannot hand the
+ * code back, so unknown origins are surfaced as a warning (see
+ * `isApprovedOrigin`) rather than silently rewritten.
+ */
+export function oauthRedirectUri(): string {
+  return envOverride() ?? `${currentOrigin()}${OAUTH_CALLBACK_PATH}`;
+}
+
+/**
+ * Hebrew warning for an origin Meta does not know yet — shown before the popup
+ * opens so a "URL Blocked" refusal is self-explanatory.
+ */
+export function redirectWhitelistHint(): string | null {
+  if (envOverride() || isApprovedOrigin()) return null;
+  return `הדומיין הנוכחי (${currentOrigin()}) אינו מופיע ברשימת Valid OAuth Redirect URIs באפליקציית Meta. יש להוסיף את ${oauthRedirectUri()} או להתחבר ידנית באמצעות Page Access Token.`;
+}
+
+/** Every URI that must exist in Meta's whitelist, for support messages. */
+export function approvedRedirectUris(): string[] {
+  return APPROVED_ORIGINS.map((o) => `${o}${OAUTH_CALLBACK_PATH}`);
 }
 
 /**
@@ -28,7 +85,7 @@ export function oauthRedirectUri(): string {
 export function logOAuthRedirectUri(provider: string): string {
   const uri = oauthRedirectUri();
   // eslint-disable-next-line no-console
-  console.info(`[oauth:${provider}] redirect_uri =`, uri);
+  console.info(`[oauth:${provider}] redirect_uri =`, uri, '| live origin =', currentOrigin());
   return uri;
 }
 
@@ -79,7 +136,7 @@ export function takePendingOAuth(statePrefix: string): PendingOAuth | null {
 export function describeOAuthFailure(message?: string | null): string {
   const raw = String(message ?? '').trim();
   if (/blocked|redirect_uri|redirect uri|not allowed/i.test(raw)) {
-    return `הכתובת ${oauthRedirectUri()} אינה מאושרת באפליקציית Meta. יש להוסיף אותה תחת Valid OAuth Redirect URIs, או להתחבר ידנית באמצעות טוקן.`;
+    return `הכתובת ${oauthRedirectUri()} אינה מאושרת באפליקציית Meta. יש להוסיף אותה תחת Valid OAuth Redirect URIs (מומלץ להוסיף את כל אלו: ${approvedRedirectUris().join(', ')}), או להתחבר ידנית באמצעות טוקן.`;
   }
   return raw || 'החיבור לפייסבוק נכשל.';
 }
