@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown, Copy, AlertTriangle } from 'lucide-react';
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
+import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 
 import { clearPendingOAuth, describeOAuthFailure, isRedirectUriFailure, logOAuthRedirectUri, metaConsoleSetupSteps, oauthRedirectUri, oauthReturnOrigin, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
 
@@ -177,6 +178,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           });
         }
         toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
+        // Import the groups reachable from the fresh token so the targets list
+        // is populated without an extra manual step.
+        void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
         refreshBinding();
         refreshHealth();
         await probe(false).catch(() => undefined);
@@ -385,6 +389,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         instagram: res?.instagram ?? null,
       });
       toast.success('הטוקן נשמר והעמוד חובר', { description: res?.page?.name ?? undefined });
+      void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
       setManualToken('');
       setManualOpen(false);
       await probe(false);
@@ -454,15 +459,15 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           </div>
         ) : (
           <div className="rounded-xl border border-dashed p-3">
-            <p className="mb-3 text-xs text-muted-foreground">
-              חבר את עמוד הפייסבוק העסקי שלך כדי לפרסם פוסטים, תמונות וקרוסלות ישירות מהמערכת.
-            </p>
             <Button onClick={connect} disabled={connecting} className="w-full gap-2 bg-[#1877F2] text-white hover:bg-[#1877F2]/90">
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
               חבר עמוד פייסבוק
             </Button>
           </div>
         )}
+
+        {isConnected && <FacebookTargetsCard key={`targets-${connectionEpoch}`} />}
+
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={igHandle ? 'default' : 'secondary'} className="gap-1.5">

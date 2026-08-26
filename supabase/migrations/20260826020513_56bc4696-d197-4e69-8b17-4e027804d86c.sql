@@ -1,0 +1,2 @@
+ALTER TABLE public.fb_user_groups ADD COLUMN IF NOT EXISTS is_selected boolean NOT NULL DEFAULT true;
+ALTER TABLE public.messenger_page_bindings ADD COLUMN IF NOT EXISTS is_selected boolean NOT NULL DEFAULT true;

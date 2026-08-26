@@ -55,6 +55,22 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Targeted publishing: a group the broker de-selected is never posted to.
+    try {
+      const { data: sel } = await admin
+        .from("fb_user_groups")
+        .select("is_selected")
+        .eq("workspace_owner_id", workspaceOwnerId)
+        .eq("group_id", groupId)
+        .maybeSingle();
+      if (sel && (sel as any).is_selected === false) {
+        return json(
+          { ok: false, code: "group_not_selected", reason: "הקבוצה אינה מסומנת לפרסום בהגדרות החיבורים." },
+          200,
+        );
+      }
+    } catch { /* selection lookup is best-effort */ }
+
     const conn = await loadConnection(admin, workspaceOwnerId);
     if (!conn?.access_token) {
       return json(
