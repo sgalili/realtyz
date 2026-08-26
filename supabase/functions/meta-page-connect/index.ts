@@ -427,6 +427,8 @@ Deno.serve(async (req) => {
 
     if (action === "start") {
       if (!redirectUri) return json({ error: "redirect_uri is required" }, 400);
+      // Logged verbatim so it can be diffed against Meta's Valid OAuth Redirect URIs.
+      console.log("[meta-page-connect] start redirect_uri =", JSON.stringify(redirectUri));
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
