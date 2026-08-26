@@ -29,6 +29,7 @@ import {
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { toast } from 'sonner';
+import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 
 interface PlatformDef {
@@ -380,7 +381,10 @@ export function SocialConnectionsTab() {
         if (error) throw error;
         const authUrl = String((data as any)?.auth_url ?? '');
         if (!authUrl) throw new Error('לא התקבל קישור חיבור מ-Meta');
-        window.top.location.href = authUrl;
+        if (!openOAuthWindow(authUrl)) {
+          setBusy(null);
+          toast.error('הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים ונסו שוב.');
+        }
       } catch (error: any) {
         setBusy(null);
         toast.error('לא ניתן לפתוח את חיבור פייסבוק', {

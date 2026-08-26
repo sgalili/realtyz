@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
@@ -67,6 +68,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [page, setPage] = useState<PageStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [pendingAuthUrl, setPendingAuthUrl] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualPageId, setManualPageId] = useState('');
   const [manualToken, setManualToken] = useState('');
@@ -266,11 +268,17 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       );
 
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      // Direct full-page redirect: no popup, no postMessage, no cross-origin
-      // closure races. /oauth/callback finishes the exchange and returns here.
-      // Use window.top so the outer browser window navigates when the app is
-      // rendered inside a preview iframe.
-      window.top.location.href = String(res.auth_url);
+      // Open in a popup / new tab. Assigning window.top.location throws a
+      // sandbox permission error inside the preview iframe.
+      const authUrl = String(res.auth_url);
+      setPendingAuthUrl(authUrl);
+      const opened = openOAuthWindow(authUrl);
+      if (!opened) {
+        setConnecting(false);
+        toast.error('הדפדפן חסם את חלון ההתחברות', {
+          description: 'לחצו על "פתחו את דף האישור" כדי להמשיך בלשונית חדשה.',
+        });
+      }
     } catch (e: any) {
       setConnecting(false);
       setLoading(false);

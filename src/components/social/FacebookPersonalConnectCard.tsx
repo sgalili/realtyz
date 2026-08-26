@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 import { useResetFacebookHealth } from '@/hooks/useFacebookHealth';
@@ -132,9 +133,15 @@ export const FacebookPersonalConnectCard = () => {
       });
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      // Full-page redirect only: no popup, so there is no window-closure race.
-      // Navigate the top-level window so preview iframe environments break out.
-      window.top.location.href = String(url);
+      // Popup / new tab: window.top.location is blocked by the preview iframe sandbox.
+      const authUrl = String(url);
+      setPendingAuthUrl(authUrl);
+      if (!openOAuthWindow(authUrl)) {
+        setConnecting(false);
+        toast.error('הדפדפן חסם את חלון ההתחברות', {
+          description: 'לחצו על "פתחו את דף האישור" כדי להמשיך בלשונית חדשה.',
+        });
+      }
     } catch (e: any) {
       setConnecting(false);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: String(e?.message ?? 'החיבור לפייסבוק נכשל.') });
