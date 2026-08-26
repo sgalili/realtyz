@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
-import { describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
+import { describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 type Identity = {

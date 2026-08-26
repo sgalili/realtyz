@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
 import { useFacebookHealth, useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
-import { describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
+import { describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 export type MetaStatus = {
@@ -146,6 +146,8 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
   const connect = async () => {
     setConnecting(true);
     try {
+      const hint = redirectWhitelistHint();
+      if (hint) toast.info('שים לב לכתובת החזרה של Meta', { description: hint });
       const res = await callPageConnect<any>({
         action: 'start',
         redirect_uri: logOAuthRedirectUri('facebook-page'),
