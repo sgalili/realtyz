@@ -201,21 +201,35 @@ export function takePendingOAuth(statePrefix: string): PendingOAuth | null {
 }
 
 /**
+ * Narrow match for a genuine redirect-URI refusal from Meta.
+ *
+ * Deliberately strict: generic failures (timeouts, permission/scope errors,
+ * "not allowed" from unrelated Graph calls) must NOT be reported as a blocked
+ * callback URL, because the production URI is already whitelisted and the false
+ * alert only confuses the operator.
+ */
+export function isRedirectUriFailure(message?: string | null): boolean {
+  const raw = String(message ?? '');
+  return (
+    /url\s*blocked/i.test(raw) ||
+    /redirect[_\s-]?uri/i.test(raw) ||
+    /כתובת\s*ה?חזרה/i.test(raw) ||
+    /url\s*חסומה/i.test(raw)
+  );
+}
+
+/**
  * Turn Meta's opaque "URL Blocked" refusal into an actionable Hebrew message
  * that names the exact URI that must be whitelisted in the Meta app.
  */
 export function describeOAuthFailure(message?: string | null): string {
   const raw = String(message ?? '').trim();
-  if (/blocked|redirect_uri|redirect uri|not allowed/i.test(raw)) {
-    return `הכתובת ${oauthRedirectUri()} אינה מאושרת באפליקציית Meta. יש להוסיף אותה תחת Valid OAuth Redirect URIs (מומלץ להוסיף את כל אלו: ${approvedRedirectUris().join(', ')}), או להתחבר ידנית באמצעות טוקן.`;
+  if (isRedirectUriFailure(raw)) {
+    return `הכתובת ${oauthRedirectUri()} אינה מאושרת באפליקציית Meta. יש להוסיף אותה תחת Valid OAuth Redirect URIs, או להתחבר ידנית באמצעות טוקן.`;
   }
   return raw || 'החיבור לפייסבוק נכשל.';
 }
 
-/** True when a provider/message failure looks like a redirect-URI whitelist refusal. */
-export function isRedirectUriFailure(message?: string | null): boolean {
-  return /blocked|redirect_uri|redirect uri|not allowed|url חסומה/i.test(String(message ?? ''));
-}
 
 /**
  * Hebrew, copy-paste ready instructions naming the exact URI that must be
