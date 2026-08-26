@@ -101,32 +101,8 @@ export const FacebookPersonalConnectCard = () => {
     }
   };
 
-  // Receive the OAuth code from the popup and exchange it server-side.
-  useEffect(() => {
-    const handler = async (ev: MessageEvent) => {
-      if (ev.origin !== window.location.origin) return;
-      const m: any = ev.data;
-      if (!m || m.type !== 'realtyz-oauth-callback') return;
-      if (!String(m.state || '').startsWith(STATE_PREFIX)) return;
-      if (m.error) {
-        setConnecting(false);
-        toast.error('החיבור לפייסבוק בוטל', {
-          description: describeOAuthFailure(m.errorDescription || m.error),
-          action: {
-            label: 'נסה עם הרשאות בסיסיות',
-            onClick: () => void connect(true),
-          },
-        });
-        return;
-      }
-      await completeExchange(String(m.code), oauthRedirectUri());
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Full-page redirect fallback (popup blocked / in-app browser).
+  // Full-page redirect return: /oauth/callback stashed the grant before
+  // bouncing back here, so the exchange happens in the main app context.
   useEffect(() => {
     const pending = takePendingOAuth(STATE_PREFIX);
     if (!pending) return;
@@ -143,7 +119,6 @@ export const FacebookPersonalConnectCard = () => {
 
   const connect = async (basic = false) => {
     setConnecting(true);
-    const popup = window.open('', 'realtyz-fb-personal-oauth', 'width=560,height=680');
     try {
       clearPendingOAuth();
       const hint = redirectWhitelistHint();
@@ -156,10 +131,9 @@ export const FacebookPersonalConnectCard = () => {
       });
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      if (popup) popup.location.href = url;
-      else window.location.href = url;
+      // Full-page redirect only: no popup, so there is no window-closure race.
+      window.location.href = String(url);
     } catch (e: any) {
-      popup?.close();
       setConnecting(false);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: describeOAuthFailure(e?.message) });
     }
