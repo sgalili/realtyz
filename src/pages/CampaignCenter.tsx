@@ -50,7 +50,7 @@ import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampa
 import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurrentPostDialog';
 import { PostImage } from '@/components/campaigns/PostImage';
 import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/SupportRequiredDialog';
-import { logOAuthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
+import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 
 import { searchAllSources } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
@@ -3123,12 +3123,18 @@ const PublishedFeed = () => {
     }
     try {
       toast.loading('פותח חיבור לפייסבוק…', { id: 'meta-connect-feed' });
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'start' } });
+      const { data, error } = await supabase.functions.invoke('meta-page-connect', {
+        body: {
+          action: 'start',
+          redirect_uri: oauthRedirectUri(),
+          return_origin: oauthReturnOrigin(),
+        },
+      });
       toast.dismiss('meta-connect-feed');
       if (error) throw new Error((error as any)?.message || 'יצירת חיבור נכשלה');
       const url = (data as any)?.auth_url;
       if (!url) { toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Meta'); return; }
-      window.open(url, '_blank', 'noopener,noreferrer');
+      window.top.location.href = String(url);
     } catch (e: any) {
       toast.dismiss('meta-connect-feed');
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
@@ -5231,7 +5237,7 @@ const CampaignCenter = () => {
       const { data, error } = await supabase.functions.invoke('meta-page-connect', {
         body: {
           action: 'start',
-          redirect_uri: logOAuthRedirectUri('facebook-page'),
+          redirect_uri: oauthRedirectUri(),
           return_origin: oauthReturnOrigin(),
         },
       });

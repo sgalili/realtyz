@@ -83,7 +83,11 @@ function renderOAuthBridge() {
 
 async function bootstrap() {
   const isOAuthCallback = /^\/oauth\/callback\/?$/.test(window.location.pathname);
-  if (isOAuthCallback) {
+  const callbackParams = new URLSearchParams(window.location.search);
+  const callbackHash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const callbackState = callbackParams.get("state") ?? callbackHash.get("state") ?? "";
+  const isFacebookCallback = callbackState.startsWith("facebook");
+  if (isOAuthCallback && !isFacebookCallback) {
     renderOAuthBridge();
     return;
   }
