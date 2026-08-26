@@ -411,15 +411,18 @@ Deno.serve(async (req) => {
 
 
       // Long-lived user token so page tokens do not expire in an hour.
-      const longRes = await graph(
-        `/oauth/access_token?${new URLSearchParams({
-          grant_type: "fb_exchange_token",
-          client_id: clientId,
-          client_secret: clientSecret,
-          fb_exchange_token: userToken,
-        })}`,
-      );
-      if (longRes.ok && longRes.payload?.access_token) userToken = String(longRes.payload.access_token);
+      if (clientSecret) {
+        const longRes = await graph(
+          `/oauth/access_token?${new URLSearchParams({
+            grant_type: "fb_exchange_token",
+            client_id: clientId,
+            client_secret: clientSecret,
+            fb_exchange_token: userToken,
+          })}`,
+        );
+        if (longRes.ok && longRes.payload?.access_token) userToken = String(longRes.payload.access_token);
+      }
+
 
       // Persist the long-lived USER token too: group discovery (/me/groups)
       // requires a user token, and a page login already grants it.
