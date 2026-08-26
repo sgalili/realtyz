@@ -35,11 +35,9 @@ const PORTALS: Portal[] = [
   {
     id: 'yad2',
     label: 'יד2',
-    description: 'סנכרון נכסים ולידים מ-yad2.co.il',
+    description: 'סנכרון נכסים ולידים מ-yad2.co.il באמצעות Bright Data',
     link: 'https://www.yad2.co.il/',
     fields: [
-      { col: 'yad2_username', label: 'שם משתמש / Email', dir: 'ltr' },
-      { col: 'yad2_api_key', label: 'API Key / Token', type: 'password' },
       { col: 'brightdata_api_token', label: 'Bright Data API Token', type: 'password', dir: 'ltr', placeholder: 'bd_xxxxxxxx' },
       { col: 'brightdata_zone', label: 'Bright Data Zone / Dataset ID', dir: 'ltr', placeholder: 'yad2' },
     ],
@@ -83,7 +81,7 @@ export function ListingPortalsCard() {
         .eq('user_id', user.id)
         .maybeSingle();
       const v: Record<string, string> = {};
-      ['yad2_username', 'yad2_api_key', 'homely_api_key', 'brightdata_api_token', 'brightdata_zone'].forEach((c) => {
+      ['homely_api_key', 'brightdata_api_token', 'brightdata_zone'].forEach((c) => {
         v[c] = (keys as any)?.[c] ?? '';
       });
 
