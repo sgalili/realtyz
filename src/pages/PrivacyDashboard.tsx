@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Download, Trash2, ShieldCheck, Search, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { logAuditEvent } from '@/lib/auditLog';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 type Lead = {
   id: string;
@@ -200,7 +201,7 @@ export default function PrivacyDashboard() {
                     <div className="min-w-0">
                       <div className="font-medium text-sm truncate">{lead.full_name ?? '(ללא שם)'}</div>
                       <div className="text-xs text-muted-foreground truncate">
-                        {lead.phone_number}{lead.email ? ` · ${lead.email}` : ''}{lead.city ? ` · ${lead.city}` : ''}
+                        {formatPhoneDisplay(lead.phone_number)}{lead.email ? ` · ${lead.email}` : ''}{lead.city ? ` · ${lead.city}` : ''}
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
@@ -220,7 +221,7 @@ export default function PrivacyDashboard() {
                         </AlertDialogTrigger>
                         <AlertDialogContent dir="rtl">
                           <AlertDialogHeader>
-                            <AlertDialogTitle>מחיקה לצמיתות של {lead.full_name ?? lead.phone_number}?</AlertDialogTitle>
+                            <AlertDialogTitle>מחיקה לצמיתות של {lead.full_name ?? formatPhoneDisplay(lead.phone_number)}?</AlertDialogTitle>
                             <AlertDialogDescription>
                               פעולה זו תמחק <strong>בלתי-הפיכה</strong> את הליד וכל ההיסטוריה הקשורה אליו:
                               הודעות, צ׳אטים, שיחות, פגישות, לינקים לקביעת פגישה והתראות.

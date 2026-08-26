@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Handshake, Send, Inbox, ExternalLink, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 type Status = "pending" | "in_negotiation" | "closed_won" | "closed_lost" | "cancelled";
 
@@ -220,7 +221,7 @@ export default function SharedDeals() {
                           <span>נסגר: {format(new Date(r.closed_at), "dd/MM/yy")}</span>
                         )}
                         {r.partner_email && <span dir="ltr">{r.partner_email}</span>}
-                        {r.partner_phone && <span dir="ltr">{r.partner_phone}</span>}
+                        {r.partner_phone && <span dir="ltr">{formatPhoneDisplay(r.partner_phone)}</span>}
                       </div>
                     </div>
 

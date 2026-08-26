@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { BadgeCheck, Copy, Loader2, RefreshCw, ShieldAlert, Smartphone } from 'lucide-react';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 type MetaCfg = {
   waba_id: string | null;
@@ -200,7 +201,7 @@ export function MetaWhatsAppAuthCard() {
 
 
         <div className="grid gap-2 text-xs sm:grid-cols-2">
-          <Info label="מספר תצוגה" value={cfg?.display_phone_number} />
+          <Info label="מספר תצוגה" value={formatPhoneDisplay(cfg?.display_phone_number)} />
           <Info label="שם מאומת" value={cfg?.verified_name} />
           <Info label="סטטוס אימות קוד" value={cfg?.code_verification_status} />
           <Info label="סטטוס רישום" value={cfg?.registration_status} />

@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2, Send, ExternalLink, Mail } from "lucide-react";
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 export type ReferralSubject =
   | { kind: "lead"; id: string; label: string }
@@ -232,7 +233,7 @@ export function ReferralDialog({ open, onOpenChange, subject }: Props) {
                     <Mail className="h-3 w-3" /> {selectedPartner.email}
                   </span>
                 )}
-                {selectedPartner.phone && <span>📱 {selectedPartner.phone}</span>}
+                {selectedPartner.phone && <span dir="ltr">📱 {formatPhoneDisplay(selectedPartner.phone)}</span>}
               </div>
             )}
           </TabsContent>
