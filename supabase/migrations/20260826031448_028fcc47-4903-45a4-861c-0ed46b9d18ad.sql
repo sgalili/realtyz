@@ -1,0 +1,2 @@
+DROP TRIGGER IF EXISTS reject_invalid_facebook_page_binding_trigger ON public.messenger_page_bindings;
+DROP FUNCTION IF EXISTS public.reject_invalid_facebook_page_binding();
