@@ -1,53 +1,28 @@
-# Unified Property Search Overhaul
+# Destructive Facebook State Purge
 
-Refactors `/properties` into a single global search across every connected source and rewires the "Add New Post" property picker to the same engine, with silent auto-import on selection.
+## Goal
+Make disconnect irreversible until the user explicitly reconnects, permanently reject the “Employee” identity, and ensure all UI state comes from the current database binding rather than browser caches or background repair.
 
-## 1. `/properties` page (`src/pages/Properties.tsx`)
+## Changes
+1. **Backend disconnect and validation**
+   - Hard-delete the workspace’s Facebook page bindings, personal Facebook credentials, Facebook/Instagram social connection credentials, and imported Facebook group state.
+   - Verify every relevant table is empty before returning success.
+   - Reject and purge “Employee”, blocked asset IDs, non-authoritative page IDs, missing tokens, and user-level identities.
 
-- Delete `SourceTab` state and the entire tab strip (`הכל / הנכסים שלי / הומלי / יד-2 / מדל״ן`). Delete the separate Yad2 URL box and Madlan link box.
-- Add **one unified search bar** at the top: single text input (city / address / free text / pasted Yad2 or Madlan URL) + the existing filter set (Sale/Rent tabs, city, rooms, price slider, area, property type) — filters apply to every source at once.
-- Default state on load: **empty state** ("חפש נכס מכל המקורות...") — no auto-fetched local rows. Only after the user types/submits do we run searches. Cache last query in `sessionStorage` so returning to the page restores results.
-- On submit, fan out in parallel:
-  - Local DB (`listings` table)
-  - Homely (`homely-search` edge fn)
-  - Yad2 (`yad2-unlocker` in search-URL / free-text mode)
-  - Webtiv (`webtiv-homely-sync` search path — read-only)
-  - Madlan (`madlan-search` edge fn)
-  - Merge into one deduped result set. Failed sources degrade silently with a small inline chip ("יד-2 לא זמין כרגע").
-- Each row/card gets a **source badge** (icon + label) — local (`Home`), Homely (`H`), Yad2 (`Y2`), Webtiv (`W`), Madlan (`M`). Small colored pill on the right/top of every row.
-- **Auto-import on click**: clicking any external result kicks off `supabase.functions.invoke('yad2-unlocker' | 'homely-fetch-property' | 'webtiv-homely-sync' | 'madlan-fetch')` in the background with full data + images, upserts into `listings`, then navigates to the resulting `/properties/:id`. A subtle toast confirms ("יובא אוטומטית"). Local rows navigate directly.
-- View toggle: keep the grid/table buttons but **remove the "טבלה" / "כרטיסיות" text** — icon-only (`LayoutGrid`, `FileSpreadsheet`), keep `title` attributes for a11y.
+2. **Remove automatic resurrection**
+   - Remove repair/rebind behavior from `health` and `status`; these endpoints become read-and-validate only.
+   - Keep page discovery and binding exclusively inside explicit OAuth/manual connect actions.
+   - Remove environment/global token recovery from ordinary status checks so a disconnected workspace cannot silently reconnect.
 
-## 2. Add New Post property picker
+3. **Database enforcement and cleanup**
+   - Run a destructive cleanup migration for invalid Facebook identities and credentials.
+   - Strengthen database triggers so blocked identities and non-authoritative page bindings cannot be inserted or updated.
 
-- Replace the property `Select` in the composer with a new `UnifiedPropertyPicker` component (Command palette / combobox).
-- Typing triggers the same multi-source search (debounced 300ms).
-- Results grouped by source with the same badges. Selecting an external result:
-  1. Awaits the auto-import function.
-  2. Waits for the resulting local `listings.id`.
-  3. Sets it as the selected property and immediately kicks off post + first-comment generation via the existing `generate-content` flow.
-- Local results skip step 1-2 and go straight to generation.
+4. **Frontend synchronization**
+   - Make the health hook fetch fresh backend state on mount and stop using cached healthy state as a connection fallback.
+   - Treat “Employee”, an invalid page ID, or missing verified page data as disconnected and clear browser/React Query state immediately.
+   - Make disconnect clear UI state optimistically, execute the hard backend wipe, then fetch clean backend state before completing.
 
-## 3. Shared building blocks (new)
-
-- `src/lib/propertySearch.ts` — `searchAllSources({ q, filters })` returns a normalized `UnifiedResult[]` with `{ id, source, title, city, price, rooms, sqm, thumbnail, raw, importer }`.
-- `src/lib/propertyAutoImport.ts` — `autoImportResult(result)` dispatches to the correct edge function per `source` and returns the local `listings.id`.
-- `src/components/properties/SourceBadge.tsx` — icon + short label.
-- `src/components/properties/UnifiedPropertyPicker.tsx` — combobox used by the post composer.
-
-## 4. Cleanup
-
-- Remove Yad2 URL scrape box, Madlan quick-link box, source tabs, and any code paths that hinge on `sourceTab`.
-- Preserve `AddPropertyDialog` / `ManualPropertyDialog` / `ImportPropertiesDialog` / `HomelyBulkSyncDialog` (still triggered from the hero `+` menu).
-
-## Technical notes
-
-- No DB schema changes. Uses existing edge functions (`homely-search`, `yad2-unlocker`, `madlan-search`, `webtiv-homely-sync`, `homely-fetch-property`).
-- Dedupe by `city + address + rooms + price` (existing `propertyDedupeKey` helper).
-- Auto-import runs behind an inline spinner on the clicked row; on failure shows a Hebrew toast and does not navigate.
-- Session cache keyed as `properties:last-search:v1`.
-
-## Out of scope
-
-- New scraping backends beyond what's already deployed.
-- Changes to the property detail page rendering.
+5. **Verification**
+   - Check the affected tables for invalid rows.
+   - Validate disconnect and remount behavior in the running app, including badges and warning banners.
