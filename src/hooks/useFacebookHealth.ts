@@ -28,16 +28,6 @@ const FACEBOOK_STORAGE_KEYS = [
   'rz-connected-channel-names',
 ];
 
-/** Last verified-good connection, so a refresh never flashes "not connected". */
-function readCache(userId?: string): FacebookHealth | null {
-  try {
-    const raw = localStorage.getItem(`${CACHE_KEY}:${userId ?? 'anon'}`);
-    return raw ? (JSON.parse(raw) as FacebookHealth) : null;
-  } catch {
-    return null;
-  }
-}
-
 function writeCache(userId: string | undefined, value: FacebookHealth | null) {
   try {
     const key = `${CACHE_KEY}:${userId ?? 'anon'}`;
@@ -70,10 +60,10 @@ export function useFacebookHealth() {
   return useQuery<FacebookHealth>({
     queryKey: [FACEBOOK_HEALTH_KEY, user?.id],
     enabled: !!user?.id,
-    staleTime: 60_000,
+    staleTime: 0,
     refetchInterval: 5 * 60_000,
+    refetchOnMount: 'always',
     retry: 1,
-    placeholderData: () => readCache(user?.id) ?? undefined,
     queryFn: async () => {
       const [pageRes, personalRes] = await Promise.all([
         supabase.functions
@@ -86,15 +76,15 @@ export function useFacebookHealth() {
 
       const page = (pageRes as any)?.data ?? null;
       const personal = (personalRes as any)?.data ?? null;
-      const cached = readCache(user?.id);
-
-      // A transport failure must never revoke a previously verified connection.
-      if (!page && !personal && cached) return cached;
+      if (!page) {
+        writeCache(user?.id, null);
+        return DISCONNECTED_HEALTH;
+      }
 
       const hasBinding = !!page?.page?.id;
       // A stored, non-expired page binding IS a live connection — the banner
       // must disappear the moment the DB holds a valid page id + token.
-      const pageOk = !!page?.connected || (hasBinding && page?.needs_reconnect !== true);
+      const pageOk = !!page?.connected && hasBinding;
       const personalBroken = personal?.connected === true && personal?.token_valid === false;
 
       // Only warn about a BROKEN page connection: a verified page token must
@@ -109,9 +99,9 @@ export function useFacebookHealth() {
         reason: needsReconnect
           ? String(page?.error || personal?.token_error || 'תוקף החיבור לפייסבוק פג. יש להתחבר מחדש.')
           : null,
-        pageName: page?.page?.name ?? (pageOk ? cached?.pageName ?? null : null),
-        pageId: page?.page?.id ? String(page.page.id) : cached?.pageId ?? null,
-        pagePicture: page?.page?.picture ?? cached?.pagePicture ?? null,
+        pageName: pageOk ? page?.page?.name ?? null : null,
+        pageId: pageOk && page?.page?.id ? String(page.page.id) : null,
+        pagePicture: pageOk ? page?.page?.picture ?? null : null,
         instagram: page?.instagram?.id
           ? { id: String(page.instagram.id), username: page.instagram.username ?? null }
           : null,
