@@ -75,6 +75,27 @@ export const FacebookPersonalConnectCard = () => {
   const connected = !!data?.connected;
   const identity = data?.identity ?? null;
 
+  const completeExchange = async (code: string, redirectUri: string) => {
+    try {
+      const res = await callFbPersonal<any>({ action: 'exchange', code, redirect_uri: redirectUri });
+      toast.success('פרופיל פייסבוק אישי חובר', {
+        description: (res as any)?.identity?.fb_user_name ?? undefined,
+      });
+      await refetch();
+      // Pull the groups right away so "סנכרן קבוצות" is not needed manually.
+      void supabase.functions.invoke('fb-groups-import', { body: {} }).then(() => {
+        qc.invalidateQueries({ queryKey: ['fb-user-groups'] });
+        qc.invalidateQueries({ queryKey: ['custom-user-groups'] });
+      });
+      qc.invalidateQueries({ queryKey: ['facebook-health'] });
+      qc.invalidateQueries({ queryKey: ['custom-user-groups'] });
+    } catch (e: any) {
+      toast.error('חיבור פייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   // Receive the OAuth code from the popup and exchange it server-side.
   useEffect(() => {
     const handler = async (ev: MessageEvent) => {
@@ -85,7 +106,7 @@ export const FacebookPersonalConnectCard = () => {
       if (m.error) {
         setConnecting(false);
         toast.error('החיבור לפייסבוק בוטל', {
-          description: m.errorDescription || m.error,
+          description: describeOAuthFailure(m.errorDescription || m.error),
           action: {
             label: 'נסה עם הרשאות בסיסיות',
             onClick: () => void connect(true),
@@ -93,31 +114,25 @@ export const FacebookPersonalConnectCard = () => {
         });
         return;
       }
-      try {
-        const res = await callFbPersonal<any>({
-          action: 'exchange',
-          code: m.code,
-          redirect_uri: `${window.location.origin}/oauth/callback`,
-        });
-        toast.success('פרופיל פייסבוק אישי חובר', {
-          description: (res as any)?.identity?.fb_user_name ?? undefined,
-        });
-        await refetch();
-        // Pull the groups right away so "סנכרן קבוצות" is not needed manually.
-        void supabase.functions.invoke('fb-groups-import', { body: {} }).then(() => {
-          qc.invalidateQueries({ queryKey: ['fb-user-groups'] });
-          qc.invalidateQueries({ queryKey: ['custom-user-groups'] });
-        });
-        qc.invalidateQueries({ queryKey: ['facebook-health'] });
-        qc.invalidateQueries({ queryKey: ['custom-user-groups'] });
-      } catch (e: any) {
-        toast.error('חיבור פייסבוק נכשל', { description: e?.message });
-      } finally {
-        setConnecting(false);
-      }
+      await completeExchange(String(m.code), oauthRedirectUri());
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Full-page redirect fallback (popup blocked / in-app browser).
+  useEffect(() => {
+    const pending = takePendingOAuth(STATE_PREFIX);
+    if (!pending) return;
+    if (pending.error || !pending.code) {
+      toast.error('החיבור לפייסבוק בוטל', {
+        description: describeOAuthFailure(pending.errorDescription || pending.error),
+      });
+      return;
+    }
+    setConnecting(true);
+    void completeExchange(pending.code, pending.redirectUri || oauthRedirectUri());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -127,16 +142,18 @@ export const FacebookPersonalConnectCard = () => {
       const res = await callFbPersonal<any>({
         action: 'start',
         basic,
-        redirect_uri: `${window.location.origin}/oauth/callback`,
+        redirect_uri: oauthRedirectUri(),
       });
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      window.open(url, 'realtyz-fb-personal-oauth', 'width=560,height=680');
+      const popup = window.open(url, 'realtyz-fb-personal-oauth', 'width=560,height=680');
+      if (!popup) window.location.href = url;
     } catch (e: any) {
       setConnecting(false);
-      toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: e?.message });
+      toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: describeOAuthFailure(e?.message) });
     }
   };
+
 
   const disconnect = async () => {
     try {
