@@ -125,17 +125,16 @@ export function returnOriginFromOAuthState(state: string): string | null {
 }
 
 /**
- * Hebrew warning for an origin Meta does not know yet — shown before the popup
- * opens so a "URL Blocked" refusal is self-explanatory.
+ * The redirect_uri is always the production domain, so no whitelist warning
+ * is needed. This helper is kept for API compatibility.
  */
 export function redirectWhitelistHint(): string | null {
-  if (envOverride() || isApprovedOrigin()) return null;
-  return `ההתחברות תושלם דרך הכתובת המאושרת ${oauthRedirectUri()} כדי למנוע חסימת כתובת על ידי Meta.`;
+  return null;
 }
 
-/** Every URI that must exist in Meta's whitelist, for support messages. */
+/** The canonical production URI that must exist in Meta's whitelist. */
 export function approvedRedirectUris(): string[] {
-  return APPROVED_ORIGINS.map((o) => `${o}${OAUTH_CALLBACK_PATH}`);
+  return [`${CANONICAL_OAUTH_ORIGIN}${OAUTH_CALLBACK_PATH}`];
 }
 
 /**
