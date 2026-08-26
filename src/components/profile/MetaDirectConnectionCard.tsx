@@ -89,6 +89,21 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
 
   useEffect(() => { probe(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
+  const finishExchange = useCallback(
+    async (code: string, redirectUri: string) => {
+      try {
+        const res = await callPageConnect<any>({ action: 'exchange', code, redirect_uri: redirectUri });
+        toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
+        await probe(false);
+      } catch (e: any) {
+        toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(e?.message) });
+      } finally {
+        setConnecting(false);
+      }
+    },
+    [probe],
+  );
+
   // Receive the OAuth code from the popup and exchange it server-side.
   useEffect(() => {
     const handler = async (ev: MessageEvent) => {
@@ -98,25 +113,31 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
       if (!String(m.state || '').startsWith(STATE_PREFIX)) return;
       if (m.error) {
         setConnecting(false);
-        toast.error('חיבור עמוד הפייסבוק בוטל', { description: m.errorDescription || m.error });
+        toast.error('חיבור עמוד הפייסבוק בוטל', {
+          description: describeOAuthFailure(m.errorDescription || m.error),
+        });
         return;
       }
-      try {
-        const res = await callPageConnect<any>({
-          action: 'exchange',
-          code: m.code,
-          redirect_uri: `${window.location.origin}/oauth/callback`,
-        });
-        toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
-        await probe(false);
-      } catch (e: any) {
-        toast.error('חיבור עמוד הפייסבוק נכשל', { description: e?.message });
-      } finally {
-        setConnecting(false);
-      }
+      await finishExchange(String(m.code), oauthRedirectUri());
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finishExchange]);
+
+  // Full-page redirect fallback: the callback stashed the result before
+  // bouncing back here (popup blocked / in-app browser).
+  useEffect(() => {
+    const pending = takePendingOAuth(STATE_PREFIX);
+    if (!pending) return;
+    if (pending.error || !pending.code) {
+      toast.error('חיבור עמוד הפייסבוק בוטל', {
+        description: describeOAuthFailure(pending.errorDescription || pending.error),
+      });
+      return;
+    }
+    setConnecting(true);
+    void finishExchange(pending.code, pending.redirectUri || oauthRedirectUri());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -125,26 +146,25 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
     try {
       const res = await callPageConnect<any>({
         action: 'start',
-        redirect_uri: `${window.location.origin}/oauth/callback`,
+        redirect_uri: oauthRedirectUri(),
       });
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       const popup = window.open(res.auth_url, 'realtyz-fb-page-oauth', 'width=560,height=680');
       if (!popup) {
-        setConnecting(false);
-        toast.error('הדפדפן חסם את חלון פייסבוק', {
-          description: 'אפשר חלונות קופצים לאתר, או השתמש בחיבור ידני באמצעות טוקן.',
-        });
-        setManualOpen(true);
+        // No popup: go full-page; /oauth/callback stashes the result and returns.
+        window.location.href = res.auth_url;
+        return;
       }
     } catch (e: any) {
       setConnecting(false);
       // App in development mode / missing app config → guide to the manual path.
       setManualOpen(true);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', {
-        description: `${e?.message ?? e} — ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
+        description: `${describeOAuthFailure(e?.message)} — ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
       });
     }
   };
+
 
   const disconnect = async () => {
     try {
