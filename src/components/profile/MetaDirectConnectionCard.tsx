@@ -74,6 +74,11 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   // Shown when Meta refuses the redirect URI (or the popup could not open) so
   // the exact URI to whitelist is always one copy-click away.
   const [redirectHelp, setRedirectHelp] = useState(false);
+  // Meta App ID actually used by the backend when building the login dialog —
+  // shown in the help panel so it can be compared with the Meta Developer app
+  // where the production redirect URIs are registered.
+  const [appId, setAppId] = useState<string | null>(null);
+
   // Shared reactive connection state (same cache as the collapsed header badge
   // and the global warning banner).
   const { data: health } = useFacebookHealth();
