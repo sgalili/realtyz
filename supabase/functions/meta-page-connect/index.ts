@@ -10,7 +10,7 @@
 // public.messenger_page_bindings and used by meta-publish for Graph publishing.
 import { corsHeaders } from "../_shared/cors.ts";
 import { adminClient, fbAppCredentials, GRAPH, humanizeGraphError, resolveCaller } from "../_shared/fbPersonal.ts";
-import { isBlockedPage, KNOWN_PAGE_IDS, pickPrimaryPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
+import { isBlockedPage, pickPrimaryPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -255,8 +255,10 @@ async function forcePageBinding(
   | { ok: false; tried: string[] }
 > {
   const fields = "id,name,picture.width(160).height(160),instagram_business_account{id,username}";
-  const wanted = (wantedPageId ?? "").trim();
-  const pageIds = [wanted, ...KNOWN_PAGE_IDS].filter(Boolean).filter((id, i, a) => a.indexOf(id) === i);
+  const wanted = (wantedPageId ?? "").trim() || PRIMARY_PAGE_ID;
+  // This workspace has one authoritative publishing identity. Never silently
+  // bind a user profile, business-system identity, or secondary Page.
+  const pageIds = [wanted];
   const tokens = await candidateTokens(admin, ownerId);
   const tried: string[] = [];
 
@@ -382,6 +384,17 @@ Deno.serve(async (req) => {
 
       let row = await readBinding();
 
+      // Enforce the configured business Page as the sole publishing identity.
+      if (row?.page_id && String(row.page_id) !== PRIMARY_PAGE_ID) {
+        const fixed = await forcePageBinding(admin, ownerId, PRIMARY_PAGE_ID);
+        if (fixed.ok) row = await readBinding();
+        else {
+          await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+          return json({ connected: false, needs_reconnect: true, never_connected: false, page: null,
+            error: `יש להתחבר מחדש ולאשר גישה לעמוד ${PRIMARY_PAGE_ID}.` });
+        }
+      }
+
       // A cached blocked asset ("Employee") is not a publishing identity.
       // Never auto-create a missing binding: an explicit disconnect must stay
       // disconnected until the user starts OAuth/manual connection again.
@@ -462,6 +475,22 @@ Deno.serve(async (req) => {
         .maybeSingle();
       let row: any = data;
 
+      if (row?.page_id && String(row.page_id) !== PRIMARY_PAGE_ID) {
+        const fixed = await forcePageBinding(admin, ownerId, PRIMARY_PAGE_ID);
+        if (!fixed.ok) {
+          await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+          return json({ connected: false, page: null, needs_reconnect: true,
+            error: `יש להתחבר מחדש ולאשר גישה לעמוד ${PRIMARY_PAGE_ID}.` });
+        }
+        const { data: fresh } = await admin
+          .from("messenger_page_bindings")
+          .select("page_id, page_name, page_avatar_url, page_access_token, updated_at")
+          .eq("owner_id", ownerId)
+          .eq("page_id", PRIMARY_PAGE_ID)
+          .maybeSingle();
+        row = fresh;
+      }
+
       // Self-heal a cached binding that points at a blocked asset ("Employee"):
       // never report it as the connected publishing identity.
       if (row?.page_id && isBlockedPage({ id: row.page_id, name: row.page_name })) {
@@ -538,6 +567,7 @@ Deno.serve(async (req) => {
       const pageId = String(body?.page_id ?? "").trim();
       const token = String(body?.page_access_token ?? "").trim();
       if (!/^\d{5,}$/.test(pageId)) return json({ error: "מזהה עמוד (Page ID) לא תקין." }, 400);
+      if (pageId !== PRIMARY_PAGE_ID) return json({ error: `יש להזין את מזהה עמוד העסק ${PRIMARY_PAGE_ID}.` }, 400);
       if (token.length < 40) return json({ error: "טוקן העמוד קצר מדי או שגוי." }, 400);
       if (isBlockedPage({ id: pageId })) {
         return json({ error: `זהו נכס עסקי ולא עמוד פרסום. יש להזין את מזהה עמוד העסק (${PRIMARY_PAGE_ID}).` }, 400);
@@ -604,7 +634,6 @@ Deno.serve(async (req) => {
 
     if (action === "exchange") {
       const code = String(body?.code ?? "").trim();
-      const wantedPageId = String(body?.page_id ?? "").trim();
       if (!code || !redirectUri) return json({ error: "code and redirect_uri are required" }, 400);
       console.log("[meta-page-connect] exchange redirect_uri =", JSON.stringify(redirectUri));
       if (!clientSecret) return json({ error: "פייסבוק לא מוגדר: חסר App Secret." }, 400);
@@ -685,9 +714,13 @@ Deno.serve(async (req) => {
       }
 
       // Never bind a blocked business asset ("Employee") as the publishing page.
-      const publishable = pages.filter((p) => !isBlockedPage(p));
-      const pool = publishable.length ? publishable : pages;
-      const chosen = pickPrimaryPage(pool, wantedPageId) ?? pool[0];
+      const chosen = pages.find((p) => String(p?.id) === PRIMARY_PAGE_ID);
+      if (!chosen) {
+        return json({
+          error: `החשבון שאושר אינו מנהל את עמוד ${PRIMARY_PAGE_ID}. יש להתחבר עם משתמש Meta שמנהל את העמוד ולאשר pages_show_list.`,
+          pages: pages.filter((p) => !isBlockedPage(p)).map((p) => ({ id: String(p.id), name: p.name ?? null })),
+        }, 400);
+      }
       if (!chosen?.access_token) {
         return json({ error: "פייסבוק לא החזיר טוקן עמוד. יש להתחבר מחדש ולאשר את העמוד." }, 400);
       }

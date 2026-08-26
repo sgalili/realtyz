@@ -18,11 +18,15 @@ export default function OAuthCallback() {
     const error = params.get('error');
     const errorDescription = params.get('error_description');
     const returnOrigin = returnOriginFromOAuthState(state);
+    // This is the exact URI Meta returned to. Pass it through unchanged to the
+    // code exchange: Meta requires byte-for-byte equality with the login URI.
+    const redirectUri = params.get('_oauth_redirect_uri') || `${window.location.origin}/oauth/callback`;
 
     // Meta may require a canonical whitelisted callback. Bounce from there to
     // the origin that initiated login before touching opener/localStorage, so
     // preview and custom-domain sessions remain intact.
     if (returnOrigin && returnOrigin !== window.location.origin) {
+      params.set('_oauth_redirect_uri', redirectUri);
       window.location.replace(`${returnOrigin}/oauth/callback?${params.toString()}`);
       return;
     }
@@ -33,6 +37,7 @@ export default function OAuthCallback() {
       state,
       error,
       errorDescription,
+      redirectUri,
     };
 
     let delivered = false;

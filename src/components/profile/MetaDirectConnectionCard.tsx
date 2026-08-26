@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +43,7 @@ async function callPageConnect<T = any>(body: Record<string, unknown>): Promise<
  * Instagram Business account) through the official Facebook Login flow and
  * shows the live publishing status for direct Meta Graph publishing.
  */
-export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStatus | null) => void }) {
+export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: (s: MetaStatus | null) => void }>(function MetaDirectConnectionCard({ onStatus }, ref) {
   const [status, setStatus] = useState<MetaStatus | null>(null);
   const [page, setPage] = useState<PageStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,6 +58,8 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
   const refreshHealth = useRefreshFacebookHealth();
   const resetHealth = useResetFacebookHealth();
   const [disconnecting, setDisconnecting] = useState(false);
+  const disconnectedRef = useRef(false);
+  const expectedStateRef = useRef<string | null>(null);
 
 
   const probe = useCallback(async (notify = false) => {
@@ -69,6 +71,10 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
       supabase.functions.invoke('meta-publish', { body: { action: 'status' } }).catch((e: any) => ({ data: null, error: e })),
       callPageConnect<PageStatus>({ action: 'status' }).catch(() => null),
     ]);
+    if (disconnectedRef.current) {
+      setLoading(false);
+      return;
+    }
     setPage(pageRes);
 
     const s = (pubRes as any).error ? null : ((pubRes as any).data as MetaStatus | null);
@@ -122,7 +128,8 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
         });
         return;
       }
-      await finishExchange(String(m.code), oauthRedirectUri());
+       if (expectedStateRef.current && m.state !== expectedStateRef.current) return;
+       await finishExchange(String(m.code), String(m.redirectUri || oauthRedirectUri()));
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
@@ -146,6 +153,8 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
   }, []);
 
   const connect = async () => {
+    disconnectedRef.current = false;
+    expectedStateRef.current = null;
     setConnecting(true);
     // Reserve the popup synchronously while the click still has browser user
     // activation. Opening it after the backend request is blocked by Safari and
@@ -161,6 +170,8 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
         return_origin: oauthReturnOrigin(),
       });
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
+      const authUrl = new URL(res.auth_url);
+      expectedStateRef.current = authUrl.searchParams.get('state');
       if (popup) {
         popup.location.href = res.auth_url;
       } else {
@@ -183,6 +194,7 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
   const disconnect = async () => {
     if (disconnecting) return;
     setDisconnecting(true);
+    disconnectedRef.current = true;
     try {
       await callPageConnect({ action: 'disconnect' });
       setPage({ connected: false, page: null });
@@ -242,7 +254,7 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
   const isConnected = !!(health?.pageConnected || page?.connected || status?.facebook);
 
   return (
-    <Card dir="rtl" className="text-right">
+    <Card ref={ref} dir="rtl" className="text-right">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-right">
           <Facebook className="h-5 w-5 text-primary" />
@@ -322,6 +334,7 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
                   dir="ltr"
                   inputMode="numeric"
                   value={manualPageId}
+                  placeholder="61580625810292"
                   onChange={(e) => setManualPageId(e.target.value)}
                   className="text-left"
                 />
@@ -365,4 +378,4 @@ export function MetaDirectConnectionCard({ onStatus }: { onStatus?: (s: MetaStat
       </CardContent>
     </Card>
   );
-}
+});
