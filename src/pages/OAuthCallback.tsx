@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
+import { oauthRedirectUri, storePendingOAuth } from '@/lib/oauthRedirect';
 
 /**
- * Popup landing page for Google OAuth (and other providers).
+ * Popup landing page for Facebook / Google OAuth.
  *
- * Google redirects the popup to this route with `?code=...&state=platform:nonce`.
- * We forward those params to the opener via postMessage, then close the popup.
- *
- * This page renders nothing meaningful; it lives only inside the popup window.
+ * The provider redirects here with `?code=...&state=platform:nonce`. When we are
+ * inside a popup the params are forwarded to the opener and the window closes.
+ * When there is NO opener (blocked popup, in-app browser, provider forced a
+ * full-page redirect) the result is stashed locally and the user is sent back
+ * into the app, where the connection card completes the exchange.
  */
 export default function OAuthCallback() {
   useEffect(() => {
@@ -24,12 +26,21 @@ export default function OAuthCallback() {
       errorDescription,
     };
 
+    let delivered = false;
     try {
       if (window.opener && !window.opener.closed) {
         window.opener.postMessage(payload, window.location.origin);
+        delivered = true;
       }
     } catch {
-      // Cross-origin opener — message will still arrive if origins match.
+      // Cross-origin opener — fall back to the stashed-result path below.
+    }
+
+    if (!delivered) {
+      storePendingOAuth({ code, state, error, errorDescription, redirectUri: oauthRedirectUri() });
+      const back = state.startsWith('facebook') ? '/profile?tab=connections' : '/profile';
+      window.location.replace(back);
+      return;
     }
 
     // Give the parent a tick to receive, then close.
@@ -43,6 +54,7 @@ export default function OAuthCallback() {
 
     return () => window.clearTimeout(t);
   }, []);
+
 
   return (
     <div
