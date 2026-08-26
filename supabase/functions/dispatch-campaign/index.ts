@@ -50,7 +50,7 @@ function toLocalIL(raw: string | null | undefined): string | null {
   return d;
 }
 
-// 9725XXXXXXXX (no plus) for the official Meta WhatsApp Cloud API
+// 9725XXXXXXXX (no plus) for WhatsApp / Green API
 function toIntlIL(raw: string | null | undefined): string | null {
   const local = toLocalIL(raw);
   if (!local) return null;
@@ -104,12 +104,15 @@ async function sendSms019(
   }
 }
 
-async function sendWhatsAppOfficial(
+async function sendWhatsAppGreen(
+  _instanceId: string,
+  _token: string,
   intlPhone: string,
   body: string,
   routerCtx?: { supabaseUrl: string; serviceRoleKey: string; userId: string | null },
 ): Promise<SendResult> {
-  // Route via the unified send-whatsapp gateway (official Meta Cloud API only).
+  // Route via the unified send-whatsapp gateway (WBA → GreenAPI fallback).
+  // We keep the legacy parameter signature for back-compat at call sites.
   if (!routerCtx) {
     return { ok: false, failure_reason: "router context missing" };
   }
@@ -205,53 +208,57 @@ async function sendWhatsAppTemplate(
 
 // Resend removed - email sending now goes through the user's connected Gmail (OAuth via /social-connect).
 
-// Official Meta WhatsApp Business API (Meta Cloud API) is the ONLY provider for
-// campaign WhatsApp sends. Green API is never used here — not for tests, not for
-// automations. We only need to verify that an official WABA is reachable.
+// Load the user's per-user Green API (WhatsApp) credentials from social_connections.
+// Falls back to the shared admin api_configs row if the user hasn't configured their own.
 type WhatsAppSession = {
-  source: "official_meta";
+  source: "user" | "shared";
+  instanceId: string;
+  apiToken: string;
   accountName?: string;
 };
-async function loadOfficialWabaSession(
+async function loadUserWhatsAppSession(
   admin: any,
   userId: string,
+  sharedFallback: { instance: string; token: string } | null,
 ): Promise<{ session: WhatsAppSession | null; reason: string | null }> {
-  const readRows = async (column: string, value: string) => {
-    const { data } = await admin
-      .from("wa_providers")
-      .select("config, is_active, updated_at")
-      .eq(column, value)
-      .eq("provider_name", "WBA")
-      .eq("is_active", true)
-      .order("updated_at", { ascending: false });
-    return (data ?? []) as Array<{ config: Record<string, any> }>;
-  };
-
-  const rows = [...(await readRows("tenant_id", userId)), ...(await readRows("user_id", userId))];
-  for (const row of rows) {
-    const cfg = row.config ?? {};
-    const phoneId = String(cfg.phone_number_id ?? cfg.phoneNumberId ?? "");
-    const token = String(cfg.access_token ?? cfg.token ?? "");
-    if (phoneId && token) {
+  const { data: row, error } = await admin
+    .from("social_connections")
+    .select("id, credentials, is_connected, created_by")
+    .eq("platform", "whatsapp_green")
+    .eq("created_by", userId)
+    .maybeSingle();
+  if (!error && row) {
+    const creds = (row.credentials ?? {}) as Record<string, any>;
+    const manual = (creds.manual ?? {}) as Record<string, any>;
+    // Accept both naming conventions: api_token (UI) and token (legacy test fn).
+    const instanceId = (manual.instance_id as string | undefined) ?? "";
+    const apiToken =
+      (manual.api_token as string | undefined) ??
+      (manual.token as string | undefined) ??
+      "";
+    if (instanceId && apiToken) {
       return {
         session: {
-          source: "official_meta",
-          accountName: String(cfg.display_phone_number ?? cfg.phone_number ?? phoneId),
+          source: "user",
+          instanceId,
+          apiToken,
+          accountName: creds.account_name as string | undefined,
         },
         reason: null,
       };
     }
   }
-
-  // Project-level Meta Cloud API secrets (central official number).
-  const envPhone =
-    Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? Deno.env.get("META_PHONE_NUMBER_ID") ?? "";
-  const envToken =
-    Deno.env.get("META_WA_ACCESS_TOKEN") ?? Deno.env.get("META_WHATSAPP_TOKEN") ?? "";
-  if (envPhone && envToken) {
-    return { session: { source: "official_meta", accountName: envPhone }, reason: null };
+  if (sharedFallback?.instance && sharedFallback?.token) {
+    return {
+      session: {
+        source: "shared",
+        instanceId: sharedFallback.instance,
+        apiToken: sharedFallback.token,
+      },
+      reason: null,
+    };
   }
-  return { session: null, reason: "official_whatsapp_not_configured" };
+  return { session: null, reason: "whatsapp_not_connected" };
 }
 
 
@@ -607,9 +614,15 @@ Deno.serve(async (req) => {
       if (r.is_active && r.api_key) providers.set(r.service_name, r.api_key);
     }
     const sms019Raw = providers.get("019 SMS");
+    const greenRaw = providers.get("Green API");
     const fromAddress = "Realtyz <updates@realtyz.co.il>"; // legacy display only
 
     const sms019Creds = sms019Raw ? sms019Raw.split(":") : null;
+    const greenSharedRaw = greenRaw ? greenRaw.split(":") : null;
+    const greenShared =
+      greenSharedRaw && greenSharedRaw.length >= 2 && greenSharedRaw[0]
+        ? { instance: greenSharedRaw[0], token: greenSharedRaw.slice(1).join(":") }
+        : null;
 
     // Load ALL of the user's connected Gmail accounts (multi-account distribution)
     const { sessions: gmailSessions, reason: gmailReason } =
@@ -623,9 +636,9 @@ Deno.serve(async (req) => {
     const resendFromAddress =
       Deno.env.get("RESEND_FROM_ADDRESS") ?? "Realtyz <updates@realtyz.co.il>";
 
-    // Official Meta WABA readiness (no Green API involvement).
+    // Load the user's connected Green API (with shared admin row as fallback)
     const { session: waSession, reason: waReason } =
-      await loadOfficialWabaSession(admin, ownerUserId);
+      await loadUserWhatsAppSession(admin, ownerUserId, greenShared);
     const whatsappReady = !!waSession;
 
     // ========== PREFLIGHT: report which providers are configured ==========
@@ -715,10 +728,12 @@ Deno.serve(async (req) => {
           result = {
             ok: false,
             failure_reason:
-              "מספר ה-WhatsApp הרשמי (Meta) לא מוגדר. יש להשלים את החיבור בהגדרות WhatsApp Business API לפני שליחת קמפיין",
+              "WhatsApp לא מחובר. יש להתחבר בהגדרות WhatsApp Business API לפני שליחת קמפיין",
           };
         else
-          result = await sendWhatsAppOfficial(
+          result = await sendWhatsAppGreen(
+            waSession.instanceId,
+            waSession.apiToken,
             intl,
             personalized,
             { supabaseUrl, serviceRoleKey: serviceKey, userId: ownerUserId },
@@ -980,7 +995,7 @@ Deno.serve(async (req) => {
         else if (channel === "whatsapp") {
           sourceAccount = campaignWaTemplate
             ? `Meta WABA / template:${campaignWaTemplate.name}`
-            : (waSession ? `Meta WABA / ${waSession.accountName ?? "official"}` : null);
+            : (waSession?.accountName ? `Green API / ${waSession.accountName}` : (waSession ? `Green API / ${waSession.instanceId}` : null));
         }
       }
 
