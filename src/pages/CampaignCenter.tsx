@@ -2768,6 +2768,19 @@ const writeFbBindingFlag = (bound: boolean) => {
   } catch { /* ignore */ }
 };
 
+const clearCachedFacebookChannel = () => {
+  try {
+    writeFbBindingFlag(false);
+    for (const storage of [localStorage, sessionStorage]) {
+      const channels = JSON.parse(storage.getItem('rz-connected-channels') || '[]') as string[];
+      storage.setItem('rz-connected-channels', JSON.stringify(channels.filter((id) => id !== 'facebook')));
+      const names = JSON.parse(storage.getItem('rz-connected-channel-names') || '{}') as Record<string, string>;
+      delete names.facebook;
+      storage.setItem('rz-connected-channel-names', JSON.stringify(names));
+    }
+  } catch { /* ignore */ }
+};
+
 /**
  * Authoritative Facebook Page resolution. The client table read on
  * `messenger_page_bindings` can come back empty for workspace members (RLS

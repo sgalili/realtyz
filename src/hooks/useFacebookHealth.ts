@@ -22,6 +22,11 @@ export type FacebookHealth = {
 export const FACEBOOK_HEALTH_KEY = 'facebook-health';
 
 const CACHE_KEY = 'realtyz:fb-health';
+const FACEBOOK_STORAGE_KEYS = [
+  'realtyz.campaigns.fb_page_bound.v1',
+  'rz-connected-channels',
+  'rz-connected-channel-names',
+];
 
 /** Last verified-good connection, so a refresh never flashes "not connected". */
 function readCache(userId?: string): FacebookHealth | null {
@@ -137,6 +142,18 @@ export function useResetFacebookHealth() {
   return useCallback(async () => {
     await qc.cancelQueries({ queryKey: [FACEBOOK_HEALTH_KEY] });
     writeCache(user?.id, null);
+    try {
+      FACEBOOK_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+      FACEBOOK_STORAGE_KEYS.forEach((key) => sessionStorage.removeItem(key));
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith(`${CACHE_KEY}:`))
+        .forEach((key) => localStorage.removeItem(key));
+      window.dispatchEvent(new CustomEvent('realtyz:facebook-disconnected'));
+    } catch {
+      /* storage can be unavailable in hardened browsers */
+    }
+    qc.removeQueries({ queryKey: ['meta-page-binding'] });
+    qc.removeQueries({ queryKey: ['social-connections'] });
     qc.setQueryData([FACEBOOK_HEALTH_KEY, user?.id], DISCONNECTED_HEALTH);
   }, [qc, user?.id]);
 }
