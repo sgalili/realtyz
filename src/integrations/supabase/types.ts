@@ -2222,6 +2222,7 @@ export type Database = {
           id: string
           imported_at: string
           is_administrator: boolean
+          is_selected: boolean
           member_count: number | null
           privacy: string | null
           updated_at: string
@@ -2236,6 +2237,7 @@ export type Database = {
           id?: string
           imported_at?: string
           is_administrator?: boolean
+          is_selected?: boolean
           member_count?: number | null
           privacy?: string | null
           updated_at?: string
@@ -2250,6 +2252,7 @@ export type Database = {
           id?: string
           imported_at?: string
           is_administrator?: boolean
+          is_selected?: boolean
           member_count?: number | null
           privacy?: string | null
           updated_at?: string
@@ -3247,6 +3250,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_selected: boolean
           owner_id: string
           page_access_token: string
           page_avatar_url: string | null
@@ -3257,6 +3261,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_selected?: boolean
           owner_id: string
           page_access_token: string
           page_avatar_url?: string | null
@@ -3267,6 +3272,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_selected?: boolean
           owner_id?: string
           page_access_token?: string
           page_avatar_url?: string | null
