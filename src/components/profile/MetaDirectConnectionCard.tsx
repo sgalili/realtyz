@@ -11,7 +11,7 @@ import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } f
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 
-import { clearPendingOAuth, describeOAuthFailure, isRedirectUriFailure, logOAuthRedirectUri, metaConsoleSetupSteps, oauthRedirectUri, oauthReturnOrigin, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
+import { clearPendingOAuth, describeOAuthFailure, isRedirectUriFailure, logOAuthRedirectUri, metaConsoleSetupSteps, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 export type MetaStatus = {
@@ -74,6 +74,11 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   // Shown when Meta refuses the redirect URI (or the popup could not open) so
   // the exact URI to whitelist is always one copy-click away.
   const [redirectHelp, setRedirectHelp] = useState(false);
+  // Meta App ID actually used by the backend when building the login dialog —
+  // shown in the help panel so it can be compared with the Meta Developer app
+  // where the production redirect URIs are registered.
+  const [appId, setAppId] = useState<string | null>(null);
+
   // Shared reactive connection state (same cache as the collapsed header badge
   // and the global warning banner).
   const { data: health } = useFacebookHealth();
@@ -259,8 +264,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     setConnecting(true);
     try {
       clearPendingOAuth();
-      const hint = redirectWhitelistHint();
-      if (hint) toast.info('שים לב לכתובת החזרה של Meta', { description: hint });
       const res = await withTimeout(
         callPageConnect<any>({
           action: 'start',
@@ -271,6 +274,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         'שירות החיבור לפייסבוק לא הגיב בזמן. נסה שוב.',
       );
 
+      if (res?.app_id) setAppId(String(res.app_id));
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       // Direct full-page redirect: no popup, no postMessage, no cross-origin
       // closure races. /oauth/callback finishes the exchange and returns here.
@@ -282,13 +286,17 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       setLoading(false);
 
       // App in development mode / missing app config → guide to the manual path.
+      // Only open the redirect-URI help when the failure really is a blocked URL;
+      // the production callback is whitelisted, so a generic error must not raise
+      // a false "URL Blocked" alarm.
       setManualOpen(true);
-      setRedirectHelp(true);
+      if (isRedirectUriFailure(e?.message)) setRedirectHelp(true);
       toast.error('לא ניתן לפתוח את חיבור פייסבוק', {
         description: `${describeOAuthFailure(e?.message)} — ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
       });
     }
   };
+
 
 
   const disconnect = async () => {
@@ -440,19 +448,41 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         <div className="rounded-xl border">
           <button
             type="button"
-            onClick={() => setRedirectHelp((v) => !v)}
+            onClick={() => {
+              setRedirectHelp((v) => !v);
+              if (!appId) {
+                void callPageConnect<any>({ action: 'app_info' })
+                  .then((r) => { if (r?.app_id) setAppId(String(r.app_id)); })
+                  .catch(() => undefined);
+              }
+            }}
             aria-expanded={redirectHelp}
             className="flex w-full items-center justify-between gap-2 p-3 text-right"
           >
             <span className="flex items-center gap-2 text-xs font-medium">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              כתובת חזרה ל‑Meta (פתרון שגיאת "URL Blocked")
+              הגדרות Meta (App ID וכתובת חזרה)
             </span>
             <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${redirectHelp ? 'rotate-180' : ''}`} />
           </button>
           {redirectHelp && (
             <div className="space-y-3 border-t p-3">
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium">Meta App ID בשימוש:</p>
+                <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
+                  <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{appId ?? '—'}</code>
+                  {appId && (
+                    <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(appId)}>
+                      <Copy className="h-3.5 w-3.5" /> העתק
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  ודא שזו אותה אפליקציה שבה רשומות כתובות החזרה לפרודקשן.
+                </p>
+              </div>
               <p className="text-[11px] font-medium">{redirectSetup.title}:</p>
+
               <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
                 <code dir="ltr" className="flex-1 truncate text-left text-[11px]">{redirectSetup.uri}</code>
                 <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => copyUri(redirectSetup.uri)}>

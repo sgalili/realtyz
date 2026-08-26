@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
-import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, oauthReturnOrigin, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
+import { clearPendingOAuth, describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 import { useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 
 
@@ -121,8 +121,9 @@ export const FacebookPersonalConnectCard = () => {
     setConnecting(true);
     try {
       clearPendingOAuth();
-      const hint = redirectWhitelistHint();
-      if (hint) toast.info('שים לב לכתובת החזרה של Meta', { description: hint });
+      // No client-side whitelist guard: the redirect_uri is pinned to the
+      // production callback that is already authorized in the Meta app.
+
       const res = await callFbPersonal<any>({
         action: 'start',
         basic,
