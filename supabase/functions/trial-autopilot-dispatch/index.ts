@@ -211,7 +211,7 @@ async function trySendOne(
     .eq("id", row.id);
 
   try {
-    // Route through unified send-whatsapp gateway (WBA → GreenAPI fallback).
+    // Route through unified send-whatsapp gateway (official Meta Cloud API only).
     const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
       method: "POST",
       headers: {

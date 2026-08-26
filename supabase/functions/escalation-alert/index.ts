@@ -8,7 +8,7 @@
 //   2. Inserts a row in `escalation_alerts` (RLS-scoped to the caller).
 //   3. Sends a WhatsApp message to the human Agent's phone via the existing
 //      `send-whatsapp` gateway. We use the gateway because it already handles
-//      Green API / WBA fallback + retries, and it logs the outbound message.
+//      the official Meta Cloud API transport + retries, and logs the outbound message.
 //
 // The function is deliberately self-contained: any edge function can call it
 // over HTTP with a Service Role bearer token (when running server-side from
