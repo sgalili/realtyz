@@ -9,6 +9,8 @@ export type BrightDataBalance = {
   available?: number;
   currency?: string;
   zone?: string | null;
+  token_source?: 'user' | 'project' | null;
+  token_masked?: string;
   zone_status?: string | null;
   fetched_at?: string;
   error?: string;
@@ -74,7 +76,7 @@ export function BrightDataBalanceWidget({
           {loading
             ? 'טוען יתרה…'
             : data?.error === 'missing_token'
-              ? 'הזינו API Token של Bright Data ושמרו כדי להציג יתרה.'
+              ? 'טוקן Bright Data אינו מוגדר עדיין.'
               : data?.error === 'invalid_token'
                 ? 'הטוקן שהוזן אינו תקין מול Bright Data.'
                 : data?.message || 'לא ניתן למשוך יתרה כרגע.'}
