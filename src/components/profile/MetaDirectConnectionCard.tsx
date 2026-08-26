@@ -187,12 +187,16 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (!String(m.state || '').startsWith(STATE_PREFIX)) return;
       if (m.error) {
         setConnecting(false);
+        setLoading(false);
+        try { popupRef.current?.close(); } catch { /* ignore */ }
+        popupRef.current = null;
         if (isRedirectUriFailure(m.errorDescription || m.error)) setRedirectHelp(true);
         toast.error('חיבור עמוד הפייסבוק בוטל', {
           description: describeOAuthFailure(m.errorDescription || m.error),
         });
         return;
       }
+
        if (expectedStateRef.current && m.state !== expectedStateRef.current) return;
        await finishExchange(String(m.code), String(m.redirectUri || oauthRedirectUri()));
     };
