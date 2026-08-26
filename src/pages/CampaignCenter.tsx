@@ -4926,9 +4926,8 @@ const CampaignCenter = () => {
     const initial = new Set<string>();
     try {
       const raw = localStorage.getItem('rz-connected-channels') || sessionStorage.getItem('rz-connected-channels');
-      if (raw) (JSON.parse(raw) as string[]).forEach((id) => initial.add(id));
+      if (raw) (JSON.parse(raw) as string[]).filter((id) => id !== 'facebook').forEach((id) => initial.add(id));
     } catch { /* ignore */ }
-    if (readFbBindingFlag()) initial.add('facebook');
     return initial.size > 0 ? initial : EMPTY_CONNECTED;
   });
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>(() => {
