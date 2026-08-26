@@ -10,7 +10,7 @@
 // public.messenger_page_bindings and used by meta-publish for Graph publishing.
 import { corsHeaders } from "../_shared/cors.ts";
 import { adminClient, fbAppCredentials, GRAPH, humanizeGraphError, resolveCaller } from "../_shared/fbPersonal.ts";
-import { isBlockedPage, KNOWN_PAGE_IDS, pickPrimaryPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
+import { isBlockedPage, pickPrimaryPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -634,7 +634,6 @@ Deno.serve(async (req) => {
 
     if (action === "exchange") {
       const code = String(body?.code ?? "").trim();
-      const wantedPageId = String(body?.page_id ?? "").trim();
       if (!code || !redirectUri) return json({ error: "code and redirect_uri are required" }, 400);
       console.log("[meta-page-connect] exchange redirect_uri =", JSON.stringify(redirectUri));
       if (!clientSecret) return json({ error: "פייסבוק לא מוגדר: חסר App Secret." }, 400);
