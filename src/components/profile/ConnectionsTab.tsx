@@ -86,7 +86,15 @@ function ConnectionSection({
 
 export function ConnectionsTab() {
   const { activeWorkspaceId } = useWorkspace();
-  const [openId, setOpenId] = useState<string | null>(null);
+  // Returning from the full-page Facebook OAuth redirect: open the Meta section
+  // so its card mounts and can surface the success/error state immediately.
+  const [openId, setOpenId] = useState<string | null>(() => {
+    try {
+      return new URLSearchParams(window.location.search).has('fb') ? 'meta' : null;
+    } catch {
+      return null;
+    }
+  });
   const [meta, setMeta] = useState<MetaStatus | null>(null);
   const [waMode, setWaMode] = useState<string | null>(null);
   const [greenReady, setGreenReady] = useState(false);

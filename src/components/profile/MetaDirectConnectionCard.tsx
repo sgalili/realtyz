@@ -30,8 +30,6 @@ type PageStatus = {
 const STATE_PREFIX = 'facebook_page:';
 /** Emergency ceiling for the callback token exchange — spinner never outlives it. */
 const EXCHANGE_TIMEOUT_MS = 20_000;
-/** Hard ceiling for the whole popup round-trip before we release the spinner. */
-const OAUTH_WATCHDOG_MS = 120_000;
 /** Absolute safety net: the spinner is force-cleared this long after it starts. */
 const SPINNER_SAFETY_MS = 5_000;
 
@@ -89,7 +87,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [connectionEpoch, setConnectionEpoch] = useState(0);
   const disconnectedRef = useRef(false);
   const expectedStateRef = useRef<string | null>(null);
-  const popupRef = useRef<Window | null>(null);
   const exchangingRef = useRef(false);
 
 
@@ -195,8 +192,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         exchangingRef.current = false;
         setConnecting(false);
         setLoading(false);
-        try { popupRef.current?.close(); } catch { /* ignore */ }
-        popupRef.current = null;
       }
     },
     [probe, refreshBinding, refreshHealth],
@@ -204,68 +199,43 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
 
 
-  // Watchdog: release the spinner if the popup is closed/abandoned or the whole
-  // round-trip stalls, so "connecting" can never hang indefinitely.
+  // Full-page redirect result: /oauth/callback exchanged the code in the main
+  // app context and came back here with an explicit success/error state.
   useEffect(() => {
-    if (!connecting) return;
-    const started = Date.now();
-    const poll = window.setInterval(() => {
-      const stalled = Date.now() - started > OAUTH_WATCHDOG_MS;
-      const popupGone = !!popupRef.current && popupRef.current.closed;
-      if (exchangingRef.current) return;
-      if (popupGone || stalled) {
-        window.clearInterval(poll);
-        popupRef.current = null;
-        setConnecting(false);
-        setLoading(false);
-        toast.error('חיבור פייסבוק לא הושלם', {
-          description: stalled
-            ? 'התהליך נמשך יותר מהצפוי. נסה שוב או חבר את העמוד ידנית באמצעות טוקן.'
-            : 'חלון ההתחברות נסגר לפני סיום התהליך. נסה שוב.',
-        });
-        void probe(false).catch(() => undefined);
-      }
-    }, 1000);
-    return () => window.clearInterval(poll);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connecting]);
-
-
-  // Receive the OAuth code from the popup and exchange it server-side.
-  useEffect(() => {
-    const handler = async (ev: MessageEvent) => {
-      if (ev.origin !== window.location.origin) return;
-      const m: any = ev.data;
-      if (!m || m.type !== 'realtyz-oauth-callback') return;
-      if (!String(m.state || '').startsWith(STATE_PREFIX)) return;
-      if (m.error) {
-        setConnecting(false);
-        setLoading(false);
-        try { popupRef.current?.close(); } catch { /* ignore */ }
-        popupRef.current = null;
-        if (isRedirectUriFailure(m.errorDescription || m.error)) setRedirectHelp(true);
-        toast.error('חיבור עמוד הפייסבוק בוטל', {
-          description: describeOAuthFailure(m.errorDescription || m.error),
-        });
-        return;
-      }
-
-      if (expectedStateRef.current && m.state !== expectedStateRef.current) return;
-      // Acknowledge immediately so the popup does not close before we took over.
-      try { (ev.source as Window | null)?.postMessage({ type: 'realtyz-oauth-ack' }, ev.origin); } catch { /* ignore */ }
-      await finishExchange(
-        { code: m.code ? String(m.code) : null, accessToken: m.accessToken ? String(m.accessToken) : null },
-        String(m.redirectUri || oauthRedirectUri()),
-      );
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get('fb');
+    const strip = () => {
+      params.delete('fb');
+      params.delete('fb_reason');
+      params.delete('fb_page');
+      const qs = params.toString();
+      window.history.replaceState({}, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`);
     };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finishExchange]);
 
-  // Full-page redirect fallback: the callback stashed the result before
-  // bouncing back here (popup blocked / in-app browser).
-  useEffect(() => {
+    if (outcome === 'connected') {
+      strip();
+      clearPendingOAuth();
+      setConnecting(false);
+      setManualOpen(false);
+      toast.success('עמוד הפייסבוק חובר', { description: params.get('fb_page') || undefined });
+      refreshBinding();
+      refreshHealth();
+      void probe(false).catch(() => undefined);
+      return;
+    }
+
+    if (outcome === 'error') {
+      strip();
+      clearPendingOAuth();
+      setConnecting(false);
+      const reason = params.get('fb_reason');
+      if (isRedirectUriFailure(reason)) setRedirectHelp(true);
+      setManualOpen(true);
+      toast.error('חיבור עמוד הפייסבוק נכשל', { description: describeOAuthFailure(reason) });
+      return;
+    }
+
+    // Legacy stashed result (other providers / older sessions).
     const pending = takePendingOAuth(STATE_PREFIX);
     if (!pending) return;
     if (pending.error || !(pending.code || pending.accessToken)) {
@@ -279,7 +249,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       { code: pending.code, accessToken: pending.accessToken ?? null },
       pending.redirectUri || oauthRedirectUri(),
     );
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -288,11 +257,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     expectedStateRef.current = null;
     exchangingRef.current = false;
     setConnecting(true);
-    // Reserve the popup synchronously while the click still has browser user
-    // activation. Opening it after the backend request is blocked by Safari and
-    // some mobile browsers.
-    const popup = window.open('', 'realtyz-fb-page-oauth', 'width=560,height=680');
-    popupRef.current = popup;
     try {
       clearPendingOAuth();
       const hint = redirectWhitelistHint();
@@ -308,20 +272,10 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       );
 
       if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      const authUrl = new URL(res.auth_url);
-      expectedStateRef.current = authUrl.searchParams.get('state');
-      if (popup) {
-        popup.location.href = res.auth_url;
-      } else {
-        // No popup (blocked / in-app browser): go full-page; /oauth/callback
-        // stashes the result and returns here.
-        setRedirectHelp(true);
-        window.location.href = res.auth_url;
-        return;
-      }
+      // Direct full-page redirect: no popup, no postMessage, no cross-origin
+      // closure races. /oauth/callback finishes the exchange and returns here.
+      window.location.href = String(res.auth_url);
     } catch (e: any) {
-      popup?.close();
-      popupRef.current = null;
       setConnecting(false);
       setLoading(false);
 

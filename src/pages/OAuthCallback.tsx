@@ -1,163 +1,144 @@
 import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from '@/lib/oauthRedirect';
 
 /**
- * Popup landing page for Facebook / Google OAuth.
+ * Full-page OAuth landing page for Facebook / Google.
  *
- * The provider redirects here with `?code=...&state=platform:nonce` — or, when
- * the user simply confirms an existing grant ("Continue as ..."), with an
- * implicit `#access_token=...` fragment. Both shapes are captured and forwarded
- * to the opener; the popup only closes AFTER the opener acknowledges receipt
- * (or the delivery path falls back to a stashed result).
+ * There is NO popup and NO postMessage handshake any more: the provider
+ * redirects the main window here with `?code=...&state=platform:nonce` (or an
+ * implicit `#access_token=...` when the user just confirms an existing grant),
+ * the code is exchanged for a page binding right here in the app context, and
+ * the user is then redirected back to the connections screen with an explicit
+ * success/error state in the query string.
  */
+const FACEBOOK_STATE_PREFIX = 'facebook';
+const CONNECTIONS_PATH = '/profile?tab=connections';
+/** Ceiling for the server-side exchange so the page never spins forever. */
+const EXCHANGE_TIMEOUT_MS = 20_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (v) => { window.clearTimeout(timer); resolve(v); },
+      (e) => { window.clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
 export default function OAuthCallback() {
-  const [stuck, setStuck] = useState(false);
+  const [message, setMessage] = useState('מסיים אימות...');
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    const search = new URLSearchParams(window.location.search);
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    const pick = (key: string) => search.get(key) ?? hash.get(key);
+    let cancelled = false;
 
-    const code = pick('code');
-    const accessToken = pick('access_token') ?? pick('long_lived_token');
-    const state = pick('state') ?? '';
-    const error = pick('error') ?? pick('error_code');
-    const errorDescription = pick('error_description') ?? pick('error_message');
-    const returnOrigin = returnOriginFromOAuthState(state);
-    // This is the exact URI Meta returned to. Pass it through unchanged to the
-    // code exchange: Meta requires byte-for-byte equality with the login URI.
-    const redirectUri = pick('_oauth_redirect_uri') || `${window.location.origin}/oauth/callback`;
-    const backPath = state.startsWith('facebook') ? '/profile?tab=connections' : '/profile';
+    const run = async () => {
+      const search = new URLSearchParams(window.location.search);
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const pick = (key: string) => search.get(key) ?? hash.get(key);
 
-    // Meta may require a canonical whitelisted callback. Bounce from there to
-    // the origin that initiated login before touching opener/localStorage, so
-    // preview and custom-domain sessions remain intact.
-    if (returnOrigin && returnOrigin !== window.location.origin) {
-      const forward = new URLSearchParams(search);
-      if (code) forward.set('code', code);
-      if (accessToken) forward.set('access_token', accessToken);
-      if (state) forward.set('state', state);
-      forward.set('_oauth_redirect_uri', redirectUri);
-      window.location.replace(`${returnOrigin}/oauth/callback?${forward.toString()}`);
-      return;
-    }
+      const code = pick('code');
+      const accessToken = pick('access_token') ?? pick('long_lived_token');
+      const state = pick('state') ?? '';
+      const error = pick('error') ?? pick('error_code');
+      const errorDescription = pick('error_description') ?? pick('error_message');
+      const returnOrigin = returnOriginFromOAuthState(state);
+      // Exactly the URI Meta returned to — the exchange requires byte-for-byte
+      // equality with the URI used to start the login.
+      const redirectUri = pick('_oauth_redirect_uri') || `${window.location.origin}/oauth/callback`;
+      const isFacebook = state.startsWith(FACEBOOK_STATE_PREFIX);
+      const backPath = isFacebook ? CONNECTIONS_PATH : '/profile';
 
-    // Neither a code/token nor an explicit provider error: the provider (or a
-    // stale tab) landed here with nothing usable. Report it instead of spinning.
-    const hasGrant = !!(code || accessToken);
-    const effectiveError = error || (hasGrant ? null : 'missing_code');
-    const effectiveDescription =
-      errorDescription || (hasGrant || error ? null : 'הספק לא החזיר קוד אימות. נסה להתחבר שוב.');
-
-    const payload = {
-      type: 'realtyz-oauth-callback' as const,
-      code,
-      accessToken,
-      state,
-      error: effectiveError,
-      errorDescription: effectiveDescription,
-      redirectUri,
-    };
-
-    let delivered = false;
-    const postToOpener = () => {
-      try {
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(payload, window.location.origin);
-          return true;
-        }
-      } catch {
-        /* cross-origin opener */
+      // Meta may require a canonical whitelisted callback. Bounce from there to
+      // the origin that initiated login before touching anything else, so the
+      // preview / custom-domain session stays intact.
+      if (returnOrigin && returnOrigin !== window.location.origin) {
+        const forward = new URLSearchParams(search);
+        if (code) forward.set('code', code);
+        if (accessToken) forward.set('access_token', accessToken);
+        if (state) forward.set('state', state);
+        forward.set('_oauth_redirect_uri', redirectUri);
+        window.location.replace(`${returnOrigin}/oauth/callback?${forward.toString()}`);
+        return;
       }
-      return false;
-    };
 
-    delivered = postToOpener();
+      const hasGrant = !!(code || accessToken);
 
-    if (!delivered) {
-      storePendingOAuth({
-        code,
-        accessToken,
-        state,
-        error: effectiveError,
-        errorDescription: effectiveDescription,
-        redirectUri: oauthRedirectUri(),
-      });
-      window.location.replace(backPath);
-      return;
-    }
-
-    // Never close before the parent confirms it received (and started handling)
-    // the grant. The parent replies with an ack; until then we keep re-posting.
-    let acked = false;
-    const onAck = (ev: MessageEvent) => {
-      if (ev.origin !== window.location.origin) return;
-      if ((ev.data as any)?.type !== 'realtyz-oauth-ack') return;
-      acked = true;
-      window.setTimeout(() => {
-        try { window.close(); } catch { /* ignore */ }
-      }, 150);
-    };
-    window.addEventListener('message', onAck);
-
-    // Re-post a few times in case the opener mounted its listener slightly late.
-    const retry = window.setInterval(() => {
-      if (acked) { window.clearInterval(retry); return; }
-      postToOpener();
-    }, 400);
-
-    // Hard fallback: if no ack arrives, close anyway so the popup never lingers
-    // — the parent watchdog / stashed-result path takes over from there.
-    const closeTimer = window.setTimeout(() => {
-      window.clearInterval(retry);
-      if (!acked) {
+      // The provider refused, the user cancelled, or nothing usable arrived.
+      if (error || !hasGrant) {
+        const reason = errorDescription || error || 'הספק לא החזיר קוד אימות. נסה להתחבר שוב.';
+        if (isFacebook) {
+          window.location.replace(`${CONNECTIONS_PATH}&fb=error&fb_reason=${encodeURIComponent(reason)}`);
+          return;
+        }
         storePendingOAuth({
           code,
           accessToken,
           state,
-          error: effectiveError,
-          errorDescription: effectiveDescription,
-          redirectUri,
+          error: error || 'missing_code',
+          errorDescription: reason,
+          redirectUri: oauthRedirectUri(),
         });
+        window.location.replace(backPath);
+        return;
       }
-      try { window.close(); } catch { /* ignore */ }
-    }, 6000);
 
-    // Some browsers refuse to close a window they did not script-open. After a
-    // short grace period, surface a manual way back into the app.
-    const stuckTimer = window.setTimeout(() => setStuck(true), 4000);
+      // Non-Facebook providers keep the stash-and-return contract.
+      if (!isFacebook) {
+        storePendingOAuth({ code, accessToken, state, error: null, errorDescription: null, redirectUri });
+        window.location.replace(backPath);
+        return;
+      }
 
-    return () => {
-      window.removeEventListener('message', onAck);
-      window.clearInterval(retry);
-      window.clearTimeout(closeTimer);
-      window.clearTimeout(stuckTimer);
+      setMessage('שומר את חיבור עמוד הפייסבוק...');
+      try {
+        const { data, error: fnError } = await withTimeout(
+          supabase.functions.invoke('meta-page-connect', {
+            body: {
+              action: 'exchange',
+              code: code ?? undefined,
+              user_access_token: accessToken ?? undefined,
+              redirect_uri: redirectUri,
+            },
+          }),
+          EXCHANGE_TIMEOUT_MS,
+          'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
+        );
+        if (fnError) throw new Error(String(fnError.message ?? fnError));
+        if ((data as any)?.error) throw new Error(String((data as any).error));
+        const pageName = String((data as any)?.page?.name ?? '');
+        if (cancelled) return;
+        // Best-effort group import so the publishing targets list is populated.
+        void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
+        window.location.replace(
+          `${CONNECTIONS_PATH}&fb=connected${pageName ? `&fb_page=${encodeURIComponent(pageName)}` : ''}`,
+        );
+      } catch (e: any) {
+        if (cancelled) return;
+        setFailed(true);
+        setMessage('החיבור לפייסבוק נכשל. מחזיר אותך להגדרות...');
+        window.location.replace(
+          `${CONNECTIONS_PATH}&fb=error&fb_reason=${encodeURIComponent(String(e?.message ?? 'unknown'))}`,
+        );
+      }
     };
+
+    void run();
+    return () => { cancelled = true; };
   }, []);
 
   return (
-    <div
-      dir="rtl"
-      className="min-h-screen flex items-center justify-center bg-background text-foreground"
-    >
-      <div className="text-center space-y-2">
-        {!stuck && (
+    <div dir="rtl" className="min-h-screen flex items-center justify-center bg-background text-foreground">
+      <div className="text-center space-y-3">
+        {!failed && (
           <div className="mx-auto h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
         )}
-        <p className="text-sm text-muted-foreground">
-          {stuck ? 'האימות הושלם. אפשר לסגור את החלון.' : 'מסיים אימות...'}
-        </p>
-        {stuck ? (
-          <button
-            type="button"
-            onClick={() => window.close()}
-            className="text-xs font-medium text-primary underline"
-          >
-            סגור חלון
-          </button>
-        ) : (
-          <p className="text-[11px] text-muted-foreground/70">חלון זה ייסגר אוטומטית</p>
-        )}
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <a href={CONNECTIONS_PATH} className="text-xs font-medium text-primary underline">
+          חזרה להגדרות החיבורים
+        </a>
       </div>
     </div>
   );
