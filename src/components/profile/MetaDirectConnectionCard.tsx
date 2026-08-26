@@ -472,6 +472,24 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
               חבר עמוד פייסבוק
             </Button>
+            {pageOptions.length > 0 && (
+              <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2">
+                <p className="text-[11px] font-semibold">בחרו את עמוד הפרסום</p>
+                {pageOptions.map((opt) => (
+                  <Button
+                    key={opt.id}
+                    size="sm"
+                    variant="outline"
+                    className="w-full justify-between gap-2"
+                    disabled={!!selectingPageId}
+                    onClick={() => selectPage(opt.id)}
+                  >
+                    <span className="truncate">{opt.name || opt.id}</span>
+                    {selectingPageId === opt.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  </Button>
+                ))}
+              </div>
+            )}
             {pendingAuthUrl && (
               <a
                 href={pendingAuthUrl}
