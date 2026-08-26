@@ -30,7 +30,7 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
   const [brief, setBrief] = useState<StrategyBrief | null>(null);
   const [briefStats, setBriefStats] = useState<StrategyStats | null>(null);
   const [whatsappOpen, setWhatsappOpen] = useState(false);
-  const [whatsappPlatform, setWhatsappPlatform] = useState('whatsapp_green');
+  const [whatsappPlatform, setWhatsappPlatform] = useState('whatsapp_wba');
   const [whatsappInstanceId, setWhatsappInstanceId] = useState('');
   const [whatsappToken, setWhatsappToken] = useState('');
   const [smsSenderId, setSmsSenderId] = useState('');
