@@ -67,8 +67,12 @@ export function ListingPortalsCard() {
       // (token stays masked — the real value lives server-side).
       setValues((s) => {
         const next = { ...s };
-        if (!(next.brightdata_zone ?? '').trim() && payload?.zone) next.brightdata_zone = payload.zone;
-        if (!(next.brightdata_api_token ?? '').trim() && payload?.token_masked) {
+        if (payload?.token_source === 'project' && payload?.zone) next.brightdata_zone = payload.zone;
+        if (payload?.token_source === 'project' && payload?.token_masked) {
+          next.brightdata_api_token = payload.token_masked;
+        } else if (!(next.brightdata_zone ?? '').trim() && payload?.zone) {
+          next.brightdata_zone = payload.zone;
+        } else if (!(next.brightdata_api_token ?? '').trim() && payload?.token_masked) {
           next.brightdata_api_token = payload.token_masked;
         }
         return next;
