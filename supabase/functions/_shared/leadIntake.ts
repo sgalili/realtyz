@@ -208,6 +208,10 @@ export function extractNameLoose(text: string | null | undefined): string | null
   // real name is still reached ("לקוח פוטנציאלי חדש משה ישראלי" → "משה ישראלי").
   const WORDS = `([\\p{L}][\\p{L}'’\\-]{1,25}(?:\\s+[\\p{L}][\\p{L}'’\\-]{1,25}){0,4})`;
   const patterns: RegExp[] = [
+    // Conversational Hebrew: "קוראים לו משה ישראלי" / "שמו משה ישראלי".
+    // This must run before the generic entity-noun pattern so descriptors like
+    // "לקוח פוטנציאלי חדש" can never win over the explicit personal name.
+    new RegExp(`(?:קוראים\\s+ל[וה]|נקרא\\s+ל[וה]|שמו|שמה)\\s*(?:הוא|היא)?\\s*[:\\-]?\\s*${WORDS}`, "iu"),
     // Rename/correction phrasing: "תחליף לו את השם ל-משה ישראלי".
     new RegExp(`(?:שם\\s*מלא|השם|שמו|שמה)\\s*(?:ל|ל[-\u2013]|to|is|הוא)?\\s*[:\\-]?\\s*${WORDS}`, "iu"),
     // Explicit name marker wins: "בשם משה ישראלי", "שם מלא: משה ישראלי".
