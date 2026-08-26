@@ -2039,8 +2039,9 @@ const LeadCRM = () => {
                                 : <Mail className="h-4 w-4" strokeWidth={1.8} />,
                           }));
                         return (
-                          <div className="flex items-center gap-1 mt-2">
+                          <div className="flex flex-wrap items-center gap-1 mt-2">
                             {/* Phone sits inline with the action buttons, middle-aligned */}
+                            <span className="shrink-0 pe-1 leading-none">
                         <EditableInlineText
                           value={formatPhoneDisplay(selectedVoter.phone_number) === '-' ? '' : formatPhoneDisplay(selectedVoter.phone_number)}
                           placeholder="הוסף טלפון"
