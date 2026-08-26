@@ -1,6 +1,7 @@
 // Bright Data balance fetcher.
 // Returns the remaining credit balance for the caller's Bright Data account.
-// Token resolution order: user_api_keys.brightdata_api_token -> BRIGHTDATA_API_TOKEN secret.
+// Token resolution order: BRIGHTDATA_API_TOKEN secret -> user_api_keys.brightdata_api_token.
+// The project secret is authoritative so a stale user row cannot override a rotated token.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
@@ -25,20 +26,20 @@ Deno.serve(async (req) => {
     const user = userData?.user;
     if (!user) return json({ ok: false, error: 'unauthorized' }, 401);
 
-    let token = '';
+    let token = (Deno.env.get('BRIGHTDATA_API_TOKEN') ?? '').trim();
     let zone = '';
     const { data: keys } = await authed
       .from('user_api_keys')
       .select('brightdata_api_token, brightdata_zone')
       .eq('user_id', user.id)
       .maybeSingle();
-    token = (keys?.brightdata_api_token ?? '').trim();
+    const userToken = (keys?.brightdata_api_token ?? '').trim();
     zone = (keys?.brightdata_zone ?? '').trim();
 
-    let tokenSource: 'user' | 'project' = 'user';
+    let tokenSource: 'user' | 'project' = 'project';
     if (!token) {
-      token = (Deno.env.get('BRIGHTDATA_API_TOKEN') ?? '').trim();
-      if (token) tokenSource = 'project';
+      token = userToken;
+      if (token) tokenSource = 'user';
     }
     if (!zone) {
       zone = (Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'yad2').trim();
