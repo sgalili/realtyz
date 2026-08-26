@@ -16,21 +16,50 @@ export const OAUTH_CALLBACK_PATH = '/oauth/callback';
  * canonical production origin instead of sending a URI that is certain to fail.
  */
 const APPROVED_ORIGINS = [
+  'https://realtyzai.lovable.app',
   'https://realtyz.co.il',
   'https://www.realtyz.co.il',
-  'https://realtyzai.lovable.app',
   'http://localhost:8080',
 ];
 
-const CANONICAL_OAUTH_ORIGIN = 'https://realtyz.co.il';
+/**
+ * The single origin whose callback URI is guaranteed to exist in the Meta
+ * Developer Console. Any origin that is not byte-for-byte in APPROVED_ORIGINS
+ * (ephemeral preview sandboxes, LAN IPs, in-app browsers) is redirected
+ * through this one instead of sending a URI Meta will refuse.
+ */
+const CANONICAL_OAUTH_ORIGIN = 'https://realtyzai.lovable.app';
+
+/** Manual per-browser override, set from the connection card when Meta refuses a URI. */
+const REDIRECT_OVERRIDE_KEY = 'realtyz:oauth-redirect-origin';
+
+export function setOAuthRedirectOverride(origin: string | null): void {
+  try {
+    if (origin) localStorage.setItem(REDIRECT_OVERRIDE_KEY, normalizeOrigin(origin));
+    else localStorage.removeItem(REDIRECT_OVERRIDE_KEY);
+  } catch {
+    /* storage disabled */
+  }
+}
+
+export function oauthRedirectOverride(): string | null {
+  try {
+    const raw = localStorage.getItem(REDIRECT_OVERRIDE_KEY);
+    return raw ? normalizeOrigin(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Optional hard override, e.g. VITE_OAUTH_REDIRECT_URI=https://app.example.com/oauth/callback */
 function envOverride(): string | null {
   const env = (import.meta as any)?.env ?? {};
   const explicit = String(env.VITE_OAUTH_REDIRECT_URI ?? '').trim();
-  if (explicit) return explicit.replace(/\/+$/, '');
+  if (explicit) return `${normalizeOrigin(explicit)}${OAUTH_CALLBACK_PATH}`;
   const origin = String(env.VITE_OAUTH_REDIRECT_ORIGIN ?? '').trim();
   if (origin) return `${normalizeOrigin(origin)}${OAUTH_CALLBACK_PATH}`;
+  const manual = oauthRedirectOverride();
+  if (manual) return `${manual}${OAUTH_CALLBACK_PATH}`;
   return null;
 }
 
@@ -185,4 +214,27 @@ export function describeOAuthFailure(message?: string | null): string {
     return `הכתובת ${oauthRedirectUri()} אינה מאושרת באפליקציית Meta. יש להוסיף אותה תחת Valid OAuth Redirect URIs (מומלץ להוסיף את כל אלו: ${approvedRedirectUris().join(', ')}), או להתחבר ידנית באמצעות טוקן.`;
   }
   return raw || 'החיבור לפייסבוק נכשל.';
+}
+
+/** True when a provider/message failure looks like a redirect-URI whitelist refusal. */
+export function isRedirectUriFailure(message?: string | null): boolean {
+  return /blocked|redirect_uri|redirect uri|not allowed|url חסומה/i.test(String(message ?? ''));
+}
+
+/**
+ * Hebrew, copy-paste ready instructions naming the exact URI that must be
+ * whitelisted in the Meta Developer Console.
+ */
+export function metaConsoleSetupSteps(): { title: string; uri: string; steps: string[]; allUris: string[] } {
+  return {
+    title: 'הוסף את כתובת החזרה הבאה באפליקציית Meta',
+    uri: oauthRedirectUri(),
+    allUris: approvedRedirectUris(),
+    steps: [
+      'היכנס ל‑developers.facebook.com ובחר את האפליקציה של Realtyz.',
+      'פתח Facebook Login ← Settings.',
+      'הדבק את הכתובת המדויקת בשדה Valid OAuth Redirect URIs (בלי לוכסן בסוף).',
+      'שמור את השינויים (Save Changes) ונסה שוב להתחבר.',
+    ],
+  };
 }
