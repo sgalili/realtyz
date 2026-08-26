@@ -12,7 +12,6 @@ import {
   GRAPH,
   humanizeGraphError,
   loadConnection,
-  missingGroupScopes,
   resolveCaller,
 } from "../_shared/fbPersonal.ts";
 
@@ -180,16 +179,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    const scopeGap = missingGroupScopes(conn?.scopes);
     const message = groups.length === 0
-      ? (scopeGap.length
-        ? `פייסבוק לא אישר את הרשאות הקבוצות (${scopeGap.join(", ")}). יש להתחבר מחדש ולאשר את בקשת ההרשאות, ולוודא שהאפליקציה מאושרת ב-App Review.`
-        : lastError
-        ? humanizeGraphError(
-          lastError,
-          "פייסבוק לא החזיר קבוצות. יש לאשר את הרשאות הקבוצות (user_managed_groups) ולהתקין את האפליקציה בקבוצה.",
-        )
-        : "פייסבוק החזיר רשימת קבוצות ריקה עבור ההרשאות שאושרו.")
+      ? (lastError
+        ? humanizeGraphError(lastError, "פייסבוק לא החזיר קבוצות עבור החשבון המחובר.")
+        : "פייסבוק החזיר רשימת קבוצות ריקה עבור החשבון המחובר.")
       : null;
 
 

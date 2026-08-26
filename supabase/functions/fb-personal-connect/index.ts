@@ -20,7 +20,6 @@ import {
   resolveCaller,
   humanizeGraphError,
   missingScopes,
-  missingGroupScopes,
   scopeAdvisory,
 } from "../_shared/fbPersonal.ts";
 
@@ -67,7 +66,6 @@ Deno.serve(async (req) => {
         .eq("workspace_owner_id", caller.workspaceOwnerId);
       const row = (data ?? null) as any;
       const missing = row?.fb_user_id ? missingScopes(row?.scopes) : [];
-      const groupScopeGap = row?.fb_user_id ? missingGroupScopes(row?.scopes) : [];
 
       // Live token probe — the only reliable way to detect an expired/revoked
       // token so the UI can raise the reconnect banner.
@@ -91,7 +89,6 @@ Deno.serve(async (req) => {
         identity: row,
         groups_count: count ?? 0,
         missing_scopes: missing,
-        missing_group_scopes: groupScopeGap,
         token_valid: tokenValid,
         token_error: tokenValid === false ? tokenReason : null,
         needs_reconnect: tokenValid === false,
