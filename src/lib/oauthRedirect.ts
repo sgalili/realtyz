@@ -89,20 +89,17 @@ export function isApprovedOrigin(origin = currentOrigin()): boolean {
 /**
  * The redirect URI to send to the provider.
  *
- * Order: explicit env override (`VITE_OAUTH_REDIRECT_URI` /
- * `VITE_OAUTH_REDIRECT_ORIGIN`) → the live origin. The callback must land on
- * the SAME origin the user is browsing, otherwise the popup cannot hand the
- * code back, so unknown origins are surfaced as a warning (see
- * `isApprovedOrigin`) rather than silently rewritten.
+ * Always returns the canonical production callback URI so Meta receives the
+ * exact whitelisted URL. Explicit env overrides are still honored for local
+ * testing or emergency reconfiguration.
  */
 export function oauthRedirectUri(): string {
   const override = envOverride();
   if (override) return normalizeOAuthRedirectUri(override);
-  const origin = currentOrigin();
-  return `${isApprovedOrigin(origin) ? origin : CANONICAL_OAUTH_ORIGIN}${OAUTH_CALLBACK_PATH}`;
+  return `${CANONICAL_OAUTH_ORIGIN}${OAUTH_CALLBACK_PATH}`;
 }
 
-/** Whether the callback can safely communicate with the current window. */
+/** Whether the callback lands on the same origin the user is browsing. */
 export function isSameOriginOAuthRedirect(): boolean {
   return normalizeOrigin(oauthRedirectUri()) === currentOrigin();
 }
