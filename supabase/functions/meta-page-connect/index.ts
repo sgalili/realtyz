@@ -348,39 +348,25 @@ Deno.serve(async (req) => {
       if (!row?.page_id) return json({ connected: false, page: null });
 
 
-      let picture: string | null = null;
-      let liveName: string | null = null;
-      let instagram: { id: string; username: string | null } | null = null;
-      if (row.page_access_token) {
-        const r = await graph(
-          `/${row.page_id}?fields=name,picture.width(160).height(160),instagram_business_account{id,username}&access_token=${
-            encodeURIComponent(row.page_access_token)
-          }`,
-        );
-        if (r.ok) {
-          picture = r.payload?.picture?.data?.url ?? null;
-          liveName = r.payload?.name ?? null;
-          const ig = r.payload?.instagram_business_account;
-          if (ig?.id) instagram = { id: String(ig.id), username: ig.username ?? null };
-          if (liveName && liveName !== row.page_name) {
-            await admin
-              .from("messenger_page_bindings")
-              .update({ page_name: liveName, updated_at: new Date().toISOString() })
-              .eq("owner_id", ownerId)
-              .eq("page_id", String(row.page_id));
-          }
-        }
+      const ident = await fetchPageIdentity(admin, ownerId, String(row.page_id), row.page_access_token ?? null);
+      if (ident.ok && ident.name && ident.name !== row.page_name) {
+        await admin
+          .from("messenger_page_bindings")
+          .update({ page_name: ident.name, updated_at: new Date().toISOString() })
+          .eq("owner_id", ownerId)
+          .eq("page_id", String(row.page_id));
       }
       return json({
         connected: true,
         page: {
           id: String(row.page_id),
-          name: liveName ?? row.page_name ?? null,
-          picture,
+          name: ident.name ?? row.page_name ?? null,
+          picture: ident.picture ?? pageAvatar(String(row.page_id)),
           connected_at: row.updated_at ?? null,
         },
-        instagram,
+        instagram: ident.instagram,
       });
+
 
     }
 
