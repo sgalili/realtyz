@@ -32,7 +32,6 @@ const DEFAULT_PERSONAL_SCOPES = [
   "pages_show_list",
   "pages_manage_posts",
   "pages_read_engagement",
-  "pages_manage_engagement",
 ];
 
 /** Minimal scope set used when Meta rejects the full dialog request. */

@@ -30,7 +30,6 @@ const PAGE_SCOPES = [
   "pages_show_list",
   "pages_manage_posts",
   "pages_read_engagement",
-  "pages_manage_engagement",
 ];
 
 // A Login-for-Business config_id makes Meta IGNORE `scope`, which is why the

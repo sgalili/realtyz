@@ -98,7 +98,6 @@ export const OAUTH_SCOPES: Record<string, string[]> = {
     'pages_show_list',
     'pages_manage_posts',
     'pages_read_engagement',
-    'pages_manage_engagement',
   ],
   instagram: ['instagram_basic', 'instagram_content_publish', 'instagram_manage_comments'],
   x:         ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],
