@@ -43,6 +43,17 @@ function writeCache(userId: string | undefined, value: FacebookHealth | null) {
   }
 }
 
+const DISCONNECTED_HEALTH: FacebookHealth = {
+  pageConnected: false,
+  needsReconnect: false,
+  reason: null,
+  pageName: null,
+  pageId: null,
+  pagePicture: null,
+  instagram: null,
+  neverConnected: true,
+};
+
 /**
  * Single source of truth for Facebook connection state across the app:
  * the collapsed section badge, the expanded card badge and the global warning
@@ -117,4 +128,15 @@ export function useRefreshFacebookHealth() {
   return useCallback(() => {
     qc.invalidateQueries({ queryKey: [FACEBOOK_HEALTH_KEY] });
   }, [qc]);
+}
+
+/** Atomically clear cached Facebook state so every badge/banner updates now. */
+export function useResetFacebookHealth() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useCallback(async () => {
+    await qc.cancelQueries({ queryKey: [FACEBOOK_HEALTH_KEY] });
+    writeCache(user?.id, null);
+    qc.setQueryData([FACEBOOK_HEALTH_KEY, user?.id], DISCONNECTED_HEALTH);
+  }, [qc, user?.id]);
 }

@@ -206,7 +206,8 @@ async function candidateTokens(admin: any, ownerId: string): Promise<string[]> {
   const { data: conns } = await admin
     .from("social_connections")
     .select("credentials")
-    .in("platform", ["facebook", "facebook_page", "instagram", "meta"]);
+    .in("platform", ["facebook", "facebook_page", "instagram", "meta"])
+    .eq("created_by", ownerId);
   for (const c of conns ?? []) {
     const cr: any = (c as any)?.credentials ?? {};
     push(cr.user_access_token);
@@ -371,9 +372,10 @@ Deno.serve(async (req) => {
 
       let row = await readBinding();
 
-      // A cached blocked asset ("Employee") is not a publishing identity, and a
-      // missing binding may still be healable from an existing user token.
-      if (!row?.page_id || isBlockedPage({ id: row.page_id, name: row.page_name })) {
+      // A cached blocked asset ("Employee") is not a publishing identity.
+      // Never auto-create a missing binding: an explicit disconnect must stay
+      // disconnected until the user starts OAuth/manual connection again.
+      if (row?.page_id && isBlockedPage({ id: row.page_id, name: row.page_name })) {
         const blocked = !!row?.page_id;
         const fixed = await repairBinding(admin, ownerId);
         if (fixed.ok) row = await readBinding();
@@ -390,6 +392,10 @@ Deno.serve(async (req) => {
               : "עמוד הפייסבוק אינו מחובר. יש להתחבר בעמוד החיבורים.",
           });
         }
+      }
+
+      if (!row?.page_id) {
+        return json({ connected: false, needs_reconnect: false, never_connected: true, page: null, error: null });
       }
 
       // A stored page id + page token IS a connection: report connected first,
@@ -467,10 +473,7 @@ Deno.serve(async (req) => {
       }
 
       if (!row?.page_id) {
-        // Last resort: try to bind the known business Page directly.
-        const forcedStatus = await forcePageBinding(admin, ownerId, String(body?.page_id ?? ""));
-        if (!forcedStatus.ok) return json({ connected: false, page: null });
-        return json({ connected: true, page: forcedStatus.page });
+        return json({ connected: false, page: null, needs_reconnect: false });
       }
 
 
@@ -497,7 +500,25 @@ Deno.serve(async (req) => {
     }
 
     if (action === "disconnect") {
-      await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+      const failures: string[] = [];
+      const bindingDelete = await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
+      if (bindingDelete.error) failures.push(bindingDelete.error.message);
+
+      // The Page OAuth exchange also stores its long-lived user token for group
+      // discovery. Clear it and imported groups so health/status cannot rebuild
+      // the just-disconnected Page from residual credentials.
+      const groupsDelete = await admin.from("fb_user_groups").delete().eq("workspace_owner_id", ownerId);
+      if (groupsDelete.error) failures.push(groupsDelete.error.message);
+      const personalDelete = await admin.from("fb_personal_connections").delete().eq("workspace_owner_id", ownerId);
+      if (personalDelete.error) failures.push(personalDelete.error.message);
+      const socialDelete = await admin
+        .from("social_connections")
+        .delete()
+        .eq("created_by", ownerId)
+        .in("platform", ["facebook", "facebook_page", "instagram", "meta"]);
+      if (socialDelete.error) failures.push(socialDelete.error.message);
+
+      if (failures.length) return json({ error: `disconnect_failed: ${failures.join("; ")}` }, 500);
       return json({ ok: true });
     }
 

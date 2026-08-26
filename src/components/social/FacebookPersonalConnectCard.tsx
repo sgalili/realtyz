@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
-import { describeOAuthFailure, logOAuthRedirectUri, oauthRedirectUri, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
+import { clearPendingOAuth, describeOAuthFailure, isSameOriginOAuthRedirect, logOAuthRedirectUri, oauthRedirectUri, redirectWhitelistHint, takePendingOAuth } from '@/lib/oauthRedirect';
 
 
 type Identity = {
@@ -141,6 +141,7 @@ export const FacebookPersonalConnectCard = () => {
   const connect = async (basic = false) => {
     setConnecting(true);
     try {
+      clearPendingOAuth();
       const hint = redirectWhitelistHint();
       if (hint) toast.info('שים לב לכתובת החזרה של Meta', { description: hint });
       const res = await callFbPersonal<any>({
@@ -150,6 +151,10 @@ export const FacebookPersonalConnectCard = () => {
       });
       const url = (res as any)?.auth_url;
       if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
+      if (!isSameOriginOAuthRedirect()) {
+        window.location.assign(url);
+        return;
+      }
       const popup = window.open(url, 'realtyz-fb-personal-oauth', 'width=560,height=680');
       if (!popup) window.location.href = url;
     } catch (e: any) {
