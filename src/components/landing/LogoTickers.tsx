@@ -1,22 +1,24 @@
 import { BrandLogo } from '@/components/social/BrandLogo';
+import { BrandIcon } from '@/components/BrandIcon';
 
 /* Realtyz landing — infinite auto-scrolling logo tickers.
    Social platforms use their official brand colors (BrandLogo).
-   Infrastructure row shows the operating tech stack wordmarks. */
+   Infrastructure row shows the operating tech stack logos + wordmarks. */
 
 const PLATFORMS = [
   'whatsapp', 'instagram', 'facebook', 'messenger', 'telegram',
   'linkedin', 'x', 'tiktok', 'youtube', 'gmail', 'sms', 'google_drive',
 ];
 
-const STACK = [
-  { label: 'Google Cloud', color: '#4285F4' },
-  { label: 'AWS', color: '#FF9900' },
-  { label: 'Supabase', color: '#3ECF8E' },
-  { label: 'GitHub', color: '#181717' },
+const STACK: { label: string; color: string; icon?: string }[] = [
+  { label: 'Google Cloud', color: '#4285F4', icon: 'googlecloud' },
+  { label: 'AWS', color: '#FF9900', icon: 'amazonaws' },
+  { label: 'Supabase', color: '#3ECF8E', icon: 'supabase' },
+  { label: 'GitHub', color: '#E6EDF3', icon: 'github' },
   { label: 'GreenAPI', color: '#25D366' },
   { label: '019', color: '#E4002B' },
 ];
+
 
 export function PlatformTicker() {
   return (
@@ -43,12 +45,14 @@ export function StackTicker() {
             {STACK.map((s) => (
               <span
                 key={`${dup}-${s.label}`}
-                className="whitespace-nowrap text-lg font-extrabold tracking-tight"
+                className="inline-flex items-center gap-2 whitespace-nowrap text-lg font-extrabold tracking-tight"
                 style={{ color: s.color }}
               >
+                {s.icon && <BrandIcon name={s.icon} className="h-6 w-6 shrink-0" />}
                 {s.label}
               </span>
             ))}
+
           </div>
         ))}
       </div>
