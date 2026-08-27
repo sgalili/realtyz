@@ -31,6 +31,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
+import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate } from '@/lib/generationGate';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
@@ -1746,6 +1747,9 @@ const InlineComposer = ({
     // Never regenerate over restored work: wait for hydration to finish first.
     if (!hydrated) return;
     if (body.trim().length > 0) return; // honor draft restoration
+    // Emergency stop: the operator halted bulk generation. Already generated
+    // drafts stay as-is; nothing new is requested (no tokens spent).
+    if (isGenerationStopped()) return;
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const fromCalendar = !!presetScheduleIso || !!params?.get('schedule');
     const listingFromUrl = params?.get('listing') || (params?.get('properties') || '').split(',').map((s) => s.trim()).filter(Boolean)[0] || null;
@@ -6130,6 +6134,27 @@ const CampaignCenter = () => {
                 {/* Bulk dispatch — publishes every ready draft one after another. */}
                 <div className="sticky bottom-2 z-40 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
                   <div className="flex items-stretch gap-2">
+                    {generationStopped ? (
+                      <button
+                        type="button"
+                        onClick={() => { resumeGeneration(); toast.success('יצירת התוכן חודשה'); }}
+                        title="חידוש יצירת תוכן"
+                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-3 text-[12px] font-semibold text-emerald-700 transition hover:bg-emerald-500/20"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        המשך יצירה
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { stopAllGeneration(); toast.info('עצרנו את יצירת התוכן. כל מה שנוצר נשמר.'); }}
+                        title="עצור יצירת תוכן מיד (התוכן שנוצר נשמר)"
+                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-3 text-[12px] font-semibold text-destructive transition hover:bg-destructive/20"
+                      >
+                        <Square className="h-4 w-4" />
+                        עצור יצירה
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setBulkGlobalScheduleOpen(true)}
