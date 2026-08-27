@@ -5449,13 +5449,9 @@ const CampaignCenter = () => {
   // group/time selection for current and future multi-draft campaigns.
   useEffect(() => {
     try {
-      const gKey = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
       const sKey = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';
-      const rawGroups = localStorage.getItem(gKey)
-        || localStorage.getItem('campaign:bulkGroupIds')
-        || localStorage.getItem('campaign:groupIds');
-      const parsedGroups = rawGroups ? JSON.parse(rawGroups) : null;
-      if (Array.isArray(parsedGroups)) setBulkGroupIds(parsedGroups.filter((x) => typeof x === 'string'));
+      const parsedGroups = loadCampaignGroups(workspaceOwnerId);
+      if (parsedGroups.length) setBulkGroupIds(parsedGroups);
       const rawIso = localStorage.getItem(sKey);
       if (rawIso) {
         const d = new Date(rawIso);
@@ -5465,18 +5461,24 @@ const CampaignCenter = () => {
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Keep the calendar bubble in sync after the global scheduler closes.
+  // Live sync: any group change made in the scheduling dialog updates the bubble.
+  useEffect(() => subscribeCampaignGroups((ids) => {
+    setBulkGroupIds((curr) => (JSON.stringify(curr) === JSON.stringify(ids) ? curr : ids));
+  }), []);
+  // Keep the calendar bubble + group count in sync after the global scheduler closes.
   useEffect(() => {
     if (!bulkGlobalScheduleOpen) {
-      try { setBulkRecurrence(loadSchedulePrefs(workspaceOwnerId).recurrence); } catch {}
+      try {
+        setBulkRecurrence(loadSchedulePrefs(workspaceOwnerId).recurrence);
+        const shared = loadCampaignGroups(workspaceOwnerId);
+        if (shared.length) setBulkGroupIds(shared);
+      } catch {}
     }
   }, [bulkGlobalScheduleOpen, workspaceOwnerId]);
   useEffect(() => {
-    try {
-      const key = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
-      localStorage.setItem(key, JSON.stringify(bulkGroupIds));
-    } catch {}
+    saveCampaignGroups(workspaceOwnerId, bulkGroupIds);
   }, [bulkGroupIds, workspaceOwnerId]);
+
   useEffect(() => {
     try {
       const key = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';
