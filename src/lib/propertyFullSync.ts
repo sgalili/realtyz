@@ -88,12 +88,19 @@ export async function isListingMetadataImported(listingId: string): Promise<bool
  */
 type ProgressFn = (percent: number) => void;
 
-/** Bounded invoke: never let one slow scrape hold the loader hostage. */
-async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T | null> {
-  return await Promise.race([
-    p.catch((e) => { console.warn(`[propertyFullSync] ${label} failed`, e); return null as T | null; }),
-    new Promise<null>((r) => setTimeout(() => r(null), ms)),
-  ]);
+/** Bounded invoke that preserves provider failures instead of reporting false completion. */
+async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      p,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} חרג ממגבלת הזמן`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 /** Hard ceiling for the whole textual import: the UI must never wait longer. */
@@ -140,14 +147,27 @@ async function runMetadataSync(
       ),
     );
   }
-  await Promise.all(tasks);
-  clearInterval(creep);
-  step(92);
+  try {
+    const results = await Promise.all(tasks);
+    for (const result of results) {
+      const invocation = result as { data?: { error?: unknown; detail?: unknown }; error?: unknown } | null;
+      if (invocation?.error) throw invocation.error;
+      if (invocation?.data?.error) {
+        throw new Error(String(invocation.data.detail ?? invocation.data.error));
+      }
+    }
+    step(92);
+  } finally {
+    clearInterval(creep);
+  }
 
   // Only cache a proven-complete row. A timed-out scraper keeps running on the
   // server, so marking the id complete here used to leave the current tab with
   // its original thin snapshot forever.
-  if (await isListingMetadataImported(listingId)) metaCachedIds.add(listingId);
+  if (!(await isListingMetadataImported(listingId))) {
+    throw new Error('ייבוא תוכן הנכס טרם הושלם');
+  }
+  metaCachedIds.add(listingId);
   step(100);
 }
 
