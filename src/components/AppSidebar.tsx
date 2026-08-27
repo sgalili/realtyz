@@ -6,6 +6,7 @@ import {
   MessageCircle,
   Building2,
   Handshake,
+  ClipboardList,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
@@ -46,6 +47,14 @@ const NAV_ITEMS: NavItem[] = [
     iconColor: 'text-indigo-600',
     badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
     aliases: ['/dashboard'],
+  },
+  {
+    title: 'משימות היום',
+    url: '/command-center',
+    icon: ClipboardList,
+    iconColor: 'text-sky-600',
+    badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
+    aliases: ['/tasks'],
   },
   {
     title: 'לקוחות',
