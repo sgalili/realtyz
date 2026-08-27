@@ -438,6 +438,8 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       });
       toast.success('הטוקן נשמר והעמוד חובר', { description: res?.page?.name ?? undefined });
       void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
+      requestExtensionGroups();
+
       setManualToken('');
       setManualOpen(false);
       await probe(false);
