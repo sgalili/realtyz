@@ -752,7 +752,7 @@ export default function Properties() {
                   if (e.key === 'Enter') { e.preventDefault(); submitQuery(); }
                   if (e.key === 'Backspace' && !q && filterChips.length) filterChips[filterChips.length - 1].clear();
                 }}
-                placeholder={filterChips.length ? 'הוסף מילות חיפוש…' : 'חיפוש נכסים'}
+                placeholder={filterChips.length ? 'הוסף מילות חיפוש…' : 'חיפוש נכסים או הדבקת קישור יד2'}
                 aria-label="חיפוש נכסים"
                 className="flex-1 min-w-[90px] bg-transparent text-right text-sm outline-none placeholder:text-muted-foreground h-7"
                 dir="rtl"
