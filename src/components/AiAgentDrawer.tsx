@@ -11,6 +11,7 @@ import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, File
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { openOfficialWhatsApp, sendViaOfficialWaba } from '@/lib/officialWa';
 import { publicUrl } from '@/lib/publicUrl';
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip,
@@ -402,8 +403,13 @@ ${shareUrl}
       : phone.startsWith('0') ? '972' + phone.slice(1) : phone;
     try {
       const shareUrl = await mintShareUrl(r, normalized);
-      const wa = `https://wa.me/${normalized}?text=${encodeURIComponent(buildOfferMessage(r, shareUrl))}`;
-      window.open(wa, '_blank', 'noopener,noreferrer');
+      // Official Meta WBA gateway only — never a personal WhatsApp number.
+      const res = await sendViaOfficialWaba({
+        phone_number: normalized,
+        message: buildOfferMessage(r, shareUrl),
+      });
+      if (!res.ok) throw new Error(res.error || 'שליחה בוואטסאפ הרשמי נכשלה');
+      toast.success('ההצעה נשלחה מהמספר הרשמי');
     } catch (e: any) {
       toast.error(e?.message ?? 'שליחת ההצעה נכשלה');
     }
@@ -424,11 +430,13 @@ ${shareUrl}
       const shareUrl = await mintShareUrl(r, normalized);
       const text = buildOfferMessage(r, shareUrl);
       if (mode === 'whatsapp') {
-        window.open(
-          normalized ? `https://wa.me/${normalized}?text=${encodeURIComponent(text)}`
-                     : `https://wa.me/?text=${encodeURIComponent(text)}`,
-          '_blank', 'noopener,noreferrer',
-        );
+        if (normalized) {
+          const res = await sendViaOfficialWaba({ phone_number: normalized, message: text });
+          if (!res.ok) throw new Error(res.error || 'שליחה בוואטסאפ הרשמי נכשלה');
+          toast.success('נשלח מהמספר הרשמי');
+        } else {
+          await openOfficialWhatsApp(text);
+        }
       } else if (mode === 'sms') {
         window.location.href = `sms:${normalized ?? ''}?&body=${encodeURIComponent(text)}`;
       } else {
