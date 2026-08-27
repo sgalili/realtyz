@@ -715,7 +715,7 @@ type ComposerStatus = {
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
-  onRegisterPublish,
+  onRegisterPublish, bulkGroupIds, bulkScheduleIso,
 }: {
   channel: ChannelCard;
   brandName: string;
@@ -731,10 +731,13 @@ const InlineComposer = ({
   onStatus?: (status: ComposerStatus) => void;
   /**
    * Exposes this draft's publish action to the parent, so a collapsed card
-   * header and the "publish all drafts" bar can dispatch it without expanding.
+   * header and the "publish all drafts" bar can dispatch it.
    * The returned function reports whether the draft was publishable.
    */
   onRegisterPublish?: (fn: (() => boolean) | null) => void;
+  /** Bulk override from the page-level bottom bar — updates all drafts at once. */
+  bulkGroupIds?: string[];
+  bulkScheduleIso?: string | null;
 }) => {
   // Persistent draft key — namespaced per replicated instance so multiple
   // composers on the same page don't clobber each other's drafts. Persisted
