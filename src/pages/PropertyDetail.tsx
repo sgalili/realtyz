@@ -1468,10 +1468,23 @@ export default function PropertyDetail() {
           )}
 
           {!editMode && (
+            <QuickMessageCard
+              scope="listing"
+              listingId={property.id}
+              vars={{
+                city: property.city,
+                property: (property as any).property_title || (property as any).address || property.city,
+                price: property.price ? Number(property.price).toLocaleString('he-IL') : '',
+              }}
+            />
+          )}
+
+          {!editMode && (
             <div className="rounded-xl border border-border bg-card p-4">
               <SmartTimelineCard listingId={property.id} title="ציר זמן הנכס" />
             </div>
           )}
+
 
 
           {projectName && !editMode && (
