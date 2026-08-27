@@ -1,33 +1,24 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import { Check } from 'lucide-react';
 import { CreditBalancePill } from '@/components/CreditBalancePill';
-import { FREE_CONTACTS, FREE_PROPERTIES, quoteForContacts } from '@/lib/pricing';
+import { PACKAGES, limitLabel, recommendedPackage, type PricingPackage } from '@/lib/pricing';
 import { fmtILS } from '@/lib/formatCurrency';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
+import { cn } from '@/lib/utils';
 
 const SALES_PHONE = '972546811841';
 
-const INCLUDED = [
-  'CRM מתעניינים מלא',
-  'תיבת דואר אומני-צ\'אנל',
-  'ניהול נכסים ומלאי חי',
-  'יצירת פוסטים ופרסום לרשתות',
-  'אוטומציות וסיכומי שיחה',
-  'משתמשים וצוות ללא הגבלה',
-];
-
 export default function PlanTab() {
   const { contactsUsed, propertiesUsed } = useFreemiumStatus();
-  const [contacts, setContacts] = useState(() => Math.max(FREE_CONTACTS, contactsUsed || 250));
-  const quote = useMemo(() => quoteForContacts(contacts), [contacts]);
+  const recommended = useMemo(
+    () => recommendedPackage(contactsUsed, propertiesUsed),
+    [contactsUsed, propertiesUsed],
+  );
 
-  const requestUpgrade = () => {
-    const text = `היי, אני רוצה לשדרג את ריאלטיז ל-${quote.contacts} אנשי קשר (${fmtILS(quote.monthlyPrice)} לחודש).`;
+  const requestUpgrade = (pkg: PricingPackage) => {
+    const text = `היי, אני רוצה לשדרג את ריאלטיז לחבילת ${pkg.name} (${fmtILS(pkg.monthlyPrice)} לחודש).`;
     window.open(`https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 
@@ -41,69 +32,73 @@ export default function PlanTab() {
         <CreditBalancePill />
       </div>
 
-      <Card>
-        <CardContent className="space-y-5 pt-6">
-          <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-5 text-center">
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-4xl font-bold tabular-nums text-primary">
-                <bdi dir="ltr">{fmtILS(quote.monthlyPrice)}</bdi>
-              </span>
-              <span className="text-xs text-muted-foreground">/ חודש</span>
-            </div>
-            <p className="mt-3 text-sm font-bold text-foreground">
-              {quote.isFree
-                ? `מסלול חינם נצחי - עד ${FREE_CONTACTS} אנשי קשר ו-${FREE_PROPERTIES} נכסים`
-                : `${fmtILS(quote.ratePerContact, { fractionDigits: 2 })} לאיש קשר לחודש · ${FREE_CONTACTS} הראשונים חינם`}
-            </p>
-            {!quote.isFree && (
-              <span className="mt-3 inline-block rounded-full bg-primary/15 px-3 py-1 text-xs font-bold text-primary">
-                {quote.tierLabel}
-              </span>
+      <div dir="rtl" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {PACKAGES.map((pkg) => (
+          <Card
+            key={pkg.id}
+            className={cn(
+              'flex h-full flex-col',
+              pkg.id === recommended.id && 'border-2 border-primary shadow-md',
             )}
+          >
+            <CardContent className="flex h-full flex-col gap-4 pt-6 text-right">
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-lg font-bold">{pkg.name}</h3>
+                  {pkg.id === recommended.id && (
+                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-bold text-primary">
+                      מומלץ לך
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{pkg.tagline}</p>
+              </div>
 
-          </div>
+              <div>
+                <span className="text-3xl font-bold tabular-nums text-primary">
+                  <bdi dir="ltr">{pkg.monthlyPrice === 0 ? '₪0' : fmtILS(pkg.monthlyPrice)}</bdi>
+                </span>
+                <span className="ms-1 text-xs text-muted-foreground">/ חודש</span>
+              </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <Label className="whitespace-nowrap text-right text-sm">מספר אנשי קשר</Label>
-              <Input
-                type="number"
-                min={FREE_CONTACTS}
-                value={contacts}
-                onChange={(e) => setContacts(Math.max(FREE_CONTACTS, Number(e.target.value) || FREE_CONTACTS))}
-                className="w-28 text-center"
-              />
-            </div>
-            <Slider
-              dir="rtl"
-              value={[Math.min(contacts, 10_000)]}
-              min={FREE_CONTACTS}
-              max={10_000}
-              step={10}
-              onValueChange={(v) => setContacts(v[0])}
-              aria-label="מספר אנשי קשר"
-            />
-          </div>
+              <ul className="space-y-1.5 text-sm">
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 shrink-0 text-primary" />
+                  <span>{limitLabel(pkg.contacts)} אנשי קשר</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 shrink-0 text-primary" />
+                  <span>{limitLabel(pkg.properties)} נכסים</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 shrink-0 text-primary" />
+                  <span>{limitLabel(pkg.seats)} משתמשים</span>
+                </li>
+                {pkg.features.map((f) => (
+                  <li key={f} className="flex items-center gap-2">
+                    <Check className="h-4 w-4 shrink-0 text-primary" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
 
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {INCLUDED.map((item) => (
-              <li key={item} className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 shrink-0 text-primary" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
+              <Button
+                onClick={() => requestUpgrade(pkg)}
+                variant={pkg.highlight ? 'default' : 'outline'}
+                className="mt-auto w-full"
+                disabled={pkg.id === 'free'}
+              >
+                {pkg.id === 'free' ? 'המסלול הנוכחי' : `שדרוג ל${pkg.name}`}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-          <p className="text-xs text-muted-foreground">
-            השימוש הנוכחי שלכם: {contactsUsed.toLocaleString('he-IL')} אנשי קשר · {propertiesUsed.toLocaleString('he-IL')} נכסים.
-            IVR ושיחות AI קוליות מתומחרים לפי צריכה בפועל מהארנק.
-          </p>
-
-          <Button onClick={requestUpgrade} size="lg" className="w-full">
-            שדרוג ופתיחת חלון תשלום ב-WhatsApp
-          </Button>
-        </CardContent>
-      </Card>
+      <p dir="rtl" className="text-xs text-muted-foreground">
+        השימוש הנוכחי שלכם: {contactsUsed.toLocaleString('he-IL')} אנשי קשר · {propertiesUsed.toLocaleString('he-IL')} נכסים.
+        שיטת החישוב: מחיר חבילה חודשי קבוע + ארנק קרדיטים לשירותים בצריכה בפועל (SMS, הודעות WhatsApp בתשלום, IVR ושיחות AI קוליות).
+      </p>
     </div>
   );
 }
