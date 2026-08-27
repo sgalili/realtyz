@@ -1849,6 +1849,12 @@ const InlineComposer = ({
               </button>
             </PopoverContent>
           </Popover>
+          {photosLoading && (
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              מייבא תמונות הנכס…
+            </span>
+          )}
           {attachments.length > 0 && (
             <div className="relative flex items-center gap-1 flex-nowrap flex-1 min-w-0 overflow-x-auto">
               {attachments.map((att, i) => {
