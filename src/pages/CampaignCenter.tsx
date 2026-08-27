@@ -5277,6 +5277,12 @@ const CampaignCenter = () => {
   const activeDraftKeyRef = useRef<string | null>(null);
   const bulkQueueRef = useRef<string[]>([]);
   const [publishedDrafts, setPublishedDrafts] = useState<Set<string>>(new Set());
+  // Bulk controls shared across every draft in the multi-draft view so the user
+  // can update schedule/groups once before publishing all drafts.
+  const [bulkGroupIds, setBulkGroupIds] = useState<string[]>([]);
+  const [bulkScheduleIso, setBulkScheduleIso] = useState<string | null>(null);
+  const [bulkGroupPickerOpen, setBulkGroupPickerOpen] = useState(false);
+  const [bulkScheduleDialogOpen, setBulkScheduleDialogOpen] = useState(false);
 
   const publishDraft = useCallback((key: string) => {
     const fn = publishFnsRef.current.get(key);
