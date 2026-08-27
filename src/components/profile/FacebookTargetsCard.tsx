@@ -129,6 +129,9 @@ export function FacebookTargetsCard({ className }: { className?: string }) {
         </Button>
       </div>
 
+      <ExtensionGroupSyncCard onSynced={() => void load()} />
+
+
       {loading ? (
         <div className="flex items-center justify-center py-5">
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
