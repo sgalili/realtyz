@@ -6434,21 +6434,21 @@ const CampaignCenter = () => {
                       </button>
                     )}
                   </div>
-                  {/* Publish sits alone on the very last row of the screen. */}
+                  {/* Publish sits at the far end of the same row, opposite the action icons. */}
                   <button
                     type="button"
                     onClick={() => publishAllDrafts(blocks.map((b, idx) => draftKeyFor(b, idx)))}
                     disabled={readyKeys.length === 0}
                     className={cn(
-                      'flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
+                      'ms-auto flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
                       readyKeys.length
                         ? 'bg-[hsl(217,80%,18%)] text-white shadow-md hover:bg-[hsl(217,80%,14%)]'
                         : 'cursor-not-allowed bg-muted text-muted-foreground/80',
                     )}
                   >
-                    <Megaphone className="h-4 w-4" />
                     פרסם את כל הטיוטות ({readyKeys.length})
                   </button>
+
                   </div>
                 </div>
 
