@@ -726,11 +726,14 @@ export default function PropertyDetail() {
         solar_heater: form.solar,
         photos: form.photos,
         images: form.photos,
+        deal_type: form.deal_type || null,
+        listing_type: form.deal_type || null,
         source_url: form.source_url || null,
       };
-      const baseFeatures = Array.isArray(data?.row?.features)
-        ? (data.row.features as unknown[]).filter((f): f is string => typeof f === 'string' && !['מרפסת', 'מעלית', 'מיזוג', 'ממ"ד', 'מקלט', 'דוד שמש'].includes(f))
-        : [];
+      const manualFeatures = form.features_text
+        .split(/[,\n·]/)
+        .map((f) => f.trim())
+        .filter(Boolean);
       const featureLabels = [
         form.balcony ? 'מרפסת' : null,
         form.elevator ? 'מעלית' : null,
@@ -743,6 +746,9 @@ export default function PropertyDetail() {
         city: form.city || null,
         neighborhood: form.neighborhood || null,
         address: form.address || null,
+        house_number: form.house_number ? Number(form.house_number) : null,
+        apartment_number: form.apartment_number ? Number(form.apartment_number) : null,
+        project_name: form.project_name || null,
         rooms: form.rooms ? Number(form.rooms) : null,
         sqm: form.sqm ? Number(form.sqm) : null,
         floor: form.floor ? Number(form.floor) : null,
@@ -750,11 +756,18 @@ export default function PropertyDetail() {
         elevator: form.elevator,
         asking_price: form.price ? Number(form.price) : 0,
         description: form.description || null,
+        short_description: form.short_description || null,
+        long_description: form.long_description || null,
+        latitude: form.latitude ? Number(form.latitude) : null,
+        longitude: form.longitude ? Number(form.longitude) : null,
+        available_from: form.available_from || null,
+        ...(form.status ? { status: form.status } : {}),
         source_url: form.source_url || null,
         media_photos: form.photos,
-        features: Array.from(new Set([...baseFeatures, ...featureLabels])) as never,
+        features: Array.from(new Set([...manualFeatures, ...featureLabels])) as never,
         source_metadata: newMeta as never,
       }).eq('id', id);
+
       if (error) throw error;
       toast.success('הנכס עודכן בהצלחה');
       clearDraft();
