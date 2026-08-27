@@ -1443,13 +1443,12 @@ const InlineComposer = ({
   // line into the first-comment textarea with a random intro phrase.
   useEffect(() => {
     if (!attachWaLink) {
-      if (waInjectedRef.current) {
-        removeFirstCommentLine(waInjectedRef.current);
-        waInjectedRef.current = '';
-      }
+      stripAllWaLinkLines();
+      waInjectedRef.current = '';
       setWaShortUrl('');
       return;
     }
+
     let cancelled = false;
     (async () => {
       // Fallback CTA must always target the official Meta WhatsApp Business
