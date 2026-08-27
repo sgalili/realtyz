@@ -6086,11 +6086,12 @@ const CampaignCenter = () => {
                   <div className="flex items-stretch gap-2">
                     <button
                       type="button"
-                      onClick={() => setBulkScheduleDialogOpen(true)}
-                      title="עדכן תאריך ושעה לכל הטיוטות"
-                      aria-label="עדכן תאריך ושעה לכל הטיוטות"
+                      onClick={() => setBulkGlobalScheduleOpen(true)}
+                      title="תזמון קמפיין גלובלי לכל הטיוטות"
+                      aria-label="תזמון קמפיין גלובלי לכל הטיוטות"
                       className="inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
                     >
+
                       <CalendarIcon className="h-4 w-4" />
                     </button>
                     {pickedChannel?.id === 'facebook' && (
