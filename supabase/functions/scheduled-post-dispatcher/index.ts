@@ -20,7 +20,9 @@ const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const FIRE_WINDOW_MS = 3 * 60_000; // fire slots whose sent_at is within +/- 3 min of now
 const MAX_PER_RUN = 10;             // per-run cap to protect rate limits
 const LOCK_TIMEOUT_MS = 5 * 60_000; // release orphaned locks after 5 min
-const READY_WINDOW = 3;              // never prepare more than the next 3 versions in a series
+const READY_WINDOW = 1;              // only ONE future version of a series is ever queued
+// A property in any of these states stops its whole campaign series.
+const STOPPED_LISTING_STATUSES = ["hold", "sold", "rented", "disabled", "discarded"];
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -120,6 +122,101 @@ async function regenerateBody(row: any): Promise<string> {
   }
 }
 
+
+/** Next occurrence date for a recurrence rule, starting from `from`. */
+function nextOccurrence(from: Date, rule: any): Date | null {
+  const pattern = String(rule?.pattern ?? "");
+  const d = new Date(from);
+  if (pattern === "daily") { d.setDate(d.getDate() + 1); return d; }
+  if (pattern === "weekly") { d.setDate(d.getDate() + 7); return d; }
+  if (pattern === "monthly") { d.setMonth(d.getMonth() + 1); return d; }
+  if (pattern === "custom") {
+    const days: number[] = Array.isArray(rule?.days) ? rule.days.map(Number) : [];
+    if (days.length === 0) return null;
+    for (let i = 1; i <= 14; i++) {
+      const c = new Date(from);
+      c.setDate(c.getDate() + i);
+      if (days.includes(c.getDay())) return c;
+    }
+    return null;
+  }
+  return null;
+}
+
+/** Random minute inside the rule's daily window. */
+function applyWindow(day: Date, rule: any): Date {
+  const parse = (v: unknown, fallback: number) => {
+    const m = String(v ?? "").match(/^(\d{1,2}):(\d{2})$/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : fallback;
+  };
+  const startMin = parse(rule?.win_start, 9 * 60);
+  const endMin = Math.max(startMin + 30, parse(rule?.win_end, 21 * 60));
+  const minute = startMin + Math.floor(Math.random() * (endMin - startMin));
+  const out = new Date(day);
+  out.setHours(Math.floor(minute / 60), minute % 60, Math.floor(Math.random() * 60), 0);
+  return out;
+}
+
+/**
+ * Creates the single next version of an endless series after a successful
+ * publish. Bails out when the series already has a future slot, when there is
+ * no recurrence rule, or when the property is no longer active.
+ */
+async function enqueueNextVersion(admin: any, row: any): Promise<void> {
+  try {
+    const rule = row.recurrence_rule;
+    if (!rule || !row.series_id) return;
+
+    const { count: futureCount } = await admin
+      .from("campaign_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("series_id", row.series_id)
+      .eq("status", "scheduled")
+      .gt("sent_at", new Date().toISOString());
+    if ((futureCount ?? 0) >= READY_WINDOW) return;
+
+    if (row.listing_id) {
+      const { data: listing } = await admin
+        .from("listings")
+        .select("status")
+        .eq("id", row.listing_id)
+        .maybeSingle();
+      if (listing && STOPPED_LISTING_STATUSES.includes(String(listing.status))) return;
+    }
+
+    const day = nextOccurrence(new Date(row.sent_at ?? Date.now()), rule);
+    if (!day) return;
+    const when = applyWindow(day, rule);
+    if (when.getTime() <= Date.now()) return;
+
+    const nextIndex = Number(row.series_index ?? 0) + 1;
+    await admin.from("campaign_logs").insert({
+      user_id: row.user_id,
+      workspace_owner_id: row.workspace_owner_id ?? row.user_id,
+      campaign_name: row.campaign_name,
+      channel: row.channel,
+      message_body: row.message_body,
+      status: "scheduled",
+      sent_at: when.toISOString(),
+      source_account: "meta-placeholder",
+      needs_regeneration: true,
+      regen_prompt: row.regen_prompt,
+      listing_id: row.listing_id ?? null,
+      first_comment: row.first_comment ?? null,
+      media_urls: Array.isArray(row.media_urls) ? row.media_urls : [],
+      group_ids: Array.isArray(row.group_ids) ? row.group_ids : [],
+      target_profile_key: row.target_profile_key ?? null,
+      target_account_ref: row.target_account_ref ?? null,
+      series_id: row.series_id,
+      series_index: nextIndex,
+      series_total: nextIndex + 1,
+      recurrence_rule: rule,
+    });
+  } catch (e) {
+    console.error("[scheduled-post-dispatcher] enqueueNextVersion failed", e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -139,7 +236,7 @@ Deno.serve(async (req) => {
   const { data: candidates, error: selErr } = await admin
     .from("campaign_logs")
     .select(
-      "id, user_id, workspace_owner_id, campaign_name, channel, message_body, media_urls, group_ids, target_profile_key, target_account_ref, first_comment, listing_id, series_id, series_index, series_total, regen_prompt, sent_at",
+      "id, user_id, workspace_owner_id, campaign_name, channel, message_body, media_urls, group_ids, target_profile_key, target_account_ref, first_comment, listing_id, series_id, series_index, series_total, regen_prompt, sent_at, recurrence_rule",
     )
     .eq("status", "scheduled")
     .eq("needs_regeneration", true)
@@ -156,6 +253,20 @@ Deno.serve(async (req) => {
 
   const results: Array<{ id: string; ok: boolean; error?: string }> = [];
   for (const row of candidates ?? []) {
+    // Hard stop: a property on hold / sold / rented / disabled must never post
+    // again. Drop the slot (and any sibling future slot) instead of firing it.
+    if (row.listing_id) {
+      const { data: listing } = await admin
+        .from("listings")
+        .select("status")
+        .eq("id", row.listing_id)
+        .maybeSingle();
+      if (listing && STOPPED_LISTING_STATUSES.includes(String(listing.status))) {
+        await admin.rpc("cancel_future_listing_posts", { _listing_id: row.listing_id });
+        results.push({ id: row.id, ok: false, error: `listing_${listing.status}` });
+        continue;
+      }
+    }
     // Rolling-window rule: slot 0 may run immediately. Every later slot is
     // unlocked only after at least one earlier slot in the same series was
     // successfully sent. This prevents speculative AI generation for an
@@ -194,6 +305,9 @@ Deno.serve(async (req) => {
       // meta-publish inserted its own row(s). Retire the placeholder so it
       // doesn't double-count on the calendar.
       await admin.from("campaign_logs").delete().eq("id", row.id);
+      // Endless rolling repeat: now that this version went out, materialize the
+      // NEXT single version. Never more than one future slot per series.
+      await enqueueNextVersion(admin, row);
       results.push({ id: row.id, ok: true });
     } else {
       // Release the lock so the next run can retry, and stamp the error.
