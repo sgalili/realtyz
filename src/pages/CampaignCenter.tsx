@@ -1409,6 +1409,18 @@ const InlineComposer = ({
         });
         return nextAttachments;
       });
+      // Persist uploaded photos to the property gallery immediately so they are
+      // never requested again — they show on the property page and in every
+      // current/future post of that property.
+      if (selectedListingId) {
+        const uploadedImageUrls = uploaded
+          .filter((u) => u.placeholder.kind === 'image' && u.url && !u.url.startsWith('blob:'))
+          .map((u) => u.url as string);
+        if (uploadedImageUrls.length) {
+          await appendImagesToListing(selectedListingId, uploadedImageUrls);
+        }
+      }
+
       // Synchronous persistence: as soon as the public URL is available,
       // write it into the ai_content_logs row so the media stays bound to
       // the record even if the view refreshes before the debounced autosave
