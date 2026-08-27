@@ -5831,7 +5831,8 @@ const CampaignCenter = () => {
     toast.success('כל הטיוטות נמחקו');
     setSearchParams(new URLSearchParams());
   };
-  const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
+  // (campaignHistoryOpen is declared above, next to the bulk-publish plumbing)
+
   const [campaignHistoryRows, setCampaignHistoryRows] = useState<any[]>([]);
   const [campaignDraftRows, setCampaignDraftRows] = useState<any[]>([]);
   const [campaignHistoryLoading, setCampaignHistoryLoading] = useState(false);
