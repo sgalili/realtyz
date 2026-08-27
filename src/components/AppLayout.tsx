@@ -505,6 +505,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </main>
           <AiAgentDrawer />
           <QuickActionDrawer />
+          <ProductTour />
           <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
             <DialogContent dir="rtl" className="premium-auth-modal sm:max-w-md">
               <DialogHeader className="text-right">
