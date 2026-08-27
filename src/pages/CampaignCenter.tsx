@@ -1490,10 +1490,8 @@ const InlineComposer = ({
   // Messenger deep-link uses the connected FB Page ref.
   useEffect(() => {
     if (!attachMsngrLink) {
-      if (msngrInjectedRef.current) {
-        removeFirstCommentLine(msngrInjectedRef.current);
-        msngrInjectedRef.current = '';
-      }
+      stripAllMsngrLinkLines();
+      msngrInjectedRef.current = '';
       setMsngrShortUrl('');
       return;
     }
@@ -1501,8 +1499,9 @@ const InlineComposer = ({
     const url = pageRef ? `https://m.me/${pageRef}` : 'https://m.me/';
     setMsngrShortUrl(url);
     const line = `${pickRandom(MSNGR_INTRO_PHRASES)}: ${url}`;
-    if (msngrInjectedRef.current) removeFirstCommentLine(msngrInjectedRef.current);
+    stripAllMsngrLinkLines();
     msngrInjectedRef.current = line;
+
     injectFirstCommentLine(line);
   }, [attachMsngrLink, socialProfiles]);
 
