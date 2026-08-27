@@ -100,6 +100,10 @@ export function ConnectionsTab() {
   const [greenReady, setGreenReady] = useState(false);
   const [voiceReady, setVoiceReady] = useState(false);
   const [emailAlias, setEmailAlias] = useState<string | null>(null);
+  // Live phone numbers so a collapsed row shows the actual connected number.
+  const [waPhone, setWaPhone] = useState<string | null>(null);
+  const [greenPhone, setGreenPhone] = useState<string | null>(null);
+  const [voicePhone, setVoicePhone] = useState<string | null>(null);
   const { data: fbHealth } = useFacebookHealth();
 
   useEffect(() => {
@@ -109,6 +113,26 @@ export function ConnectionsTab() {
         const rows = (data as any[]) || [];
         setGreenReady(!!rows.find((r) => r.service_name === 'Green API')?.api_key);
         setVoiceReady(!!rows.find((r) => r.service_name === 'Vapi')?.api_key);
+        // Twilio: api_key = `${sid}:${token}:${phone}`
+        const twilio = String(rows.find((r) => r.service_name === 'Twilio')?.api_key ?? '');
+        const twilioPhone = twilio.split(':')[2] ?? '';
+        if (twilioPhone.replace(/\D/g, '')) setVoicePhone(twilioPhone);
+      } catch { /* silent */ }
+      try {
+        const { data: wap } = await supabase.from('wa_providers' as never).select('config').limit(1).maybeSingle();
+        const cfg = ((wap as any)?.config ?? {}) as Record<string, unknown>;
+        const display = String(cfg.display_phone_number ?? cfg.phone_number ?? '');
+        if (display.replace(/\D/g, '')) setWaPhone(display);
+      } catch { /* silent */ }
+      try {
+        const { data: green } = await supabase
+          .from('social_connections')
+          .select('credentials')
+          .eq('platform', 'whatsapp_green')
+          .maybeSingle();
+        const creds = ((green as any)?.credentials ?? {}) as any;
+        const gp = String(creds.phone ?? creds.wid ?? creds.manual?.phone ?? '');
+        if (gp.replace(/\D/g, '')) setGreenPhone(gp);
       } catch { /* silent */ }
       try {
         const { data: { user } } = await supabase.auth.getUser();
