@@ -6,8 +6,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
-import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { PACKAGES, FREE_CONTACTS, FREE_PROPERTIES, limitLabel } from '@/lib/pricing';
+import { META_APP_ID } from '@/lib/metaApp';
+import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
+import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 
 /* Realtyz — סיור מוצר לנרשמים חדשים.
@@ -63,12 +65,14 @@ const STEPS: TourStep[] = [
   },
   {
     eyebrow: 'תמחור',
-    title: 'משלמים רק על איש קשר פעיל',
+    title: 'חבילות במחיר חודשי קבוע',
     bullets: [
-      'התשלום הוא לפי איש קשר פעיל בלבד - לא לפי מודולים ולא לפי הודעות.',
-      'לא משנה מאיפה הוא הגיע: הזנה ידנית, ווטסאפ, פייסבוק, רשתות או כל מקור אחר.',
-      'הסרה או השבתה של איש קשר עוצרת מיד כל חיוב נוסף עליו.',
-      'עד 1,000 אנשי קשר ₪2.5, 1,001-5,000 ₪2.0, מעל 5,000 ₪1.5 לאיש קשר בחודש.',
+      `חינם: עד ${FREE_CONTACTS} אנשי קשר ו-${FREE_PROPERTIES} נכסים, בלי כרטיס אשראי.`,
+      ...PACKAGES.filter((p) => p.monthlyPrice > 0).map(
+        (p) => `${p.name}: ₪${p.monthlyPrice} לחודש · ${limitLabel(p.contacts)} אנשי קשר · ${limitLabel(p.properties)} נכסים · ${limitLabel(p.seats)} משתמשים.`,
+      ),
+      'שיטת החישוב: מחיר החבילה החודשי + ארנק קרדיטים לשירותים בצריכה בפועל (SMS, הודעות WhatsApp בתשלום, IVR ושיחות AI קוליות).',
+      'מעבר בין חבילות בכל רגע, בלי התחייבות ובלי עלויות נסתרות.',
     ],
     cta: { label: 'צפה בתמחור ובחשבון', to: '/billing' },
   },
@@ -76,8 +80,8 @@ const STEPS: TourStep[] = [
     eyebrow: 'חיבורים',
     title: 'מחברים רק את החשבונות שלך',
     bullets: [
-      'שום חשבון Facebook או WhatsApp לא מתחבר אוטומטית.',
-      'WhatsApp פועל כברירת מחדל רק דרך Meta Cloud API הרשמי.',
+      'שום חשבון Facebook לא מתחבר אוטומטית - רק בלחיצה שלך.',
+      'WhatsApp כבר מחובר לכולם דרך המספר הרשמי של Realtyz ב-Meta Cloud API.',
       'כל החיבורים והמידע נשמרים בסביבת העבודה שלך בלבד.',
     ],
     connections: true,
@@ -86,12 +90,27 @@ const STEPS: TourStep[] = [
 
 const LOCAL_KEY = 'realtyz-product-tour-done';
 
+const FB_SCOPES = 'public_profile,pages_show_list,pages_manage_posts,pages_read_engagement';
+
+/** Opens Facebook Login immediately (no server round-trip, no error page). */
+function startFacebookLogin() {
+  const state = `facebook_page:${crypto.randomUUID()}:${btoa(encodeURIComponent(oauthReturnOrigin()))}`;
+  const params = new URLSearchParams({
+    client_id: META_APP_ID,
+    redirect_uri: oauthRedirectUri(),
+    response_type: 'code',
+    scope: FB_SCOPES,
+    state,
+    auth_type: 'rerequest',
+  });
+  openOAuthWindow(`https://www.facebook.com/v26.0/dialog/oauth?${params}`);
+}
+
 export function ProductTour() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
-  const [officialWaPhone, setOfficialWaPhone] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -114,17 +133,6 @@ export function ProductTour() {
     })().catch(() => setOpen(true));
     return () => { cancelled = true; };
   }, [user]);
-
-  useEffect(() => {
-    if (!open || !STEPS[index]?.connections) return;
-    supabase.functions.invoke('meta-wa-register', { body: { action: 'status' } })
-      .then(({ data }) => {
-        const config = (data as any)?.config;
-        const phone = String(config?.display_phone_number ?? '').replace(/\D/g, '');
-        setOfficialWaPhone(config?.authorized && phone ? phone : null);
-      })
-      .catch(() => setOfficialWaPhone(null));
-  }, [open, index]);
 
   const finish = async (navigateTo?: string) => {
     setOpen(false);
@@ -196,32 +204,14 @@ export function ProductTour() {
             </Button>
           )}
           {step.connections && (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-6">
               <Button
-                variant="outline"
-                className="h-12 justify-between text-base font-bold"
-                onClick={() => void finish('/profile?tab=connections&connect=facebook')}
+                className="h-12 w-full justify-between text-base font-bold"
+                onClick={() => { startFacebookLogin(); void finish('/profile?tab=connections'); }}
               >
                 <span>חיבור Facebook</span>
                 <ArrowLeft className="h-5 w-5" aria-hidden="true" />
               </Button>
-              <Button
-                className="h-12 justify-between text-base font-bold"
-                onClick={() => void finish('/profile?tab=connections&connect=whatsapp-meta')}
-              >
-                <span>חיבור WhatsApp רשמי</span>
-                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-              </Button>
-              {officialWaPhone && (
-                <div className="sm:col-span-2 flex items-center justify-center gap-4 rounded-md border bg-muted/30 p-4">
-                  <QRCodeSVG value={`https://wa.me/${officialWaPhone}`} size={104} title="קוד QR לפתיחת WhatsApp הרשמי" />
-                  <div className="text-right">
-                    <p className="font-bold">המספר הרשמי מחובר</p>
-                    <p dir="ltr" className="mt-1 text-sm text-muted-foreground">{formatPhoneDisplay(officialWaPhone)}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">סריקה פותחת שיחה עם המספר הרשמי.</p>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
