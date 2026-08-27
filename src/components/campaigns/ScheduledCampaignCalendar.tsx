@@ -147,14 +147,16 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
   }, [scheduleDay, workspaceOwnerId]);
 
   // When opened from the campaign bottom bar, jump straight to today's schedule
-  // form instead of the full monthly calendar view.
+  // form instead of the full monthly calendar view. Applied ONCE per mount so
+  // closing the day dialog never re-opens it.
+  const initialDayAppliedRef = useRef(false);
   useEffect(() => {
-    if (initialDay && !scheduleDay) {
-      const d = new Date(initialDay);
-      d.setHours(0, 0, 0, 0);
-      setScheduleDay(d);
-      setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
-    }
+    if (!initialDay || initialDayAppliedRef.current) return;
+    initialDayAppliedRef.current = true;
+    const d = new Date(initialDay);
+    d.setHours(0, 0, 0, 0);
+    setScheduleDay(d);
+    setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
   }, [initialDay]);
 
   // Persist every configuration change so it survives leaving the page.
@@ -164,7 +166,10 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
       winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount,
       selectedListingIds, selectedGroupIds, groupDailyLimit,
     });
+    // Group selection is shared with the create-post bar — one source of truth.
+    saveCampaignGroups(workspaceOwnerId, selectedGroupIds);
   }, [scheduleDay, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedListingIds, selectedGroupIds, groupDailyLimit]);
+
 
 
   // The number of posts follows the number of properties picked in the dropdown.
