@@ -191,7 +191,11 @@ export default function PropertyDetail() {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchInterval: false,
-    staleTime: 5 * 60 * 1000,
+    // Detail rows are enriched asynchronously by the import workers. Always
+    // re-read the local DB on mount so an old, thin React Query snapshot can
+    // never hide metadata that has already been persisted.
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
@@ -205,9 +209,17 @@ export default function PropertyDetail() {
       const features = Array.isArray(row.features) ? row.features : [];
       const meta = isRecord(row.source_metadata) ? row.source_metadata : {};
 
-      const photoSources: unknown[] = Array.isArray((row as any).media_photos)
-        ? ((row as any).media_photos as unknown[])
-        : [];
+      // Render every URL already persisted in either the canonical gallery or
+      // source metadata immediately. Older imports sometimes populated the
+      // metadata arrays a few seconds before `media_photos`; waiting for a
+      // second scrape made those pages appear to have only one image.
+      const photoSources: unknown[] = [
+        ...(Array.isArray((row as any).media_photos) ? ((row as any).media_photos as unknown[]) : []),
+        ...(Array.isArray((meta as any).cached_media_urls) ? ((meta as any).cached_media_urls as unknown[]) : []),
+        ...(Array.isArray((meta as any).media_urls) ? ((meta as any).media_urls as unknown[]) : []),
+        ...(Array.isArray((meta as any).photos) ? ((meta as any).photos as unknown[]) : []),
+        ...(Array.isArray((meta as any).images) ? ((meta as any).images as unknown[]) : []),
+      ];
       const photos = normalizeImageUrls(photoSources.map(photoUrlFrom).filter((s): s is string => !!s));
 
       const docsRaw: unknown[] = [
