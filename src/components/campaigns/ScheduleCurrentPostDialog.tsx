@@ -169,7 +169,8 @@ export function ScheduleCurrentPostDialog({
     const buildDaySlots = (dayBase: Date): Date[] => {
       const out: Date[] = [];
       for (let i = 0; i < n; i++) {
-        const offset = startMin + i * bucket + (n > 1 ? Math.random() * bucket : 0);
+        // Random minute inside the window — never on the start/end boundary.
+        const offset = randomSlotMinutes(startMin, endMin, i, n);
         const total = Math.floor(offset);
         const d = new Date(dayBase);
         d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);
@@ -383,7 +384,7 @@ export function ScheduleCurrentPostDialog({
             detail: {
               channel: channelId,
               body,
-              media_urls: mediaUrls,
+              media_urls: postImages,
               campaign_name: nameForTarget,
               scheduled_at: firstSlot.toISOString(),
               needs_regeneration: false,
@@ -395,7 +396,7 @@ export function ScheduleCurrentPostDialog({
           post: body,
           channels: [channelId],
           campaign_name: nameForTarget,
-          media_urls: Array.isArray(mediaUrls) ? mediaUrls : [],
+          media_urls: postImages,
           scheduled_at: firstSlot.toISOString(),
           workspace_owner_id: ownerScope,
           group_ids: channelId === 'facebook' ? (selectedGroupIds || []) : [],
@@ -453,7 +454,7 @@ export function ScheduleCurrentPostDialog({
             regen_prompt: rotateNote,
             listing_id: listingId ?? null,
             first_comment: firstComment || null,
-            media_urls: Array.isArray(mediaUrls) ? mediaUrls : [],
+            media_urls: postImages,
             group_ids: channelId === 'facebook' ? (selectedGroupIds || []) : [],
             target_profile_key: target?.profileKey ?? null,
             target_account_ref: target?.accountRef ?? null,
@@ -467,7 +468,7 @@ export function ScheduleCurrentPostDialog({
               detail: {
                 channel: channelId,
                 body,
-                media_urls: mediaUrls,
+                media_urls: postImages,
                 campaign_name: nameForTarget,
                 scheduled_at: slot.toISOString(),
                 needs_regeneration: true,
