@@ -688,6 +688,40 @@ export function ScheduleCurrentPostDialog({
               מפרסם את התוכן הנוכחי
             </div>
           </div>
+
+          {/* Preview before posting: text, attached photos, first comment */}
+          <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+            <div className="text-xs font-semibold text-muted-foreground text-right">תצוגה מקדימה של הפוסט</div>
+            <div className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md border border-input bg-background p-2 text-[13px] text-right leading-relaxed">
+              {body?.trim() || 'אין תוכן לפוסט'}
+            </div>
+            {firstComment?.trim() && (
+              <div className="rounded-md border border-dashed border-input bg-background/60 p-2 text-right">
+                <div className="text-[11px] font-semibold text-muted-foreground mb-1">תגובה ראשונה</div>
+                <div className="whitespace-pre-wrap text-[12px] leading-relaxed">{firstComment.trim()}</div>
+              </div>
+            )}
+            <div>
+              <div className="text-[11px] font-semibold text-muted-foreground mb-1 text-right">
+                תמונות מצורפות ({postImages.length})
+              </div>
+              {postImages.length === 0 ? (
+                <div className="text-[11px] text-muted-foreground text-right">אין תמונות זמינות לנכס הזה</div>
+              ) : (
+                <div className="grid grid-cols-5 gap-1">
+                  {postImages.map((url) => (
+                    <img
+                      key={url}
+                      src={url}
+                      alt="תמונת נכס לפוסט"
+                      loading="lazy"
+                      className="h-14 w-full rounded-md object-cover ring-1 ring-border"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full items-center">
           <Button variant="outline" onClick={onClose} disabled={submitting}>ביטול</Button>
