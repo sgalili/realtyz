@@ -1,19 +1,21 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
 import { OAUTH_AUTHORIZE_URLS, OAUTH_SCOPES } from '@/lib/socialAutomationService';
 
 type GooglePlatform = 'gmail' | 'google_calendar';
 
 /**
  * One-click Google connect row (Gmail / Google Calendar).
- * Opens the shared Google OAuth app in a popup and hands the code to the
- * `google-oauth-exchange` edge function, which stores the tokens in
- * `social_connections` for the workspace.
+ * Resolves the OAuth client_id via the `google-oauth-config` edge function
+ * (shared workspace app or GOOGLE_CLIENT_ID/SECRET project secrets), opens
+ * the consent popup, and hands the returned code to `google-oauth-exchange`.
+ * When no Google OAuth credentials are configured anywhere, renders an
+ * inline setup notice instead of failing mid-flow.
  */
 export function GoogleServiceConnectCard({
   platform,
@@ -24,6 +26,8 @@ export function GoogleServiceConnectCard({
   title: string;
   hint: string;
 }) {
+  const [configError, setConfigError] = useState(false);
+
   const { data, refetch, isLoading } = useQuery({
     queryKey: ['google-service-conn', platform],
     queryFn: async () => {
@@ -66,14 +70,19 @@ export function GoogleServiceConnectCard({
   }, [platform, refetch]);
 
   const connect = async () => {
-    const { data: shared } = await supabase
-      .from('platform_oauth_apps')
-      .select('client_id')
-      .eq('platform', 'google')
-      .maybeSingle();
-    const clientId = (shared as any)?.client_id;
+    setConfigError(false);
+    let clientId = '';
+    try {
+      const { data: cfg, error } = await supabase.functions.invoke('google-oauth-config', { body: {} });
+      if (error) throw error;
+      if ((cfg as any)?.configured && (cfg as any)?.client_id) {
+        clientId = (cfg as any).client_id;
+      }
+    } catch {
+      // fall through to the setup notice
+    }
     if (!clientId) {
-      toast.error('חיבור Google אינו מוגדר', { description: 'יש להגדיר את אפליקציית ה-OAuth המשותפת של Google.' });
+      setConfigError(true);
       return;
     }
     const params = new URLSearchParams({
@@ -110,6 +119,35 @@ export function GoogleServiceConnectCard({
           {connected ? 'חבר מחדש' : 'חיבור מהיר בקליק'}
         </Button>
       </div>
+
+      {configError && !connected && (
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div className="text-[13px] leading-relaxed">
+              <p className="font-semibold text-amber-800 dark:text-amber-300">נדרשת הגדרת אפליקציית Google חד־פעמית</p>
+              <ol className="mt-1 list-decimal space-y-0.5 pr-4 text-amber-700 dark:text-amber-400">
+                <li>פתחו את Google Cloud Console ← Credentials וצרו OAuth Client (Web).</li>
+                <li>
+                  הוסיפו את כתובת החזרה:{' '}
+                  <code dir="ltr" className="rounded bg-amber-100 px-1 dark:bg-amber-900">
+                    https://realtyz.co.il/oauth/callback
+                  </code>
+                </li>
+                <li>שמרו את ה־Client ID וה־Client Secret באישורי ה־OAuth המשותפים של Google במערכת.</li>
+              </ol>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 h-7 gap-1 text-xs"
+                onClick={() => window.open('https://console.cloud.google.com/apis/credentials', '_blank')}
+              >
+                <ExternalLink className="h-3 w-3" /> פתיחת Google Cloud Console
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
