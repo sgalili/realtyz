@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { formatPhoneIL } from '@/lib/formatPhone';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 type TabKey = 'note' | 'reminder' | 'interaction' | 'matches';
 
@@ -232,7 +232,7 @@ export default function QuickActionDrawer() {
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-foreground">{lead.full_name || 'ללא שם'}</p>
             <p className="truncate text-xs text-muted-foreground">
-              {lead.phone_number ? formatPhoneIL(lead.phone_number) : '—'}{lead.city ? ` · ${lead.city}` : ''}
+              {lead.phone_number ? formatPhoneDisplay(lead.phone_number) : '—'}{lead.city ? ` · ${lead.city}` : ''}
             </p>
           </div>
           <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setLead(null); setLeadQuery(''); }}>
@@ -261,7 +261,7 @@ export default function QuickActionDrawer() {
                   className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-right transition hover:bg-accent"
                 >
                   <span className="truncate text-sm font-semibold">{r.full_name || 'ללא שם'}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{r.phone_number ? formatPhoneIL(r.phone_number) : ''}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{r.phone_number ? formatPhoneDisplay(r.phone_number) : ''}</span>
                 </button>
               ))}
             </div>
