@@ -768,15 +768,15 @@ export default function PropertyDetail() {
             </div>
           )}
           {propertySnapshot.description && <p className="max-w-4xl whitespace-pre-line text-lg leading-8 text-foreground">{propertySnapshot.description}</p>}
-          <div className="fixed bottom-4 left-4 z-50 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
-             <ProgressRing value={initialLoadProgress} size={44} strokeWidth={4} />
+          <div className="fixed bottom-5 left-5 z-50 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
+             <ProgressRing value={initialLoadProgress} size={64} strokeWidth={5} />
           </div>
         </div>
       );
     }
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-6" dir="rtl">
-        <ProgressRing value={initialLoadProgress} size={76} strokeWidth={6} />
+        <ProgressRing value={initialLoadProgress} size={112} strokeWidth={8} />
       </div>
     );
   }
