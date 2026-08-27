@@ -746,8 +746,9 @@ export default function PropertyDetail() {
         city: form.city || null,
         neighborhood: form.neighborhood || null,
         address: form.address || null,
-        house_number: form.house_number ? Number(form.house_number) : null,
-        apartment_number: form.apartment_number ? Number(form.apartment_number) : null,
+        house_number: form.house_number || null,
+        apartment_number: form.apartment_number || null,
+
         project_name: form.project_name || null,
         rooms: form.rooms ? Number(form.rooms) : null,
         sqm: form.sqm ? Number(form.sqm) : null,
