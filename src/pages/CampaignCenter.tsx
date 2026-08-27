@@ -2138,8 +2138,10 @@ const InlineComposer = ({
         const scheduledLabel = scheduledDate
           ? scheduledDate.toLocaleString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
           : '';
+        if (hideBottomBar) return null;
         return (
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-0 pt-2 backdrop-blur">
+
             <div className="flex flex-row-reverse items-stretch justify-between gap-2">
               <button
                 type="button"
