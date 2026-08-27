@@ -324,7 +324,9 @@ export async function searchAllSources(
           // Kept deliberately small: the edge worker has a hard memory
           // budget, and every extra page burns BrightData credits.
           limit: 40,
-          pages: 1,
+          // A street search ("בר אילן הרצליה") often sits deeper than the first
+          // page of the city feed, so we widen the crawl for text queries only.
+          pages: queryText ? 2 : 1,
         });
 
         if (Array.isArray(d?.diagnostics) && d.diagnostics.length) {
