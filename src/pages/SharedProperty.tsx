@@ -26,6 +26,7 @@ import {
   BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves,
 } from 'lucide-react';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
+import { officialWaLink } from '@/lib/officialWa';
 
 type SharedPayload = {
   workspace_name: string | null;

@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { RealtyzLoader } from "@/components/RealtyzLoader";
+import { officialWaLink } from "@/lib/officialWa";
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/client-portal`;
 const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;

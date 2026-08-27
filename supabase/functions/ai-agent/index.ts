@@ -315,7 +315,7 @@ serve(async (req) => {
           }
           const { data: updated, error: updErr } = await client
             .from("leads")
-            .update({ ...patch, updated_at: new Date().toISOString() })
+            .update(patch)
             .eq("id", existingRow.id)
             .select("id, full_name, phone_number, city, deal_type")
             .maybeSingle();
