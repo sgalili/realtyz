@@ -1423,6 +1423,22 @@ const InlineComposer = ({
     setFirstComment((curr) => (curr || '').replace(line, '').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, ''));
   };
 
+  // Hard de-dup: a first comment must never contain more than one WhatsApp /
+  // Messenger link, even after regeneration, draft restore or re-toggle.
+  const stripAllWaLinkLines = () => {
+    setFirstComment((curr) => (curr || '')
+      .replace(/\n*[^\n]*(?:wa\.me\/\d+|realtyz\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\s+$/, ''));
+  };
+  const stripAllMsngrLinkLines = () => {
+    setFirstComment((curr) => (curr || '')
+      .replace(/\n*[^\n]*m\.me\/[^\s\n]*[^\n]*/gi, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\s+$/, ''));
+  };
+
+
   // When WA link is toggled ON, mint a branded shortlink and inject a CTA
   // line into the first-comment textarea with a random intro phrase.
   useEffect(() => {
