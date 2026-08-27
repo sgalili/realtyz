@@ -43,6 +43,7 @@ import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdo
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
+import { MAX_POST_IMAGES, randomImageSet, requestSmartMediaFilter } from '@/lib/listingImages';
 import { resolveMediaUrl, resolveMediaUrls, mediaDedupeKey } from '@/lib/postMediaUrl';
 
 import { stripAddressNumbers } from '@/lib/formatAddress';
