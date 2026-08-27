@@ -43,7 +43,7 @@ import { sourcePhotoCount } from '@/lib/photoCount';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle } from '@/lib/formatListingTitle';
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
-import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/propertyFullSync';
+import { ensureFullPropertyImport } from '@/lib/propertyFullSync';
 import { isNewListing, isOldListing } from '@/lib/listingFreshness';
 import { isRelevantListing } from '@/lib/listingRelevance';
 import { sourceYad2Url } from '@/lib/yad2Ad';
@@ -462,12 +462,11 @@ export default function Properties() {
     runSearch();
   }, [q, runSearch]);
 
-  // Clicking a row/card opens the details view AND kicks off a background
-  // full import: complete metadata re-scrape + full gallery mirroring into
-  // permanent storage, so the property is cached for instant future access.
+  // Local rows navigate immediately. Starting a full source scrape here used
+  // to compete with the detail query for bandwidth and backend capacity; the
+  // detail page now performs enrichment only after its local text has painted.
   const handleSelect = (r: UnifiedResult) => {
     if (r.localId) {
-      triggerFullPropertyImport(r.localId, r.url ?? null);
       navigate(`/properties/${r.localId}`);
       return;
     }

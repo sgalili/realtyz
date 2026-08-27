@@ -292,18 +292,6 @@ export default function PropertyDetail() {
         solar: Boolean(meta.solar_heater ?? meta.solar ?? false),
       };
 
-      // Owner (linked crm_profile) — separate lightweight fetch.
-      let owner: { id: string; full_name: string } | null = null;
-      const ownerId = (row as any).owner_id as string | null;
-      if (ownerId) {
-        const { data: op } = await (supabase as any)
-          .from('crm_profiles')
-          .select('id, full_name')
-          .eq('id', ownerId)
-          .maybeSingle();
-        if (op?.id) owner = { id: String(op.id), full_name: String(op.full_name || '') };
-      }
-
       const r = row as any;
       return {
         row,
@@ -314,7 +302,6 @@ export default function PropertyDetail() {
         projectName: row.project_name,
         sourceUrl: row.source_url,
         documents,
-        owner,
         rich: {
           aboutBlocks: buildDescriptionBlocks(r),
           about:
@@ -355,6 +342,25 @@ export default function PropertyDetail() {
   const sourceUrl = data?.sourceUrl ?? null;
   const amenities = data?.amenities;
   const documents = data?.documents ?? [];
+  const ownerId = data?.row?.owner_id ? String(data.row.owner_id) : null;
+  // Owner enrichment is intentionally separate from the property query. The
+  // complete property text can paint immediately without waiting for a second
+  // database round trip.
+  const { data: owner = null } = useQuery({
+    queryKey: ['property-owner', ownerId],
+    enabled: !!ownerId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data: profile } = await supabase
+        .from('crm_profiles')
+        .select('id, full_name')
+        .eq('id', ownerId as string)
+        .maybeSingle();
+      return profile?.id
+        ? { id: String(profile.id), full_name: String(profile.full_name || '') }
+        : null;
+    },
+  });
 
   const dbPhotos = property?.photos ?? [];
 
@@ -365,7 +371,7 @@ export default function PropertyDetail() {
   const ownerSyncedRef = useRef<string | null>(null);
   useEffect(() => {
     const listingId = data?.row?.id ? String(data.row.id) : null;
-    if (!listingId || data?.owner) return;
+    if (!listingId || owner) return;
     if (ownerSyncedRef.current === listingId) return;
     ownerSyncedRef.current = listingId;
     (async () => {
@@ -380,7 +386,7 @@ export default function PropertyDetail() {
         /* silent: owner enrichment must never block the detail view */
       }
     })();
-  }, [data?.row?.id, data?.owner, qc]);
+  }, [data?.row?.id, owner, qc]);
 
 
 
@@ -779,26 +785,23 @@ export default function PropertyDetail() {
       }
 
       setImageProgress(30);
-      let done = 0;
-      for (const url of candidates) {
-        try {
-          const { data: one, timedOut: imageTimedOut } = await invokeWithTimeout<{ photos?: string[] }>(
-            'fetch-property-all-images',
-            { listing_id: property.id, only: [url], append: true },
-            20000,
-          );
-          if (imageTimedOut) continue;
-          const added = (one as { photos?: string[] } | null)?.photos ?? [];
-          if (added.length) {
-            setStreamPhotos((prev) => Array.from(new Set([...prev, ...added])));
-          }
-        } catch (e) {
-          console.warn('[gallery] image import failed', url, e);
-        }
-        done += 1;
-        // Map the real imported/total fraction onto the 30-98 band.
-        setImageProgress(30 + Math.round((done / candidates.length) * 68));
-      }
+      // Mirror the gallery in one request rather than paying one function
+      // round-trip per photo. A bounded progress creep keeps the counter useful
+      // while the backend transfers the batch.
+      const transferTimer = setInterval(() => {
+        setImageProgress((p) => (p >= 92 ? p : Math.min(92, p + Math.max(1, (92 - p) * 0.08))));
+      }, 120);
+      const { data: batch, timedOut: batchTimedOut, error: batchError } = await invokeWithTimeout<{ photos?: string[] }>(
+        'fetch-property-all-images',
+        { listing_id: property.id, only: candidates, append: true },
+        60000,
+      );
+      clearInterval(transferTimer);
+      if (batchTimedOut) return false;
+      if (batchError) throw batchError;
+      const added = batch?.photos ?? [];
+      if (added.length) setStreamPhotos((prev) => Array.from(new Set([...prev, ...added])));
+      setImageProgress(98);
 
       await qc.refetchQueries({ queryKey: ['property-detail', id] });
       qc.invalidateQueries({ queryKey: ['properties-search'] });
@@ -1042,13 +1045,13 @@ export default function PropertyDetail() {
 
         {/* Owner (visual right, RTL start) + action buttons (visual left) */}
         <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
-          {data?.owner ? (
+          {owner ? (
             <Link
-              to={`/crm/profile/${data.owner.id}`}
+              to={`/crm/profile/${owner.id}`}
               className="text-[16px] font-semibold text-primary hover:underline"
               title="פתיחת כרטיס הלקוח"
             >
-              {data.owner.full_name}
+              {owner.full_name}
             </Link>
           ) : (
             <span />

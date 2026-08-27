@@ -216,14 +216,23 @@ Deno.serve(async (req) => {
     const mirrored: string[] = [];
     const mirroredKeys = new Set<string>();
     let failed = 0;
-    for (const u of unique) {
-      const stored = await mirrorOne(admin, listing.id, u, referer);
-      const finalUrl = stored ?? u;
-      if (!stored) failed += 1;
-      const k = photoKey(finalUrl);
-      if (mirroredKeys.has(k)) continue;
-      mirroredKeys.add(k);
-      mirrored.push(finalUrl);
+    // Transfer a small bounded batch concurrently. This is substantially
+    // faster than serial downloads while avoiding a burst of up to 40 remote
+    // requests that could exhaust function memory or upstream rate limits.
+    const concurrency = 4;
+    for (let offset = 0; offset < unique.length; offset += concurrency) {
+      const chunk = unique.slice(offset, offset + concurrency);
+      const storedChunk = await Promise.all(
+        chunk.map(async (u) => ({ source: u, stored: await mirrorOne(admin, listing.id, u, referer) })),
+      );
+      for (const { source: original, stored } of storedChunk) {
+        const finalUrl = stored ?? original;
+        if (!stored) failed += 1;
+        const k = photoKey(finalUrl);
+        if (mirroredKeys.has(k)) continue;
+        mirroredKeys.add(k);
+        mirrored.push(finalUrl);
+      }
     }
 
     if (!mirrored.length) {
