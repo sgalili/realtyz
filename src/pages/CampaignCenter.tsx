@@ -1363,7 +1363,13 @@ const InlineComposer = ({
       const finalText = firstSentence && keywordLine
         ? `${firstSentence}\n${keywordLine}`
         : buildFallbackFirstComment(listing as CampaignListing | null);
-      if (finalText) setFirstComment(finalText);
+      if (finalText) {
+        // Keep any CTA link lines the user toggled on (WA / Messenger) — a
+        // regeneration must never silently strip them.
+        const keepLines = [waInjectedRef.current, msngrInjectedRef.current].filter(Boolean) as string[];
+        setFirstComment(keepLines.length ? `${finalText}\n\n${keepLines.join('\n\n')}` : finalText);
+      }
+
     } catch (e: any) {
       toast.error('יצירת תגובה ראשונה נכשלה');
     } finally {
@@ -1420,7 +1426,22 @@ const InlineComposer = ({
     }
     let cancelled = false;
     (async () => {
-      let url = 'https://wa.me/972522973500';
+      // Fallback CTA must always target the official Meta WhatsApp Business
+      // number (never Green API / a personal number).
+      let officialPhone = '972537983832';
+      try {
+        const { data: wap } = await supabase
+          .from('wa_providers' as never)
+          .select('config')
+          .eq('is_official', true)
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle();
+        const cfg = ((wap as any)?.config ?? {}) as Record<string, unknown>;
+        const digits = String(cfg.display_phone_number ?? cfg.phone_number ?? '').replace(/\D/g, '');
+        if (digits.length >= 9) officialPhone = digits;
+      } catch { /* keep fallback */ }
+      let url = `https://wa.me/${officialPhone}`;
       try {
         if (selectedListingId) {
           const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
