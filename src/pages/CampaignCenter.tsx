@@ -1363,7 +1363,13 @@ const InlineComposer = ({
       const finalText = firstSentence && keywordLine
         ? `${firstSentence}\n${keywordLine}`
         : buildFallbackFirstComment(listing as CampaignListing | null);
-      if (finalText) setFirstComment(finalText);
+      if (finalText) {
+        // Keep any CTA link lines the user toggled on (WA / Messenger) — a
+        // regeneration must never silently strip them.
+        const keepLines = [waInjectedRef.current, msngrInjectedRef.current].filter(Boolean) as string[];
+        setFirstComment(keepLines.length ? `${finalText}\n\n${keepLines.join('\n\n')}` : finalText);
+      }
+
     } catch (e: any) {
       toast.error('יצירת תגובה ראשונה נכשלה');
     } finally {
