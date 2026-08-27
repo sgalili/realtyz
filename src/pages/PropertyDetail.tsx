@@ -560,7 +560,9 @@ export default function PropertyDetail() {
       if (cancelled) return;
 
 
-      const shouldShowHydrationProgress = !hasCorePropertyText(data.row);
+      // A partial database snapshot may already paint text, but the loader
+      // remains visible until the complete import is confirmed.
+      const shouldShowHydrationProgress = true;
       metaTargetRef.current = shouldShowHydrationProgress ? 0 : 100;
       setHydrateProgress(shouldShowHydrationProgress ? 0 : 100);
       setHydrateError(null);
@@ -1661,6 +1663,7 @@ export default function PropertyDetail() {
               sections={(isRecord(meta) && isRecord((meta as any).yad2_sections)
                 ? ((meta as any).yad2_sections as Yad2Sections)
                 : null)}
+              propertyAddress={[property.address, property.city].filter(Boolean).join(', ')}
             />
           )}
 

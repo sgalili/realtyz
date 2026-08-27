@@ -56,10 +56,12 @@ export function PropertyYad2SectionsCard({
   listingId,
   sourceUrl,
   sections,
+  propertyAddress,
 }: {
   listingId: string;
   sourceUrl?: string | null;
   sections?: Yad2Sections | null;
+  propertyAddress?: string | null;
 }) {
   const qc = useQueryClient();
   const [live, setLive] = useState<Yad2Sections | null>(null);
@@ -69,7 +71,7 @@ export function PropertyYad2SectionsCard({
   const sync = useMutation({
     mutationFn: async () => {
       const { data: res, error } = await supabase.functions.invoke('yad2-page-sections', {
-        body: { listing_id: listingId, url: sourceUrl },
+        body: { listing_id: listingId, url: sourceUrl, property_address: propertyAddress },
       });
       if (error) throw error;
       if (res?.error) throw new Error(String(res.detail ?? res.error));
