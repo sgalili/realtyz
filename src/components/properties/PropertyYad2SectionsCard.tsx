@@ -235,17 +235,12 @@ export function PropertyYad2SectionsCard({
       )}
 
 
-      {recommended.length > 0 && (
-        <SectionShell icon={Building2} title="נכסים מומלצים נוספים" count={recommended.length}>
-          <ListingCards rows={recommended} />
+      {newInArea.length > 0 && (
+        <SectionShell icon={Sparkles} title="נכסים ופרויקטים חדשים באזור" count={newInArea.length}>
+          <ListingCards rows={newInArea.slice(0, 10)} />
         </SectionShell>
       )}
 
-      {newInArea.length > 0 && (
-        <SectionShell icon={Sparkles} title="נכסים ופרויקטים חדשים באזור" count={newInArea.length}>
-          <ListingCards rows={newInArea} />
-        </SectionShell>
-      )}
 
       {data?.fetched_at && (
         <p className="text-sm text-muted-foreground">
