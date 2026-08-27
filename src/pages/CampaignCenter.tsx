@@ -1469,7 +1469,9 @@ const InlineComposer = ({
       const url = data?.url || data?.image_url;
       if (url) {
         setAttachments((a) => [...a, { name: 'AI Image', kind: 'image', url }]);
+        if (selectedListingId) void appendImagesToListing(selectedListingId, [url]);
         toast.success('תמונה נוצרה');
+
       } else toast.info('לא התקבלה תמונה מה-AI');
     } catch (e: any) {
       if (ctrl.signal.aborted || e?.name === 'AbortError') return;
