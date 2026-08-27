@@ -137,9 +137,9 @@ export function PropertyYad2SectionsCard({
   const deals = data?.sold_deals ?? [];
   const history = (data?.valuation_history ?? []).filter((p) => p?.price != null);
   const schools = data?.schools ?? [];
-  const recommended = data?.recommended ?? [];
   const newInArea = data?.new_in_area ?? [];
-  const empty = !deals.length && !history.length && !schools.length && !recommended.length && !newInArea.length;
+  const empty = !deals.length && !history.length && !schools.length && !newInArea.length;
+
 
   const chart = history.map((p, i) => ({ name: p.date || p.label || `#${i + 1}`, price: Number(p.price) }));
 
