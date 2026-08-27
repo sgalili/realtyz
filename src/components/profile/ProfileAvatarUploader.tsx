@@ -126,12 +126,12 @@ export function ProfileAvatarUploader() {
         <input
           ref={inputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          accept="image/*"
           className="hidden"
           onChange={onFile}
           disabled={busy}
         />
-        <p className="text-xs text-muted-foreground">{busy ? 'מעלה תמונה...' : 'לחצו על התמונה להחלפה · עד 5MB'}</p>
+        <p className="text-xs text-muted-foreground">{busy ? 'מעלה תמונה...' : 'לחצו על התמונה להחלפה'}</p>
         <div className="flex justify-center">
           {avatarUrl && (
             <Button
