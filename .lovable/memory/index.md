@@ -49,3 +49,4 @@
 - [Master Agent Prompt](mem://features/master-agent-prompt) — Dual-frontier internal/external AI directive in _shared/masterAgentPrompt.ts, wired into every agent surface.
 - [WhatsApp Meta-Only (HARD)](mem://constraints/whatsapp-meta-only) — Chat/inbox/sending/webhooks are Official Meta Cloud API only; Green API is avatars-only.
 - [Tenant Isolation & Product Tour](mem://features/tenant-isolation-and-tour) — workspace-scoped RLS on listings/social_connections/campaign_settings, ProductTour dialog, graphic header logo.
+- [Global Meta App + Isolation (HARD)](mem://constraints/tenant-isolation-meta) — One system Meta app for all users; no FB_PAGE_* env token fallbacks; messenger_page_bindings unique on (owner_id,page_id).
