@@ -1562,7 +1562,7 @@ const InlineComposer = ({
     try {
       const topic = body.trim()
         || customInstructions.trim()
-        || (selectedListing?.property_title ? `פוסט קידום: ${selectedListing.property_title}` : `פוסט שיווקי מאת אודי ויטמן`);
+        || (listingHeadline(selectedListing) ? `פוסט קידום: ${listingHeadline(selectedListing)}` : `פוסט שיווקי מאת אודי ויטמן`);
       const rotateNote = opts?.rotateTemplate
         ? 'בחר תבנית שונה לחלוטין מהפעם הקודמת מתוך מאגר הידע (KB) של תבניות הפוסטים. גוון בין תבניות גלובליות לבין תבניות מקוריות של אודי. שמור על דיוק עובדתי מלא לפי נתוני הנכס, טון מקצועי בכיר וקריאה לפעולה חדה לוואטסאפ/טלפון. אל תחזור על אותו פתיח, אותה מבנה או אותו ניסוח CTA כמו בגרסה הקודמת.'
         : '';
