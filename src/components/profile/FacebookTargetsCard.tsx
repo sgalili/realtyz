@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Users, Flag } from 'lucide-react';
+import { ExternalLink, Loader2, Users } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 
-type PageTarget = { id: string; pageId: string; name: string; avatar: string | null; selected: boolean };
-type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; selected: boolean };
+type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; selected: boolean };
+
+/** Minimum readable font size across this card. */
+const TEXT_SM = 'text-[14px]';
+const TEXT_MD = 'text-[15px]';
 
 /** Local cache so pages + groups render instantly on the next visit. */
 const CACHE_KEY = 'realtyz_fb_targets_cache';
