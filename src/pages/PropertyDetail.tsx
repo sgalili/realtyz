@@ -165,18 +165,29 @@ type EditableFields = {
   city: string;
   neighborhood: string;
   address: string;
+  house_number: string;
+  apartment_number: string;
+  project_name: string;
   rooms: string;
   sqm: string;
   floor: string;
   total_floors: string;
   year_built: string;
   property_type: string;
+  deal_type: string;
+  status: string;
   price: string;
   vaad_bayit: string;
   arnona_bimonthly: string;
   payments: string;
   entry_date: string;
+  available_from: string;
   description: string;
+  short_description: string;
+  long_description: string;
+  features_text: string;
+  latitude: string;
+  longitude: string;
   parking: string;
   elevator: boolean;
   balcony: boolean;
@@ -187,6 +198,7 @@ type EditableFields = {
   photos: string[];
   photo_url_draft: string;
 };
+
 
 const draftStorageKey = (id: string | undefined) => (id ? `realtyz:property-draft:${id}` : null);
 
