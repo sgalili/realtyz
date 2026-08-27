@@ -3,6 +3,7 @@
 // campaign_logs. campaign_logs is the permanent source of truth for the feed.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { resolveMetaPage } from "../_shared/metaPage.ts";
+import { resolveCaller } from "../_shared/fbPersonal.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -436,21 +437,27 @@ Deno.serve(async (req) => {
     const until = asText(body?.until ?? url.searchParams.get("until"));
     const persist = body?.persist !== false &&
       url.searchParams.get("persist") !== "false";
-    const ownerId = asText(
+    const requestedOwnerId = asText(
       body?.user_id ?? body?.owner_id ?? url.searchParams.get("user_id"),
     );
-    if (!ownerId) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "missing_user_id", posts: [], count: 0 }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    const caller = await resolveCaller(admin, req);
+    if (!caller) {
+      return new Response(JSON.stringify({ ok: false, error: "unauthorized", posts: [], count: 0 }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const ownerId = caller.workspaceOwnerId;
+    if (requestedOwnerId && requestedOwnerId !== ownerId) {
+      return new Response(JSON.stringify({ ok: false, error: "workspace_forbidden", posts: [], count: 0 }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const page = await resolveMetaPage(admin, ownerId);
     const ws = { facebook_page_id: page?.pageId ?? null, facebook_page_name: page?.pageName ?? null };
