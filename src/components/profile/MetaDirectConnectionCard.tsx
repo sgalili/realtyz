@@ -607,9 +607,15 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           </button>
           {manualOpen && (
             <div className="space-y-3 border-t p-3">
-              <p className="text-[14px] text-muted-foreground">
-                שימושי כאשר אפליקציית Meta נמצאת במצב פיתוח או חסומה. הטוקן נשמר בצד השרת בלבד.
-              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-[15px]"
+                onClick={() => setTokenHelpOpen(true)}
+              >
+                <KeyRound className="h-4 w-4" /> איך משיגים טוקן?
+              </Button>
               <div className="space-y-1.5">
                 <Label htmlFor="meta-page-id" className="text-[15px]">Page ID</Label>
                 <Input
