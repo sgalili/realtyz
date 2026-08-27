@@ -44,7 +44,7 @@ import { sourcePhotoCount } from '@/lib/photoCount';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle } from '@/lib/formatListingTitle';
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
-import { ensureFullPropertyImport } from '@/lib/propertyFullSync';
+import { ensureFullPropertyImport, ensureMetadataImport } from '@/lib/propertyFullSync';
 import { isNewListing, isOldListing } from '@/lib/listingFreshness';
 import { isRelevantListing } from '@/lib/listingRelevance';
 import { sourceYad2Url } from '@/lib/yad2Ad';
@@ -457,6 +457,28 @@ export default function Properties() {
       }
     }
   }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool]);
+
+  // Warm the textual content of the first visible rows in the background, so
+  // opening a property card renders its full text instantly instead of
+  // scraping on demand. Runs once per listing id, throttled to a few rows.
+  const warmedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!results.length) return;
+    const ids = results
+      .slice(0, 8)
+      .map((r) => ({ id: r.localId, url: r.url }))
+      .filter((x): x is { id: string; url: string | null } => !!x.id && !warmedRef.current.has(x.id));
+    if (!ids.length) return;
+    let cancelled = false;
+    const handle = window.setTimeout(() => {
+      for (const { id, url } of ids) {
+        if (cancelled) break;
+        warmedRef.current.add(id);
+        void ensureMetadataImport(id, url).catch(() => {});
+      }
+    }, 400);
+    return () => { cancelled = true; window.clearTimeout(handle); };
+  }, [results]);
 
   // Last-resort guard: whatever happens, an idle page always shows listings.
   useEffect(() => {

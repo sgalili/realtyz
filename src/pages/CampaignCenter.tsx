@@ -698,9 +698,19 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
   return `${oneLiner}\n${keywordLine}`.trim();
 };
 
+/** Live status of a single draft, surfaced on its collapsed wrapper card. */
+type ComposerStatus = {
+  title: string;
+  generating: boolean;
+  photosLoading: boolean;
+  images: number;
+  chars: number;
+  ready: boolean;
+};
+
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
-  presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId,
+  presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
 }: {
   channel: ChannelCard;
   brandName: string;
@@ -712,6 +722,8 @@ const InlineComposer = ({
   presetVariant?: number;
   presetVariants?: number;
   instanceId?: string;
+  /** Lets a collapsed wrapper card mirror this draft's live status. */
+  onStatus?: (status: ComposerStatus) => void;
 }) => {
   // Persistent draft key — namespaced per replicated instance so multiple
   // composers on the same page don't clobber each other's drafts. Persisted
@@ -966,10 +978,22 @@ const InlineComposer = ({
   const [logId, setLogId] = useState<string | null>(initial.logId ?? null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
 
+  // True once this instance finished restoring (locally or from the cloud).
+  // Auto-generation and every persist write must wait for it, otherwise a
+  // refresh re-writes (and erases) the draft.
+  const [hydrated, setHydrated] = useState(false);
+  const hydratedRef = useRef(false);
+  useEffect(() => { hydratedRef.current = hydrated; }, [hydrated]);
+
+
   // Persist composer draft to localStorage so collapsing/switching tabs,
   // closing dialogs, navigating away, or hard-refreshing never loses work.
+  // CRITICAL: nothing is written before hydration finished, otherwise the
+  // transient empty state of a freshly mounted replica overwrites (and erases)
+  // the saved draft — that is exactly how 7 drafts used to lose their text.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!hydratedRef.current) return;
     try {
       const snapshot = {
         body,
@@ -982,6 +1006,11 @@ const InlineComposer = ({
         attachWaLink,
         attachMsngrLink,
       };
+      // Never downgrade a stored draft that has text into a textless one.
+      if (!snapshot.body.trim()) {
+        const prev = readDraft();
+        if (prev && String(prev.body || '').trim()) return;
+      }
       localStorage.setItem(draftKey, JSON.stringify(snapshot));
       // Durable mirror: an unpublished draft must survive a cleared browser
       // cache, another tab, or another device.
@@ -992,7 +1021,8 @@ const InlineComposer = ({
         return () => window.clearTimeout(handle);
       }
     } catch {}
-  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, hydrated]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -1028,12 +1058,20 @@ const InlineComposer = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetListingId]);
 
+
   useEffect(() => {
     const saved = readDraft() || {};
-    const deepLinked = !!deepLinkListingId;
+    // A saved draft ALWAYS wins over the preset/deep-linked listing: after a
+    // refresh every replica is re-mounted with its preset listing, and wiping
+    // here is exactly what used to erase the operator's 7 drafts.
+    const savedHasWork =
+      String(saved.body || '').trim().length > 0 ||
+      (Array.isArray(saved.attachments) && saved.attachments.length > 0) ||
+      String(saved.firstComment || '').trim().length > 0;
+    const deepLinked = !!deepLinkListingId && !savedHasWork;
     setBody(deepLinked ? '' : cleanBody(saved.body || ''));
     setCustomInstructions(saved.customInstructions || '');
-    setSelectedListingId(deepLinkListingId ?? saved.selectedListingId ?? null);
+    setSelectedListingId(saved.selectedListingId ?? deepLinkListingId ?? null);
     setAttachments(deepLinked ? [] : (saved.attachments || []));
     setLogId(deepLinked ? null : (saved.logId ?? null));
     setFirstComment(deepLinked ? '' : (saved.firstComment || ''));
@@ -1043,28 +1081,35 @@ const InlineComposer = ({
     setMode('now');
     setListingQuery('');
     setSaveState('idle');
+    if (savedHasWork) setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel.id, deepLinkListingId]);
 
   // Cloud fallback: if this browser has no local copy of the draft (cleared
-  // cache, new tab, other device), pull the durable mirror back in.
+  // cache, new tab, other device, new auth session), pull the durable mirror
+  // back in — even for preset/deep-linked replicas.
   useEffect(() => {
-    if (deepLinkListingId) return;
     const local = readDraft();
-    if (local && (String(local.body || '').trim() || (local.attachments || []).length > 0)) return;
+    if (local && (String(local.body || '').trim() || (local.attachments || []).length > 0)) {
+      setHydrated(true);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const cloud = await fetchComposerDraftCloud(channel.id, instanceId ?? 'single');
-      if (cancelled || !cloud) return;
-      if (String(cloud.body || '').trim()) setBody(cleanBody(cloud.body));
-      if (cloud.customInstructions) setCustomInstructions(cloud.customInstructions);
-      if (cloud.selectedListingId) setSelectedListingId(cloud.selectedListingId);
-      if (Array.isArray(cloud.attachments) && cloud.attachments.length) setAttachments(cloud.attachments);
-      if (cloud.logId) setLogId(cloud.logId);
-      if (cloud.firstComment) setFirstComment(cloud.firstComment);
-      if (typeof cloud.firstCommentEnabled === 'boolean') setFirstCommentEnabled(cloud.firstCommentEnabled);
-      if (typeof cloud.attachWaLink === 'boolean') setAttachWaLink(cloud.attachWaLink);
-      if (typeof cloud.attachMsngrLink === 'boolean') setAttachMsngrLink(cloud.attachMsngrLink);
+      if (cancelled) return;
+      if (cloud) {
+        if (String(cloud.body || '').trim()) setBody(cleanBody(cloud.body));
+        if (cloud.customInstructions) setCustomInstructions(cloud.customInstructions);
+        if (cloud.selectedListingId) setSelectedListingId(cloud.selectedListingId);
+        if (Array.isArray(cloud.attachments) && cloud.attachments.length) setAttachments(cloud.attachments);
+        if (cloud.logId) setLogId(cloud.logId);
+        if (cloud.firstComment) setFirstComment(cloud.firstComment);
+        if (typeof cloud.firstCommentEnabled === 'boolean') setFirstCommentEnabled(cloud.firstCommentEnabled);
+        if (typeof cloud.attachWaLink === 'boolean') setAttachWaLink(cloud.attachWaLink);
+        if (typeof cloud.attachMsngrLink === 'boolean') setAttachMsngrLink(cloud.attachMsngrLink);
+      }
+      setHydrated(true);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1594,13 +1639,9 @@ const InlineComposer = ({
   useEffect(() => {
     if (autoGenTriggeredRef.current) return;
     if (listingsLoading) return;
+    // Never regenerate over restored work: wait for hydration to finish first.
+    if (!hydrated) return;
     if (body.trim().length > 0) return; // honor draft restoration
-    // Fire auto-gen when the composer was launched from the scheduling
-    // calendar. Two entry points:
-    //  1. Multi-property fan-out — `presetListingId` prop is set per replica.
-    //  2. Single-property (or branding) — the calendar deep-links via
-    //     ?schedule=ISO plus optionally ?listing= / ?properties=. In that case
-    //     the InlineComposer receives no props but must still auto-generate.
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const fromCalendar = !!presetScheduleIso || !!params?.get('schedule');
     const listingFromUrl = params?.get('listing') || (params?.get('properties') || '').split(',').map((s) => s.trim()).filter(Boolean)[0] || null;
@@ -1616,7 +1657,7 @@ const InlineComposer = ({
     const t = setTimeout(() => { handleGenerate().catch(() => {}); }, 80);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presetListingId, presetScheduleIso, selectedListingId, listingsLoading]);
+  }, [presetListingId, presetScheduleIso, selectedListingId, listingsLoading, hydrated]);
 
   // True when this composer was launched from the scheduling calendar
   // (the date is already locked in); we hide the standalone calendar
@@ -1625,6 +1666,24 @@ const InlineComposer = ({
 
   const hasBody = body.trim().length > 0;
   const count = body.length;
+
+  // Mirror this draft's live status onto its collapsed wrapper card.
+  const activeListing = useMemo(
+    () => listings.find((l) => l.id === selectedListingId) || null,
+    [listings, selectedListingId],
+  );
+  const imageCount = attachments.filter((a) => a.kind === 'image').length;
+  useEffect(() => {
+    onStatus?.({
+      title: (activeListing?.property_title || activeListing?.address || '') as string,
+      generating: generating || firstCommentGenerating,
+      photosLoading,
+      images: imageCount,
+      chars: count,
+      ready: hasBody && imageCount > 0,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeListing, generating, firstCommentGenerating, photosLoading, imageCount, count, hasBody]);
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-16 shadow-sm space-y-4" dir="rtl">
@@ -5056,10 +5115,78 @@ const AddVoiceByIdDialog = ({
 };
 
 
+/* ───────────── Collapsed draft card ─────────────
+   Every draft in a multi-property fan-out starts COLLAPSED and shows only its
+   live status (generating / importing photos / ready). The composer inside
+   stays mounted while collapsed so generation and photo import keep running. */
+
+const DraftCollapsibleCard = ({
+  index, iso, variant, totalVariants, children, status,
+}: {
+  index: number;
+  iso: string;
+  variant: number;
+  totalVariants: number;
+  status: ComposerStatus | null;
+  children: React.ReactNode;
+}) => {
+  const [open, setOpen] = useState(false);
+  const busy = !!status && (status.generating || status.photosLoading);
+  const statusLabel = !status
+    ? 'טוען…'
+    : status.generating
+      ? 'מנסח תוכן…'
+      : status.photosLoading
+        ? 'מייבא תמונות…'
+        : status.ready
+          ? `מוכן · ${status.images} תמונות`
+          : status.chars > 0
+            ? `טיוטה · ${status.images} תמונות`
+            : 'ממתין';
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card shadow-sm" dir="rtl">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-3 px-4 py-3 text-right"
+      >
+        {open ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[13px] font-semibold text-foreground">
+            טיוטה #{index + 1}
+            {status?.title ? ` · ${status.title}` : ''}
+          </div>
+          <div className="truncate text-[11px] text-muted-foreground">
+            {new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+            {totalVariants > 1 ? ` · וריאציה ${variant}/${totalVariants}` : ''}
+          </div>
+        </div>
+        <span
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+            busy
+              ? 'bg-amber-50 text-amber-700'
+              : status?.ready
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-muted text-muted-foreground',
+          )}
+        >
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : status?.ready ? <CheckCircle2 className="h-3 w-3" /> : null}
+          {statusLabel}
+        </span>
+      </button>
+      {/* Kept mounted (hidden) so background work never restarts on toggle. */}
+      <div className={open ? 'border-t border-border/60 p-1' : 'hidden'}>{children}</div>
+    </div>
+  );
+};
+
 /* ───────────── Page ───────────── */
 
 const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  // Live status per collapsed draft card (keyed by composer instanceId).
+  const [draftStatuses, setDraftStatuses] = useState<Record<string, ComposerStatus>>({});
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -5719,11 +5846,14 @@ const CampaignCenter = () => {
                   נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
                 {blocks.map((b, idx) => (
-                  <div key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`} className="space-y-2">
-                    <div className="text-xs font-semibold text-muted-foreground" dir="rtl">
-                      טיוטה #{idx + 1} · {new Date(b.iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
-                      {b.totalVariants > 1 ? ` · וריאציה ${b.variant}/${b.totalVariants}` : ''}
-                    </div>
+                  <DraftCollapsibleCard
+                    key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`}
+                    index={idx}
+                    iso={b.iso}
+                    variant={b.variant}
+                    totalVariants={b.totalVariants}
+                    status={draftStatuses[`${idx}-${b.listing || 'na'}`] ?? null}
+                  >
                     <InlineComposer
                       channel={pickedChannel}
                       brandName={brandName}
@@ -5735,8 +5865,14 @@ const CampaignCenter = () => {
                       presetVariant={b.variant}
                       presetVariants={b.totalVariants}
                       instanceId={`${idx}-${b.listing || 'na'}`}
+                      onStatus={(s) => setDraftStatuses((curr) => (
+                        curr[`${idx}-${b.listing || 'na'}`] &&
+                        JSON.stringify(curr[`${idx}-${b.listing || 'na'}`]) === JSON.stringify(s)
+                          ? curr
+                          : { ...curr, [`${idx}-${b.listing || 'na'}`]: s }
+                      ))}
                     />
-                  </div>
+                  </DraftCollapsibleCard>
                 ))}
               </div>
             );

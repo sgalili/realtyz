@@ -1957,15 +1957,29 @@ Deno.serve(async (req) => {
       if (Number.isFinite(minP) || Number.isFinite(maxP)) {
         u.searchParams.set("price", `${Number.isFinite(minP) ? minP : 0}-${Number.isFinite(maxP) ? maxP : ""}`);
       }
-      // Free-text keywords (neighborhood, property type) go into the
-      // catch-all `text` param. Yad2's server-side matcher is lenient
-      // enough to accept these alongside structured filters.
+      // Free-text keywords (street, neighborhood, property type) go into the
+      // catch-all `text` param. Yad2's matcher is strict about house numbers
+      // and city names inside `text` — a query like "בר אילן 2 הרצליה"
+      // returns ZERO rows even though the ad exists. So we send the street
+      // name only ("בר אילן") and let the caller narrow by number locally.
+      const stripForYad2Text = (s: string) =>
+        s
+          .replace(/\b\d+\b/g, " ")                     // house / apartment numbers
+          .replace(/\d+\s*(?:חד|חדרים|מ"ר|מ״ר|מר)\b/g, " ")
+          .replace(/\b(?:דירה|בית|נכס|למכירה|להשכרה|ב)\b/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
       const kwParts: string[] = [];
       const hood = clean(String(body?.neighborhood ?? ""));
       if (hood) kwParts.push(hood);
-      if (freeText) kwParts.push(freeText);
+      if (freeText) {
+        // Drop the city name from the text when we already filter by city code.
+        const withoutCity = cfg && cityRaw ? freeText.split(cityRaw).join(" ") : freeText;
+        const kw = stripForYad2Text(withoutCity);
+        if (kw) kwParts.push(kw);
+      }
       if (kwParts.length && !u.searchParams.get("text")) {
-        u.searchParams.set("text", kwParts.join(" "));
+        u.searchParams.set("text", kwParts.join(" ").trim());
       }
       return u.toString();
     }
