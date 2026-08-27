@@ -8,6 +8,8 @@ import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
 import { EmailAliasCard } from '@/components/profile/EmailAliasCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
+import { CalendarSyncCard } from '@/components/profile/CalendarSyncCard';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
 import { useFacebookHealth } from '@/hooks/useFacebookHealth';
 
@@ -17,11 +19,12 @@ function StatusPill({ label, tone }: { label: string; tone: Tone }) {
   return (
     <span
       className={cn(
-        'shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold',
+        'shrink-0 rounded-full border px-3 py-1 text-[12px] font-semibold',
         tone === 'ok'
-          ? 'border-transparent bg-emerald-600 text-white'
-          : 'border-border bg-muted text-muted-foreground',
+          ? 'border-emerald-700 bg-emerald-600 text-white'
+          : 'border-slate-300 bg-slate-100 text-slate-700',
       )}
+      dir="ltr"
     >
       {label}
     </span>
@@ -100,6 +103,10 @@ export function ConnectionsTab() {
   const [greenReady, setGreenReady] = useState(false);
   const [voiceReady, setVoiceReady] = useState(false);
   const [emailAlias, setEmailAlias] = useState<string | null>(null);
+  // Live phone numbers so a collapsed row shows the actual connected number.
+  const [waPhone, setWaPhone] = useState<string | null>(null);
+  const [greenPhone, setGreenPhone] = useState<string | null>(null);
+  const [voicePhone, setVoicePhone] = useState<string | null>(null);
   const { data: fbHealth } = useFacebookHealth();
 
   useEffect(() => {
@@ -109,6 +116,26 @@ export function ConnectionsTab() {
         const rows = (data as any[]) || [];
         setGreenReady(!!rows.find((r) => r.service_name === 'Green API')?.api_key);
         setVoiceReady(!!rows.find((r) => r.service_name === 'Vapi')?.api_key);
+        // Twilio: api_key = `${sid}:${token}:${phone}`
+        const twilio = String(rows.find((r) => r.service_name === 'Twilio')?.api_key ?? '');
+        const twilioPhone = twilio.split(':')[2] ?? '';
+        if (twilioPhone.replace(/\D/g, '')) setVoicePhone(twilioPhone);
+      } catch { /* silent */ }
+      try {
+        const { data: wap } = await supabase.from('wa_providers' as never).select('config').limit(1).maybeSingle();
+        const cfg = ((wap as any)?.config ?? {}) as Record<string, unknown>;
+        const display = String(cfg.display_phone_number ?? cfg.phone_number ?? '');
+        if (display.replace(/\D/g, '')) setWaPhone(display);
+      } catch { /* silent */ }
+      try {
+        const { data: green } = await supabase
+          .from('social_connections')
+          .select('credentials')
+          .eq('platform', 'whatsapp_green')
+          .maybeSingle();
+        const creds = ((green as any)?.credentials ?? {}) as any;
+        const gp = String(creds.phone ?? creds.wid ?? creds.manual?.phone ?? '');
+        if (gp.replace(/\D/g, '')) setGreenPhone(gp);
       } catch { /* silent */ }
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -147,22 +174,22 @@ export function ConnectionsTab() {
     {
       id: 'wa-mode',
       title: 'אופן חיבור WhatsApp',
-      status: waMode === 'qr_session' ? 'מספר אישי (QR)' : waMode === 'official_meta' ? 'מספר רשמי (Meta)' : 'לא הוגדר',
-      tone: waMode ? 'ok' : 'idle',
+      status: waPhone ? formatPhoneDisplay(waPhone) : waMode ? 'מספר רשמי (Meta)' : 'לא הוגדר',
+      tone: waPhone || waMode ? 'ok' : 'idle',
       node: <WhatsAppConnectionModeCard />,
     },
     {
       id: 'wa-green',
       title: 'WhatsApp · מספר אישי (Green API)',
-      status: greenReady ? 'מוגדר' : 'לא מוגדר',
-      tone: greenReady ? 'ok' : 'idle',
+      status: greenPhone ? formatPhoneDisplay(greenPhone) : greenReady ? 'מחובר' : 'לא הוגדר',
+      tone: greenPhone || greenReady ? 'ok' : 'idle',
       node: <WhatsAppGatewayCard />,
     },
     {
       id: 'voice',
       title: 'שיחות טלפון (Vapi / Twilio)',
-      status: voiceReady ? 'מוגדר' : 'לא מוגדר',
-      tone: voiceReady ? 'ok' : 'idle',
+      status: voicePhone ? formatPhoneDisplay(voicePhone) : voiceReady ? 'מחובר' : 'לא הוגדר',
+      tone: voicePhone || voiceReady ? 'ok' : 'idle',
       node: <VoiceGatewayCard />,
     },
     {
@@ -171,6 +198,13 @@ export function ConnectionsTab() {
       status: emailAlias ? `${emailAlias}@realtyz.co.il` : 'לא הוגדר',
       tone: emailAlias ? 'ok' : 'idle',
       node: <EmailAliasCard />,
+    },
+    {
+      id: 'calendar',
+      title: 'יומן Google',
+      status: 'סנכרון',
+      tone: 'idle',
+      node: <CalendarSyncCard />,
     },
     {
       id: 'portals',

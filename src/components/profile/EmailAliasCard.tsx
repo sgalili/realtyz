@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Mail, Save, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { GoogleServiceConnectCard } from "@/components/profile/GoogleServiceConnectCard";
 
 const DOMAIN = "@realtyz.co.il";
 
@@ -91,6 +92,12 @@ export function EmailAliasCard() {
             שמור כתובת
           </Button>
         </div>
+
+        <GoogleServiceConnectCard
+          platform="gmail"
+          title="חיבור Gmail"
+          hint="חבר את כתובת ה-Gmail שלך כדי לשלוח ולקרוא מיילים ישירות מ-Realtyz."
+        />
       </CardContent>
     </Card>
   );
