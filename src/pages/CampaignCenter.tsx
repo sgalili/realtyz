@@ -5362,6 +5362,9 @@ const CampaignCenter = () => {
   const [bulkGroupIds, setBulkGroupIds] = useState<string[]>([]);
   const [bulkScheduleIso, setBulkScheduleIso] = useState<string | null>(null);
   const [bulkGroupPickerOpen, setBulkGroupPickerOpen] = useState(false);
+  // Emergency-stop state for bulk AI generation (persisted across refreshes).
+  const [generationStopped, setGenerationStopped] = useState<boolean>(() => isGenerationStopped());
+  useEffect(() => subscribeGenerationGate(setGenerationStopped), []);
   const [bulkScheduleDialogOpen, setBulkScheduleDialogOpen] = useState(false);
   const [bulkGlobalScheduleOpen, setBulkGlobalScheduleOpen] = useState(false);
 
