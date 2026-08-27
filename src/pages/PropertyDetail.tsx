@@ -13,7 +13,7 @@ import {
   BedDouble, Ruler, MapPin, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink, Pencil, Save, X,
-  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2, ChevronLeft, ChevronRight, Megaphone } from 'lucide-react';
+  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2, ChevronLeft, ChevronRight, Megaphone, NotebookPen } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
   type HomelyProperty,
@@ -224,6 +224,8 @@ export default function PropertyDetail() {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [pullingImages, setPullingImages] = useState(false);
+  const [communicationOpenKey, setCommunicationOpenKey] = useState(0);
+  const communicationRef = useRef<HTMLDivElement | null>(null);
   // Determinate progress (0-100) for the gallery ring loader.
   const [imageProgress, setImageProgress] = useState(0);
   // Seeded from the local cache: a gallery mirrored once is never re-pulled.
@@ -518,7 +520,7 @@ export default function PropertyDetail() {
     if (!id || !data) return;
     if (hydratedRef.current === id) return;
     const src = data.sourceUrl;
-    if (!src || !/yad2\.co\.il/i.test(src)) return;
+    if (!src) return;
 
     // A property is only "done" once our DB row is actually complete (real
     // description + structure + date + attribute bag). The old localStorage
@@ -1105,6 +1107,13 @@ export default function PropertyDetail() {
         : null,
   );
 
+  const openCommunicationCards = () => {
+    setCommunicationOpenKey((value) => value + 1);
+    window.requestAnimationFrame(() => {
+      communicationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
       {/* Metadata refresh is non-blocking and remains visible in the viewport. */}
@@ -1116,194 +1125,84 @@ export default function PropertyDetail() {
 
 
 
-      {/* Headline · neighborhood · price · actions row */}
+      {/* Actions are intentionally first so they stay predictable on mobile. */}
+      <div className="flex min-h-9 flex-wrap items-center justify-end gap-3">
+        {!editMode ? (
+          <>
+            {yad2Url && liveYad2Status === 'live' && (
+              <a href={yad2Url} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה החיה ביד2" title="צפייה במודעה החיה ביד2" className="inline-flex items-center transition-opacity hover:opacity-80">
+                <Yad2Icon className="h-6 w-6" />
+              </a>
+            )}
+            {isHomelyListing && resolvedSourceUrl && (
+              <a href={resolvedSourceUrl} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה המקורית ב-Homely" title="צפייה במודעה המקורית ב-Homely" className="inline-flex h-7 w-7 items-center justify-center rounded border border-primary text-sm font-extrabold text-primary transition hover:bg-primary hover:text-primary-foreground">H</a>
+            )}
+            {!isYad2Listing && !isHomelyListing && resolvedSourceUrl && (
+              <a href={resolvedSourceUrl} target="_blank" rel="noopener noreferrer" aria-label="צפייה במקור" title="צפייה במקור" className="text-muted-foreground transition hover:text-primary"><ExternalLink className="h-5 w-5" /></a>
+            )}
+            <Button size="icon" variant="ghost" onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${property.id}&listing=${property.id}`)} aria-label="צור פוסט לנכס" title="צור פוסט לנכס" className="h-8 w-8 text-muted-foreground"><Megaphone className="h-5 w-5" /></Button>
+            <PropertyShareMenu results={[{ key: property.id, localId: property.id, source: 'mine', title: property.title ?? null, address: property.address ?? null, city: property.city ?? null, price: typeof property.price === 'number' ? property.price : null, rooms: property.rooms ?? null, size_sqm: property.size_sqm ?? null, property_type: property.property_type ?? null, listing_type: Number(property.price) < 50_000 ? 'rent' : 'sale', photos } as any]} iconOnly variant="ghost" />
+            <Button size="icon" variant="ghost" onClick={openCommunicationCards} aria-label="פתיחת הערות ותקשורת" title="פתיחת הערות ותקשורת" className="h-8 w-8 text-muted-foreground"><NotebookPen className="h-5 w-5" /></Button>
+            <Button size="icon" variant="ghost" onClick={() => setEditMode(true)} aria-label="עריכת נכס" title="עריכת נכס" className="h-8 w-8 text-muted-foreground"><Pencil className="h-5 w-5" /></Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={async () => {
+                if (!property.id || !window.confirm('למחוק את הנכס לצמיתות מהמאגר?')) return;
+                const { data: deleted, error } = await supabase.from('listings').delete().eq('id', property.id).select('id');
+                if (error || !deleted?.length) { toast.error('מחיקת הנכס נכשלה'); return; }
+                toast.success('הנכס נמחק');
+                qc.invalidateQueries({ queryKey: ['listings'] });
+                qc.invalidateQueries({ queryKey: ['properties-search'] });
+                navigate('/properties');
+              }}
+              aria-label="מחיקת נכס"
+              title="מחיקת נכס"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            ><Trash2 className="h-5 w-5" /></Button>
+          </>
+        ) : (
+          <>
+            <Button size="icon" variant="ghost" onClick={requestExitEditMode} disabled={saving} aria-label="ביטול" title="ביטול" className="h-8 w-8 text-muted-foreground hover:text-destructive"><X className="h-5 w-5" /></Button>
+            <Button size="icon" variant="ghost" onClick={handleSave} disabled={saving} aria-label="שמירה" title="שמירה" className="h-8 w-8 text-primary"><Save className="h-5 w-5" /></Button>
+          </>
+        )}
+      </div>
+
+      {/* Headline · neighborhood · price · owner */}
       <header className="space-y-2">
-        <div>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <div
             role="heading"
             aria-level={1}
-            className="text-3xl font-bold text-right text-slate-900 block leading-snug"
+            className="text-[24px] font-bold text-right text-slate-900 leading-snug"
           >
             {dynamicHeadline}
           </div>
-          {/* Neighborhood sits directly under the title, above the price. */}
           {neighborhood && (
-            <div className="mt-1 text-lg font-medium text-slate-600">{neighborhood}</div>
+            <div className="text-lg font-medium text-slate-600">{neighborhood}</div>
           )}
         </div>
 
-        {/* Price */}
-        <div className="flex items-baseline gap-3 flex-wrap pt-1">
-          {editMode && form ? (
-            <Input
-              type="number"
-              value={form.price}
-              onChange={(e) => setField('price', e.target.value)}
-              className="max-w-xs"
-              placeholder="מחיר"
-            />
-          ) : property.price > 0 ? (
-            <>
-              {/* 48px → 38px per workspace spec */}
-              <span className="text-[38px] leading-none font-extrabold text-success tabular-nums">
-                {formatPrice(property.price)}
-                {isRent && <span className="text-xl font-normal text-muted-foreground"> /חודש</span>}
-              </span>
-              {pricePerMeter ? (
-                <span className="text-lg text-muted-foreground font-normal">
-                  ({pricePerMeter} ₪ למ"ר)
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-3">
+            {editMode && form ? (
+              <Input type="number" value={form.price} onChange={(e) => setField('price', e.target.value)} className="max-w-xs" />
+            ) : property.price > 0 ? (
+              <>
+                <span className="text-[32px] leading-none font-normal text-success tabular-nums">
+                  {formatPrice(property.price)}
+                  {isRent && <span className="text-lg font-normal text-muted-foreground"> /חודש</span>}
                 </span>
-              ) : null}
-            </>
-          ) : (
-            <span className="text-3xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
-          )}
-        </div>
-
-        {/* Owner (visual right, RTL start) + action buttons (visual left) */}
-        <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
+                {pricePerMeter ? <span className="text-base font-normal text-muted-foreground">({pricePerMeter} ₪ למ"ר)</span> : null}
+              </>
+            ) : <span className="text-2xl font-semibold text-amber-600">פרטים חסרים · Draft</span>}
+          </div>
           {owner ? (
-            <Link
-              to={`/crm/profile/${owner.id}`}
-              className="text-[16px] font-semibold text-primary hover:underline"
-              title="פתיחת כרטיס הלקוח"
-            >
+            <Link to={`/crm/profile/${owner.id}`} className="shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
               {owner.full_name}
             </Link>
-          ) : (
-            <span />
-          )}
-
-          <div className="flex items-center gap-3">
-
-            {!editMode ? (
-              <>
-
-
-                {/* Yad2 live ad first, campaign second (positions swapped). */}
-                {yad2Url && liveYad2Status === 'live' && (
-                  <a
-                    href={yad2Url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="צפייה במודעה החיה ביד2"
-                    title="צפייה במודעה החיה ביד2"
-                    className="inline-flex items-center transition-opacity hover:opacity-80"
-                  >
-                    <Yad2Icon className="h-6 w-6" />
-                  </a>
-                )}
-                {isHomelyListing && resolvedSourceUrl && (
-                  <a
-                    href={resolvedSourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="צפייה במודעה המקורית ב-Homely"
-                    title="צפייה במודעה המקורית ב-Homely"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded border border-primary text-sm font-extrabold text-primary transition hover:bg-primary hover:text-primary-foreground"
-                  >
-                    H
-                  </a>
-                )}
-                {!isYad2Listing && !isHomelyListing && resolvedSourceUrl && (
-                  <a href={resolvedSourceUrl} target="_blank" rel="noopener noreferrer" aria-label="צפייה במקור" title="צפייה במקור" className="text-muted-foreground transition hover:text-primary">
-                    <ExternalLink className="h-5 w-5" />
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${property.id}&listing=${property.id}`)}
-                  aria-label="צור פוסט לנכס"
-                  title="צור פוסט לנכס"
-                  className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
-                >
-                  <Megaphone className="h-5 w-5" />
-                </button>
-                <PropertyShareMenu
-                  results={[{
-                    key: property.id,
-                    localId: property.id,
-                    source: 'mine',
-                    title: property.title ?? null,
-                    address: property.address ?? null,
-                    city: property.city ?? null,
-                    price: typeof property.price === 'number' ? property.price : null,
-                    rooms: (property as any).rooms ?? null,
-                    size_sqm: (property as any).sqm ?? null,
-                    property_type: (property as any).property_type ?? null,
-                    listing_type: Number(property.price) < 50_000 ? 'rent' : 'sale',
-                    photos: photos ?? [],
-                  } as any]}
-                  iconOnly
-                  variant="ghost"
-                />
-                <button
-                  type="button"
-                  onClick={() => setEditMode(true)}
-                  aria-label="עריכת נכס"
-                  title="עריכת נכס"
-                  className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
-                >
-                  <Pencil className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!property?.id) return;
-                    const ok = window.confirm('למחוק את הנכס לצמיתות מהמאגר?');
-                    if (!ok) return;
-                    const { data, error } = await supabase
-                      .from('listings')
-                      .delete()
-                      .eq('id', property.id)
-                      .select('id');
-                    if (error) {
-                      toast.error('מחיקת הנכס נכשלה', { description: error.message });
-                      return;
-                    }
-                    if (!data || data.length === 0) {
-                      toast.error('מחיקת הנכס נכשלה', {
-                        description: 'אין הרשאה למחוק את הנכס הזה (הבעלים אינו המשתמש הנוכחי).',
-                      });
-                      return;
-                    }
-                    toast.success('הנכס נמחק');
-                    qc.invalidateQueries({ queryKey: ['listings'] });
-                    qc.invalidateQueries({ queryKey: ['properties-search'] });
-                    navigate('/properties');
-                  }}
-                  aria-label="מחיקת נכס"
-                  title="מחיקת נכס"
-                  className="text-slate-500 hover:text-destructive transition-colors bg-transparent border-0 p-0"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={requestExitEditMode}
-                  disabled={saving}
-                  aria-label="ביטול"
-                  title="ביטול"
-                  className="text-slate-500 hover:text-destructive transition-colors bg-transparent border-0 p-0"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  aria-label="שמירה"
-                  title="שמירה"
-                  className="text-primary hover:opacity-80 transition-opacity bg-transparent border-0 p-0"
-                >
-                  <Save className="h-5 w-5" />
-                </button>
-              </>
-            )}
-          </div>
+          ) : <span />}
         </div>
 
         {(originalDate || sourceUpdatedDate) && (
@@ -1616,20 +1515,19 @@ export default function PropertyDetail() {
           )}
 
           {!editMode && (
+            <div ref={communicationRef} className="scroll-mt-24 space-y-4">
             <QuickMessageCard
               scope="listing"
               listingId={property.id}
+              collapsible
+              forceOpenKey={communicationOpenKey}
               vars={{
                 city: property.city,
                 property: (property as any).property_title || (property as any).address || property.city,
                 price: property.price ? Number(property.price).toLocaleString('he-IL') : '',
               }}
             />
-          )}
-
-          {!editMode && (
-            <div className="rounded-xl border border-border bg-card p-4">
-              <SmartTimelineCard listingId={property.id} title="ציר זמן הנכס" />
+            <SmartTimelineCard listingId={property.id} title="ציר זמן הנכס" collapsible forceOpenKey={communicationOpenKey} />
             </div>
           )}
 

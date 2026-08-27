@@ -487,14 +487,14 @@ export default function Properties() {
 
 
   const handleImport = async (r: UnifiedResult) => {
-    if (r.localId) { navigate(`/properties/${r.localId}`); return; }
+    if (r.localId) { navigate(`/properties/${r.localId}`, { state: { propertySnapshot: r } }); return; }
     setImportingKey(r.key);
     try {
       const id = await autoImportResult(r);
       toast.success('יובא אוטומטית למאגר');
       queryClient.invalidateQueries({ queryKey: ['properties-search'] });
       setPreviewOpen(false);
-      navigate(`/properties/${id}`);
+      navigate(`/properties/${id}`, { state: { propertySnapshot: { ...r, localId: id } } });
     } catch (err: any) {
       console.error('[Properties] auto-import failed', err);
       toast.error('ייבוא אוטומטי נכשל: ' + (err?.message ?? 'שגיאה'));
