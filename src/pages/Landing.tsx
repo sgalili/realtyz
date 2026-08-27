@@ -196,13 +196,8 @@ export default function Landing() {
           </Reveal>
 
 
-          <Reveal delay={320}>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-semibold text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" />כל הכלים בממשק אחד</span>
 
-              
-            </div>
-          </Reveal>
+
 
           {/* Platforms — official brand logos, infinite scroll, no labels */}
           <Reveal delay={400}>
