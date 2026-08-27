@@ -79,14 +79,15 @@ export function ScheduleCurrentPostDialog({
   const [winCount, setWinCount] = useState(initialPrefs.winCount);
   const [recurrence, setRecurrence] = useState<Recurrence>(initialPrefs.recurrence);
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>(initialPrefs.recurrenceDays);
-  // Blank = infinite/open-ended sequence (materialized as 52 slots, user can
-  // stop the series any time via "בטל סדרה" on the calendar).
-  const INFINITE_CAP = 52;
-  const [recurrenceCountInput, setRecurrenceCountInput] = useState<string>(initialPrefs.recurrenceCountInput ?? '');
-  const recurrenceCount = recurrenceCountInput.trim() === ''
-    ? INFINITE_CAP
-    : Math.max(1, Math.min(INFINITE_CAP, Number(recurrenceCountInput) || 1));
+  // Rolling series: the queue never holds more than ONE future version.
+  // The first slot publishes now/at the chosen time, exactly one next version
+  // is materialized, and every further version is created by the dispatcher
+  // only after the previous one was published successfully. The series runs
+  // forever until the property is marked sold / rented / hold / disabled.
+  const ROLLING_CYCLES = 2; // current slot + the single next version
+  const recurrenceCount = ROLLING_CYCLES;
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
+
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
     initialPrefs.selectedGroupIds.length > 0 ? initialPrefs.selectedGroupIds : (defaultGroupIds || []),
@@ -115,8 +116,8 @@ export function ScheduleCurrentPostDialog({
       setWinCount(prefs.winCount);
       setRecurrence(prefs.recurrence);
       setRecurrenceDays(prefs.recurrenceDays);
-      setRecurrenceCountInput(prefs.recurrenceCountInput ?? '');
       setGroupDailyLimit(prefs.groupDailyLimit);
+
       setSelectedGroupIds(
         prefs.selectedGroupIds.length > 0 ? prefs.selectedGroupIds : (defaultGroupIds || []),
       );
@@ -132,11 +133,12 @@ export function ScheduleCurrentPostDialog({
       workspaceOwnerId,
       {
         winStart, winEnd, winCount, recurrence, recurrenceDays,
-        recurrenceCount, recurrenceCountInput, selectedGroupIds, groupDailyLimit,
+        recurrenceCount, selectedGroupIds, groupDailyLimit,
       },
       'composer',
     );
-  }, [open, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, recurrenceCountInput, selectedGroupIds, groupDailyLimit]);
+  }, [open, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedGroupIds, groupDailyLimit]);
+
 
   // Property name + address for the dialog header.
   useEffect(() => {
@@ -261,7 +263,12 @@ export function ScheduleCurrentPostDialog({
       }
     }
 
-    return recDates.flatMap((d) => buildDaySlots(d)).sort((a, b) => a.getTime() - b.getTime());
+    // Rolling queue: keep only the current date + the single NEXT recurrence
+    // date. Later versions are generated after a successful publish.
+    const capped = recDates
+      .sort((a, b) => a.getTime() - b.getTime())
+      .slice(0, recurrence === 'none' ? 1 : 2);
+    return capped.flatMap((d) => buildDaySlots(d)).sort((a, b) => a.getTime() - b.getTime());
   };
 
   const extractErr = async (error: any, data: any): Promise<string | null> => {
@@ -549,6 +556,17 @@ export function ScheduleCurrentPostDialog({
             series_id: seriesId,
             series_index: i,
             series_total: slots.length,
+            // Endless rolling repeat: the dispatcher uses this rule to create
+            // the NEXT single version only after this one was published.
+            recurrence_rule: recurrence === 'none' ? null : {
+              pattern: recurrence,
+              days: recurrenceDays,
+              win_start: winStart,
+              win_end: winEnd,
+              per_day: Math.max(1, winCount),
+              endless: true,
+            },
+
           });
 
           try {
@@ -729,25 +747,14 @@ export function ScheduleCurrentPostDialog({
                 )}
                 {recurrence !== 'none' && (
                   <div className="mt-2 border-t pt-2">
-                    <label className="text-[11px] text-muted-foreground block mb-1 text-right">
-                      {recurrence === 'weekly' || recurrence === 'custom'
-                        ? 'מספר שבועות'
-                        : recurrence === 'monthly' ? 'מספר חודשים' : 'מספר ימים'}
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={52}
-                      value={recurrenceCountInput}
-                      onChange={(e) => setRecurrenceCountInput(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder=""
-                      className="h-8 text-right"
-                    />
-                    <p className="mt-1 text-[10px] text-muted-foreground text-right">
-                      השאר ריק לסדרה פתוחה ללא סוף (ניתן לעצור בכל שלב מ״בטל סדרה״).
+                    <p className="text-[10px] text-muted-foreground text-right leading-relaxed">
+                      הסדרה תמשיך לרוץ ללא הגבלה. בכל רגע נשמרת בתור רק הגרסה הבאה אחת,
+                      והגרסה שאחריה נוצרת רק אחרי פרסום מוצלח. הסדרה נעצרת אוטומטית כשהנכס
+                      מסומן כנמכר / הושכר / בהמתנה / מושבת.
                     </p>
                   </div>
                 )}
+
               </PopoverContent>
             </Popover>
             <div className="flex-1">

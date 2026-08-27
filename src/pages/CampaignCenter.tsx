@@ -31,6 +31,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
+import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
@@ -712,6 +713,14 @@ type ComposerStatus = {
   thumb: string | null;
 };
 
+/**
+ * Stable identity of a draft inside the multi-draft composer.
+ * Keyed by listing + variant (NOT by array index) so restoring after a refresh
+ * or a reshuffled property rotation always finds the same saved draft.
+ */
+const draftKeyFor = (b: { listing?: string | null; variant?: number }, idx: number): string =>
+  `${b.listing || `na${idx}`}::v${b.variant ?? 1}`;
+
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
@@ -748,7 +757,24 @@ const InlineComposer = ({
   const draftKey = `rz-composer-draft:v2:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
     if (typeof window === 'undefined') return null;
-    try { return JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
+    try {
+      const direct = JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null');
+      if (direct && String(direct.body || '').trim()) return direct;
+      // Legacy rescue: drafts saved under the old index-based key
+      // (`...:<idx>-<listingId>`) are recovered by matching the listing.
+      if (presetListingId) {
+        const prefix = `rz-composer-draft:v2:${channel.id}:`;
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k || !k.startsWith(prefix) || k === draftKey) continue;
+          try {
+            const val = JSON.parse(localStorage.getItem(k) || 'null');
+            if (val && String(val.body || '').trim() && val.selectedListingId === presetListingId) return val;
+          } catch { /* skip */ }
+        }
+      }
+      return direct;
+    } catch { return null; }
   };
   // Strip any auto-generated WhatsApp CTA line the AI (or a stale draft) may
   // emit. The CTA is now opt-in via the "הוסף קישור לוואטסאפ" checkbox and
@@ -1405,19 +1431,26 @@ const InlineComposer = ({
   const handleAIImage = async () => {
     const prompt = body.trim() || customInstructions.trim() || 'תמונת נדל"ן יוקרתית עבור פוסט שיווקי של מתווך בכיר';
 
+    if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
+    const ctrl = registerGeneration();
     setGeneratingImage(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: { purpose: 'image', prompt, brand: brandName, language: 'he' },
+        signal: ctrl.signal,
       });
+      if (ctrl.signal.aborted) return; // killed by the operator
       if (error) throw error;
       const url = data?.url || data?.image_url;
       if (url) {
         setAttachments((a) => [...a, { name: 'AI Image', kind: 'image', url }]);
         toast.success('תמונה נוצרה');
       } else toast.info('לא התקבלה תמונה מה-AI');
-    } catch { toast.error('יצירת תמונה נכשלה'); }
-    finally { setGeneratingImage(false); }
+    } catch (e: any) {
+      if (ctrl.signal.aborted || e?.name === 'AbortError') return;
+      toast.error('יצירת תמונה נכשלה');
+    }
+    finally { releaseGeneration(ctrl); setGeneratingImage(false); }
   };
 
   const startRecording = async () => {
@@ -1459,6 +1492,9 @@ const InlineComposer = ({
   };
 
   const handleGenerate = async (opts?: { rotateTemplate?: boolean }) => {
+    if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
+    // Registered so the emergency stop can abort this request mid-flight.
+    const ctrl = registerGeneration();
     setGenerating(true);
     try {
       const topic = body.trim()
@@ -1476,13 +1512,23 @@ const InlineComposer = ({
           selectedListingId: selectedListingId || undefined,
           listingFocusOnly: !!selectedListingId,
         },
+        signal: ctrl.signal,
       });
+      if (ctrl.signal.aborted) return; // killed by the operator
       if (error) throw error;
       const text = cleanBody(data?.content || data?.text || '').toString();
       if (text) {
         setBody(text);
         setBodyManuallyEdited(false);
         setOriginalAiBody(text);
+        // Flush immediately (local + cloud). A refresh in the middle of a bulk
+        // generation must never lose an already-generated draft.
+        try {
+          const prev = readDraft() || {};
+          const snapshot = { ...prev, body: text, customInstructions, selectedListingId, attachments, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink };
+          localStorage.setItem(draftKey, JSON.stringify(snapshot));
+          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot);
+        } catch {}
 
         // so subsequent manual edits + media updates flow into the same record.
         try {
@@ -1502,12 +1548,14 @@ const InlineComposer = ({
         }
       } else toast.info('לא התקבל טקסט');
       // Auto-generate a first comment in Udi's signature style.
-      if (text) {
+      if (text && !ctrl.signal.aborted && !isGenerationStopped()) {
         void handleGenerateFirstComment(text);
       }
     } catch (e: any) {
+      if (ctrl.signal.aborted || e?.name === 'AbortError') return; // silent kill
       toast.error('יצירת טקסט נכשלה');
     } finally {
+      releaseGeneration(ctrl);
       setGenerating(false);
     }
   };
@@ -1516,6 +1564,8 @@ const InlineComposer = ({
   // Called automatically right after the main post is generated, and manually
   // via the refresh button on the first-comment textarea.
   const handleGenerateFirstComment = async (postBody?: string) => {
+    if (isGenerationStopped()) return;
+    const ctrl = registerGeneration();
     setFirstCommentGenerating(true);
     try {
       const listing = selectedListing;
@@ -1551,7 +1601,9 @@ const InlineComposer = ({
           listingFocusOnly: false,
           skipLicenseFooter: true,
         },
+        signal: ctrl.signal,
       });
+      if (ctrl.signal.aborted) return;
       if (error) throw error;
       let text = cleanFirstComment(String(data?.content || data?.text || ''));
       // Enforce strict 2-line layout: a single property line capped at 10
@@ -1569,8 +1621,10 @@ const InlineComposer = ({
       }
 
     } catch (e: any) {
+      if (ctrl.signal.aborted || e?.name === 'AbortError') return; // killed
       toast.error('יצירת תגובה ראשונה נכשלה');
     } finally {
+      releaseGeneration(ctrl);
       setFirstCommentGenerating(false);
     }
   };
@@ -1713,6 +1767,9 @@ const InlineComposer = ({
     // Never regenerate over restored work: wait for hydration to finish first.
     if (!hydrated) return;
     if (body.trim().length > 0) return; // honor draft restoration
+    // Emergency stop: the operator halted bulk generation. Already generated
+    // drafts stay as-is; nothing new is requested (no tokens spent).
+    if (isGenerationStopped()) return;
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const fromCalendar = !!presetScheduleIso || !!params?.get('schedule');
     const listingFromUrl = params?.get('listing') || (params?.get('properties') || '').split(',').map((s) => s.trim()).filter(Boolean)[0] || null;
@@ -5325,6 +5382,9 @@ const CampaignCenter = () => {
   const [bulkGroupIds, setBulkGroupIds] = useState<string[]>([]);
   const [bulkScheduleIso, setBulkScheduleIso] = useState<string | null>(null);
   const [bulkGroupPickerOpen, setBulkGroupPickerOpen] = useState(false);
+  // Emergency-stop state for bulk AI generation (persisted across refreshes).
+  const [generationStopped, setGenerationStopped] = useState<boolean>(() => isGenerationStopped());
+  useEffect(() => subscribeGenerationGate(setGenerationStopped), []);
   const [bulkScheduleDialogOpen, setBulkScheduleDialogOpen] = useState(false);
   const [bulkGlobalScheduleOpen, setBulkGlobalScheduleOpen] = useState(false);
 
@@ -5406,6 +5466,32 @@ const CampaignCenter = () => {
   // Bump to force-remount the InlineComposer so its body/selectedListingId/media
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+
+  // Wipes every draft in the multi-draft composer: local snapshots, the durable
+  // cloud mirror and the composer session. Nothing published is touched.
+  const deleteAllDrafts = async () => {
+    const chan = pickedChannel?.id ?? 'facebook';
+    try {
+      for (const store of [localStorage, sessionStorage]) {
+        const keys: string[] = [];
+        for (let i = 0; i < store.length; i++) {
+          const k = store.key(i);
+          if (k && (k.startsWith('rz-composer-draft:') || k.startsWith('rz-composer-session:'))) keys.push(k);
+        }
+        keys.forEach((k) => store.removeItem(k));
+      }
+      sessionStorage.removeItem('rz-schedule-assignments');
+    } catch { /* ignore */ }
+    setRestoredSession(null);
+    await Promise.allSettled([clearComposerSession(chan), clearComposerDraftsCloud(chan)]);
+    setDraftStatuses({});
+    setPublishedDrafts(new Set());
+    setComposerResetTick((n) => n + 1);
+    setDeleteAllOpen(false);
+    toast.success('כל הטיוטות נמחקו');
+    setSearchParams(new URLSearchParams());
+  };
   // Unpublished multi-property draft session (properties + slots + variants).
   // Restored from localStorage instantly and from the cloud right after, so
   // leaving the page or refreshing never loses the open drafts.
@@ -6042,7 +6128,7 @@ const CampaignCenter = () => {
               ? assignments
               : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
             const readyKeys = blocks
-              .map((b, idx) => `${idx}-${b.listing || 'na'}`)
+              .map((b, idx) => draftKeyFor(b, idx))
               .filter((k) => draftStatuses[k]?.canPublish && !publishedDrafts.has(k));
             return (
               <div className="space-y-4 pb-24">
@@ -6050,7 +6136,11 @@ const CampaignCenter = () => {
                   נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
                 {blocks.map((b, idx) => {
-                  const key = `${idx}-${b.listing || 'na'}`;
+                  // Order-independent key: a refresh (or a reshuffled property
+                  // rotation) must map every draft back to the SAME stored
+                  // snapshot, otherwise restored work looks lost and the AI
+                  // regenerates from scratch.
+                  const key = draftKeyFor(b, idx);
                   return (
                   <DraftCollapsibleCard
                     key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`}
@@ -6093,6 +6183,36 @@ const CampaignCenter = () => {
                 {/* Bulk dispatch — publishes every ready draft one after another. */}
                 <div className="sticky bottom-2 z-40 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
                   <div className="flex items-stretch gap-2">
+                    {generationStopped ? (
+                      <button
+                        type="button"
+                        onClick={() => { resumeGeneration(); toast.success('יצירת התוכן חודשה'); }}
+                        title="חידוש יצירת תוכן"
+                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-3 text-[12px] font-semibold text-emerald-700 transition hover:bg-emerald-500/20"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        המשך יצירה
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { stopAllGeneration(); toast.info('כל היצירה נעצרה מיד. כל מה שנוצר עד כה נשמר.'); }}
+                        title="עצור יצירת תוכן מיד (התוכן שנוצר נשמר)"
+                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-3 text-[12px] font-semibold text-destructive transition hover:bg-destructive/20"
+                      >
+                        <Square className="h-4 w-4" />
+                        עצור יצירה
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDeleteAllOpen(true)}
+                      title="מחק את כל הטיוטות"
+                      aria-label="מחק את כל הטיוטות"
+                      className="inline-flex items-center justify-center rounded-xl border border-destructive/30 bg-card px-4 py-3 text-destructive shadow-sm transition hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => setBulkGlobalScheduleOpen(true)}
@@ -6121,7 +6241,7 @@ const CampaignCenter = () => {
                     )}
                     <button
                       type="button"
-                      onClick={() => publishAllDrafts(blocks.map((b, idx) => `${idx}-${b.listing || 'na'}`))}
+                      onClick={() => publishAllDrafts(blocks.map((b, idx) => draftKeyFor(b, idx)))}
                       disabled={readyKeys.length === 0}
                       className={cn(
                         'flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
@@ -6135,6 +6255,25 @@ const CampaignCenter = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* Delete-all confirmation. */}
+                <Dialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+                  <DialogContent dir="rtl" className="w-[92vw] sm:max-w-[420px]">
+                    <DialogHeader>
+                      <DialogTitle className="text-right">למחוק את כל הטיוטות?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground text-right">
+                      הפעולה מוחקת את כל {blocks.length} הטיוטות (טקסט, תמונות ותזמונים שלא פורסמו).
+                      פוסטים שכבר פורסמו או שתוזמנו בתור לא ייפגעו.
+                    </p>
+                    <div className="flex justify-start gap-2 pt-2">
+                      <Button variant="destructive" onClick={() => { void deleteAllDrafts(); }}>
+                        מחק הכל
+                      </Button>
+                      <Button variant="outline" onClick={() => setDeleteAllOpen(false)}>ביטול</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
                 {/* Bulk schedule dialog — applies to every draft in the multi-draft view. */}
                 <Dialog open={bulkScheduleDialogOpen} onOpenChange={setBulkScheduleDialogOpen}>

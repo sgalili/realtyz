@@ -97,7 +97,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
   const [recurrence, setRecurrence] = useState<Recurrence>('none');
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]); // 0=Sun..6=Sat
-  const [recurrenceCount, setRecurrenceCount] = useState<number>(4); // iterations
+  // Rolling repeat: only the current slot + ONE next version are materialized.
+  const recurrenceCount = 2;
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [brandingPost, setBrandingPost] = useState(false);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
@@ -121,7 +122,6 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     setSelectedGroupIds(prefs.selectedGroupIds);
     setRecurrence(prefs.recurrence);
     setRecurrenceDays(prefs.recurrenceDays);
-    setRecurrenceCount(prefs.recurrenceCount);
     setRecurrenceOpen(false);
     setGroupDailyLimit(prefs.groupDailyLimit);
 
@@ -650,21 +650,14 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   )}
                   {recurrence !== 'none' && (
                     <div className="mt-2 border-t pt-2">
-                      <label className="text-[11px] text-muted-foreground block mb-1 text-right">
-                        {recurrence === 'weekly' || recurrence === 'custom'
-                          ? 'מספר שבועות'
-                          : recurrence === 'monthly' ? 'מספר חודשים' : 'מספר ימים'}
-                      </label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={52}
-                        value={recurrenceCount}
-                        onChange={(e) => setRecurrenceCount(Math.max(1, Math.min(52, Number(e.target.value) || 1)))}
-                        className="h-8 text-right"
-                      />
+                      <p className="text-[10px] text-muted-foreground text-right leading-relaxed">
+                        החזרתיות רצה ללא הגבלה. בתור נשמרת רק הגרסה הבאה אחת, והבאה אחריה
+                        נוצרת רק לאחר פרסום מוצלח. הסדרה נעצרת כשהנכס מסומן כנמכר / הושכר /
+                        בהמתנה / מושבת.
+                      </p>
                     </div>
                   )}
+
                 </PopoverContent>
               </Popover>
             </div>
@@ -914,9 +907,15 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   }
                 }
 
-                const slots: Date[] = recurrenceDates
+                // Only the current day + the single NEXT recurrence date are
+                // materialized. Every later version is created after a publish.
+                const cappedDates = recurrenceDates
+                  .sort((a, b) => a.getTime() - b.getTime())
+                  .slice(0, recurrence === 'none' ? 1 : 2);
+                const slots: Date[] = cappedDates
                   .flatMap((day) => buildDaySlots(day))
                   .sort((a, b) => a.getTime() - b.getTime());
+
 
                 // Persist the per-group daily cap the broker typed.
                 if (selectedGroupIds.length > 0) {
