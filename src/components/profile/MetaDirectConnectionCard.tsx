@@ -586,6 +586,28 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           </DialogContent>
         </Dialog>
 
+        <Dialog open={tokenHelpOpen} onOpenChange={setTokenHelpOpen}>
+          <DialogContent dir="rtl" className="text-right sm:max-w-md">
+            <DialogHeader className="text-right">
+              <DialogTitle>קבלת Page Access Token ב-4 צעדים</DialogTitle>
+              <DialogDescription>הטוקן נשמר בצד השרת בלבד ומאפשר פרסום גם ללא אישור אפליקציה.</DialogDescription>
+            </DialogHeader>
+            <ol className="list-inside list-decimal space-y-1.5 text-[15px] text-muted-foreground">
+              <li>פתחו את Graph API Explorer של Meta (developers.facebook.com/tools/explorer).</li>
+              <li>בצד שמאל בחרו את האפליקציה שלכם, ולחצו "Generate Access Token".</li>
+              <li>בתפריט "User or Page" בחרו את עמוד הפייסבוק שלכם — זה הטוקן של העמוד.</li>
+              <li>העתיקו את הטוקן ואת מזהה העמוד (Page ID, מתחת לשם העמוד בפייסבוק) לשדות כאן ושמרו.</li>
+            </ol>
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 text-[15px]"
+              onClick={() => window.open('https://developers.facebook.com/tools/explorer/', '_blank', 'noopener,noreferrer')}
+            >
+              פתחו את Graph API Explorer
+            </Button>
+          </DialogContent>
+        </Dialog>
 
         {status && !status.connected && status.message && (
           <p className="text-[15px] text-destructive">{status.message}</p>
