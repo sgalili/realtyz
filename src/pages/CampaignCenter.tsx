@@ -20,7 +20,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square, Users,
-  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone } from 'lucide-react';
+  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone, History } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -4968,7 +4968,45 @@ const CampaignCenter = () => {
   // Bump to force-remount the InlineComposer so its body/selectedListingId/media
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
+  const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
+  const [campaignHistoryRows, setCampaignHistoryRows] = useState<any[]>([]);
+  const [campaignDraftRows, setCampaignDraftRows] = useState<any[]>([]);
+  const [campaignHistoryLoading, setCampaignHistoryLoading] = useState(false);
   const [alsoEmail, setAlsoEmail] = useState(false);
+
+  useEffect(() => {
+    const open = () => setCampaignHistoryOpen(true);
+    window.addEventListener('rz:open-campaign-history', open);
+    return () => window.removeEventListener('rz:open-campaign-history', open);
+  }, []);
+
+  useEffect(() => {
+    if (!campaignHistoryOpen || !user?.id) return;
+    let cancelled = false;
+    setCampaignHistoryLoading(true);
+    void (async () => {
+      const scope = workspaceOwnerId ?? user.id;
+      const [{ data: logs }, { data: drafts }] = await Promise.all([
+        supabase.from('campaign_logs')
+          .select('id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration')
+          .or(`workspace_owner_id.eq.${scope},user_id.eq.${scope}`)
+          .eq('is_archived', false)
+          .order('sent_at', { ascending: false, nullsFirst: false })
+          .limit(250),
+        supabase.from('ai_content_logs')
+          .select('id,topic,generated_text,platform,created_at,updated_at,media_urls,listing_id')
+          .eq('created_by', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(100),
+      ]);
+      if (!cancelled) {
+        setCampaignHistoryRows(logs ?? []);
+        setCampaignDraftRows(drafts ?? []);
+        setCampaignHistoryLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [campaignHistoryOpen, user?.id, workspaceOwnerId]);
   // Hydrate connection state from localStorage so a page refresh (or a new
   // tab) doesn't visually "disconnect" channels while verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
@@ -5581,6 +5619,71 @@ const CampaignCenter = () => {
           />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={campaignHistoryOpen} onOpenChange={setCampaignHistoryOpen}>
+        <DialogContent dir="rtl" className="w-[96vw] max-w-5xl max-h-[88vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-right">
+              <History className="h-5 w-5" />
+              היסטוריית קמפיינים
+            </DialogTitle>
+            <DialogDescription className="text-right">כל הפוסטים, הטיוטות והסדרות המתוזמנות במקום אחד.</DialogDescription>
+          </DialogHeader>
+          <Tabs defaultValue="published" className="min-h-0">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="published">פוסטים שפורסמו</TabsTrigger>
+              <TabsTrigger value="drafts">טיוטות</TabsTrigger>
+              <TabsTrigger value="future">פוסטים עתידיים</TabsTrigger>
+            </TabsList>
+            {campaignHistoryLoading ? (
+              <div className="flex h-52 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : (
+              <>
+                <TabsContent value="published" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
+                  {campaignHistoryRows.filter((r) => ['sent', 'published', 'completed'].includes(r.status)).map((r) => (
+                    <div key={r.id} className="flex gap-3 rounded-lg border border-border p-3">
+                      {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
+                      <div className="min-w-0"><p className="font-semibold">{r.campaign_name || 'פוסט'}</p><p className="line-clamp-2 text-sm text-muted-foreground">{r.message_body}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.sent_at || r.created_at).toLocaleString('he-IL')}</p></div>
+                    </div>
+                  ))}
+                  {!campaignHistoryRows.some((r) => ['sent', 'published', 'completed'].includes(r.status)) && <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים שפורסמו</p>}
+                </TabsContent>
+                <TabsContent value="drafts" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
+                  {campaignDraftRows.map((r) => (
+                    <button key={r.id} type="button" className="flex w-full gap-3 rounded-lg border border-border p-3 text-right hover:bg-muted/40" onClick={() => {
+                      const next = new URLSearchParams(searchParams);
+                      next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
+                      if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
+                      setSearchParams(next); setCampaignHistoryOpen(false);
+                    }}>
+                      {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
+                      <div className="min-w-0"><p className="font-semibold">{r.topic || 'טיוטת פוסט'}</p><p className="line-clamp-2 text-sm text-muted-foreground">{r.generated_text}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}</p></div>
+                    </button>
+                  ))}
+                  {campaignDraftRows.length === 0 && <p className="py-12 text-center text-sm text-muted-foreground">אין טיוטות</p>}
+                </TabsContent>
+                <TabsContent value="future" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
+                  {(() => {
+                    const future = campaignHistoryRows
+                      .filter((r) => r.status === 'scheduled' && new Date(r.sent_at).getTime() > Date.now())
+                      .sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
+                    const seen = new Map<string, number>();
+                    const visible = future.filter((r) => { const key = r.series_id || r.id; const n = seen.get(key) || 0; seen.set(key, n + 1); return n < 3; });
+                    return visible.length ? visible.map((r) => {
+                      const media = Array.isArray(r.media_urls) ? r.media_urls : [];
+                      const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
+                      return <div key={r.id} className="flex gap-3 rounded-lg border border-border p-3">
+                        {image ? <img src={typeof image === 'string' ? image : image?.url} alt="" className="h-20 w-20 shrink-0 rounded-md object-cover" /> : null}
+                        <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>{r.series_index != null && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">גרסה {Number(r.series_index) + 1}</span>}</div><p className="line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.sent_at).toLocaleString('he-IL')}{r.needs_regeneration ? ' · וריאציית AI תיווצר לאחר פרסום מוצלח' : ''}</p></div>
+                      </div>;
+                    }) : <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
+                  })()}
+                </TabsContent>
+              </>
+            )}
+          </Tabs>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDispatchDialog
         open={!!confirmPayload}

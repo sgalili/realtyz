@@ -204,6 +204,21 @@ function CampaignsHeroAddButton() {
   );
 }
 
+function CampaignsHeroHistoryButton() {
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      onClick={() => window.dispatchEvent(new CustomEvent('rz:open-campaign-history'))}
+      aria-label="היסטוריית קמפיינים"
+      title="היסטוריית קמפיינים"
+      className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+    >
+      <History className="!h-5 !w-5" strokeWidth={2.5} />
+    </Button>
+  );
+}
+
 
 function InboxAutopilotToggle() {
   const { settings, update } = usePlatformSettings();
@@ -349,6 +364,7 @@ export function PageHero() {
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
           {location.pathname.startsWith('/inbox') && <InboxAutopilotToggle />}
+          {location.pathname.startsWith('/campaigns') && <CampaignsHeroHistoryButton />}
           {location.pathname.startsWith('/campaigns') && <CampaignsHeroCalendarButton />}
           {location.pathname.startsWith('/campaigns') && <CampaignsHeroAddButton />}
           {isPropertyDetail && (

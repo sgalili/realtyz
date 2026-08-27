@@ -887,6 +887,36 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_composer_sessions: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          payload: Json
+          updated_at: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          updated_at?: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          updated_at?: string
+          user_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       campaign_logs: {
         Row: {
           campaign_name: string
