@@ -67,3 +67,25 @@ export function normalizePhoneForStorage(phone: string | null | undefined): stri
   if (digits.startsWith('0')) return '972' + digits.slice(1);
   return '972' + digits;
 }
+
+/**
+ * Live formatter for phone INPUT fields — keeps the user's typing inside the
+ * strict Israeli display format "05X-XXXXXXX" (landlines: "0X-XXXXXXX").
+ * Non-digits are dropped, 972/+972 prefixes are converted to the local form,
+ * and a dash is injected automatically at the correct position.
+ */
+export function formatPhoneAsTyped(input: string | null | undefined): string {
+  let digits = String(input ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('972')) digits = '0' + digits.slice(3);
+  else if (!digits.startsWith('0')) digits = '0' + digits;
+
+  // 05X / 07X mobile & virtual: dash after 3 digits, 10 digits total.
+  if (/^0(5|7)/.test(digits)) {
+    digits = digits.slice(0, 10);
+    return digits.length > 3 ? digits.slice(0, 3) + '-' + digits.slice(3) : digits;
+  }
+  // Landline area codes: dash after 2 digits, 9 digits total.
+  digits = digits.slice(0, 9);
+  return digits.length > 2 ? digits.slice(0, 2) + '-' + digits.slice(2) : digits;
+}

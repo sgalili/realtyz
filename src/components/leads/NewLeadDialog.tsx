@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { formatPhoneAsTyped } from '@/lib/formatPhone';
 import {
   Dialog,
   DialogContent,
@@ -221,9 +222,9 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             <Input
               id="nl-phone"
               dir="ltr"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="050-1234567"
+              value={formatPhoneAsTyped(phone)}
+              onChange={(e) => setPhone(formatPhoneAsTyped(e.target.value))}
+              inputMode="tel"
             />
           </div>
           <div>
