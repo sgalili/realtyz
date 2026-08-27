@@ -4,7 +4,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Infinity as InfinityIcon, ArrowLeft, Check,
+  Infinity as InfinityIcon, ArrowLeft, Check, Star,
 } from 'lucide-react';
 import {
   FREE_CONTACTS, FREE_PROPERTIES, PRICING_TIERS, quoteForContacts,
@@ -19,6 +19,9 @@ import imgVoice from '@/assets/landing/card-voice.jpg';
 import imgCalendar from '@/assets/landing/card-calendar.jpg';
 import imgAi from '@/assets/landing/card-ai.jpg';
 import imgAnalytics from '@/assets/landing/card-analytics.jpg';
+import imgAutoPost from '@/assets/landing/card-autopost.jpg';
+import imgGoogleSync from '@/assets/landing/card-google-sync.jpg';
+import imgMatchmaking from '@/assets/landing/card-matchmaking.jpg';
 
 
 /* ────────────────────────────────────────────────────────────────
@@ -29,7 +32,7 @@ import imgAnalytics from '@/assets/landing/card-analytics.jpg';
 
 const FEATURES = [
   {
-    image: imgPublishing,
+    image: imgAutoPost,
     title: 'יצירת פוסטים ופרסום אוטומטי',
     body: 'ה-AI כותב את הפוסט לנכס, מתזמן בלחיצה אחת ומפרסם ישירות לקבוצות פייסבוק ולאינסטגרם.',
   },
@@ -45,7 +48,7 @@ const FEATURES = [
     body: 'מנהלים את כל העסק מהווטסאפ: שולחים הקלטה קולית או טקסט, מבקשים סטטיסטיקות, מפעילים מבצע ופותחים משימות בזמן אמת.',
   },
   {
-    image: imgCalendar,
+    image: imgGoogleSync,
     title: 'סנכרון גוגל דו-כיווני',
     body: 'Gmail ויומן גוגל מסונכרנים בזמן אמת - חלונות פנויים אמיתיים, בלי כפל פגישות ובלי מיילים שנעלמים.',
   },
@@ -60,7 +63,7 @@ const FEATURES = [
     body: 'ברכות אוטומטיות, תזכורות ומעקבים - מסנן, מדרג ומחמם כל מתעניין חדש, גם ב-3 לפנות בוקר.',
   },
   {
-    image: imgPublishing,
+    image: imgMatchmaking,
     title: 'התאמת נכסים חכמה',
     body: 'מנוע התאמה שמצליב העדפות מול מלאי חי מיד2 והומלי ומציע את הנכס הנכון לכל לקוח.',
   },
@@ -197,39 +200,29 @@ export default function Landing() {
         </div>
 
         <div className="mx-auto w-full max-w-6xl px-4 pb-20 pt-16 text-center sm:pt-24">
-          <Reveal>
-            <p className="text-[15px] font-bold text-primary">
-              ה-CRM הראשון בישראל שמנוהל על ידי סוכני AI
-            </p>
-          </Reveal>
-
           <Reveal delay={80}>
-            <h1 className="mx-auto mt-5 max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
-              כל העסק שלכם על טייס אוטומטי
-              <span className="landing-gradient-text block"> ישר מהווטסאפ, 24 שעות ביממה</span>
+            <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
+              <span className="landing-title-gradient block">מכונת המתווך הבלתי אפשרית</span>
+              <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים - שאין לו מתחרים בשוק</span>
             </h1>
           </Reveal>
 
           <Reveal delay={160}>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
               פוסטים אוטומטיים לקבוצות פייסבוק ואינסטגרם, שיחות מכל האפליקציות והרשתות, עוזר AI שמדבר איתכם
-              בהקלטות קוליות בווטסאפ וסנכרון מלא לגוגל. הכל בעברית, הכל תחת השליטה שלכם.
+              בהקלטות קוליות וסנכרון מלא לגוגל. הכל בעברית, הכל תחת השליטה שלכם.
             </p>
           </Reveal>
 
           <Reveal delay={240}>
-            <div className="mt-9 flex flex-row flex-wrap items-center justify-center gap-3">
+            <div className="mt-9 flex flex-col items-center gap-2">
               <Link to="/auth">
                 <Button size="lg" className="group h-14 px-8 text-base font-extrabold shadow-2xl shadow-primary/25">
-                  התחל בחינם - בלי כרטיס אשראי
+                  התחל בחינם
                   <ArrowLeft className="ms-2 h-5 w-5 transition-transform group-hover:-translate-x-1" />
                 </Button>
               </Link>
-              <a href="#pricing">
-                <Button size="lg" variant="outline" className="h-14 px-7 text-base font-bold">
-                  חשב את העלות שלי
-                </Button>
-              </a>
+              <p className="text-xs font-semibold text-muted-foreground">בלי כרטיס אשראי</p>
             </div>
           </Reveal>
 
@@ -254,9 +247,7 @@ export default function Landing() {
               <p className="text-sm font-extrabold tracking-widest text-muted-foreground">
                 תשתית טכנולוגית
               </p>
-              <p className="mt-1 text-xs font-semibold text-muted-foreground/80">
-                בנוי ומופעל על תשתיות ענן ואבטחה מובילות בעולם
-              </p>
+
               <div className="mt-4">
                 <StackTicker />
               </div>
@@ -270,7 +261,7 @@ export default function Landing() {
       <section id="all-in-one" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
-            <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
               מערכת אחת שמחליפה את כל הכלים החיצוניים
             </h2>
             <p className="mx-auto mt-4 max-w-3xl text-center text-lg text-muted-foreground">
@@ -303,12 +294,6 @@ export default function Landing() {
               <p className="text-center text-lg font-bold">
                 מנוי אחד. הכל כלול ללא הגבלה. משלמים רק לפי אנשי קשר פעילים.
               </p>
-              <Link to="/auth">
-                <Button size="lg" className="h-12 px-8 text-base font-bold">
-                  התחל בחינם
-                  <ArrowLeft className="mr-2 h-5 w-5" aria-hidden="true" />
-                </Button>
-              </Link>
             </div>
           </Reveal>
         </div>
@@ -319,7 +304,7 @@ export default function Landing() {
       <section id="features" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
-            <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
               כל מה שמתווך צריך - במערכת אחת
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
@@ -356,7 +341,7 @@ export default function Landing() {
       <section id="impact" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
-            <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
               ניהול העסק מקצה לקצה - במספרים
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
@@ -389,7 +374,7 @@ export default function Landing() {
           <Reveal>
             <div>
               <p className="text-sm font-bold text-primary">העוזר האישי שלכם בווטסאפ</p>
-              <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              <h2 className="landing-title-gradient mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
                 מנהלים את כל העסק מהווטסאפ - גם בהקלטה קולית
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
@@ -421,7 +406,7 @@ export default function Landing() {
         <div className="mx-auto w-full max-w-4xl px-4">
           <Reveal>
             <div className="text-center">
-              <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+              <h2 className="landing-title-gradient text-3xl font-extrabold tracking-tight sm:text-4xl">
                 תמחור מדורג. שקוף. לפי אנשי קשר בלבד.
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
@@ -539,7 +524,7 @@ export default function Landing() {
       <section id="free" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-4xl px-4 text-center">
           <Reveal>
-            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">מסלול חינם</h2>
+            <h2 className="landing-title-gradient text-3xl font-extrabold tracking-tight sm:text-4xl">מסלול חינם</h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
               {FREE_CONTACTS} אנשי קשר, {FREE_PROPERTIES} נכסים, כל יכולות ה-AI פתוחות.
               ללא הגבלת זמן, ללא כרטיס אשראי, בלי שיחת מכירה.
@@ -581,6 +566,10 @@ export default function Landing() {
 
       <footer className="border-t border-border/60 py-10 text-center text-sm text-muted-foreground">
         <p>Realtyz - מערכת ניהול נדל"ן מבוססת AI · כל הזכויות שמורות</p>
+        <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground/80">
+          <Star className="h-3 w-3 text-primary" aria-hidden />
+          פותח בגאווה בישראל · Proudly made in Israel
+        </p>
       </footer>
     </div>
   );

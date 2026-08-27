@@ -1338,8 +1338,9 @@
   color-scheme: light;
 }
 
-.realtyz-landing .landing-gradient-text {
-  background-image: linear-gradient(100deg, hsl(142 70% 49%), hsl(158 75% 31%), hsl(168 79% 20%));
+.realtyz-landing .landing-gradient-text,
+.realtyz-landing .landing-title-gradient {
+  background-image: linear-gradient(100deg, hsl(206 92% 52%), hsl(213 88% 40%), hsl(47 100% 46%));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1349,16 +1350,16 @@
   box-shadow: 0 18px 50px -28px hsl(213 73% 16% / 0.35);
 }
 
-/* Readable overlay for image-filled cards — lighter scrim, vivid imagery */
+/* Readable overlay for image-filled cards — bright blue scrim, not dark */
 .realtyz-landing .landing-card-veil {
   background:
-    linear-gradient(0deg, hsl(213 73% 8% / 0.62) 0%, hsl(213 73% 10% / 0.28) 52%, hsl(213 73% 12% / 0.06) 100%);
+    linear-gradient(0deg, hsl(213 80% 26% / 0.72) 0%, hsl(206 88% 40% / 0.34) 55%, hsl(206 92% 60% / 0.05) 100%);
 }
 .realtyz-landing .landing-card img {
-  filter: saturate(1.6) contrast(1.18) brightness(1.1);
+  filter: saturate(1.35) contrast(1.05) brightness(1.14);
 }
 .realtyz-landing .landing-card:hover img {
-  filter: saturate(1.75) contrast(1.2) brightness(1.14);
+  filter: saturate(1.45) contrast(1.08) brightness(1.18);
 }
 
 /* Infinite logo tickers */
