@@ -68,7 +68,7 @@ import {
   clearComposerSession,
   saveComposerDraftCloud,
   fetchComposerDraftCloud,
-  clearComposerDraftCloud,
+  clearComposerDraftsCloud,
 } from '@/lib/composerSession';
 
 import {
@@ -5834,6 +5834,7 @@ const CampaignCenter = () => {
             // Only a published post retires the durable session mirror.
             setRestoredSession(null);
             void clearComposerSession(publishedChannelId);
+            void clearComposerDraftsCloud(publishedChannelId);
           }
 
 

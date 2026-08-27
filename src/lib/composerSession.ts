@@ -150,11 +150,11 @@ export async function fetchComposerDraftCloud(channel: string, instanceId: strin
   }
 }
 
-export async function clearComposerDraftCloud(channel: string, instanceId: string) {
+export async function clearComposerDraftsCloud(channel: string) {
   try {
     await (supabase as any)
       .from('campaign_composer_sessions')
       .delete()
-      .eq('channel', draftSlot(channel, instanceId));
+      .like('channel', `draft:${channel}:%`);
   } catch { /* ignore */ }
 }
