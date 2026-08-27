@@ -5580,14 +5580,25 @@ const CampaignCenter = () => {
           />
           {pickedChannel && (() => {
             const propertiesParam = searchParams.get('properties') || '';
-            const propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
-            let assignments: Array<{ iso: string; listing: string | null; variant: number; totalVariants: number }> = [];
+            let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
+            let assignments: ComposerAssignment[] = [];
             try {
               const raw = sessionStorage.getItem('rz-schedule-assignments');
               if (raw) assignments = JSON.parse(raw) || [];
             } catch {}
+            // Nothing in the URL / session? Restore the last unpublished draft
+            // session (properties, slots, variants) so all open drafts come
+            // back exactly as they were left.
+            if (propertyIds.length <= 1 && assignments.length === 0) {
+              const saved = restoredSession ?? readComposerSessionLocal(pickedChannel.id);
+              if (saved && (saved.assignments.length > 1 || saved.propertyIds.length > 1)) {
+                propertyIds = saved.propertyIds;
+                assignments = saved.assignments;
+              }
+            }
             // Single composer when no multi-property fan-out
-            if (propertyIds.length <= 1) {
+            if (propertyIds.length <= 1 && assignments.length <= 1) {
+
               return (
                 <InlineComposer
                   key={`composer-${pickedChannel?.id ?? 'none'}-${composerResetTick}`}
