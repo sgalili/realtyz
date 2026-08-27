@@ -978,6 +978,14 @@ const InlineComposer = ({
   const [logId, setLogId] = useState<string | null>(initial.logId ?? null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
 
+  // True once this instance finished restoring (locally or from the cloud).
+  // Auto-generation and every persist write must wait for it, otherwise a
+  // refresh re-writes (and erases) the draft.
+  const [hydrated, setHydrated] = useState(false);
+  const hydratedRef = useRef(false);
+  useEffect(() => { hydratedRef.current = hydrated; }, [hydrated]);
+
+
   // Persist composer draft to localStorage so collapsing/switching tabs,
   // closing dialogs, navigating away, or hard-refreshing never loses work.
   // CRITICAL: nothing is written before hydration finished, otherwise the
