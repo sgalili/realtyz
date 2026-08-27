@@ -20,6 +20,7 @@ const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const FIRE_WINDOW_MS = 3 * 60_000; // fire slots whose sent_at is within +/- 3 min of now
 const MAX_PER_RUN = 10;             // per-run cap to protect rate limits
 const LOCK_TIMEOUT_MS = 5 * 60_000; // release orphaned locks after 5 min
+const READY_WINDOW = 3;              // never prepare more than the next 3 versions in a series
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -126,6 +127,22 @@ Deno.serve(async (req) => {
 
   const results: Array<{ id: string; ok: boolean; error?: string }> = [];
   for (const row of candidates ?? []) {
+    // Rolling-window rule: slot 0 may run immediately. Every later slot is
+    // unlocked only after at least one earlier slot in the same series was
+    // successfully sent. This prevents speculative AI generation for an
+    // inactive series while keeping at most the next three versions eligible.
+    if (row.series_id && Number(row.series_index ?? 0) > 0) {
+      const { count: sentBefore } = await admin
+        .from("campaign_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("series_id", row.series_id)
+        .eq("status", "sent")
+        .lt("series_index", Number(row.series_index));
+      if ((sentBefore ?? 0) < 1 || Number(row.series_index) > (sentBefore ?? 0) + READY_WINDOW) {
+        results.push({ id: row.id, ok: false, error: "waiting_for_successful_previous_post" });
+        continue;
+      }
+    }
     // Claim the row atomically — an UPDATE that only succeeds when the row
     // is still unlocked. Anyone else who reached this row already will fail
     // the WHERE clause and be skipped here.

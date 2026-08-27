@@ -20,7 +20,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square, Users,
-  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone } from 'lucide-react';
+  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone, History } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -4968,7 +4968,45 @@ const CampaignCenter = () => {
   // Bump to force-remount the InlineComposer so its body/selectedListingId/media
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
+  const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
+  const [campaignHistoryRows, setCampaignHistoryRows] = useState<any[]>([]);
+  const [campaignDraftRows, setCampaignDraftRows] = useState<any[]>([]);
+  const [campaignHistoryLoading, setCampaignHistoryLoading] = useState(false);
   const [alsoEmail, setAlsoEmail] = useState(false);
+
+  useEffect(() => {
+    const open = () => setCampaignHistoryOpen(true);
+    window.addEventListener('rz:open-campaign-history', open);
+    return () => window.removeEventListener('rz:open-campaign-history', open);
+  }, []);
+
+  useEffect(() => {
+    if (!campaignHistoryOpen || !user?.id) return;
+    let cancelled = false;
+    setCampaignHistoryLoading(true);
+    void (async () => {
+      const scope = workspaceOwnerId ?? user.id;
+      const [{ data: logs }, { data: drafts }] = await Promise.all([
+        supabase.from('campaign_logs')
+          .select('id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration')
+          .or(`workspace_owner_id.eq.${scope},user_id.eq.${scope}`)
+          .eq('is_archived', false)
+          .order('sent_at', { ascending: false, nullsFirst: false })
+          .limit(250),
+        supabase.from('ai_content_logs')
+          .select('id,topic,generated_text,platform,created_at,updated_at,media_urls,listing_id')
+          .eq('created_by', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(100),
+      ]);
+      if (!cancelled) {
+        setCampaignHistoryRows(logs ?? []);
+        setCampaignDraftRows(drafts ?? []);
+        setCampaignHistoryLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [campaignHistoryOpen, user?.id, workspaceOwnerId]);
   // Hydrate connection state from localStorage so a page refresh (or a new
   // tab) doesn't visually "disconnect" channels while verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
