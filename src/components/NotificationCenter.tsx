@@ -153,9 +153,13 @@ export default function NotificationCenter() {
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, queryClient]);
 
-  // Toast once per notification, ever (persisted across page loads / navigation)
+  // Toast policy: only a brand-new notification that arrives while the app is
+  // open produces a toast, and only once ever. Everything already present on
+  // mount (or older than a couple of minutes) is silently baselined.
   const TOASTED_KEY = 'realtyz_toasted_notifs';
+  const FRESH_WINDOW_MS = 2 * 60 * 1000;
   const seenRef = useRef<{ ready: boolean; ids: Set<string> }>({ ready: false, ids: new Set() });
+  const baselinedRef = useRef(false);
   useEffect(() => {
     if (!seenRef.current.ready) {
       let stored: string[] = [];
@@ -163,14 +167,21 @@ export default function NotificationCenter() {
       seenRef.current = { ready: true, ids: new Set(stored) };
     }
     const items = [
-      ...inbound.map((m: any) => ({ id: m.id, msg: `הודעה חדשה מ${m.leads?.full_name || 'מתעניין'}` })),
-      ...tours.map((t: any) => ({ id: t.id, msg: `סיור חדש נקבע: ${t.client_name || 'לקוח'}` })),
+      ...inbound.map((m: any) => ({ id: m.id, at: m.created_at, msg: `הודעה חדשה מ${m.leads?.full_name || 'מתעניין'}` })),
+      ...tours.map((t: any) => ({ id: t.id, at: t.created_at, msg: `סיור חדש נקבע: ${t.client_name || 'לקוח'}` })),
     ];
+    // First pass after mount: remember everything without notifying.
+    const baseline = !baselinedRef.current;
+    if (items.length > 0 || inbound.length + tours.length > 0) baselinedRef.current = true;
+
     let changed = false;
-    items.forEach(i => {
+    items.forEach((i) => {
       if (!i.id || seenRef.current.ids.has(i.id)) return;
       seenRef.current.ids.add(i.id);
       changed = true;
+      if (baseline) return;
+      const ts = i.at ? new Date(i.at).getTime() : 0;
+      if (!ts || Date.now() - ts > FRESH_WINDOW_MS) return;
       toast(i.msg);
     });
     if (changed) {
@@ -182,6 +193,7 @@ export default function NotificationCenter() {
       } catch { /* noop */ }
     }
   }, [inbound, tours]);
+
 
 
   const unviewedAlerts = alerts.filter(a => !viewedIds.has(a.id));
