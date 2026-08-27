@@ -231,6 +231,8 @@ export default function QuickActionDrawer() {
       await (supabase as any).from('leads').update({ last_interaction_at: new Date().toISOString() }).eq('id', lead.id);
       toast.success('סיכום השיחה נשמר');
       resetAfterSave();
+      invalidateLiveData(queryClient);
+
     } catch (e: any) {
       toast.error(e?.message ?? 'שמירת סיכום השיחה נכשלה');
     } finally {
