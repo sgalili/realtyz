@@ -1308,3 +1308,94 @@
   [class*="bg-emerald"], [class*="bg-green"], [class*="bg-red"], [class*="bg-amber"], [class*="bg-yellow"], [class*="bg-orange"], [class*="bg-pink"], [class*="bg-purple"], [class*="bg-violet"], [class*="bg-sky"] { background-color: hsl(var(--brand-navy) / 0.10) !important; }
   [class*="border-emerald"], [class*="border-green"], [class*="border-red"], [class*="border-amber"], [class*="border-yellow"], [class*="border-orange"], [class*="border-pink"], [class*="border-purple"], [class*="border-violet"], [class*="border-sky"] { border-color: hsl(var(--brand-navy) / 0.40) !important; }
 }
+
+/* ============================================================
+   LANDING PAGE — futuristic dark navy + gold, 60fps GPU motion.
+   Scoped token overrides so all components stay semantic.
+   ============================================================ */
+.realtyz-landing {
+  --background: 215 60% 6%;
+  --foreground: 210 40% 98%;
+  --card: 215 50% 10%;
+  --card-foreground: 210 40% 98%;
+  --popover: 215 50% 10%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 47 100% 55%;
+  --primary-foreground: 213 73% 10%;
+  --secondary: 215 45% 14%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 215 40% 16%;
+  --muted-foreground: 213 25% 72%;
+  --accent: 47 100% 55%;
+  --accent-foreground: 213 73% 10%;
+  --border: 213 35% 22%;
+  --input: 213 35% 22%;
+  --ring: 47 100% 55%;
+  color-scheme: dark;
+}
+
+.realtyz-landing .landing-gradient-text {
+  background-image: linear-gradient(100deg, hsl(47 100% 62%), hsl(38 95% 58%), hsl(199 90% 62%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.realtyz-landing .landing-card {
+  box-shadow: 0 20px 60px -30px hsl(213 90% 4% / 0.9);
+}
+
+.landing-aurora {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.5;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+.landing-aurora-a {
+  inset-inline-end: -12%;
+  top: -18%;
+  width: 46rem;
+  height: 46rem;
+  background: radial-gradient(circle at 30% 30%, hsl(47 100% 55% / 0.55), transparent 65%);
+  animation: landing-float-a 18s ease-in-out infinite;
+}
+.landing-aurora-b {
+  inset-inline-start: -14%;
+  top: 12%;
+  width: 40rem;
+  height: 40rem;
+  background: radial-gradient(circle at 60% 40%, hsl(205 95% 52% / 0.5), transparent 65%);
+  animation: landing-float-b 22s ease-in-out infinite;
+}
+.landing-aurora-c {
+  inset-inline-start: 20%;
+  top: -10%;
+  width: 34rem;
+  height: 34rem;
+  background: radial-gradient(circle at 50% 50%, hsl(47 100% 55% / 0.3), transparent 70%);
+  animation: landing-float-a 26s ease-in-out infinite;
+}
+
+.landing-grid {
+  background-image:
+    linear-gradient(to right, hsl(210 40% 98% / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(210 40% 98% / 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at 50% 0%, black, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black, transparent 72%);
+}
+
+@keyframes landing-float-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-4%, 6%, 0) scale(1.08); }
+}
+@keyframes landing-float-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50%      { transform: translate3d(5%, -5%, 0) scale(0.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-aurora { animation: none; }
+}
