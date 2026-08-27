@@ -294,12 +294,6 @@ export default function Landing() {
               <p className="text-center text-lg font-bold">
                 מנוי אחד. הכל כלול ללא הגבלה. משלמים רק לפי אנשי קשר פעילים.
               </p>
-              <Link to="/auth">
-                <Button size="lg" className="h-12 px-8 text-base font-bold">
-                  התחל בחינם
-                  <ArrowLeft className="mr-2 h-5 w-5" aria-hidden="true" />
-                </Button>
-              </Link>
             </div>
           </Reveal>
         </div>
