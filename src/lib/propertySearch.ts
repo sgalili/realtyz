@@ -399,6 +399,6 @@ export async function searchAllSources(
   return {
     results: filtered,
     sources,
-    progress: { done, total, loaded: filtered.length, pending: [] },
+    progress: { done: 3, total: 3, loaded: filtered.length, pending: [] },
   };
 }
