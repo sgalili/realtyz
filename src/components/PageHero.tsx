@@ -16,6 +16,7 @@ import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { toast } from 'sonner';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
+import { BrightDataHeroPill } from '@/components/BrightDataHeroPill';
 // CreditBalancePill moved to /billing (Packages & Payments page).
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -344,6 +345,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
+          <BrightDataHeroPill />
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
           {location.pathname.startsWith('/inbox') && <InboxAutopilotToggle />}
