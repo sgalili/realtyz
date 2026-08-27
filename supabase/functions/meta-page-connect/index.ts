@@ -393,8 +393,18 @@ Deno.serve(async (req) => {
     // Read-only diagnostic: which Meta app the backend actually uses. The App ID
     // is public (it appears in every login URL), so returning it is safe and lets
     // the UI verify it matches the app where the redirect URIs are registered.
+    // GLOBAL APP: the same super-admin managed Meta app serves every workspace,
+    // so the credential probe reports platform-wide health, not per-user setup.
     if (action === "app_info") {
-      return json({ app_id: clientId, has_secret: !!clientSecret, graph_version: GRAPH_VERSION });
+      const health = await validateFbApp(clientId, clientSecret);
+      return json({
+        app_id: clientId,
+        has_secret: !!clientSecret,
+        app_valid: health.valid,
+        app_error: health.reason,
+        graph_version: GRAPH_VERSION,
+        redirect_uri: CANONICAL_REDIRECT_URI,
+      });
     }
 
     if (action === "start") {
@@ -405,23 +415,30 @@ Deno.serve(async (req) => {
         "using =",
         JSON.stringify(CANONICAL_REDIRECT_URI),
       );
+      // ZERO-FRICTION LOGIN: `basic` asks only for permissions that Meta grants
+      // without App Review, so a brand-new user can always complete the dialog
+      // (the UI retries with this tier when the full dialog is rejected).
+      const basic = body?.scope_tier === "basic" || body?.basic === true;
+      const scopes = basic ? BASIC_PAGE_SCOPES : PAGE_SCOPES;
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: CANONICAL_REDIRECT_URI,
         response_type: "code",
-        scope: PAGE_SCOPES.join(","),
+        scope: scopes.join(","),
         state: oauthState("facebook_page", returnOrigin),
         auth_type: "rerequest",
       });
       if (CONFIG_ID) params.set("config_id", CONFIG_ID);
       return json({
         auth_url: `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params}`,
-        scopes: PAGE_SCOPES,
+        scopes,
+        scope_tier: basic ? "basic" : "full",
         app_id: clientId,
         redirect_uri: CANONICAL_REDIRECT_URI,
       });
 
     }
+
 
     if (action === "exchange") {
       const code = String(body?.code ?? "").trim();
