@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { cleanMeasurementValue } from '@/lib/propertyMeasures';
+import { cleanMeasurementValue, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
 
 import {
   Sofa, TrendingUp, MapPin, Navigation, Pencil, Plus, Trash2, X, Save,
@@ -402,11 +402,36 @@ export function PropertyRichDetailsCard({
   }
 
   // While hydrating, keep the structure on screen with empty value rows.
-  const baseRows = detailRows.length
+  const rawBaseRows = detailRows.length
     ? detailRows
     : pending
       ? SKELETON_ROWS.map((name) => ({ key: name, name, value: '' }))
       : [];
+  // A glued area value ("7124" = 7 floors in the building + 124 m²) is split:
+  // the area row keeps the area only, the floors count gets its own row right
+  // after the floor row.
+  const gluedFloors = (() => {
+    const areaRow = rawBaseRows.find((r) => /מ״ר|מ"ר|שטח/.test(String(r.name)));
+    if (!areaRow) return null;
+    if (rawBaseRows.some((r) => String(r.name).includes('קומות בבניין'))) return null;
+    return floorsInBuildingFromSqm(areaRow.value);
+  })();
+  const baseRows = gluedFloors
+    ? (() => {
+        const out: typeof rawBaseRows = [];
+        for (const r of rawBaseRows) {
+          out.push(r);
+          if (String(r.name) === 'קומה') {
+            out.push({ key: 'floors-in-building', name: 'קומות בבניין', value: String(gluedFloors) } as typeof r);
+          }
+        }
+        if (!out.some((r) => String(r.name) === 'קומות בבניין')) {
+          out.push({ key: 'floors-in-building', name: 'קומות בבניין', value: String(gluedFloors) } as typeof rawBaseRows[number]);
+        }
+        return out;
+      })()
+    : rawBaseRows;
+
   const extraRows = (active.extra ?? []).map((e, i) => ({
     key: `extra:${i}`,
     name: e.name,

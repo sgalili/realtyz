@@ -14,6 +14,8 @@
 //              autopilot handles them; this router is bypassed.
 // ============================================================
 
+import { cleanSqm } from "./measures.ts";
+
 const DASHBOARD_BASE = "https://realtyz.co.il";
 
 // Realtyz AI Master GreenAPI Instance. All owner-companion routing and
@@ -188,7 +190,7 @@ function buildListingFactSheet(l: any): string {
   if (l.address) lines.push(`כתובת: ${l.address}${l.city ? ", " + l.city : ""}`);
   if (l.rooms) lines.push(`חדרים: ${l.rooms}`);
   if (l.floor !== null && l.floor !== undefined) lines.push(`קומה: ${l.floor}`);
-  if (l.sqm) lines.push(`שטח: ${l.sqm} מ"ר`);
+  if (cleanSqm(l.sqm)) lines.push(`שטח: ${cleanSqm(l.sqm)} מ"ר`);
   if (l.parking) lines.push(`חניה: כן`);
   if (l.elevator) lines.push(`מעלית: כן`);
   const price = formatIls(l.asking_price);

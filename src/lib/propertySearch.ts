@@ -6,6 +6,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeImageUrls } from '@/lib/imageHealth';
 import type { PropertySource } from '@/components/properties/SourceBadge';
+import { sanitizeSqm } from '@/lib/propertyMeasures';
+
 
 export type UnifiedResult = {
   key: string;                 // stable client-side id
@@ -142,7 +144,7 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
       address: row.address ?? row.neighborhood ?? null,
       neighborhood: row.neighborhood ?? null,
       rooms: row.rooms != null ? Number(row.rooms) : null,
-      size_sqm: row.sqm != null ? Number(row.sqm) : null,
+      size_sqm: sanitizeSqm(row.sqm),
       floor: row.floor != null ? Number(row.floor) : null,
       photos: normalizeImageUrls(Array.isArray(row.media_photos) ? row.media_photos.filter((p: any) => typeof p === 'string') : []),
       url: row.source_url ?? meta.source_url ?? null,
@@ -176,7 +178,7 @@ function normalizeExternal(source: PropertySource, items: any[]): UnifiedResult[
       address: it.address ?? null,
       neighborhood: it.neighborhood ?? null,
       rooms: it.rooms != null ? Number(it.rooms) : null,
-      size_sqm: it.size_sqm != null ? Number(it.size_sqm) : it.sqm != null ? Number(it.sqm) : null,
+      size_sqm: sanitizeSqm(it.size_sqm ?? it.sqm),
       floor: it.floor != null ? Number(it.floor) : null,
       photos: Array.isArray(it.photos) ? normalizeImageUrls(it.photos) : [],
       url: it.url ?? it.source_url ?? null,

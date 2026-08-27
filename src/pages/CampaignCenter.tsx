@@ -61,6 +61,7 @@ import { SourceBadge } from '@/components/properties/SourceBadge';
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 import {
   hebrewOnlyParts, hebrewPropertyType, sanitizeFloor, sanitizeRooms, sanitizeSqm,
+  floorsInBuildingFromSqm,
 } from '@/lib/propertyMeasures';
 
 
@@ -1352,8 +1353,9 @@ const InlineComposer = ({
             listing.neighborhood ? `שכונה: ${listing.neighborhood}` : null,
             listing.city ? `עיר: ${listing.city}` : null,
             listing.rooms ? `חדרים: ${listing.rooms}` : null,
-            listing.sqm ? `שטח: ${listing.sqm} מ"ר` : null,
-            listing.floor !== null && listing.floor !== undefined ? `קומה: ${listing.floor}` : null,
+            sanitizeSqm(listing.sqm) ? `שטח: ${sanitizeSqm(listing.sqm)} מ"ר` : null,
+            sanitizeFloor(listing.floor) !== null ? `קומה: ${sanitizeFloor(listing.floor)}` : null,
+            floorsInBuildingFromSqm(listing.sqm) ? `קומות בבניין: ${floorsInBuildingFromSqm(listing.sqm)}` : null,
             listing.asking_price ? `מחיר: ${Number(listing.asking_price).toLocaleString('he-IL')} ש"ח` : null,
           ].filter(Boolean).join(' | ')
         : '';
@@ -1641,7 +1643,7 @@ const InlineComposer = ({
                   )}>
                   <div className="font-medium truncate">{listingOptionLabel(l)}</div>
                   <div className="text-[11px] text-muted-foreground truncate">
-                    {[l.property_title, l.neighborhood, l.rooms ? `${l.rooms} חד׳` : null, l.sqm ? `${l.sqm} מ״ר` : null]
+                    {[l.property_title, l.neighborhood, l.rooms ? `${l.rooms} חד׳` : null, sanitizeSqm(l.sqm) ? `${sanitizeSqm(l.sqm)} מ״ר` : null]
                       .filter(Boolean).join(' · ')}
                   </div>
                 </button>

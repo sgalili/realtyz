@@ -10,6 +10,7 @@
 // Required secret: BRIGHTDATA_API_TOKEN
 // Optional secret: BRIGHTDATA_ZONE (defaults to "yad2")
 
+import { cleanSqm } from "../_shared/measures.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import puppeteer from "npm:puppeteer-core@22.15.0";
@@ -973,7 +974,7 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
 
   const priceRaw = it?.price ?? it?.priceInShekels ?? it?.metaData?.price ?? null;
   const rooms = toNum(it?.additionalDetails?.roomsCount ?? it?.rooms ?? it?.Rooms_text ?? it?.row_3);
-  const sqm = toInt(it?.additionalDetails?.squareMeter ?? it?.square_meters ?? it?.SquareMeter);
+  const sqm = cleanSqm(it?.additionalDetails?.squareMeter ?? it?.square_meters ?? it?.SquareMeter);
   const floor = toInt(it?.additionalDetails?.floor ?? it?.floor);
 
   const city = clean(it?.address?.city?.text ?? it?.city ?? it?.city_text ?? it?.row_4);
@@ -1311,7 +1312,7 @@ function parseSearch(html: string, srcUrl: string, limit: number): Scraped[] {
         };
       })(),
       ...pickListingDates(it),
-      sqm: toInt(sqmRaw),
+      sqm: cleanSqm(sqmRaw),
       floor: toInt(floorRaw),
       photos,
       deal_type: dealType,
@@ -1349,7 +1350,7 @@ function parseSearch(html: string, srcUrl: string, limit: number): Scraped[] {
       city: clean(card.find("[class*=city i], [data-testid*=city i]").first().text()),
       neighborhood: clean(card.find("[class*=neighborhood i]").first().text()),
       address: clean(card.find("[class*=address i], [class*=street i]").first().text()),
-      sqm: toInt(text.match(/(\d{2,4})\s*מ["״]?ר/)?.[1] ?? null),
+      sqm: cleanSqm(text.match(/(\d{2,4})\s*מ["״]?ר/)?.[1] ?? null),
       floor: toInt(text.match(/קומה\s*(\d+)/)?.[1] ?? null),
       photos: card.find("img").toArray().map((i) => $(i).attr("src") || $(i).attr("data-src") || "").filter((u) => /^https?:\/\//.test(u) && !/logo|sprite|icon|placeholder/i.test(u)),
       deal_type: dealType,
@@ -1528,7 +1529,7 @@ function parseItem(html: string, srcUrl: string): Scraped | null {
     address: addressText,
     house_number: houseNum,
     apartment_number: aptNum,
-    sqm: toInt(sqmText),
+    sqm: cleanSqm(sqmText),
     floor: toInt(floorText),
     photos: pickAllPhotos(photos).slice(0, 40),
     deal_type: dealType,

@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { sanitizeSqm, sanitizeFloor, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
+
 import {
   BedDouble, Ruler, MapPin, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
@@ -813,8 +815,10 @@ export default function PropertyDetail() {
           </header>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {propertySnapshot.rooms ? <Spec icon={BedDouble} label="חדרים" value={String(propertySnapshot.rooms)} /> : null}
-            {propertySnapshot.size_sqm ? <Spec icon={Ruler} label="מ״ר בנוי" value={String(propertySnapshot.size_sqm)} /> : null}
-            {propertySnapshot.floor != null ? <Spec icon={Layers} label="קומה" value={String(propertySnapshot.floor)} /> : null}
+            {sanitizeSqm(propertySnapshot.size_sqm) ? <Spec icon={Ruler} label="מ״ר בנוי" value={String(sanitizeSqm(propertySnapshot.size_sqm))} /> : null}
+            {propertySnapshot.floor != null ? <Spec icon={Layers} label="קומה" value={String(sanitizeFloor(propertySnapshot.floor) ?? propertySnapshot.floor)} /> : null}
+            {floorsInBuildingFromSqm(propertySnapshot.size_sqm) ? <Spec icon={Layers} label="קומות בבניין" value={String(floorsInBuildingFromSqm(propertySnapshot.size_sqm))} /> : null}
+
             {propertySnapshot.address ? <Spec icon={MapPin} label="כתובת" value={propertySnapshot.address} /> : null}
           </div>
           {snapshotFeatures.length > 0 && (

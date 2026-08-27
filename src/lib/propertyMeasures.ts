@@ -13,22 +13,42 @@ const numTokens = (raw: unknown): string[] => {
   return s.match(/\d+(?:\.\d+)?/g) ?? [];
 };
 
+/**
+ * Split a glued area value such as 7124 ("7 floors in building" + "124 m²")
+ * into its two parts. Returns the floors count only when the value is clearly
+ * glued (out of plausible area range).
+ */
+export function splitGluedSqm(raw: unknown): { sqm: number | null; floorsInBuilding: number | null } {
+  const tokens = numTokens(raw).map(Number).filter((n) => Number.isFinite(n));
+  if (tokens.length === 0) return { sqm: null, floorsInBuilding: null };
+  const plausible = tokens.filter((n) => n >= 8 && n <= 2000);
+  if (plausible.length > 0) return { sqm: plausible[0], floorsInBuilding: null };
+  const first = Math.trunc(tokens[0]);
+  const digits = String(first);
+  if (digits.length >= 4) {
+    const lead = Number(digits.slice(0, digits.length - 3));
+    const tail = Number(digits.slice(-3));
+    if (tail >= 20 && tail <= 2000 && lead >= 1 && lead <= 60) {
+      return { sqm: tail, floorsInBuilding: lead };
+    }
+  }
+  if (digits.length === 3) {
+    const tail = Number(digits.slice(1));
+    if (tail >= 8 && tail <= 2000) return { sqm: tail, floorsInBuilding: Number(digits[0]) };
+  }
+  return { sqm: null, floorsInBuilding: null };
+}
+
 /** Living area in m² — plausible range 8..2000, never a glued value. */
 export function sanitizeSqm(raw: unknown): number | null {
-  const tokens = numTokens(raw).map(Number).filter((n) => Number.isFinite(n));
-  if (tokens.length === 0) return null;
-  const plausible = tokens.filter((n) => n >= 8 && n <= 2000);
-  if (plausible.length > 0) return plausible[0];
-  const first = tokens[0];
-  // A single glued token like "280" where the leading digit is a floor number:
-  // drop the leading digit when the remainder is a plausible area.
-  const digits = String(Math.trunc(first));
-  if (digits.length >= 3) {
-    const tail = Number(digits.slice(1));
-    if (tail >= 8 && tail <= 2000) return tail;
-  }
-  return null;
+  return splitGluedSqm(raw).sqm;
 }
+
+/** Floors in the building, when it can be derived from a glued area value. */
+export function floorsInBuildingFromSqm(raw: unknown): number | null {
+  return splitGluedSqm(raw).floorsInBuilding;
+}
+
 
 /** Floor number — handles "קומה 2 מתוך 5", "2/5", "קרקע". */
 export function sanitizeFloor(raw: unknown): number | null {
