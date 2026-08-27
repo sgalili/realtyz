@@ -64,8 +64,11 @@ export function useCommandCenterTasks() {
       ]);
 
       const rawItems: any[] = Array.isArray(itemsRes?.data) ? itemsRes.data : [];
+      const POST_TYPES = new Set(['social_post', 'sms_campaign', 'whatsapp_blast', 'push']);
       const items = rawItems.filter(
-        (r) => !CLOSED_TASK_STATUSES.has(String(r.status ?? '').toLowerCase()),
+        (r) => !CLOSED_TASK_STATUSES.has(String(r.status ?? '').toLowerCase())
+          && !POST_TYPES.has(String(r.item_type ?? '').toLowerCase()),
+
       );
 
       const leadIds = new Set<string>();
