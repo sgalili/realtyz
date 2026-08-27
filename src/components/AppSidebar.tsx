@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/sidebar';
 import { SidebarIntelInput } from '@/components/SidebarIntelInput';
 import { useSidebarCounts } from '@/hooks/useSidebarCounts';
+import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 
 type NavItem = {
   title: string;
@@ -151,8 +152,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const userDisplayName: string =
-    meta.full_name || meta.name || user?.email || (user as any)?.phone || 'משתמש';
+  const userDisplayName = friendlyUserDisplayName(user, 'ללא שם');
   const userInitial = userDisplayName.slice(0, 1);
 
   const officeLogoUrl: string | null = settings?.logo_url || null;

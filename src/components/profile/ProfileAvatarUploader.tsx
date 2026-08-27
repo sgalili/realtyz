@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Upload, Trash2, User as UserIcon } from 'lucide-react';
+import { Camera, Trash2, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
@@ -111,34 +111,33 @@ export function ProfileAvatarUploader() {
   return (
     <div className="rounded-lg border bg-card/40 p-3 text-right">
       <Label className="mb-2 block text-sm font-semibold">תמונת פרופיל</Label>
-      <div className="flex items-center gap-3 flex-row-reverse">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background">
+      <div className="flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={onPick}
+          disabled={busy}
+          aria-label={avatarUrl ? 'החלפת תמונת פרופיל' : 'העלאת תמונת פרופיל'}
+          className="group relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+        >
           {avatarUrl ? (
             <img src={avatarUrl} alt="תמונת פרופיל" className="h-full w-full object-cover" />
           ) : (
             <UserIcon className="h-8 w-8 text-muted-foreground/50" />
           )}
-        </div>
-        <div className="flex flex-1 flex-col gap-2">
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="hidden"
-            onChange={onFile}
-            disabled={busy}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onPick}
-            disabled={busy}
-            className={cn('self-start gap-1.5')}
-          >
-            <Upload className="h-3.5 w-3.5" />
-            {busy ? 'מעלה...' : avatarUrl ? 'החלפת תמונה' : 'העלאת תמונה'}
-          </Button>
+          <span className="absolute inset-x-0 bottom-0 flex h-8 items-center justify-center bg-foreground/70 text-background opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+            <Camera className="h-4 w-4" aria-hidden="true" />
+          </span>
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={onFile}
+          disabled={busy}
+        />
+        <p className="text-xs text-muted-foreground">{busy ? 'מעלה תמונה...' : 'לחצו על התמונה להחלפה · עד 5MB'}</p>
+        <div className="flex justify-center">
           {avatarUrl && (
             <Button
               type="button"
@@ -146,13 +145,12 @@ export function ProfileAvatarUploader() {
               size="sm"
               onClick={onRemove}
               disabled={busy}
-              className="self-start gap-1.5 text-destructive hover:bg-destructive/10"
+              className="gap-1.5 text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-3.5 w-3.5" />
               הסר תמונה
             </Button>
           )}
-          <p className="text-xs text-muted-foreground">PNG, JPG או WEBP. עד 5MB.</p>
         </div>
       </div>
     </div>

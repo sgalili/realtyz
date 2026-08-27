@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { DEMO_CANDIDATES, getDemoCandidateCrisisAlerts, type DemoCandidateId } from '@/lib/demoData';
 import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
+import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 
 // DemoModeToggle removed from app
 import { PageHero } from '@/components/PageHero';
@@ -64,7 +65,7 @@ function HeaderProfileLink() {
 
   if (!user) return null;
   const meta = (user.user_metadata ?? {}) as Record<string, any>;
-  const displayName = meta.full_name || meta.name || user.email || (user as any).phone || 'משתמש';
+  const displayName = friendlyUserDisplayName(user, 'ללא שם');
   const initial = displayName.slice(0, 1);
 
   return (
