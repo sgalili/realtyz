@@ -15,17 +15,37 @@ import {
   ChevronLeft,
   ClipboardList,
   Hourglass,
+  Megaphone,
   Users,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import {
   useCommandCenterMetrics,
   useCommandCenterTasks,
+  useCommandCenterPosts,
   ACTION_TYPE_LABEL,
   TASK_STATUS_LABEL,
+  POST_STATUS_LABEL,
+  CHANNEL_LABEL,
   type CommandTask,
 } from '@/hooks/useCommandCenter';
+
+function QuickActionsButton() {
+  return (
+    <Button
+      type="button"
+      size="lg"
+      className="h-12 gap-2 px-6 text-sm font-bold"
+      onClick={() => window.dispatchEvent(new Event('open-quick-actions'))}
+    >
+      <Zap className="h-4 w-4" />
+      פעולה מהירה - פתק, תזכורת, סיכום שיחה
+    </Button>
+  );
+}
+
 
 const PRIORITY_STYLE: Record<CommandTask['priority'], string> = {
   high: 'bg-destructive/10 text-destructive ring-1 ring-destructive/20',
