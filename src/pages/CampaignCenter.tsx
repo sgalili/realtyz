@@ -2532,6 +2532,27 @@ const ConfirmDispatchDialog = ({
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
+  // Pre-send statistics for the selected Facebook groups (count + reach).
+  const [groupStats, setGroupStats] = useState<{ known: number; members: number }>({ known: 0, members: 0 });
+  useEffect(() => {
+    if (!open || !groupIds?.length) { setGroupStats({ known: 0, members: 0 }); return; }
+    (async () => {
+      const ids = groupIds.map((g) => String(g).replace(/^ext:/, ''));
+      try {
+        const { data } = await (supabase as any)
+          .from('fb_user_groups')
+          .select('group_id, member_count')
+          .in('group_id', ids);
+        const rows = (data || []) as any[];
+        const members = rows.reduce((sum, r) => sum + (Number(r?.member_count) || 0), 0);
+        setGroupStats({ known: rows.filter((r) => Number(r?.member_count) > 0).length, members });
+      } catch {
+        setGroupStats({ known: 0, members: 0 });
+      }
+    })();
+  }, [open, groupIds]);
+
+
 
   useEffect(() => {
     if (!open || !channel || !user) return;
