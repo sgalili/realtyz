@@ -39,26 +39,42 @@ const metaCachedIds = new Set<string>();
 
 /**
  * Metadata-only completeness check (images intentionally ignored).
- * A row counts as hydrated once it carries the descriptive text plus the
- * parsed structural fields (neighborhood / house / apartment) and a recorded
- * original publication date.
+ * A row only counts as hydrated when it carries a REAL description (not the
+ * auto-generated "city · neighborhood" placeholder), the parsed structural
+ * fields, a publication date AND the actual property attribute bag
+ * (`additional_details` / `attributes` / `features`). Without the last check
+ * half-scraped rows were treated as done, which is why detail pages showed
+ * only "מ״ר" + "חדרים" and never re-hydrated.
  */
 export async function isListingMetadataImported(listingId: string): Promise<boolean> {
   if (metaCachedIds.has(listingId) || cachedIds.has(listingId)) return true;
   const { data } = await supabase
     .from('listings')
-    .select('description, long_description, neighborhood, house_number, apartment_number, rooms, sqm, asking_price, source_metadata')
+    .select('property_title, description, long_description, neighborhood, house_number, apartment_number, rooms, sqm, asking_price, source_metadata, additional_details, attributes, features')
     .eq('id', listingId)
     .maybeSingle();
   if (!data) return false;
   const meta = (data.source_metadata ?? {}) as any;
-  const hasText = Boolean(
-    (data.long_description && String(data.long_description).trim()) ||
-    (data.description && String(data.description).trim()),
-  );
+  const norm = (v: unknown) => String(v ?? '').replace(/\s+/g, ' ').trim();
+  const title = norm((data as any).property_title);
+  const long = norm(data.long_description);
+  const short = norm(data.description);
+  // A description identical to the generated headline is not real content.
+  const realText = [long, short].find((t) => t.length >= 25 && t !== title) || '';
+  const hasText = Boolean(realText);
   const hasStructure = Boolean(data.neighborhood || data.house_number || data.apartment_number);
   const hasDate = Boolean(meta.published_at || meta.original_published_at || meta.date_added);
-  const ok = hasText && hasStructure && hasDate;
+  const bagSize = [
+    (data as any).additional_details,
+    (data as any).attributes,
+    (data as any).features,
+  ].reduce((n, bag) => {
+    if (!bag || typeof bag !== 'object') return n;
+    return n + (Array.isArray(bag) ? bag.length : Object.keys(bag).length);
+  }, 0);
+  const hasAttributes = bagSize >= 5;
+  const ok = hasText && hasStructure && hasDate && hasAttributes;
+
   if (ok) metaCachedIds.add(listingId);
   return ok;
 }
