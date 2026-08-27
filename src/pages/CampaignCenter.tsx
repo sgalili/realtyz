@@ -5728,6 +5728,26 @@ const CampaignCenter = () => {
     return ok;
   }, []);
 
+  /**
+   * Retires a published draft everywhere: the live list (via publishedDrafts),
+   * the session assignments and the durable composer session — so a refresh
+   * never resurrects a post that already went out.
+   */
+  const retirePublishedDraft = useCallback((key: string, channelId?: string) => {
+    setPublishedDrafts((curr) => new Set(curr).add(key));
+    setDraftStatuses((curr) => { const next = { ...curr }; delete next[key]; return next; });
+    publishFnsRef.current.delete(key);
+    try {
+      const raw = sessionStorage.getItem('rz-schedule-assignments');
+      const list: ComposerAssignment[] = raw ? JSON.parse(raw) || [] : [];
+      const kept = list.filter((a, idx) => draftKeyFor(a, idx) !== key);
+      sessionStorage.setItem('rz-schedule-assignments', JSON.stringify(kept));
+      const keptIds = Array.from(new Set(kept.map((a) => a.listing).filter((v): v is string => Boolean(v))));
+      setRestoredSession((prev) => (prev ? { ...prev, assignments: kept, propertyIds: keptIds } : prev));
+      if (channelId) void saveComposerSession(channelId, keptIds, kept);
+    } catch {}
+  }, []);
+
   const publishAllDrafts = useCallback((keys: string[]) => {
     const queue = keys.filter((k) => !publishedDrafts.has(k) && publishFnsRef.current.has(k));
     if (!queue.length) { toast.info('אין טיוטות מוכנות לפרסום'); return; }
@@ -6480,21 +6500,38 @@ const CampaignCenter = () => {
             // One composer block per scheduled assignment — each tied to its
             // listing, slot time and variant index for independent generation
             // and an independent Approve/Schedule action.
-            const blocks = assignments.length > 0
+            const allBlocks = assignments.length > 0
               ? assignments
               : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
-            const distinctCampaignProperties = new Set([
-              ...propertyIds,
-              ...blocks.map((b) => b.listing).filter((id): id is string => Boolean(id)),
-            ]).size;
+            // Published drafts leave the list instantly (no refresh needed) —
+            // their key is retired the moment the dispatch succeeds.
+            const blocks = allBlocks.filter((b, idx) => !publishedDrafts.has(draftKeyFor(b, idx)));
+            const keyOf = (b: (typeof allBlocks)[number]) => draftKeyFor(b, allBlocks.indexOf(b));
+            const distinctCampaignProperties = new Set(
+              blocks.map((b) => b.listing).filter((id): id is string => Boolean(id)),
+            ).size;
             // Older restored sessions may contain the seven slots but not the
             // redundant propertyIds array. In that case each slot still
             // represents its property, so never render a misleading zero.
             const campaignPropertyCount = distinctCampaignProperties || blocks.length;
-            const unpublishedCount = blocks.filter((b, idx) => !publishedDrafts.has(draftKeyFor(b, idx))).length;
+            const unpublishedCount = blocks.length;
             const readyKeys = blocks
-              .map((b, idx) => draftKeyFor(b, idx))
-              .filter((k) => draftStatuses[k]?.canPublish && !publishedDrafts.has(k));
+              .map((b) => keyOf(b))
+              .filter((k) => draftStatuses[k]?.canPublish);
+            if (blocks.length === 0) {
+              return (
+                <div className="space-y-4 pb-24" dir="rtl">
+                  <div className="rounded-xl border border-emerald-300/60 bg-emerald-50 px-4 py-6 text-center text-sm font-semibold text-emerald-800">
+                    כל הטיוטות פורסמו ונכנסו לתור הפוסטים העתידיים.
+                  </div>
+                  <div className="flex justify-center">
+                    <Button onClick={() => { setHistoryTab('future'); setHistoryRefreshTick((t) => t + 1); setCampaignHistoryOpen(true); }}>
+                      צפייה בפוסטים העתידיים
+                    </Button>
+                  </div>
+                </div>
+              );
+            }
             return (
               <div className="space-y-4 pb-44">
                 <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
@@ -6505,7 +6542,7 @@ const CampaignCenter = () => {
                   // rotation) must map every draft back to the SAME stored
                   // snapshot, otherwise restored work looks lost and the AI
                   // regenerates from scratch.
-                  const key = draftKeyFor(b, idx);
+                  const key = keyOf(b);
                   return (
                   <DraftCollapsibleCard
                     key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`}
@@ -6613,7 +6650,7 @@ const CampaignCenter = () => {
                   {/* Publish sits at the far end of the same row, opposite the action icons. */}
                   <button
                     type="button"
-                    onClick={() => publishAllDrafts(blocks.map((b, idx) => draftKeyFor(b, idx)))}
+                    onClick={() => publishAllDrafts(blocks.map((b) => keyOf(b)))}
                     disabled={readyKeys.length === 0}
                     className={cn(
                       'ms-auto flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
@@ -6904,7 +6941,8 @@ const CampaignCenter = () => {
           activeDraftKeyRef.current = null;
           if (draftKey) {
             setConfirmPayload(null);
-            setPublishedDrafts((curr) => new Set(curr).add(draftKey));
+            retirePublishedDraft(draftKey, publishedChannelId);
+            setHistoryRefreshTick((t) => t + 1);
             if (publishedChannelId) {
               try {
                 localStorage.removeItem(`rz-composer-draft:v2:${publishedChannelId}:${draftKey}`);
