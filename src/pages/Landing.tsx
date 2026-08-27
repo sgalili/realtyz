@@ -7,7 +7,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { PriceTag } from '@/components/PriceTag';
 import { ArrowLeft, Check, Star } from 'lucide-react';
 import { FREE_CONTACTS, FREE_PROPERTIES } from '@/lib/pricing';
 import PricingSection from '@/components/landing/PricingSection';
