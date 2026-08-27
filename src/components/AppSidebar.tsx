@@ -48,6 +48,14 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/dashboard'],
   },
   {
+    title: 'משימות היום',
+    url: '/command-center',
+    icon: ClipboardList,
+    iconColor: 'text-sky-600',
+    badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
+    aliases: ['/tasks'],
+  },
+  {
     title: 'לקוחות',
     url: '/lead-crm',
     icon: Users,
