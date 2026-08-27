@@ -364,25 +364,8 @@ export function PropertyRichDetailsCard({
       )}
 
 
-      {featureFlags.length > 0 && (
-        <section>
-          <h2 className="text-2xl font-bold text-foreground mb-3">מה יש בנכס?</h2>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-            {featureFlags.map(({ name, on }) => {
-              const Icon = ICONS[name] ?? Home;
-              return (
-                <div
-                  key={name}
-                  className={`flex items-center gap-3 ${on ? 'text-foreground' : 'text-muted-foreground/50 line-through decoration-1'}`}
-                >
-                  <Icon className="h-6 w-6 shrink-0" />
-                  <span className="text-lg">{name}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      {/* The "מה יש בנכס?" grid lives in <PropertyFeatureBadges /> above this
+          card; rendering it here again produced a duplicated section. */}
 
       {chartData.length > 1 && (
         <section>

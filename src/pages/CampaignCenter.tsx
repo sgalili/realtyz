@@ -1846,7 +1846,7 @@ const InlineComposer = ({
           : '';
         return (
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-0 pt-2 backdrop-blur">
-            <div className="flex items-stretch justify-between gap-2">
+            <div className="flex flex-row-reverse items-stretch justify-between gap-2">
               <button
                 type="button"
                 onClick={() => {
