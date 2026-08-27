@@ -457,7 +457,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
   const actionButtons = (
     <>
-      <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="h-8 gap-1.5 text-xs">
+      <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="h-8 gap-1.5 text-[15px]">
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />}
         בדיקה
       </Button>
@@ -467,7 +467,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           size="sm"
           onClick={disconnect}
           disabled={disconnecting}
-          className="h-8 gap-1.5 text-xs text-destructive"
+          className="h-8 gap-1.5 text-[15px] text-destructive"
           aria-label="נתק את עמוד הפייסבוק"
         >
           {disconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
@@ -510,7 +510,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             </Button>
             {pageOptions.length > 0 && (
               <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2">
-                <p className="text-[11px] font-semibold">בחרו את עמוד הפרסום</p>
+                <p className="text-[14px] font-semibold">בחרו את עמוד הפרסום</p>
                 {pageOptions.map((opt) => (
                   <Button
                     key={opt.id}
@@ -531,7 +531,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
                 href={pendingAuthUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block text-center text-xs text-primary underline underline-offset-2"
+                className="block text-center text-[15px] text-primary underline underline-offset-2"
               >
                 פתחו את דף האישור של פייסבוק בלשונית חדשה
               </a>
@@ -554,7 +554,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 gap-1 text-xs"
+            className="h-7 gap-1 text-[15px]"
             onClick={() => setIgHelpOpen(true)}
           >
             <Instagram className="h-3.5 w-3.5" /> איך מחברים?
@@ -569,7 +569,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
                 אינסטגרם מתחבר דרך עמוד הפייסבוק — אין צורך בהתחברות נפרדת.
               </DialogDescription>
             </DialogHeader>
-            <ol className="list-inside list-decimal space-y-1.5 text-xs text-muted-foreground">
+            <ol className="list-inside list-decimal space-y-1.5 text-[15px] text-muted-foreground">
               <li>ודא שחשבון האינסטגרם הוא חשבון מקצועי (Business או Creator).</li>
               <li>באפליקציית אינסטגרם: הגדרות ← קישור חשבונות ← פייסבוק, ובחר את עמוד הפייסבוק המחובר כאן.</li>
               <li>חזור לכאן ולחץ "בדיקה" — האינסטגרם יופיע מקושר אוטומטית.</li>
@@ -577,7 +577,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             <Button
               type="button"
               size="sm"
-              className="h-8 text-xs"
+              className="h-8 text-[15px]"
               onClick={() => { setIgHelpOpen(false); void probe(true); }}
             >
               בדוק חיבור אינסטגרם
@@ -587,7 +587,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
 
         {status && !status.connected && status.message && (
-          <p className="text-xs text-destructive">{status.message}</p>
+          <p className="text-[15px] text-destructive">{status.message}</p>
         )}
 
         {/* Manual token fallback for apps blocked in development/testing mode */}
@@ -598,7 +598,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             aria-expanded={manualOpen}
             className="flex w-full items-center justify-between gap-2 p-3 text-right"
           >
-            <span className="flex items-center gap-2 text-xs font-medium">
+            <span className="flex items-center gap-2 text-[15px] font-medium">
               <KeyRound className="h-4 w-4 text-muted-foreground" />
               חיבור ידני באמצעות טוקן
             </span>
@@ -606,11 +606,11 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           </button>
           {manualOpen && (
             <div className="space-y-3 border-t p-3">
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[14px] text-muted-foreground">
                 שימושי כאשר אפליקציית Meta נמצאת במצב פיתוח או חסומה. הטוקן נשמר בצד השרת בלבד.
               </p>
               <div className="space-y-1.5">
-                <Label htmlFor="meta-page-id" className="text-xs">Page ID</Label>
+                <Label htmlFor="meta-page-id" className="text-[15px]">Page ID</Label>
                 <Input
                   id="meta-page-id"
                   dir="ltr"
@@ -622,7 +622,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="meta-page-token" className="text-xs">Page Access Token</Label>
+                <Label htmlFor="meta-page-token" className="text-[15px]">Page Access Token</Label>
                 <Input
                   id="meta-page-token"
                   dir="ltr"
