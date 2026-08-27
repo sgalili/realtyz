@@ -19,6 +19,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
+import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 
 type Item = {
   label: string;
@@ -61,9 +62,8 @@ export function HeaderProfileMenu() {
 
   if (!user) return null;
 
-  const meta = (user.user_metadata ?? {}) as Record<string, any>;
   const avatarUrl: string | null = profileAvatarUrl;
-  const displayName = meta.full_name || meta.name || user.email || (user as any).phone || 'משתמש';
+  const displayName = friendlyUserDisplayName(user, 'ללא שם');
   const initial = displayName.slice(0, 1);
 
   const goProfile = () => navigate('/profile');

@@ -74,14 +74,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const stored = window.localStorage.getItem(workspaceStorageKey(user.id));
       const validStored = stored && rows.some((r) => r.workspace_owner_id === stored) ? stored : null;
       const profileActive = (profile as any)?.active_workspace_owner_id as string | null | undefined;
-      const validProfile = profileActive && rows.some((r) => r.workspace_owner_id === profileActive) ? profileActive : null;
       const fallback = rows.find((r) => r.is_self)?.workspace_owner_id ?? rows[0]?.workspace_owner_id ?? user.id;
-      // Server/profile selection wins over stale browser storage so tenants
-      // always land in the workspace they were authenticated/assigned into.
-      const nextActive = validProfile ?? validStored ?? fallback;
+      // A browser choice is explicit and account-scoped. Without one, always
+      // start in the user's own empty workspace; never inherit a workspace
+      // selection left on the profile by an admin/super-admin session.
+      const nextActive = validStored ?? fallback;
       setActiveWorkspaceId(nextActive);
-      if (nextActive && (validStored || validProfile || rows.length <= 1)) {
+      if (nextActive) {
         window.localStorage.setItem(workspaceStorageKey(user.id), nextActive);
+      }
+      if (profileActive !== nextActive) {
+        void supabase.rpc('set_active_workspace', { _owner: nextActive });
       }
     } catch (err) {
       // Fail open: fall back to self

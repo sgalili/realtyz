@@ -2784,23 +2784,21 @@ const FEED_CACHE_MAX_PERSISTED = 120;
 // Remembers that this account has a bound Facebook Page so the card renders
 // "מחובר" instantly on mount, before the async DB verification resolves.
 const FB_BINDING_FLAG_KEY = 'realtyz.campaigns.fb_page_bound.v1';
-const writeFbBindingFlag = (bound: boolean) => {
+const fbBindingFlagKey = (scope?: string | null) => `${FB_BINDING_FLAG_KEY}:${scope || 'signed-out'}`;
+const writeFbBindingFlag = (bound: boolean, scope?: string | null) => {
   try {
-    if (bound) localStorage.setItem(FB_BINDING_FLAG_KEY, '1');
-    else localStorage.removeItem(FB_BINDING_FLAG_KEY);
+    const key = fbBindingFlagKey(scope);
+    if (bound) localStorage.setItem(key, '1');
+    else localStorage.removeItem(key);
   } catch { /* ignore */ }
 };
 
-const clearCachedFacebookChannel = () => {
+const connectionStorageKey = (base: string, userId?: string | null, workspaceId?: string | null) =>
+  `${base}:${userId || 'signed-out'}:${workspaceId || 'self'}`;
+
+const clearCachedFacebookChannel = (scope?: string | null) => {
   try {
-    writeFbBindingFlag(false);
-    for (const storage of [localStorage, sessionStorage]) {
-      const channels = JSON.parse(storage.getItem('rz-connected-channels') || '[]') as string[];
-      storage.setItem('rz-connected-channels', JSON.stringify(channels.filter((id) => id !== 'facebook')));
-      const names = JSON.parse(storage.getItem('rz-connected-channel-names') || '{}') as Record<string, string>;
-      delete names.facebook;
-      storage.setItem('rz-connected-channel-names', JSON.stringify(names));
-    }
+    writeFbBindingFlag(false, scope);
   } catch { /* ignore */ }
 };
 
@@ -2865,21 +2863,15 @@ try {
   });
 } catch { /* ignore */ }
 
-const anyCachedFeedRows = (): CampaignRow[] | null => {
-  for (const cached of FEED_ROWS_CACHE.values()) {
-    if (Array.isArray(cached) && cached.length > 0) return cached;
-  }
-  return null;
-};
-
 const PublishedFeed = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
-  const [rows, setRows] = useState<CampaignRow[] | null>(() => anyCachedFeedRows());
+  const initialScopedRows = workspaceOwnerId ? FEED_ROWS_CACHE.get(workspaceOwnerId) ?? null : null;
+  const [rows, setRows] = useState<CampaignRow[] | null>(initialScopedRows);
   // True only during the very first cold load (no cache anywhere, in-memory or
   // persisted). The blocking loader is gated on this — a background refresh
   // must never hide already-rendered cached rows.
-  const [coldLoading, setColdLoading] = useState<boolean>(() => anyCachedFeedRows() === null);
+  const [coldLoading, setColdLoading] = useState<boolean>(() => initialScopedRows === null);
   const [supportChannel, setSupportChannel] = useState<string | null>(null);
 
 
@@ -3084,12 +3076,12 @@ const PublishedFeed = () => {
 
   useEffect(() => {
     const handleDisconnect = () => {
-      clearCachedFacebookChannel();
+      clearCachedFacebookChannel(workspaceOwnerId);
       setConnectedChannels((previous) => new Set([...previous].filter((id) => id !== 'facebook')));
     };
     window.addEventListener('realtyz:facebook-disconnected', handleDisconnect);
     return () => window.removeEventListener('realtyz:facebook-disconnected', handleDisconnect);
-  }, []);
+  }, [workspaceOwnerId]);
 
   useEffect(() => {
     (async () => {
@@ -3111,12 +3103,12 @@ const PublishedFeed = () => {
         }
         if (pageId) {
           next.add('facebook');
-          writeFbBindingFlag(true);
+          writeFbBindingFlag(true, workspaceOwnerId);
         } else {
-          writeFbBindingFlag(false);
+          writeFbBindingFlag(false, workspaceOwnerId);
         }
       } catch {
-        writeFbBindingFlag(false);
+        writeFbBindingFlag(false, workspaceOwnerId);
       }
 
       const { data } = await supabase
@@ -3132,7 +3124,7 @@ const PublishedFeed = () => {
       });
       setConnectedChannels(next);
     })();
-  }, []);
+  }, [workspaceOwnerId]);
 
   const handleFeedConnect = async (id: string) => {
     // Channels that still require a managed aggregator account cannot be
@@ -3277,7 +3269,7 @@ const PublishedFeed = () => {
 
     // Never wipe a populated feed with an empty read (transient RLS/scope/
     // disconnect blips) — keep the cached list until real rows come back.
-    const cachedForScope = FEED_ROWS_CACHE.get(ownerScope) ?? anyCachedFeedRows();
+    const cachedForScope = FEED_ROWS_CACHE.get(ownerScope);
     if (merged.length === 0 && cachedForScope && cachedForScope.length > 0) {
       setRows(cachedForScope);
       setColdLoading(false);
@@ -3317,6 +3309,10 @@ const PublishedFeed = () => {
           const importedAt = raw ? Number(raw) : 0;
           shouldImport = !Number.isFinite(importedAt) || Date.now() - importedAt > CAMPAIGN_CACHE_MS;
         } catch { shouldImport = true; }
+      }
+      if (shouldImport) {
+        const connectedPage = await resolveMetaPageViaFunction();
+        shouldImport = Boolean(connectedPage.pageId);
       }
       if (shouldImport) {
         // Fire-and-forget — the DB is already painted; we never await this.
@@ -3460,6 +3456,8 @@ const PublishedFeed = () => {
     // local campaign inserts append via the realtime INSERT handler below.
     const wsKey = workspaceOwnerId ?? 'anon';
     const cached = FEED_ROWS_CACHE.get(wsKey);
+    setRows(cached ?? null);
+    setColdLoading(!cached);
     let cancelled = false;
     const hydrateAndRefresh = async () => {
       // 1) INSTANT paint from in-memory cache (same-session re-entry).
@@ -4935,6 +4933,8 @@ const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const { settings } = useWhiteLabel();
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
@@ -4955,19 +4955,44 @@ const CampaignCenter = () => {
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     try {
-      const raw = localStorage.getItem('rz-connected-channels') || sessionStorage.getItem('rz-connected-channels');
+      const key = connectionStorageKey('rz-connected-channels', user?.id, workspaceOwnerId);
+      const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
       if (raw) (JSON.parse(raw) as string[]).filter((id) => id !== 'facebook').forEach((id) => initial.add(id));
     } catch { /* ignore */ }
     return initial.size > 0 ? initial : EMPTY_CONNECTED;
   });
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>(() => {
     try {
-      const raw = localStorage.getItem('rz-connected-channel-names') || sessionStorage.getItem('rz-connected-channel-names');
-      if (raw) return JSON.parse(raw);
+      const key = connectionStorageKey('rz-connected-channel-names', user?.id, workspaceOwnerId);
+      const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, string>;
+        delete parsed.facebook;
+        return parsed;
+      }
     } catch { /* ignore */ }
     return {};
   });
   const [socialAccountProfiles, setSocialAccountProfiles] = useState<SocialAccountProfile[]>([]);
+
+  useEffect(() => {
+    const channelsKey = connectionStorageKey('rz-connected-channels', user?.id, workspaceOwnerId);
+    const namesKey = connectionStorageKey('rz-connected-channel-names', user?.id, workspaceOwnerId);
+    try {
+      const rawChannels = localStorage.getItem(channelsKey) || sessionStorage.getItem(channelsKey);
+      const nextChannels = new Set<string>();
+      if (rawChannels) (JSON.parse(rawChannels) as string[]).filter((id) => id !== 'facebook').forEach((id) => nextChannels.add(id));
+      setConnectedChannels(nextChannels.size ? nextChannels : EMPTY_CONNECTED);
+      const rawNames = localStorage.getItem(namesKey) || sessionStorage.getItem(namesKey);
+      const nextNames = rawNames ? JSON.parse(rawNames) as Record<string, string> : {};
+      delete nextNames.facebook;
+      setChannelAccountNames(nextNames);
+    } catch {
+      setConnectedChannels(EMPTY_CONNECTED);
+      setChannelAccountNames({});
+    }
+    setSocialAccountProfiles([]);
+  }, [user?.id, workspaceOwnerId]);
 
   const clearSocialConnectionState = (channels: string[] = ['facebook']) => {
     setConnectedChannels((prev) => new Set([...prev].filter((id) => !channels.includes(id))));
@@ -4978,14 +5003,16 @@ const CampaignCenter = () => {
       return next;
     });
     try {
-      if (channels.includes('facebook')) writeFbBindingFlag(false);
-      const cached = localStorage.getItem('rz-connected-channels');
-      if (cached) localStorage.setItem('rz-connected-channels', JSON.stringify((JSON.parse(cached) as string[]).filter((id) => !channels.includes(id))));
-      const names = localStorage.getItem('rz-connected-channel-names');
+      if (channels.includes('facebook')) writeFbBindingFlag(false, workspaceOwnerId);
+      const channelsKey = connectionStorageKey('rz-connected-channels', user?.id, workspaceOwnerId);
+      const namesKey = connectionStorageKey('rz-connected-channel-names', user?.id, workspaceOwnerId);
+      const cached = localStorage.getItem(channelsKey);
+      if (cached) localStorage.setItem(channelsKey, JSON.stringify((JSON.parse(cached) as string[]).filter((id) => !channels.includes(id))));
+      const names = localStorage.getItem(namesKey);
       if (names) {
         const parsed = JSON.parse(names) as Record<string, string>;
         channels.forEach((id) => { delete parsed[id]; });
-        localStorage.setItem('rz-connected-channel-names', JSON.stringify(parsed));
+        localStorage.setItem(namesKey, JSON.stringify(parsed));
       }
     } catch { /* ignore */ }
     queryClient.invalidateQueries({ queryKey: ['social-connections'] });
@@ -5001,11 +5028,13 @@ const CampaignCenter = () => {
   // Persist whenever the resolved connection state changes — keeps the grid
   // "remembered" across reloads and new tabs.
   useEffect(() => {
-    try { localStorage.setItem('rz-connected-channels', JSON.stringify([...connectedChannels])); } catch { /* ignore */ }
-  }, [connectedChannels]);
+    if (!user?.id || !workspaceOwnerId) return;
+    try { localStorage.setItem(connectionStorageKey('rz-connected-channels', user.id, workspaceOwnerId), JSON.stringify([...connectedChannels])); } catch { /* ignore */ }
+  }, [connectedChannels, user?.id, workspaceOwnerId]);
   useEffect(() => {
-    try { localStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
-  }, [channelAccountNames]);
+    if (!user?.id || !workspaceOwnerId) return;
+    try { localStorage.setItem(connectionStorageKey('rz-connected-channel-names', user.id, workspaceOwnerId), JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
+  }, [channelAccountNames, user?.id, workspaceOwnerId]);
 
   // Default-select Facebook when nothing is picked yet. Facebook publishes via
   // the native Page token resolved server-side, so we never gate the default
@@ -5058,14 +5087,14 @@ const CampaignCenter = () => {
           }
         }
         const hasOwnProfile = !!wspFbId;
-        if (hasOwnProfile) writeFbBindingFlag(true);
+        if (hasOwnProfile) writeFbBindingFlag(true, workspaceOwnerId);
         if (!hasOwnProfile) {
           if (wspErr) {
             // Transient read failure (RLS blip / offline) — never downgrade a
             // known-good Facebook connection to "disconnected".
             console.warn('[CampaignCenter] page binding read failed:', wspErr.message);
           } else {
-            writeFbBindingFlag(false);
+            writeFbBindingFlag(false, workspaceOwnerId);
             if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
           }
           // continue — still derive direct channels (IVR/email) below

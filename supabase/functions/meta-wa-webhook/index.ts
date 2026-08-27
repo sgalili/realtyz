@@ -308,6 +308,7 @@ Deno.serve(async (req) => {
                       lead_id: leadId ?? null,
                       message_id: String(m?.id ?? ""),
                       text: String(content),
+                      sender_name: profileName,
                     });
 
                 const wamid = String(m?.id ?? "");

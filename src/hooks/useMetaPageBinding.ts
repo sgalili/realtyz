@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 export type MetaPageBinding = {
   pageId: string;
@@ -20,16 +21,17 @@ export const META_PAGE_BINDING_KEY = 'meta-page-binding';
  */
 export function useMetaPageBinding() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
 
   return useQuery<MetaPageBinding | null>({
-    queryKey: [META_PAGE_BINDING_KEY, user?.id],
-    enabled: !!user?.id,
+    queryKey: [META_PAGE_BINDING_KEY, workspaceOwnerId],
+    enabled: !!user?.id && !!workspaceOwnerId,
     staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('messenger_page_bindings')
         .select('page_id, page_name, page_avatar_url, page_access_token, updated_at')
-        .eq('owner_id', user!.id)
+        .eq('owner_id', workspaceOwnerId)
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
