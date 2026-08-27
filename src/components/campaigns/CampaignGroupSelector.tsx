@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Users, Check, Loader2, RefreshCw, Plus } from "lucide-react";
+import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 import { ExtensionGroupSyncCard } from "@/components/social/ExtensionGroupSyncCard";
@@ -40,6 +40,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const [manualName, setManualName] = useState("");
   const [manualUrl, setManualUrl] = useState("");
   const [addingManual, setAddingManual] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
 
   const hasVisibleGroups = groups.length > 0;
 
