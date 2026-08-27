@@ -36,16 +36,18 @@ function emit(stopped: boolean) {
 
 /** Halts every pending / future auto-generation until explicitly resumed. */
 export function stopAllGeneration(): void {
-  try { localStorage.setItem(KEY, '1'); } catch { /* quota */ }
+  try { sessionStorage.setItem(KEY, '1'); } catch { /* quota */ }
   killInflightGenerations();
   emit(true);
 }
 
 /** Re-enables auto-generation (already generated drafts stay untouched). */
 export function resumeGeneration(): void {
+  try { sessionStorage.removeItem(KEY); } catch { /* ignore */ }
   try { localStorage.removeItem(KEY); } catch { /* ignore */ }
   emit(false);
 }
+
 
 export function subscribeGenerationGate(fn: (stopped: boolean) => void): () => void {
   listeners.add(fn);
