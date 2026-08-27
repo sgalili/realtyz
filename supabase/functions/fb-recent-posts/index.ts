@@ -498,8 +498,12 @@ Deno.serve(async (req) => {
       // asked for a different `since`. Keeps the feed complete + fast.
       const sinceParam = since || "2026-07-27";
       const untilParam = until || "";
-      let nextUrl = `${
-        new URL(`${cred.pageId}/posts`, "https://graph.facebook.com/v26.0/")
+      // `/posts` only returns posts authored by the Page itself and silently
+      // hides native/other-authored items. Walk BOTH edges and merge so a full
+      // import really means every recent post on the Page.
+      const edges = ["published_posts", "feed", "posts"];
+      const buildUrl = (edge: string) => `${
+        new URL(`${cred.pageId}/${edge}`, "https://graph.facebook.com/v26.0/")
           .toString()
       }?${
         new URLSearchParams({
@@ -515,9 +519,11 @@ Deno.serve(async (req) => {
       const seen = new Set<string>();
       let status = 0;
       let error: any = null;
+      let edgeIndex = 0;
+      let nextUrl = buildUrl(edges[0]);
       for (
         let page2 = 0;
-        page2 < maxPages && nextUrl && rows.length < lastRecords;
+        page2 < maxPages * edges.length && nextUrl && rows.length < lastRecords;
         page2++
       ) {
         const resp = await fetch(nextUrl);
@@ -525,10 +531,20 @@ Deno.serve(async (req) => {
         const json = await resp.json().catch(() => ({} as any));
         if (!resp.ok) {
           error = json?.error ?? json;
-          break;
+          // Try the next edge — one blocked edge shouldn't abort the import.
+          edgeIndex += 1;
+          if (edgeIndex >= edges.length) break;
+          nextUrl = buildUrl(edges[edgeIndex]);
+          continue;
         }
         const items: any[] = Array.isArray(json?.data) ? json.data : [];
-        if (!items.length) break;
+        if (!items.length) {
+          // Move on to the next edge instead of ending the whole import.
+          edgeIndex += 1;
+          if (edgeIndex >= edges.length) break;
+          nextUrl = buildUrl(edges[edgeIndex]);
+          continue;
+        }
         for (const it of items) {
           const id = asText(it?.id);
           if (!id || seen.has(id)) continue;
@@ -549,9 +565,17 @@ Deno.serve(async (req) => {
             fbName: ws?.facebook_page_name ?? null,
           });
         }
-        nextUrl = typeof json?.paging?.next === "string"
-          ? json.paging.next
-          : "";
+        const paging = typeof json?.paging?.next === "string" ? json.paging.next : "";
+        if (paging) {
+          nextUrl = paging;
+        } else {
+          edgeIndex += 1;
+          nextUrl = edgeIndex < edges.length ? buildUrl(edges[edgeIndex]) : "";
+        }
+      }
+      if (error && rows.length > 0) {
+        // A failing secondary edge must not void the posts we did fetch.
+        error = null;
       }
       return { posts: rows, status, error, source: cred.source };
     };

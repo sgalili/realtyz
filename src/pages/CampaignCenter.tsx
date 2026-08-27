@@ -60,6 +60,18 @@ import { SourceBadge } from '@/components/properties/SourceBadge';
 
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 import {
+  type ComposerSession,
+  type ComposerAssignment,
+  readComposerSessionLocal,
+  fetchComposerSession,
+  saveComposerSession,
+  clearComposerSession,
+  saveComposerDraftCloud,
+  fetchComposerDraftCloud,
+  clearComposerDraftsCloud,
+} from '@/lib/composerSession';
+
+import {
   hebrewOnlyParts, hebrewPropertyType, sanitizeFloor, sanitizeRooms, sanitizeSqm,
   floorsInBuildingFromSqm,
 } from '@/lib/propertyMeasures';
@@ -758,7 +770,7 @@ const InlineComposer = ({
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
   // Opt-in WhatsApp CTA (now attached to the FIRST COMMENT, not the main post).
-  const [attachWaLink, setAttachWaLink] = useState<boolean>(!!initial.attachWaLink);
+  const [attachWaLink, setAttachWaLink] = useState<boolean>(initial.attachWaLink ?? true);
   const [attachMsngrLink, setAttachMsngrLink] = useState<boolean>(!!initial.attachMsngrLink);
   // First-comment auto-post: when enabled, the branded first-comment text is
   // posted as the first comment on the published post via the Meta API.
@@ -956,7 +968,7 @@ const InlineComposer = ({
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(draftKey, JSON.stringify({
+      const snapshot = {
         body,
         customInstructions,
         selectedListingId,
@@ -966,7 +978,16 @@ const InlineComposer = ({
         firstCommentEnabled,
         attachWaLink,
         attachMsngrLink,
-      }));
+      };
+      localStorage.setItem(draftKey, JSON.stringify(snapshot));
+      // Durable mirror: an unpublished draft must survive a cleared browser
+      // cache, another tab, or another device.
+      if (snapshot.body.trim() || snapshot.attachments.length > 0 || snapshot.firstComment.trim()) {
+        const handle = window.setTimeout(() => {
+          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot);
+        }, 900);
+        return () => window.clearTimeout(handle);
+      }
     } catch {}
   }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink]);
 
@@ -1014,13 +1035,37 @@ const InlineComposer = ({
     setLogId(deepLinked ? null : (saved.logId ?? null));
     setFirstComment(deepLinked ? '' : (saved.firstComment || ''));
     setFirstCommentEnabled(saved.firstCommentEnabled ?? true);
-    setAttachWaLink(!!saved.attachWaLink);
+    setAttachWaLink(saved.attachWaLink ?? true);
     setAttachMsngrLink(!!saved.attachMsngrLink);
     setMode('now');
     setListingQuery('');
     setSaveState('idle');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel.id, deepLinkListingId]);
+
+  // Cloud fallback: if this browser has no local copy of the draft (cleared
+  // cache, new tab, other device), pull the durable mirror back in.
+  useEffect(() => {
+    if (deepLinkListingId) return;
+    const local = readDraft();
+    if (local && (String(local.body || '').trim() || (local.attachments || []).length > 0)) return;
+    let cancelled = false;
+    (async () => {
+      const cloud = await fetchComposerDraftCloud(channel.id, instanceId ?? 'single');
+      if (cancelled || !cloud) return;
+      if (String(cloud.body || '').trim()) setBody(cleanBody(cloud.body));
+      if (cloud.customInstructions) setCustomInstructions(cloud.customInstructions);
+      if (cloud.selectedListingId) setSelectedListingId(cloud.selectedListingId);
+      if (Array.isArray(cloud.attachments) && cloud.attachments.length) setAttachments(cloud.attachments);
+      if (cloud.logId) setLogId(cloud.logId);
+      if (cloud.firstComment) setFirstComment(cloud.firstComment);
+      if (typeof cloud.firstCommentEnabled === 'boolean') setFirstCommentEnabled(cloud.firstCommentEnabled);
+      if (typeof cloud.attachWaLink === 'boolean') setAttachWaLink(cloud.attachWaLink);
+      if (typeof cloud.attachMsngrLink === 'boolean') setAttachMsngrLink(cloud.attachMsngrLink);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel.id, instanceId, deepLinkListingId]);
 
 
 
@@ -5006,11 +5051,52 @@ const CampaignCenter = () => {
   // Bump to force-remount the InlineComposer so its body/selectedListingId/media
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
+  // Unpublished multi-property draft session (properties + slots + variants).
+  // Restored from localStorage instantly and from the cloud right after, so
+  // leaving the page or refreshing never loses the open drafts.
+  const [restoredSession, setRestoredSession] = useState<ComposerSession | null>(null);
+
   const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
   const [campaignHistoryRows, setCampaignHistoryRows] = useState<any[]>([]);
   const [campaignDraftRows, setCampaignDraftRows] = useState<any[]>([]);
   const [campaignHistoryLoading, setCampaignHistoryLoading] = useState(false);
   const [alsoEmail, setAlsoEmail] = useState(false);
+
+  // Restore the last unpublished draft session (local first, cloud second) and
+  // keep it saved whenever the composer is opened with a fan-out.
+  useEffect(() => {
+    const channelId = pickedChannel?.id;
+    if (!channelId) return;
+    let cancelled = false;
+    const local = readComposerSessionLocal(channelId);
+    if (local) setRestoredSession(local);
+    (async () => {
+      const cloud = await fetchComposerSession(channelId);
+      if (!cancelled && cloud) {
+        setRestoredSession((prev) =>
+          prev && prev.updatedAt >= cloud.updatedAt ? prev : cloud,
+        );
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickedChannel?.id]);
+
+  useEffect(() => {
+    const channelId = pickedChannel?.id;
+    if (!channelId) return;
+    const ids = (searchParams.get('properties') || '')
+      .split(',').map((s) => s.trim()).filter(Boolean);
+    let assignments: ComposerAssignment[] = [];
+    try {
+      const raw = sessionStorage.getItem('rz-schedule-assignments');
+      if (raw) assignments = JSON.parse(raw) || [];
+    } catch {}
+    if (ids.length <= 1 && assignments.length <= 1) return;
+    void saveComposerSession(channelId, ids, assignments);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickedChannel?.id, searchParams]);
+
 
   useEffect(() => {
     const open = () => setCampaignHistoryOpen(true);
@@ -5563,14 +5649,25 @@ const CampaignCenter = () => {
           />
           {pickedChannel && (() => {
             const propertiesParam = searchParams.get('properties') || '';
-            const propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
-            let assignments: Array<{ iso: string; listing: string | null; variant: number; totalVariants: number }> = [];
+            let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
+            let assignments: ComposerAssignment[] = [];
             try {
               const raw = sessionStorage.getItem('rz-schedule-assignments');
               if (raw) assignments = JSON.parse(raw) || [];
             } catch {}
+            // Nothing in the URL / session? Restore the last unpublished draft
+            // session (properties, slots, variants) so all open drafts come
+            // back exactly as they were left.
+            if (propertyIds.length <= 1 && assignments.length === 0) {
+              const saved = restoredSession ?? readComposerSessionLocal(pickedChannel.id);
+              if (saved && (saved.assignments.length > 1 || saved.propertyIds.length > 1)) {
+                propertyIds = saved.propertyIds;
+                assignments = saved.assignments;
+              }
+            }
             // Single composer when no multi-property fan-out
-            if (propertyIds.length <= 1) {
+            if (propertyIds.length <= 1 && assignments.length <= 1) {
+
               return (
                 <InlineComposer
                   key={`composer-${pickedChannel?.id ?? 'none'}-${composerResetTick}`}
@@ -5767,7 +5864,12 @@ const CampaignCenter = () => {
               }
               sessionStorage.removeItem('rz-schedule-assignments');
             } catch {}
+            // Only a published post retires the durable session mirror.
+            setRestoredSession(null);
+            void clearComposerSession(publishedChannelId);
+            void clearComposerDraftsCloud(publishedChannelId);
           }
+
 
           setAlsoEmail(false);
           if (shouldEmail) {
