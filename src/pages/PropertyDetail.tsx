@@ -430,8 +430,9 @@ export default function PropertyDetail() {
     const started = Date.now();
     const timer = setInterval(() => {
       const elapsed = Date.now() - started;
-      setInitialLoadProgress(Math.min(92, 8 + Math.round((elapsed / 5000) * 84)));
-    }, 100);
+      // Text import is budgeted at <3s, so the bar tracks that window.
+      setInitialLoadProgress(Math.min(94, 8 + Math.round((elapsed / 2600) * 86)));
+    }, 60);
     return () => clearInterval(timer);
   }, [isLoading]);
 
