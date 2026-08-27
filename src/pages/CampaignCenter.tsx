@@ -2807,18 +2807,20 @@ const ConfirmDispatchDialog = ({
         const duplicateOnly = !scheduledAt && results.length > 0 &&
           results.every((r) => (r.data as any)?.duplicate === true);
 
+        const reachNote = groupStats.members > 0 ? ` · חשיפה פוטנציאלית ${groupStats.members.toLocaleString('he-IL')} חברים` : '';
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
-          toast.success(`הפוסט תוזמן ל-${when} ב-${targets.length} יעד(ים)`);
+          toast.success(`הפוסט תוזמן ל-${when} · ${targets.length} יעד(ים) · ${groupIds.length} קבוצות${reachNote}`);
         } else if (duplicateOnly) {
           toast.info((results[0]?.data as any)?.message || 'הפוסט הזה כבר פורסם — לא נשלח שוב.');
         } else if (groupIds.length > 0 && groupFailures.length === 0) {
-          toast.success('הפוסט שותף בהצלחה בכל הקבוצות שנבחרו!');
+          toast.success(`הפוסט שותף בהצלחה ב-${groupIds.length} קבוצות${reachNote}`);
         } else if (groupIds.length > 0 && groupFailures.length > 0) {
-          toast.error(`פורסם אך נכשל ב-${groupFailures.length} קבוצות`);
+          toast.error(`פורסם ב-${groupIds.length - groupFailures.length} קבוצות · נכשל ב-${groupFailures.length}`);
         } else {
           toast.success(`הקמפיין פורסם בהצלחה ב-${targets.length} יעד(ים)!`);
         }
+
 
       } else {
         // Direct-messaging channels (SMS / email / IVR / AI Voice) broadcast to leads.
