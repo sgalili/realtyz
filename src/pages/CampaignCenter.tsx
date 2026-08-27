@@ -934,17 +934,14 @@ const InlineComposer = ({
       setGroupIds(bulkGroupIds || []);
       return;
     }
-    try {
-      const raw = localStorage.getItem(groupStorageKey)
-        || localStorage.getItem('campaign:bulkGroupIds')
-        || localStorage.getItem('campaign:groupIds');
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(parsed) && parsed.length) setGroupIds(parsed.filter((x) => typeof x === 'string'));
-    } catch {}
-  }, [groupStorageKey, hideBottomBar, bulkGroupIds]);
+    const shared = loadCampaignGroups(workspaceOwnerId);
+    if (shared.length) setGroupIds(shared);
+  }, [groupStorageKey, hideBottomBar, bulkGroupIds, workspaceOwnerId]);
   useEffect(() => {
-    try { localStorage.setItem(groupStorageKey, JSON.stringify(groupIds)); } catch {}
-  }, [groupIds, groupStorageKey]);
+    if (hideBottomBar) return; // page-level bar owns persistence in multi-draft mode
+    saveCampaignGroups(workspaceOwnerId, groupIds);
+  }, [groupIds, workspaceOwnerId, hideBottomBar]);
+
   useEffect(() => {
     onBulkGroupIdsChange?.(groupIds);
   }, [groupIds, onBulkGroupIdsChange]);
