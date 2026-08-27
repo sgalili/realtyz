@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Check } from 'lucide-react';
 import { CreditBalancePill } from '@/components/CreditBalancePill';
-import { FREE_CONTACTS, FREE_PROPERTIES, PRICE_PER_CONTACT, quoteForContacts } from '@/lib/pricing';
+import { FREE_CONTACTS, FREE_PROPERTIES, quoteForContacts } from '@/lib/pricing';
 import { fmtILS } from '@/lib/formatCurrency';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 
