@@ -1,16 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Infinity as InfinityIcon, ArrowLeft, Check, Star,
-} from 'lucide-react';
-import {
-  FREE_CONTACTS, FREE_PROPERTIES, PRICING_TIERS, quoteForContacts,
-} from '@/lib/pricing';
-import { fmtILS } from '@/lib/formatCurrency';
+import { Check, Star } from 'lucide-react';
+import { FREE_CONTACTS, FREE_PROPERTIES } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
+
 import { PlatformTicker, StackTicker } from '@/components/landing/LogoTickers';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import imgPublishing from '@/assets/landing/card-publishing.jpg';
