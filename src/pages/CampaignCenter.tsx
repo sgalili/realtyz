@@ -770,7 +770,7 @@ const InlineComposer = ({
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
   // Opt-in WhatsApp CTA (now attached to the FIRST COMMENT, not the main post).
-  const [attachWaLink, setAttachWaLink] = useState<boolean>(!!initial.attachWaLink);
+  const [attachWaLink, setAttachWaLink] = useState<boolean>(initial.attachWaLink ?? true);
   const [attachMsngrLink, setAttachMsngrLink] = useState<boolean>(!!initial.attachMsngrLink);
   // First-comment auto-post: when enabled, the branded first-comment text is
   // posted as the first comment on the published post via the Meta API.
@@ -968,7 +968,7 @@ const InlineComposer = ({
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(draftKey, JSON.stringify({
+      const snapshot = {
         body,
         customInstructions,
         selectedListingId,
@@ -978,7 +978,16 @@ const InlineComposer = ({
         firstCommentEnabled,
         attachWaLink,
         attachMsngrLink,
-      }));
+      };
+      localStorage.setItem(draftKey, JSON.stringify(snapshot));
+      // Durable mirror: an unpublished draft must survive a cleared browser
+      // cache, another tab, or another device.
+      if (snapshot.body.trim() || snapshot.attachments.length > 0 || snapshot.firstComment.trim()) {
+        const handle = window.setTimeout(() => {
+          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot);
+        }, 900);
+        return () => window.clearTimeout(handle);
+      }
     } catch {}
   }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink]);
 
@@ -1026,7 +1035,7 @@ const InlineComposer = ({
     setLogId(deepLinked ? null : (saved.logId ?? null));
     setFirstComment(deepLinked ? '' : (saved.firstComment || ''));
     setFirstCommentEnabled(saved.firstCommentEnabled ?? true);
-    setAttachWaLink(!!saved.attachWaLink);
+    setAttachWaLink(saved.attachWaLink ?? true);
     setAttachMsngrLink(!!saved.attachMsngrLink);
     setMode('now');
     setListingQuery('');
