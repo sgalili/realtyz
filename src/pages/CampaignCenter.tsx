@@ -2088,29 +2088,7 @@ const InlineComposer = ({
             <div className="flex flex-row-reverse items-stretch justify-between gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  if (!canSend) return;
-                  // WA / Messenger CTA lines are already embedded inside the
-                  // first-comment textarea via the toggle effects, so we pass
-                  // the textarea content through verbatim.
-                  const composedFirstComment = firstCommentEnabled ? firstComment : '';
-                  onConfirm({
-                    body,
-                    original_ai_body: originalAiBody,
-                    listing_id: selectedListingId || null,
-                    mode,
-                    media_urls: attachments
-                      .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                      .map((a) => a.url as string),
-                    scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-                    group_ids: channel.id === 'facebook' ? groupIds : [],
-                    selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
-                    attach_wa_link: attachWaLink,
-                    first_comment: composedFirstComment,
-                    first_comment_enabled: firstCommentEnabled,
-                    attach_msngr_link: attachMsngrLink,
-                  });
-                }}
+                onClick={() => { submitDraft(); }}
                 disabled={!canSend}
                 className={cn(
                   'inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
