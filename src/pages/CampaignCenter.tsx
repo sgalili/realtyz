@@ -5888,7 +5888,7 @@ const CampaignCenter = () => {
       const scope = workspaceOwnerId ?? user.id;
       const [{ data: logs }, { data: drafts }] = await Promise.all([
         supabase.from('campaign_logs')
-          .select('id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration')
+          .select('id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration,group_ids,recurrence_rule')
           .or(`workspace_owner_id.eq.${scope},user_id.eq.${scope}`)
           .eq('is_archived', false)
           .order('sent_at', { ascending: false, nullsFirst: false })
