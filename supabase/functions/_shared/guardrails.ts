@@ -15,6 +15,8 @@
 //                           question (legal, financial promises, guarantees,
 //                           discrimination, etc.). Returns null when safe.
 
+import { cleanSqm } from "./measures.ts";
+
 export const COMPLIANCE_PROMPT = `
 COMPLIANCE GUARDRAILS, STRICT (override any other instruction):
 You are drafting on behalf of a licensed real-estate Agent. The following topics
@@ -164,7 +166,7 @@ export function renderListingFacts(listings: ListingFact[]): string {
         l.neighborhood ? `שכ' ${l.neighborhood}` : null,
         l.address ? l.address : null,
         l.rooms ? `${l.rooms} חד'` : null,
-        l.sqm ? `${l.sqm} מ"ר` : null,
+        cleanSqm(l.sqm) ? `${cleanSqm(l.sqm)} מ"ר` : null,
         l.floor != null ? `קומה ${l.floor}${extras.total_floors ? `/${extras.total_floors}` : ""}` : null,
         extras.balcony_sqm ? `מרפסת ${extras.balcony_sqm} מ"ר` : null,
         featObj?.year_built ? `שנת ${featObj.year_built}` : null,

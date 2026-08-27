@@ -1,3 +1,5 @@
+import { cleanSqm } from "../_shared/measures.ts";
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import {
@@ -470,7 +472,7 @@ serve(async (req) => {
                       price,
                       city: String(p.city ?? ""),
                       rooms: Number(p.rooms ?? 0) || 0,
-                      sqm: Number(p.sqm ?? 0) || 0,
+                      sqm: cleanSqm(p.sqm) ?? 0,
                       floor: Number(p.floor ?? 0) || 0,
                       photo: p.photo ?? (Array.isArray(p.photos) ? p.photos[0] : null) ?? null,
                       agent: p.agent ?? null,
@@ -1337,7 +1339,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
                   price,
                   city: String(p.city ?? ""),
                   rooms: Number(p.rooms ?? 0) || 0,
-                  sqm: Number(p.sqm ?? 0) || 0,
+                  sqm: cleanSqm(p.sqm) ?? 0,
                   floor: Number(p.floor ?? 0) || 0,
                   photo: p.photo ?? (Array.isArray(p.photos) ? p.photos[0] : null) ?? null,
                   agent: p.agent ?? null,
