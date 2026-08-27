@@ -80,6 +80,19 @@ async function cachePage(db: SupabaseClient, ownerId: string | null, page: Resol
   } catch { /* caching is best-effort */ }
 }
 
+async function sharedPage(db: SupabaseClient): Promise<ResolvedPage | null> {
+  const { data } = await db
+    .from("messenger_page_bindings")
+    .select("page_id, page_name, page_access_token")
+    .eq("is_platform_shared", true)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const row: any = data;
+  if (!row?.page_id || !row?.page_access_token || isBlockedPage({ id: row.page_id })) return null;
+  return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
+}
+
 async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<ResolvedPage | null> {
   // 1) Explicit binding for this workspace owner.
   if (ownerId) {
@@ -97,7 +110,8 @@ async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<
       return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
     }
   }
-  return null;
+  // 2) Platform-shared Page: every workspace keeps a working FB connection.
+  return await sharedPage(db);
 }
 
 /** Every Meta token we can try, most workspace-specific first. */
@@ -108,13 +122,17 @@ async function candidateTokens(db: SupabaseClient, ownerId: string | null): Prom
     if (s.length > 20 && !out.includes(s)) out.push(s);
   };
   try {
-    if (!ownerId) return out;
-    const q = db.from("messenger_page_bindings").select("page_access_token").eq("owner_id", ownerId).order("updated_at", { ascending: false }).limit(1);
-    const { data } = await q;
-    for (const r of (data ?? []) as any[]) push(r?.page_access_token);
+    if (ownerId) {
+      const q = db.from("messenger_page_bindings").select("page_access_token").eq("owner_id", ownerId).order("updated_at", { ascending: false }).limit(1);
+      const { data } = await q;
+      for (const r of (data ?? []) as any[]) push(r?.page_access_token);
+    }
+    const shared = await sharedPage(db);
+    push(shared?.token);
   } catch { /* ignore */ }
   return out;
 }
+
 
 /**
  * Fallback page resolution used when the stored page_id turns out to lack

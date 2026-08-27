@@ -10,14 +10,15 @@ export type MetaPageBinding = {
   pageAvatarUrl: string | null;
   hasToken: boolean;
   connectedAt: string | null;
+  isShared: boolean;
 };
 
 export const META_PAGE_BINDING_KEY = 'meta-page-binding';
 
 /**
- * Reads the stored Facebook Page binding straight from the database, so the
- * connected page (name + avatar + status) renders instantly without waiting
- * for the Graph health probe in the edge functions.
+ * Reads the effective Facebook Page binding straight from the database: the
+ * workspace's own page when it has one, otherwise the platform-shared page, so
+ * every user always has a live Facebook connection.
  */
 export function useMetaPageBinding() {
   const { user } = useAuth();
@@ -25,27 +26,24 @@ export function useMetaPageBinding() {
 
   return useQuery<MetaPageBinding | null>({
     queryKey: [META_PAGE_BINDING_KEY, workspaceOwnerId],
-    enabled: !!user?.id && !!workspaceOwnerId,
+    enabled: !!user?.id,
     staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('messenger_page_bindings')
-        .select('page_id, page_name, page_avatar_url, page_access_token, updated_at')
-        .eq('owner_id', workspaceOwnerId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error || !data?.page_id) return null;
+      const { data, error } = await supabase.rpc('get_effective_meta_page');
+      const row: any = Array.isArray(data) ? data[0] : data;
+      if (error || !row?.page_id) return null;
       return {
-        pageId: String(data.page_id),
-        pageName: (data as any).page_name ?? null,
-        pageAvatarUrl: (data as any).page_avatar_url ?? null,
-        hasToken: String((data as any).page_access_token ?? '').trim().length > 30,
-        connectedAt: (data as any).updated_at ?? null,
+        pageId: String(row.page_id),
+        pageName: row.page_name ?? null,
+        pageAvatarUrl: row.page_avatar_url ?? null,
+        hasToken: !!row.has_token,
+        connectedAt: null,
+        isShared: !!row.is_shared,
       };
     },
   });
 }
+
 
 /** Re-read the stored binding right after OAuth / manual token / disconnect. */
 export function useRefreshMetaPageBinding() {

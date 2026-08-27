@@ -3268,6 +3268,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_platform_shared: boolean
           is_selected: boolean
           owner_id: string
           page_access_token: string
@@ -3279,6 +3280,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_platform_shared?: boolean
           is_selected?: boolean
           owner_id: string
           page_access_token: string
@@ -3290,6 +3292,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_platform_shared?: boolean
           is_selected?: boolean
           owner_id?: string
           page_access_token?: string
@@ -5311,6 +5314,17 @@ export type Database = {
       get_business_performance: {
         Args: { days_window?: number; user_uuid: string }
         Returns: Json
+      }
+      get_effective_meta_page: {
+        Args: never
+        Returns: {
+          has_token: boolean
+          is_shared: boolean
+          owner_id: string
+          page_avatar_url: string
+          page_id: string
+          page_name: string
+        }[]
       }
       get_followup_suggestions: { Args: { _user_id: string }; Returns: Json }
       get_homely_admin_overview: { Args: never; Returns: Json }
