@@ -42,6 +42,8 @@ import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsS
 import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
+import { ScheduledCountdown } from '@/components/campaigns/ScheduledCountdown';
+import { EditScheduledSeriesDialog } from '@/components/campaigns/EditScheduledSeriesDialog';
 import { CustomGroupsQuickShare } from '@/components/social/CustomGroupsQuickShare';
 import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdown';
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
@@ -6868,6 +6870,13 @@ const CampaignCenter = () => {
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      <EditScheduledSeriesDialog
+        open={!!editSeriesRow}
+        onOpenChange={(v) => { if (!v) setEditSeriesRow(null); }}
+        row={editSeriesRow}
+        onUpdated={() => setHistoryRefreshTick((t) => t + 1)}
+      />
 
       <ConfirmDispatchDialog
         open={!!confirmPayload}
