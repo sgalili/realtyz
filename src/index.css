@@ -366,7 +366,7 @@
   }
 
   .auth-gradient-shell {
-    background: linear-gradient(0deg, hsl(222 100% 18%) 0%, hsl(222 100% 18%) 15%, hsl(222 100% 27%) 50%, hsl(222 47% 7%) 100%);
+    background: linear-gradient(0deg, hsl(var(--brand-navy)) 0%, hsl(var(--brand-navy)) 15%, hsl(215 65% 22%) 50%, hsl(var(--brand-deep)) 100%);
     color: hsl(var(--auth-panel-foreground));
   }
 
@@ -469,9 +469,9 @@
   .auth-election-muted { color: hsl(var(--primary-foreground) / 0.48); }
 
   .auth-election-active {
-    color: hsl(46 65% 56%);
-    border: 1px solid hsl(46 65% 56% / 0.25);
-    background: hsl(46 65% 56% / 0.14);
+    color: hsl(var(--brand-gold));
+    border: 1px solid hsl(var(--brand-gold) / 0.35);
+    background: hsl(var(--brand-gold) / 0.16);
   }
 
   .auth-hero-title {
@@ -487,8 +487,8 @@
     text-shadow: 0 22px 80px hsl(var(--brand-deep) / 0.34);
   }
 
-  .auth-hero-green { color: hsl(136 72% 58%); }
-  .auth-hero-gold { color: hsl(46 78% 58%); }
+  .auth-hero-green { color: hsl(var(--brand-gold)); }
+  .auth-hero-gold { color: hsl(var(--brand-gold)); }
 
   .auth-official-logo {
     filter: drop-shadow(0 0 14px hsl(var(--primary-foreground) / 0.16));
@@ -496,7 +496,7 @@
 
   .auth-official-slogan {
     color: transparent;
-    background: linear-gradient(135deg, hsl(var(--sidebar-ring)) 0%, hsl(46 78% 72%) 48%, hsl(var(--sidebar-ring)) 100%);
+    background: linear-gradient(135deg, hsl(var(--sidebar-ring)) 0%, hsl(var(--brand-gold-soft)) 48%, hsl(var(--sidebar-ring)) 100%);
     background-clip: text;
     -webkit-background-clip: text;
     font-family: 'Assistant', 'Heebo', "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
@@ -708,14 +708,14 @@
     height: 52px;
     border: 0;
     background: hsl(var(--muted-foreground) / 0.18);
-    color: hsl(220 9% 22%);
+    color: hsl(var(--brand-navy));
     box-shadow: none;
     font-size: 1.2rem;
     font-weight: 700;
   }
 
   .auth-method-input::placeholder {
-    color: hsl(220 9% 36%);
+    color: hsl(var(--brand-navy));
   }
 
   .auth-method-input:focus-visible {
@@ -748,7 +748,7 @@
   .auth-submit-button {
     height: 40px;
     min-height: 0;
-    background: linear-gradient(180deg, hsl(210 18% 95%) 0%, hsl(142 52% 74%) 100%);
+    background: linear-gradient(180deg, hsl(210 18% 95%) 0%, hsl(var(--brand-gold)) 100%);
     color: hsl(0 0% 0%) !important;
     border: 1px solid hsl(var(--social-whatsapp)) !important;
     font-size: 54px;
@@ -757,7 +757,7 @@
   }
 
   .auth-submit-button:hover {
-    background: linear-gradient(180deg, hsl(210 18% 97%) 0%, hsl(142 56% 68%) 100%);
+    background: linear-gradient(180deg, hsl(210 18% 97%) 0%, hsl(var(--brand-gold-soft)) 100%);
     color: hsl(0 0% 0%) !important;
   }
 
@@ -1314,35 +1314,42 @@
    Scoped token overrides so all components stay semantic.
    ============================================================ */
 .realtyz-landing {
-  --background: 215 60% 6%;
-  --foreground: 210 40% 98%;
-  --card: 215 50% 10%;
-  --card-foreground: 210 40% 98%;
-  --popover: 215 50% 10%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 47 100% 55%;
-  --primary-foreground: 213 73% 10%;
-  --secondary: 215 45% 14%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 215 40% 16%;
-  --muted-foreground: 213 25% 72%;
-  --accent: 47 100% 55%;
-  --accent-foreground: 213 73% 10%;
-  --border: 213 35% 22%;
-  --input: 213 35% 22%;
-  --ring: 47 100% 55%;
-  color-scheme: dark;
+  /* Realtyz app palette only: white canvas, navy ink, gold accent */
+  --background: 0 0% 100%;
+  --foreground: 213 73% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 213 73% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 213 73% 12%;
+  --primary: 213 73% 16%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 17% 98%;
+  --secondary-foreground: 213 73% 16%;
+  --muted: 210 17% 96%;
+  --muted-foreground: 213 40% 30%;
+  --accent: 47 100% 50%;
+  --accent-foreground: 213 73% 12%;
+  --border: 213 25% 88%;
+  --input: 213 25% 88%;
+  --ring: 213 73% 16%;
+  color-scheme: light;
 }
 
 .realtyz-landing .landing-gradient-text {
-  background-image: linear-gradient(100deg, hsl(47 100% 62%), hsl(38 95% 58%), hsl(199 90% 62%));
+  background-image: linear-gradient(100deg, hsl(var(--brand-navy)), hsl(215 65% 30%), hsl(var(--brand-gold)));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .realtyz-landing .landing-card {
-  box-shadow: 0 20px 60px -30px hsl(213 90% 4% / 0.9);
+  box-shadow: 0 18px 50px -28px hsl(213 73% 16% / 0.35);
+}
+
+/* Readable overlay for image-filled cards (navy scrim, no icon chrome) */
+.realtyz-landing .landing-card-veil {
+  background:
+    linear-gradient(0deg, hsl(213 73% 10% / 0.94) 0%, hsl(213 73% 12% / 0.78) 45%, hsl(213 73% 14% / 0.55) 100%);
 }
 
 .landing-aurora {
@@ -1358,7 +1365,7 @@
   top: -18%;
   width: 46rem;
   height: 46rem;
-  background: radial-gradient(circle at 30% 30%, hsl(47 100% 55% / 0.55), transparent 65%);
+  background: radial-gradient(circle at 30% 30%, hsl(var(--brand-gold) / 0.30), transparent 65%);
   animation: landing-float-a 18s ease-in-out infinite;
 }
 .landing-aurora-b {
@@ -1366,7 +1373,7 @@
   top: 12%;
   width: 40rem;
   height: 40rem;
-  background: radial-gradient(circle at 60% 40%, hsl(205 95% 52% / 0.5), transparent 65%);
+  background: radial-gradient(circle at 60% 40%, hsl(var(--brand-navy) / 0.22), transparent 65%);
   animation: landing-float-b 22s ease-in-out infinite;
 }
 .landing-aurora-c {
@@ -1374,14 +1381,14 @@
   top: -10%;
   width: 34rem;
   height: 34rem;
-  background: radial-gradient(circle at 50% 50%, hsl(47 100% 55% / 0.3), transparent 70%);
+  background: radial-gradient(circle at 50% 50%, hsl(var(--brand-gold) / 0.22), transparent 70%);
   animation: landing-float-a 26s ease-in-out infinite;
 }
 
 .landing-grid {
   background-image:
-    linear-gradient(to right, hsl(210 40% 98% / 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(210 40% 98% / 0.05) 1px, transparent 1px);
+    linear-gradient(to right, hsl(213 73% 16% / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(213 73% 16% / 0.07) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(ellipse at 50% 0%, black, transparent 72%);
   -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black, transparent 72%);
