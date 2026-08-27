@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
-import { ExtensionGroupSyncCard } from "@/components/social/ExtensionGroupSyncCard";
 
 export type FacebookGroup = {
   group_id: string;
@@ -35,7 +34,6 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [groups, setGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [syncNote, setSyncNote] = useState<string | null>(null);
   const [manualName, setManualName] = useState("");
   const [manualUrl, setManualUrl] = useState("");
@@ -101,50 +99,6 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
-
-  const syncFromGraph = async () => {
-    setSyncing(true);
-    try {
-      // Bounded: a Graph permission stall must never hang the card.
-      const { data, error } = (await Promise.race([
-        supabase.functions.invoke("fb-groups-import", { body: {} }),
-        new Promise((_r, rej) =>
-          setTimeout(() => rej(new Error("סנכרון הקבוצות ארך זמן רב מדי. ניתן להוסיף קבוצות ידנית.")), 20000)
-        ),
-      ])) as any;
-      if (error) throw error;
-      const returned: FacebookGroup[] = Array.isArray((data as any)?.groups)
-        ? (data as any).groups.filter((r: any) => r?.group_id).map(mapRow)
-        : [];
-      const imported = Number((data as any)?.imported ?? returned.length);
-      const note = String((data as any)?.error || (data as any)?.advice || "").trim();
-      if (imported > 0) {
-        setSyncNote(null);
-        toast.success(`סונכרנו ${imported} קבוצות מפייסבוק`);
-      } else if (note) {
-        setSyncNote(note);
-        toast.error(note);
-      } else {
-        const fallback = "לא נמצאו קבוצות בחשבון המחובר. ודא שאתה מנהל הקבוצה.";
-        setSyncNote(fallback);
-        toast.error(fallback);
-      }
-      // Prefer the stored rows, but fall back to what the function returned
-      // (RLS can hide fb_user_groups from the browser session).
-      const stored = await fetchStoredGroups();
-      setGroups(stored.length > 0 ? stored : returned);
-    } catch (e: any) {
-      // Meta App Review can restrict user_managed_groups entirely — degrade to
-      // the stored/manual list instead of leaving the card spinning.
-      const note = String(e?.message || "").trim() ||
-        "פייסבוק לא אישר את הרשאת הקבוצות (App Review). ניתן להוסיף קבוצות ידנית ולפרסם דרכן.";
-      setSyncNote(note);
-      toast.error(note);
-      try { setGroups(await fetchStoredGroups()); } catch { /* keep current list */ }
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const addManualGroup = async () => {
     const name = manualName.trim();

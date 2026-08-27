@@ -1924,7 +1924,7 @@ const InlineComposer = ({
 
       {/* Facebook groups picker — opened from the group icon button */}
       <Dialog open={groupPickerOpen} onOpenChange={setGroupPickerOpen}>
-        <DialogContent dir="rtl" className="max-w-lg">
+        <DialogContent dir="rtl" className="w-[96vw] sm:max-w-[720px]">
           <DialogHeader>
             <DialogTitle className="text-right">קבוצות לפרסום</DialogTitle>
           </DialogHeader>
@@ -1935,8 +1935,8 @@ const InlineComposer = ({
               <span className="text-sm font-semibold text-foreground">שינוי טקסט לקבוצות</span>
             </label>
           </div>
-          <DialogFooter>
-            <Button type="button" onClick={() => setGroupPickerOpen(false)}>
+          <DialogFooter className="sm:justify-start">
+            <Button type="button" className="w-auto" onClick={() => setGroupPickerOpen(false)}>
               אישור{groupIds.length > 0 ? ` (${groupIds.length})` : ''}
             </Button>
           </DialogFooter>
