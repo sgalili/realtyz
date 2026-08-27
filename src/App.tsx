@@ -72,6 +72,7 @@ const AiDialer = lazy(() => import("./pages/AiDialer"));
 const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
 const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
+const Landing = lazy(() => import("./pages/Landing"));
 
 
 
@@ -128,6 +129,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
 }
 
+/** Root: guests see the public landing page, signed-in users get the app. */
+function RootRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <RealtyzLoader size="lg" />
+    </div>
+  );
+  if (!user) return <Suspense fallback={<PageLoader />}><Landing /></Suspense>;
+  return <ProtectedRoute><CommandCenter /></ProtectedRoute>;
+}
+
 function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { isSuperAdmin, loading: roleLoading } = useUserRole();
@@ -173,7 +186,8 @@ const App = () => (
               <Route path="/portal/:token" element={<Suspense fallback={<PageLoader />}><ClientPortal /></Suspense>} />
               <Route path="/share/property/:token" element={<Suspense fallback={<PageLoader />}><SharedProperty /></Suspense>} />
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
-              <Route path="/" element={<ProtectedRoute allowGuestDemo><CommandCenter /></ProtectedRoute>} />
+              <Route path="/" element={<RootRoute />} />
+              <Route path="/landing" element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/command-center" element={<ProtectedRoute allowGuestDemo><CommandCenter /></ProtectedRoute>} />
               <Route path="/tasks" element={<Navigate to="/command-center" replace />} />

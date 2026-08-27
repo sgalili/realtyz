@@ -46,7 +46,6 @@ const FEATURES = [
   {
     icon: ShieldCheck,
     title: 'שליטה מלאה של המתווך',
-    output: true,
     body: 'תור אישורים, כפתור עצירה מיידי ותיעוד של כל פעולה שה-AI ביצע.',
   },
 ];
