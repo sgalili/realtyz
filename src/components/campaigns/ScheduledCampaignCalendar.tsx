@@ -136,7 +136,25 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
       setListingsLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [scheduleDay]);
+  }, [scheduleDay, workspaceOwnerId]);
+
+  // Persist every configuration change so it survives leaving the page.
+  useEffect(() => {
+    if (!scheduleDay) return;
+    saveSchedulePrefs(workspaceOwnerId, {
+      winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount,
+      selectedListingIds, selectedGroupIds,
+    });
+  }, [scheduleDay, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedListingIds, selectedGroupIds]);
+
+  // The number of posts follows the number of properties picked in the dropdown.
+  useEffect(() => {
+    if (!scheduleDay) return;
+    if (selectedListingIds.length > 0) {
+      setWinCount(Math.min(20, selectedListingIds.length));
+    }
+  }, [selectedListingIds, scheduleDay]);
+
 
   const filteredListings = useMemo(() => {
     const q = listingSearch.trim().toLowerCase();
