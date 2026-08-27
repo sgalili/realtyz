@@ -44,7 +44,7 @@ import { sourcePhotoCount } from '@/lib/photoCount';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle } from '@/lib/formatListingTitle';
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
-import { ensureFullPropertyImport } from '@/lib/propertyFullSync';
+import { ensureFullPropertyImport, ensureMetadataImport } from '@/lib/propertyFullSync';
 import { isNewListing, isOldListing } from '@/lib/listingFreshness';
 import { isRelevantListing } from '@/lib/listingRelevance';
 import { sourceYad2Url } from '@/lib/yad2Ad';
