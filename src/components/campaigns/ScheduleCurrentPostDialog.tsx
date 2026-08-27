@@ -116,8 +116,8 @@ export function ScheduleCurrentPostDialog({
       setWinCount(prefs.winCount);
       setRecurrence(prefs.recurrence);
       setRecurrenceDays(prefs.recurrenceDays);
-      setRecurrenceCountInput(prefs.recurrenceCountInput ?? '');
       setGroupDailyLimit(prefs.groupDailyLimit);
+
       setSelectedGroupIds(
         prefs.selectedGroupIds.length > 0 ? prefs.selectedGroupIds : (defaultGroupIds || []),
       );
