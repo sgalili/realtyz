@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.trigger_speed_to_lead() FROM anon, authenticated, PUBLIC;
