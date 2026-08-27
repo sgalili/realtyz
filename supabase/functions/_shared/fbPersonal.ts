@@ -237,3 +237,37 @@ export async function graphGet(path: string, params: Record<string, string>) {
   }
   return { ok: res.ok, status: res.status, body };
 }
+
+/**
+ * Verify the GLOBAL (system-level) Meta app credentials are usable.
+ *
+ * Every workspace connects Facebook through the same super-admin managed Meta
+ * app, so a mismatch between the pinned App ID and the stored App Secret would
+ * break the connect flow for ALL users at once. This probe uses the
+ * client_credentials grant (no user involved) so the connections screen can say
+ * exactly whether the platform app itself is healthy.
+ */
+export async function validateFbApp(
+  clientId: string | null,
+  clientSecret: string | null,
+): Promise<{ valid: boolean; reason: string | null }> {
+  if (!clientId) return { valid: false, reason: "חסר App ID מערכתי לפייסבוק." };
+  if (!clientSecret) return { valid: false, reason: "חסר App Secret מערכתי לפייסבוק." };
+  try {
+    const res = await fetch(
+      `${GRAPH}/oauth/access_token?${new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: clientId,
+        client_secret: clientSecret,
+      })}`,
+    );
+    const body = await res.json().catch(() => ({}));
+    if (res.ok && body?.access_token) return { valid: true, reason: null };
+    return {
+      valid: false,
+      reason: `ה-App Secret המערכתי אינו תואם ל-App ID ${clientId}. יש לעדכן אותו בהגדרות המערכת.`,
+    };
+  } catch (e) {
+    return { valid: false, reason: `בדיקת אפליקציית Meta נכשלה: ${String((e as any)?.message ?? e)}` };
+  }
+}

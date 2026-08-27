@@ -146,16 +146,11 @@ function parseMetaCredential(raw: unknown): { token: string; pageId: string | nu
 async function resolveGraphToken(ownerId: string | null): Promise<{ token: string; pageId: string | null }> {
   const page = await resolveMetaPage(admin, ownerId);
   if (page?.token) return { token: page.token, pageId: page.pageId };
-  // Tenant isolation: never borrow the platform-level page token for a
-  // specific workspace owner.
-  if (ownerId) return { token: "", pageId: null };
-  const env = parseMetaCredential(
-    Deno.env.get("FB_PAGE_ACCESS_TOKEN") ||
-      Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN") ||
-      Deno.env.get("META_ACCESS_TOKEN"),
-  );
-  return { token: env.token, pageId: env.pageId };
+  // TENANT ISOLATION: never borrow the platform-level page token. The Meta app is
+  // shared globally, but tokens and posts stay bound to their own workspace.
+  return { token: "", pageId: null };
 }
+
 
 
 function collectFromGraphEntry(entry: any): string[] {

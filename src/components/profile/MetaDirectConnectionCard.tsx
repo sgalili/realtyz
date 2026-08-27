@@ -57,27 +57,41 @@ function describeConnectError(payload: any): string {
   return unique.join(' — ');
 }
 
+/** Error that keeps the JSON body so callers can react to flags like retry_basic. */
+class PageConnectError extends Error {
+  payload: any;
+  constructor(message: string, payload: any) {
+    super(message);
+    this.payload = payload ?? null;
+  }
+}
+
 async function callPageConnect<T = any>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('meta-page-connect', { body });
   if (error) {
     // Non-2xx responses hide the JSON body behind error.context — read it so the
     // user sees the real reason instead of "non-2xx status code".
     let detailed = '';
+    let payload: any = null;
     try {
       const ctx: any = (error as any)?.context;
-      const payload = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
+      payload = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
       detailed = describeConnectError(payload);
     } catch {
       detailed = '';
     }
     const raw = detailed || String(error?.message ?? error);
-    throw new Error(
+    throw new PageConnectError(
       /failed to (send|fetch)/i.test(raw) ? 'לא ניתן להגיע לשירות החיבור לפייסבוק. נסה שוב בעוד רגע.' : raw,
+      payload,
     );
   }
-  if (data && (data as any).error) throw new Error(describeConnectError(data) || String((data as any).error));
+  if (data && (data as any).error) {
+    throw new PageConnectError(describeConnectError(data) || String((data as any).error), data);
+  }
   return data as T;
 }
+
 
 
 /**
@@ -243,9 +257,33 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         await probe(false).catch(() => undefined);
       } catch (e: any) {
         window.clearTimeout(safety);
+        // ZERO-FRICTION FALLBACK: the shared platform Meta app may not have
+        // advanced access for this user yet. Reopen the dialog automatically with
+        // the review-free basic scopes instead of dead-ending the connection.
+        if (e?.payload?.retry_basic) {
+          try {
+            const retry = await callPageConnect<any>({
+              action: 'start',
+              scope_tier: 'basic',
+              redirect_uri: oauthRedirectUri(),
+              return_origin: oauthReturnOrigin(),
+            });
+            if (retry?.auth_url) {
+              const url = String(retry.auth_url);
+              setPendingAuthUrl(url);
+              toast.message('מבקשים הרשאות בסיסיות מפייסבוק', {
+                description: 'אשרו שוב את החיבור כדי להשלים את ההתחברות.',
+              });
+              if (openOAuthWindow(url)) return;
+            }
+          } catch {
+            /* fall through to the manual path below */
+          }
+        }
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: String(e?.message ?? 'החיבור לפייסבוק נכשל.') });
         // Never leave the user trapped: offer the manual token path immediately.
         setManualOpen(true);
+
       } finally {
         window.clearTimeout(safety);
         exchangingRef.current = false;

@@ -182,15 +182,10 @@ function parseMetaCredential(value: unknown): { token: string; pageId: string | 
 async function resolveGraphToken(ownerId?: string | null): Promise<string> {
   const page = await resolveMetaPage(admin, ownerId ?? null);
   if (page?.token) return page.token;
-  // Tenant isolation: no cross-workspace token borrowing.
-  if (ownerId) return "";
-  const env = parseMetaCredential(
-    Deno.env.get("FB_PAGE_ACCESS_TOKEN") ||
-      Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN") ||
-      Deno.env.get("META_ACCESS_TOKEN"),
-  );
-  return env.token;
+  // TENANT ISOLATION: no cross-workspace or platform-env token borrowing.
+  return "";
 }
+
 
 
 Deno.serve(async (req) => {
