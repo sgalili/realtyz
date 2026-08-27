@@ -667,7 +667,12 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   )}
                 </PopoverContent>
               </Popover>
+            </div>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-end gap-2 flex-row-reverse">
               <div className="flex-1">
+
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">עד שעה</label>
                 <Input
                   type="time"
