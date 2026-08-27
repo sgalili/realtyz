@@ -140,7 +140,7 @@ export function ProductTour() {
     if (!name && !mail && !city) return;
     setSavingProfile(true);
     try {
-      const patch: Record<string, unknown> = {};
+      const patch: Record<string, any> = {};
       if (name) patch.full_name = name;
       if (mail) patch.email = mail;
       if (city) {
@@ -148,7 +148,7 @@ export function ProductTour() {
         patch.service_areas = [city];
       }
       if (Object.keys(patch).length) {
-        await supabase.from('profiles').update(patch).eq('id', user.id);
+        await supabase.from('profiles').update(patch as never).eq('id', user.id);
       }
       const metaPatch: Record<string, unknown> = {};
       if (name) metaPatch.full_name = name;
