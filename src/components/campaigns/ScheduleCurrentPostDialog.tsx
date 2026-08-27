@@ -67,23 +67,28 @@ export function ScheduleCurrentPostDialog({
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   });
-  const [winStart, setWinStart] = useState('09:00');
-  const [winEnd, setWinEnd] = useState('21:00');
-  const [winCount, setWinCount] = useState(1);
-  const [recurrence, setRecurrence] = useState<Recurrence>('none');
-  const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
+  const initialPrefs = useMemo(() => loadSchedulePrefs(workspaceOwnerId, 'composer'), [workspaceOwnerId]);
+  const [winStart, setWinStart] = useState(initialPrefs.winStart);
+  const [winEnd, setWinEnd] = useState(initialPrefs.winEnd);
+  const [winCount, setWinCount] = useState(initialPrefs.winCount);
+  const [recurrence, setRecurrence] = useState<Recurrence>(initialPrefs.recurrence);
+  const [recurrenceDays, setRecurrenceDays] = useState<number[]>(initialPrefs.recurrenceDays);
   // Blank = infinite/open-ended sequence (materialized as 52 slots, user can
   // stop the series any time via "בטל סדרה" on the calendar).
   const INFINITE_CAP = 52;
-  const [recurrenceCountInput, setRecurrenceCountInput] = useState<string>('');
+  const [recurrenceCountInput, setRecurrenceCountInput] = useState<string>(initialPrefs.recurrenceCountInput ?? '');
   const recurrenceCount = recurrenceCountInput.trim() === ''
     ? INFINITE_CAP
     : Math.max(1, Math.min(INFINITE_CAP, Number(recurrenceCountInput) || 1));
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(defaultGroupIds || []);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
+    initialPrefs.selectedGroupIds.length > 0 ? initialPrefs.selectedGroupIds : (defaultGroupIds || []),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
+  // Up to 10 random property photos are always attached to the scheduled posts.
+  const [postImages, setPostImages] = useState<string[]>([]);
 
   // JIT generation cap: only fully generate distinct AI variants for the next
   // few slots. Every slot beyond this cap is scheduled with the ORIGINAL body
@@ -92,11 +97,49 @@ export function ScheduleCurrentPostDialog({
 
   useEffect(() => {
     if (open) {
-      setSelectedGroupIds(defaultGroupIds || []);
+      const prefs = loadSchedulePrefs(workspaceOwnerId, 'composer');
+      setWinStart(prefs.winStart);
+      setWinEnd(prefs.winEnd);
+      setWinCount(prefs.winCount);
+      setRecurrence(prefs.recurrence);
+      setRecurrenceDays(prefs.recurrenceDays);
+      setRecurrenceCountInput(prefs.recurrenceCountInput ?? '');
+      setSelectedGroupIds(
+        prefs.selectedGroupIds.length > 0 ? prefs.selectedGroupIds : (defaultGroupIds || []),
+      );
       setSubmitting(false);
       setProgress(0);
     }
-  }, [open, defaultGroupIds]);
+  }, [open, defaultGroupIds, workspaceOwnerId]);
+
+  // Persist the configuration so it is still there after a refresh.
+  useEffect(() => {
+    if (!open) return;
+    saveSchedulePrefs(
+      workspaceOwnerId,
+      {
+        winStart, winEnd, winCount, recurrence, recurrenceDays,
+        recurrenceCount, recurrenceCountInput, selectedGroupIds,
+      },
+      'composer',
+    );
+  }, [open, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, recurrenceCountInput, selectedGroupIds]);
+
+  // Resolve the media attached to every scheduled slot: the composer's own
+  // media first, topped up with random property photos (max 10 in total).
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const own = (Array.isArray(mediaUrls) ? mediaUrls : []).filter(Boolean);
+      const extra = own.length >= MAX_POST_IMAGES ? [] : await pickListingImages(listingId, MAX_POST_IMAGES);
+      if (cancelled) return;
+      const merged = Array.from(new Set([...own, ...extra])).slice(0, MAX_POST_IMAGES);
+      setPostImages(merged);
+    })();
+    return () => { cancelled = true; };
+  }, [open, mediaUrls, listingId]);
+
 
 
   const dayLabel = useMemo(() => {
