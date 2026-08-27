@@ -367,7 +367,7 @@ Deno.serve(async (req) => {
           page_access_token: token,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "page_id" },
+        { onConflict: "owner_id,page_id" },
       );
       if (manualErr) return json({ error: manualErr.message }, 500);
 
@@ -565,7 +565,7 @@ Deno.serve(async (req) => {
           page_access_token: String(chosen.access_token),
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "page_id" },
+        { onConflict: "owner_id,page_id" },
       );
       if (upsertErr) {
         console.error("[meta-page-connect] upsert failed", upsertErr);
@@ -671,7 +671,7 @@ Deno.serve(async (req) => {
               is_selected: true,
               updated_at: new Date().toISOString(),
             },
-            { onConflict: "page_id" },
+            { onConflict: "owner_id,page_id" },
           )
           .select("page_id, page_name, page_avatar_url")
           .maybeSingle();

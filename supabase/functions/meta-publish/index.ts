@@ -75,7 +75,7 @@ async function cachePage(db: SupabaseClient, ownerId: string | null, page: Resol
         page_access_token: page.token,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "page_id" },
+      { onConflict: "owner_id,page_id" },
     );
   } catch { /* caching is best-effort */ }
 }
