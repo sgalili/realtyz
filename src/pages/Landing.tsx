@@ -203,7 +203,7 @@ export default function Landing() {
                   <ArrowLeft className="ms-2 h-5 w-5 transition-transform group-hover:-translate-x-1" />
                 </Button>
               </Link>
-              <p className="text-xs font-semibold text-muted-foreground">בלי כרטיס אשראי</p>
+              
             </div>
           </Reveal>
 
