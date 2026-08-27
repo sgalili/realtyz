@@ -5689,6 +5689,15 @@ const CampaignCenter = () => {
   }, [bulkScheduleIso, workspaceOwnerId]);
 
 
+  // One-click bulk publishing: every draft is dispatched silently, with no
+  // per-draft confirmation dialog.
+  const [bulkSilent, setBulkSilent] = useState(false);
+  // Controlled history dialog so a finished bulk dispatch can land the user
+  // directly on the "פוסטים עתידיים" tab with fresh rows.
+  const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
+  const [historyTab, setHistoryTab] = useState<'published' | 'drafts' | 'future'>('published');
+  const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
+
   const publishDraft = useCallback((key: string) => {
     const fn = publishFnsRef.current.get(key);
     if (!fn) return false;
@@ -5701,18 +5710,29 @@ const CampaignCenter = () => {
   const publishAllDrafts = useCallback((keys: string[]) => {
     const queue = keys.filter((k) => !publishedDrafts.has(k) && publishFnsRef.current.has(k));
     if (!queue.length) { toast.info('אין טיוטות מוכנות לפרסום'); return; }
+    // No confirmation dialogs in bulk mode — a single click ships them all.
+    setBulkSilent(true);
     bulkQueueRef.current = queue.slice(1);
-    if (!publishDraft(queue[0])) bulkQueueRef.current = [];
+    if (!publishDraft(queue[0])) { bulkQueueRef.current = []; setBulkSilent(false); }
   }, [publishedDrafts, publishDraft]);
 
   /** Advances the bulk queue after one draft finished dispatching. */
   const advanceBulkQueue = useCallback(() => {
     const next = bulkQueueRef.current.shift();
-    if (!next) return false;
-    // Let the dialog fully close before opening it for the next draft.
-    window.setTimeout(() => { if (!publishDraft(next)) advanceBulkQueue(); }, 450);
+    if (!next) {
+      if (bulkSilent) {
+        setBulkSilent(false);
+        // Show the freshly scheduled posts immediately.
+        setHistoryTab('future');
+        setHistoryRefreshTick((t) => t + 1);
+        setCampaignHistoryOpen(true);
+      }
+      return false;
+    }
+    window.setTimeout(() => { if (!publishDraft(next)) advanceBulkQueue(); }, 200);
     return true;
-  }, [publishDraft]);
+  }, [publishDraft, bulkSilent]);
+
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
