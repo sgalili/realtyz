@@ -263,7 +263,12 @@ export function ScheduleCurrentPostDialog({
       }
     }
 
-    return recDates.flatMap((d) => buildDaySlots(d)).sort((a, b) => a.getTime() - b.getTime());
+    // Rolling queue: keep only the current date + the single NEXT recurrence
+    // date. Later versions are generated after a successful publish.
+    const capped = recDates
+      .sort((a, b) => a.getTime() - b.getTime())
+      .slice(0, recurrence === 'none' ? 1 : 2);
+    return capped.flatMap((d) => buildDaySlots(d)).sort((a, b) => a.getTime() - b.getTime());
   };
 
   const extractErr = async (error: any, data: any): Promise<string | null> => {
