@@ -2576,7 +2576,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, selectedProfileIds, attachWaLink, firstComment, onConfirmed,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, selectedProfileIds, attachWaLink, firstComment, onConfirmed, autoConfirm = false,
 
 }: {
   open: boolean;
@@ -2593,7 +2593,10 @@ const ConfirmDispatchDialog = ({
   attachWaLink: boolean;
   firstComment: string;
   onConfirmed: () => void;
+  /** Bulk mode: dispatch immediately, with no confirmation UI at all. */
+  autoConfirm?: boolean;
 }) => {
+
   const { user } = useAuth();
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [isBroadcasting, setIsBroadcasting] = useState(false);
