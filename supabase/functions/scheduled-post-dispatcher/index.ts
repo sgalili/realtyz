@@ -185,7 +185,10 @@ Deno.serve(async (req) => {
     if (claimErr || !claimed) continue;
 
     const finalBody = await regenerateBody(row);
+    // Guarantee up to 10 random property photos on every dispatched slot.
+    row.media_urls = await ensureMedia(admin, row);
     const dispatch = await invokeMetaPublish(row, finalBody);
+
 
     if (dispatch.ok) {
       // meta-publish inserted its own row(s). Retire the placeholder so it
