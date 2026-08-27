@@ -1,16 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Infinity as InfinityIcon, ArrowLeft, Check, Star,
-} from 'lucide-react';
-import {
-  FREE_CONTACTS, FREE_PROPERTIES, PRICING_TIERS, quoteForContacts,
-} from '@/lib/pricing';
-import { fmtILS } from '@/lib/formatCurrency';
+import { ArrowLeft, Check, Star } from 'lucide-react';
+import { FREE_CONTACTS, FREE_PROPERTIES } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
+
 import { PlatformTicker, StackTicker } from '@/components/landing/LogoTickers';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import imgPublishing from '@/assets/landing/card-publishing.jpg';
@@ -155,20 +149,8 @@ function Reveal({ children, delay = 0, className }: { children: React.ReactNode;
   );
 }
 
-const MAX_CONTACTS = 10_000;
-
 export default function Landing() {
-  const [contacts, setContacts] = useState(250);
-  const [draft, setDraft] = useState('250');
-  const quote = useMemo(() => quoteForContacts(contacts), [contacts]);
-  const animatedPrice = useCounter(quote.monthlyPrice);
-  const animatedContacts = useCounter(quote.contacts, 300);
 
-  const applyContacts = (n: number) => {
-    const clamped = Math.min(MAX_CONTACTS * 5, Math.max(0, Math.round(n)));
-    setContacts(clamped);
-    setDraft(String(clamped));
-  };
 
   return (
     <div dir="rtl" className="realtyz-landing min-h-screen bg-background text-foreground antialiased">
@@ -180,10 +162,9 @@ export default function Landing() {
           </Link>
           <nav className="hidden items-center gap-7 text-sm font-semibold text-muted-foreground md:flex">
             <a href="#features" className="transition-colors hover:text-foreground">יכולות</a>
-            <a href="#impact" className="transition-colors hover:text-foreground">תוצאות</a>
             <a href="#whatsapp" className="transition-colors hover:text-foreground">ווטסאפ AI</a>
-            <a href="#pricing" className="transition-colors hover:text-foreground">תמחור</a>
             <a href="#free" className="transition-colors hover:text-foreground">מסלול חינם</a>
+
           </nav>
           <Link to="/" aria-label="Realtyz AI">
             <img src={realtyzLogo} alt="Realtyz AI" className="h-[3.12rem] w-auto object-contain" />
@@ -337,35 +318,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ───────── Impact metrics ───────── */}
-      <section id="impact" className="border-t border-border/60 py-20">
-        <div className="mx-auto w-full max-w-6xl px-4">
-          <Reveal>
-            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
-              ניהול העסק מקצה לקצה - במספרים
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
-              מהרגע שהליד נכנס ועד סגירת העסקה: מענה מיידי, מעקב אוטומטי ותמונת מצב עסקית אחת.
-            </p>
-          </Reveal>
-          <Reveal delay={140}>
-            <div className="mt-12 grid gap-5 grid-cols-1 sm:grid-cols-3">
-              {[
-                { value: '45 שניות', label: 'זמן מענה ממוצע לליד חדש', tone: 'hsl(var(--brand-navy))' },
-                { value: '+38%', label: 'שיפור בשיעור ההמרה לפגישה', tone: 'hsl(var(--brand-red))' },
-                { value: '12 שעות', label: 'חיסכון שבועי בעבודה ידנית', tone: 'hsl(var(--brand-navy))' },
-              ].map((s) => (
-                <div key={s.label} className="landing-card rounded-2xl border border-border/70 bg-card p-6 text-center">
-                  <p className="text-4xl font-extrabold tabular-nums" style={{ color: s.tone }}>{s.value}</p>
-                  <p className="mt-2 text-sm font-semibold text-muted-foreground">{s.label}</p>
-                </div>
-              ))}
 
-            </div>
-          </Reveal>
-        </div>
 
-      </section>
 
       {/* ───────── WhatsApp super assistant ───────── */}
       <section id="whatsapp" className="relative overflow-hidden border-t border-border/60 py-20">
@@ -401,124 +355,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ───────── Pricing calculator ───────── */}
-      <section id="pricing" className="relative overflow-hidden border-t border-border/60 py-20">
-        <div className="mx-auto w-full max-w-4xl px-4">
-          <Reveal>
-            <div className="text-center">
-              <h2 className="landing-title-gradient text-3xl font-extrabold tracking-tight sm:text-4xl">
-                תמחור מדורג. שקוף. לפי אנשי קשר בלבד.
-              </h2>
-              <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-                הכל כלול ללא הגבלה (למעט IVR ושיחות AI קוליות שמתומחרים לפי צריכה בפועל).
-                אפס עלויות נסתרות, ובמסלול החינמי גם בלי כרטיס אשראי.
-              </p>
-            </div>
-          </Reveal>
 
-          {/* Tiers */}
-          <Reveal delay={80}>
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              {PRICING_TIERS.map((t, i) => (
-                <div
-                  key={t.label}
-                  className={cn(
-                    'landing-card rounded-2xl border bg-card p-5 text-center transition-transform duration-300 will-change-transform hover:-translate-y-1',
-                    quote.tierIndex === i && !quote.isFree
-                      ? 'border-primary shadow-lg shadow-primary/20'
-                      : 'border-border/70',
-                  )}
-                >
-                  <p className="text-sm font-semibold text-muted-foreground">{t.label}</p>
-                  <p className="mt-2 text-3xl font-extrabold tabular-nums text-primary">
-                    <bdi dir="ltr">{fmtILS(t.rate, { fractionDigits: 2 })}</bdi>
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">לאיש קשר / חודש</p>
-                </div>
-              ))}
-            </div>
-          </Reveal>
 
-          <Reveal delay={140}>
-            <div className="landing-card mt-8 rounded-3xl border border-border/70 bg-card p-6 sm:p-9">
-              <div className="flex flex-col items-center gap-1">
-                <div className="flex items-end gap-2">
-                  <span className="text-5xl font-extrabold tabular-nums text-primary sm:text-6xl">
-                    <bdi dir="ltr">{fmtILS(animatedPrice)}</bdi>
-                  </span>
-                  <span className="pb-2 text-sm font-semibold text-muted-foreground">/ חודש</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {quote.isFree
-                    ? `עד ${FREE_CONTACTS} אנשי קשר - חינם, בלי כרטיס אשראי`
-                    : <>{fmtILS(quote.ratePerContact, { fractionDigits: 2 })} לאיש קשר · {FREE_CONTACTS} הראשונים חינם</>}
-                </p>
-                {!quote.isFree && (
-                  <p className="mt-1 text-xs font-bold text-primary">{quote.tierLabel}</p>
-                )}
-              </div>
-
-              <div className="mt-9">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold">
-                  <span className="text-muted-foreground">כמה אנשי קשר יש לכם?</span>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      step={1}
-                      value={draft}
-                      onChange={(e) => {
-                        setDraft(e.target.value);
-                        const n = Number(e.target.value);
-                        if (e.target.value !== '' && Number.isFinite(n)) applyContacts(n);
-                      }}
-                      onBlur={() => applyContacts(Number(draft) || 0)}
-                      aria-label="הקלדת מספר אנשי קשר"
-                      className="h-10 w-28 text-center text-base font-bold tabular-nums"
-                    />
-                    <span className="tabular-nums text-muted-foreground">
-                      {animatedContacts.toLocaleString('he-IL')}
-                    </span>
-                  </div>
-                </div>
-                <Slider
-                  dir="rtl"
-                  value={[Math.min(contacts, MAX_CONTACTS)]}
-                  min={0}
-                  max={MAX_CONTACTS}
-                  step={1}
-                  onValueChange={(v) => applyContacts(v[0])}
-                  aria-label="כמות אנשי קשר"
-                  className="[&_[role=slider]]:h-6 [&_[role=slider]]:w-6 [&_[role=slider]]:transition-transform [&_[role=slider]]:active:scale-110"
-                />
-                <div className="mt-2 flex justify-between text-xs text-muted-foreground tabular-nums">
-                  <span>0</span><span>1,000</span><span>5,000</span><span>10,000+</span>
-                </div>
-              </div>
-
-              <ul className="mt-8 grid gap-2.5 sm:grid-cols-2">
-                {INCLUDED.map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-[15px]">
-                    <Check className="h-4 w-4 shrink-0 text-primary" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-                <li className="flex items-center gap-2 text-[15px] font-semibold">
-                  <InfinityIcon className="h-4 w-4 shrink-0 text-primary" />
-                  <span>הכל כלול ללא הגבלה</span>
-                </li>
-              </ul>
-
-              <Link to="/auth" className="mt-8 block">
-                <Button size="lg" className="h-14 w-full text-base font-extrabold">
-                  התחל חינם ברגע - בלי אשראי
-                </Button>
-              </Link>
-            </div>
-          </Reveal>
-        </div>
-      </section>
 
       {/* ───────── Freemium ───────── */}
       <section id="free" className="border-t border-border/60 py-20">
@@ -530,31 +368,8 @@ export default function Landing() {
               ללא הגבלת זמן, ללא כרטיס אשראי, בלי שיחת מכירה.
             </p>
           </Reveal>
-          <Reveal delay={120}>
-            <div className="mx-auto mt-9 grid max-w-2xl grid-cols-3 gap-3 sm:gap-4">
-              {FREE_TILES.map((s) => (
-                <div
-                  key={s.label}
-                  className="landing-card relative overflow-hidden rounded-2xl border border-border/70 transition-transform duration-300 will-change-transform hover:-translate-y-1"
-                >
-                  <img
-                    src={s.image}
-                    alt=""
-                    aria-hidden
-                    loading="lazy"
-                    width={1024}
-                    height={640}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                  <div aria-hidden className="landing-card-veil absolute inset-0" />
-                  <p className="relative px-3 py-10 text-sm font-extrabold text-white drop-shadow sm:text-base">
-                    {s.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Reveal>
           <Reveal delay={200}>
+
             <Link to="/auth" className="mt-10 inline-block">
               <Button size="lg" className="h-14 px-10 text-base font-extrabold shadow-2xl shadow-primary/25">
                 פתיחת חשבון וכניסה מיידית למערכת

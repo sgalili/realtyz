@@ -242,7 +242,9 @@ function InboxAutopilotToggle() {
 
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
-  { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
+  { match: /^\/$/, title: 'משימות היום' },
+  { match: /^\/(command-center|tasks)/, title: 'משימות היום' },
+  { match: /^\/dashboard$/, title: 'לוח בקרה' },
   { match: /^\/lead-crm/, title: 'לקוחות' },
   { match: /^\/inbox/, title: 'צ׳אטים בכל הערוצים' },
   { match: /^\/communication/, title: 'צ׳אטים בכל הערוצים' },

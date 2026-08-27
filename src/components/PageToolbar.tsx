@@ -14,7 +14,9 @@ import { Menu } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
-  { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
+  { match: /^\/$/, title: 'משימות היום' },
+  { match: /^\/(command-center|tasks)/, title: 'משימות היום' },
+  { match: /^\/dashboard$/, title: 'לוח בקרה' },
   { match: /^\/lead-crm/, title: 'לקוחות' },
   { match: /^\/inbox/, title: 'תיבת הודעות' },
   { match: /^\/deal-room/, title: 'עסקאות' },

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,17 +15,37 @@ import {
   ChevronLeft,
   ClipboardList,
   Hourglass,
+  Megaphone,
   Users,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import {
   useCommandCenterMetrics,
   useCommandCenterTasks,
+  useCommandCenterPosts,
   ACTION_TYPE_LABEL,
   TASK_STATUS_LABEL,
+  POST_STATUS_LABEL,
+  CHANNEL_LABEL,
   type CommandTask,
 } from '@/hooks/useCommandCenter';
+
+function QuickActionsButton() {
+  return (
+    <Button
+      type="button"
+      size="lg"
+      className="h-12 gap-2 px-6 text-sm font-bold"
+      onClick={() => window.dispatchEvent(new Event('open-quick-actions'))}
+    >
+      <Zap className="h-4 w-4" />
+      פעולה מהירה - פתק, תזכורת, סיכום שיחה
+    </Button>
+  );
+}
+
 
 const PRIORITY_STYLE: Record<CommandTask['priority'], string> = {
   high: 'bg-destructive/10 text-destructive ring-1 ring-destructive/20',
@@ -103,11 +123,12 @@ export default function CommandCenter() {
   return (
     <div dir="rtl" className="space-y-6 p-4 md:p-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">חדר בקרה · משימות היום</h1>
+        <h1 className="text-2xl font-bold tracking-tight">משימות היום</h1>
         <p className="text-sm text-muted-foreground">
           כל המעקבים, השיחות והפגישות שממתינים לך, לפי דחיפות ותאריך יעד.
         </p>
       </header>
+
 
       <section className="grid grid-cols-2 gap-3">
         <MetricCard
@@ -158,15 +179,24 @@ export default function CommandCenter() {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            אין משימות פתוחות בתצוגה הזו. יום נקי.
-          </p>
+          <div className="space-y-4 py-10 text-center">
+            <p className="text-sm text-muted-foreground">אין משימות פתוחות בתצוגה הזו. יום נקי.</p>
+            <QuickActionsButton />
+          </div>
         ) : (
           <ul className="space-y-2">
-            {visible.map((task) => {
+            {visible.map((task, idx) => {
+              const midpoint = Math.ceil(visible.length / 2);
               const due = dueLabel(task.dueAt);
               return (
+                <Fragment key={`${task.source}-${task.id}`}>
+                {idx === midpoint && (
+                  <li className="py-2 text-center">
+                    <QuickActionsButton />
+                  </li>
+                )}
                 <li
+
                   key={`${task.source}-${task.id}`}
                   className="rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent/40"
                 >
@@ -243,14 +273,108 @@ export default function CommandCenter() {
                     </div>
                   </div>
                 </li>
+                </Fragment>
               );
+
             })}
           </ul>
         )}
       </Card>
+
+      <PostsActivityCard />
     </div>
   );
 }
+
+function PostsActivityCard() {
+  const { data: posts = [], isLoading } = useCommandCenterPosts();
+  const navigate = useNavigate();
+  const scheduled = posts.filter((p) => p.scheduled);
+  const past = posts.filter((p) => !p.scheduled);
+
+  return (
+    <Card className="p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Megaphone className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">פעילות פוסטים ופרסומים</h2>
+        </div>
+        <Button size="sm" variant="outline" className="h-9 gap-1 text-sm" onClick={() => navigate('/campaigns')}>
+          מרכז הפוסטים
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
+        </div>
+      ) : posts.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">אין פוסטים מתוזמנים או פרסומים אחרונים.</p>
+      ) : (
+        <div className="space-y-5">
+          {scheduled.length > 0 && (
+            <PostsGroup title={`מתוזמנים (${scheduled.length})`} items={scheduled} />
+          )}
+          {past.length > 0 && (
+            <PostsGroup title="פורסמו לאחרונה" items={past.slice(0, 10)} />
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function PostsGroup({
+  title,
+  items,
+}: {
+  title: string;
+  items: ReturnType<typeof useCommandCenterPosts>['data'] extends (infer T)[] | undefined ? T[] : never;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-bold text-muted-foreground">{title}</p>
+      <ul className="space-y-2">
+        {items.map((p) => {
+          const when = p.when ? new Date(p.when) : null;
+          const whenText = when
+            ? `${when.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' })} ${when.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+            : 'ללא תאריך';
+          return (
+            <li key={p.id} className="rounded-lg border border-border bg-card p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="truncate text-base font-semibold">{p.title}</p>
+                  {p.content && (
+                    <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{p.content}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {p.channel && (
+                    <Badge variant="secondary" className="text-[13px]">
+                      {CHANNEL_LABEL[p.channel] ?? p.channel}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-[13px]">
+                    {POST_STATUS_LABEL[p.status.toLowerCase()] ?? p.status}
+                  </Badge>
+                  <span className="inline-flex items-center gap-1 text-[13px] text-muted-foreground">
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    {whenText}
+                  </span>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 
 function MetricCard({
   icon,
