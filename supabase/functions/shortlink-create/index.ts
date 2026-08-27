@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { text, long_url } = buildShortlinkPayload(listing);
+    const { text, long_url } = buildShortlinkPayload(listing, await resolveOfficialWaPhone(admin));
 
     // Reuse any existing slug for this listing, but rewrite the stored long_url
     // every time so stale generated rows cannot keep old hardcoded fallback copy.
