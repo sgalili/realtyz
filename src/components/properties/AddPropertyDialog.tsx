@@ -129,7 +129,14 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
           .select('property_title, description, asking_price, city, neighborhood, address, rooms, sqm, floor, parking, elevator, source_url, source_metadata, media_photos, features')
           .eq('source_url', immediateSourceUrl)
           .maybeSingle();
-        if (existing) {
+        const hasUsefulLocalData = Boolean(
+          existing &&
+          (existing.city || existing.address || existing.neighborhood) &&
+          Number(existing.asking_price) > 0 &&
+          (Number(existing.rooms) > 0 || Number(existing.sqm) > 0) &&
+          String(existing.description || '').trim().length >= 10
+        );
+        if (existing && hasUsefulLocalData) {
           const meta = existing.source_metadata && typeof existing.source_metadata === 'object' ? existing.source_metadata : {};
           const localPhotos = Array.isArray(existing.media_photos) ? existing.media_photos.filter((p: unknown): p is string => typeof p === 'string') : [];
           const localParsed = {

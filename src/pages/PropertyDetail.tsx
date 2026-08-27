@@ -395,6 +395,19 @@ export default function PropertyDetail() {
       };
     },
   });
+  const [initialLoadProgress, setInitialLoadProgress] = useState(8);
+  useEffect(() => {
+    if (!isLoading) {
+      setInitialLoadProgress(100);
+      return;
+    }
+    const started = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - started;
+      setInitialLoadProgress(Math.min(92, 8 + Math.round((elapsed / 5000) * 84)));
+    }, 100);
+    return () => clearInterval(timer);
+  }, [isLoading]);
 
   const property = data?.property;
   const meta: JsonRecord = data?.meta || {};
@@ -754,14 +767,14 @@ export default function PropertyDetail() {
           )}
           {propertySnapshot.description && <p className="max-w-4xl whitespace-pre-line text-lg leading-8 text-foreground">{propertySnapshot.description}</p>}
           <div className="fixed bottom-4 left-4 z-50 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
-            <ProgressRing value={35} size={44} strokeWidth={4} />
+             <ProgressRing value={initialLoadProgress} size={44} strokeWidth={4} />
           </div>
         </div>
       );
     }
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-6" dir="rtl">
-        <ProgressRing value={35} size={76} strokeWidth={6} />
+        <ProgressRing value={initialLoadProgress} size={76} strokeWidth={6} />
       </div>
     );
   }
