@@ -110,7 +110,7 @@ export function sortYad2First(rows: UnifiedResult[]): UnifiedResult[] {
 }
 
 export async function searchLocalListings(f: SearchFilters): Promise<UnifiedResult[]> {
-  return searchLocal(f);
+  return sortYad2First(await searchLocal(f));
 }
 
 async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
