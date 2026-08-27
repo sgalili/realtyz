@@ -104,8 +104,12 @@ export const LABELS: Record<string, string> = {
   immediateentrance: 'כניסה מיידית',
   entranceflexible: 'כניסה גמישה',
   availablefrom: 'תאריך כניסה',
-
+  yearbuilt: 'שנת בנייה',
   buildingyear: 'שנת בנייה',
+  buildingshelter: 'מקלט בבניין',
+  pillarbuilding: 'בניין על עמודים',
+  onpillars: 'בניין על עמודים',
+
   propertycondition: 'מצב הנכס',
   condition: 'מצב הנכס',
   renovated: 'משופץ',
