@@ -701,6 +701,19 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   className="text-right"
                 />
               </div>
+              <div className="w-32">
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">מקס' לקבוצה/יום</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={50}
+                  placeholder="ללא הגבלה"
+                  value={groupDailyLimit || ''}
+                  onChange={(e) => setGroupDailyLimit(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                  className="text-right"
+                />
+              </div>
+
               <div className="flex-1">
                 <Popover open={listingsPopoverOpen} onOpenChange={setListingsPopoverOpen}>
                   <PopoverTrigger asChild>
