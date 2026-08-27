@@ -1,5 +1,7 @@
 import { BrandLogo } from '@/components/social/BrandLogo';
 import { BrandIcon } from '@/components/BrandIcon';
+import greenApiLogo from '@/assets/brands/green-api.svg';
+import logo019 from '@/assets/brands/019-mobile.png';
 
 /* Realtyz landing — infinite auto-scrolling logo tickers.
    Social platforms use their official brand colors (BrandLogo).
@@ -10,7 +12,7 @@ const PLATFORMS = [
   'linkedin', 'x', 'tiktok', 'youtube', 'gmail', 'sms', 'google_drive',
 ];
 
-const STACK: { label: string; color: string; icon?: string }[] = [
+const STACK: { label: string; color: string; icon?: string; img?: string }[] = [
   { label: 'OpenAI', color: '#FFFFFF', icon: 'openai' },
   { label: 'Gemini', color: '#4285F4', icon: 'gemini' },
   { label: 'Claude', color: '#D97757', icon: 'claude' },
@@ -20,9 +22,10 @@ const STACK: { label: string; color: string; icon?: string }[] = [
   { label: 'AWS', color: '#FF9900', icon: 'amazonaws' },
   { label: 'Supabase', color: '#3ECF8E', icon: 'supabase' },
   { label: 'GitHub', color: '#E6EDF3', icon: 'github' },
-  { label: 'GreenAPI', color: '#25D366' },
-  { label: '019', color: '#E4002B' },
+  { label: 'GreenAPI', color: '#25D366', img: greenApiLogo },
+  { label: '019', color: '#E4002B', img: logo019 },
 ];
+
 
 
 
