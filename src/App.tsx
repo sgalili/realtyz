@@ -73,6 +73,9 @@ const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
 const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const Landing = lazy(() => import("./pages/Landing"));
+const Terms = lazy(() => import("./pages/Terms"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+
 
 
 
