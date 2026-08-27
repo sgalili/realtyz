@@ -306,7 +306,43 @@ Deno.serve(async (req) => {
   }
 
   const payloads: Array<{ url: string; json: unknown }> = [];
+
+  /**
+   * Fallback when the Scraping Browser handshake is rejected (HTTP 403 = wrong
+   * zone / expired password / zone not enabled). We pull the same page over the
+   * Web Unlocker REST API and mine the inline JSON blobs, which already carry
+   * the deals / prices / schools sections.
+   */
+  const restFallback = async (): Promise<string | null> => {
+    const token = Deno.env.get("BRIGHTDATA_API_TOKEN") ?? "";
+    const zone = Deno.env.get("BRIGHTDATA_UNLOCKER_ZONE") ??
+      Deno.env.get("BRIGHTDATA_ZONE") ?? "reatyz_yad2";
+    if (!token) return "BRIGHTDATA_API_TOKEN לא מוגדר";
+    try {
+      const res = await fetch("https://api.brightdata.com/request", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ zone, url: pageUrl, format: "raw" }),
+      });
+      const html = await res.text();
+      if (!res.ok) return `Bright Data REST ${res.status}: ${html.slice(0, 200)}`;
+      const scripts = html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi);
+      for (const m of scripts) {
+        const t = (m[1] ?? "").trim();
+        if (t.length < 80 || t.length > 3_000_000 || !t.includes("{")) continue;
+        const start = t.indexOf("{");
+        const end = t.lastIndexOf("}");
+        if (start < 0 || end <= start) continue;
+        try { payloads.push({ url: "[rest-inline]", json: JSON.parse(t.slice(start, end + 1)) }); } catch { /* not pure JSON */ }
+      }
+      return payloads.length === 0 ? "לא נמצאו נתונים בעמוד יד2" : null;
+    } catch (e) {
+      return String((e as Error)?.message ?? e);
+    }
+  };
+
   let browser: any = null;
+  let browserError: string | null = null;
   try {
     browser = await puppeteer.connect({ browserWSEndpoint: ws });
     const page = await browser.newPage();
@@ -359,14 +395,28 @@ Deno.serve(async (req) => {
 
     await page.close().catch(() => {});
   } catch (e) {
-    console.error("[yad2-page-sections] browser error", e);
-    // Only a hard failure when nothing at all was captured.
+    const detail = String((e as Error)?.message ?? e);
+    console.error("[yad2-page-sections] browser error", detail);
     if (payloads.length === 0) {
-      return json({ error: "browser_failed", detail: String((e as Error)?.message ?? e) }, 502);
+      // 403 on the WS handshake = Bright Data rejected the Browser API zone.
+      // Never bubble a 502 to the client; try REST and degrade gracefully.
+      const fallbackError = await restFallback();
+      if (payloads.length === 0) {
+        browserError = /403/.test(detail)
+          ? 'חיבור דפדפן Bright Data נדחה (403) — יש לוודא שזון Browser API פעיל ושהסיסמה מעודכנת.'
+          : `שליפת נתוני יד2 נכשלה: ${detail}`;
+        if (fallbackError) browserError += ` · גיבוי REST: ${fallbackError}`;
+      }
     }
   } finally {
     try { await browser?.disconnect?.(); } catch { /* noop */ }
   }
+
+  if (browserError) {
+    // 200 + empty sections so the UI shows an explanation instead of a blank screen.
+    return json({ ok: false, error: browserError, deals: [], prices: [], schools: [], listings: [] }, 200);
+  }
+
 
 
   const deals: DealCard[] = [];
