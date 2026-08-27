@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { cleanMeasurementValue } from '@/lib/propertyMeasures';
+
 import {
   Sofa, TrendingUp, MapPin, Navigation, Pencil, Plus, Trash2, X, Save,
   ArrowUpCircle, Wind, Grid2X2, ShieldCheck, Sun, Armchair, DoorClosed,
