@@ -28,6 +28,18 @@ export type ExtensionGroup = {
   group_name: string;
   group_icon: string | null;
   group_url: string | null;
+  member_count: number | null;
+};
+
+const parseMemberCount = (raw: any): number | null => {
+  const value = raw?.member_count ?? raw?.memberCount ?? raw?.members ?? raw?.members_count;
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.round(value));
+  const text = String(value ?? '').trim().toLowerCase().replace(/,/g, '');
+  const match = text.match(/([\d.]+)\s*([km]?)/i);
+  if (!match) return null;
+  const factor = match[2] === 'm' ? 1_000_000 : match[2] === 'k' ? 1_000 : 1;
+  const count = Number(match[1]) * factor;
+  return Number.isFinite(count) ? Math.max(0, Math.round(count)) : null;
 };
 
 const normalizeOne = (raw: any): ExtensionGroup | null => {
@@ -42,6 +54,7 @@ const normalizeOne = (raw: any): ExtensionGroup | null => {
     group_name: String(raw.group_name ?? raw.name ?? raw.title ?? id),
     group_icon: raw.group_icon ?? raw.icon ?? raw.image ?? null,
     group_url: url ?? `https://www.facebook.com/groups/${id.replace(/^ext:/, "")}`,
+    member_count: parseMemberCount(raw),
   };
 };
 

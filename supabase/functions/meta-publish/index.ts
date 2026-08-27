@@ -498,11 +498,13 @@ Deno.serve(async (req) => {
 
     // Scheduled posts are persisted and dispatched later by the queue drain.
     if (scheduledIso) {
+      let queued = 0;
       for (const ch of channels) {
         const existing = await findReusableRow(db, ownerId, ch, hashes[ch], ["scheduled"], 24 * 30);
         if (existing) continue; // already queued for the same slot — never duplicate
-        await db.from("campaign_logs").insert({
+        const { error: queueError } = await db.from("campaign_logs").insert({
           user_id: ownerId,
+          workspace_owner_id: ownerId,
           campaign_name: campaignName,
           channel: ch,
           message_body: text,
@@ -510,10 +512,30 @@ Deno.serve(async (req) => {
           sent_at: scheduledIso,
           media_urls: media,
           first_comment: firstComment || null,
-          provider_response: { provider: "meta_graph", scheduled_at: scheduledIso, content_hash: hashes[ch] },
+          group_ids: groupIds,
+          target_profile_key: body?.target_profile_key ?? null,
+          target_account_ref: body?.target_account_ref ?? null,
+          listing_id: body?.listing_id ?? null,
+          series_id: body?.series_id ?? null,
+          series_index: body?.series_index ?? 0,
+          series_total: body?.series_total ?? 1,
+          recurrence_rule: body?.recurrence_rule ?? null,
+          needs_regeneration: true,
+          source_account: "meta-scheduled",
+          provider_response: {
+            provider: "meta_graph",
+            scheduled_at: scheduledIso,
+            content_hash: hashes[ch],
+            group_ids: groupIds,
+          },
         });
+        if (queueError) {
+          console.error("[meta-publish] schedule insert", queueError.message);
+          return json({ success: false, error: "schedule_failed", message: `שמירת התזמון נכשלה: ${queueError.message}` }, 200);
+        }
+        queued++;
       }
-      return json({ success: true, verified: true, scheduled: true, post_ids: [] });
+      return json({ success: true, verified: true, scheduled: true, queued, group_count: groupIds.length, post_ids: [] });
     }
 
     // Strict duplicate prevention: an identical post already live on the same
