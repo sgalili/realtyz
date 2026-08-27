@@ -33,9 +33,7 @@ type SharedPayload = {
   agency_name?: string | null;
   area_facts?: AreaFacts | null;
   logo_url?: string | null;
-  owner_wa?: string | null;
   owner_name?: string | null;
-  broker_wa: string | null;
   property: any | null;
 };
 
