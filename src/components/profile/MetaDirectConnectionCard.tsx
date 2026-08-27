@@ -8,7 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
-import { Facebook, Instagram, Loader2, RefreshCw, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Facebook, Instagram, Loader2, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
+
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
