@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
+import { saveGroupDailyLimit } from '@/lib/groupDailyLimits';
+
 import { cn } from '@/lib/utils';
 
 type ScheduledRow = {
@@ -100,6 +102,9 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [brandingPost, setBrandingPost] = useState(false);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
   const [listingsPopoverOpen, setListingsPopoverOpen] = useState(false);
+  // Max posts allowed per day for EACH selected group (0 = unlimited).
+  const [groupDailyLimit, setGroupDailyLimit] = useState<number>(0);
+
 
   // Restore the broker's last dialog configuration (window, count, recurrence,
   // properties, groups) every time the dialog opens — it survives refreshes.
@@ -118,6 +123,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     setRecurrenceDays(prefs.recurrenceDays);
     setRecurrenceCount(prefs.recurrenceCount);
     setRecurrenceOpen(false);
+    setGroupDailyLimit(prefs.groupDailyLimit);
+
     setBrandingPost(prefs.selectedListingIds.length === 0);
     setPropertiesOpen(false);
     (async () => {
@@ -143,9 +150,10 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     if (!scheduleDay) return;
     saveSchedulePrefs(workspaceOwnerId, {
       winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount,
-      selectedListingIds, selectedGroupIds,
+      selectedListingIds, selectedGroupIds, groupDailyLimit,
     });
-  }, [scheduleDay, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedListingIds, selectedGroupIds]);
+  }, [scheduleDay, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedListingIds, selectedGroupIds, groupDailyLimit]);
+
 
   // The number of posts follows the number of properties picked in the dropdown.
   useEffect(() => {
@@ -693,6 +701,19 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   className="text-right"
                 />
               </div>
+              <div className="w-32">
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">מקס' לקבוצה/יום</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={50}
+                  placeholder="ללא הגבלה"
+                  value={groupDailyLimit || ''}
+                  onChange={(e) => setGroupDailyLimit(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                  className="text-right"
+                />
+              </div>
+
               <div className="flex-1">
                 <Popover open={listingsPopoverOpen} onOpenChange={setListingsPopoverOpen}>
                   <PopoverTrigger asChild>
@@ -892,20 +913,35 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   .flatMap((day) => buildDaySlots(day))
                   .sort((a, b) => a.getTime() - b.getTime());
 
-                // Distribute properties across slots (round-robin) and compute
-                // per-listing variant index so the composer can synthesize
-                // distinct copy variations when the same property repeats.
-                const picks = selectedListingIds;
-                const perListingTotal = new Map<string, number>();
-                if (picks.length > 0) {
-                  for (let i = 0; i < slots.length; i++) {
-                    const lid = picks[i % picks.length];
-                    perListingTotal.set(lid, (perListingTotal.get(lid) || 0) + 1);
+                // Persist the per-group daily cap the broker typed.
+                if (selectedGroupIds.length > 0) {
+                  void saveGroupDailyLimit(selectedGroupIds, groupDailyLimit > 0 ? groupDailyLimit : null);
+                }
+
+                // Distribute properties across slots RANDOMLY (each cycle is a
+                // fresh shuffle, so no run posts the properties in list order)
+                // and compute per-listing variant index so the composer can
+                // synthesize distinct copy variations when a property repeats.
+                const shuffleIds = (arr: string[]) => {
+                  const out = [...arr];
+                  for (let i = out.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [out[i], out[j]] = [out[j], out[i]];
                   }
+                  return out;
+                };
+                const picks: string[] = [];
+                if (selectedListingIds.length > 0) {
+                  while (picks.length < slots.length) picks.push(...shuffleIds(selectedListingIds));
+                }
+                const perListingTotal = new Map<string, number>();
+                for (let i = 0; i < slots.length && picks.length > 0; i++) {
+                  const lid = picks[i];
+                  perListingTotal.set(lid, (perListingTotal.get(lid) || 0) + 1);
                 }
                 const seenByListing = new Map<string, number>();
                 const assignments = slots.map((d, i) => {
-                  const lid = picks.length > 0 ? picks[i % picks.length] : null;
+                  const lid = picks.length > 0 ? picks[i] : null;
                   let variant = 1;
                   let totalVariants = 1;
                   if (lid) {
@@ -916,6 +952,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   }
                   return { iso: d.toISOString(), listing: lid, variant, totalVariants };
                 });
+
 
                 try {
                   sessionStorage.setItem('rz-schedule-queue', JSON.stringify(assignments.slice(1)));

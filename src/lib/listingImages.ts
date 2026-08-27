@@ -1,8 +1,11 @@
 /**
  * Pick images for a scheduled property post.
  *
- * Every scheduled post attaches up to 10 randomly chosen photos of the property
- * (permanently removed photos are never restored — the blocklist is honoured).
+ * Every scheduled post attaches up to 10 randomly chosen photos of the property,
+ * and every slot in a series gets its OWN random mix (distinct main picture +
+ * 9 more). Permanently removed photos are never restored — the blocklist is
+ * honoured — and the smart vision filter is triggered in the background so
+ * logos and photos of people are purged for good.
  */
 import { supabase } from '@/integrations/supabase/client';
 import { filterBlockedPhotos } from '@/lib/mediaBlocklist';
@@ -18,10 +21,18 @@ const shuffle = <T,>(arr: T[]): T[] => {
   return out;
 };
 
-export async function pickListingImages(
-  listingId: string | null | undefined,
-  limit = MAX_POST_IMAGES,
-): Promise<string[]> {
+/** Fire-and-forget smart filter: removes logos / photos of people permanently. */
+const requested = new Set<string>();
+export function requestSmartMediaFilter(listingId: string | null | undefined): void {
+  if (!listingId || requested.has(listingId)) return;
+  requested.add(listingId);
+  try {
+    void supabase.functions.invoke('filter-listing-media', { body: { listing_id: listingId } });
+  } catch { /* decorative background cleanup */ }
+}
+
+/** Every allowed (non-blocked) photo of the listing, unshuffled. */
+export async function listingImagePool(listingId: string | null | undefined): Promise<string[]> {
   if (!listingId) return [];
   try {
     const { data, error } = await (supabase as any)
@@ -45,8 +56,27 @@ export async function pickListingImages(
 
     const unique = Array.from(new Set(raw));
     const allowed = filterBlockedPhotos(unique, (data as any).source_metadata);
-    return shuffle(allowed).slice(0, Math.max(1, limit));
+    // Keep the gallery clean for good — logos/people are stripped in background.
+    requestSmartMediaFilter(listingId);
+    return allowed;
   } catch {
     return [];
   }
+}
+
+/**
+ * A fresh random set of up to `limit` images out of the pool — a distinct main
+ * picture (first item) plus additional random photos.
+ */
+export function randomImageSet(pool: string[], limit = MAX_POST_IMAGES): string[] {
+  if (pool.length === 0) return [];
+  return shuffle(pool).slice(0, Math.max(1, limit));
+}
+
+export async function pickListingImages(
+  listingId: string | null | undefined,
+  limit = MAX_POST_IMAGES,
+): Promise<string[]> {
+  const pool = await listingImagePool(listingId);
+  return randomImageSet(pool, limit);
 }
