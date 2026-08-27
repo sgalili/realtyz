@@ -916,7 +916,7 @@ const ApiSettings = () => {
         <ProductionPrepPanel />
       </SectionShell>
 
-      <SectionShell title="רשתות חברתיות" subtitle="חיבור ישיר לפייסבוק ואינסטגרם וקבוצות מותאמות">
+      <SectionShell title="רשתות חברתיות" subtitle="פייסבוק ואינסטגרם וקבוצות מותאמות">
         <div id="facebook" className="scroll-mt-24 space-y-4">
           <FacebookPersonalConnectCard />
           <MetaDirectConnectionCard />

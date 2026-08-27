@@ -103,14 +103,14 @@ export function ExtensionGroupSyncCard({
 
   return (
     <div dir="rtl" className={cn('flex flex-wrap items-center gap-2 text-right', className)}>
-      <Button type="button" size="sm" className="h-8 gap-1 text-xs" onClick={() => setOpen(true)} disabled={saving}>
+      <Button type="button" size="sm" className="h-8 gap-1 text-[15px]" onClick={() => setOpen(true)} disabled={saving}>
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />} סנכרן קבוצות
       </Button>
       <Button
         type="button"
         size="sm"
         variant="outline"
-        className="h-8 gap-1 text-xs"
+        className="h-8 gap-1 text-[15px]"
         disabled={checking}
         onClick={() => void checkNow()}
       >
@@ -137,7 +137,7 @@ export function ExtensionGroupSyncCard({
             <Button
               type="button"
               size="sm"
-              className="h-8 text-xs"
+              className="h-8 text-[15px]"
               onClick={() => { window.open(FB_GROUPS_URL, '_blank', 'noopener,noreferrer'); refresh(); }}
             >
               פתח את עמוד הקבוצות בפייסבוק
@@ -146,7 +146,7 @@ export function ExtensionGroupSyncCard({
               type="button"
               size="sm"
               variant="outline"
-              className="h-8 gap-1 text-xs"
+              className="h-8 gap-1 text-[15px]"
               disabled={checking}
               onClick={() => void checkNow()}
             >
