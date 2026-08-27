@@ -138,9 +138,13 @@ export function ManagersTab() {
   return (
     <Card dir="rtl">
       <CardContent className="space-y-4 p-4 sm:p-6 text-right">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-1">
           <h2 className="text-lg font-bold text-right">מנהלים מורשים בחשבון</h2>
+          <p className="text-xs text-muted-foreground text-right">
+            כל מנהל הוא מתווך בסוכנות עם מנוי נפרד לפי מדיניות התמחור הרגילה.
+          </p>
         </div>
+
 
         <div className="flex items-center justify-between gap-2">
           <Button

@@ -70,10 +70,8 @@ export default function PlanTab() {
                   <Check className="h-4 w-4 shrink-0 text-primary" />
                   <span>{limitLabel(pkg.properties)} נכסים</span>
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 shrink-0 text-primary" />
-                  <span>{limitLabel(pkg.seats)} משתמשים</span>
-                </li>
+                {/* seats removed — pricing is per contacts only */}
+
                 {pkg.features.map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <Check className="h-4 w-4 shrink-0 text-primary" />

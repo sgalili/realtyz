@@ -69,7 +69,7 @@ const STEPS: TourStep[] = [
     bullets: [
       `חינם: עד ${FREE_CONTACTS} אנשי קשר ו-${FREE_PROPERTIES} נכסים, בלי כרטיס אשראי.`,
       ...PACKAGES.filter((p) => p.monthlyPrice > 0).map(
-        (p) => `${p.name}: ₪${p.monthlyPrice} לחודש · ${limitLabel(p.contacts)} אנשי קשר · ${limitLabel(p.properties)} נכסים · ${limitLabel(p.seats)} משתמשים.`,
+        (p) => `${p.name}: ₪${p.monthlyPrice} לחודש · ${limitLabel(p.contacts)} אנשי קשר · ${limitLabel(p.properties)} נכסים.`,
       ),
       'שיטת החישוב: מחיר החבילה החודשי + ארנק קרדיטים לשירותים בצריכה בפועל (SMS, הודעות WhatsApp בתשלום, IVR ושיחות AI קוליות).',
       'מעבר בין חבילות בכל רגע, בלי התחייבות ובלי עלויות נסתרות.',
