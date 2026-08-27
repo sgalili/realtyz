@@ -2100,8 +2100,8 @@ const InlineComposer = ({
         const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
         const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
         const canSend = hasBody && scheduledValid && hasSelectedPages;
-        // Calendar-initiated flow: hide the secondary schedule button and
-        // render one unified primary button showing the exact target slot.
+        // Calendar-initiated flow: always keep the secondary schedule button
+        // visible so the user can update the slot before publishing.
         const calendarLocked = isFromScheduling && !!scheduledDate;
         const scheduledLabel = scheduledDate
           ? scheduledDate.toLocaleString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -2124,7 +2124,6 @@ const InlineComposer = ({
                 {calendarLocked ? `פרסם ב-${scheduledLabel}` : (mode === 'scheduled' ? 'פרסם בזמן שנבחר' : 'פרסם עכשיו')}
               </button>
               <div className="flex items-stretch gap-2">
-              {!calendarLocked && (
               <button
                 type="button"
                 onClick={() => setScheduleDialogOpen(true)}
@@ -2140,7 +2139,6 @@ const InlineComposer = ({
               >
                 <CalendarIcon className="h-4 w-4" />
               </button>
-              )}
               {channel.id === 'facebook' && (
                 <button
                   type="button"
