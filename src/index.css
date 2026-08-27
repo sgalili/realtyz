@@ -1352,10 +1352,13 @@
 /* Readable overlay for image-filled cards — lighter scrim, vivid imagery */
 .realtyz-landing .landing-card-veil {
   background:
-    linear-gradient(0deg, hsl(213 73% 8% / 0.86) 0%, hsl(213 73% 10% / 0.52) 52%, hsl(213 73% 12% / 0.14) 100%);
+    linear-gradient(0deg, hsl(213 73% 8% / 0.62) 0%, hsl(213 73% 10% / 0.28) 52%, hsl(213 73% 12% / 0.06) 100%);
 }
 .realtyz-landing .landing-card img {
-  filter: saturate(1.5) contrast(1.14) brightness(1.06);
+  filter: saturate(1.6) contrast(1.18) brightness(1.1);
+}
+.realtyz-landing .landing-card:hover img {
+  filter: saturate(1.75) contrast(1.2) brightness(1.14);
 }
 
 /* Infinite logo tickers */
