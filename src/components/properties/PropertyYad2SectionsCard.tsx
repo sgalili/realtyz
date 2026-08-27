@@ -217,22 +217,23 @@ export function PropertyYad2SectionsCard({
 
       {schools.length > 0 && (
         <SectionShell icon={GraduationCap} title="מוסדות חינוך באזור" count={schools.length}>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {schools.map((s, i) => (
-              <Card key={i} className="p-3">
-                <p className="text-lg font-semibold">{s.name}</p>
+          <div className="flex flex-wrap gap-3">
+            {schools.slice(0, 10).map((s, i) => (
+              <Card key={i} className="flex-1 min-w-[220px] max-w-[280px] p-3">
+                <p className="text-lg font-semibold line-clamp-1" title={s.name ?? ''}>{s.name}</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {s.type && <Badge variant="secondary" className="text-sm">{s.type}</Badge>}
                   {s.grades && <Badge variant="outline" className="text-sm">{s.grades}</Badge>}
                   {s.supervision && <Badge variant="outline" className="text-sm">{s.supervision}</Badge>}
                 </div>
-                {s.address && <p className="mt-1 text-base text-muted-foreground">{s.address}</p>}
+                {s.address && <p className="mt-1 text-base text-muted-foreground line-clamp-1" title={s.address}>{s.address}</p>}
                 {s.distance && <p className="text-base text-muted-foreground">{s.distance}</p>}
               </Card>
             ))}
           </div>
         </SectionShell>
       )}
+
 
       {recommended.length > 0 && (
         <SectionShell icon={Building2} title="נכסים מומלצים נוספים" count={recommended.length}>
