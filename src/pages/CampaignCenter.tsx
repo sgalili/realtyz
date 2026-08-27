@@ -6064,6 +6064,7 @@ const CampaignCenter = () => {
                       instanceId={key}
                       bulkGroupIds={bulkGroupIds}
                       bulkScheduleIso={bulkScheduleIso}
+                      hideBottomBar
                       onRegisterPublish={(fn) => {
                         if (fn) publishFnsRef.current.set(key, fn);
                         else publishFnsRef.current.delete(key);
@@ -6074,6 +6075,7 @@ const CampaignCenter = () => {
                           : { ...curr, [key]: s }
                       ))}
                     />
+
                   </DraftCollapsibleCard>
                   );
                 })}
