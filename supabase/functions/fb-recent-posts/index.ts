@@ -531,7 +531,11 @@ Deno.serve(async (req) => {
         const json = await resp.json().catch(() => ({} as any));
         if (!resp.ok) {
           error = json?.error ?? json;
-          break;
+          // Try the next edge — one blocked edge shouldn't abort the import.
+          edgeIndex += 1;
+          if (edgeIndex >= edges.length) break;
+          nextUrl = buildUrl(edges[edgeIndex]);
+          continue;
         }
         const items: any[] = Array.isArray(json?.data) ? json.data : [];
         if (!items.length) {
