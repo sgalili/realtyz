@@ -1442,12 +1442,46 @@ export default function PropertyDetail() {
                 <Field label="עיר"><Input value={form.city} onChange={(e) => setField('city', e.target.value)} /></Field>
                 <Field label="שכונה"><Input value={form.neighborhood} onChange={(e) => setField('neighborhood', e.target.value)} /></Field>
                 <Field label="כתובת"><Input value={form.address} onChange={(e) => setField('address', e.target.value)} /></Field>
+                <Field label="מספר בית"><Input value={form.house_number} onChange={(e) => setField('house_number', e.target.value)} /></Field>
+                <Field label="מספר דירה"><Input value={form.apartment_number} onChange={(e) => setField('apartment_number', e.target.value)} /></Field>
+                <Field label="שם הפרויקט"><Input value={form.project_name} onChange={(e) => setField('project_name', e.target.value)} /></Field>
+                <Field label="סוג עסקה">
+                  <select
+                    value={form.deal_type}
+                    onChange={(e) => setField('deal_type', e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-xl"
+                  >
+                    <option value="sale">מכירה</option>
+                    <option value="rent">השכרה</option>
+                  </select>
+                </Field>
+                <Field label="סטטוס">
+                  <select
+                    value={form.status}
+                    onChange={(e) => setField('status', e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-xl"
+                  >
+                    <option value="">—</option>
+                    <option value="pending">ממתין לאישור</option>
+                    <option value="live">פעיל</option>
+                    <option value="discarded">נגנז</option>
+                  </select>
+                </Field>
                 <Field label="ועד בית (לחודש)"><Input type="number" value={form.vaad_bayit} onChange={(e) => setField('vaad_bayit', e.target.value)} /></Field>
                 <Field label="ארנונה (לחודשיים)"><Input type="number" value={form.arnona_bimonthly} onChange={(e) => setField('arnona_bimonthly', e.target.value)} /></Field>
                 <Field label="מספר תשלומים"><Input type="number" value={form.payments} onChange={(e) => setField('payments', e.target.value)} /></Field>
                 <Field label="תאריך כניסה"><Input value={form.entry_date} onChange={(e) => setField('entry_date', e.target.value)} placeholder="מיידי / 01/08/2026" /></Field>
+                <Field label="פנוי מתאריך"><Input type="date" value={form.available_from} onChange={(e) => setField('available_from', e.target.value)} /></Field>
                 <Field label="חניות"><Input type="number" min={0} value={form.parking} onChange={(e) => setField('parking', e.target.value)} /></Field>
+                <Field label="קו רוחב (Latitude)"><Input value={form.latitude} onChange={(e) => setField('latitude', e.target.value)} dir="ltr" className="text-left" /></Field>
+                <Field label="קו אורך (Longitude)"><Input value={form.longitude} onChange={(e) => setField('longitude', e.target.value)} dir="ltr" className="text-left" /></Field>
                 <Field label="קישור מקור / יד2"><Input value={form.source_url} onChange={(e) => setField('source_url', e.target.value)} dir="ltr" className="text-left" /></Field>
+                <div className="col-span-2 sm:col-span-3">
+                  <Field label="מאפיינים (מופרדים בפסיק)">
+                    <Input value={form.features_text} onChange={(e) => setField('features_text', e.target.value)} placeholder="משופץ, נוף לים, מטבח חדש" />
+                  </Field>
+                </div>
+
                 <div className="col-span-2 sm:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-2 border-t pt-3">
                   {([
                     ['מעלית', 'elevator'],
