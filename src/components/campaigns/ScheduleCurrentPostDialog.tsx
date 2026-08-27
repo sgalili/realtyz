@@ -17,6 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
+import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
+import { pickListingImages, MAX_POST_IMAGES } from '@/lib/listingImages';
 import { cn } from '@/lib/utils';
 
 type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
