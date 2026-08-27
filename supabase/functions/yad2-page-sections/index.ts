@@ -2,8 +2,7 @@
 //
 // Imports the *secondary* sections of a Yad2 item page that the main scraper
 // ignores: recent sold deals nearby, the valuation (price estimate) history
-// used for the line graph, educational institutions in the area, recommended
-// listings (same office / general Yad2) and new projects in the area.
+// used for the line graph, and educational institutions in the area.
 //
 // Transport: Bright Data Scraping Browser (same WS endpoint as yad2-unlocker).
 // We land on the public item page, scroll it so every lazy section fires its
@@ -133,6 +132,69 @@ type SchoolCard = {
   walking_distance: string | null; driving_distance: string | null;
 };
 
+function formatMetric(meters: number | null | undefined, seconds: number | null | undefined): string | null {
+  if (!meters && !seconds) return null;
+  const distance = meters
+    ? meters < 1000 ? `${Math.round(meters)} מ׳` : `${(meters / 1000).toFixed(1)} ק״מ`
+    : '';
+  const minutes = seconds ? `${Math.max(1, Math.round(seconds / 60))} דק׳` : '';
+  return [distance, minutes].filter(Boolean).join(' · ');
+}
+
+async function enrichSchoolDistances(origin: string, schools: SchoolCard[]): Promise<SchoolCard[]> {
+  const lovableKey = Deno.env.get('LOVABLE_API_KEY');
+  const mapsKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+  const destinations = schools.filter((school) => school.address).slice(0, 20);
+  if (!origin || !destinations.length || !lovableKey || !mapsKey) return schools;
+
+  const request = async (mode: 'WALK' | 'DRIVE') => {
+    const response = await fetch('https://connector-gateway.lovable.dev/google_maps/routes/distanceMatrix/v2:computeRouteMatrix', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        'X-Connection-Api-Key': mapsKey,
+        'Content-Type': 'application/json',
+        'X-Goog-FieldMask': 'originIndex,destinationIndex,distanceMeters,duration,status,condition',
+      },
+      body: JSON.stringify({
+        origins: [{ waypoint: { address: origin } }],
+        destinations: destinations.map((school) => ({ waypoint: { address: school.address } })),
+        travelMode: mode,
+        languageCode: 'he',
+        regionCode: 'IL',
+      }),
+    });
+    if (response.status === 403) {
+      const details: Array<{ reason?: string }> = (await response.json())?.error?.details ?? [];
+      const reason = details.find((detail) => detail.reason)?.reason;
+      if (reason === 'API_KEY_HTTP_REFERRER_BLOCKED') throw new Error('Google Maps server key is referrer-restricted');
+      if (reason === 'API_KEY_SERVICE_BLOCKED') throw new Error('Google Maps server key does not allow Routes API');
+      throw new Error('Google Maps request was denied');
+    }
+    if (!response.ok) throw new Error(`Google Maps routes failed [${response.status}]: ${await response.text()}`);
+    return await response.json() as Array<{ destinationIndex?: number; distanceMeters?: number; duration?: string }>;
+  };
+
+  try {
+    const [walking, driving] = await Promise.all([request('WALK'), request('DRIVE')]);
+    return schools.map((school) => {
+      const index = destinations.indexOf(school);
+      if (index < 0) return school;
+      const walk = walking.find((route) => route.destinationIndex === index);
+      const drive = driving.find((route) => route.destinationIndex === index);
+      const durationSeconds = (duration?: string) => duration ? Number(duration.replace('s', '')) : null;
+      return {
+        ...school,
+        walking_distance: formatMetric(walk?.distanceMeters, durationSeconds(walk?.duration)) ?? school.walking_distance,
+        driving_distance: formatMetric(drive?.distanceMeters, durationSeconds(drive?.duration)) ?? school.driving_distance,
+      };
+    });
+  } catch (error) {
+    console.error('[yad2-page-sections] distance enrichment failed', error);
+    return schools;
+  }
+}
+
 function asSchool(o: Record<string, unknown>): SchoolCard | null {
   const k = keysOf(o);
   const name = clean(o.name ?? o.schoolName ?? o.institutionName ?? o.title);
@@ -199,8 +261,6 @@ type Sections = {
   sold_deals: DealCard[];
   valuation_history: PricePoint[];
   schools: SchoolCard[];
-  recommended: ListingCard[];
-  new_in_area: ListingCard[];
   fetched_at: string;
 };
 
@@ -238,6 +298,12 @@ Deno.serve(async (req) => {
     pageUrl = clean(data?.source_url);
   }
   if (!pageUrl || !/yad2\.co\.il/.test(pageUrl)) return json({ error: "missing_yad2_url" }, 400);
+
+  let propertyAddress = clean(body.property_address);
+  if (!propertyAddress && listingId) {
+    const { data } = await admin.from('listings').select('address, city').eq('id', listingId).maybeSingle();
+    propertyAddress = [clean(data?.address), clean(data?.city)].filter(Boolean).join(', ');
+  }
 
   const payloads: Array<{ url: string; json: unknown }> = [];
   let browser: any = null;
@@ -323,19 +389,15 @@ Deno.serve(async (req) => {
   }
 
   const currentToken = pageUrl.match(/\/item\/([^/?#]+)/)?.[1] ?? null;
-  const allListings = uniqBy(
-    listings.filter((l) => l.token !== currentToken),
-    (l) => l.token || `${l.address}|${l.price}`,
-  );
+  const normalizedSchools = uniqBy(schools, (s) => `${s.name}|${s.address}`).slice(0, 40);
+  const schoolsWithDistances = await enrichSchoolDistances(propertyAddress, normalizedSchools);
 
   const sections: Sections = {
     sold_deals: uniqBy(deals, (d) => `${d.address}|${d.date}|${d.price}`).slice(0, 30),
     valuation_history: uniqBy(prices, (p) => `${p.date}|${p.price}`)
       .sort((a, b) => String(a.date).localeCompare(String(b.date)))
       .slice(0, 60),
-    schools: uniqBy(schools, (s) => `${s.name}|${s.address}`).slice(0, 40),
-    recommended: allListings.filter((l) => !l.is_project).slice(0, 24),
-    new_in_area: allListings.filter((l) => l.is_project).slice(0, 24),
+    schools: schoolsWithDistances,
     fetched_at: new Date().toISOString(),
   };
 
@@ -367,8 +429,6 @@ Deno.serve(async (req) => {
       sold_deals: sections.sold_deals.length,
       valuation_history: sections.valuation_history.length,
       schools: sections.schools.length,
-      recommended: sections.recommended.length,
-      new_in_area: sections.new_in_area.length,
     },
     sections,
   });
