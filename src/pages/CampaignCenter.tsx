@@ -32,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
+import { loadSchedulePrefs, type SchedulePrefs } from '@/lib/schedulePrefs';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
@@ -724,7 +725,7 @@ const draftKeyFor = (b: { listing?: string | null; variant?: number }, idx: numb
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
-  onRegisterPublish, bulkGroupIds, bulkScheduleIso, hideBottomBar,
+  onRegisterPublish, bulkGroupIds, bulkScheduleIso, onBulkGroupIdsChange, hideBottomBar,
 }: {
   channel: ChannelCard;
   brandName: string;
@@ -747,6 +748,8 @@ const InlineComposer = ({
   /** Bulk override from the page-level bottom bar — updates all drafts at once. */
   bulkGroupIds?: string[];
   bulkScheduleIso?: string | null;
+  /** Reports group selection changes back to the page-level bar so the bubble count stays accurate. */
+  onBulkGroupIdsChange?: (ids: string[]) => void;
   /** When rendered inside a collapsed draft card the page-level bar handles dispatch. */
   hideBottomBar?: boolean;
 }) => {
@@ -920,19 +923,29 @@ const InlineComposer = ({
   // Persisted to localStorage (per workspace) so a reload / background refresh
   // doesn't wipe the selection, and the bulk picker stays in sync with drafts.
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
-  const groupStorageKey = workspaceOwnerId ? `campaign:groupIds:${workspaceOwnerId}` : 'campaign:groupIds';
+  const groupStorageKey = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
   const [groupIds, setGroupIds] = useState<string[]>([]);
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (hideBottomBar) {
+      // In multi-draft mode the page-level bulk bar is the source of truth.
+      setGroupIds(bulkGroupIds || []);
+      return;
+    }
     try {
-      const raw = localStorage.getItem(groupStorageKey) || localStorage.getItem('campaign:groupIds');
+      const raw = localStorage.getItem(groupStorageKey)
+        || localStorage.getItem('campaign:bulkGroupIds')
+        || localStorage.getItem('campaign:groupIds');
       const parsed = raw ? JSON.parse(raw) : null;
       if (Array.isArray(parsed) && parsed.length) setGroupIds(parsed.filter((x) => typeof x === 'string'));
     } catch {}
-  }, [groupStorageKey]);
+  }, [groupStorageKey, hideBottomBar, bulkGroupIds]);
   useEffect(() => {
     try { localStorage.setItem(groupStorageKey, JSON.stringify(groupIds)); } catch {}
   }, [groupIds, groupStorageKey]);
+  useEffect(() => {
+    onBulkGroupIdsChange?.(groupIds);
+  }, [groupIds, onBulkGroupIdsChange]);
 
 
   // Group picker modal (opened from the group icon button next to "פרסם").
@@ -5317,7 +5330,7 @@ const DraftCollapsibleCard = ({
           : status.ready
             ? `מוכן · ${status.images} תמונות`
             : status.chars > 0
-              ? `טיוטה · ${status.images} תמונות`
+              ? `${status.images} תמונות`
               : 'ממתין';
   return (
     <div className="rounded-2xl border border-border/60 bg-card shadow-sm" dir="rtl">
@@ -5342,8 +5355,7 @@ const DraftCollapsibleCard = ({
           )}
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-semibold leading-snug text-foreground break-words">
-              טיוטה #{index + 1}
-              {(status?.title || fallbackTitle) ? ` · ${status?.title || fallbackTitle}` : ''}
+              {status?.title || fallbackTitle || `פוסט ${index + 1}`}
             </div>
             <div className="text-[11px] text-muted-foreground">
               {new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
@@ -5411,6 +5423,10 @@ const CampaignCenter = () => {
   useEffect(() => subscribeGenerationGate(setGenerationStopped), []);
   const [bulkScheduleDialogOpen, setBulkScheduleDialogOpen] = useState(false);
   const [bulkGlobalScheduleOpen, setBulkGlobalScheduleOpen] = useState(false);
+  // Recurrence mode currently chosen in the global scheduler (mirrored from localStorage).
+  const [bulkRecurrence, setBulkRecurrence] = useState<SchedulePrefs['recurrence']>('none');
+  const recurrenceLabel = (r: SchedulePrefs['recurrence']) =>
+    ({ none: 'ללא', daily: 'יומי', weekly: 'שבועי', monthly: 'חודשי', custom: 'מותאם' } as const)[r];
 
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
 
@@ -5419,9 +5435,11 @@ const CampaignCenter = () => {
   // group/time selection for current and future multi-draft campaigns.
   useEffect(() => {
     try {
-      const gKey = workspaceOwnerId ? `campaign:bulkGroupIds:${workspaceOwnerId}` : 'campaign:bulkGroupIds';
+      const gKey = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
       const sKey = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';
-      const rawGroups = localStorage.getItem(gKey);
+      const rawGroups = localStorage.getItem(gKey)
+        || localStorage.getItem('campaign:bulkGroupIds')
+        || localStorage.getItem('campaign:groupIds');
       const parsedGroups = rawGroups ? JSON.parse(rawGroups) : null;
       if (Array.isArray(parsedGroups)) setBulkGroupIds(parsedGroups.filter((x) => typeof x === 'string'));
       const rawIso = localStorage.getItem(sKey);
@@ -5429,12 +5447,19 @@ const CampaignCenter = () => {
         const d = new Date(rawIso);
         if (!Number.isNaN(d.getTime()) && d.getTime() > Date.now() + 60_000) setBulkScheduleIso(rawIso);
       }
+      setBulkRecurrence(loadSchedulePrefs(workspaceOwnerId).recurrence);
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Keep the calendar bubble in sync after the global scheduler closes.
+  useEffect(() => {
+    if (!bulkGlobalScheduleOpen) {
+      try { setBulkRecurrence(loadSchedulePrefs(workspaceOwnerId).recurrence); } catch {}
+    }
+  }, [bulkGlobalScheduleOpen, workspaceOwnerId]);
   useEffect(() => {
     try {
-      const key = workspaceOwnerId ? `campaign:bulkGroupIds:${workspaceOwnerId}` : 'campaign:bulkGroupIds';
+      const key = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
       localStorage.setItem(key, JSON.stringify(bulkGroupIds));
     } catch {}
   }, [bulkGroupIds, workspaceOwnerId]);
@@ -5491,24 +5516,56 @@ const CampaignCenter = () => {
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  // Unpublished multi-property draft session (properties + slots + variants).
+  // Restored from localStorage instantly and from the cloud right after, so
+  // leaving the page or refreshing never loses the open drafts.
+  const [restoredSession, setRestoredSession] = useState<ComposerSession | null>(null);
   // Property titles for the collapsed draft cards. Fetched at page level so a
-  // card shows the address even before its composer finished hydrating.
-  const [listingTitles, setListingTitles] = useState<Record<string, string>>({});
+  // card shows the address instantly. Titles are cached per workspace so a
+  // refresh never flashes or blanks the address.
+  const [listingTitles, setListingTitles] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem(`rz:listing-titles:${workspaceOwnerId ?? 'anon'}`);
+      return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    } catch { return {}; }
+  });
   useEffect(() => {
-    const ids = (searchParams.get('properties') || '').split(',').map((x) => x.trim()).filter(Boolean);
-    if (ids.length === 0) return;
+    if (!workspaceOwnerId) return;
+    const ids = new Set<string>();
+    (searchParams.get('properties') || '').split(',').map((x) => x.trim()).filter(Boolean).forEach((id) => ids.add(id));
+    try {
+      const raw = sessionStorage.getItem('rz-schedule-assignments');
+      const arr: Array<{ listing?: string | null }> = raw ? JSON.parse(raw) : [];
+      arr.forEach((a) => { if (a.listing) ids.add(a.listing); });
+    } catch { /* ignore */ }
+    if (restoredSession) {
+      restoredSession.propertyIds?.forEach((id) => ids.add(id));
+      restoredSession.assignments?.forEach((a) => { if (a.listing) ids.add(a.listing); });
+    }
+    if (ids.size === 0) return;
+    const missing = [...ids].filter((id) => !listingTitles[id]);
+    // Instant paint from cache is already in state. Fetch only what is missing
+    // and merge without ever clearing existing titles.
     (async () => {
-      const { data } = await supabase
-        .from('listings')
-        .select('id, property_title, address, city')
-        .in('id', ids);
+      let data: any[] = [];
+      if (missing.length > 0) {
+        const res = await supabase.from('listings').select('id, property_title, address, city').in('id', missing);
+        data = (res.data as any[]) || [];
+      }
+      if (data.length === 0) return;
       const map: Record<string, string> = {};
-      for (const l of ((data as any[]) || [])) {
+      for (const l of data) {
         map[l.id] = [l.property_title || l.address, l.city].filter(Boolean).join(' · ') || 'נכס';
       }
-      setListingTitles(map);
+      setListingTitles((curr) => {
+        const next = { ...curr, ...map };
+        try {
+          localStorage.setItem(`rz:listing-titles:${workspaceOwnerId}`, JSON.stringify(next));
+        } catch { /* ignore */ }
+        return next;
+      });
     })();
-  }, [searchParams]);
+  }, [searchParams, restoredSession, workspaceOwnerId]);
 
   // Wipes every draft in the multi-draft composer: local snapshots, the durable
   // cloud mirror and the composer session. Nothing published is touched.
@@ -5537,11 +5594,6 @@ const CampaignCenter = () => {
     toast.success('כל הטיוטות נמחקו');
     setSearchParams(new URLSearchParams());
   };
-  // Unpublished multi-property draft session (properties + slots + variants).
-  // Restored from localStorage instantly and from the cloud right after, so
-  // leaving the page or refreshing never loses the open drafts.
-  const [restoredSession, setRestoredSession] = useState<ComposerSession | null>(null);
-
   const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
   const [campaignHistoryRows, setCampaignHistoryRows] = useState<any[]>([]);
   const [campaignDraftRows, setCampaignDraftRows] = useState<any[]>([]);
@@ -6211,6 +6263,7 @@ const CampaignCenter = () => {
                       instanceId={key}
                       bulkGroupIds={bulkGroupIds}
                       bulkScheduleIso={bulkScheduleIso}
+                      onBulkGroupIdsChange={setBulkGroupIds}
                       hideBottomBar
                       onRegisterPublish={(fn) => {
                         if (fn) publishFnsRef.current.set(key, fn);
@@ -6265,10 +6318,13 @@ const CampaignCenter = () => {
                       onClick={() => setBulkGlobalScheduleOpen(true)}
                       title="תזמון קמפיין גלובלי לכל הטיוטות"
                       aria-label="תזמון קמפיין גלובלי לכל הטיוטות"
-                      className="inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
+                      className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
                     >
 
                       <CalendarIcon className="h-4 w-4" />
+                      <span className="absolute -top-1 -left-1 min-w-[18px] rounded-full bg-[hsl(217,80%,18%)] px-1.5 text-[10px] font-bold leading-[18px] text-white" dir="ltr">
+                        {recurrenceLabel(bulkRecurrence)}
+                      </span>
                     </button>
                     {pickedChannel?.id === 'facebook' && (
                       <button
@@ -6279,11 +6335,9 @@ const CampaignCenter = () => {
                         className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
                       >
                         <Users className="h-4 w-4" />
-                        {bulkGroupIds.length > 0 && (
-                          <span className="absolute -top-1 -left-1 min-w-[18px] rounded-full bg-[hsl(217,80%,18%)] px-1 text-[10px] font-bold leading-[18px] text-white" dir="ltr">
-                            {bulkGroupIds.length}
-                          </span>
-                        )}
+                        <span className="absolute -top-1 -left-1 min-w-[18px] rounded-full bg-[hsl(217,80%,18%)] px-1 text-[10px] font-bold leading-[18px] text-white" dir="ltr">
+                          {bulkGroupIds.length}
+                        </span>
                       </button>
                     )}
                   </div>
@@ -6376,6 +6430,7 @@ const CampaignCenter = () => {
                       <DialogTitle className="text-right">תזמון קמפיין לכל הטיוטות</DialogTitle>
                     </DialogHeader>
                     <ScheduledCampaignCalendar
+                      initialDay={new Date()}
                       onCreateAt={(iso, extras) => {
                         const next = new URLSearchParams(searchParams);
                         next.set('tab', 'create');
@@ -6396,7 +6451,9 @@ const CampaignCenter = () => {
                         if (extras?.assignments) {
                           try { sessionStorage.setItem('rz-schedule-assignments', JSON.stringify(extras.assignments)); } catch {}
                         }
+                        const unifiedGroupKey = `campaign:selectedGroups:${workspaceOwnerId}`;
                         if (extras?.groupIds && extras.groupIds.length > 0) {
+                          try { localStorage.setItem(unifiedGroupKey, JSON.stringify(extras.groupIds)); } catch {}
                           try { localStorage.setItem('campaign:groupIds', JSON.stringify(extras.groupIds)); } catch {}
                           setBulkGroupIds(extras.groupIds);
                         }
@@ -6455,7 +6512,9 @@ const CampaignCenter = () => {
               }
               // Persist selected Facebook groups so the composer picks them up
               // (it hydrates `groupIds` from this localStorage key on mount).
+              const unifiedGroupKey = `campaign:selectedGroups:${workspaceOwnerId}`;
               if (extras?.groupIds && extras.groupIds.length > 0) {
+                try { localStorage.setItem(unifiedGroupKey, JSON.stringify(extras.groupIds)); } catch {}
                 try { localStorage.setItem('campaign:groupIds', JSON.stringify(extras.groupIds)); } catch {}
               }
               setSearchParams(next, { replace: false });

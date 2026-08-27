@@ -69,7 +69,7 @@ const listingLabel = (l: ListingLite) => {
   return `${loc}${price}`;
 };
 
-export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number; groupIds?: string[]; properties?: string[]; assignments?: Array<{ iso: string; listing: string | null; variant: number; totalVariants: number }> }) => void; onClose?: () => void }) {
+export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number; groupIds?: string[]; properties?: string[]; assignments?: Array<{ iso: string; listing: string | null; variant: number; totalVariants: number }> }) => void; onClose?: () => void; initialDay?: Date }) {
   const queryClient = useQueryClient();
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [rows, setRows] = useState<ScheduledRow[]>([]);
@@ -145,6 +145,17 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     })();
     return () => { cancelled = true; };
   }, [scheduleDay, workspaceOwnerId]);
+
+  // When opened from the campaign bottom bar, jump straight to today's schedule
+  // form instead of the full monthly calendar view.
+  useEffect(() => {
+    if (initialDay && !scheduleDay) {
+      const d = new Date(initialDay);
+      d.setHours(0, 0, 0, 0);
+      setScheduleDay(d);
+      setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+    }
+  }, [initialDay]);
 
   // Persist every configuration change so it survives leaving the page.
   useEffect(() => {
@@ -571,97 +582,11 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
       </Dialog>
 
       <Dialog open={!!scheduleDay} onOpenChange={(o) => { if (!o) setScheduleDay(null); }}>
-        <DialogContent dir="rtl" className="max-w-md max-h-[92vh] overflow-y-auto">
-          <DialogHeader className="relative px-10">
-            <DialogTitle className="flex items-center gap-2 justify-center">
+        <DialogContent dir="rtl" className="w-[calc(100vw-1rem)] max-w-lg max-h-[92vh] overflow-y-auto p-3 sm:p-6">
+          <DialogHeader className="relative px-2 sm:px-10">
+            <DialogTitle className="flex items-center gap-2 justify-center text-base sm:text-lg">
               תזמון פרסומים ליום {scheduleDay?.toLocaleDateString('he-IL')}
             </DialogTitle>
-            {/* Recurrence control sits in the top corner of the dialog so it
-                never collides with content or the close (X) button. */}
-            <div className="absolute start-0 top-0">
-              <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    title="חזרתיות"
-                    aria-label="חזרתיות"
-                    className={cn(
-                      'relative inline-flex items-center justify-center h-8 w-8 rounded-md border border-border bg-background text-foreground transition-colors hover:bg-muted/60 hover:text-primary',
-                      recurrence !== 'none' && 'text-primary border-primary/50',
-                    )}
-                  >
-                    <Repeat className="h-4 w-4" />
-                    {recurrence !== 'none' && (
-                      <span className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-primary" />
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" side="bottom" className="w-64 p-2" dir="rtl">
-
-                  <div className="text-xs font-semibold text-muted-foreground px-2 py-1">חזרתיות</div>
-                  <div className="flex flex-col">
-                    {([
-                      ['none', 'ללא חזרה'],
-                      ['daily', 'בכל יום'],
-                      ['weekly', 'בכל שבוע'],
-                      ['monthly', 'בכל חודש'],
-                      ['custom', 'ימים ושעות נבחרים'],
-                    ] as Array<[Recurrence, string]>).map(([key, label]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setRecurrence(key)}
-                        className={cn(
-                          'text-right text-sm rounded-md px-2 py-1.5 hover:bg-muted/60',
-                          recurrence === key && 'bg-primary/10 text-primary font-semibold',
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {recurrence === 'custom' && (
-                    <div className="mt-2 border-t pt-2">
-                      <div className="text-[11px] text-muted-foreground mb-1 text-right">בחר ימי שבוע</div>
-                      <div className="flex flex-wrap gap-1 justify-end">
-                        {HEBREW_WEEKDAYS.map((d, i) => {
-                          const active = recurrenceDays.includes(i);
-                          return (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() =>
-                                setRecurrenceDays((prev) =>
-                                  prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i],
-                                )
-                              }
-                              className={cn(
-                                'h-7 w-7 text-[11px] rounded-full border',
-                                active
-                                  ? 'bg-primary text-primary-foreground border-primary'
-                                  : 'bg-background text-foreground border-border hover:bg-muted/60',
-                              )}
-                            >
-                              {d}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  {recurrence !== 'none' && (
-                    <div className="mt-2 border-t pt-2">
-                      <p className="text-[10px] text-muted-foreground text-right leading-relaxed">
-                        החזרתיות רצה ללא הגבלה. בתור נשמרת רק הגרסה הבאה אחת, והבאה אחריה
-                        נוצרת רק לאחר פרסום מוצלח. הסדרה נעצרת כשהנכס מסומן כנמכר / הושכר /
-                        בהמתנה / מושבת.
-                      </p>
-                    </div>
-                  )}
-
-                </PopoverContent>
-              </Popover>
-            </div>
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex items-end gap-2 flex-row-reverse">
@@ -814,30 +739,117 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
           </div>
           <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full items-center">
             <Button variant="outline" onClick={() => setScheduleDay(null)}>ביטול</Button>
-            <Popover open={groupsOpen} onOpenChange={setGroupsOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  title="בחר קבוצות פייסבוק לפרסום"
-                  aria-label="קבוצות פייסבוק"
-                  className="relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors"
-                >
-                  <Users className="h-5 w-5" />
-                  {selectedGroupIds.length > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
-                      {selectedGroupIds.length}
-                    </span>
+            <div className="flex items-center gap-2">
+              <Popover open={groupsOpen} onOpenChange={setGroupsOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    title="בחר קבוצות פייסבוק לפרסום"
+                    aria-label="קבוצות פייסבוק"
+                    className="relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors"
+                  >
+                    <Users className="h-5 w-5" />
+                    {selectedGroupIds.length > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
+                        {selectedGroupIds.length}
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="center" side="top" className="w-[360px] p-0" dir="rtl">
+                  <CampaignGroupSelector
+                    selectedIds={selectedGroupIds}
+                    onChange={setSelectedGroupIds}
+                    className="border-0 shadow-none"
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    title="חזרתיות"
+                    aria-label="חזרתיות"
+                    className={cn(
+                      'relative inline-flex items-center justify-center h-9 w-9 rounded-md border border-border bg-background text-foreground transition-colors hover:bg-muted/60 hover:text-primary',
+                      recurrence !== 'none' && 'text-primary border-primary/50',
+                    )}
+                  >
+                    <Repeat className="h-5 w-5" />
+                    {recurrence !== 'none' && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
+                        {recurrence === 'daily' && 'יומי'}
+                        {recurrence === 'weekly' && 'שבועי'}
+                        {recurrence === 'monthly' && 'חודשי'}
+                        {recurrence === 'custom' && 'מותאם'}
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="center" side="top" className="w-64 p-2" dir="rtl">
+                  <div className="text-xs font-semibold text-muted-foreground px-2 py-1 text-right">חזרתיות</div>
+                  <div className="flex flex-col">
+                    {([
+                      ['none', 'ללא חזרה'],
+                      ['daily', 'בכל יום'],
+                      ['weekly', 'בכל שבוע'],
+                      ['monthly', 'בכל חודש'],
+                      ['custom', 'ימים ושעות נבחרים'],
+                    ] as Array<[Recurrence, string]>).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setRecurrence(key)}
+                        className={cn(
+                          'text-right text-sm rounded-md px-2 py-1.5 hover:bg-muted/60',
+                          recurrence === key && 'bg-primary/10 text-primary font-semibold',
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {recurrence === 'custom' && (
+                    <div className="mt-2 border-t pt-2">
+                      <div className="text-[11px] text-muted-foreground mb-1 text-right">בחר ימי שבוע</div>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {HEBREW_WEEKDAYS.map((d, i) => {
+                          const active = recurrenceDays.includes(i);
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() =>
+                                setRecurrenceDays((prev) =>
+                                  prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i],
+                                )
+                              }
+                              className={cn(
+                                'h-7 w-7 text-[11px] rounded-full border',
+                                active
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'bg-background text-foreground border-border hover:bg-muted/60',
+                              )}
+                            >
+                              {d}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="center" side="top" className="w-[360px] p-0" dir="rtl">
-                <CampaignGroupSelector
-                  selectedIds={selectedGroupIds}
-                  onChange={setSelectedGroupIds}
-                  className="border-0 shadow-none"
-                />
-              </PopoverContent>
-            </Popover>
+                  {recurrence !== 'none' && (
+                    <div className="mt-2 border-t pt-2">
+                      <p className="text-[10px] text-muted-foreground text-right leading-relaxed">
+                        החזרתיות רצה ללא הגבלה. בתור נשמרת רק הגרסה הבאה אחת, והבאה אחריה
+                        נוצרת רק לאחר פרסום מוצלח. הסדרה נעצרת כשהנכס מסומן כנמכר / הושכר /
+                        בהמתנה / מושבת.
+                      </p>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
             <Button
               onClick={() => {
                 if (!scheduleDay) return;
