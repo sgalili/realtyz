@@ -263,6 +263,7 @@ function PersonalTab() {
           gender: gender || null,
           phone: primaryPhone,
           full_name: fullName,
+          email: realEmail(emails[0]?.value) || null,
           broker_license_number: brokerLicense.trim() || null,
         })
         .eq('id', user!.id);
