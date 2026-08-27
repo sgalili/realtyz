@@ -490,7 +490,6 @@ export default function PropertyDetail() {
   const UI_HYDRATION_BUDGET_MS = 4000;
   const hydratedRef = useRef<string | null>(null);
   const [hydrating, setHydrating] = useState(false);
-  const [hydrateError, setHydrateError] = useState<string | null>(null);
   // Determinate-looking progress for the metadata ring (0-100).
   const [hydrateProgress, setHydrateProgress] = useState(0);
   // The ring is driven by REAL hydration milestones (see `ensureMetadataImport`),
@@ -565,7 +564,6 @@ export default function PropertyDetail() {
       const shouldShowHydrationProgress = true;
       metaTargetRef.current = shouldShowHydrationProgress ? 0 : 100;
       setHydrateProgress(shouldShowHydrationProgress ? 0 : 100);
-      setHydrateError(null);
       if (shouldShowHydrationProgress) setHydrating(true);
       try {
         // Metadata only — images stay lazy until the user touches the gallery.
