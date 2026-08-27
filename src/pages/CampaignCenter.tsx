@@ -651,7 +651,23 @@ const extractListingFeatureFlags = (listing: CampaignListing | null | undefined)
   return Array.from(new Set(bag.map((s) => s.trim()).filter(Boolean)));
 };
 
+// Real, human post title: property type + address (+ city). Never a placeholder.
+const listingHeadline = (listing: CampaignListing | null | undefined): string => {
+  if (!listing) return '';
+  const meta = (listing.source_metadata || {}) as Record<string, unknown>;
+  const featuresObj = (listing.features && !Array.isArray(listing.features) && typeof listing.features === 'object')
+    ? (listing.features as Record<string, unknown>)
+    : {};
+  const type = hebrewPropertyType(meta.property_type || featuresObj.property_type || '');
+  const place = listing.address || listing.property_title || listing.neighborhood || '';
+  const parts = [type, place ? String(place) : null, listing.city ? String(listing.city) : null]
+    .filter(Boolean)
+    .map((s) => String(s).trim());
+  return Array.from(new Set(parts)).join(' · ');
+};
+
 const buildFirstCommentKeywordLine = (listing: CampaignListing | null | undefined) => {
+
   if (!listing) return '';
   const meta = (listing.source_metadata || {}) as Record<string, unknown>;
   const featuresObj = (listing.features && !Array.isArray(listing.features) && typeof listing.features === 'object')
