@@ -36,22 +36,18 @@ export function ProfileAvatarUploader() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('יש לבחור קובץ תמונה');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('הקובץ גדול מ-5MB');
-      return;
-    }
     setBusy(true);
     try {
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
       const path = `${user.id}/avatar-${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type });
+        .upload(path, file, {
+          upsert: true,
+          contentType: file.type || 'application/octet-stream',
+        });
       if (upErr) throw upErr;
+
 
       const { data: signed, error: signErr } = await supabase.storage
         .from('avatars')
