@@ -3,7 +3,7 @@
  * Reads the live balance through the `brightdata-balance` edge function.
  */
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Wallet } from 'lucide-react';
+import { ExternalLink, Loader2, Wallet } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -37,11 +37,15 @@ export function BrightDataHeroPill() {
   const low = typeof (data?.available ?? data?.balance) === 'number' && (data?.available ?? data?.balance)! < 5;
 
   return (
-    <div
+    <a
       dir="rtl"
-      title="יתרת קרדיט Bright Data"
+      href="https://brightdata.com/cp/billing/settings"
+      target="_blank"
+      rel="noopener noreferrer"
+      title="יתרת קרדיט Bright Data — לחצו לטעינת קרדיט"
+      aria-label="יתרת קרדיט Bright Data — פתיחת דף החיוב לטעינת קרדיט"
       className={cn(
-        'hidden items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[12px] font-semibold text-white sm:flex',
+        'flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[12px] font-semibold text-white transition-colors hover:bg-white/20',
         low && 'border-amber-300/70 text-amber-200',
       )}
     >
@@ -49,8 +53,9 @@ export function BrightDataHeroPill() {
       {isLoading ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : (
-        <span>{`$${amount}`}</span>
+        <span dir="ltr" className="tabular-nums">{`$${amount}`}</span>
       )}
-    </div>
+      <ExternalLink className="h-3 w-3 opacity-70" />
+    </a>
   );
 }
