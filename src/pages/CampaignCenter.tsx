@@ -5714,6 +5714,8 @@ const CampaignCenter = () => {
   const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
   const [historyTab, setHistoryTab] = useState<'published' | 'drafts' | 'future'>('published');
   const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
+  const [editSeriesRow, setEditSeriesRow] = useState<any | null>(null);
+
 
   const publishDraft = useCallback((key: string) => {
     const fn = publishFnsRef.current.get(key);
