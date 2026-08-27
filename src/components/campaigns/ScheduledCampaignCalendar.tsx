@@ -570,15 +570,14 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
       </Dialog>
 
       <Dialog open={!!scheduleDay} onOpenChange={(o) => { if (!o) setScheduleDay(null); }}>
-        <DialogContent dir="rtl" className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 justify-end">
+        <DialogContent dir="rtl" className="max-w-md max-h-[92vh] overflow-y-auto">
+          <DialogHeader className="relative px-10">
+            <DialogTitle className="flex items-center gap-2 justify-center">
               תזמון פרסומים ליום {scheduleDay?.toLocaleDateString('he-IL')}
             </DialogTitle>
-
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="flex items-end gap-2 flex-row-reverse">
+            {/* Recurrence control sits in the top corner of the dialog so it
+                never collides with content or the close (X) button. */}
+            <div className="absolute start-0 top-0">
               <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
                 <PopoverTrigger asChild>
                   <button
@@ -586,17 +585,18 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                     title="חזרתיות"
                     aria-label="חזרתיות"
                     className={cn(
-                      'relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors',
-                      recurrence !== 'none' && 'text-primary',
+                      'relative inline-flex items-center justify-center h-8 w-8 rounded-md border border-border bg-background text-foreground transition-colors hover:bg-muted/60 hover:text-primary',
+                      recurrence !== 'none' && 'text-primary border-primary/50',
                     )}
                   >
-                    <Repeat className="h-5 w-5" />
+                    <Repeat className="h-4 w-4" />
                     {recurrence !== 'none' && (
-                      <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+                      <span className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-primary" />
                     )}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" side="bottom" className="w-64 p-2" dir="rtl">
+                <PopoverContent align="start" side="bottom" className="w-64 p-2" dir="rtl">
+
                   <div className="text-xs font-semibold text-muted-foreground px-2 py-1">חזרתיות</div>
                   <div className="flex flex-col">
                     {([
@@ -667,7 +667,12 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   )}
                 </PopoverContent>
               </Popover>
+            </div>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-end gap-2 flex-row-reverse">
               <div className="flex-1">
+
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">עד שעה</label>
                 <Input
                   type="time"

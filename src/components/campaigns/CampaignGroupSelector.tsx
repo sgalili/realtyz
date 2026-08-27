@@ -10,6 +10,7 @@ export type FacebookGroup = {
   group_id: string;
   group_name: string;
   group_icon: string | null;
+  member_count?: number | null;
   connected: boolean;
   group_url?: string | null;
 };
@@ -47,6 +48,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     group_id: String(r.group_id),
     group_name: String(r.group_name || "קבוצה"),
     group_icon: r.group_icon || null,
+    member_count: typeof r.member_count === 'number' ? r.member_count : null,
     group_url: r.group_url || `https://www.facebook.com/groups/${String(r.group_id)}`,
     connected: true,
   });
@@ -58,7 +60,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     try {
       const { data } = await (supabase as any)
         .from("fb_user_groups")
-        .select("group_id, group_name, group_icon, group_url, is_selected")
+        .select("group_id, group_name, group_icon, group_url, member_count, is_selected")
         // Only groups the broker approved in the connections screen are targets.
         .neq("is_selected", false)
         .order("group_name", { ascending: true });
@@ -81,6 +83,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
           group_id: id,
           group_name: String(r?.group_name || "קבוצה"),
           group_icon: null,
+          member_count: null,
           group_url: String(r?.group_url ?? ""),
           connected: true,
         });
@@ -211,6 +214,11 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                   )}
                   <div className="min-w-0 flex-1 ps-[3px]">
                     <div className="truncate text-[15px] font-medium text-foreground">{shortenName(g.group_name)}</div>
+                    {typeof g.member_count === "number" && g.member_count > 0 && (
+                      <div className="text-[13px] text-muted-foreground tabular-nums">
+                        {g.member_count.toLocaleString("he-IL")} חברים
+                      </div>
+                    )}
                   </div>
                   {g.group_url && (
                     <button

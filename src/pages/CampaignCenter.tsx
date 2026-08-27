@@ -1671,6 +1671,14 @@ const InlineComposer = ({
       waInjectedRef.current = line;
 
       injectFirstCommentLine(line);
+      // The post itself must always carry a way to reach us on WhatsApp.
+      setBody((curr) => {
+        const text = (curr || '');
+        if (/wa\.me\/\d+|realtyz\.co\.il\/r\/[A-Za-z0-9]+/i.test(text)) return text;
+        const trimmed = text.replace(/\s+$/, '');
+        return trimmed ? `${trimmed}\n\n${line}` : line;
+      });
+
     })();
     return () => { cancelled = true; };
   }, [attachWaLink, selectedListingId]);
@@ -5252,15 +5260,16 @@ const DraftCollapsibleCard = ({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-semibold text-foreground">
+            <div className="text-[13px] font-semibold leading-snug text-foreground break-words">
               טיוטה #{index + 1}
               {status?.title ? ` · ${status.title}` : ''}
             </div>
-            <div className="truncate text-[11px] text-muted-foreground">
+            <div className="text-[11px] text-muted-foreground">
               {new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
               {totalVariants > 1 ? ` · וריאציה ${variant}/${totalVariants}` : ''}
             </div>
           </div>
+
         </button>
         <span
           className={cn(
