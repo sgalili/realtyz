@@ -1,7 +1,12 @@
+import { useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
-  Sofa, TrendingUp, MapPin, Navigation,
+  Sofa, TrendingUp, MapPin, Navigation, Pencil, Plus, Trash2, X, Save,
   ArrowUpCircle, Wind, Grid2X2, ShieldCheck, Sun, Armchair, DoorClosed,
   Accessibility, Fan, PaintRoller, Package, Warehouse, PawPrint, Users, Car, Home,
 } from 'lucide-react';
@@ -17,6 +22,18 @@ import {
 } from 'recharts';
 
 export type PricePoint = { date: string | null; price: number | null; label?: string };
+
+/** Manual edits any workspace user made to the scraped content. */
+export type RichOverrides = {
+  /** Free-text overrides for the description blocks, keyed `about:<index>`. */
+  about?: Record<string, string>;
+  /** Value overrides for detail / furniture rows, keyed by their Hebrew label. */
+  rows?: Record<string, string>;
+  /** Labels or block keys the user removed from the page. */
+  hidden?: string[];
+  /** Rows the user added manually. */
+  extra?: { name: string; value: string }[];
+};
 
 type Props = {
   aboutText?: string | null;
@@ -34,7 +51,13 @@ type Props = {
    * placeholder rows instead of hiding the card, so the layout never shifts.
    */
   pending?: boolean;
+  /** Enables inline editing for every workspace user when provided. */
+  listingId?: string | null;
+  /** Current `source_metadata` blob, so saving preserves everything else. */
+  meta?: Record<string, unknown> | null;
+  onSaved?: () => void;
 };
+
 
 /** Fields we always show a row for, even before the values arrive. */
 const SKELETON_ROWS = ['סוג הנכס', 'חדרים', 'קומה', 'מ"ר', 'חניות', 'תאריך כניסה'];
@@ -253,12 +276,76 @@ export function PropertyRichDetailsCard({
   longitude,
   addressLabel,
   pending = false,
+  listingId,
+  meta,
+  onSaved,
 }: Props) {
+  const savedOverrides: RichOverrides = useMemo(() => {
+    const raw = (meta as Record<string, unknown> | null | undefined)?.manual_overrides;
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as RichOverrides) : {};
+  }, [meta]);
+
+  const editable = Boolean(listingId);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<RichOverrides>(savedOverrides);
+
+  const active: RichOverrides = editing ? draft : savedOverrides;
+  const hidden = new Set(active.hidden ?? []);
+  const rowOverrides = active.rows ?? {};
+  const aboutOverrides = active.about ?? {};
+
+  const startEdit = () => {
+    setDraft({
+      about: { ...(savedOverrides.about ?? {}) },
+      rows: { ...(savedOverrides.rows ?? {}) },
+      hidden: [...(savedOverrides.hidden ?? [])],
+      extra: (savedOverrides.extra ?? []).map((e) => ({ ...e })),
+    });
+    setEditing(true);
+  };
+
+  const patchDraft = (patch: Partial<RichOverrides>) => setDraft((d) => ({ ...d, ...patch }));
+
+  const toggleHidden = (key: string) => {
+    const next = new Set(draft.hidden ?? []);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    patchDraft({ hidden: [...next] });
+  };
+
+  const save = async () => {
+    if (!listingId) return;
+    setSaving(true);
+    try {
+      const cleaned: RichOverrides = {
+        about: Object.fromEntries(Object.entries(draft.about ?? {}).filter(([, v]) => (v ?? '').trim())),
+        rows: draft.rows ?? {},
+        hidden: draft.hidden ?? [],
+        extra: (draft.extra ?? []).filter((e) => e.name.trim()),
+      };
+      const nextMeta = { ...(meta ?? {}), manual_overrides: cleaned };
+      const { error } = await supabase
+        .from('listings')
+        .update({ source_metadata: nextMeta as never })
+        .eq('id', listingId);
+      if (error) throw error;
+      toast.success('הפרטים עודכנו');
+      setEditing(false);
+      onSaved?.();
+    } catch (e: any) {
+      toast.error(`שגיאה בשמירה: ${e?.message ?? e}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Only keys we can present with a real Hebrew label are rendered — raw
   // English field names must never reach the UI.
   const furnitureEntries = entriesOf(furniture)
     .map(([k, v]) => ({ key: k, name: label(k), value: v }))
-    .filter((e): e is { key: string; name: string; value: unknown } => !!e.name);
+    .filter((e): e is { key: string; name: string; value: unknown } => !!e.name)
+    .filter((e) => editing || !hidden.has(`row:${e.name}`));
   const rawAdditional = entriesOf(additional);
   const rawAmenities = entriesOf(amenities);
 
@@ -289,11 +376,19 @@ export function PropertyRichDetailsCard({
   const points = (priceHistory ?? []).filter((p) => p && p.price != null);
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
 
-  const blocks = (aboutBlocks ?? []).filter((b) => b && b.text);
+  const blocks = (aboutBlocks ?? [])
+    .filter((b) => b && b.text)
+    .map((b, i) => ({
+      ...b,
+      key: `about:${i}`,
+      text: aboutOverrides[`about:${i}`] ?? b.text,
+    }))
+    .filter((b) => editing || !hidden.has(b.key));
   const hasAbout = blocks.length > 0 || !!aboutText;
 
   if (
     !pending &&
+    !editable &&
     !hasAbout &&
     !furnitureEntries.length &&
     !detailRows.length &&
@@ -305,11 +400,27 @@ export function PropertyRichDetailsCard({
   }
 
   // While hydrating, keep the structure on screen with empty value rows.
-  const displayRows = detailRows.length
+  const baseRows = detailRows.length
     ? detailRows
     : pending
       ? SKELETON_ROWS.map((name) => ({ key: name, name, value: '' }))
       : [];
+  const extraRows = (active.extra ?? []).map((e, i) => ({
+    key: `extra:${i}`,
+    name: e.name,
+    value: e.value,
+    isExtra: true as const,
+    index: i,
+  }));
+  const displayRows = [
+    ...baseRows.map((r) => ({
+      ...r,
+      value: rowOverrides[`row:${r.name}`] ?? r.value,
+      isExtra: false as const,
+      index: -1,
+    })),
+    ...extraRows,
+  ].filter((r) => editing || !hidden.has(`row:${r.name}`));
 
   const chartData = points.map((p, i) => ({
     name: p.date || p.label || `#${i + 1}`,
@@ -320,15 +431,55 @@ export function PropertyRichDetailsCard({
     ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
     : null;
 
+  const rowValue = (name: string, fallback: unknown) =>
+    rowOverrides[`row:${name}`] ?? renderValue(fallback);
+
   return (
     <Card className="p-4 sm:p-6 space-y-8" dir="rtl">
-      {hasAbout && (
+      {editable && (
+        <div className="flex items-center justify-end gap-2">
+          {editing ? (
+            <>
+              <Button size="sm" onClick={save} disabled={saving}>
+                <Save className="h-4 w-4 ms-1" /> {saving ? 'שומר…' : 'שמירה'}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
+                <X className="h-4 w-4 ms-1" /> ביטול
+              </Button>
+            </>
+          ) : (
+            <Button size="sm" variant="outline" onClick={startEdit}>
+              <Pencil className="h-4 w-4 ms-1" /> עריכת הפרטים
+            </Button>
+          )}
+        </div>
+      )}
+
+      {(hasAbout || (editing && blocks.length > 0)) && (
         <section className="space-y-4">
           {blocks.length > 0 ? (
-            blocks.map((b, i) => (
-              <div key={`${b.source}-${i}`}>
-                <p className="text-lg font-bold text-foreground">{b.source}:</p>
-                <p className="text-lg leading-8 text-foreground/80 whitespace-pre-line">{b.text}</p>
+            blocks.map((b) => (
+              <div key={b.key} className={hidden.has(b.key) ? 'opacity-40' : undefined}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-lg font-bold text-foreground">{b.source}:</p>
+                  {editing && (
+                    <Button size="icon" variant="ghost" onClick={() => toggleHidden(b.key)} title="הסתרה">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+                {editing ? (
+                  <Textarea
+                    className="mt-1 text-lg leading-8"
+                    rows={6}
+                    value={aboutOverrides[b.key] ?? b.text}
+                    onChange={(e) =>
+                      patchDraft({ about: { ...(draft.about ?? {}), [b.key]: e.target.value } })
+                    }
+                  />
+                ) : (
+                  <p className="text-lg leading-8 text-foreground/80 whitespace-pre-line">{b.text}</p>
+                )}
               </div>
             ))
           ) : (
@@ -345,27 +496,109 @@ export function PropertyRichDetailsCard({
           </h2>
           <dl className="divide-y divide-border/60">
             {furnitureEntries.map(({ key, name, value }) => (
-              <div key={key} className="flex items-start justify-between gap-6 py-2.5">
+              <div
+                key={key}
+                className={`flex items-start justify-between gap-6 py-2.5 ${hidden.has(`row:${name}`) ? 'opacity-40' : ''}`}
+              >
                 <dt className="text-lg text-muted-foreground">{name}</dt>
-                <dd className="text-lg font-medium text-foreground text-left">{renderValue(value)}</dd>
+                {editing ? (
+                  <dd className="flex items-center gap-2">
+                    <Input
+                      className="h-9 w-48 text-lg"
+                      value={rowValue(name, value)}
+                      onChange={(e) =>
+                        patchDraft({ rows: { ...(draft.rows ?? {}), [`row:${name}`]: e.target.value } })
+                      }
+                    />
+                    <Button size="icon" variant="ghost" onClick={() => toggleHidden(`row:${name}`)} title="הסתרה">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </dd>
+                ) : (
+                  <dd className="text-lg font-medium text-foreground text-left">{rowValue(name, value)}</dd>
+                )}
               </div>
             ))}
           </dl>
         </section>
       )}
 
-      {displayRows.length > 0 && (
+      {(displayRows.length > 0 || editing) && (
         <section>
           <dl className="divide-y divide-border/60">
-            {displayRows.map(({ key, name, value }) => (
-              <div key={key} className="flex items-start justify-between gap-6 py-2.5">
-                <dt className="text-lg text-muted-foreground">{name}</dt>
-                <dd className="text-lg font-medium text-foreground text-left">
-                  {renderValue(value) || <span className="text-muted-foreground/50">—</span>}
-                </dd>
+            {displayRows.map((row) => (
+              <div
+                key={row.key}
+                className={`flex items-start justify-between gap-6 py-2.5 ${hidden.has(`row:${row.name}`) ? 'opacity-40' : ''}`}
+              >
+                {editing && row.isExtra ? (
+                  <Input
+                    className="h-9 w-40 text-lg"
+                    placeholder="שם השדה"
+                    value={row.name}
+                    onChange={(e) => {
+                      const next = [...(draft.extra ?? [])];
+                      next[row.index] = { ...next[row.index], name: e.target.value };
+                      patchDraft({ extra: next });
+                    }}
+                  />
+                ) : (
+                  <dt className="text-lg text-muted-foreground">{row.name}</dt>
+                )}
+                {editing ? (
+                  <dd className="flex items-center gap-2">
+                    <Input
+                      className="h-9 w-48 text-lg"
+                      value={
+                        row.isExtra
+                          ? String(row.value ?? '')
+                          : rowValue(row.name, row.value)
+                      }
+                      onChange={(e) => {
+                        if (row.isExtra) {
+                          const next = [...(draft.extra ?? [])];
+                          next[row.index] = { ...next[row.index], value: e.target.value };
+                          patchDraft({ extra: next });
+                        } else {
+                          patchDraft({ rows: { ...(draft.rows ?? {}), [`row:${row.name}`]: e.target.value } });
+                        }
+                      }}
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="הסתרה"
+                      onClick={() => {
+                        if (row.isExtra) {
+                          patchDraft({ extra: (draft.extra ?? []).filter((_, i) => i !== row.index) });
+                        } else {
+                          toggleHidden(`row:${row.name}`);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </dd>
+                ) : (
+                  <dd className="text-lg font-medium text-foreground text-left">
+                    {String(row.isExtra ? row.value : rowValue(row.name, row.value)) || (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </dd>
+                )}
               </div>
             ))}
           </dl>
+          {editing && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-3"
+              onClick={() => patchDraft({ extra: [...(draft.extra ?? []), { name: '', value: '' }] })}
+            >
+              <Plus className="h-4 w-4 ms-1" /> הוספת שדה
+            </Button>
+          )}
         </section>
       )}
 
@@ -430,3 +663,4 @@ export function PropertyRichDetailsCard({
 }
 
 export default PropertyRichDetailsCard;
+

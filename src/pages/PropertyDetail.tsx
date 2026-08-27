@@ -1512,7 +1512,11 @@ export default function PropertyDetail() {
               longitude={data.rich.longitude}
               addressLabel={[property.address, property.city].filter(Boolean).join(', ')}
               pending={hydrating}
+              listingId={property.id}
+              meta={isRecord(data?.row?.source_metadata) ? data.row.source_metadata : {}}
+              onSaved={() => qc.invalidateQueries({ queryKey: ['property-detail', id] })}
             />
+
           )}
 
           {!editMode && (
