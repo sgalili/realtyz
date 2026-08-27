@@ -212,21 +212,21 @@ export default function Landing() {
 
           <Reveal delay={160}>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              פוסטים אוטומטיים לקבוצות פייסבוק ואינסטגרם, ניהול אומני-צ'אנל, עוזר AI שמדבר איתכם
+              פוסטים אוטומטיים לקבוצות פייסבוק ואינסטגרם, שיחות מכל האפליקציות והרשתות, עוזר AI שמדבר איתכם
               בהקלטות קוליות בווטסאפ וסנכרון מלא לגוגל. הכל בעברית, הכל תחת השליטה שלכם.
             </p>
           </Reveal>
 
           <Reveal delay={240}>
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link to="/auth" className="w-full sm:w-auto">
-                <Button size="lg" className="group h-14 w-full px-8 text-base font-extrabold shadow-2xl shadow-primary/25 sm:w-auto">
+            <div className="mt-9 flex flex-row flex-wrap items-center justify-center gap-3">
+              <Link to="/auth">
+                <Button size="lg" className="group h-14 px-8 text-base font-extrabold shadow-2xl shadow-primary/25">
                   התחל בחינם - בלי כרטיס אשראי
                   <ArrowLeft className="ms-2 h-5 w-5 transition-transform group-hover:-translate-x-1" />
                 </Button>
               </Link>
-              <a href="#pricing" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="h-14 w-full px-7 text-base font-bold sm:w-auto">
+              <a href="#pricing">
+                <Button size="lg" variant="outline" className="h-14 px-7 text-base font-bold">
                   חשב את העלות שלי
                 </Button>
               </a>
@@ -241,17 +241,25 @@ export default function Landing() {
             </div>
           </Reveal>
 
-          {/* Channels — plain icons, no chips, no backgrounds */}
+          {/* Platforms — official brand logos, infinite scroll, no labels */}
           <Reveal delay={400}>
-            <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-              {CHANNELS.map((c) => (
-                <span key={c.label} className="inline-flex items-center gap-2 text-sm font-bold text-foreground">
-                  <c.icon className="h-5 w-5 text-primary" strokeWidth={2.25} />
-                  {c.label}
-                </span>
-              ))}
+            <div className="mt-14">
+              <PlatformTicker />
             </div>
           </Reveal>
+
+          {/* Infrastructure trust row */}
+          <Reveal delay={470}>
+            <div className="mt-10">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Built &amp; Operating by
+              </p>
+              <div className="mt-4">
+                <StackTicker />
+              </div>
+            </div>
+          </Reveal>
+
         </div>
       </section>
 
