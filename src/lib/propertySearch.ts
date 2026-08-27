@@ -363,7 +363,7 @@ export async function searchAllSources(
     return tokens.length === 0
       ? all
       : all.filter((r) => {
-          if (r.source === 'mine') return true;
+          if (r.localId) return true; // already filtered server-side
           const hay = [r.title, r.description, r.city, r.address, r.neighborhood]
             .filter(Boolean)
             .join(' ')
