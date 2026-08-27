@@ -33,6 +33,8 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, type SchedulePrefs } from '@/lib/schedulePrefs';
+import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
+
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
@@ -932,17 +934,14 @@ const InlineComposer = ({
       setGroupIds(bulkGroupIds || []);
       return;
     }
-    try {
-      const raw = localStorage.getItem(groupStorageKey)
-        || localStorage.getItem('campaign:bulkGroupIds')
-        || localStorage.getItem('campaign:groupIds');
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(parsed) && parsed.length) setGroupIds(parsed.filter((x) => typeof x === 'string'));
-    } catch {}
-  }, [groupStorageKey, hideBottomBar, bulkGroupIds]);
+    const shared = loadCampaignGroups(workspaceOwnerId);
+    if (shared.length) setGroupIds(shared);
+  }, [groupStorageKey, hideBottomBar, bulkGroupIds, workspaceOwnerId]);
   useEffect(() => {
-    try { localStorage.setItem(groupStorageKey, JSON.stringify(groupIds)); } catch {}
-  }, [groupIds, groupStorageKey]);
+    if (hideBottomBar) return; // page-level bar owns persistence in multi-draft mode
+    saveCampaignGroups(workspaceOwnerId, groupIds);
+  }, [groupIds, workspaceOwnerId, hideBottomBar]);
+
   useEffect(() => {
     onBulkGroupIdsChange?.(groupIds);
   }, [groupIds, onBulkGroupIdsChange]);
@@ -1409,6 +1408,18 @@ const InlineComposer = ({
         });
         return nextAttachments;
       });
+      // Persist uploaded photos to the property gallery immediately so they are
+      // never requested again — they show on the property page and in every
+      // current/future post of that property.
+      if (selectedListingId) {
+        const uploadedImageUrls = uploaded
+          .filter((u) => u.placeholder.kind === 'image' && u.url && !u.url.startsWith('blob:'))
+          .map((u) => u.url as string);
+        if (uploadedImageUrls.length) {
+          await appendImagesToListing(selectedListingId, uploadedImageUrls);
+        }
+      }
+
       // Synchronous persistence: as soon as the public URL is available,
       // write it into the ai_content_logs row so the media stays bound to
       // the record even if the view refreshes before the debounced autosave
@@ -1457,7 +1468,9 @@ const InlineComposer = ({
       const url = data?.url || data?.image_url;
       if (url) {
         setAttachments((a) => [...a, { name: 'AI Image', kind: 'image', url }]);
+        if (selectedListingId) void appendImagesToListing(selectedListingId, [url]);
         toast.success('תמונה נוצרה');
+
       } else toast.info('לא התקבלה תמונה מה-AI');
     } catch (e: any) {
       if (ctrl.signal.aborted || e?.name === 'AbortError') return;
@@ -5435,13 +5448,9 @@ const CampaignCenter = () => {
   // group/time selection for current and future multi-draft campaigns.
   useEffect(() => {
     try {
-      const gKey = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
       const sKey = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';
-      const rawGroups = localStorage.getItem(gKey)
-        || localStorage.getItem('campaign:bulkGroupIds')
-        || localStorage.getItem('campaign:groupIds');
-      const parsedGroups = rawGroups ? JSON.parse(rawGroups) : null;
-      if (Array.isArray(parsedGroups)) setBulkGroupIds(parsedGroups.filter((x) => typeof x === 'string'));
+      const parsedGroups = loadCampaignGroups(workspaceOwnerId);
+      if (parsedGroups.length) setBulkGroupIds(parsedGroups);
       const rawIso = localStorage.getItem(sKey);
       if (rawIso) {
         const d = new Date(rawIso);
@@ -5451,18 +5460,24 @@ const CampaignCenter = () => {
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Keep the calendar bubble in sync after the global scheduler closes.
+  // Live sync: any group change made in the scheduling dialog updates the bubble.
+  useEffect(() => subscribeCampaignGroups((ids) => {
+    setBulkGroupIds((curr) => (JSON.stringify(curr) === JSON.stringify(ids) ? curr : ids));
+  }), []);
+  // Keep the calendar bubble + group count in sync after the global scheduler closes.
   useEffect(() => {
     if (!bulkGlobalScheduleOpen) {
-      try { setBulkRecurrence(loadSchedulePrefs(workspaceOwnerId).recurrence); } catch {}
+      try {
+        setBulkRecurrence(loadSchedulePrefs(workspaceOwnerId).recurrence);
+        const shared = loadCampaignGroups(workspaceOwnerId);
+        if (shared.length) setBulkGroupIds(shared);
+      } catch {}
     }
   }, [bulkGlobalScheduleOpen, workspaceOwnerId]);
   useEffect(() => {
-    try {
-      const key = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
-      localStorage.setItem(key, JSON.stringify(bulkGroupIds));
-    } catch {}
+    saveCampaignGroups(workspaceOwnerId, bulkGroupIds);
   }, [bulkGroupIds, workspaceOwnerId]);
+
   useEffect(() => {
     try {
       const key = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';

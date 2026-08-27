@@ -185,7 +185,11 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
             <span className="text-[14px] text-muted-foreground tabular-nums">{selectedIds.length}/{groups.length}</span>
           </label>
 
-          <div className="max-h-72 overflow-y-auto divide-y divide-border">
+          <div
+            className="max-h-[45vh] min-h-[160px] overflow-y-auto overscroll-contain divide-y divide-border [-webkit-overflow-scrolling:touch]"
+            style={{ touchAction: 'pan-y' }}
+          >
+
             {groups.map((g) => {
               const active = selectedIds.includes(g.group_id);
               return (

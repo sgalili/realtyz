@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon, ArrowRight, X, Users, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
+import { loadCampaignGroups, saveCampaignGroups } from '@/lib/campaignGroups';
+
 import { saveGroupDailyLimit } from '@/lib/groupDailyLimits';
 
 import { cn } from '@/lib/utils';
@@ -120,7 +122,13 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
     setWinEnd(prefs.winEnd);
     setWinCount(prefs.winCount);
     setSelectedListingIds(prefs.selectedListingIds);
-    setSelectedGroupIds(prefs.selectedGroupIds);
+    {
+      // Shared selection wins so the dialog always shows the same count as the
+      // create-post bar.
+      const shared = loadCampaignGroups(workspaceOwnerId);
+      setSelectedGroupIds(shared.length ? shared : prefs.selectedGroupIds);
+    }
+
     setRecurrence(prefs.recurrence);
     setRecurrenceDays(prefs.recurrenceDays);
     setRecurrenceOpen(false);
@@ -147,14 +155,16 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
   }, [scheduleDay, workspaceOwnerId]);
 
   // When opened from the campaign bottom bar, jump straight to today's schedule
-  // form instead of the full monthly calendar view.
+  // form instead of the full monthly calendar view. Applied ONCE per mount so
+  // closing the day dialog never re-opens it.
+  const initialDayAppliedRef = useRef(false);
   useEffect(() => {
-    if (initialDay && !scheduleDay) {
-      const d = new Date(initialDay);
-      d.setHours(0, 0, 0, 0);
-      setScheduleDay(d);
-      setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
-    }
+    if (!initialDay || initialDayAppliedRef.current) return;
+    initialDayAppliedRef.current = true;
+    const d = new Date(initialDay);
+    d.setHours(0, 0, 0, 0);
+    setScheduleDay(d);
+    setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
   }, [initialDay]);
 
   // Persist every configuration change so it survives leaving the page.
@@ -164,7 +174,10 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
       winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount,
       selectedListingIds, selectedGroupIds, groupDailyLimit,
     });
+    // Group selection is shared with the create-post bar — one source of truth.
+    saveCampaignGroups(workspaceOwnerId, selectedGroupIds);
   }, [scheduleDay, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedListingIds, selectedGroupIds, groupDailyLimit]);
+
 
 
   // The number of posts follows the number of properties picked in the dropdown.
@@ -733,37 +746,46 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
                 )}
               </div>
             </div>
-
-
+            {/* Group picker — rendered INSIDE the dialog so mouse wheel and
+                touch scrolling work (a portaled popover is blocked by the
+                dialog's scroll lock). */}
+            {groupsOpen && (
+              <div className="rounded-xl border border-border bg-background">
+                <CampaignGroupSelector
+                  selectedIds={selectedGroupIds}
+                  onChange={setSelectedGroupIds}
+                  className="border-0 shadow-none"
+                />
+                <div className="flex justify-start border-t border-border p-2">
+                  <Button type="button" size="sm" onClick={() => setGroupsOpen(false)}>
+                    סגור{selectedGroupIds.length > 0 ? ` (${selectedGroupIds.length})` : ''}
+                  </Button>
+                </div>
+              </div>
+            )}
 
           </div>
           <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full items-center">
             <Button variant="outline" onClick={() => setScheduleDay(null)}>ביטול</Button>
             <div className="flex items-center gap-2">
-              <Popover open={groupsOpen} onOpenChange={setGroupsOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    title="בחר קבוצות פייסבוק לפרסום"
-                    aria-label="קבוצות פייסבוק"
-                    className="relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors"
-                  >
-                    <Users className="h-5 w-5" />
-                    {selectedGroupIds.length > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
-                        {selectedGroupIds.length}
-                      </span>
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="center" side="top" className="w-[360px] p-0" dir="rtl">
-                  <CampaignGroupSelector
-                    selectedIds={selectedGroupIds}
-                    onChange={setSelectedGroupIds}
-                    className="border-0 shadow-none"
-                  />
-                </PopoverContent>
-              </Popover>
+              <button
+                type="button"
+                title="בחר קבוצות פייסבוק לפרסום"
+                aria-label="קבוצות פייסבוק"
+                onClick={() => setGroupsOpen((v) => !v)}
+                className={cn(
+                  'relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors',
+                  groupsOpen && 'text-primary',
+                )}
+              >
+                <Users className="h-5 w-5" />
+                {selectedGroupIds.length > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
+                    {selectedGroupIds.length}
+                  </span>
+                )}
+              </button>
+
               <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
                 <PopoverTrigger asChild>
                   <button
