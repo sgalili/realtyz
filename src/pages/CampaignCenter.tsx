@@ -2718,7 +2718,9 @@ const ConfirmDispatchDialog = ({
               }));
             } catch { /* noop */ }
           }
-          const { data, error } = await supabase.functions.invoke('meta-publish', {
+          // Hard timeout: a hanging Graph call must never leave the dialog in a
+          // silent "nothing happened" state.
+          const invocation = supabase.functions.invoke('meta-publish', {
             body: {
               post: bodyToPublish,
               channels: [channel.id],
@@ -2735,8 +2737,16 @@ const ConfirmDispatchDialog = ({
               first_comment: firstComment || null,
             },
           });
+          const { data, error } = await Promise.race([
+            invocation,
+            new Promise<any>((_, reject) =>
+              setTimeout(() => reject(new Error('השידור לא הסתיים בזמן (120 שניות). נסה שוב או תזמן לשידור מאוחר יותר.')), 120000)
+            ),
+          ]);
+          console.log('[campaign] meta-publish result', { target: target?.name ?? null, groups: apiGroupIds.length, data, error });
           results.push({ data, error, target });
         }
+
 
 
         // Circuit-breaker short-circuit: the backend is intentionally pausing
