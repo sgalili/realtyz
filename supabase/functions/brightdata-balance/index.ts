@@ -169,6 +169,7 @@ Deno.serve(async (req) => {
 
     return json({
       ok: true,
+      endpoint: usedUrl,
       balance,
       pending_costs: pendingCosts,
       available: balance - pendingCosts,
