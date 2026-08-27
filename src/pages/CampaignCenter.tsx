@@ -1050,9 +1050,6 @@ const InlineComposer = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetListingId]);
 
-  // True once this instance finished restoring (locally or from the cloud).
-  // Auto-generation must wait for it, otherwise a refresh re-writes the draft.
-  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const saved = readDraft() || {};
