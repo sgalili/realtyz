@@ -26,16 +26,14 @@ import {
   BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves,
 } from 'lucide-react';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
-import { officialWaLink } from '@/lib/officialWa';
+import { officialWaLink, getOfficialWaNumber, OFFICIAL_WABA_PHONE } from '@/lib/officialWa';
 
 type SharedPayload = {
   workspace_name: string | null;
   agency_name?: string | null;
   area_facts?: AreaFacts | null;
   logo_url?: string | null;
-  owner_wa?: string | null;
   owner_name?: string | null;
-  broker_wa: string | null;
   property: any | null;
 };
 
@@ -60,15 +58,6 @@ const PERK_BUCKETS = [
   { label: 'תחבורה ציבורית ורכבת', icon: TrainFront, re: /רכבת|אוטובוס|תחבורה|רכבת קלה|תחנת/ },
   { label: 'מרחק מהים', icon: Waves, re: /ים|חוף|מרינה/ },
 ] as const;
-
-function normalizeWA(raw?: string | null) {
-  if (!raw) return null;
-  const digits = String(raw).replace(/\D/g, '');
-  if (!digits) return null;
-  if (digits.startsWith('972')) return digits;
-  if (digits.startsWith('0')) return '972' + digits.slice(1);
-  return digits;
-}
 
 /** Public pages must never expose house / apartment numbers. */
 function publicAddress(raw?: string | null) {
@@ -109,6 +98,11 @@ export default function SharedProperty() {
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
+  // HARD RULE: only the official Meta WBA number, resolved live with a constant fallback.
+  const [officialWa, setOfficialWa] = useState<string>(OFFICIAL_WABA_PHONE);
+  useEffect(() => {
+    getOfficialWaNumber().then(setOfficialWa).catch(() => setOfficialWa(OFFICIAL_WABA_PHONE));
+  }, []);
 
 
   useEffect(() => {
@@ -211,6 +205,7 @@ export default function SharedProperty() {
   // never the owner's / broker's personal WhatsApp.
   const waHref = officialWaLink(
     `שלום, ראיתי את הנכס "${displayTitle}" ואשמח לקבל פרטים נוספים.`,
+    officialWa,
   );
 
 

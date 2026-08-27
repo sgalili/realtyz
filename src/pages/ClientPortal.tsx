@@ -12,7 +12,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { RealtyzLoader } from "@/components/RealtyzLoader";
-import { officialWaLink } from "@/lib/officialWa";
+import { officialWaLink, OFFICIAL_WABA_PHONE } from "@/lib/officialWa";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/client-portal`;
 const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -339,11 +340,10 @@ export default function ClientPortal() {
               <p className="text-xs text-muted-foreground">
                 המתווך/ת שלך — זמין/ה לכל שאלה
               </p>
-              {agent.whatsapp_phone_display && (
-                <p className="text-xs text-muted-foreground mt-1" dir="ltr">
-                  {agent.whatsapp_phone_display}
-                </p>
-              )}
+              {/* Only the official Meta WBA number is ever shown publicly. */}
+              <p className="text-xs text-muted-foreground mt-1" dir="ltr">
+                {formatPhoneDisplay(OFFICIAL_WABA_PHONE)}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {waLink && (

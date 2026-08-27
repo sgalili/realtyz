@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
     const { data: share, error } = await admin
       .from("property_shares")
-      .select("id, owner_id, listing_id, external_snapshot, workspace_name, broker_wa, expires_at")
+      .select("id, owner_id, listing_id, external_snapshot, workspace_name, expires_at")
       .eq("token", token)
       .maybeSingle();
     if (error || !share) {
@@ -64,19 +64,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Prefer the property owner's mobile for the WhatsApp CTA, fall back to broker.
-    let owner_wa: string | null = null;
+    // HARD RULE: the public page never receives a personal / broker WhatsApp
+    // number. The CTA always targets our official Meta WBA number, so only the
+    // owner's display name is exposed here.
     let owner_name: string | null = null;
     if (property?.owner_id) {
       const { data: owner } = await admin
         .from("crm_profiles")
-        .select("full_name, phone")
+        .select("full_name")
         .eq("id", property.owner_id)
         .maybeSingle();
-      if (owner?.phone) {
-        owner_wa = owner.phone;
-        owner_name = owner.full_name ?? null;
-      }
+      owner_name = owner?.full_name ?? null;
     }
 
     // Neighborhood market data (computed with service role so the public page
@@ -139,9 +137,8 @@ Deno.serve(async (req) => {
       agency_name,
       logo_url,
       area_facts,
-      owner_wa,
       owner_name,
-      broker_wa: share.broker_wa,
+      broker_wa: null,
       property,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
