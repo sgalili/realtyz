@@ -4,64 +4,72 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Bot, Building2, MessageCircle, Sparkles, Zap, ShieldCheck,
-  CalendarCheck2, Infinity as InfinityIcon, ArrowLeft, Check,
-  Megaphone, Mic, Instagram, Facebook, Mail, BrainCircuit, BarChart3,
+  Infinity as InfinityIcon, ArrowLeft, Check, MessageCircle, Zap, Mail,
+  Facebook, Instagram, CalendarCheck2,
 } from 'lucide-react';
 import {
   FREE_CONTACTS, FREE_PROPERTIES, PRICING_TIERS, quoteForContacts,
 } from '@/lib/pricing';
 import { fmtILS } from '@/lib/formatCurrency';
 import { cn } from '@/lib/utils';
+import BenefitCharts from '@/components/landing/BenefitCharts';
+import realtyzLogo from '@/assets/realtyz-logo-trans.png.asset.json';
+import imgPublishing from '@/assets/landing/card-publishing.jpg';
+import imgOmnichannel from '@/assets/landing/card-omnichannel.jpg';
+import imgVoice from '@/assets/landing/card-voice.jpg';
+import imgCalendar from '@/assets/landing/card-calendar.jpg';
+import imgAi from '@/assets/landing/card-ai.jpg';
+import imgAnalytics from '@/assets/landing/card-analytics.jpg';
 
 /* ────────────────────────────────────────────────────────────────
-   Realtyz — דף נחיתה עתידני (RTL), אנימציות 60fps, המרה מקסימלית.
-   Dark navy + gold. כל הצבעים דרך טוקנים של .realtyz-landing.
+   Realtyz — דף נחיתה (RTL). פלטת הצבעים של האפליקציה בלבד:
+   נייבי #0B2545, זהב #FFC800, לבן וקנבס אפור רך.
+   ללא תגיות/פילים, ללא רקעים לאייקונים - כרטיסים עם תמונת רקע.
    ──────────────────────────────────────────────────────────────── */
 
 const FEATURES = [
   {
-    icon: Megaphone,
+    image: imgPublishing,
     title: 'יצירת פוסטים ופרסום אוטומטי',
     body: 'ה-AI כותב את הפוסט לנכס, מתזמן בלחיצה אחת ומפרסם ישירות לקבוצות פייסבוק ולאינסטגרם.',
   },
   {
-    icon: MessageCircle,
+    image: imgOmnichannel,
     title: 'ניהול אומני-צ\'אנל אמיתי',
     body: 'ווטסאפ, SMS, אימייל ורשתות חברתיות בתיבה אחת מסונכרנת - כל השיחה של הלקוח במקום אחד.',
   },
   {
-    icon: Mic,
+    image: imgVoice,
     title: 'עוזר AI בווטסאפ - גם בהודעות קוליות',
     body: 'מנהלים את כל העסק מהווטסאפ: שולחים הקלטה קולית או טקסט, מבקשים סטטיסטיקות, מפעילים מבצע ופותחים משימות בזמן אמת.',
   },
   {
-    icon: CalendarCheck2,
+    image: imgCalendar,
     title: 'סנכרון גוגל דו-כיווני',
     body: 'Gmail ויומן גוגל מסונכרנים בזמן אמת - חלונות פנויים אמיתיים, בלי כפל פגישות ובלי מיילים שנעלמים.',
   },
   {
-    icon: BrainCircuit,
+    image: imgAi,
     title: 'אימון AI פשוט ומיידי',
     body: 'מזינים את הידע, הטון והכללים של המשרד - וה-"מוח" של הסוכן מתעדכן מיד, בלי מפתחים ובלי הגדרות מסובכות.',
   },
   {
-    icon: Bot,
+    image: imgVoice,
     title: 'טייס אוטומטי 24/7',
     body: 'ברכות אוטומטיות, תזכורות ומעקבים - מסנן, מדרג ומחמם כל מתעניין חדש, גם ב-3 לפנות בוקר.',
   },
   {
-    icon: Building2,
+    image: imgPublishing,
     title: 'התאמת נכסים חכמה',
     body: 'מנוע התאמה שמצליב העדפות מול מלאי חי מיד2 והומלי ומציע את הנכס הנכון לכל לקוח.',
   },
   {
-    icon: BarChart3,
+    image: imgAnalytics,
     title: 'סיכומי שיחות ותובנות',
     body: 'כל שיחה מסוכמת, מתויגת ומייצרת משימת המשך - עם תמונת מצב עסקית מלאה בכל רגע.',
   },
   {
-    icon: ShieldCheck,
+    image: imgOmnichannel,
     title: 'שליטה מלאה של המתווך',
     body: 'תור אישורים, כפתור עצירה מיידי ותיעוד של כל פעולה שה-AI ביצע. אתם תמיד מחליטים.',
   },
@@ -94,6 +102,12 @@ const INCLUDED = [
   'סנכרון Gmail ויומן גוגל',
   'אוטומציות, סיכומי שיחה ואימון AI',
   'משתמשים וצוות ללא הגבלה',
+];
+
+const FREE_TILES = [
+  { image: imgOmnichannel, label: `${FREE_CONTACTS} אנשי קשר` },
+  { image: imgPublishing, label: `${FREE_PROPERTIES} נכסים` },
+  { image: imgAi, label: 'AI ללא הגבלה' },
 ];
 
 function useCounter(target: number, ms = 700) {
@@ -162,19 +176,20 @@ export default function Landing() {
   return (
     <div dir="rtl" className="realtyz-landing min-h-screen bg-background text-foreground antialiased">
       {/* ───────── Nav ───────── */}
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
-          <span className="text-xl font-extrabold tracking-tight">
-            Realtyz<span className="text-primary">.</span>
-          </span>
-          <nav className="hidden items-center gap-7 text-sm font-medium text-muted-foreground md:flex">
+          <Link to="/auth">
+            <Button size="sm" className="font-bold">התחברות</Button>
+          </Link>
+          <nav className="hidden items-center gap-7 text-sm font-semibold text-muted-foreground md:flex">
             <a href="#features" className="transition-colors hover:text-foreground">יכולות</a>
+            <a href="#impact" className="transition-colors hover:text-foreground">תוצאות</a>
             <a href="#whatsapp" className="transition-colors hover:text-foreground">ווטסאפ AI</a>
             <a href="#pricing" className="transition-colors hover:text-foreground">תמחור</a>
             <a href="#free" className="transition-colors hover:text-foreground">מסלול חינם</a>
           </nav>
-          <Link to="/auth">
-            <Button size="sm" className="font-bold">התחברות</Button>
+          <Link to="/" aria-label="Realtyz AI">
+            <img src={realtyzLogo.url} alt="Realtyz AI" className="h-8 w-auto object-contain" />
           </Link>
         </div>
       </header>
@@ -189,14 +204,13 @@ export default function Landing() {
 
         <div className="mx-auto w-full max-w-6xl px-4 pb-20 pt-16 text-center sm:pt-24">
           <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-[13px] font-bold text-primary">
-              <Sparkles className="h-4 w-4" />
+            <p className="text-[15px] font-bold text-primary">
               ה-CRM הראשון בישראל שמנוהל על ידי סוכני AI
-            </span>
+            </p>
           </Reveal>
 
           <Reveal delay={80}>
-            <h1 className="mx-auto mt-7 max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
+            <h1 className="mx-auto mt-5 max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
               כל העסק שלכם על טייס אוטומטי
               <span className="landing-gradient-text block"> ישר מהווטסאפ, 24 שעות ביממה</span>
             </h1>
@@ -226,23 +240,19 @@ export default function Landing() {
           </Reveal>
 
           <Reveal delay={320}>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" />{FREE_CONTACTS} אנשי קשר חינם לתמיד</span>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-semibold text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" />{FREE_CONTACTS} אנשי קשר חינם</span>
               <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" />{FREE_PROPERTIES} נכסים</span>
               <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" />הכל כלול ללא הגבלה</span>
             </div>
           </Reveal>
 
-          {/* Channel marquee */}
+          {/* Channels — plain icons, no chips, no backgrounds */}
           <Reveal delay={400}>
-            <div className="mt-14 flex flex-wrap items-center justify-center gap-3">
-              {CHANNELS.map((c, i) => (
-                <span
-                  key={c.label}
-                  style={{ animationDelay: `${i * 120}ms` }}
-                  className="landing-card inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-2 text-sm font-semibold text-muted-foreground transition-transform duration-300 will-change-transform hover:-translate-y-1 hover:text-foreground"
-                >
-                  <c.icon className="h-4 w-4 text-primary" />
+            <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
+              {CHANNELS.map((c) => (
+                <span key={c.label} className="inline-flex items-center gap-2 text-sm font-bold text-foreground">
+                  <c.icon className="h-5 w-5 text-primary" strokeWidth={2.25} />
                   {c.label}
                 </span>
               ))}
@@ -251,7 +261,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ───────── Features ───────── */}
+      {/* ───────── Features (image cards, no icons) ───────── */}
       <section id="features" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
@@ -265,16 +275,56 @@ export default function Landing() {
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f, i) => (
               <Reveal key={f.title} delay={(i % 3) * 90}>
-                <article className="landing-card group h-full rounded-2xl border border-border/70 bg-card p-6 transition-transform duration-300 will-change-transform hover:-translate-y-1.5">
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary transition-transform duration-300 group-hover:scale-110">
-                    <f.icon className="h-6 w-6" />
-                  </span>
-                  <h3 className="mt-5 text-lg font-bold">{f.title}</h3>
-                  <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{f.body}</p>
+                <article className="landing-card group relative h-full min-h-[15rem] overflow-hidden rounded-2xl border border-border/70 transition-transform duration-300 will-change-transform hover:-translate-y-1.5">
+                  <img
+                    src={f.image}
+                    alt=""
+                    aria-hidden
+                    loading="lazy"
+                    width={1024}
+                    height={640}
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div aria-hidden className="landing-card-veil absolute inset-0" />
+                  <div className="relative flex h-full flex-col justify-end p-6">
+                    <h3 className="text-lg font-extrabold text-white drop-shadow">{f.title}</h3>
+                    <p className="mt-2 text-[15px] leading-relaxed text-white/85">{f.body}</p>
+                  </div>
                 </article>
               </Reveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ───────── Impact charts ───────── */}
+      <section id="impact" className="border-t border-border/60 py-20">
+        <div className="mx-auto w-full max-w-6xl px-4">
+          <Reveal>
+            <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+              ניהול העסק מקצה לקצה - במספרים
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
+              מהרגע שהליד נכנס ועד סגירת העסקה: מענה מיידי, מעקב אוטומטי ותמונת מצב עסקית אחת.
+            </p>
+          </Reveal>
+          <Reveal delay={120} className="mt-12">
+            <BenefitCharts />
+          </Reveal>
+          <Reveal delay={200}>
+            <div className="mt-8 grid gap-5 sm:grid-cols-3">
+              {[
+                { value: '45 שניות', label: 'זמן מענה ממוצע לליד חדש' },
+                { value: '+38%', label: 'שיפור בשיעור ההמרה לפגישה' },
+                { value: '12 שעות', label: 'חיסכון שבועי בעבודה ידנית' },
+              ].map((s) => (
+                <div key={s.label} className="landing-card rounded-2xl border border-border/70 bg-card p-6 text-center">
+                  <p className="text-3xl font-extrabold tabular-nums text-primary">{s.value}</p>
+                  <p className="mt-2 text-sm font-semibold text-muted-foreground">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -284,11 +334,8 @@ export default function Landing() {
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 lg:grid-cols-2">
           <Reveal>
             <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                <MessageCircle className="h-3.5 w-3.5" />
-                העוזר האישי שלכם בווטסאפ
-              </span>
-              <h2 className="mt-5 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              <p className="text-sm font-bold text-primary">העוזר האישי שלכם בווטסאפ</p>
+              <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
                 מנהלים את כל העסק מהווטסאפ - גם בהקלטה קולית
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
@@ -364,13 +411,11 @@ export default function Landing() {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {quote.isFree
-                    ? `עד ${FREE_CONTACTS} אנשי קשר - חינם לתמיד, בלי כרטיס אשראי`
+                    ? `עד ${FREE_CONTACTS} אנשי קשר - חינם, בלי כרטיס אשראי`
                     : <>{fmtILS(quote.ratePerContact, { fractionDigits: 2 })} לאיש קשר · {FREE_CONTACTS} הראשונים חינם</>}
                 </p>
                 {!quote.isFree && (
-                  <span className="mt-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-bold text-primary">
-                    {quote.tierLabel}
-                  </span>
+                  <p className="mt-1 text-xs font-bold text-primary">{quote.tierLabel}</p>
                 )}
               </div>
 
@@ -440,22 +485,32 @@ export default function Landing() {
       <section id="free" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-4xl px-4 text-center">
           <Reveal>
-            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">מסלול חינם נצחי</h2>
+            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">מסלול חינם</h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
               {FREE_CONTACTS} אנשי קשר, {FREE_PROPERTIES} נכסים, כל יכולות ה-AI פתוחות.
               ללא הגבלת זמן, ללא כרטיס אשראי, בלי שיחת מכירה.
             </p>
           </Reveal>
           <Reveal delay={120}>
-            <div className="mx-auto mt-9 grid max-w-2xl gap-4 sm:grid-cols-3">
-              {[
-                { icon: MessageCircle, label: `${FREE_CONTACTS} אנשי קשר` },
-                { icon: Building2, label: `${FREE_PROPERTIES} נכסים` },
-                { icon: Bot, label: 'AI ללא הגבלה' },
-              ].map((s) => (
-                <div key={s.label} className="landing-card rounded-2xl border border-border/70 bg-card px-4 py-6 transition-transform duration-300 will-change-transform hover:-translate-y-1">
-                  <s.icon className="mx-auto h-7 w-7 text-primary" />
-                  <p className="mt-3 text-base font-bold">{s.label}</p>
+            <div className="mx-auto mt-9 grid max-w-2xl grid-cols-3 gap-3 sm:gap-4">
+              {FREE_TILES.map((s) => (
+                <div
+                  key={s.label}
+                  className="landing-card relative overflow-hidden rounded-2xl border border-border/70 transition-transform duration-300 will-change-transform hover:-translate-y-1"
+                >
+                  <img
+                    src={s.image}
+                    alt=""
+                    aria-hidden
+                    loading="lazy"
+                    width={1024}
+                    height={640}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div aria-hidden className="landing-card-veil absolute inset-0" />
+                  <p className="relative px-3 py-10 text-sm font-extrabold text-white drop-shadow sm:text-base">
+                    {s.label}
+                  </p>
                 </div>
               ))}
             </div>
@@ -463,7 +518,7 @@ export default function Landing() {
           <Reveal delay={200}>
             <Link to="/auth" className="mt-10 inline-block">
               <Button size="lg" className="h-14 px-10 text-base font-extrabold shadow-2xl shadow-primary/25">
-                פתיחת חשבון ומעבר מיידי למערכת
+                פתיחת חשבון וכניסה מיידית למערכת
               </Button>
             </Link>
           </Reveal>
@@ -471,7 +526,7 @@ export default function Landing() {
       </section>
 
       <footer className="border-t border-border/60 py-10 text-center text-sm text-muted-foreground">
-        <p>Realtyz - מערכת ניהול נדל"ן מונעת AI · כל הזכויות שמורות</p>
+        <p>Realtyz - מערכת ניהול נדל"ן מבוססת AI · כל הזכויות שמורות</p>
       </footer>
     </div>
   );
