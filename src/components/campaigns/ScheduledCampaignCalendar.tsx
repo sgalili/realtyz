@@ -98,18 +98,24 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [propertiesOpen, setPropertiesOpen] = useState(false);
   const [listingsPopoverOpen, setListingsPopoverOpen] = useState(false);
 
+  // Restore the broker's last dialog configuration (window, count, recurrence,
+  // properties, groups) every time the dialog opens — it survives refreshes.
   useEffect(() => {
     if (!scheduleDay) return;
     let cancelled = false;
+    const prefs = loadSchedulePrefs(workspaceOwnerId);
     setListingsLoading(true);
     setListingSearch('');
-    setSelectedListingIds([]);
-    setSelectedGroupIds([]);
-    setRecurrence('none');
-    setRecurrenceDays([]);
-    setRecurrenceCount(4);
+    setWinStart(prefs.winStart);
+    setWinEnd(prefs.winEnd);
+    setWinCount(prefs.winCount);
+    setSelectedListingIds(prefs.selectedListingIds);
+    setSelectedGroupIds(prefs.selectedGroupIds);
+    setRecurrence(prefs.recurrence);
+    setRecurrenceDays(prefs.recurrenceDays);
+    setRecurrenceCount(prefs.recurrenceCount);
     setRecurrenceOpen(false);
-    setBrandingPost(false);
+    setBrandingPost(prefs.selectedListingIds.length === 0);
     setPropertiesOpen(false);
     (async () => {
       const { data, error } = await supabase
