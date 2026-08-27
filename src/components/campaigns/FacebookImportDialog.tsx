@@ -107,6 +107,8 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
 
     setStep('');
     setRunning(false);
+    // A failed import must never be silent: force the report window open.
+    if (problems.length > 0) setOpen(true);
     setReport({
       ok: problems.length === 0,
       posts,
@@ -125,13 +127,14 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
         variant="outline"
         size="sm"
         className="gap-2 text-[12px]"
+        disabled={running}
         onClick={() => {
           setOpen(true);
           void run();
         }}
       >
-        <Download className="h-4 w-4" />
-        ייבוא מלא מפייסבוק
+        {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        {running ? 'מייבא מפייסבוק…' : 'ייבוא מלא מפייסבוק'}
       </Button>
 
       <Dialog open={open} onOpenChange={(v) => { if (!running) setOpen(v); }}>
