@@ -203,7 +203,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                   </div>
                   <input type="checkbox" className="sr-only" checked={active} onChange={() => toggle(g.group_id)} />
                   {g.group_icon ? (
-                    <img src={g.group_icon} alt="" className="h-7 w-7 rounded-full object-cover" />
+                    <img src={g.group_icon} alt="" className="h-7 w-7 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                   ) : (
                     <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
                       <Users className="h-3.5 w-3.5 text-muted-foreground" />

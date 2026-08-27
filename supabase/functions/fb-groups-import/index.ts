@@ -23,8 +23,8 @@ const json = (b: unknown, s = 200) =>
 
 type GroupRow = Record<string, unknown>;
 
-const FULL_FIELDS = "id,name,icon,privacy,member_count,administrator";
-const BASIC_FIELDS = "id,name,icon";
+const FULL_FIELDS = "id,name,icon,picture.type(square){url},privacy,member_count,administrator";
+const BASIC_FIELDS = "id,name,icon,picture.type(square){url}";
 
 /** Every Meta token worth trying, most workspace-specific first. */
 async function candidateTokens(admin: any, workspaceOwnerId: string): Promise<string[]> {
@@ -150,7 +150,9 @@ Deno.serve(async (req) => {
                 workspace_owner_id: ws,
                 group_id: id,
                 group_name: String(g?.name ?? id).trim() || id,
-                group_icon: typeof g?.icon === "string" ? g.icon : null,
+                group_icon:
+                  (typeof g?.picture?.data?.url === "string" ? g.picture.data.url : null) ??
+                  (typeof g?.icon === "string" ? g.icon : null),
                 group_url: `https://www.facebook.com/groups/${id}`,
                 privacy: g?.privacy ? String(g.privacy) : null,
                 member_count: Number.isFinite(Number(g?.member_count)) ? Number(g.member_count) : null,

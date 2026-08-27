@@ -750,7 +750,7 @@ export default function PropertyDetail() {
       const { data: disc, error: discErr, timedOut } = await invokeWithTimeout<{ candidates?: string[] }>(
         'fetch-property-all-images',
         { listing_id: property.id, source_url: sourceUrl || undefined, discover: true },
-        9000,
+        60000,
       );
       stopDiscoveryCreep();
       if (timedOut) return false;
@@ -770,7 +770,7 @@ export default function PropertyDetail() {
           const { data: one, timedOut: imageTimedOut } = await invokeWithTimeout<{ photos?: string[] }>(
             'fetch-property-all-images',
             { listing_id: property.id, only: [url], append: true },
-            7000,
+            20000,
           );
           if (imageTimedOut) continue;
           const added = (one as { photos?: string[] } | null)?.photos ?? [];
@@ -1415,14 +1415,18 @@ export default function PropertyDetail() {
           {!editMode && (
             <PropertyFeatureBadges
               sources={[
-                (property as any).features,
-                (property as any).attributes,
-                (property as any).additional_details,
-                (property as any).source_metadata,
+                Array.isArray(data?.row?.features)
+                  ? Object.fromEntries((data.row.features as unknown[])
+                    .filter((value): value is string => typeof value === 'string')
+                    .map((value) => [value, true]))
+                  : (isRecord(data?.row?.features) ? data.row.features : null),
+                isRecord(data?.row?.attributes) ? data.row.attributes : null,
+                isRecord(data?.row?.additional_details) ? data.row.additional_details : null,
+                isRecord(data?.row?.source_metadata) ? data.row.source_metadata : null,
                 data?.rich?.amenities,
                 data?.rich?.additional,
               ]}
-              flags={{ elevator: (property as any).elevator, parking: (property as any).parking }}
+              flags={{ elevator: data?.row?.elevator, parking: data?.row?.parking }}
             />
           )}
 
