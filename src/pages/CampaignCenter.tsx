@@ -6172,7 +6172,45 @@ const CampaignCenter = () => {
                   </DialogContent>
                 </Dialog>
 
-                {/* Bulk groups dialog — applies to every draft in the multi-draft view. */}
+                {/* Global campaign scheduler — distributes all drafts across groups and time slots. */}
+                <Dialog open={bulkGlobalScheduleOpen} onOpenChange={setBulkGlobalScheduleOpen}>
+                  <DialogContent dir="rtl" className="w-[96vw] sm:max-w-5xl max-h-[92vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-right">תזמון קמפיין לכל הטיוטות</DialogTitle>
+                    </DialogHeader>
+                    <ScheduledCampaignCalendar
+                      onCreateAt={(iso, extras) => {
+                        const next = new URLSearchParams(searchParams);
+                        next.set('tab', 'create');
+                        next.set('schedule', iso);
+                        if (extras?.listing) next.set('listing', extras.listing); else next.delete('listing');
+                        if (extras?.properties && extras.properties.length > 0) {
+                          next.set('properties', extras.properties.join(','));
+                        } else {
+                          next.delete('properties');
+                        }
+                        if (extras?.variant && extras?.totalVariants && extras.totalVariants > 1) {
+                          next.set('variant', String(extras.variant));
+                          next.set('variants', String(extras.totalVariants));
+                        } else {
+                          next.delete('variant');
+                          next.delete('variants');
+                        }
+                        if (extras?.assignments) {
+                          try { sessionStorage.setItem('rz-schedule-assignments', JSON.stringify(extras.assignments)); } catch {}
+                        }
+                        if (extras?.groupIds && extras.groupIds.length > 0) {
+                          try { localStorage.setItem('campaign:groupIds', JSON.stringify(extras.groupIds)); } catch {}
+                          setBulkGroupIds(extras.groupIds);
+                        }
+                        setBulkGlobalScheduleOpen(false);
+                        setSearchParams(next, { replace: false });
+                      }}
+                      onClose={() => setBulkGlobalScheduleOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+
                 <Dialog open={bulkGroupPickerOpen} onOpenChange={setBulkGroupPickerOpen}>
                   <DialogContent dir="rtl" className="w-[96vw] sm:max-w-[720px]">
                     <DialogHeader>
