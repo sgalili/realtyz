@@ -6795,7 +6795,7 @@ const CampaignCenter = () => {
             </DialogTitle>
             <DialogDescription className="text-right">כל הפוסטים, הטיוטות והסדרות המתוזמנות במקום אחד.</DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="published" className="min-h-0">
+          <Tabs value={historyTab} onValueChange={(v) => setHistoryTab(v as typeof historyTab)} className="min-h-0">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="published">פוסטים שפורסמו</TabsTrigger>
               <TabsTrigger value="drafts">טיוטות</TabsTrigger>
