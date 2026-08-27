@@ -102,6 +102,9 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [brandingPost, setBrandingPost] = useState(false);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
   const [listingsPopoverOpen, setListingsPopoverOpen] = useState(false);
+  // Max posts allowed per day for EACH selected group (0 = unlimited).
+  const [groupDailyLimit, setGroupDailyLimit] = useState<number>(0);
+
 
   // Restore the broker's last dialog configuration (window, count, recurrence,
   // properties, groups) every time the dialog opens — it survives refreshes.
