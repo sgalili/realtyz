@@ -1307,7 +1307,31 @@ const InlineComposer = ({
   }, [listings, listingQuery]);
 
 
+  // Append user-uploaded campaign images to the selected listing's gallery so
+  // they survive beyond the current post and stay available everywhere.
+  const appendImagesToListing = async (listingId: string, newUrls: string[]) => {
+    if (!listingId || !newUrls.length) return;
+    try {
+      const { data: row, error } = await supabase.from('listings').select('media_photos').eq('id', listingId).maybeSingle();
+      if (error) throw error;
+      const existing = Array.isArray(row?.media_photos) ? (row.media_photos as unknown[]) : [];
+      const deduped = existing.slice();
+      newUrls.forEach((url) => {
+        const exists = deduped.some((p) => {
+          if (typeof p === 'string') return p === url;
+          return (p as any)?.url === url || (p as any)?.src === url || (p as any)?.image_url === url;
+        });
+        if (!exists) deduped.push({ url, source: 'campaign_composer', created_at: new Date().toISOString() });
+      });
+      const { error: updErr } = await supabase.from('listings').update({ media_photos: deduped }).eq('id', listingId);
+      if (updErr) throw updErr;
+    } catch (e) {
+      console.warn('[CampaignCenter] append listing images failed', e);
+    }
+  };
+
   const handleFiles = async (files: FileList | null, kind: 'image' | 'file') => {
+
     if (!files) return;
     const max = 25 * 1024 * 1024;
     const list = Array.from(files);
