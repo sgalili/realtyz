@@ -118,16 +118,14 @@ Deno.serve(async (req) => {
     let inserted = 0;
     let updated = 0;
     const failures: Array<{ post_id: string; error: string }> = [];
+    // Posts Graph refuses to serve with the current permission set — the client
+    // re-runs them through the browser-extension DOM scraper.
+    const needsExtension: string[] = [];
 
-    for (const postId of ids) {
-      const { comments: tree, error } = await fetchCommentTree(postId, page);
-      if (error) {
-        failures.push({ post_id: postId, error: String(error) });
-        continue;
-      }
+    const persistTree = async (postId: string, tree: any[], source: string) => {
       comments += tree.length;
       for (const c of tree) {
-        const res = await persistComment(admin, ownerId, page, c);
+        const res = await persistComment(admin, ownerId, page, c, source);
         if (res === "inserted") inserted++;
         else if (res === "updated") updated++;
       }
@@ -140,6 +138,34 @@ Deno.serve(async (req) => {
           .update({ last_synced_at: new Date().toISOString() })
           .eq("id", rowId);
       }
+    };
+
+    // ── DOM-scraped comments handed back by the browser extension ──────────
+    // Shape: [{ post_id, comments: [{ id, message, created_time, from:{id,name,picture}, parent:{id} }] }]
+    const scraped = Array.isArray(body?.scraped_comments) ? body.scraped_comments : [];
+    const scrapedIds = new Set<string>();
+    let scrapedPersisted = 0;
+    for (const entry of scraped) {
+      const postId = String(entry?.post_id ?? entry?.postId ?? "").trim();
+      const list = Array.isArray(entry?.comments) ? entry.comments : [];
+      if (!postId || list.length === 0) continue;
+      scrapedIds.add(postId);
+      const tree = list
+        .map((c: any) => toFlatComment(c, postId, c?.parent?.id ?? null))
+        .filter((c: any) => !!c);
+      scrapedPersisted += tree.length;
+      await persistTree(postId, tree, "fb_extension_scrape");
+    }
+
+    for (const postId of ids) {
+      if (scrapedIds.has(postId)) continue; // already ingested from the DOM
+      const { comments: tree, error } = await fetchCommentTree(postId, page);
+      if (error) {
+        if (isUnsupportedGraphError(error)) needsExtension.push(postId);
+        else failures.push({ post_id: postId, error: String(error) });
+        continue;
+      }
+      await persistTree(postId, tree, "meta_comments_sync");
     }
 
     return json({
@@ -150,6 +176,9 @@ Deno.serve(async (req) => {
       comments,
       persisted: inserted,
       updated,
+      scraped_persisted: scrapedPersisted,
+      needs_extension: needsExtension.length > 0,
+      extension_post_ids: needsExtension.slice(0, 100),
       failed_posts: failures.length,
       failures: failures.slice(0, 20),
       message: failures.length > 0
@@ -163,6 +192,7 @@ Deno.serve(async (req) => {
         ]
         : [],
     });
+
   } catch (e) {
     return json({
       ok: false,
