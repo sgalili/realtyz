@@ -54,7 +54,28 @@ function buildDealTypeToken(listing: any): string {
   return isRental ? "להשכרה" : "למכירה";
 }
 
-function buildShortlinkPayload(listing: any) {
+// Official Meta WhatsApp Business number (fallback only — resolved live from
+// wa_providers so the CTA never points at a personal / Green API number).
+const OFFICIAL_WA_FALLBACK = "972537983832";
+
+async function resolveOfficialWaPhone(admin: any): Promise<string> {
+  try {
+    const { data } = await admin
+      .from("wa_providers")
+      .select("config,is_official,is_active")
+      .eq("is_official", true)
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const cfg = (data?.config ?? {}) as Record<string, unknown>;
+    const digits = String(cfg.display_phone_number ?? cfg.phone_number ?? "").replace(/\D/g, "");
+    if (digits.length >= 9) return digits;
+  } catch { /* fallback */ }
+  return OFFICIAL_WA_FALLBACK;
+}
+
+function buildShortlinkPayload(listing: any, waPhone: string) {
   const city = String(listing.city ?? "").trim();
   const neighborhood = String(listing.neighborhood ?? "").trim();
   const street = stripStreet(String(listing.address ?? ""), city, neighborhood);
@@ -63,10 +84,11 @@ function buildShortlinkPayload(listing: any) {
   const rooms = listing.rooms ? String(listing.rooms).trim() : "";
   const price = formatPrice(listing.asking_price as number | null);
   const text = `היי אודי, אני פונה אליך לגבי הדירה ${dealToken} שפרסמת ${locationPhrase}. דירת ${rooms} חדרים במחיר ${price}. אשמח לקבל פרטים נוספים.`;
-  const long_url = `https://api.whatsapp.com/send?phone=972537339533&text=${encodeURIComponent(text)}`;
+  const long_url = `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(text)}`;
 
   return { street, neighborhood, city, locationPhrase, dealToken, rooms, price, text, long_url };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
