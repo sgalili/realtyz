@@ -31,8 +31,13 @@ const corsHeaders = {
 };
 
 const BodySchema = z.object({
-  action: z.enum(["qr", "status", "logout"]),
+  action: z.enum(["qr", "status", "logout", "create_instance"]),
+  // Optional inline credentials (used by the profile card, which stores the
+  // instance in api_configs rather than workspace_whatsapp_settings).
+  instance_id: z.string().trim().max(64).optional(),
+  token: z.string().trim().max(200).optional(),
 });
+
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
