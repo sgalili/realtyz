@@ -33,6 +33,8 @@ import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
+import { filterBlockedPhotos, nextBlockedKeys } from '@/lib/mediaBlocklist';
+
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { sourcePhotoCount } from '@/lib/photoCount';
