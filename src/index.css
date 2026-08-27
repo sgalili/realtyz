@@ -469,9 +469,9 @@
   .auth-election-muted { color: hsl(var(--primary-foreground) / 0.48); }
 
   .auth-election-active {
-    color: hsl(46 65% 56%);
-    border: 1px solid hsl(46 65% 56% / 0.25);
-    background: hsl(46 65% 56% / 0.14);
+    color: hsl(var(--brand-gold));
+    border: 1px solid hsl(var(--brand-gold) / 0.35);
+    background: hsl(var(--brand-gold) / 0.16);
   }
 
   .auth-hero-title {
@@ -496,7 +496,7 @@
 
   .auth-official-slogan {
     color: transparent;
-    background: linear-gradient(135deg, hsl(var(--sidebar-ring)) 0%, hsl(46 78% 72%) 48%, hsl(var(--sidebar-ring)) 100%);
+    background: linear-gradient(135deg, hsl(var(--sidebar-ring)) 0%, hsl(var(--brand-gold-soft)) 48%, hsl(var(--sidebar-ring)) 100%);
     background-clip: text;
     -webkit-background-clip: text;
     font-family: 'Assistant', 'Heebo', "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
@@ -708,14 +708,14 @@
     height: 52px;
     border: 0;
     background: hsl(var(--muted-foreground) / 0.18);
-    color: hsl(220 9% 22%);
+    color: hsl(var(--brand-navy));
     box-shadow: none;
     font-size: 1.2rem;
     font-weight: 700;
   }
 
   .auth-method-input::placeholder {
-    color: hsl(220 9% 36%);
+    color: hsl(var(--brand-navy));
   }
 
   .auth-method-input:focus-visible {
@@ -748,7 +748,7 @@
   .auth-submit-button {
     height: 40px;
     min-height: 0;
-    background: linear-gradient(180deg, hsl(210 18% 95%) 0%, hsl(142 52% 74%) 100%);
+    background: linear-gradient(180deg, hsl(210 18% 95%) 0%, hsl(var(--brand-gold)) 100%);
     color: hsl(0 0% 0%) !important;
     border: 1px solid hsl(var(--social-whatsapp)) !important;
     font-size: 54px;
@@ -757,7 +757,7 @@
   }
 
   .auth-submit-button:hover {
-    background: linear-gradient(180deg, hsl(210 18% 97%) 0%, hsl(142 56% 68%) 100%);
+    background: linear-gradient(180deg, hsl(210 18% 97%) 0%, hsl(var(--brand-gold-soft)) 100%);
     color: hsl(0 0% 0%) !important;
   }
 
