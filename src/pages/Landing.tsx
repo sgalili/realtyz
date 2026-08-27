@@ -581,6 +581,10 @@ export default function Landing() {
 
       <footer className="border-t border-border/60 py-10 text-center text-sm text-muted-foreground">
         <p>Realtyz - מערכת ניהול נדל"ן מבוססת AI · כל הזכויות שמורות</p>
+        <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground/80">
+          <Star className="h-3 w-3 text-primary" aria-hidden />
+          פותח בגאווה בישראל · Proudly made in Israel
+        </p>
       </footer>
     </div>
   );
