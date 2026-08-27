@@ -24,6 +24,8 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard';
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
+import { PropertyYad2SectionsCard, type Yad2Sections } from '@/components/properties/PropertyYad2SectionsCard';
+
 import SmartTimelineCard from '@/components/SmartTimelineCard';
 import QuickMessageCard from '@/components/messaging/QuickMessageCard';
 
@@ -165,18 +167,29 @@ type EditableFields = {
   city: string;
   neighborhood: string;
   address: string;
+  house_number: string;
+  apartment_number: string;
+  project_name: string;
   rooms: string;
   sqm: string;
   floor: string;
   total_floors: string;
   year_built: string;
   property_type: string;
+  deal_type: string;
+  status: string;
   price: string;
   vaad_bayit: string;
   arnona_bimonthly: string;
   payments: string;
   entry_date: string;
+  available_from: string;
   description: string;
+  short_description: string;
+  long_description: string;
+  features_text: string;
+  latitude: string;
+  longitude: string;
   parking: string;
   elevator: boolean;
   balcony: boolean;
@@ -187,6 +200,7 @@ type EditableFields = {
   photos: string[];
   photo_url_draft: string;
 };
+
 
 const draftStorageKey = (id: string | undefined) => (id ? `realtyz:property-draft:${id}` : null);
 
@@ -595,18 +609,31 @@ export default function PropertyDetail() {
         city: property.city || '',
         neighborhood: neighborhood || '',
         address: property.address || '',
+        house_number: (data?.row as any)?.house_number != null ? String((data?.row as any).house_number) : '',
+        apartment_number: (data?.row as any)?.apartment_number != null ? String((data?.row as any).apartment_number) : '',
+        project_name: (data?.row as any)?.project_name ? String((data?.row as any).project_name) : '',
         rooms: property.rooms ? String(property.rooms) : '',
         sqm: property.size_sqm ? String(property.size_sqm) : '',
         floor: property.floor != null ? String(property.floor) : '',
         total_floors: property.total_floors != null ? String(property.total_floors) : '',
         year_built: property.year_built != null ? String(property.year_built) : '',
         property_type: property.property_type || 'apartment',
+        deal_type: String(meta.deal_type ?? meta.listing_type ?? property.listing_type ?? 'sale'),
+        status: (data?.row as any)?.status ? String((data?.row as any).status) : '',
         price: String(property.price || ''),
         vaad_bayit: String(meta.vaad_bayit ?? meta.vaad_monthly ?? ''),
         arnona_bimonthly: String(meta.arnona_bimonthly ?? meta.arnona ?? ''),
         payments: String(meta.payments ?? meta.payment_count ?? ''),
         entry_date: String(meta.entry_date ?? meta.delivery_date ?? ''),
+        available_from: (data?.row as any)?.available_from ? String((data?.row as any).available_from).slice(0, 10) : '',
         description: property.description || '',
+        short_description: (data?.row as any)?.short_description ? String((data?.row as any).short_description) : '',
+        long_description: (data?.row as any)?.long_description ? String((data?.row as any).long_description) : '',
+        features_text: Array.isArray(data?.row?.features)
+          ? (data.row.features as unknown[]).filter((f): f is string => typeof f === 'string').join(', ')
+          : '',
+        latitude: (data?.row as any)?.latitude != null ? String((data?.row as any).latitude) : '',
+        longitude: (data?.row as any)?.longitude != null ? String((data?.row as any).longitude) : '',
         parking: String(amenities?.parking ?? meta.parking ?? ''),
         elevator: Boolean(amenities?.elevator),
         balcony: Boolean(amenities?.balcony),
@@ -629,6 +656,7 @@ export default function PropertyDetail() {
           }
         } catch { /* ignore malformed drafts */ }
       }
+
       const next = restored ?? base;
       setForm(next);
       setInitialFormSnapshot(JSON.stringify(base));
@@ -700,11 +728,14 @@ export default function PropertyDetail() {
         solar_heater: form.solar,
         photos: form.photos,
         images: form.photos,
+        deal_type: form.deal_type || null,
+        listing_type: form.deal_type || null,
         source_url: form.source_url || null,
       };
-      const baseFeatures = Array.isArray(data?.row?.features)
-        ? (data.row.features as unknown[]).filter((f): f is string => typeof f === 'string' && !['מרפסת', 'מעלית', 'מיזוג', 'ממ"ד', 'מקלט', 'דוד שמש'].includes(f))
-        : [];
+      const manualFeatures = form.features_text
+        .split(/[,\n·]/)
+        .map((f) => f.trim())
+        .filter(Boolean);
       const featureLabels = [
         form.balcony ? 'מרפסת' : null,
         form.elevator ? 'מעלית' : null,
@@ -717,6 +748,10 @@ export default function PropertyDetail() {
         city: form.city || null,
         neighborhood: form.neighborhood || null,
         address: form.address || null,
+        house_number: form.house_number || null,
+        apartment_number: form.apartment_number || null,
+
+        project_name: form.project_name || null,
         rooms: form.rooms ? Number(form.rooms) : null,
         sqm: form.sqm ? Number(form.sqm) : null,
         floor: form.floor ? Number(form.floor) : null,
@@ -724,11 +759,18 @@ export default function PropertyDetail() {
         elevator: form.elevator,
         asking_price: form.price ? Number(form.price) : 0,
         description: form.description || null,
+        short_description: form.short_description || null,
+        long_description: form.long_description || null,
+        latitude: form.latitude ? Number(form.latitude) : null,
+        longitude: form.longitude ? Number(form.longitude) : null,
+        available_from: form.available_from || null,
+        ...(form.status ? { status: form.status } : {}),
         source_url: form.source_url || null,
         media_photos: form.photos,
-        features: Array.from(new Set([...baseFeatures, ...featureLabels])) as never,
+        features: Array.from(new Set([...manualFeatures, ...featureLabels])) as never,
         source_metadata: newMeta as never,
       }).eq('id', id);
+
       if (error) throw error;
       toast.success('הנכס עודכן בהצלחה');
       clearDraft();
@@ -1135,10 +1177,18 @@ export default function PropertyDetail() {
 
 
 
-      {/* Actions are intentionally first so they stay predictable on mobile. */}
-      <div className="flex min-h-9 flex-wrap items-center justify-end gap-3">
+      {/* Actions are intentionally first so they stay predictable on mobile.
+          The owner sits on the opposite side of the same row. */}
+      <div className="flex min-h-9 flex-wrap items-center justify-between gap-3">
+        {owner ? (
+          <Link to={`/crm/profile/${owner.id}`} className="shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
+            {owner.full_name}
+          </Link>
+        ) : <span />}
+        <div className="flex flex-wrap items-center justify-end gap-3">
         {!editMode ? (
           <>
+
             {yad2Url && liveYad2Status === 'live' && (
               <a href={yad2Url} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה החיה ביד2" title="צפייה במודעה החיה ביד2" className="inline-flex items-center transition-opacity hover:opacity-80">
                 <Yad2Icon className="h-6 w-6" />
@@ -1177,9 +1227,10 @@ export default function PropertyDetail() {
             <Button size="icon" variant="ghost" onClick={handleSave} disabled={saving} aria-label="שמירה" title="שמירה" className="h-8 w-8 text-primary"><Save className="h-5 w-5" /></Button>
           </>
         )}
+        </div>
       </div>
 
-      {/* Headline · neighborhood · price · owner */}
+      {/* Headline · neighborhood · price */}
       <header className="space-y-2">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <div
@@ -1208,12 +1259,8 @@ export default function PropertyDetail() {
               </>
             ) : <span className="text-2xl font-semibold text-amber-600">פרטים חסרים · Draft</span>}
           </div>
-          {owner ? (
-            <Link to={`/crm/profile/${owner.id}`} className="shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
-              {owner.full_name}
-            </Link>
-          ) : <span />}
         </div>
+
 
         {(originalDate || sourceUpdatedDate) && (
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -1397,12 +1444,46 @@ export default function PropertyDetail() {
                 <Field label="עיר"><Input value={form.city} onChange={(e) => setField('city', e.target.value)} /></Field>
                 <Field label="שכונה"><Input value={form.neighborhood} onChange={(e) => setField('neighborhood', e.target.value)} /></Field>
                 <Field label="כתובת"><Input value={form.address} onChange={(e) => setField('address', e.target.value)} /></Field>
+                <Field label="מספר בית"><Input value={form.house_number} onChange={(e) => setField('house_number', e.target.value)} /></Field>
+                <Field label="מספר דירה"><Input value={form.apartment_number} onChange={(e) => setField('apartment_number', e.target.value)} /></Field>
+                <Field label="שם הפרויקט"><Input value={form.project_name} onChange={(e) => setField('project_name', e.target.value)} /></Field>
+                <Field label="סוג עסקה">
+                  <select
+                    value={form.deal_type}
+                    onChange={(e) => setField('deal_type', e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-xl"
+                  >
+                    <option value="sale">מכירה</option>
+                    <option value="rent">השכרה</option>
+                  </select>
+                </Field>
+                <Field label="סטטוס">
+                  <select
+                    value={form.status}
+                    onChange={(e) => setField('status', e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-xl"
+                  >
+                    <option value="">—</option>
+                    <option value="pending">ממתין לאישור</option>
+                    <option value="live">פעיל</option>
+                    <option value="discarded">נגנז</option>
+                  </select>
+                </Field>
                 <Field label="ועד בית (לחודש)"><Input type="number" value={form.vaad_bayit} onChange={(e) => setField('vaad_bayit', e.target.value)} /></Field>
                 <Field label="ארנונה (לחודשיים)"><Input type="number" value={form.arnona_bimonthly} onChange={(e) => setField('arnona_bimonthly', e.target.value)} /></Field>
                 <Field label="מספר תשלומים"><Input type="number" value={form.payments} onChange={(e) => setField('payments', e.target.value)} /></Field>
                 <Field label="תאריך כניסה"><Input value={form.entry_date} onChange={(e) => setField('entry_date', e.target.value)} placeholder="מיידי / 01/08/2026" /></Field>
+                <Field label="פנוי מתאריך"><Input type="date" value={form.available_from} onChange={(e) => setField('available_from', e.target.value)} /></Field>
                 <Field label="חניות"><Input type="number" min={0} value={form.parking} onChange={(e) => setField('parking', e.target.value)} /></Field>
+                <Field label="קו רוחב (Latitude)"><Input value={form.latitude} onChange={(e) => setField('latitude', e.target.value)} dir="ltr" className="text-left" /></Field>
+                <Field label="קו אורך (Longitude)"><Input value={form.longitude} onChange={(e) => setField('longitude', e.target.value)} dir="ltr" className="text-left" /></Field>
                 <Field label="קישור מקור / יד2"><Input value={form.source_url} onChange={(e) => setField('source_url', e.target.value)} dir="ltr" className="text-left" /></Field>
+                <div className="col-span-2 sm:col-span-3">
+                  <Field label="מאפיינים (מופרדים בפסיק)">
+                    <Input value={form.features_text} onChange={(e) => setField('features_text', e.target.value)} placeholder="משופץ, נוף לים, מטבח חדש" />
+                  </Field>
+                </div>
+
                 <div className="col-span-2 sm:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-2 border-t pt-3">
                   {([
                     ['מעלית', 'elevator'],
@@ -1427,17 +1508,21 @@ export default function PropertyDetail() {
           )}
 
 
-          {/* Description — editable text only (no heading in view mode) */}
+          {/* Descriptions — every text field on the listing is editable */}
           {editMode && form && (
-            <Card className="p-4 sm:p-5">
-              <Textarea
-                dir="rtl"
-                rows={8}
-                value={form.description}
-                onChange={(e) => setField('description', e.target.value)}
-              />
+            <Card className="space-y-4 p-4 sm:p-5">
+              <Field label="תיאור ראשי">
+                <Textarea dir="rtl" rows={8} value={form.description} onChange={(e) => setField('description', e.target.value)} />
+              </Field>
+              <Field label="תיאור קצר">
+                <Textarea dir="rtl" rows={3} value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} />
+              </Field>
+              <Field label="תיאור מלא (מהמקור)">
+                <Textarea dir="rtl" rows={10} value={form.long_description} onChange={(e) => setField('long_description', e.target.value)} />
+              </Field>
             </Card>
           )}
+
 
           {!editMode && documents.length > 0 && (
             <Card className="p-4 sm:p-5">
@@ -1518,6 +1603,18 @@ export default function PropertyDetail() {
             />
 
           )}
+
+          {!editMode && (
+            <PropertyYad2SectionsCard
+              listingId={property.id}
+              sourceUrl={resolvedSourceUrl || sourceUrl || null}
+              sections={(isRecord(meta) && isRecord((meta as any).yad2_sections)
+                ? ((meta as any).yad2_sections as Yad2Sections)
+                : null)}
+            />
+          )}
+
+
 
           {!editMode && (
             <AreaMarketFactsCard

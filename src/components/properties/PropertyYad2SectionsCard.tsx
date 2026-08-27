@@ -1,0 +1,258 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
+} from 'recharts';
+import {
+  Building2, GraduationCap, Handshake, RefreshCw, Sparkles, TrendingUp, ImageIcon, ExternalLink,
+} from 'lucide-react';
+
+export type Yad2SoldDeal = {
+  address: string | null; date: string | null; price: number | null;
+  rooms: number | null; sqm: number | null; floor: number | null; year_built: number | null;
+};
+export type Yad2PricePoint = { date: string | null; price: number | null; label?: string };
+export type Yad2School = {
+  name: string | null; type: string | null; grades: string | null;
+  address: string | null; distance: string | null; supervision: string | null;
+};
+export type Yad2ListingCard = {
+  token: string | null; url: string | null; title: string | null; address: string | null;
+  price: number | null; rooms: number | null; sqm: number | null; floor: number | null;
+  image: string | null; agency: string | null; is_project?: boolean;
+};
+export type Yad2Sections = {
+  sold_deals?: Yad2SoldDeal[];
+  valuation_history?: Yad2PricePoint[];
+  schools?: Yad2School[];
+  recommended?: Yad2ListingCard[];
+  new_in_area?: Yad2ListingCard[];
+  fetched_at?: string;
+};
+
+const shekel = (v: number | null | undefined) =>
+  v == null ? '—' : `₪${Number(v).toLocaleString('he-IL')}`;
+
+function SectionShell({
+  icon: Icon, title, count, children,
+}: { icon: typeof Building2; title: string; count?: number; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-foreground">
+        <Icon className="h-5 w-5 text-primary" /> {title}
+        {count ? <Badge variant="outline" className="text-sm">{count}</Badge> : null}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function ListingCards({ rows }: { rows: Yad2ListingCard[] }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {rows.map((r, i) => (
+        <Card key={r.token ?? i} className="overflow-hidden transition-shadow hover:shadow-lg">
+          <div className="aspect-[4/3] bg-muted">
+            {r.image ? (
+              <img src={r.image} alt={r.title ?? r.address ?? 'נכס'} loading="lazy" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                <ImageIcon className="h-8 w-8" />
+              </div>
+            )}
+          </div>
+          <div className="space-y-1.5 p-3">
+            <p className="line-clamp-1 text-lg font-semibold">{r.title || r.address || 'נכס'}</p>
+            {r.address && <p className="line-clamp-1 text-base text-muted-foreground">{r.address}</p>}
+            <div className="flex flex-wrap gap-x-3 text-base text-muted-foreground">
+              {r.rooms ? <span>{r.rooms} חדרים</span> : null}
+              {r.sqm ? <span>{r.sqm} מ״ר</span> : null}
+              {r.floor != null ? <span>קומה {r.floor}</span> : null}
+            </div>
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <span className="text-xl font-bold text-success tabular-nums">{shekel(r.price)}</span>
+              {r.url && (
+                <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition hover:text-primary" title="פתיחה ביד2">
+                  <ExternalLink className="h-5 w-5" />
+                </a>
+              )}
+            </div>
+            {r.agency && <p className="text-sm text-muted-foreground">{r.agency}</p>}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * All the secondary Yad2 item-page sections: sold deals nearby, valuation
+ * history graph, education institutions, recommended listings and new
+ * projects in the area. Data is imported by the `yad2-page-sections` function
+ * and cached on the listing, so the card renders instantly on repeat visits.
+ */
+export function PropertyYad2SectionsCard({
+  listingId,
+  sourceUrl,
+  sections,
+}: {
+  listingId: string;
+  sourceUrl?: string | null;
+  sections?: Yad2Sections | null;
+}) {
+  const qc = useQueryClient();
+  const [live, setLive] = useState<Yad2Sections | null>(null);
+  const data = live ?? sections ?? null;
+  const isYad2 = !!sourceUrl && /yad2\.co\.il/.test(sourceUrl);
+
+  const sync = useMutation({
+    mutationFn: async () => {
+      const { data: res, error } = await supabase.functions.invoke('yad2-page-sections', {
+        body: { listing_id: listingId, url: sourceUrl },
+      });
+      if (error) throw error;
+      if (res?.error) throw new Error(String(res.detail ?? res.error));
+      return res?.sections as Yad2Sections;
+    },
+    onSuccess: (res) => {
+      setLive(res ?? null);
+      const total =
+        (res?.sold_deals?.length ?? 0) + (res?.schools?.length ?? 0) +
+        (res?.recommended?.length ?? 0) + (res?.new_in_area?.length ?? 0) +
+        (res?.valuation_history?.length ?? 0);
+      toast.success(total ? `יובאו ${total} פריטים מיד2` : 'לא נמצאו סקשנים נוספים בעמוד המקור');
+      void qc.invalidateQueries({ queryKey: ['property-detail', listingId] });
+    },
+    onError: (e: any) => toast.error(`ייבוא הסקשנים נכשל: ${e?.message ?? e}`),
+  });
+
+  if (!isYad2 && !data) return null;
+
+  const deals = data?.sold_deals ?? [];
+  const history = (data?.valuation_history ?? []).filter((p) => p?.price != null);
+  const schools = data?.schools ?? [];
+  const recommended = data?.recommended ?? [];
+  const newInArea = data?.new_in_area ?? [];
+  const empty = !deals.length && !history.length && !schools.length && !recommended.length && !newInArea.length;
+
+  const chart = history.map((p, i) => ({ name: p.date || p.label || `#${i + 1}`, price: Number(p.price) }));
+
+  return (
+    <Card className="space-y-8 p-4 sm:p-6" dir="rtl">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-bold text-foreground">מידע נוסף מעמוד המקור ביד2</h2>
+        <Button size="sm" variant="outline" onClick={() => sync.mutate()} disabled={sync.isPending}>
+          <RefreshCw className={`h-4 w-4 ms-1 ${sync.isPending ? 'animate-spin' : ''}`} />
+          {sync.isPending ? 'מייבא…' : data ? 'רענון הנתונים' : 'ייבוא כל הסקשנים'}
+        </Button>
+      </div>
+
+      {sync.isPending && !data && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+        </div>
+      )}
+
+      {empty && !sync.isPending && (
+        <p className="text-lg text-muted-foreground">
+          עוד לא יובאו סקשנים מעמוד היד2. לחצו על "ייבוא כל הסקשנים" כדי לשלוף עסקאות באזור,
+          היסטוריית שווי, מוסדות חינוך, נכסים מומלצים ופרויקטים חדשים.
+        </p>
+      )}
+
+      {chart.length > 1 && (
+        <SectionShell icon={TrendingUp} title="היסטוריית שווי הנכס">
+          <div className="h-56 w-full" dir="ltr">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chart} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="name" tick={{ fontSize: 13 }} />
+                <YAxis tick={{ fontSize: 13 }} width={86} tickFormatter={(v) => `₪${Number(v).toLocaleString()}`} />
+                <Tooltip formatter={(v) => `₪${Number(v).toLocaleString()}`} />
+                <Line type="monotone" dataKey="price" stroke="hsl(var(--primary))" strokeWidth={2} dot />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </SectionShell>
+      )}
+
+      {deals.length > 0 && (
+        <SectionShell icon={Handshake} title="עסקאות אחרונות שנמכרו באזור" count={deals.length}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-lg">
+              <thead>
+                <tr className="border-b text-right text-base text-muted-foreground">
+                  <th className="py-2 pe-2">תאריך</th>
+                  <th className="py-2">כתובת</th>
+                  <th className="py-2">חדרים</th>
+                  <th className="py-2">מ״ר</th>
+                  <th className="py-2">קומה</th>
+                  <th className="py-2">שנת בנייה</th>
+                  <th className="py-2 text-left">מחיר</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deals.map((d, i) => (
+                  <tr key={i} className="border-b last:border-0">
+                    <td className="whitespace-nowrap py-2 pe-2">{d.date ?? '—'}</td>
+                    <td className="py-2">{d.address ?? '—'}</td>
+                    <td className="py-2">{d.rooms ?? '—'}</td>
+                    <td className="py-2">{d.sqm ?? '—'}</td>
+                    <td className="py-2">{d.floor ?? '—'}</td>
+                    <td className="py-2">{d.year_built ?? '—'}</td>
+                    <td className="py-2 text-left font-medium tabular-nums">{shekel(d.price)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionShell>
+      )}
+
+      {schools.length > 0 && (
+        <SectionShell icon={GraduationCap} title="מוסדות חינוך באזור" count={schools.length}>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {schools.map((s, i) => (
+              <Card key={i} className="p-3">
+                <p className="text-lg font-semibold">{s.name}</p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {s.type && <Badge variant="secondary" className="text-sm">{s.type}</Badge>}
+                  {s.grades && <Badge variant="outline" className="text-sm">{s.grades}</Badge>}
+                  {s.supervision && <Badge variant="outline" className="text-sm">{s.supervision}</Badge>}
+                </div>
+                {s.address && <p className="mt-1 text-base text-muted-foreground">{s.address}</p>}
+                {s.distance && <p className="text-base text-muted-foreground">{s.distance}</p>}
+              </Card>
+            ))}
+          </div>
+        </SectionShell>
+      )}
+
+      {recommended.length > 0 && (
+        <SectionShell icon={Building2} title="נכסים מומלצים נוספים" count={recommended.length}>
+          <ListingCards rows={recommended} />
+        </SectionShell>
+      )}
+
+      {newInArea.length > 0 && (
+        <SectionShell icon={Sparkles} title="נכסים ופרויקטים חדשים באזור" count={newInArea.length}>
+          <ListingCards rows={newInArea} />
+        </SectionShell>
+      )}
+
+      {data?.fetched_at && (
+        <p className="text-sm text-muted-foreground">
+          מקור: יד2 · עודכן ב-{new Date(data.fetched_at).toLocaleString('he-IL')}
+        </p>
+      )}
+    </Card>
+  );
+}
+
+export default PropertyYad2SectionsCard;
