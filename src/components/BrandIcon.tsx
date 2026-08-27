@@ -53,16 +53,27 @@ interface BrandIconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
 export const BrandIcon = ({ name, className, ...rest }: BrandIconProps) => {
   const path = PATHS[name];
   if (!path) return null;
+  // Gemini uses its official multi-color gradient rather than a flat fill.
+  const gradientId = name === 'gemini' ? 'brand-grad-gemini' : null;
   return (
     <svg
       role="img"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
-      fill="currentColor"
+      fill={gradientId ? `url(#${gradientId})` : 'currentColor'}
       className={className}
       aria-hidden="true"
       {...rest}
     >
+      {gradientId && (
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#4285F4" />
+            <stop offset="45%" stopColor="#9B72CB" />
+            <stop offset="100%" stopColor="#D96570" />
+          </linearGradient>
+        </defs>
+      )}
       <path d={path} />
     </svg>
   );
