@@ -183,8 +183,8 @@ export default function Landing() {
         <div className="mx-auto w-full max-w-6xl px-4 pb-20 pt-16 text-center sm:pt-24">
           <Reveal delay={80}>
             <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
-              <span className="landing-title-gradient block">מכונת המתווך הבלתי אפשרית</span>
-              <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים - שאין לו מתחרים בשוק</span>
+              <span className="landing-title-gradient block">מכונת AI למתווכים וסוכניות נדל״ן</span>
+              <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים</span>
             </h1>
           </Reveal>
 
