@@ -47,6 +47,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const leadId = (body.lead_id as string | undefined) || null;
     const duration = Math.min(180, Math.max(15, Number(body.duration_minutes) || 30));
+    const createBookingToken = body.create_booking_token !== false;
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -71,6 +72,10 @@ Deno.serve(async (req) => {
       count: 3,
     });
     if ('error' in slotsRes) return json({ error: slotsRes.error }, 400);
+
+    if (!createBookingToken) {
+      return json({ ok: true, slots: slotsRes.slots, timezone: tok.timezone });
+    }
 
     const token = randomToken();
     const { data: bt, error: btErr } = await admin
