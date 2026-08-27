@@ -25,7 +25,7 @@ type Settings = {
 
 const DEFAULTS: Omit<Settings, 'user_id'> = {
   greeting_enabled: false,
-  greeting_body: 'היי {{name}}, זה עודי מריאלטיז. קיבלתי את הפנייה שלך ואחזור אליך עם התאמות רלוונטיות בקרוב.',
+  greeting_body: 'היי {{name}}, זה אודי ויטמן. קיבלתי את הפנייה שלך ואחזור אליך עם התאמות רלוונטיות בקרוב.',
   followup_enabled: false,
   followup_delay_minutes: 120,
   followup_body: 'היי {{name}}, רק מוודא שראית את ההודעה שלי. מתי נוח לך לדבר?',
