@@ -5484,6 +5484,9 @@ const CampaignCenter = () => {
       sessionStorage.removeItem('rz-schedule-assignments');
     } catch { /* ignore */ }
     setRestoredSession(null);
+    // A fresh, empty list must start with generation ENABLED again, so the
+    // kill button shows the red stop icon rather than "resume".
+    resumeGeneration();
     await Promise.allSettled([clearComposerSession(chan), clearComposerDraftsCloud(chan)]);
     setDraftStatuses({});
     setPublishedDrafts(new Set());
@@ -6181,27 +6184,28 @@ const CampaignCenter = () => {
                   );
                 })}
                 {/* Bulk dispatch — publishes every ready draft one after another. */}
-                <div className="sticky bottom-2 z-40 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
+                <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
+                  <div className="mx-auto flex max-w-3xl flex-col gap-2">
                   <div className="flex items-stretch gap-2">
                     {generationStopped ? (
                       <button
                         type="button"
                         onClick={() => { resumeGeneration(); toast.success('יצירת התוכן חודשה'); }}
                         title="חידוש יצירת תוכן"
-                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-3 text-[12px] font-semibold text-emerald-700 transition hover:bg-emerald-500/20"
+                        aria-label="חידוש יצירת תוכן"
+                        className="inline-flex items-center justify-center rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-emerald-700 transition hover:bg-emerald-500/20"
                       >
                         <RefreshCw className="h-4 w-4" />
-                        המשך יצירה
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={() => { stopAllGeneration(); toast.info('כל היצירה נעצרה מיד. כל מה שנוצר עד כה נשמר.'); }}
                         title="עצור יצירת תוכן מיד (התוכן שנוצר נשמר)"
-                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-3 text-[12px] font-semibold text-destructive transition hover:bg-destructive/20"
+                        aria-label="עצור יצירת תוכן מיד"
+                        className="inline-flex items-center justify-center rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive transition hover:bg-destructive/20"
                       >
                         <Square className="h-4 w-4" />
-                        עצור יצירה
                       </button>
                     )}
                     <button
