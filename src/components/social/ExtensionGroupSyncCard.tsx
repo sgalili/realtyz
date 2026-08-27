@@ -128,7 +128,7 @@ export function ExtensionGroupSyncCard({
               והמערכת תשמור אותן אוטומטית כאן.
             </DialogDescription>
           </DialogHeader>
-          <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
+          <ol className="list-inside list-decimal space-y-1 text-[15px] leading-relaxed text-muted-foreground">
             <li>ודא שהתוסף פעיל (סמל Realtyz בסרגל הדפדפן).</li>
             <li>פתח את עמוד הקבוצות בפייסבוק בלשונית חדשה.</li>
             <li>גלול עד סוף רשימת הקבוצות וחזור לכאן — הרשימה תתעדכן לבד.</li>

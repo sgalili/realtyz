@@ -69,7 +69,7 @@ export function ExtensionDownloadButton({ className }: { className?: string }) {
             <DialogTitle>התקנת תוסף סנכרון הקבוצות</DialogTitle>
             <DialogDescription>שני שלבים, פעם אחת בלבד:</DialogDescription>
           </DialogHeader>
-          <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
+          <ol className="list-inside list-decimal space-y-1 text-[15px] leading-relaxed text-muted-foreground">
             <li>חלץ את הקובץ realtyz-extension.zip לתיקייה קבועה במחשב.</li>
             <li>
               פתח chrome://extensions/ , הפעל "מצב פיתוח" (Developer mode) ולחץ "טען תוסף לא ארוז" (Load unpacked) ובחר
