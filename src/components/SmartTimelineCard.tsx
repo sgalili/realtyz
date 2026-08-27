@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Clock, Phone, MessageSquare, Home, StickyNote, Handshake, CalendarDays, Loader2,
-  Sparkles, Plus, CheckCircle2, X,
+  Sparkles, Plus, CheckCircle2, X, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -48,11 +48,15 @@ export default function SmartTimelineCard({
   listingId,
   title = 'ציר זמן ופעילות',
   className,
+  collapsible = false,
+  forceOpenKey = 0,
 }: {
   leadId?: string | null;
   listingId?: string | null;
   title?: string;
   className?: string;
+  collapsible?: boolean;
+  forceOpenKey?: number;
 }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -61,6 +65,15 @@ export default function SmartTimelineCard({
   const [autoCategory, setAutoCategory] = useState(true);
   const [dismissedSuggestion, setDismissedSuggestion] = useState(false);
   const [limit, setLimit] = useState(20);
+  const [noteOpen, setNoteOpen] = useState(!collapsible);
+  const [timelineOpen, setTimelineOpen] = useState(!collapsible);
+
+  useEffect(() => {
+    if (collapsible && forceOpenKey > 0) {
+      setNoteOpen(true);
+      setTimelineOpen(true);
+    }
+  }, [collapsible, forceOpenKey]);
 
   const scopeKey = leadId ? `lead:${leadId}` : listingId ? `listing:${listingId}` : 'none';
 
@@ -242,12 +255,15 @@ export default function SmartTimelineCard({
 
   return (
     <div className={`space-y-4 ${className ?? ''}`} dir="rtl">
-      <div className="rounded-xl border border-border bg-card p-3 space-y-3">
-        <div className="flex items-center justify-between gap-2">
+      <div className={`rounded-xl border border-border bg-card p-3 ${noteOpen ? 'space-y-3' : ''}`}>
+        <button type="button" className="flex w-full items-center justify-between gap-2 text-start" onClick={() => collapsible && setNoteOpen((value) => !value)} aria-expanded={noteOpen}>
           <p className="flex items-center gap-2 text-sm font-bold text-foreground">
             <StickyNote className="h-4 w-4 text-primary" /> הערה מהירה
           </p>
-          <div className="flex items-center gap-2">
+          {collapsible && <ChevronDown className={`h-4 w-4 transition-transform ${noteOpen ? 'rotate-180' : ''}`} />}
+        </button>
+        {noteOpen && <>
+          <div className="flex items-center justify-end gap-2">
             <Select
               value={autoCategory ? 'auto' : category}
               onValueChange={(v) => {
@@ -263,7 +279,7 @@ export default function SmartTimelineCard({
               </SelectContent>
             </Select>
           </div>
-        </div>
+          </div>
         <Textarea
           value={note}
           onChange={(e) => { setNote(e.target.value); setDismissedSuggestion(false); }}
@@ -304,14 +320,17 @@ export default function SmartTimelineCard({
             </div>
           </div>
         )}
+        </>}
       </div>
 
-      <div>
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+      <div className="rounded-xl border border-border bg-card p-3">
+        <button type="button" className={`flex w-full items-center gap-2 text-start text-sm font-semibold ${timelineOpen ? 'mb-3' : ''}`} onClick={() => collapsible && setTimelineOpen((value) => !value)} aria-expanded={timelineOpen}>
           <Clock className="h-4 w-4" /> {title}
           <Badge variant="outline" className="text-[10px] ms-auto">{events.length} אירועים</Badge>
-        </h3>
+          {collapsible && <ChevronDown className={`h-4 w-4 transition-transform ${timelineOpen ? 'rotate-180' : ''}`} />}
+        </button>
 
+        {timelineOpen && <>
         {isLoading && (
           <div className="flex justify-center py-6 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
         )}
@@ -341,6 +360,7 @@ export default function SmartTimelineCard({
                   </div>
                   <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground line-clamp-3">{evt.detail || '—'}</p>
                 </div>
+        </>}
               </div>
             );
           })}
