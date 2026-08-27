@@ -300,7 +300,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ───────── Impact charts ───────── */}
+      {/* ───────── Impact metrics ───────── */}
       <section id="impact" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
@@ -311,24 +311,22 @@ export default function Landing() {
               מהרגע שהליד נכנס ועד סגירת העסקה: מענה מיידי, מעקב אוטומטי ותמונת מצב עסקית אחת.
             </p>
           </Reveal>
-          <Reveal delay={120} className="mt-12">
-            <BenefitCharts />
-          </Reveal>
-          <Reveal delay={200}>
-            <div className="mt-8 grid gap-5 sm:grid-cols-3">
+          <Reveal delay={140}>
+            <div className="mt-12 grid gap-5 grid-cols-1 sm:grid-cols-3">
               {[
                 { value: '45 שניות', label: 'זמן מענה ממוצע לליד חדש' },
                 { value: '+38%', label: 'שיפור בשיעור ההמרה לפגישה' },
                 { value: '12 שעות', label: 'חיסכון שבועי בעבודה ידנית' },
               ].map((s) => (
                 <div key={s.label} className="landing-card rounded-2xl border border-border/70 bg-card p-6 text-center">
-                  <p className="text-3xl font-extrabold tabular-nums text-primary">{s.value}</p>
+                  <p className="text-4xl font-extrabold tabular-nums text-primary">{s.value}</p>
                   <p className="mt-2 text-sm font-semibold text-muted-foreground">{s.label}</p>
                 </div>
               ))}
             </div>
           </Reveal>
         </div>
+
       </section>
 
       {/* ───────── WhatsApp super assistant ───────── */}
