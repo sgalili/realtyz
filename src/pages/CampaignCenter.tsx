@@ -943,24 +943,32 @@ const InlineComposer = ({
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const groupStorageKey = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
   const [groupIds, setGroupIds] = useState<string[]>([]);
+  const groupsHydratedRef = useRef(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (hideBottomBar) {
       // In multi-draft mode the page-level bulk bar is the source of truth.
-      setGroupIds(bulkGroupIds || []);
+      if (bulkGroupIds && bulkGroupIds.length) { setGroupIds(bulkGroupIds); groupsHydratedRef.current = true; }
       return;
     }
+    if (!workspaceOwnerId) return;
     const shared = loadCampaignGroups(workspaceOwnerId);
     if (shared.length) setGroupIds(shared);
+    groupsHydratedRef.current = true;
   }, [groupStorageKey, hideBottomBar, bulkGroupIds, workspaceOwnerId]);
   useEffect(() => {
     if (hideBottomBar) return; // page-level bar owns persistence in multi-draft mode
+    // Never write an empty selection before hydration finished — that wiped the
+    // saved 24-group selection and reset every counter to 0.
+    if (!workspaceOwnerId || !groupsHydratedRef.current) return;
     saveCampaignGroups(workspaceOwnerId, groupIds);
   }, [groupIds, workspaceOwnerId, hideBottomBar]);
 
   useEffect(() => {
+    if (!groupsHydratedRef.current && groupIds.length === 0) return;
     onBulkGroupIdsChange?.(groupIds);
   }, [groupIds, onBulkGroupIdsChange]);
+
 
 
   // Group picker modal (opened from the group icon button next to "פרסם").
