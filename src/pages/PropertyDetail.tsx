@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ensureMetadataImport, isListingMetadataImported } from '@/lib/propertyFullSync';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -37,6 +37,7 @@ import { sourcePhotoCount } from '@/lib/photoCount';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { buildDescriptionBlocks, sanitizeDescription } from '@/lib/descriptionBlocks';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import type { UnifiedResult } from '@/lib/propertySearch';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -158,6 +159,8 @@ async function invokeWithTimeout<T>(
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const propertySnapshot = (location.state as { propertySnapshot?: UnifiedResult } | null)?.propertySnapshot;
   const qc = useQueryClient();
   const [activePhoto, setActivePhoto] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
@@ -665,10 +668,41 @@ export default function PropertyDetail() {
   };
 
   if (isLoading) {
+    if (propertySnapshot) {
+      const raw = isRecord(propertySnapshot.raw) ? propertySnapshot.raw : {};
+      const snapshotFeatures = Array.isArray(raw.features)
+        ? raw.features.filter((item): item is string => typeof item === 'string')
+        : [];
+      return (
+        <div className="p-3 sm:p-6 space-y-6" dir="rtl">
+          <header className="space-y-2">
+            <h1 className="text-3xl font-bold leading-snug text-foreground">{propertySnapshot.title}</h1>
+            {propertySnapshot.neighborhood && <p className="text-lg text-muted-foreground">{propertySnapshot.neighborhood}</p>}
+            {propertySnapshot.price ? (
+              <p className="text-[38px] font-extrabold leading-none text-success tabular-nums">{formatPrice(propertySnapshot.price)}</p>
+            ) : null}
+          </header>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {propertySnapshot.rooms ? <Spec icon={BedDouble} label="חדרים" value={String(propertySnapshot.rooms)} /> : null}
+            {propertySnapshot.size_sqm ? <Spec icon={Ruler} label="מ״ר בנוי" value={String(propertySnapshot.size_sqm)} /> : null}
+            {propertySnapshot.floor != null ? <Spec icon={Layers} label="קומה" value={String(propertySnapshot.floor)} /> : null}
+            {propertySnapshot.address ? <Spec icon={MapPin} label="כתובת" value={propertySnapshot.address} /> : null}
+          </div>
+          {snapshotFeatures.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {snapshotFeatures.map((feature) => <span key={feature} className="rounded-full border bg-muted px-3 py-1 text-sm font-medium">{feature}</span>)}
+            </div>
+          )}
+          {propertySnapshot.description && <p className="max-w-4xl whitespace-pre-line text-lg leading-8 text-foreground">{propertySnapshot.description}</p>}
+          <div className="fixed bottom-4 left-4 z-50 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
+            <ProgressRing value={35} size={44} strokeWidth={4} />
+          </div>
+        </div>
+      );
+    }
     return (
-      <div className="p-6 space-y-4" dir="rtl">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
+      <div className="flex min-h-[50vh] items-center justify-center p-6" dir="rtl">
+        <ProgressRing value={35} size={76} strokeWidth={6} />
       </div>
     );
   }

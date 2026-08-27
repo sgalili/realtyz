@@ -467,7 +467,7 @@ export default function Properties() {
   // detail page now performs enrichment only after its local text has painted.
   const handleSelect = (r: UnifiedResult) => {
     if (r.localId) {
-      navigate(`/properties/${r.localId}`);
+      navigate(`/properties/${r.localId}`, { state: { propertySnapshot: r } });
       return;
     }
     setPreviewResult(r);
@@ -1468,7 +1468,7 @@ function ResultTable({
                       raw: r.raw,
                     });
                     const link = r.localId
-                      ? <Link to={`/properties/${r.localId}`} className="hover:underline" onClick={(e) => e.stopPropagation()} title={label}>{label}</Link>
+                      ? <Link to={`/properties/${r.localId}`} state={{ propertySnapshot: r }} className="hover:underline" onClick={(e) => e.stopPropagation()} title={label}>{label}</Link>
                       : <span title={label}>{label}</span>;
                     return (
                       <span className="inline-flex items-center gap-1.5 min-w-0">
