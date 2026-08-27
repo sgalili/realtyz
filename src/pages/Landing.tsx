@@ -259,7 +259,7 @@ export default function Landing() {
           <Reveal delay={220}>
             <div className="mt-10 flex flex-col items-center gap-4">
               <p className="text-center text-lg font-bold">
-                מנוי אחד. הכל כלול ללא הגבלה. משלמים רק לפי אנשי קשר פעילים.
+                חבילות במחיר חודשי קבוע. בוחרים חבילה, בלי התחייבות ובלי עלויות נסתרות.
               </p>
             </div>
           </Reveal>
@@ -275,7 +275,7 @@ export default function Landing() {
               כל מה שמתווך צריך - במערכת אחת
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
-              הכל כלול ללא הגבלה. בלי תוספות, בלי עלויות נסתרות.
+              כל הכלים בחבילה אחת. בלי תוספות ובלי עלויות נסתרות.
             </p>
           </Reveal>
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
