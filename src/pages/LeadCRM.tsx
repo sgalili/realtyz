@@ -1,3 +1,4 @@
+import SmartTimelineCard from '@/components/SmartTimelineCard';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -2293,42 +2294,9 @@ const LeadCRM = () => {
                   
 
 
-                  {/* Full History Timeline */}
-                  <div>
-                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
-                      <Clock className="h-4 w-4" /> ציר זמן מלא
-                      <Badge variant="outline" className="text-[10px] mr-auto">{events.length} אירועים</Badge>
-                    </h3>
-                    {events.length === 0 && (
-                      <p className="text-sm text-muted-foreground py-4 text-center">אין אירועים מתועדים</p>
-                    )}
-                    <div className="space-y-0">
-                      {events.slice(0, 30).map((evt, idx) => (
-                        <div key={evt.id} className="flex gap-3">
-                          <div className="flex flex-col items-center">
-                            <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${getEventColor(evt.type)}`}>
-                              {getEventIcon(evt.type)}
-                            </div>
-                            {idx < Math.min(events.length, 30) - 1 && <div className="w-px flex-1 bg-border mt-1" />}
-                          </div>
-                          <div className="pb-4 flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-xs font-medium">{evt.label}</span>
-                              <span className="text-[10px] text-muted-foreground mr-auto">
-                                {evt.date ? format(new Date(evt.date), 'dd/MM HH:mm') : ''}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground truncate">{evt.detail}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {events.length > 30 && (
-                        <p className="text-xs text-muted-foreground text-center py-2">
-                          + {events.length - 30} אירועים נוספים
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  {/* Smart timeline + quick note + follow-up extraction */}
+                  <SmartTimelineCard leadId={selectedVoter.id} title="ציר זמן מלא" />
+
                 </div>
               </>
             );
