@@ -948,6 +948,8 @@ const InlineComposer = ({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>(initial.attachments || []);
+  // True while the property's gallery is being pulled/attached.
+  const [photosLoading, setPhotosLoading] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
 
 
