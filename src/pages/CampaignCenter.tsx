@@ -5029,6 +5029,42 @@ const CampaignCenter = () => {
   const [campaignHistoryLoading, setCampaignHistoryLoading] = useState(false);
   const [alsoEmail, setAlsoEmail] = useState(false);
 
+  // Restore the last unpublished draft session (local first, cloud second) and
+  // keep it saved whenever the composer is opened with a fan-out.
+  useEffect(() => {
+    const channelId = pickedChannel?.id;
+    if (!channelId) return;
+    let cancelled = false;
+    const local = readComposerSessionLocal(channelId);
+    if (local) setRestoredSession(local);
+    (async () => {
+      const cloud = await fetchComposerSession(channelId);
+      if (!cancelled && cloud) {
+        setRestoredSession((prev) =>
+          prev && prev.updatedAt >= cloud.updatedAt ? prev : cloud,
+        );
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickedChannel?.id]);
+
+  useEffect(() => {
+    const channelId = pickedChannel?.id;
+    if (!channelId) return;
+    const ids = (searchParams.get('properties') || '')
+      .split(',').map((s) => s.trim()).filter(Boolean);
+    let assignments: ComposerAssignment[] = [];
+    try {
+      const raw = sessionStorage.getItem('rz-schedule-assignments');
+      if (raw) assignments = JSON.parse(raw) || [];
+    } catch {}
+    if (ids.length <= 1 && assignments.length <= 1) return;
+    void saveComposerSession(channelId, ids, assignments);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickedChannel?.id, searchParams]);
+
+
   useEffect(() => {
     const open = () => setCampaignHistoryOpen(true);
     window.addEventListener('rz:open-campaign-history', open);
