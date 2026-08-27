@@ -64,7 +64,6 @@ function HeaderProfileLink() {
   }, [user?.id]);
 
   if (!user) return null;
-  const meta = (user.user_metadata ?? {}) as Record<string, any>;
   const displayName = friendlyUserDisplayName(user, 'ללא שם');
   const initial = displayName.slice(0, 1);
 
