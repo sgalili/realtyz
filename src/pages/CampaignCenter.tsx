@@ -870,6 +870,23 @@ const InlineComposer = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Bulk override from the page-level bottom bar — update every draft at once.
+  useEffect(() => {
+    if (bulkGroupIds) setGroupIds(bulkGroupIds);
+  }, [bulkGroupIds]);
+
+  useEffect(() => {
+    if (bulkScheduleIso) {
+      const d = new Date(bulkScheduleIso);
+      if (!Number.isNaN(d.getTime())) {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        setScheduledLocal(local);
+        setMode('scheduled');
+      }
+    }
+  }, [bulkScheduleIso]);
+
 
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
   // Persisted to localStorage so a reload / background refresh doesn't wipe the selection.
