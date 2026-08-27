@@ -150,9 +150,10 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     if (!scheduleDay) return;
     saveSchedulePrefs(workspaceOwnerId, {
       winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount,
-      selectedListingIds, selectedGroupIds,
+      selectedListingIds, selectedGroupIds, groupDailyLimit,
     });
-  }, [scheduleDay, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedListingIds, selectedGroupIds]);
+  }, [scheduleDay, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedListingIds, selectedGroupIds, groupDailyLimit]);
+
 
   // The number of posts follows the number of properties picked in the dropdown.
   useEffect(() => {
