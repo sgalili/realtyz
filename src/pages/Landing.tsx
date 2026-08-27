@@ -13,7 +13,7 @@ import {
 import { fmtILS } from '@/lib/formatCurrency';
 import { cn } from '@/lib/utils';
 import BenefitCharts from '@/components/landing/BenefitCharts';
-import realtyzLogo from '@/assets/realtyz-logo-trans.png.asset.json';
+import realtyzLogo from '@/assets/realtyz-logo.png';
 import imgPublishing from '@/assets/landing/card-publishing.jpg';
 import imgOmnichannel from '@/assets/landing/card-omnichannel.jpg';
 import imgVoice from '@/assets/landing/card-voice.jpg';
@@ -189,7 +189,7 @@ export default function Landing() {
             <a href="#free" className="transition-colors hover:text-foreground">מסלול חינם</a>
           </nav>
           <Link to="/" aria-label="Realtyz AI">
-            <img src={realtyzLogo.url} alt="Realtyz AI" className="h-8 w-auto object-contain" />
+            <img src={realtyzLogo} alt="Realtyz AI" className="h-8 w-auto object-contain" />
           </Link>
         </div>
       </header>
