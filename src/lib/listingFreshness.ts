@@ -1,12 +1,14 @@
 /**
  * Listing freshness helper.
- * A property counts as "new" when it was published (or first imported)
- * within the last 7 days. Used for the "חדש" badge on cards + table rows
- * and for the sidebar Yad2 counter.
+ * "חדש" = published (or first seen) within the last 48 hours.
+ * "ותיק" = originally published 6 months ago or more.
  */
-export const NEW_WINDOW_DAYS = 7;
+export const NEW_WINDOW_HOURS = 48;
+export const OLD_WINDOW_MONTHS = 6;
 
-const NEW_WINDOW_MS = NEW_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+const NEW_WINDOW_MS = NEW_WINDOW_HOURS * 60 * 60 * 1000;
+const OLD_WINDOW_MS = OLD_WINDOW_MONTHS * 30 * 24 * 60 * 60 * 1000;
+
 
 function toTime(v: unknown): number | null {
   if (!v) return null;
