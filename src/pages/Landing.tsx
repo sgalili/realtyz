@@ -314,15 +314,16 @@ export default function Landing() {
           <Reveal delay={140}>
             <div className="mt-12 grid gap-5 grid-cols-1 sm:grid-cols-3">
               {[
-                { value: '45 שניות', label: 'זמן מענה ממוצע לליד חדש' },
-                { value: '+38%', label: 'שיפור בשיעור ההמרה לפגישה' },
-                { value: '12 שעות', label: 'חיסכון שבועי בעבודה ידנית' },
+                { value: '45 שניות', label: 'זמן מענה ממוצע לליד חדש', tone: 'hsl(var(--brand-navy))' },
+                { value: '+38%', label: 'שיפור בשיעור ההמרה לפגישה', tone: 'hsl(var(--brand-red))' },
+                { value: '12 שעות', label: 'חיסכון שבועי בעבודה ידנית', tone: 'hsl(var(--brand-navy))' },
               ].map((s) => (
                 <div key={s.label} className="landing-card rounded-2xl border border-border/70 bg-card p-6 text-center">
-                  <p className="text-4xl font-extrabold tabular-nums text-primary">{s.value}</p>
+                  <p className="text-4xl font-extrabold tabular-nums" style={{ color: s.tone }}>{s.value}</p>
                   <p className="mt-2 text-sm font-semibold text-muted-foreground">{s.label}</p>
                 </div>
               ))}
+
             </div>
           </Reveal>
         </div>
