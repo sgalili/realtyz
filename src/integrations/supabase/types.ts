@@ -5202,6 +5202,8 @@ export type Database = {
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
       crm_import_merge: { Args: never; Returns: string }
+      crm_safe_int: { Args: { _t: string }; Returns: number }
+      crm_safe_numeric: { Args: { _t: string }; Returns: number }
       dedupe_media_jsonb: {
         Args: { _arr: Json; _blocked?: Json }
         Returns: Json
