@@ -123,11 +123,12 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
 
   return (data ?? []).map((row: any): UnifiedResult => {
     const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
-    // Any row that lives in our DB is "local" from the user's perspective.
-    // The upstream provenance is retained in row.source / meta, but for the
-    // multi-source counters + badges we treat every hydrated listing as
-    // 'mine' so imports don't keep showing up as "still external".
-    const source: PropertySource = 'mine';
+    // Keep the upstream provenance visible: a row scraped from Yad2 stays
+    // badged as Yad2 even after it is hydrated locally, so the source counter
+    // reflects where the property actually came from.
+    const origin = String(row.source ?? (meta as any)?.source_origin ?? '').toLowerCase();
+    const source: PropertySource = origin === 'yad2' ? 'yad2' : origin === 'homely' ? 'homely' : 'mine';
+
     const price = normPhone(row.asking_price);
     return {
       key: `local:${row.id}`,
