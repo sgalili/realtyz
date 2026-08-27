@@ -980,8 +980,12 @@ const InlineComposer = ({
 
   // Persist composer draft to localStorage so collapsing/switching tabs,
   // closing dialogs, navigating away, or hard-refreshing never loses work.
+  // CRITICAL: nothing is written before hydration finished, otherwise the
+  // transient empty state of a freshly mounted replica overwrites (and erases)
+  // the saved draft — that is exactly how 7 drafts used to lose their text.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!hydratedRef.current) return;
     try {
       const snapshot = {
         body,
@@ -994,6 +998,11 @@ const InlineComposer = ({
         attachWaLink,
         attachMsngrLink,
       };
+      // Never downgrade a stored draft that has text into a textless one.
+      if (!snapshot.body.trim()) {
+        const prev = readDraft();
+        if (prev && String(prev.body || '').trim()) return;
+      }
       localStorage.setItem(draftKey, JSON.stringify(snapshot));
       // Durable mirror: an unpublished draft must survive a cleared browser
       // cache, another tab, or another device.
@@ -1004,7 +1013,8 @@ const InlineComposer = ({
         return () => window.clearTimeout(handle);
       }
     } catch {}
-  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, hydrated]);
 
   useEffect(() => {
     if (!historyOpen) return;
