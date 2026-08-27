@@ -31,7 +31,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
-import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate } from '@/lib/generationGate';
+import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
@@ -1485,6 +1485,9 @@ const InlineComposer = ({
   };
 
   const handleGenerate = async (opts?: { rotateTemplate?: boolean }) => {
+    if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
+    // Registered so the emergency stop can abort this request mid-flight.
+    const ctrl = registerGeneration();
     setGenerating(true);
     try {
       const topic = body.trim()
@@ -1502,7 +1505,9 @@ const InlineComposer = ({
           selectedListingId: selectedListingId || undefined,
           listingFocusOnly: !!selectedListingId,
         },
+        signal: ctrl.signal,
       });
+      if (ctrl.signal.aborted) return; // killed by the operator
       if (error) throw error;
       const text = cleanBody(data?.content || data?.text || '').toString();
       if (text) {
@@ -1536,12 +1541,14 @@ const InlineComposer = ({
         }
       } else toast.info('לא התקבל טקסט');
       // Auto-generate a first comment in Udi's signature style.
-      if (text) {
+      if (text && !ctrl.signal.aborted && !isGenerationStopped()) {
         void handleGenerateFirstComment(text);
       }
     } catch (e: any) {
+      if (ctrl.signal.aborted || e?.name === 'AbortError') return; // silent kill
       toast.error('יצירת טקסט נכשלה');
     } finally {
+      releaseGeneration(ctrl);
       setGenerating(false);
     }
   };
