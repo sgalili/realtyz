@@ -520,12 +520,13 @@ export default function PropertyDetail() {
         return Math.min(ceiling, p + stepSize);
       });
     }, 80);
-    // Safety valve: the text view is already usable, so close the loader fast.
+    // Safety valve: the text import is budgeted under 3s, so the loader is
+    // force-closed right after that window — never a frozen screen.
     const bail = setTimeout(() => {
       metaTargetRef.current = 100;
       setHydrateProgress(100);
       setHydrating(false);
-    }, 15000);
+    }, 3200);
     return () => {
       clearInterval(timer);
       clearTimeout(bail);
