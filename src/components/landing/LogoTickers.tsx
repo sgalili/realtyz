@@ -45,12 +45,14 @@ export function StackTicker() {
             {STACK.map((s) => (
               <span
                 key={`${dup}-${s.label}`}
-                className="whitespace-nowrap text-lg font-extrabold tracking-tight"
+                className="inline-flex items-center gap-2 whitespace-nowrap text-lg font-extrabold tracking-tight"
                 style={{ color: s.color }}
               >
+                {s.icon && <BrandIcon name={s.icon} className="h-6 w-6 shrink-0" />}
                 {s.label}
               </span>
             ))}
+
           </div>
         ))}
       </div>
