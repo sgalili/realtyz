@@ -764,7 +764,8 @@ export default function PropertyDetail() {
         parking: form.parking ? Number(form.parking) > 0 : false,
         elevator: form.elevator,
         asking_price: form.price ? Number(form.price) : 0,
-        description: form.description || null,
+        // `listings.description` is NOT NULL — never send null.
+        description: form.description?.trim() ? form.description : '',
         short_description: form.short_description || null,
         long_description: form.long_description || null,
         latitude: form.latitude ? Number(form.latitude) : null,
@@ -1037,7 +1038,33 @@ export default function PropertyDetail() {
     return true;
   };
 
-  const stepPhoto = async (delta: number) => {
+  const thumbStripRef = useRef<HTMLDivElement | null>(null);
+  const thumbDragRef = useRef<{ active: boolean; startX: number; startScroll: number; moved: boolean }>(
+    { active: false, startX: 0, startScroll: 0, moved: false },
+  );
+  const onThumbDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = thumbStripRef.current;
+    if (!el) return;
+    thumbDragRef.current = { active: true, startX: e.clientX, startScroll: el.scrollLeft, moved: false };
+  };
+  const onThumbDragMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = thumbStripRef.current;
+    const drag = thumbDragRef.current;
+    if (!el || !drag.active) return;
+    const dx = e.clientX - drag.startX;
+    if (Math.abs(dx) > 4) drag.moved = true;
+    el.scrollLeft = drag.startScroll - dx;
+  };
+  const onThumbDragEnd = () => { thumbDragRef.current.active = false; };
+
+  const isVideoMedia = (url?: string | null) =>
+    !!url && /\.(mp4|mov|m4v|webm|ogv|3gp)(\?|#|$)/i.test(url);
+
+  const stepPhoto = async (delta: number) => 
+    if (editMode) {
+      if (photos.length > 1) setActivePhoto((i) => (i + delta + photos.length) % photos.length);
+      return;
+    }
     if (pullingImages) {
       if (photos.length > 1) setActivePhoto((i) => (i + delta + photos.length) % photos.length);
       return;
@@ -1327,7 +1354,16 @@ export default function PropertyDetail() {
                 tabIndex={editMode ? undefined : 0}
                 onKeyDown={editMode ? undefined : (e) => { if (e.key === 'Enter') void ensureGalleryLoaded(); }}
               >
-                {main ? (
+                {main && isVideoMedia(main) ? (
+                  <video
+                    src={main}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-full w-full bg-black object-contain"
+                  />
+                ) : main ? (
                   <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
                 ) : (meta as any)?.media_status === 'images_unavailable' ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
@@ -1342,12 +1378,12 @@ export default function PropertyDetail() {
                 )}
 
 
-                {!editMode && (
+                {(photos.length > 1 || !editMode) && (
                   <>
                     <button
                       type="button"
-                      onClick={() => stepPhoto(-1)}
-                      disabled={pullingImages}
+                      onClick={(e) => { e.stopPropagation(); void stepPhoto(-1); }}
+                      disabled={!editMode && pullingImages}
                       aria-label="התמונה הקודמת"
                       title="התמונה הקודמת"
                       className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
@@ -1356,8 +1392,8 @@ export default function PropertyDetail() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => stepPhoto(1)}
-                      disabled={pullingImages}
+                      onClick={(e) => { e.stopPropagation(); void stepPhoto(1); }}
+                      disabled={!editMode && pullingImages}
                       aria-label="התמונה הבאה"
                       title="התמונה הבאה"
                       className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
@@ -1366,14 +1402,14 @@ export default function PropertyDetail() {
                     </button>
 
                     {/* Total images available on the SOURCE page, even if not imported yet. */}
-                    {totalSourcePhotos > 0 && (
+                    {!editMode && totalSourcePhotos > 0 && (
                       <span className="absolute top-2 right-2 rounded-full bg-black/70 px-2.5 py-1 text-xs font-bold leading-none text-white tabular-nums">
                         {photos.length > 0 ? `${activePhoto + 1}/${totalSourcePhotos}` : totalSourcePhotos}
                       </span>
                     )}
 
                     {/* Non-blocking image loader: progress only, no click-blocking scrim. */}
-                    {pullingImages && (
+                    {!editMode && pullingImages && (
                       <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-background/90 p-1.5 shadow ring-1 ring-border">
                         <ProgressRing value={imageProgress} size={44} strokeWidth={4} />
                       </span>
@@ -1385,17 +1421,29 @@ export default function PropertyDetail() {
             </Card>
           )}
           {(photos.length > 1 || editMode) && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div
+              ref={thumbStripRef}
+              onMouseDown={onThumbDragStart}
+              onMouseMove={onThumbDragMove}
+              onMouseUp={onThumbDragEnd}
+              onMouseLeave={onThumbDragEnd}
+              className="flex cursor-grab gap-2 overflow-x-auto overscroll-x-contain pb-1 select-none active:cursor-grabbing [scrollbar-width:thin]"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               {photos.map((p, i) => (
                 <button
                   key={`${p}-${i}`}
                   type="button"
-                  onClick={() => setActivePhoto(i)}
+                  onClick={() => { if (thumbDragRef.current.moved) { thumbDragRef.current.moved = false; return; } setActivePhoto(i); }}
                   className={`relative h-20 w-32 shrink-0 overflow-hidden rounded-md border-2 transition-all ${
                     i === activePhoto ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <img src={p} alt="" className="h-full w-full object-cover" />
+                  {isVideoMedia(p) ? (
+                    <video src={p} muted preload="metadata" className="h-full w-full bg-black object-cover" />
+                  ) : (
+                    <img src={p} alt="" className="h-full w-full object-cover" draggable={false} />
+                  )}
                   {editMode && (
                     <span
                       role="button"
