@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { shortenName } from "@/lib/shortenName";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -706,11 +706,16 @@ type ComposerStatus = {
   images: number;
   chars: number;
   ready: boolean;
+  /** True when this draft has everything it needs to be dispatched. */
+  canPublish: boolean;
+  /** First attached image, shown as a thumbnail on the collapsed card. */
+  thumb: string | null;
 };
 
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
+  onRegisterPublish,
 }: {
   channel: ChannelCard;
   brandName: string;
@@ -724,6 +729,12 @@ const InlineComposer = ({
   instanceId?: string;
   /** Lets a collapsed wrapper card mirror this draft's live status. */
   onStatus?: (status: ComposerStatus) => void;
+  /**
+   * Exposes this draft's publish action to the parent, so a collapsed card
+   * header and the "publish all drafts" bar can dispatch it without expanding.
+   * The returned function reports whether the draft was publishable.
+   */
+  onRegisterPublish?: (fn: (() => boolean) | null) => void;
 }) => {
   // Persistent draft key — namespaced per replicated instance so multiple
   // composers on the same page don't clobber each other's drafts. Persisted
@@ -1673,6 +1684,44 @@ const InlineComposer = ({
     [listings, selectedListingId],
   );
   const imageCount = attachments.filter((a) => a.kind === 'image').length;
+  // Shared publish action — used by the sticky button inside the composer,
+  // by the collapsed draft card header, and by "publish all drafts".
+  const scheduledDateNow = scheduledLocal ? new Date(scheduledLocal) : null;
+  const scheduledValidNow = mode === 'now' || (!!scheduledDateNow && scheduledDateNow.getTime() > Date.now());
+  const hasSelectedPagesNow = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
+  const canPublish = hasBody && scheduledValidNow && hasSelectedPagesNow;
+
+  const submitDraft = useCallback((): boolean => {
+    const sd = scheduledLocal ? new Date(scheduledLocal) : null;
+    const valid = mode === 'now' || (!!sd && sd.getTime() > Date.now());
+    const pagesOk = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
+    if (!body.trim() || !valid || !pagesOk) return false;
+    onConfirm({
+      body,
+      original_ai_body: originalAiBody,
+      listing_id: selectedListingId || null,
+      mode,
+      media_urls: attachments
+        .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+        .map((a) => a.url as string),
+      scheduled_at: mode === 'scheduled' && sd ? sd.toISOString() : null,
+      group_ids: channel.id === 'facebook' ? groupIds : [],
+      selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
+      attach_wa_link: attachWaLink,
+      first_comment: firstCommentEnabled ? firstComment : '',
+      first_comment_enabled: firstCommentEnabled,
+      attach_msngr_link: attachMsngrLink,
+    });
+    return true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [body, originalAiBody, selectedListingId, mode, attachments, scheduledLocal, groupIds, selectedProfileIds, attachWaLink, firstComment, firstCommentEnabled, attachMsngrLink, channel.id, platformProfiles.length]);
+
+  useEffect(() => {
+    onRegisterPublish?.(submitDraft);
+    return () => onRegisterPublish?.(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitDraft]);
+
   useEffect(() => {
     onStatus?.({
       title: (activeListing?.property_title || activeListing?.address || '') as string,
@@ -1681,9 +1730,12 @@ const InlineComposer = ({
       images: imageCount,
       chars: count,
       ready: hasBody && imageCount > 0,
+      canPublish,
+      thumb: attachments.find((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))?.url ?? null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeListing, generating, firstCommentGenerating, photosLoading, imageCount, count, hasBody]);
+  }, [activeListing, generating, firstCommentGenerating, photosLoading, imageCount, count, hasBody, canPublish, attachments]);
+
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-16 shadow-sm space-y-4" dir="rtl">
@@ -2039,29 +2091,7 @@ const InlineComposer = ({
             <div className="flex flex-row-reverse items-stretch justify-between gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  if (!canSend) return;
-                  // WA / Messenger CTA lines are already embedded inside the
-                  // first-comment textarea via the toggle effects, so we pass
-                  // the textarea content through verbatim.
-                  const composedFirstComment = firstCommentEnabled ? firstComment : '';
-                  onConfirm({
-                    body,
-                    original_ai_body: originalAiBody,
-                    listing_id: selectedListingId || null,
-                    mode,
-                    media_urls: attachments
-                      .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                      .map((a) => a.url as string),
-                    scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-                    group_ids: channel.id === 'facebook' ? groupIds : [],
-                    selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
-                    attach_wa_link: attachWaLink,
-                    first_comment: composedFirstComment,
-                    first_comment_enabled: firstCommentEnabled,
-                    attach_msngr_link: attachMsngrLink,
-                  });
-                }}
+                onClick={() => { submitDraft(); }}
                 disabled={!canSend}
                 className={cn(
                   'inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
@@ -5121,60 +5151,96 @@ const AddVoiceByIdDialog = ({
    stays mounted while collapsed so generation and photo import keep running. */
 
 const DraftCollapsibleCard = ({
-  index, iso, variant, totalVariants, children, status,
+  index, iso, variant, totalVariants, children, status, onPublish, published,
 }: {
   index: number;
   iso: string;
   variant: number;
   totalVariants: number;
   status: ComposerStatus | null;
+  /** Dispatches this single draft without expanding the card. */
+  onPublish?: () => void;
+  published?: boolean;
   children: React.ReactNode;
 }) => {
   const [open, setOpen] = useState(false);
   const busy = !!status && (status.generating || status.photosLoading);
-  const statusLabel = !status
-    ? 'טוען…'
-    : status.generating
-      ? 'מנסח תוכן…'
-      : status.photosLoading
-        ? 'מייבא תמונות…'
-        : status.ready
-          ? `מוכן · ${status.images} תמונות`
-          : status.chars > 0
-            ? `טיוטה · ${status.images} תמונות`
-            : 'ממתין';
+  const statusLabel = published
+    ? 'פורסם'
+    : !status
+      ? 'טוען…'
+      : status.generating
+        ? 'מנסח תוכן…'
+        : status.photosLoading
+          ? 'מייבא תמונות…'
+          : status.ready
+            ? `מוכן · ${status.images} תמונות`
+            : status.chars > 0
+              ? `טיוטה · ${status.images} תמונות`
+              : 'ממתין';
   return (
     <div className="rounded-2xl border border-border/60 bg-card shadow-sm" dir="rtl">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-right"
-      >
-        {open ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] font-semibold text-foreground">
-            טיוטה #{index + 1}
-            {status?.title ? ` · ${status.title}` : ''}
+      <div className="flex w-full items-center gap-2 px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-right"
+        >
+          {open ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
+          {status?.thumb ? (
+            <img
+              src={status.thumb}
+              alt={status.title || `תמונת טיוטה ${index + 1}`}
+              loading="lazy"
+              className="h-11 w-11 shrink-0 rounded-lg border border-border/60 object-cover"
+            />
+          ) : (
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground">
+              {status?.photosLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[13px] font-semibold text-foreground">
+              טיוטה #{index + 1}
+              {status?.title ? ` · ${status.title}` : ''}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+              {totalVariants > 1 ? ` · וריאציה ${variant}/${totalVariants}` : ''}
+            </div>
           </div>
-          <div className="truncate text-[11px] text-muted-foreground">
-            {new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
-            {totalVariants > 1 ? ` · וריאציה ${variant}/${totalVariants}` : ''}
-          </div>
-        </div>
+        </button>
         <span
           className={cn(
             'flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold',
-            busy
-              ? 'bg-amber-50 text-amber-700'
-              : status?.ready
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-muted text-muted-foreground',
+            published
+              ? 'bg-emerald-100 text-emerald-800'
+              : busy
+                ? 'bg-amber-50 text-amber-700'
+                : status?.ready
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'bg-muted text-muted-foreground',
           )}
         >
-          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : status?.ready ? <CheckCircle2 className="h-3 w-3" /> : null}
+          {busy && !published ? <Loader2 className="h-3 w-3 animate-spin" /> : (published || status?.ready) ? <CheckCircle2 className="h-3 w-3" /> : null}
           {statusLabel}
         </span>
-      </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onPublish?.(); }}
+          disabled={published || !status?.canPublish}
+          title={published ? 'הטיוטה פורסמה' : !status?.canPublish ? 'הטיוטה עדיין לא מוכנה לפרסום' : 'פרסם טיוטה זו'}
+          className={cn(
+            'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-bold transition',
+            published || !status?.canPublish
+              ? 'cursor-not-allowed bg-muted text-muted-foreground/80'
+              : 'bg-[hsl(217,80%,18%)] text-white shadow-sm hover:bg-[hsl(217,80%,14%)]',
+          )}
+        >
+          <Megaphone className="h-3.5 w-3.5" />
+          פרסם
+        </button>
+      </div>
       {/* Kept mounted (hidden) so background work never restarts on toggle. */}
       <div className={open ? 'border-t border-border/60 p-1' : 'hidden'}>{children}</div>
     </div>
@@ -5187,6 +5253,38 @@ const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   // Live status per collapsed draft card (keyed by composer instanceId).
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ComposerStatus>>({});
+  // Publish plumbing for the multi-draft view: each composer registers its
+  // dispatch function so a collapsed card (and "publish all") can fire it.
+  const publishFnsRef = useRef<Map<string, () => boolean>>(new Map());
+  const activeDraftKeyRef = useRef<string | null>(null);
+  const bulkQueueRef = useRef<string[]>([]);
+  const [publishedDrafts, setPublishedDrafts] = useState<Set<string>>(new Set());
+
+  const publishDraft = useCallback((key: string) => {
+    const fn = publishFnsRef.current.get(key);
+    if (!fn) return false;
+    activeDraftKeyRef.current = key;
+    const ok = fn();
+    if (!ok) toast.info('הטיוטה עדיין לא מוכנה לפרסום');
+    return ok;
+  }, []);
+
+  const publishAllDrafts = useCallback((keys: string[]) => {
+    const queue = keys.filter((k) => !publishedDrafts.has(k) && publishFnsRef.current.has(k));
+    if (!queue.length) { toast.info('אין טיוטות מוכנות לפרסום'); return; }
+    bulkQueueRef.current = queue.slice(1);
+    if (!publishDraft(queue[0])) bulkQueueRef.current = [];
+  }, [publishedDrafts, publishDraft]);
+
+  /** Advances the bulk queue after one draft finished dispatching. */
+  const advanceBulkQueue = useCallback(() => {
+    const next = bulkQueueRef.current.shift();
+    if (!next) return false;
+    // Let the dialog fully close before opening it for the next draft.
+    window.setTimeout(() => { if (!publishDraft(next)) advanceBulkQueue(); }, 450);
+    return true;
+  }, [publishDraft]);
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -5840,40 +5938,71 @@ const CampaignCenter = () => {
             const blocks = assignments.length > 0
               ? assignments
               : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
+            const readyKeys = blocks
+              .map((b, idx) => `${idx}-${b.listing || 'na'}`)
+              .filter((k) => draftStatuses[k]?.canPublish && !publishedDrafts.has(k));
             return (
-              <div className="space-y-4">
+              <div className="space-y-4 pb-24">
                 <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
                   נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
-                {blocks.map((b, idx) => (
+                {blocks.map((b, idx) => {
+                  const key = `${idx}-${b.listing || 'na'}`;
+                  return (
                   <DraftCollapsibleCard
                     key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`}
                     index={idx}
                     iso={b.iso}
                     variant={b.variant}
                     totalVariants={b.totalVariants}
-                    status={draftStatuses[`${idx}-${b.listing || 'na'}`] ?? null}
+                    status={draftStatuses[key] ?? null}
+                    published={publishedDrafts.has(key)}
+                    onPublish={() => { publishDraft(key); }}
                   >
                     <InlineComposer
                       channel={pickedChannel}
                       brandName={brandName}
                       socialProfiles={socialAccountProfiles}
-                      onConfirm={(p) => setConfirmPayload(p)}
+                      onConfirm={(p) => { activeDraftKeyRef.current = key; setConfirmPayload(p); }}
                       onOpenScheduleCalendar={() => handleChange('calendar')}
                       presetListingId={b.listing}
                       presetScheduleIso={b.iso}
                       presetVariant={b.variant}
                       presetVariants={b.totalVariants}
-                      instanceId={`${idx}-${b.listing || 'na'}`}
+                      instanceId={key}
+                      onRegisterPublish={(fn) => {
+                        if (fn) publishFnsRef.current.set(key, fn);
+                        else publishFnsRef.current.delete(key);
+                      }}
                       onStatus={(s) => setDraftStatuses((curr) => (
-                        curr[`${idx}-${b.listing || 'na'}`] &&
-                        JSON.stringify(curr[`${idx}-${b.listing || 'na'}`]) === JSON.stringify(s)
+                        curr[key] && JSON.stringify(curr[key]) === JSON.stringify(s)
                           ? curr
-                          : { ...curr, [`${idx}-${b.listing || 'na'}`]: s }
+                          : { ...curr, [key]: s }
                       ))}
                     />
                   </DraftCollapsibleCard>
-                ))}
+                  );
+                })}
+                {/* Bulk dispatch — publishes every ready draft one after another. */}
+                <div className="sticky bottom-2 z-40 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
+                  <button
+                    type="button"
+                    onClick={() => publishAllDrafts(blocks.map((b, idx) => `${idx}-${b.listing || 'na'}`))}
+                    disabled={readyKeys.length === 0}
+                    className={cn(
+                      'flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
+                      readyKeys.length
+                        ? 'bg-[hsl(217,80%,18%)] text-white shadow-md hover:bg-[hsl(217,80%,14%)]'
+                        : 'cursor-not-allowed bg-muted text-muted-foreground/80',
+                    )}
+                  >
+                    <Megaphone className="h-4 w-4" />
+                    פרסם את כל הטיוטות ({readyKeys.length})
+                  </button>
+                  <p className="mt-1 text-center text-[11px] text-muted-foreground">
+                    כל טיוטה מוכנה תישלח לאישור ושיגור בתור, אחת אחרי השנייה.
+                  </p>
+                </div>
               </div>
             );
           })()}
@@ -6001,6 +6130,23 @@ const CampaignCenter = () => {
           const body = confirmPayload?.body ?? '';
           const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
           const publishedChannelId = pickedChannel?.id;
+          // Multi-draft mode: only the dispatched draft is retired — the other
+          // drafts (and the channel) must stay exactly as they are.
+          const draftKey = activeDraftKeyRef.current;
+          activeDraftKeyRef.current = null;
+          if (draftKey) {
+            setConfirmPayload(null);
+            setPublishedDrafts((curr) => new Set(curr).add(draftKey));
+            if (publishedChannelId) {
+              try {
+                localStorage.removeItem(`rz-composer-draft:v2:${publishedChannelId}:${draftKey}`);
+                sessionStorage.removeItem(`rz-composer-draft:v2:${publishedChannelId}:${draftKey}`);
+              } catch {}
+            }
+            toast.success('הטיוטה פורסמה');
+            advanceBulkQueue();
+            return;
+          }
           setConfirmPayload(null);
           setPickedChannel(null);
           setPickedChannelIds(new Set());
