@@ -1,7 +1,12 @@
+import { useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
-  Sofa, TrendingUp, MapPin, Navigation,
+  Sofa, TrendingUp, MapPin, Navigation, Pencil, Plus, Trash2, X, Save,
   ArrowUpCircle, Wind, Grid2X2, ShieldCheck, Sun, Armchair, DoorClosed,
   Accessibility, Fan, PaintRoller, Package, Warehouse, PawPrint, Users, Car, Home,
 } from 'lucide-react';
@@ -17,6 +22,18 @@ import {
 } from 'recharts';
 
 export type PricePoint = { date: string | null; price: number | null; label?: string };
+
+/** Manual edits any workspace user made to the scraped content. */
+export type RichOverrides = {
+  /** Free-text overrides for the description blocks, keyed `about:<index>`. */
+  about?: Record<string, string>;
+  /** Value overrides for detail / furniture rows, keyed by their Hebrew label. */
+  rows?: Record<string, string>;
+  /** Labels or block keys the user removed from the page. */
+  hidden?: string[];
+  /** Rows the user added manually. */
+  extra?: { name: string; value: string }[];
+};
 
 type Props = {
   aboutText?: string | null;
@@ -34,7 +51,13 @@ type Props = {
    * placeholder rows instead of hiding the card, so the layout never shifts.
    */
   pending?: boolean;
+  /** Enables inline editing for every workspace user when provided. */
+  listingId?: string | null;
+  /** Current `source_metadata` blob, so saving preserves everything else. */
+  meta?: Record<string, unknown> | null;
+  onSaved?: () => void;
 };
+
 
 /** Fields we always show a row for, even before the values arrive. */
 const SKELETON_ROWS = ['סוג הנכס', 'חדרים', 'קומה', 'מ"ר', 'חניות', 'תאריך כניסה'];
