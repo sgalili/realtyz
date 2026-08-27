@@ -257,9 +257,33 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         await probe(false).catch(() => undefined);
       } catch (e: any) {
         window.clearTimeout(safety);
+        // ZERO-FRICTION FALLBACK: the shared platform Meta app may not have
+        // advanced access for this user yet. Reopen the dialog automatically with
+        // the review-free basic scopes instead of dead-ending the connection.
+        if (e?.payload?.retry_basic) {
+          try {
+            const retry = await callPageConnect<any>({
+              action: 'start',
+              scope_tier: 'basic',
+              redirect_uri: oauthRedirectUri(),
+              return_origin: oauthReturnOrigin(),
+            });
+            if (retry?.auth_url) {
+              const url = String(retry.auth_url);
+              setPendingAuthUrl(url);
+              toast.message('מבקשים הרשאות בסיסיות מפייסבוק', {
+                description: 'אשרו שוב את החיבור כדי להשלים את ההתחברות.',
+              });
+              if (openOAuthWindow(url)) return;
+            }
+          } catch {
+            /* fall through to the manual path below */
+          }
+        }
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: String(e?.message ?? 'החיבור לפייסבוק נכשל.') });
         // Never leave the user trapped: offer the manual token path immediately.
         setManualOpen(true);
+
       } finally {
         window.clearTimeout(safety);
         exchangingRef.current = false;
