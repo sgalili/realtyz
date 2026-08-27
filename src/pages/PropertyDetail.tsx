@@ -607,18 +607,31 @@ export default function PropertyDetail() {
         city: property.city || '',
         neighborhood: neighborhood || '',
         address: property.address || '',
+        house_number: (data?.row as any)?.house_number != null ? String((data?.row as any).house_number) : '',
+        apartment_number: (data?.row as any)?.apartment_number != null ? String((data?.row as any).apartment_number) : '',
+        project_name: (data?.row as any)?.project_name ? String((data?.row as any).project_name) : '',
         rooms: property.rooms ? String(property.rooms) : '',
         sqm: property.size_sqm ? String(property.size_sqm) : '',
         floor: property.floor != null ? String(property.floor) : '',
         total_floors: property.total_floors != null ? String(property.total_floors) : '',
         year_built: property.year_built != null ? String(property.year_built) : '',
         property_type: property.property_type || 'apartment',
+        deal_type: String(meta.deal_type ?? meta.listing_type ?? property.listing_type ?? 'sale'),
+        status: (data?.row as any)?.status ? String((data?.row as any).status) : '',
         price: String(property.price || ''),
         vaad_bayit: String(meta.vaad_bayit ?? meta.vaad_monthly ?? ''),
         arnona_bimonthly: String(meta.arnona_bimonthly ?? meta.arnona ?? ''),
         payments: String(meta.payments ?? meta.payment_count ?? ''),
         entry_date: String(meta.entry_date ?? meta.delivery_date ?? ''),
+        available_from: (data?.row as any)?.available_from ? String((data?.row as any).available_from).slice(0, 10) : '',
         description: property.description || '',
+        short_description: (data?.row as any)?.short_description ? String((data?.row as any).short_description) : '',
+        long_description: (data?.row as any)?.long_description ? String((data?.row as any).long_description) : '',
+        features_text: Array.isArray(data?.row?.features)
+          ? (data.row.features as unknown[]).filter((f): f is string => typeof f === 'string').join(', ')
+          : '',
+        latitude: (data?.row as any)?.latitude != null ? String((data?.row as any).latitude) : '',
+        longitude: (data?.row as any)?.longitude != null ? String((data?.row as any).longitude) : '',
         parking: String(amenities?.parking ?? meta.parking ?? ''),
         elevator: Boolean(amenities?.elevator),
         balcony: Boolean(amenities?.balcony),
@@ -641,6 +654,7 @@ export default function PropertyDetail() {
           }
         } catch { /* ignore malformed drafts */ }
       }
+
       const next = restored ?? base;
       setForm(next);
       setInitialFormSnapshot(JSON.stringify(base));
