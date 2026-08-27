@@ -2578,6 +2578,29 @@ const ConfirmDispatchDialog = ({
     if (open) setGroupIds(groupIdsProp);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, groupIdsProp.join(',')]);
+  // Ticking "time left" until the first broadcast goes out.
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setInterval(() => setNowTs(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [open]);
+  const countdownLabel = (() => {
+    if (!scheduledAt) return 'מיד עם האישור';
+    const diff = new Date(scheduledAt).getTime() - nowTs;
+    if (!Number.isFinite(diff)) return '—';
+    if (diff <= 0) return 'מיד עם האישור';
+    const total = Math.floor(diff / 1000);
+    const days = Math.floor(total / 86400);
+    const hours = Math.floor((total % 86400) / 3600);
+    const mins = Math.floor((total % 3600) / 60);
+    const secs = total % 60;
+    if (days > 0) return `בעוד ${days} ימים ו-${hours} שעות`;
+    if (hours > 0) return `בעוד ${hours} שעות ו-${mins} דקות`;
+    if (mins > 0) return `בעוד ${mins} דקות ו-${secs} שניות`;
+    return `בעוד ${secs} שניות`;
+  })();
+
 
   // Pre-send statistics for the selected Facebook groups (count + reach).
   const [groupStats, setGroupStats] = useState<{ known: number; members: number }>({ known: 0, members: 0 });
