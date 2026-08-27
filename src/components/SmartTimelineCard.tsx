@@ -279,7 +279,6 @@ export default function SmartTimelineCard({
               </SelectContent>
             </Select>
           </div>
-          </div>
         <Textarea
           value={note}
           onChange={(e) => { setNote(e.target.value); setDismissedSuggestion(false); }}
@@ -360,7 +359,6 @@ export default function SmartTimelineCard({
                   </div>
                   <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground line-clamp-3">{evt.detail || '—'}</p>
                 </div>
-        </>}
               </div>
             );
           })}
@@ -371,6 +369,7 @@ export default function SmartTimelineCard({
             הצג עוד {events.length - limit} אירועים
           </Button>
         )}
+        </>}
       </div>
     </div>
   );
