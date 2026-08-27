@@ -6941,7 +6941,8 @@ const CampaignCenter = () => {
           activeDraftKeyRef.current = null;
           if (draftKey) {
             setConfirmPayload(null);
-            setPublishedDrafts((curr) => new Set(curr).add(draftKey));
+            retirePublishedDraft(draftKey, publishedChannelId);
+            setHistoryRefreshTick((t) => t + 1);
             if (publishedChannelId) {
               try {
                 localStorage.removeItem(`rz-composer-draft:v2:${publishedChannelId}:${draftKey}`);
