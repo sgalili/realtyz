@@ -1297,8 +1297,13 @@ const ApiSettings = () => {
       </div>
 
       <div className="mb-4">
+        <SpeedToLeadCard />
+      </div>
+
+      <div className="mb-4">
         <WaTemplatesSyncCard />
       </div>
+
 
       <div className="mb-4">
         <WhatsAppTwoWayTestCard />
