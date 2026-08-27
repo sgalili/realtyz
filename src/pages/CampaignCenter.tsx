@@ -1926,7 +1926,7 @@ const InlineComposer = ({
 
   useEffect(() => {
     onStatus?.({
-      title: (activeListing?.property_title || activeListing?.address || '') as string,
+      title: (listingHeadline(activeListing) || activeListing?.property_title || activeListing?.address || '') as string,
       generating: generating || firstCommentGenerating,
       photosLoading,
       images: imageCount,
