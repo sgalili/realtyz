@@ -121,27 +121,21 @@ async function runMetadataSync(
     }, 150);
     await withTimeout(
       Promise.resolve(supabase.functions.invoke('yad2-unlocker', { body: { url: sourceUrl, limit: 1 } })),
-      12000,
+      6000,
       'metadata scrape',
     );
     clearInterval(creep);
   }
   step(70);
 
-  let settled = 0;
-  const tick = () => { settled += 1; step(70 + Math.round((settled / 2) * 25)); };
-  await Promise.allSettled([
-    withTimeout(
-      Promise.resolve(supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } })),
-      30000,
-      'metadata backfill',
-    ).finally(tick),
-    withTimeout(
-      Promise.resolve(supabase.functions.invoke('owner-crm-sync', { body: { listing_id: listingId } })),
-      30000,
-      'owner crm sync',
-    ).finally(tick),
-  ]);
+  // Owner provisioning is managed independently by the detail page. Keeping
+  // it out of this critical path avoids two duplicate 30s calls per visit.
+  await withTimeout(
+    Promise.resolve(supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } })),
+    6000,
+    'metadata backfill',
+  );
+  step(95);
   // Only cache a proven-complete row. A timed-out scraper keeps running on the
   // server, so marking the id complete here used to leave the current tab with
   // its original thin snapshot forever.

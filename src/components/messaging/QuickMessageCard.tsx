@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { MessageSquareText, Send, Copy, ExternalLink, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { MessageSquareText, Send, Copy, ExternalLink, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +16,8 @@ type Props = {
   vars: TemplateVars;
   listingId?: string | null;
   className?: string;
+  collapsible?: boolean;
+  forceOpenKey?: number;
 };
 
 function toIntl(phone?: string | null): string | null {
@@ -27,13 +29,18 @@ function toIntl(phone?: string | null): string | null {
   return digits;
 }
 
-export default function QuickMessageCard({ scope, leadId, phone, vars, listingId, className }: Props) {
+export default function QuickMessageCard({ scope, leadId, phone, vars, listingId, className, collapsible = false, forceOpenKey = 0 }: Props) {
   const { data: templates = [], isLoading } = useQuickTemplates(scope);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [channel, setChannel] = useState<'whatsapp' | 'sms'>('whatsapp');
   const [sending, setSending] = useState(false);
+  const [open, setOpen] = useState(!collapsible);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (collapsible && forceOpenKey > 0) setOpen(true);
+  }, [collapsible, forceOpenKey]);
 
   const intl = useMemo(() => toIntl(phone), [phone]);
   const scopeKey = leadId ? `lead:${leadId}` : listingId ? `listing:${listingId}` : null;
@@ -111,12 +118,20 @@ export default function QuickMessageCard({ scope, leadId, phone, vars, listingId
   };
 
   return (
-    <div className={`rounded-xl border border-border bg-card p-4 space-y-3 ${className || ''}`} dir="rtl">
-      <div className="flex items-center gap-2">
+    <div className={`rounded-xl border border-border bg-card p-4 ${open ? 'space-y-3' : ''} ${className || ''}`} dir="rtl">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 text-start"
+        onClick={() => collapsible && setOpen((value) => !value)}
+        aria-expanded={open}
+      >
         <MessageSquareText className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold">הודעות מהירות</h3>
         <Badge variant="outline" className="text-[10px]">{templates.length} תבניות</Badge>
-      </div>
+        {collapsible && <ChevronDown className={`ms-auto h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />}
+      </button>
+
+      {open && <>
 
       <div className="flex flex-wrap gap-2">
         {isLoading && <span className="text-xs text-muted-foreground">טוען תבניות...</span>}
@@ -162,6 +177,7 @@ export default function QuickMessageCard({ scope, leadId, phone, vars, listingId
           <Copy className="h-3.5 w-3.5" /><span className="ms-1">העתק</span>
         </Button>
       </div>
+      </>}
     </div>
   );
 }
