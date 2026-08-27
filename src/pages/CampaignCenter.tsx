@@ -5289,8 +5289,10 @@ const CampaignCenter = () => {
   const [bulkScheduleIso, setBulkScheduleIso] = useState<string | null>(null);
   const [bulkGroupPickerOpen, setBulkGroupPickerOpen] = useState(false);
   const [bulkScheduleDialogOpen, setBulkScheduleDialogOpen] = useState(false);
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
 
   // Persist bulk choices per workspace so a refresh doesn't lose the last
+
   // group/time selection for current and future multi-draft campaigns.
   useEffect(() => {
     try {
