@@ -474,18 +474,21 @@ export default function PropertyDetail() {
   }, [id, data, qc]);
 
   // ---- Background gallery hydration ---------------------------------------
-  // Text/metadata render first; once they are on screen the gallery is pulled
-  // in the background (one image at a time, appended as each arrives). Nothing
-  // here blocks the view — a slow image scraper is allowed to time out silently.
+  // Text/metadata render instantly (never gated on the image pipeline); the
+  // gallery streams in right away, one image at a time, each appended to the
+  // carousel the moment it lands. A slow scraper times out silently.
   const bgGalleryRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!id || !data || hydrating) return;
+    if (!id || !data) return;
     if (bgGalleryRef.current === id) return;
     bgGalleryRef.current = id;
-    const t = setTimeout(() => { void ensureGalleryLoaded({ silent: true }).catch(() => {}); }, 900);
+    // Fresh property → drop any streamed photos from the previous one.
+    setStreamPhotos([]);
+    const t = setTimeout(() => { void ensureGalleryLoaded({ silent: true }).catch(() => {}); }, 120);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, data, hydrating]);
+  }, [id, data]);
+
 
 
   // Initialize edit form when entering edit mode. Prefer a locally-persisted
@@ -815,8 +818,19 @@ export default function PropertyDetail() {
    * every later interaction just moves between already-loaded photos.
    */
   const ensureGalleryLoaded = async (options: { silent?: boolean } = {}): Promise<boolean> => {
-    if (galleryPulledRef.current || pullingImages) return false;
+    if (pullingImages) return false;
+    // With zero photos on screen we always try (even if a previous run was
+    // cached), since the backend can mirror images straight from
+    // source_metadata even when no source_url is stored.
+    if (photos.length === 0) {
+      galleryPulledRef.current = true;
+      const first = await pullAllImages(options);
+      if (!first) galleryPulledRef.current = false;
+      return true;
+    }
+    if (galleryPulledRef.current) return false;
     if (!sourceUrl || photos.length >= Math.max(2, totalSourcePhotos)) return false;
+
     galleryPulledRef.current = true;
     const completed = await pullAllImages(options);
     if (!completed) galleryPulledRef.current = false;
