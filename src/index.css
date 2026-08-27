@@ -75,6 +75,9 @@
     --brand-deep: 215 78% 10%;     /* darkest navy for gradients */
     --brand-gold: 47 100% 50%;     /* #FFC800 */
     --brand-gold-soft: 47 100% 72%;
+    --brand-red: 0 74% 48%;        /* logo red — third accent */
+    --brand-red-soft: 0 84% 62%;
+
     --brand-silver: 210 14% 94%;
     --brand-cream: 210 30% 98%;
     --brand-hero: var(--brand-navy);
