@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Check, Star } from 'lucide-react';
+import { ArrowLeft, Check, Star } from 'lucide-react';
 import { FREE_CONTACTS, FREE_PROPERTIES } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
 
