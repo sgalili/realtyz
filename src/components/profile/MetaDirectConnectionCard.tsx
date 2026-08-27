@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
+import { requestExtensionGroups } from '@/lib/extensionGroupBridge';
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Facebook, Instagram, Loader2, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
 
@@ -230,8 +232,12 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         }
         toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
         // Import the groups reachable from the fresh token so the targets list
-        // is populated without an extra manual step.
+        // is populated without an extra manual step. Meta deprecated the Graph
+        // groups API for new apps, so the companion extension is asked in
+        // parallel — whichever source answers first fills the list.
         void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
+        requestExtensionGroups();
+
         refreshBinding();
         refreshHealth();
         await probe(false).catch(() => undefined);
@@ -432,6 +438,8 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       });
       toast.success('הטוקן נשמר והעמוד חובר', { description: res?.page?.name ?? undefined });
       void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
+      requestExtensionGroups();
+
       setManualToken('');
       setManualOpen(false);
       await probe(false);
