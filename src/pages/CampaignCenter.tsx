@@ -3007,10 +3007,12 @@ const ConfirmDispatchDialog = ({
     }
   };
 
-
-
+  handleConfirmRef.current = handleConfirm;
+  // Bulk mode: no confirmation UI whatsoever.
+  if (autoConfirm) return null;
 
   return (
+
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dir="rtl" className="w-[calc(100vw-1rem)] max-w-lg max-h-[92vh] overflow-y-auto">
         <DialogHeader>
