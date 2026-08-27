@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { shortenName } from "@/lib/shortenName";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -706,6 +706,8 @@ type ComposerStatus = {
   images: number;
   chars: number;
   ready: boolean;
+  /** True when this draft has everything it needs to be dispatched. */
+  canPublish: boolean;
 };
 
 const InlineComposer = ({
