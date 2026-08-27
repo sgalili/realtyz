@@ -76,14 +76,6 @@ const FEATURES = [
   },
 ];
 
-const CHANNELS = [
-  { icon: MessageCircle, label: 'WhatsApp' },
-  { icon: Zap, label: 'SMS' },
-  { icon: Mail, label: 'Gmail' },
-  { icon: Facebook, label: 'Facebook' },
-  { icon: Instagram, label: 'Instagram' },
-  { icon: CalendarCheck2, label: 'Google Calendar' },
-];
 
 const WHATSAPP_POWERS = [
   'שליחת הודעת פתיחה אוטומטית לכל מתעניין חדש בשניות',
