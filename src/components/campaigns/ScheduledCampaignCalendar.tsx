@@ -650,21 +650,14 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   )}
                   {recurrence !== 'none' && (
                     <div className="mt-2 border-t pt-2">
-                      <label className="text-[11px] text-muted-foreground block mb-1 text-right">
-                        {recurrence === 'weekly' || recurrence === 'custom'
-                          ? 'מספר שבועות'
-                          : recurrence === 'monthly' ? 'מספר חודשים' : 'מספר ימים'}
-                      </label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={52}
-                        value={recurrenceCount}
-                        onChange={(e) => setRecurrenceCount(Math.max(1, Math.min(52, Number(e.target.value) || 1)))}
-                        className="h-8 text-right"
-                      />
+                      <p className="text-[10px] text-muted-foreground text-right leading-relaxed">
+                        החזרתיות רצה ללא הגבלה. בתור נשמרת רק הגרסה הבאה אחת, והבאה אחריה
+                        נוצרת רק לאחר פרסום מוצלח. הסדרה נעצרת כשהנכס מסומן כנמכר / הושכר /
+                        בהמתנה / מושבת.
+                      </p>
                     </div>
                   )}
+
                 </PopoverContent>
               </Popover>
             </div>
