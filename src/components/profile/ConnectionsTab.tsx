@@ -8,6 +8,8 @@ import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
 import { EmailAliasCard } from '@/components/profile/EmailAliasCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
+import { CalendarSyncCard } from '@/components/profile/CalendarSyncCard';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
 import { useFacebookHealth } from '@/hooks/useFacebookHealth';
 
@@ -17,11 +19,12 @@ function StatusPill({ label, tone }: { label: string; tone: Tone }) {
   return (
     <span
       className={cn(
-        'shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold',
+        'shrink-0 rounded-full border px-3 py-1 text-[12px] font-semibold',
         tone === 'ok'
-          ? 'border-transparent bg-emerald-600 text-white'
-          : 'border-border bg-muted text-muted-foreground',
+          ? 'border-emerald-700 bg-emerald-600 text-white'
+          : 'border-slate-300 bg-slate-100 text-slate-700',
       )}
+      dir="ltr"
     >
       {label}
     </span>
