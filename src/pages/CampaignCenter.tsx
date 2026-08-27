@@ -1479,8 +1479,9 @@ const InlineComposer = ({
       if (cancelled) return;
       setWaShortUrl(url);
       const line = `${pickRandom(WA_INTRO_PHRASES)}: ${url}`;
-      if (waInjectedRef.current) removeFirstCommentLine(waInjectedRef.current);
+      stripAllWaLinkLines();
       waInjectedRef.current = line;
+
       injectFirstCommentLine(line);
     })();
     return () => { cancelled = true; };
