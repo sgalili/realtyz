@@ -41,20 +41,19 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    title: 'לוח בקרה',
-    url: '/',
-    icon: Activity,
-    iconColor: 'text-indigo-600',
-    badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
-    aliases: ['/dashboard'],
-  },
-  {
     title: 'משימות היום',
-    url: '/command-center',
+    url: '/',
     icon: ClipboardList,
     iconColor: 'text-sky-600',
     badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
-    aliases: ['/tasks'],
+    aliases: ['/command-center', '/tasks'],
+  },
+  {
+    title: 'לוח בקרה',
+    url: '/dashboard',
+    icon: Activity,
+    iconColor: 'text-indigo-600',
+    badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
   },
   {
     title: 'לקוחות',
