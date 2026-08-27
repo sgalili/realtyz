@@ -28,7 +28,35 @@ const json = (b: unknown, s = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const OFFICIAL_WA_NUMBER = "972537983832";
+const OFFICIAL_WA_URL = `https://wa.me/${OFFICIAL_WA_NUMBER}`;
+
+/** Every first comment must carry exactly one official WhatsApp link. */
+function ensureWaLink(text: string | null | undefined): string {
+  const base = String(text ?? "").trim();
+  if (/wa\.me\/\d+|realtyz\.co\.il\/r\//i.test(base)) return base;
+  const cta = `דברו איתי בוואטסאפ: ${OFFICIAL_WA_URL}`;
+  return base ? `${base}\n\n${cta}` : cta;
+}
+
+/** Top the slot up to 10 random photos of its property. */
+async function ensureMedia(admin: any, row: any): Promise<string[]> {
+  const own = (Array.isArray(row.media_urls) ? row.media_urls : []).filter(
+    (u: unknown) => typeof u === "string" && u.trim(),
+  ) as string[];
+  if (own.length >= 10 || !row.listing_id) return own.slice(0, 10);
+  try {
+    const { data } = await admin.rpc("listing_photo_pool", { _listing_id: row.listing_id });
+    const pool = (Array.isArray(data) ? data : []).filter((u: unknown) => typeof u === "string" && u);
+    const shuffled = pool.sort(() => Math.random() - 0.5);
+    return Array.from(new Set([...own, ...shuffled])).slice(0, 10);
+  } catch {
+    return own;
+  }
+}
+
 async function invokeMetaPublish(row: any, body: string): Promise<{ ok: boolean; error?: string }> {
+
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/meta-publish`, {
       method: "POST",
