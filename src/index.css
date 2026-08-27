@@ -1336,7 +1336,7 @@
 }
 
 .realtyz-landing .landing-gradient-text {
-  background-image: linear-gradient(100deg, hsl(var(--brand-navy)), hsl(215 65% 30%), hsl(var(--brand-gold)));
+  background-image: linear-gradient(100deg, hsl(142 70% 49%), hsl(158 75% 31%), hsl(168 79% 20%));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1346,11 +1346,42 @@
   box-shadow: 0 18px 50px -28px hsl(213 73% 16% / 0.35);
 }
 
-/* Readable overlay for image-filled cards (navy scrim, no icon chrome) */
+/* Readable overlay for image-filled cards — lighter scrim, vivid imagery */
 .realtyz-landing .landing-card-veil {
   background:
-    linear-gradient(0deg, hsl(213 73% 10% / 0.94) 0%, hsl(213 73% 12% / 0.78) 45%, hsl(213 73% 14% / 0.55) 100%);
+    linear-gradient(0deg, hsl(213 73% 8% / 0.86) 0%, hsl(213 73% 10% / 0.52) 52%, hsl(213 73% 12% / 0.14) 100%);
 }
+.realtyz-landing .landing-card img {
+  filter: saturate(1.5) contrast(1.14) brightness(1.06);
+}
+
+/* Infinite logo tickers */
+.landing-ticker {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+.landing-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: landing-ticker 26s linear infinite;
+  will-change: transform;
+}
+.landing-ticker-slow { animation-duration: 38s; }
+.landing-ticker-group {
+  display: flex;
+  align-items: center;
+  gap: 2.75rem;
+  padding-inline-end: 2.75rem;
+}
+@keyframes landing-ticker {
+  from { transform: translate3d(-50%, 0, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-ticker-track { animation: none; }
+}
+
 
 .landing-aurora {
   position: absolute;
