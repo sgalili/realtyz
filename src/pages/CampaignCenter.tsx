@@ -698,6 +698,16 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
   return `${oneLiner}\n${keywordLine}`.trim();
 };
 
+/** Live status of a single draft, surfaced on its collapsed wrapper card. */
+type ComposerStatus = {
+  title: string;
+  generating: boolean;
+  photosLoading: boolean;
+  images: number;
+  chars: number;
+  ready: boolean;
+};
+
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
