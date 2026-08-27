@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { PriceTag } from '@/components/PriceTag';
 import { ArrowLeft, Check, Star } from 'lucide-react';
-import { FREE_CONTACTS, FREE_PROPERTIES } from '@/lib/pricing';
+import { FREE_CONTACTS, FREE_PROPERTIES, PACKAGES, limitLabel } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
+
 
 import { PlatformTicker, StackTicker } from '@/components/landing/LogoTickers';
 import realtyzLogo from '@/assets/realtyz-logo.png';
@@ -101,6 +109,71 @@ const FREE_TILES = [
   { image: imgAi, label: 'AI ללא הגבלה' },
 ];
 
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: 'איך התמחור עובד?',
+    a: 'מחיר חודשי קבוע לפי חבילה - חינם, בסיס ₪145, מקצועי ₪495 וסוכנות ₪795. אין תמחור לפי איש קשר ואין עלויות נסתרות. שירותים בצריכה בפועל (SMS, הודעות WhatsApp בתשלום, שיחות AI קוליות) נגרעים מארנק קרדיטים נפרד.',
+  },
+  {
+    q: 'האם יש התחייבות או חוזה?',
+    a: 'אין. כל החבילות חודשיות ומתחדשות אוטומטית עד שאתם מבטלים, בכל רגע, ללא דמי ביטול.',
+  },
+  {
+    q: 'איך מבטלים את המנוי?',
+    a: 'בלחיצה אחת מתוך המערכת, בעמוד ניהול החבילה. הביטול מיידי והחיוב העתידי נעצר מיד - בלי שיחות שכנוע ובלי טפסים.',
+  },
+  {
+    q: 'האם יש החזר כספי?',
+    a: 'לא. איננו מעניקים החזרים על תשלומים שבוצעו או על קרדיטים שנרכשו, אך הביטול מיידי והחיוב נעצר. הגישה לחבילה נשמרת עד סוף מחזור החיוב ששולם.',
+  },
+  {
+    q: 'מה כולל מסלול החינם?',
+    a: `${FREE_CONTACTS} אנשי קשר, ${FREE_PROPERTIES} נכסים וכל יכולות ה-AI פתוחות - ללא הגבלת זמן וללא כרטיס אשראי.`,
+  },
+  {
+    q: 'צריך כרטיס אשראי כדי להתחיל?',
+    a: 'לא. נרשמים ונכנסים למערכת מיד. כרטיס אשראי נדרש רק כשבוחרים חבילה בתשלום.',
+  },
+  {
+    q: 'אפשר לשנות חבילה באמצע החודש?',
+    a: 'כן. שדרוג נכנס לתוקף מיד עם חיוב יחסי, והורדת חבילה נכנסת לתוקף במחזור החיוב הבא.',
+  },
+  {
+    q: 'מה קורה אם עברתי את מגבלת אנשי הקשר או הנכסים?',
+    a: 'המערכת מתריעה ומציעה שדרוג. הנתונים הקיימים נשמרים, אך הוספת רשומות חדשות תיחסם עד לשדרוג.',
+  },
+  {
+    q: 'איך מתחברים לווטסאפ?',
+    a: 'המערכת עובדת עם WhatsApp Business API הרשמי של Meta. החיבור מוגדר עבורכם, וההודעות היוצאות והנכנסות מרוכזות בתיבה אחת בתוך המערכת.',
+  },
+  {
+    q: 'ה-AI שולח הודעות ללקוחות בלי אישור שלי?',
+    a: 'אתם שולטים במלואו. יש תור אישורים לפני שליחה, כפתור עצירה מיידי לכל פעולות ה-AI, ויומן פעילות שמתעד כל פעולה שבוצעה.',
+  },
+  {
+    q: 'איך המערכת מפרסמת לפייסבוק ולאינסטגרם?',
+    a: 'דרך ממשקי Meta הרשמיים: ה-AI מכין את הפוסט ואת התגובה הראשונה, אתם מאשרים, והמערכת מתזמנת ומפרסמת לעמודים, לקבוצות ולאינסטגרם.',
+  },
+  {
+    q: 'האם המידע של הלקוחות שלי מבודד ומאובטח?',
+    a: 'כן. בידוד מלא ברמת סביבת עבודה (Row Level Security), הצפנה בתעבורה ובמנוחה, הרשאות לפי תפקיד, אימות דו-שלבי ויומני ביקורת. איננו מוכרים נתונים ואיננו חושפים אותם למשתמשים אחרים.',
+  },
+  {
+    q: 'אפשר לייבא נתונים מ-Excel או ממערכת אחרת?',
+    a: 'כן. יש ייבוא CSV/XLSX עם מיפוי כותרות בעברית, זיהוי כפילויות אוטומטי, וכן סנכרון מלאי חי מיד2 ומ-Homely.',
+  },
+  {
+    q: 'אפשר להוסיף את הצוות שלי?',
+    a: 'כן. בחבילת מקצועי עד 5 משתמשים ובחבילת סוכנות ללא הגבלה, כולל הרשאות לפי תפקיד, פיקוח ויומן פעילות.',
+  },
+  {
+    q: 'מה קורה לנתונים שלי אם אני מפסיק להשתמש?',
+    a: 'הנתונים נשארים שלכם. ניתן לייצא הכול ל-CSV/XLSX בכל עת, וגם לאחר סגירת החשבון נשמרת אפשרות ייצוא לתקופה סבירה לפני מחיקה.',
+  },
+];
+
+
+
 function useCounter(target: number, ms = 700) {
   const [value, setValue] = useState(target);
   const raf = useRef<number>();
@@ -164,6 +237,9 @@ export default function Landing() {
             <a href="#features" className="transition-colors hover:text-foreground">יכולות</a>
             <a href="#whatsapp" className="transition-colors hover:text-foreground">ווטסאפ AI</a>
             <a href="#free" className="transition-colors hover:text-foreground">מסלול חינם</a>
+            <a href="#pricing" className="transition-colors hover:text-foreground">מחירים</a>
+            <a href="#faq" className="transition-colors hover:text-foreground">שאלות נפוצות</a>
+
 
           </nav>
           <Link to="/" aria-label="Realtyz AI">
@@ -365,13 +441,120 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ───────── Pricing ───────── */}
+      <section id="pricing" className="border-t border-border/60 py-20">
+        <div className="mx-auto w-full max-w-6xl px-4">
+          <Reveal>
+            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+              חבילות ומחירים
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
+              מחיר חודשי קבוע, בלי התחייבות ובלי עלויות נסתרות. ביטול מיידי מתוך המערכת - והחיוב נעצר.
+            </p>
+          </Reveal>
+
+          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {PACKAGES.map((p, i) => (
+              <Reveal key={p.id} delay={i * 80}>
+                <article
+                  className={cn(
+                    'flex h-full flex-col rounded-2xl border bg-card/60 p-6 text-right',
+                    p.highlight ? 'border-primary shadow-xl shadow-primary/15' : 'border-border/60',
+                  )}
+                >
+                  {p.highlight && (
+                    <span className="mb-3 self-start rounded-full bg-primary px-3 py-1 text-[11px] font-extrabold text-primary-foreground">
+                      הפופולרי
+                    </span>
+                  )}
+                  <h3 className="text-2xl font-extrabold">{p.name}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{p.tagline}</p>
+                  <div className="mt-4 flex items-baseline gap-1.5">
+                    <PriceTag value={p.monthlyPrice} className="text-3xl font-extrabold" />
+                    <span className="text-sm text-muted-foreground">/ לחודש</span>
+                  </div>
+                  <ul className="mt-5 space-y-2 text-[14px] leading-relaxed">
+                    <li className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>{limitLabel(p.contacts)} אנשי קשר</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>{limitLabel(p.properties)} נכסים</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>{limitLabel(p.seats)} משתמשים</span>
+                    </li>
+                    {p.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link to="/auth" className="mt-6 block">
+                    <Button
+                      className="h-12 w-full text-sm font-extrabold"
+                      variant={p.highlight ? 'default' : 'outline'}
+                    >
+                      {p.monthlyPrice === 0 ? 'התחלה בחינם' : `בחירת ${p.name}`}
+                    </Button>
+                  </Link>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+
+          <Reveal delay={200}>
+            <p className="mx-auto mt-8 max-w-3xl text-center text-sm text-muted-foreground">
+              שירותים בצריכה בפועל (SMS, הודעות WhatsApp בתשלום, שיחות AI קוליות) נגרעים מארנק
+              קרדיטים נפרד. המחירים אינם כוללים מע"מ. אין החזרים כספיים - אך הביטול מיידי והחיוב נעצר.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ───────── FAQ ───────── */}
+      <section id="faq" className="border-t border-border/60 py-20">
+        <div className="mx-auto w-full max-w-3xl px-4">
+          <Reveal>
+            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+              שאלות נפוצות
+            </h2>
+          </Reveal>
+          <Reveal delay={120}>
+            <Accordion type="single" collapsible className="mt-10 w-full">
+              {FAQ.map((item, i) => (
+                <AccordionItem key={item.q} value={`faq-${i}`}>
+                  <AccordionTrigger className="text-right text-base font-extrabold">
+                    {item.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-[15px] leading-relaxed text-muted-foreground">
+                    {item.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </Reveal>
+        </div>
+      </section>
+
       <footer className="border-t border-border/60 py-10 text-center text-sm text-muted-foreground">
         <p>Realtyz - מערכת ניהול נדל"ן מבוססת AI · כל הזכויות שמורות</p>
+        <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-semibold">
+          <Link to="/terms" className="transition-colors hover:text-foreground">תנאי שימוש</Link>
+          <Link to="/privacy-policy" className="transition-colors hover:text-foreground">מדיניות פרטיות</Link>
+          <a href="mailto:support@realtyz.co.il" className="transition-colors hover:text-foreground">
+            support@realtyz.co.il
+          </a>
+        </p>
         <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground/80">
           <Star className="h-3 w-3 text-primary" aria-hidden />
           פותח בגאווה בישראל · Proudly made in Israel
         </p>
       </footer>
+
     </div>
   );
 }

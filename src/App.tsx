@@ -73,6 +73,9 @@ const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
 const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const Landing = lazy(() => import("./pages/Landing"));
+const Terms = lazy(() => import("./pages/Terms"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+
 
 
 
@@ -194,6 +197,9 @@ const App = () => (
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
               <Route path="/" element={<RootRoute />} />
               <Route path="/landing" element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
+              <Route path="/terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
+              <Route path="/privacy-policy" element={<Suspense fallback={<PageLoader />}><PrivacyPolicy /></Suspense>} />
+
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/command-center" element={<ProtectedRoute allowGuestDemo><CommandCenter /></ProtectedRoute>} />
               <Route path="/tasks" element={<Navigate to="/command-center" replace />} />
