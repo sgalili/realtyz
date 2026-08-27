@@ -12,16 +12,17 @@ const PLATFORMS = [
   'linkedin', 'x', 'tiktok', 'youtube', 'gmail', 'sms', 'google_drive',
 ];
 
-const STACK: { label: string; color: string; icon?: string; img?: string }[] = [
+const STACK: { label: string; color: string; icon?: string; img?: string; chip?: boolean }[] = [
   { label: 'OpenAI', color: '#FFFFFF', icon: 'openai' },
-  { label: 'Gemini', color: '#4285F4', icon: 'gemini' },
-  { label: 'Claude', color: '#D97757', icon: 'claude' },
+  { label: 'Gemini', color: '#9B72CB', icon: 'gemini' },
   { label: 'Claude Code', color: '#D97757', icon: 'claude' },
   { label: 'React', color: '#61DAFB', icon: 'react' },
+  { label: 'Meta', color: '#0866FF', icon: 'meta' },
+  { label: 'WhatsApp Business', color: '#25D366', icon: 'whatsapp' },
   { label: 'Google Cloud', color: '#4285F4', icon: 'googlecloud' },
   { label: 'AWS', color: '#FF9900', icon: 'amazonaws' },
   { label: 'Supabase', color: '#3ECF8E', icon: 'supabase' },
-  { label: 'GitHub', color: '#E6EDF3', icon: 'github' },
+  { label: 'GitHub', color: '#E6EDF3', icon: 'github', chip: true },
   { label: 'GreenAPI', color: '#25D366', img: greenApiLogo },
   { label: '019', color: '#E4002B', img: logo019 },
 ];
