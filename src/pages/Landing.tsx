@@ -530,31 +530,8 @@ export default function Landing() {
               ללא הגבלת זמן, ללא כרטיס אשראי, בלי שיחת מכירה.
             </p>
           </Reveal>
-          <Reveal delay={120}>
-            <div className="mx-auto mt-9 grid max-w-2xl grid-cols-3 gap-3 sm:gap-4">
-              {FREE_TILES.map((s) => (
-                <div
-                  key={s.label}
-                  className="landing-card relative overflow-hidden rounded-2xl border border-border/70 transition-transform duration-300 will-change-transform hover:-translate-y-1"
-                >
-                  <img
-                    src={s.image}
-                    alt=""
-                    aria-hidden
-                    loading="lazy"
-                    width={1024}
-                    height={640}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                  <div aria-hidden className="landing-card-veil absolute inset-0" />
-                  <p className="relative px-3 py-10 text-sm font-extrabold text-white drop-shadow sm:text-base">
-                    {s.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Reveal>
           <Reveal delay={200}>
+
             <Link to="/auth" className="mt-10 inline-block">
               <Button size="lg" className="h-14 px-10 text-base font-extrabold shadow-2xl shadow-primary/25">
                 פתיחת חשבון וכניסה מיידית למערכת
