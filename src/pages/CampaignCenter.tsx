@@ -651,7 +651,23 @@ const extractListingFeatureFlags = (listing: CampaignListing | null | undefined)
   return Array.from(new Set(bag.map((s) => s.trim()).filter(Boolean)));
 };
 
+// Real, human post title: property type + address (+ city). Never a placeholder.
+const listingHeadline = (listing: CampaignListing | null | undefined): string => {
+  if (!listing) return '';
+  const meta = (listing.source_metadata || {}) as Record<string, unknown>;
+  const featuresObj = (listing.features && !Array.isArray(listing.features) && typeof listing.features === 'object')
+    ? (listing.features as Record<string, unknown>)
+    : {};
+  const type = hebrewPropertyType(meta.property_type || featuresObj.property_type || '');
+  const place = listing.address || listing.property_title || listing.neighborhood || '';
+  const parts = [type, place ? String(place) : null, listing.city ? String(listing.city) : null]
+    .filter(Boolean)
+    .map((s) => String(s).trim());
+  return Array.from(new Set(parts)).join(' · ');
+};
+
 const buildFirstCommentKeywordLine = (listing: CampaignListing | null | undefined) => {
+
   if (!listing) return '';
   const meta = (listing.source_metadata || {}) as Record<string, unknown>;
   const featuresObj = (listing.features && !Array.isArray(listing.features) && typeof listing.features === 'object')
@@ -927,24 +943,32 @@ const InlineComposer = ({
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const groupStorageKey = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
   const [groupIds, setGroupIds] = useState<string[]>([]);
+  const groupsHydratedRef = useRef(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (hideBottomBar) {
       // In multi-draft mode the page-level bulk bar is the source of truth.
-      setGroupIds(bulkGroupIds || []);
+      if (bulkGroupIds && bulkGroupIds.length) { setGroupIds(bulkGroupIds); groupsHydratedRef.current = true; }
       return;
     }
+    if (!workspaceOwnerId) return;
     const shared = loadCampaignGroups(workspaceOwnerId);
     if (shared.length) setGroupIds(shared);
+    groupsHydratedRef.current = true;
   }, [groupStorageKey, hideBottomBar, bulkGroupIds, workspaceOwnerId]);
   useEffect(() => {
     if (hideBottomBar) return; // page-level bar owns persistence in multi-draft mode
+    // Never write an empty selection before hydration finished — that wiped the
+    // saved 24-group selection and reset every counter to 0.
+    if (!workspaceOwnerId || !groupsHydratedRef.current) return;
     saveCampaignGroups(workspaceOwnerId, groupIds);
   }, [groupIds, workspaceOwnerId, hideBottomBar]);
 
   useEffect(() => {
+    if (!groupsHydratedRef.current && groupIds.length === 0) return;
     onBulkGroupIdsChange?.(groupIds);
   }, [groupIds, onBulkGroupIdsChange]);
+
 
 
   // Group picker modal (opened from the group icon button next to "פרסם").
@@ -1275,8 +1299,29 @@ const InlineComposer = ({
     return () => { cancelled = true; };
   }, [listingPickerOpen]);
 
+  // The full listing list is only loaded when the picker opens, so a deep-linked
+  // draft fetches its own row. That way the card title shows the REAL property
+  // (type + address) instead of a generic placeholder.
+  const [soloListing, setSoloListing] = useState<CampaignListing | null>(null);
+  useEffect(() => {
+    if (!selectedListingId) { setSoloListing(null); return; }
+    if (listings.some((l) => l.id === selectedListingId)) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
+        .eq('id', selectedListingId)
+        .maybeSingle();
+      if (!cancelled && data) setSoloListing(data as unknown as CampaignListing);
+    })();
+    return () => { cancelled = true; };
+  }, [selectedListingId, listings]);
+
   const selectedListing = listings.find((l) => l.id === selectedListingId)
-    || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', description: null, city: null, neighborhood: null, address: null, rooms: null, sqm: null, floor: null, asking_price: null, features: null, source_metadata: null, status: null, is_published: null, created_at: null } : null);
+    || (soloListing && soloListing.id === selectedListingId ? soloListing : null)
+    || (selectedListingId ? { id: selectedListingId, property_title: null, description: null, city: null, neighborhood: null, address: null, rooms: null, sqm: null, floor: null, asking_price: null, features: null, source_metadata: null, media_photos: null, status: null, is_published: null, created_at: null } as CampaignListing : null);
+
 
   // Always attach up to 10 RANDOM photos of the promoted property — covers
   // deep-links / calendar fan-out / restored drafts, not just manual picks.
@@ -1525,7 +1570,7 @@ const InlineComposer = ({
     try {
       const topic = body.trim()
         || customInstructions.trim()
-        || (selectedListing?.property_title ? `פוסט קידום: ${selectedListing.property_title}` : `פוסט שיווקי מאת אודי ויטמן`);
+        || (listingHeadline(selectedListing) ? `פוסט קידום: ${listingHeadline(selectedListing)}` : `פוסט שיווקי מאת אודי ויטמן`);
       const rotateNote = opts?.rotateTemplate
         ? 'בחר תבנית שונה לחלוטין מהפעם הקודמת מתוך מאגר הידע (KB) של תבניות הפוסטים. גוון בין תבניות גלובליות לבין תבניות מקוריות של אודי. שמור על דיוק עובדתי מלא לפי נתוני הנכס, טון מקצועי בכיר וקריאה לפעולה חדה לוואטסאפ/טלפון. אל תחזור על אותו פתיח, אותה מבנה או אותו ניסוח CTA כמו בגרסה הקודמת.'
         : '';
@@ -1889,7 +1934,7 @@ const InlineComposer = ({
 
   useEffect(() => {
     onStatus?.({
-      title: (activeListing?.property_title || activeListing?.address || '') as string,
+      title: (listingHeadline(activeListing) || activeListing?.property_title || activeListing?.address || '') as string,
       generating: generating || firstCommentGenerating,
       photosLoading,
       images: imageCount,
@@ -2510,7 +2555,8 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, selectedProfileIds, attachWaLink, firstComment, onConfirmed,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, selectedProfileIds, attachWaLink, firstComment, onConfirmed,
+
 }: {
   open: boolean;
   onClose: () => void;
@@ -2532,6 +2578,38 @@ const ConfirmDispatchDialog = ({
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
+  // Groups are editable right here in the confirmation step: clicking the count
+  // opens the picker so targets can be added / removed before broadcasting.
+  const [groupIds, setGroupIds] = useState<string[]>(groupIdsProp);
+  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
+  useEffect(() => {
+    if (open) setGroupIds(groupIdsProp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, groupIdsProp.join(',')]);
+  // Ticking "time left" until the first broadcast goes out.
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setInterval(() => setNowTs(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [open]);
+  const countdownLabel = (() => {
+    if (!scheduledAt) return 'מיד עם האישור';
+    const diff = new Date(scheduledAt).getTime() - nowTs;
+    if (!Number.isFinite(diff)) return '—';
+    if (diff <= 0) return 'מיד עם האישור';
+    const total = Math.floor(diff / 1000);
+    const days = Math.floor(total / 86400);
+    const hours = Math.floor((total % 86400) / 3600);
+    const mins = Math.floor((total % 3600) / 60);
+    const secs = total % 60;
+    if (days > 0) return `בעוד ${days} ימים ו-${hours} שעות`;
+    if (hours > 0) return `בעוד ${hours} שעות ו-${mins} דקות`;
+    if (mins > 0) return `בעוד ${mins} דקות ו-${secs} שניות`;
+    return `בעוד ${secs} שניות`;
+  })();
+
+
   // Pre-send statistics for the selected Facebook groups (count + reach).
   const [groupStats, setGroupStats] = useState<{ known: number; members: number }>({ known: 0, members: 0 });
   useEffect(() => {
@@ -2957,10 +3035,15 @@ const ConfirmDispatchDialog = ({
         <div className="rounded-xl border border-border bg-muted/30 p-3 text-right">
           <div className="mb-2 text-sm font-semibold text-foreground">סטטיסטיקה לפני שידור</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <div className="rounded-lg bg-background p-2">
-              <div className="text-[11px] text-muted-foreground">קבוצות נבחרות</div>
-              <div className="text-lg font-bold tabular-nums text-foreground">{groupIds.length}</div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setGroupPickerOpen(true)}
+              className="rounded-lg bg-background p-2 text-right transition hover:bg-primary/5 hover:ring-1 hover:ring-primary/40"
+              title="לחץ לעריכת רשימת הקבוצות"
+            >
+              <div className="text-[11px] text-muted-foreground">קבוצות נבחרות (לחץ לעריכה)</div>
+              <div className="text-lg font-bold tabular-nums text-primary underline decoration-dotted">{groupIds.length}</div>
+            </button>
             <div className="rounded-lg bg-background p-2">
               <div className="text-[11px] text-muted-foreground">חברים בכל הקבוצות</div>
               <div className="text-lg font-bold tabular-nums text-foreground">
@@ -2988,12 +3071,39 @@ const ConfirmDispatchDialog = ({
                 {scheduledAt ? new Date(scheduledAt).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'עכשיו'}
               </div>
             </div>
+            {/* Live countdown to the first broadcast of this scheduled post. */}
+            <div className="rounded-lg bg-background p-2">
+              <div className="text-[11px] text-muted-foreground">זמן עד השידור הראשון</div>
+              <div className="text-sm font-bold text-foreground">{countdownLabel}</div>
+              {scheduledAt && (
+                <div className="text-[10px] text-muted-foreground">
+                  {new Date(scheduledAt).toLocaleString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="mt-2 text-[11px] text-muted-foreground">
-            סה"כ שידורים צפויים: <span className="font-bold tabular-nums">{(publishTargets.length || 1) + groupIds.length}</span>
-            {' · '}אורך הטקסט: <span className="font-bold tabular-nums">{body.trim().length}</span> תווים
-          </div>
+
         </div>
+
+        {/* Inline group editor — rendered in-dialog so the list scrolls freely. */}
+        {groupPickerOpen && (
+          <div className="rounded-xl border border-border bg-background p-3" dir="rtl">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-sm font-semibold text-foreground">בחירת קבוצות לשידור</div>
+              <Button type="button" size="sm" variant="outline" onClick={() => {
+                saveCampaignGroups(workspaceOwnerId, groupIds);
+                setGroupPickerOpen(false);
+              }}>
+                סיום ({groupIds.length})
+              </Button>
+            </div>
+            <div className="max-h-[45vh] overflow-y-auto overscroll-contain">
+              <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
+            </div>
+          </div>
+        )}
+
+
 
 
 
@@ -5523,9 +5633,13 @@ const CampaignCenter = () => {
   // Persist bulk choices per workspace so a refresh doesn't lose the last
 
   // group/time selection for current and future multi-draft campaigns.
+  // Hydration must wait for the workspace id, otherwise we would read the wrong
+  // storage key, find nothing, and then overwrite the real selection with [].
+  const groupsHydratedRef = useRef(false);
   useEffect(() => {
+    if (!workspaceOwnerId || groupsHydratedRef.current) return;
     try {
-      const sKey = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';
+      const sKey = `campaign:bulkScheduleIso:${workspaceOwnerId}`;
       const parsedGroups = loadCampaignGroups(workspaceOwnerId);
       if (parsedGroups.length) setBulkGroupIds(parsedGroups);
       const rawIso = localStorage.getItem(sKey);
@@ -5535,8 +5649,8 @@ const CampaignCenter = () => {
       }
       setBulkRecurrence(loadSchedulePrefs(workspaceOwnerId).recurrence);
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    groupsHydratedRef.current = true;
+  }, [workspaceOwnerId]);
   // Live sync: any group change made in the scheduling dialog updates the bubble.
   useEffect(() => subscribeCampaignGroups((ids) => {
     setBulkGroupIds((curr) => (JSON.stringify(curr) === JSON.stringify(ids) ? curr : ids));
@@ -5552,8 +5666,11 @@ const CampaignCenter = () => {
     }
   }, [bulkGlobalScheduleOpen, workspaceOwnerId]);
   useEffect(() => {
+    // Never persist before hydration — that is what used to zero the count.
+    if (!workspaceOwnerId || !groupsHydratedRef.current) return;
     saveCampaignGroups(workspaceOwnerId, bulkGroupIds);
   }, [bulkGroupIds, workspaceOwnerId]);
+
 
   useEffect(() => {
     try {
@@ -6373,8 +6490,9 @@ const CampaignCenter = () => {
                 })}
                 {/* Bulk dispatch — publishes every ready draft one after another. */}
                 <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
-                  <div className="mx-auto flex max-w-3xl flex-col gap-2">
+                  <div className="mx-auto flex max-w-3xl items-stretch gap-2">
                   <div className="flex items-stretch gap-2">
+
                     {generationStopped ? (
                       <button
                         type="button"
@@ -6433,21 +6551,21 @@ const CampaignCenter = () => {
                       </button>
                     )}
                   </div>
-                  {/* Publish sits alone on the very last row of the screen. */}
+                  {/* Publish sits at the far end of the same row, opposite the action icons. */}
                   <button
                     type="button"
                     onClick={() => publishAllDrafts(blocks.map((b, idx) => draftKeyFor(b, idx)))}
                     disabled={readyKeys.length === 0}
                     className={cn(
-                      'flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
+                      'ms-auto flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
                       readyKeys.length
                         ? 'bg-[hsl(217,80%,18%)] text-white shadow-md hover:bg-[hsl(217,80%,14%)]'
                         : 'cursor-not-allowed bg-muted text-muted-foreground/80',
                     )}
                   >
-                    <Megaphone className="h-4 w-4" />
                     פרסם את כל הטיוטות ({readyKeys.length})
                   </button>
+
                   </div>
                 </div>
 
