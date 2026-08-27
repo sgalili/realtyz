@@ -5994,6 +5994,8 @@ const CampaignCenter = () => {
                       presetVariant={b.variant}
                       presetVariants={b.totalVariants}
                       instanceId={key}
+                      bulkGroupIds={bulkGroupIds}
+                      bulkScheduleIso={bulkScheduleIso}
                       onRegisterPublish={(fn) => {
                         if (fn) publishFnsRef.current.set(key, fn);
                         else publishFnsRef.current.delete(key);
