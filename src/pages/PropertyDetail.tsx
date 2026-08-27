@@ -401,6 +401,7 @@ export default function PropertyDetail() {
   const neighborhood = data?.neighborhood;
   const projectName = data?.projectName ?? null;
   const sourceUrl = data?.sourceUrl ?? null;
+  const liveYad2Status = useYad2AdStatus(sourceUrl && /yad2\.co\.il/i.test(sourceUrl) ? sourceUrl : null);
   const amenities = data?.amenities;
   const documents = data?.documents ?? [];
   const ownerId = data?.row?.owner_id ? String(data.row.owner_id) : null;
@@ -1075,7 +1076,6 @@ export default function PropertyDetail() {
     '';
   const sourceOrigin = String((meta as JsonRecord).source_origin ?? '').toLowerCase();
   const isYad2Listing = /yad2\.co\.il/i.test(resolvedSourceUrl);
-  const yad2Status = useYad2AdStatus(isYad2Listing ? resolvedSourceUrl : null);
   const isHomelyListing = !isYad2Listing && (sourceOrigin === 'homely' || String(data?.row?.source ?? '').toLowerCase() === 'homely');
   const yad2Url = isYad2Listing ? resolvedSourceUrl : '';
   const originalDate = formatIsoDate(
@@ -1168,7 +1168,7 @@ export default function PropertyDetail() {
 
 
                 {/* Yad2 live ad first, campaign second (positions swapped). */}
-                {yad2Url && yad2Status === 'live' && (
+                {yad2Url && liveYad2Status === 'live' && (
                   <a
                     href={yad2Url}
                     target="_blank"
