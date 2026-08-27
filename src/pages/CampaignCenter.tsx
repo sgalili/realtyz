@@ -4129,6 +4129,19 @@ const PublishedFeed = () => {
             </header>
 
 
+            {isOpen && failed && failureReason && (
+              <div
+                className="mx-4 mb-3 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-[12px] font-semibold leading-relaxed text-destructive whitespace-pre-wrap break-words"
+                dir="rtl"
+              >
+                <div className="mb-1 flex items-center gap-1.5 font-bold">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span>הפרסום נכשל</span>
+                </div>
+                {failureReason}
+              </div>
+            )}
+
 
             {isOpen && (
               <>
