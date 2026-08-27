@@ -6542,7 +6542,7 @@ const CampaignCenter = () => {
                   // rotation) must map every draft back to the SAME stored
                   // snapshot, otherwise restored work looks lost and the AI
                   // regenerates from scratch.
-                  const key = draftKeyFor(b, idx);
+                  const key = keyOf(b);
                   return (
                   <DraftCollapsibleCard
                     key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`}
@@ -6650,7 +6650,7 @@ const CampaignCenter = () => {
                   {/* Publish sits at the far end of the same row, opposite the action icons. */}
                   <button
                     type="button"
-                    onClick={() => publishAllDrafts(blocks.map((b, idx) => draftKeyFor(b, idx)))}
+                    onClick={() => publishAllDrafts(blocks.map((b) => keyOf(b)))}
                     disabled={readyKeys.length === 0}
                     className={cn(
                       'ms-auto flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
