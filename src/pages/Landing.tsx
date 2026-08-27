@@ -4,15 +4,14 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Infinity as InfinityIcon, ArrowLeft, Check, MessageCircle, Zap, Mail,
-  Facebook, Instagram, CalendarCheck2,
+  Infinity as InfinityIcon, ArrowLeft, Check,
 } from 'lucide-react';
 import {
   FREE_CONTACTS, FREE_PROPERTIES, PRICING_TIERS, quoteForContacts,
 } from '@/lib/pricing';
 import { fmtILS } from '@/lib/formatCurrency';
 import { cn } from '@/lib/utils';
-import BenefitCharts from '@/components/landing/BenefitCharts';
+import { PlatformTicker, StackTicker } from '@/components/landing/LogoTickers';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import imgPublishing from '@/assets/landing/card-publishing.jpg';
 import imgOmnichannel from '@/assets/landing/card-omnichannel.jpg';
@@ -20,6 +19,7 @@ import imgVoice from '@/assets/landing/card-voice.jpg';
 import imgCalendar from '@/assets/landing/card-calendar.jpg';
 import imgAi from '@/assets/landing/card-ai.jpg';
 import imgAnalytics from '@/assets/landing/card-analytics.jpg';
+
 
 /* ────────────────────────────────────────────────────────────────
    Realtyz — דף נחיתה (RTL). פלטת הצבעים של האפליקציה בלבד:
@@ -35,9 +35,10 @@ const FEATURES = [
   },
   {
     image: imgOmnichannel,
-    title: 'ניהול אומני-צ\'אנל אמיתי',
+    title: 'שיחות מכל האפליקציות והרשתות',
     body: 'ווטסאפ, SMS, אימייל ורשתות חברתיות בתיבה אחת מסונכרנת - כל השיחה של הלקוח במקום אחד.',
   },
+
   {
     image: imgVoice,
     title: 'עוזר AI בווטסאפ - גם בהודעות קוליות',
@@ -75,14 +76,6 @@ const FEATURES = [
   },
 ];
 
-const CHANNELS = [
-  { icon: MessageCircle, label: 'WhatsApp' },
-  { icon: Zap, label: 'SMS' },
-  { icon: Mail, label: 'Gmail' },
-  { icon: Facebook, label: 'Facebook' },
-  { icon: Instagram, label: 'Instagram' },
-  { icon: CalendarCheck2, label: 'Google Calendar' },
-];
 
 const WHATSAPP_POWERS = [
   'שליחת הודעת פתיחה אוטומטית לכל מתעניין חדש בשניות',
@@ -95,7 +88,8 @@ const WHATSAPP_POWERS = [
 
 const INCLUDED = [
   'CRM מתעניינים מלא ללא הגבלה',
-  'תיבת דואר אומני-צ\'אנל',
+  'תיבת שיחות מכל האפליקציות והרשתות',
+
   'ניהול נכסים ומלאי חי',
   'יצירת פוסטים, תזמון ופרסום לפייסבוק ואינסטגרם',
   'עוזר AI בווטסאפ כולל הודעות קוליות',
@@ -189,7 +183,7 @@ export default function Landing() {
             <a href="#free" className="transition-colors hover:text-foreground">מסלול חינם</a>
           </nav>
           <Link to="/" aria-label="Realtyz AI">
-            <img src={realtyzLogo} alt="Realtyz AI" className="h-8 w-auto object-contain" />
+            <img src={realtyzLogo} alt="Realtyz AI" className="h-[2.6rem] w-auto object-contain" />
           </Link>
         </div>
       </header>
@@ -218,21 +212,21 @@ export default function Landing() {
 
           <Reveal delay={160}>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              פוסטים אוטומטיים לקבוצות פייסבוק ואינסטגרם, ניהול אומני-צ'אנל, עוזר AI שמדבר איתכם
+              פוסטים אוטומטיים לקבוצות פייסבוק ואינסטגרם, שיחות מכל האפליקציות והרשתות, עוזר AI שמדבר איתכם
               בהקלטות קוליות בווטסאפ וסנכרון מלא לגוגל. הכל בעברית, הכל תחת השליטה שלכם.
             </p>
           </Reveal>
 
           <Reveal delay={240}>
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link to="/auth" className="w-full sm:w-auto">
-                <Button size="lg" className="group h-14 w-full px-8 text-base font-extrabold shadow-2xl shadow-primary/25 sm:w-auto">
+            <div className="mt-9 flex flex-row flex-wrap items-center justify-center gap-3">
+              <Link to="/auth">
+                <Button size="lg" className="group h-14 px-8 text-base font-extrabold shadow-2xl shadow-primary/25">
                   התחל בחינם - בלי כרטיס אשראי
                   <ArrowLeft className="ms-2 h-5 w-5 transition-transform group-hover:-translate-x-1" />
                 </Button>
               </Link>
-              <a href="#pricing" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="h-14 w-full px-7 text-base font-bold sm:w-auto">
+              <a href="#pricing">
+                <Button size="lg" variant="outline" className="h-14 px-7 text-base font-bold">
                   חשב את העלות שלי
                 </Button>
               </a>
@@ -247,17 +241,25 @@ export default function Landing() {
             </div>
           </Reveal>
 
-          {/* Channels — plain icons, no chips, no backgrounds */}
+          {/* Platforms — official brand logos, infinite scroll, no labels */}
           <Reveal delay={400}>
-            <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-              {CHANNELS.map((c) => (
-                <span key={c.label} className="inline-flex items-center gap-2 text-sm font-bold text-foreground">
-                  <c.icon className="h-5 w-5 text-primary" strokeWidth={2.25} />
-                  {c.label}
-                </span>
-              ))}
+            <div className="mt-14">
+              <PlatformTicker />
             </div>
           </Reveal>
+
+          {/* Infrastructure trust row */}
+          <Reveal delay={470}>
+            <div className="mt-10">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Built &amp; Operating by
+              </p>
+              <div className="mt-4">
+                <StackTicker />
+              </div>
+            </div>
+          </Reveal>
+
         </div>
       </section>
 
@@ -275,7 +277,7 @@ export default function Landing() {
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f, i) => (
               <Reveal key={f.title} delay={(i % 3) * 90}>
-                <article className="landing-card group relative h-full min-h-[15rem] overflow-hidden rounded-2xl border border-border/70 transition-transform duration-300 will-change-transform hover:-translate-y-1.5">
+                <article className="landing-card group relative h-full min-h-[11.5rem] overflow-hidden rounded-2xl border border-border/70 transition-transform duration-300 will-change-transform hover:-translate-y-1.5">
                   <img
                     src={f.image}
                     alt=""
@@ -286,10 +288,11 @@ export default function Landing() {
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <div aria-hidden className="landing-card-veil absolute inset-0" />
-                  <div className="relative flex h-full flex-col justify-end p-6">
+                  <div className="relative flex h-full flex-col justify-end p-4">
                     <h3 className="text-lg font-extrabold text-white drop-shadow">{f.title}</h3>
-                    <p className="mt-2 text-[15px] leading-relaxed text-white/85">{f.body}</p>
+                    <p className="mt-1.5 text-[14px] leading-snug text-white/90">{f.body}</p>
                   </div>
+
                 </article>
               </Reveal>
             ))}
@@ -297,7 +300,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ───────── Impact charts ───────── */}
+      {/* ───────── Impact metrics ───────── */}
       <section id="impact" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
@@ -308,24 +311,23 @@ export default function Landing() {
               מהרגע שהליד נכנס ועד סגירת העסקה: מענה מיידי, מעקב אוטומטי ותמונת מצב עסקית אחת.
             </p>
           </Reveal>
-          <Reveal delay={120} className="mt-12">
-            <BenefitCharts />
-          </Reveal>
-          <Reveal delay={200}>
-            <div className="mt-8 grid gap-5 sm:grid-cols-3">
+          <Reveal delay={140}>
+            <div className="mt-12 grid gap-5 grid-cols-1 sm:grid-cols-3">
               {[
-                { value: '45 שניות', label: 'זמן מענה ממוצע לליד חדש' },
-                { value: '+38%', label: 'שיפור בשיעור ההמרה לפגישה' },
-                { value: '12 שעות', label: 'חיסכון שבועי בעבודה ידנית' },
+                { value: '45 שניות', label: 'זמן מענה ממוצע לליד חדש', tone: 'hsl(var(--brand-navy))' },
+                { value: '+38%', label: 'שיפור בשיעור ההמרה לפגישה', tone: 'hsl(var(--brand-red))' },
+                { value: '12 שעות', label: 'חיסכון שבועי בעבודה ידנית', tone: 'hsl(var(--brand-navy))' },
               ].map((s) => (
                 <div key={s.label} className="landing-card rounded-2xl border border-border/70 bg-card p-6 text-center">
-                  <p className="text-3xl font-extrabold tabular-nums text-primary">{s.value}</p>
+                  <p className="text-4xl font-extrabold tabular-nums" style={{ color: s.tone }}>{s.value}</p>
                   <p className="mt-2 text-sm font-semibold text-muted-foreground">{s.label}</p>
                 </div>
               ))}
+
             </div>
           </Reveal>
         </div>
+
       </section>
 
       {/* ───────── WhatsApp super assistant ───────── */}
@@ -344,7 +346,7 @@ export default function Landing() {
               </p>
               <Link to="/auth" className="mt-7 inline-block">
                 <Button size="lg" className="h-14 px-8 text-base font-extrabold">
-                  נסו את זה בחינם עכשיו
+                  נסו בחינם עכשיו
                 </Button>
               </Link>
             </div>
