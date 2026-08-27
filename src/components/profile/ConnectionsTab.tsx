@@ -16,20 +16,22 @@ import { useFacebookHealth } from '@/hooks/useFacebookHealth';
 type Tone = 'ok' | 'idle';
 
 function StatusPill({ label, tone }: { label: string; tone: Tone }) {
+  // Inline styles on purpose: global CSS neutralizes utility color classes
+  // (bg-emerald/bg-slate...) with !important, which washed these pills out.
+  const style = tone === 'ok'
+    ? { backgroundColor: 'hsl(152 62% 30%)', color: '#ffffff', borderColor: 'hsl(152 62% 24%)' }
+    : { backgroundColor: 'hsl(215 28% 95%)', color: 'hsl(217 45% 22%)', borderColor: 'hsl(215 20% 78%)' };
   return (
     <span
-      className={cn(
-        'shrink-0 rounded-full border px-3 py-1 text-[12px] font-semibold',
-        tone === 'ok'
-          ? 'border-emerald-700 bg-emerald-600 text-white'
-          : 'border-slate-300 bg-slate-100 text-slate-700',
-      )}
+      className="shrink-0 rounded-full border px-3 py-1 text-[13px] font-bold"
+      style={style}
       dir="ltr"
     >
       {label}
     </span>
   );
 }
+
 
 /**
  * Collapsible connection section. Collapsed rows show only the connection name
