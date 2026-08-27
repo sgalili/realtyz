@@ -16,6 +16,7 @@ import { RotatingHeadline } from '@/components/RotatingHeadline';
 
 import NotificationCenter from '@/components/NotificationCenter';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
+import QuickActionDrawer from '@/components/QuickActionDrawer';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
@@ -486,6 +487,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <DemoSidebarPeek />
           </main>
           <AiAgentDrawer />
+          <QuickActionDrawer />
           <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
             <DialogContent dir="rtl" className="premium-auth-modal sm:max-w-md">
               <DialogHeader className="text-right">
