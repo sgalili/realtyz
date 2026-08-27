@@ -921,7 +921,10 @@ const InlineComposer = ({
 
   // Bulk override from the page-level bottom bar — update every draft at once.
   useEffect(() => {
-    if (bulkGroupIds) setGroupIds(bulkGroupIds);
+    // A freshly mounted parent starts with [] until its workspace preferences
+    // hydrate. Never let that transient value erase the groups stored with the
+    // draft (for example the user's 24 selected groups).
+    if (bulkGroupIds && bulkGroupIds.length > 0) setGroupIds(bulkGroupIds);
   }, [bulkGroupIds]);
 
   useEffect(() => {
@@ -942,7 +945,12 @@ const InlineComposer = ({
   // doesn't wipe the selection, and the bulk picker stays in sync with drafts.
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const groupStorageKey = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
-  const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [groupIds, setGroupIds] = useState<string[]>(() => {
+    const savedWithDraft = Array.isArray(initial.groupIds)
+      ? initial.groupIds.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)
+      : [];
+    return savedWithDraft;
+  });
   const groupsHydratedRef = useRef(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -965,7 +973,7 @@ const InlineComposer = ({
   }, [groupIds, workspaceOwnerId, hideBottomBar]);
 
   useEffect(() => {
-    if (!groupsHydratedRef.current && groupIds.length === 0) return;
+    if (!groupsHydratedRef.current || groupIds.length === 0) return;
     onBulkGroupIdsChange?.(groupIds);
   }, [groupIds, onBulkGroupIdsChange]);
 
@@ -1106,6 +1114,7 @@ const InlineComposer = ({
         firstCommentEnabled,
         attachWaLink,
         attachMsngrLink,
+        groupIds,
       };
       // Never downgrade a stored draft that has text into a textless one.
       if (!snapshot.body.trim()) {
@@ -1123,7 +1132,7 @@ const InlineComposer = ({
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, hydrated]);
+  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, groupIds, hydrated]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -5641,7 +5650,9 @@ const CampaignCenter = () => {
     try {
       const sKey = `campaign:bulkScheduleIso:${workspaceOwnerId}`;
       const parsedGroups = loadCampaignGroups(workspaceOwnerId);
-      if (parsedGroups.length) setBulkGroupIds(parsedGroups);
+      const scheduledGroups = loadSchedulePrefs(workspaceOwnerId).selectedGroupIds;
+      const restoredGroups = parsedGroups.length ? parsedGroups : scheduledGroups;
+      if (restoredGroups.length) setBulkGroupIds(restoredGroups);
       const rawIso = localStorage.getItem(sKey);
       if (rawIso) {
         const d = new Date(rawIso);
@@ -5661,7 +5672,9 @@ const CampaignCenter = () => {
       try {
         setBulkRecurrence(loadSchedulePrefs(workspaceOwnerId).recurrence);
         const shared = loadCampaignGroups(workspaceOwnerId);
-        if (shared.length) setBulkGroupIds(shared);
+        const scheduled = loadSchedulePrefs(workspaceOwnerId).selectedGroupIds;
+        const restored = shared.length ? shared : scheduled;
+        if (restored.length) setBulkGroupIds(restored);
       } catch {}
     }
   }, [bulkGlobalScheduleOpen, workspaceOwnerId]);
@@ -6661,10 +6674,8 @@ const CampaignCenter = () => {
                         if (extras?.assignments) {
                           try { sessionStorage.setItem('rz-schedule-assignments', JSON.stringify(extras.assignments)); } catch {}
                         }
-                        const unifiedGroupKey = `campaign:selectedGroups:${workspaceOwnerId}`;
                         if (extras?.groupIds && extras.groupIds.length > 0) {
-                          try { localStorage.setItem(unifiedGroupKey, JSON.stringify(extras.groupIds)); } catch {}
-                          try { localStorage.setItem('campaign:groupIds', JSON.stringify(extras.groupIds)); } catch {}
+                          saveCampaignGroups(workspaceOwnerId, extras.groupIds);
                           setBulkGroupIds(extras.groupIds);
                         }
                         setBulkGlobalScheduleOpen(false);
@@ -6722,10 +6733,9 @@ const CampaignCenter = () => {
               }
               // Persist selected Facebook groups so the composer picks them up
               // (it hydrates `groupIds` from this localStorage key on mount).
-              const unifiedGroupKey = `campaign:selectedGroups:${workspaceOwnerId}`;
               if (extras?.groupIds && extras.groupIds.length > 0) {
-                try { localStorage.setItem(unifiedGroupKey, JSON.stringify(extras.groupIds)); } catch {}
-                try { localStorage.setItem('campaign:groupIds', JSON.stringify(extras.groupIds)); } catch {}
+                saveCampaignGroups(workspaceOwnerId, extras.groupIds);
+                setBulkGroupIds(extras.groupIds);
               }
               setSearchParams(next, { replace: false });
             }}
