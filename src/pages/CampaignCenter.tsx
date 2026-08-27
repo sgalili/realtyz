@@ -578,8 +578,20 @@ const cleanFirstComment = (value: string) => String(value || '')
   .replace(/\n*\s*(?:📞|☎️|📱)?\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, '')
   .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, '')
   .replace(/\n*\s*רישיון\s*תיווך[^\n]*/gu, '')
+  // No English keywords in first comments (URLs are preserved as-is).
+  .split('\n')
+  .map((line) => (/https?:\/\/|wa\.me|m\.me/i.test(line)
+    ? line
+    : line
+        .replace(/\b[A-Za-z][A-Za-z'׳-]*\b/g, '')
+        .replace(/\|\s*(?=\|)/g, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/\s*\|\s*$/, '')
+        .trimEnd()))
+  .join('\n')
   .replace(/\n{3,}/g, '\n\n')
   .trim();
+
 
 const extractListingFeatureFlags = (listing: CampaignListing | null | undefined) => {
   if (!listing) return [] as string[];
