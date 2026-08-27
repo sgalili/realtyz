@@ -4,15 +4,14 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Infinity as InfinityIcon, ArrowLeft, Check, MessageCircle, Zap, Mail,
-  Facebook, Instagram, CalendarCheck2,
+  Infinity as InfinityIcon, ArrowLeft, Check,
 } from 'lucide-react';
 import {
   FREE_CONTACTS, FREE_PROPERTIES, PRICING_TIERS, quoteForContacts,
 } from '@/lib/pricing';
 import { fmtILS } from '@/lib/formatCurrency';
 import { cn } from '@/lib/utils';
-import BenefitCharts from '@/components/landing/BenefitCharts';
+import { PlatformTicker, StackTicker } from '@/components/landing/LogoTickers';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import imgPublishing from '@/assets/landing/card-publishing.jpg';
 import imgOmnichannel from '@/assets/landing/card-omnichannel.jpg';
@@ -20,6 +19,7 @@ import imgVoice from '@/assets/landing/card-voice.jpg';
 import imgCalendar from '@/assets/landing/card-calendar.jpg';
 import imgAi from '@/assets/landing/card-ai.jpg';
 import imgAnalytics from '@/assets/landing/card-analytics.jpg';
+
 
 /* ────────────────────────────────────────────────────────────────
    Realtyz — דף נחיתה (RTL). פלטת הצבעים של האפליקציה בלבד:
