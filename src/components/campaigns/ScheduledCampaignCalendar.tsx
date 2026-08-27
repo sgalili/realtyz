@@ -836,7 +836,9 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                 const buildDaySlots = (base: Date): Date[] => {
                   const out: Date[] = [];
                   for (let i = 0; i < n; i++) {
-                    const offset = startMin + i * bucket + Math.random() * bucket;
+                    // Never fire exactly on the window edges — always a random
+                    // minute somewhere in between.
+                    const offset = randomSlotMinutes(startMin, endMin, i, n);
                     const total = Math.floor(offset);
                     const d = new Date(base);
                     d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);
