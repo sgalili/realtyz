@@ -170,30 +170,30 @@ export default function CommandCenter() {
                   key={`${task.source}-${task.id}`}
                   className="rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent/40"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${PRIORITY_STYLE[task.priority]}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[13px] font-semibold ${PRIORITY_STYLE[task.priority]}`}>
                           {PRIORITY_LABEL[task.priority]}
                         </span>
-                        <span className="truncate text-sm font-semibold">{task.title}</span>
+                        <span className="break-words text-base font-semibold">{task.title}</span>
                         {task.actionType && (
-                          <Badge variant="secondary" className="text-[11px]">
+                          <Badge variant="secondary" className="text-[13px]">
                             {ACTION_TYPE_LABEL[task.actionType] ?? task.actionType}
                           </Badge>
                         )}
                         {TASK_STATUS_LABEL[task.status] && (
-                          <Badge variant="outline" className="text-[11px]">
+                          <Badge variant="outline" className="text-[13px]">
                             {TASK_STATUS_LABEL[task.status]}
                           </Badge>
                         )}
                       </div>
                       {task.description && (
-                        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                        <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                           {task.description}
                         </p>
                       )}
-                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-3 text-[13px] text-muted-foreground">
                         <span
                           className={`inline-flex items-center gap-1 ${
                             due.overdue ? 'font-semibold text-destructive' : due.today ? 'font-semibold text-primary' : ''
@@ -206,38 +206,38 @@ export default function CommandCenter() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                       {task.leadId && (
                         <Button
                           size="sm"
                           variant="secondary"
-                          className="h-8 gap-1 text-xs"
+                          className="h-9 gap-1 text-sm"
                           onClick={() => navigate(`/lead-crm/${task.leadId}`)}
                         >
-                          <Users className="h-3.5 w-3.5" />
+                          <Users className="h-4 w-4" />
                           {task.leadName ?? 'כרטיס לקוח'}
-                          <ChevronLeft className="h-3.5 w-3.5" />
+                          <ChevronLeft className="h-4 w-4" />
                         </Button>
                       )}
                       {task.listingId && (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 gap-1 text-xs"
+                          className="h-9 gap-1 text-sm"
                           onClick={() => navigate(`/properties/${task.listingId}`)}
                         >
-                          <Building2 className="h-3.5 w-3.5" />
+                          <Building2 className="h-4 w-4" />
                           {task.listingLabel ?? 'כרטיס נכס'}
-                          <ChevronLeft className="h-3.5 w-3.5" />
+                          <ChevronLeft className="h-4 w-4" />
                         </Button>
                       )}
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-8 gap-1 text-xs"
+                        className="h-9 gap-1 text-sm"
                         onClick={() => completeTask(task)}
                       >
-                        <Check className="h-3.5 w-3.5" />
+                        <Check className="h-4 w-4" />
                         בוצע
                       </Button>
                     </div>
