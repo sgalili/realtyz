@@ -36,6 +36,7 @@ import {
 } from '@/lib/homelyMockProperties';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
+import { useAuth } from '@/hooks/useAuth';
 import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
@@ -125,6 +126,7 @@ export default function Properties() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
+  const { user } = useAuth();
   const cached = useMemo(() => loadCache(), []);
 
   const [q, setQ] = useState<string>(cached?.q ?? '');
@@ -200,6 +202,43 @@ export default function Properties() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+
+  // FIRST VISIT ONLY — the workspace has no inventory yet, so we pull the 50
+  // newest Yad2 listings (sale + rent) for the agent's cities straight into our
+  // own `listings` table. Runs once per user, in the background.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (!user?.id || seededRef.current) return;
+    const KEY = `realtyz:properties:yad2-first-seed:${user.id}`;
+    if (localStorage.getItem(KEY) === '1') return;
+    seededRef.current = true;
+    localStorage.setItem(KEY, '1');
+    const cities = (isConfigured && coveredCities.length ? coveredCities : DEFAULT_CITIES).slice(0, 2);
+    const perCall = Math.max(10, Math.ceil(50 / (cities.length * 2)));
+    void (async () => {
+      const toastId = toast.loading('טוען את 50 הנכסים החדשים ביד2 לאזור שלך…');
+      try {
+        await Promise.allSettled(
+          cities.flatMap((c) =>
+            (['sale', 'rent'] as ListingType[]).map((t) =>
+              supabase.functions.invoke('yad2-unlocker', {
+                body: { city: c, listing_type: t, mode: 'search', limit: perCall, pages: 1 },
+              }),
+            ),
+          ),
+        );
+        defaultPoolRef.current.clear();
+        const pool = await loadDefaultPool(listingType).catch(() => [] as UnifiedResult[]);
+        if (pool.length) setResults((cur) => (cur.length ? cur : pool));
+        queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+        toast.success('הנכסים העדכניים מיד2 נשמרו במאגר שלך', { id: toastId });
+      } catch {
+        toast.dismiss(toastId);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isConfigured, coveredCities.join('|')]);
 
 
   // LOCAL-FIRST: entering the page never triggers a live scraper call.

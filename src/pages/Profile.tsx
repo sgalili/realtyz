@@ -172,9 +172,16 @@ function ProfileArrayRows({
   );
 }
 
+/** Synthetic WhatsApp-login emails are internal only and must never be shown. */
+function realEmail(value: unknown): string {
+  const email = String(value ?? '').trim();
+  if (!email || /@(?:whatsapp\.)?realtyz\.local$/i.test(email)) return '';
+  return email;
+}
+
 function PersonalTab() {
   const { user, signOut } = useAuth();
-  const [emails, setEmails] = useState<Row[]>([newRow(user?.email ?? '')]);
+  const [emails, setEmails] = useState<Row[]>([newRow(realEmail(user?.email))]);
   const [whatsapps, setWhatsapps] = useState<Row[]>([newRow('')]);
   const [phones, setPhones] = useState<Row[]>([newRow('')]);
   const [fullName, setFullName] = useState('');
@@ -189,9 +196,12 @@ function PersonalTab() {
     const meta = (user.user_metadata ?? {}) as Record<string, any>;
     const contacts = meta.profile_contacts ?? null;
     const userPhone = ((user as any).phone ?? meta.phone_number ?? meta.phone ?? '').toString();
-    const defaultName = meta.full_name || meta.name || user.email || userPhone || '';
+    const defaultName = String(meta.full_name || meta.name || '').trim();
     const apply = (p: any, fallback: any = {}) => {
-      setEmails(rowList(p.emails, [p.email || fallback.email || user.email || ''].filter(Boolean)));
+      setEmails(rowList(
+        Array.isArray(p.emails) ? p.emails.filter((it: any) => realEmail(typeof it === 'string' ? it : it?.value)) : p.emails,
+        [realEmail(p.email) || realEmail(fallback.email) || realEmail(user.email)].filter(Boolean),
+      ));
       setWhatsapps(rowList(p.whatsapps, [p.whatsapp || p.phone || fallback.phone || userPhone].filter(Boolean)));
       setPhones(rowList(p.phones, [p.phone || fallback.phone || userPhone].filter(Boolean)));
       if (typeof p.fullName === 'string') setFullName(p.fullName);
@@ -253,6 +263,7 @@ function PersonalTab() {
           gender: gender || null,
           phone: primaryPhone,
           full_name: fullName,
+          email: realEmail(emails[0]?.value) || null,
           broker_license_number: brokerLicense.trim() || null,
         })
         .eq('id', user!.id);
