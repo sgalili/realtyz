@@ -257,32 +257,48 @@ Deno.serve(async (req) => {
 
     await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
     // Every secondary section is lazy: walk down the page so their XHRs fire.
+    // Yad2 does client-side navigations mid-scroll, which destroys the
+    // execution context — swallow those and keep whatever XHRs already landed.
     for (let i = 0; i < 14; i++) {
-      await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.9));
+      try {
+        await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.9));
+      } catch { /* context destroyed by a client navigation */ }
       await new Promise((r) => setTimeout(r, 900));
     }
     await new Promise((r) => setTimeout(r, 2500));
 
     // Anything the server rendered inline (__NEXT_DATA__ / RSC flight data).
-    const inline: unknown[] = await page.evaluate(() => {
-      const out: unknown[] = [];
-      document.querySelectorAll("script").forEach((s) => {
-        const t = s.textContent || "";
-        if (t.length < 80 || t.length > 3_000_000) return;
-        if (!/\{/.test(t)) return;
-        try { out.push(JSON.parse(t)); } catch { /* not pure JSON */ }
-      });
-      return out;
-    }).catch(() => []);
+    let inline: unknown[] = [];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        inline = await page.evaluate(() => {
+          const out: unknown[] = [];
+          document.querySelectorAll("script").forEach((s) => {
+            const t = s.textContent || "";
+            if (t.length < 80 || t.length > 3_000_000) return;
+            if (!/\{/.test(t)) return;
+            try { out.push(JSON.parse(t)); } catch { /* not pure JSON */ }
+          });
+          return out;
+        });
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
     for (const j of inline) payloads.push({ url: "[inline]", json: j });
 
     await page.close().catch(() => {});
   } catch (e) {
     console.error("[yad2-page-sections] browser error", e);
-    return json({ error: "browser_failed", detail: String((e as Error)?.message ?? e) }, 502);
+    // Only a hard failure when nothing at all was captured.
+    if (payloads.length === 0) {
+      return json({ error: "browser_failed", detail: String((e as Error)?.message ?? e) }, 502);
+    }
   } finally {
     try { await browser?.disconnect?.(); } catch { /* noop */ }
   }
+
 
   const deals: DealCard[] = [];
   const prices: PricePoint[] = [];
