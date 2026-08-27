@@ -1431,19 +1431,26 @@ const InlineComposer = ({
   const handleAIImage = async () => {
     const prompt = body.trim() || customInstructions.trim() || 'תמונת נדל"ן יוקרתית עבור פוסט שיווקי של מתווך בכיר';
 
+    if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
+    const ctrl = registerGeneration();
     setGeneratingImage(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: { purpose: 'image', prompt, brand: brandName, language: 'he' },
+        signal: ctrl.signal,
       });
+      if (ctrl.signal.aborted) return; // killed by the operator
       if (error) throw error;
       const url = data?.url || data?.image_url;
       if (url) {
         setAttachments((a) => [...a, { name: 'AI Image', kind: 'image', url }]);
         toast.success('תמונה נוצרה');
       } else toast.info('לא התקבלה תמונה מה-AI');
-    } catch { toast.error('יצירת תמונה נכשלה'); }
-    finally { setGeneratingImage(false); }
+    } catch (e: any) {
+      if (ctrl.signal.aborted || e?.name === 'AbortError') return;
+      toast.error('יצירת תמונה נכשלה');
+    }
+    finally { releaseGeneration(ctrl); setGeneratingImage(false); }
   };
 
   const startRecording = async () => {
