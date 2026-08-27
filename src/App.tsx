@@ -71,6 +71,7 @@ const HomelyAdmin = lazy(() => import("./pages/HomelyAdmin"));
 const AiDialer = lazy(() => import("./pages/AiDialer"));
 const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
 const FbEngagement = lazy(() => import("./pages/FbEngagement"));
+const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 
 
 
