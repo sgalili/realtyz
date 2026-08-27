@@ -708,6 +708,8 @@ type ComposerStatus = {
   ready: boolean;
   /** True when this draft has everything it needs to be dispatched. */
   canPublish: boolean;
+  /** First attached image, shown as a thumbnail on the collapsed card. */
+  thumb: string | null;
 };
 
 const InlineComposer = ({
@@ -1729,9 +1731,10 @@ const InlineComposer = ({
       chars: count,
       ready: hasBody && imageCount > 0,
       canPublish,
+      thumb: attachments.find((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))?.url ?? null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeListing, generating, firstCommentGenerating, photosLoading, imageCount, count, hasBody, canPublish]);
+  }, [activeListing, generating, firstCommentGenerating, photosLoading, imageCount, count, hasBody, canPublish, attachments]);
 
 
   return (
@@ -5184,6 +5187,18 @@ const DraftCollapsibleCard = ({
           className="flex min-w-0 flex-1 items-center gap-3 text-right"
         >
           {open ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
+          {status?.thumb ? (
+            <img
+              src={status.thumb}
+              alt={status.title || `תמונת טיוטה ${index + 1}`}
+              loading="lazy"
+              className="h-11 w-11 shrink-0 rounded-lg border border-border/60 object-cover"
+            />
+          ) : (
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground">
+              {status?.photosLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <div className="truncate text-[13px] font-semibold text-foreground">
               טיוטה #{index + 1}
