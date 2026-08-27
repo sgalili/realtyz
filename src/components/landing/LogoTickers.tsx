@@ -58,7 +58,16 @@ export function StackTicker() {
                 style={{ color: s.color }}
               >
                 {s.icon && <BrandIcon name={s.icon} className="h-6 w-6 shrink-0" />}
+                {s.img && (
+                  <img
+                    src={s.img}
+                    alt={`${s.label} logo`}
+                    loading="lazy"
+                    className="h-7 w-auto shrink-0 object-contain"
+                  />
+                )}
                 {s.label}
+
               </span>
             ))}
 
