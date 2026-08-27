@@ -91,6 +91,24 @@ function tokenize(q: string | null | undefined): string[] {
     .slice(0, 6);
 }
 
+/** A row counts as "active on Yad2" when it carries a live Yad2 ad link. */
+export function hasActiveYad2(r: UnifiedResult): boolean {
+  if (/yad2\.co\.il/i.test(String(r.url ?? ''))) return true;
+  const metaUrl = String((r.raw as any)?.source_metadata?.source_url ?? (r.raw as any)?.source_url ?? '');
+  return /yad2\.co\.il/i.test(metaUrl) && r.sources.includes('yad2');
+}
+
+/**
+ * Stable sort that always floats properties with an active Yad2 page to the
+ * very top of the list, preserving the original order inside each group.
+ */
+export function sortYad2First(rows: UnifiedResult[]): UnifiedResult[] {
+  return rows
+    .map((r, i) => ({ r, i, yad2: hasActiveYad2(r) ? 0 : 1 }))
+    .sort((a, b) => a.yad2 - b.yad2 || a.i - b.i)
+    .map((x) => x.r);
+}
+
 export async function searchLocalListings(f: SearchFilters): Promise<UnifiedResult[]> {
   return searchLocal(f);
 }
