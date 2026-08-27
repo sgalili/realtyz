@@ -6437,13 +6437,18 @@ const CampaignCenter = () => {
             const blocks = assignments.length > 0
               ? assignments
               : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
+            const campaignPropertyCount = new Set([
+              ...propertyIds,
+              ...blocks.map((b) => b.listing).filter((id): id is string => Boolean(id)),
+            ]).size;
+            const unpublishedCount = blocks.filter((b, idx) => !publishedDrafts.has(draftKeyFor(b, idx))).length;
             const readyKeys = blocks
               .map((b, idx) => draftKeyFor(b, idx))
               .filter((k) => draftStatuses[k]?.canPublish && !publishedDrafts.has(k));
             return (
               <div className="space-y-4 pb-44">
                 <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
-                  נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
+                  נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{campaignPropertyCount}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
                 {blocks.map((b, idx) => {
                   // Order-independent key: a refresh (or a reshuffled property
@@ -6567,7 +6572,7 @@ const CampaignCenter = () => {
                         : 'cursor-not-allowed bg-muted text-muted-foreground/80',
                     )}
                   >
-                    פרסם את כל הטיוטות ({readyKeys.length})
+                    פרסם את כל הטיוטות ({unpublishedCount})
                   </button>
 
                   </div>
