@@ -442,78 +442,8 @@ export default function Landing() {
       </section>
 
       {/* ───────── Pricing ───────── */}
-      <section id="pricing" className="border-t border-border/60 py-20">
-        <div className="mx-auto w-full max-w-6xl px-4">
-          <Reveal>
-            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
-              חבילות ומחירים
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
-              מחיר חודשי קבוע, בלי התחייבות ובלי עלויות נסתרות. ביטול מיידי מתוך המערכת - והחיוב נעצר.
-            </p>
-          </Reveal>
+      <PricingSection />
 
-          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-            {PACKAGES.map((p, i) => (
-              <Reveal key={p.id} delay={i * 80}>
-                <article
-                  className={cn(
-                    'flex h-full flex-col rounded-2xl border bg-card/60 p-6 text-right',
-                    p.highlight ? 'border-primary shadow-xl shadow-primary/15' : 'border-border/60',
-                  )}
-                >
-                  {p.highlight && (
-                    <span className="mb-3 self-start rounded-full bg-primary px-3 py-1 text-[11px] font-extrabold text-primary-foreground">
-                      הפופולרי
-                    </span>
-                  )}
-                  <h3 className="text-2xl font-extrabold">{p.name}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{p.tagline}</p>
-                  <div className="mt-4 flex items-baseline gap-1.5">
-                    <PriceTag value={p.monthlyPrice} className="text-3xl font-extrabold" />
-                    <span className="text-sm text-muted-foreground">/ לחודש</span>
-                  </div>
-                  <ul className="mt-5 space-y-2 text-[14px] leading-relaxed">
-                    <li className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      <span>{limitLabel(p.contacts)} אנשי קשר</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      <span>{limitLabel(p.properties)} נכסים</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      <span>{limitLabel(p.seats)} משתמשים</span>
-                    </li>
-                    {p.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link to="/auth" className="mt-6 block">
-                    <Button
-                      className="h-12 w-full text-sm font-extrabold"
-                      variant={p.highlight ? 'default' : 'outline'}
-                    >
-                      {p.monthlyPrice === 0 ? 'התחלה בחינם' : `בחירת ${p.name}`}
-                    </Button>
-                  </Link>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-
-          <Reveal delay={200}>
-            <p className="mx-auto mt-8 max-w-3xl text-center text-sm text-muted-foreground">
-              שירותים בצריכה בפועל (SMS, הודעות WhatsApp בתשלום, שיחות AI קוליות) נגרעים מארנק
-              קרדיטים נפרד. המחירים אינם כוללים מע"מ. אין החזרים כספיים - אך הביטול מיידי והחיוב נעצר.
-            </p>
-          </Reveal>
-        </div>
-      </section>
 
       {/* ───────── FAQ ───────── */}
       <section id="faq" className="border-t border-border/60 py-20">
