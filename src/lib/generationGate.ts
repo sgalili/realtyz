@@ -11,14 +11,22 @@
 const KEY = 'rz-generation-stopped:v1';
 const listeners = new Set<(stopped: boolean) => void>();
 
+// The stop is a SESSION-scoped emergency brake: a page load / refresh must
+// always come back generating, otherwise drafts stay silently empty forever.
+// Legacy persisted flags are cleared on module init.
+if (typeof window !== 'undefined') {
+  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+}
+
 export function isGenerationStopped(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    return localStorage.getItem(KEY) === '1';
+    return sessionStorage.getItem(KEY) === '1';
   } catch {
     return false;
   }
 }
+
 
 function emit(stopped: boolean) {
   listeners.forEach((fn) => {
@@ -28,16 +36,18 @@ function emit(stopped: boolean) {
 
 /** Halts every pending / future auto-generation until explicitly resumed. */
 export function stopAllGeneration(): void {
-  try { localStorage.setItem(KEY, '1'); } catch { /* quota */ }
+  try { sessionStorage.setItem(KEY, '1'); } catch { /* quota */ }
   killInflightGenerations();
   emit(true);
 }
 
 /** Re-enables auto-generation (already generated drafts stay untouched). */
 export function resumeGeneration(): void {
+  try { sessionStorage.removeItem(KEY); } catch { /* ignore */ }
   try { localStorage.removeItem(KEY); } catch { /* ignore */ }
   emit(false);
 }
+
 
 export function subscribeGenerationGate(fn: (stopped: boolean) => void): () => void {
   listeners.add(fn);

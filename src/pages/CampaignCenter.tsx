@@ -1787,6 +1787,28 @@ const InlineComposer = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetListingId, presetScheduleIso, selectedListingId, listingsLoading, hydrated]);
 
+  // Safety net: if the listing snapshot never resolved (listing missing from the
+  // loaded page, slow fetch, ...) the effect above can stay parked and the draft
+  // would remain empty forever. Fire generation anyway shortly after hydration.
+  useEffect(() => {
+    if (!hydrated) return;
+    if (autoGenTriggeredRef.current) return;
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const hasContext = !!presetScheduleIso || !!presetListingId || !!params?.get('schedule')
+      || !!params?.get('listing') || !!(params?.get('properties') || '').trim();
+    if (!hasContext) return;
+    const t = setTimeout(() => {
+      if (autoGenTriggeredRef.current) return;
+      if (isGenerationStopped()) return;
+      if (body.trim().length > 0 || generating) return;
+      autoGenTriggeredRef.current = true;
+      handleGenerate().catch(() => {});
+    }, 2200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, presetListingId, presetScheduleIso]);
+
+
   // True when this composer was launched from the scheduling calendar
   // (the date is already locked in); we hide the standalone calendar
   // toggle button in that case so the operator doesn't re-pick a date.
