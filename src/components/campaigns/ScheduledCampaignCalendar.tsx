@@ -123,6 +123,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     setRecurrenceDays(prefs.recurrenceDays);
     setRecurrenceCount(prefs.recurrenceCount);
     setRecurrenceOpen(false);
+    setGroupDailyLimit(prefs.groupDailyLimit);
+
     setBrandingPost(prefs.selectedListingIds.length === 0);
     setPropertiesOpen(false);
     (async () => {
