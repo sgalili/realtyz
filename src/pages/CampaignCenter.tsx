@@ -6373,8 +6373,9 @@ const CampaignCenter = () => {
                 })}
                 {/* Bulk dispatch — publishes every ready draft one after another. */}
                 <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
-                  <div className="mx-auto flex max-w-3xl flex-col gap-2">
+                  <div className="mx-auto flex max-w-3xl items-stretch gap-2">
                   <div className="flex items-stretch gap-2">
+
                     {generationStopped ? (
                       <button
                         type="button"
