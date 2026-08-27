@@ -91,6 +91,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [pendingAuthUrl, setPendingAuthUrl] = useState<string | null>(null);
   const [igHelpOpen, setIgHelpOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
 
   const [manualPageId, setManualPageId] = useState('');
   const [manualToken, setManualToken] = useState('');
