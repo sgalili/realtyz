@@ -251,8 +251,11 @@ export default function Landing() {
           {/* Infrastructure trust row */}
           <Reveal delay={470}>
             <div className="mt-10">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Built &amp; Operating by
+              <p className="text-sm font-extrabold tracking-widest text-muted-foreground">
+                תשתית טכנולוגית
+              </p>
+              <p className="mt-1 text-xs font-semibold text-muted-foreground/80">
+                בנוי ומופעל על תשתיות ענן ואבטחה מובילות בעולם
               </p>
               <div className="mt-4">
                 <StackTicker />
@@ -262,6 +265,55 @@ export default function Landing() {
 
         </div>
       </section>
+
+      {/* ───────── All-in-One: מחליף את כל הכלים החיצוניים ───────── */}
+      <section id="all-in-one" className="border-t border-border/60 py-20">
+        <div className="mx-auto w-full max-w-6xl px-4">
+          <Reveal>
+            <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+              מערכת אחת שמחליפה את כל הכלים החיצוניים
+            </h2>
+            <p className="mx-auto mt-4 max-w-3xl text-center text-lg text-muted-foreground">
+              אין יותר צורך במנויים נפרדים לתזמון פוסטים, ניהול לידים, שליחת הודעות, יומן,
+              דוחות או כתיבת תוכן. Realtyz היא אפליקציית ווב ולוח בקרה אחד שכולל את כל הכלים
+              המקצועיים שמתווך מוביל צריך - וחוסך אלפי שקלים בחודש.
+            </p>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                { t: 'תזמון ופרסום תוכן', d: 'יצירת פוסטים, תזמון ופרסום לכל הרשתות והקבוצות - בלי כלי חיצוני.' },
+                { t: 'ניהול לידים ועסקאות', d: 'CRM מלא עם פייפליין, מעקבים, סיכומי שיחה והתאמת נכסים.' },
+                { t: 'הודעות בכל הערוצים', d: 'ווטסאפ, SMS, אימייל ורשתות חברתיות מתיבה אחת מסונכרנת.' },
+                { t: 'יומן ותיאום צפיות', d: 'סנכרון יומן דו-כיווני, תיאום צפיות ותזכורות אוטומטיות.' },
+                { t: 'דוחות וניתוח עסקי', d: 'זמני תגובה, שיעורי המרה, עמלות ותחזית הכנסות בזמן אמת.' },
+                { t: 'כתיבה ותמלול AI', d: 'טקסטים שיווקיים, תשובות ללקוחות ותמלול הקלטות קוליות.' },
+              ].map((item) => (
+                <div key={item.t} className="rounded-2xl border border-border/60 bg-card/60 p-6 text-right">
+                  <h3 className="text-xl font-extrabold">{item.t}</h3>
+                  <p className="mt-2 text-base leading-relaxed text-muted-foreground">{item.d}</p>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+
+          <Reveal delay={220}>
+            <div className="mt-10 flex flex-col items-center gap-4">
+              <p className="text-center text-lg font-bold">
+                מנוי אחד. הכל כלול ללא הגבלה. משלמים רק לפי אנשי קשר פעילים.
+              </p>
+              <Link to="/auth">
+                <Button size="lg" className="h-12 px-8 text-base font-bold">
+                  התחל בחינם
+                  <ArrowLeft className="mr-2 h-5 w-5" aria-hidden="true" />
+                </Button>
+              </Link>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
 
       {/* ───────── Features (image cards, no icons) ───────── */}
       <section id="features" className="border-t border-border/60 py-20">
