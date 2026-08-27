@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
+import { saveGroupDailyLimit } from '@/lib/groupDailyLimits';
+
 import { cn } from '@/lib/utils';
 
 type ScheduledRow = {
