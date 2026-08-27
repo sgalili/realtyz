@@ -162,9 +162,10 @@ export function PropertyYad2SectionsCard({
       {empty && !sync.isPending && (
         <p className="text-lg text-muted-foreground">
           עוד לא יובאו סקשנים מעמוד היד2. לחצו על "ייבוא כל הסקשנים" כדי לשלוף עסקאות באזור,
-          היסטוריית שווי, מוסדות חינוך, נכסים מומלצים ופרויקטים חדשים.
+          היסטוריית שווי, מוסדות חינוך ופרויקטים חדשים.
         </p>
       )}
+
 
       {chart.length > 1 && (
         <SectionShell icon={TrendingUp} title="היסטוריית שווי הנכס">
