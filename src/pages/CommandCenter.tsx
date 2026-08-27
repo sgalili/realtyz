@@ -159,12 +159,15 @@ export default function CommandCenter() {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            אין משימות פתוחות בתצוגה הזו. יום נקי.
-          </p>
+          <div className="space-y-4 py-10 text-center">
+            <p className="text-sm text-muted-foreground">אין משימות פתוחות בתצוגה הזו. יום נקי.</p>
+            <QuickActionsButton />
+          </div>
         ) : (
           <ul className="space-y-2">
-            {visible.map((task) => {
+            {visible.map((task, idx) => {
+              const midpoint = Math.ceil(visible.length / 2);
+
               const due = dueLabel(task.dueAt);
               return (
                 <li
