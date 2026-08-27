@@ -63,3 +63,11 @@ export function isNewListing(r: any): boolean {
   if (!t) return false;
   return Date.now() - t <= NEW_WINDOW_MS;
 }
+
+/** True when the ad was ORIGINALLY published 6 months ago or more. */
+export function isOldListing(r: any): boolean {
+  const t = listingSourcePublishedAt(r) ?? listingPublishedAt(r);
+  if (!t) return false;
+  return Date.now() - t >= OLD_WINDOW_MS;
+}
+
