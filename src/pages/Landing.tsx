@@ -237,6 +237,9 @@ export default function Landing() {
             <a href="#features" className="transition-colors hover:text-foreground">יכולות</a>
             <a href="#whatsapp" className="transition-colors hover:text-foreground">ווטסאפ AI</a>
             <a href="#free" className="transition-colors hover:text-foreground">מסלול חינם</a>
+            <a href="#pricing" className="transition-colors hover:text-foreground">מחירים</a>
+            <a href="#faq" className="transition-colors hover:text-foreground">שאלות נפוצות</a>
+
 
           </nav>
           <Link to="/" aria-label="Realtyz AI">
