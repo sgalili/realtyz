@@ -32,7 +32,7 @@ import imgMatchmaking from '@/assets/landing/card-matchmaking.jpg';
 
 const FEATURES = [
   {
-    image: imgPublishing,
+    image: imgAutoPost,
     title: 'יצירת פוסטים ופרסום אוטומטי',
     body: 'ה-AI כותב את הפוסט לנכס, מתזמן בלחיצה אחת ומפרסם ישירות לקבוצות פייסבוק ולאינסטגרם.',
   },
@@ -48,7 +48,7 @@ const FEATURES = [
     body: 'מנהלים את כל העסק מהווטסאפ: שולחים הקלטה קולית או טקסט, מבקשים סטטיסטיקות, מפעילים מבצע ופותחים משימות בזמן אמת.',
   },
   {
-    image: imgCalendar,
+    image: imgGoogleSync,
     title: 'סנכרון גוגל דו-כיווני',
     body: 'Gmail ויומן גוגל מסונכרנים בזמן אמת - חלונות פנויים אמיתיים, בלי כפל פגישות ובלי מיילים שנעלמים.',
   },
@@ -63,7 +63,7 @@ const FEATURES = [
     body: 'ברכות אוטומטיות, תזכורות ומעקבים - מסנן, מדרג ומחמם כל מתעניין חדש, גם ב-3 לפנות בוקר.',
   },
   {
-    image: imgPublishing,
+    image: imgMatchmaking,
     title: 'התאמת נכסים חכמה',
     body: 'מנוע התאמה שמצליב העדפות מול מלאי חי מיד2 והומלי ומציע את הנכס הנכון לכל לקוח.',
   },
@@ -273,7 +273,7 @@ export default function Landing() {
       <section id="all-in-one" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
-            <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
               מערכת אחת שמחליפה את כל הכלים החיצוניים
             </h2>
             <p className="mx-auto mt-4 max-w-3xl text-center text-lg text-muted-foreground">
@@ -322,7 +322,7 @@ export default function Landing() {
       <section id="features" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
-            <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
               כל מה שמתווך צריך - במערכת אחת
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
@@ -359,7 +359,7 @@ export default function Landing() {
       <section id="impact" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
-            <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
               ניהול העסק מקצה לקצה - במספרים
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
@@ -392,7 +392,7 @@ export default function Landing() {
           <Reveal>
             <div>
               <p className="text-sm font-bold text-primary">העוזר האישי שלכם בווטסאפ</p>
-              <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              <h2 className="landing-title-gradient mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
                 מנהלים את כל העסק מהווטסאפ - גם בהקלטה קולית
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
@@ -424,7 +424,7 @@ export default function Landing() {
         <div className="mx-auto w-full max-w-4xl px-4">
           <Reveal>
             <div className="text-center">
-              <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+              <h2 className="landing-title-gradient text-3xl font-extrabold tracking-tight sm:text-4xl">
                 תמחור מדורג. שקוף. לפי אנשי קשר בלבד.
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
@@ -542,7 +542,7 @@ export default function Landing() {
       <section id="free" className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-4xl px-4 text-center">
           <Reveal>
-            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">מסלול חינם</h2>
+            <h2 className="landing-title-gradient text-3xl font-extrabold tracking-tight sm:text-4xl">מסלול חינם</h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
               {FREE_CONTACTS} אנשי קשר, {FREE_PROPERTIES} נכסים, כל יכולות ה-AI פתוחות.
               ללא הגבלת זמן, ללא כרטיס אשראי, בלי שיחת מכירה.
