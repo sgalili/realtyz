@@ -171,22 +171,22 @@ export function ConnectionsTab() {
     {
       id: 'wa-mode',
       title: 'אופן חיבור WhatsApp',
-      status: waMode === 'qr_session' ? 'מספר אישי (QR)' : waMode === 'official_meta' ? 'מספר רשמי (Meta)' : 'לא הוגדר',
-      tone: waMode ? 'ok' : 'idle',
+      status: waPhone ? formatPhoneDisplay(waPhone) : waMode ? 'מספר רשמי (Meta)' : 'לא הוגדר',
+      tone: waPhone || waMode ? 'ok' : 'idle',
       node: <WhatsAppConnectionModeCard />,
     },
     {
       id: 'wa-green',
       title: 'WhatsApp · מספר אישי (Green API)',
-      status: greenReady ? 'מוגדר' : 'לא מוגדר',
-      tone: greenReady ? 'ok' : 'idle',
+      status: greenPhone ? formatPhoneDisplay(greenPhone) : greenReady ? 'מחובר' : 'לא הוגדר',
+      tone: greenPhone || greenReady ? 'ok' : 'idle',
       node: <WhatsAppGatewayCard />,
     },
     {
       id: 'voice',
       title: 'שיחות טלפון (Vapi / Twilio)',
-      status: voiceReady ? 'מוגדר' : 'לא מוגדר',
-      tone: voiceReady ? 'ok' : 'idle',
+      status: voicePhone ? formatPhoneDisplay(voicePhone) : voiceReady ? 'מחובר' : 'לא הוגדר',
+      tone: voicePhone || voiceReady ? 'ok' : 'idle',
       node: <VoiceGatewayCard />,
     },
     {
@@ -195,6 +195,13 @@ export function ConnectionsTab() {
       status: emailAlias ? `${emailAlias}@realtyz.co.il` : 'לא הוגדר',
       tone: emailAlias ? 'ok' : 'idle',
       node: <EmailAliasCard />,
+    },
+    {
+      id: 'calendar',
+      title: 'יומן Google',
+      status: 'סנכרון',
+      tone: 'idle',
+      node: <CalendarSyncCard />,
     },
     {
       id: 'portals',
