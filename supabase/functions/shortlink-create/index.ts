@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
       return json(200, {
         error: "LISTING_NOT_FOUND",
         fallback: true,
-        long_url: "https://api.whatsapp.com/send?phone=972537339533",
+        long_url: `https://api.whatsapp.com/send?phone=${await resolveOfficialWaPhone(admin)}`,
       });
     }
 
