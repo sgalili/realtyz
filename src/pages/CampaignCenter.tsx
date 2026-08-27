@@ -1614,8 +1614,10 @@ const InlineComposer = ({
       }
 
     } catch (e: any) {
+      if (ctrl.signal.aborted || e?.name === 'AbortError') return; // killed
       toast.error('יצירת תגובה ראשונה נכשלה');
     } finally {
+      releaseGeneration(ctrl);
       setFirstCommentGenerating(false);
     }
   };
