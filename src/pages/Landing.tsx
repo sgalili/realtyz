@@ -4,7 +4,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Infinity as InfinityIcon, ArrowLeft, Check,
+  Infinity as InfinityIcon, ArrowLeft, Check, Star,
 } from 'lucide-react';
 import {
   FREE_CONTACTS, FREE_PROPERTIES, PRICING_TIERS, quoteForContacts,
@@ -19,6 +19,9 @@ import imgVoice from '@/assets/landing/card-voice.jpg';
 import imgCalendar from '@/assets/landing/card-calendar.jpg';
 import imgAi from '@/assets/landing/card-ai.jpg';
 import imgAnalytics from '@/assets/landing/card-analytics.jpg';
+import imgAutoPost from '@/assets/landing/card-autopost.jpg';
+import imgGoogleSync from '@/assets/landing/card-google-sync.jpg';
+import imgMatchmaking from '@/assets/landing/card-matchmaking.jpg';
 
 
 /* ────────────────────────────────────────────────────────────────
