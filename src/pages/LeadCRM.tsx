@@ -2294,8 +2294,17 @@ const LeadCRM = () => {
                   
 
 
+                  {/* Quick message templates (WhatsApp / SMS) */}
+                  <QuickMessageCard
+                    scope="lead"
+                    leadId={selectedVoter.id}
+                    phone={selectedVoter.phone_number}
+                    vars={{ name: selectedVoter.full_name, city: selectedVoter.city }}
+                  />
+
                   {/* Smart timeline + quick note + follow-up extraction */}
                   <SmartTimelineCard leadId={selectedVoter.id} title="ציר זמן מלא" />
+
 
                 </div>
               </>
