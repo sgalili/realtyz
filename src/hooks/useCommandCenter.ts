@@ -225,3 +225,107 @@ export function useCommandCenterMetrics() {
     },
   });
 }
+
+/* ───────── Posts & publishing activity (published + scheduled) ───────── */
+
+export const POST_ITEM_TYPES = ['social_post', 'sms_campaign', 'whatsapp_blast', 'push'] as const;
+
+export type PostActivity = {
+  id: string;
+  title: string;
+  content: string | null;
+  channel: string | null;
+  status: string;
+  when: string | null;
+  scheduled: boolean;
+  source: 'scheduled_item' | 'queue';
+};
+
+export const POST_STATUS_LABEL: Record<string, string> = {
+  posted: 'פורסם',
+  sent: 'נשלח',
+  published: 'פורסם',
+  completed: 'הושלם',
+  in_progress: 'בפרסום',
+  approved: 'מאושר לתזמון',
+  scheduled: 'מתוזמן',
+  pending: 'ממתין לפרסום',
+  draft: 'טיוטה',
+  failed: 'נכשל',
+  error: 'נכשל',
+};
+
+export const CHANNEL_LABEL: Record<string, string> = {
+  facebook: 'פייסבוק',
+  instagram: 'אינסטגרם',
+  whatsapp: 'וואטסאפ',
+  sms: 'SMS',
+  email: 'אימייל',
+  push: 'התראה',
+};
+
+export function useCommandCenterPosts() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['command-center-posts', user?.id ?? 'anon'],
+    enabled: !!user,
+    staleTime: 30_000,
+    queryFn: async (): Promise<PostActivity[]> => {
+      const [itemsRes, queueRes] = await Promise.all([
+        (supabase as any)
+          .from('scheduled_items')
+          .select('id, title, content, item_type, channel, status, scheduled_for')
+          .in('item_type', POST_ITEM_TYPES as unknown as string[])
+          .order('scheduled_for', { ascending: false })
+          .limit(60),
+        (supabase as any)
+          .from('campaign_activity_queue')
+          .select('id, activity_type, target_label, status, scheduled_for, payload')
+          .order('scheduled_for', { ascending: false })
+          .limit(40),
+      ]);
+
+      const out: PostActivity[] = [];
+      const now = Date.now();
+
+      for (const r of (Array.isArray(itemsRes?.data) ? itemsRes.data : [])) {
+        const when = r.scheduled_for ?? null;
+        out.push({
+          id: `si-${r.id}`,
+          title: String(r.title || 'פוסט'),
+          content: r.content ?? null,
+          channel: r.channel ?? null,
+          status: String(r.status ?? 'draft'),
+          when,
+          scheduled: !!when && new Date(when).getTime() > now,
+          source: 'scheduled_item',
+        });
+      }
+
+      for (const q of (Array.isArray(queueRes?.data) ? queueRes.data : [])) {
+        const when = q.scheduled_for ?? null;
+        const payload = (q.payload ?? {}) as any;
+        out.push({
+          id: `q-${q.id}`,
+          title: q.target_label || payload.title || 'פרסום לקבוצה',
+          content: payload.body ?? null,
+          channel: String(q.activity_type ?? '').startsWith('fb') ? 'facebook' : null,
+          status: String(q.status ?? 'pending'),
+          when,
+          scheduled: !!when && new Date(when).getTime() > now,
+          source: 'queue',
+        });
+      }
+
+      out.sort((a, b) => {
+        if (a.scheduled !== b.scheduled) return a.scheduled ? -1 : 1;
+        const ta = a.when ? new Date(a.when).getTime() : 0;
+        const tb = b.when ? new Date(b.when).getTime() : 0;
+        return a.scheduled ? ta - tb : tb - ta;
+      });
+
+      return out.slice(0, 40);
+    },
+  });
+}
