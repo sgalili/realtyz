@@ -6500,21 +6500,38 @@ const CampaignCenter = () => {
             // One composer block per scheduled assignment — each tied to its
             // listing, slot time and variant index for independent generation
             // and an independent Approve/Schedule action.
-            const blocks = assignments.length > 0
+            const allBlocks = assignments.length > 0
               ? assignments
               : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
-            const distinctCampaignProperties = new Set([
-              ...propertyIds,
-              ...blocks.map((b) => b.listing).filter((id): id is string => Boolean(id)),
-            ]).size;
+            // Published drafts leave the list instantly (no refresh needed) —
+            // their key is retired the moment the dispatch succeeds.
+            const blocks = allBlocks.filter((b, idx) => !publishedDrafts.has(draftKeyFor(b, idx)));
+            const keyOf = (b: (typeof allBlocks)[number]) => draftKeyFor(b, allBlocks.indexOf(b));
+            const distinctCampaignProperties = new Set(
+              blocks.map((b) => b.listing).filter((id): id is string => Boolean(id)),
+            ).size;
             // Older restored sessions may contain the seven slots but not the
             // redundant propertyIds array. In that case each slot still
             // represents its property, so never render a misleading zero.
             const campaignPropertyCount = distinctCampaignProperties || blocks.length;
-            const unpublishedCount = blocks.filter((b, idx) => !publishedDrafts.has(draftKeyFor(b, idx))).length;
+            const unpublishedCount = blocks.length;
             const readyKeys = blocks
-              .map((b, idx) => draftKeyFor(b, idx))
-              .filter((k) => draftStatuses[k]?.canPublish && !publishedDrafts.has(k));
+              .map((b) => keyOf(b))
+              .filter((k) => draftStatuses[k]?.canPublish);
+            if (blocks.length === 0) {
+              return (
+                <div className="space-y-4 pb-24" dir="rtl">
+                  <div className="rounded-xl border border-emerald-300/60 bg-emerald-50 px-4 py-6 text-center text-sm font-semibold text-emerald-800">
+                    כל הטיוטות פורסמו ונכנסו לתור הפוסטים העתידיים.
+                  </div>
+                  <div className="flex justify-center">
+                    <Button onClick={() => { setHistoryTab('future'); setHistoryRefreshTick((t) => t + 1); setCampaignHistoryOpen(true); }}>
+                      צפייה בפוסטים העתידיים
+                    </Button>
+                  </div>
+                </div>
+              );
+            }
             return (
               <div className="space-y-4 pb-44">
                 <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
