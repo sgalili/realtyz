@@ -907,9 +907,15 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   }
                 }
 
-                const slots: Date[] = recurrenceDates
+                // Only the current day + the single NEXT recurrence date are
+                // materialized. Every later version is created after a publish.
+                const cappedDates = recurrenceDates
+                  .sort((a, b) => a.getTime() - b.getTime())
+                  .slice(0, recurrence === 'none' ? 1 : 2);
+                const slots: Date[] = cappedDates
                   .flatMap((day) => buildDaySlots(day))
                   .sort((a, b) => a.getTime() - b.getTime());
+
 
                 // Persist the per-group daily cap the broker typed.
                 if (selectedGroupIds.length > 0) {
