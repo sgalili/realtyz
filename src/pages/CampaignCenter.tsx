@@ -5253,6 +5253,38 @@ const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   // Live status per collapsed draft card (keyed by composer instanceId).
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ComposerStatus>>({});
+  // Publish plumbing for the multi-draft view: each composer registers its
+  // dispatch function so a collapsed card (and "publish all") can fire it.
+  const publishFnsRef = useRef<Map<string, () => boolean>>(new Map());
+  const activeDraftKeyRef = useRef<string | null>(null);
+  const bulkQueueRef = useRef<string[]>([]);
+  const [publishedDrafts, setPublishedDrafts] = useState<Set<string>>(new Set());
+
+  const publishDraft = useCallback((key: string) => {
+    const fn = publishFnsRef.current.get(key);
+    if (!fn) return false;
+    activeDraftKeyRef.current = key;
+    const ok = fn();
+    if (!ok) toast.info('הטיוטה עדיין לא מוכנה לפרסום');
+    return ok;
+  }, []);
+
+  const publishAllDrafts = useCallback((keys: string[]) => {
+    const queue = keys.filter((k) => !publishedDrafts.has(k) && publishFnsRef.current.has(k));
+    if (!queue.length) { toast.info('אין טיוטות מוכנות לפרסום'); return; }
+    bulkQueueRef.current = queue.slice(1);
+    if (!publishDraft(queue[0])) bulkQueueRef.current = [];
+  }, [publishedDrafts, publishDraft]);
+
+  /** Advances the bulk queue after one draft finished dispatching. */
+  const advanceBulkQueue = useCallback(() => {
+    const next = bulkQueueRef.current.shift();
+    if (!next) return false;
+    // Let the dialog fully close before opening it for the next draft.
+    window.setTimeout(() => { if (!publishDraft(next)) advanceBulkQueue(); }, 450);
+    return true;
+  }, [publishDraft]);
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
