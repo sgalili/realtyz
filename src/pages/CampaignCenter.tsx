@@ -2643,6 +2643,18 @@ const ConfirmDispatchDialog = ({
     })();
   }, [open, groupIds]);
 
+  // ── Silent bulk dispatch ───────────────────────────────────────────────
+  // In bulk mode the dialog renders nothing and fires the broadcast itself as
+  // soon as the publishing targets are resolved.
+  const autoFiredRef = useRef(false);
+  const handleConfirmRef = useRef<null | (() => Promise<void>)>(null);
+  useEffect(() => { if (!open) autoFiredRef.current = false; }, [open]);
+  useEffect(() => {
+    if (!open || !autoConfirm || autoFiredRef.current || pagesLoading) return;
+    autoFiredRef.current = true;
+    void handleConfirmRef.current?.();
+  }, [open, autoConfirm, pagesLoading]);
+
 
 
   useEffect(() => {
