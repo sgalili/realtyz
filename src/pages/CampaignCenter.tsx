@@ -5268,9 +5268,11 @@ const AddVoiceByIdDialog = ({
    stays mounted while collapsed so generation and photo import keep running. */
 
 const DraftCollapsibleCard = ({
-  index, iso, variant, totalVariants, children, status, onPublish, published,
+  index, iso, variant, totalVariants, children, status, onPublish, published, fallbackTitle,
 }: {
   index: number;
+  /** Property name resolved by the page, shown until the composer reports one. */
+  fallbackTitle?: string;
   iso: string;
   variant: number;
   totalVariants: number;
@@ -5319,7 +5321,7 @@ const DraftCollapsibleCard = ({
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-semibold leading-snug text-foreground break-words">
               טיוטה #{index + 1}
-              {status?.title ? ` · ${status.title}` : ''}
+              {(status?.title || fallbackTitle) ? ` · ${status?.title || fallbackTitle}` : ''}
             </div>
             <div className="text-[11px] text-muted-foreground">
               {new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
@@ -5467,6 +5469,24 @@ const CampaignCenter = () => {
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  // Property titles for the collapsed draft cards. Fetched at page level so a
+  // card shows the address even before its composer finished hydrating.
+  const [listingTitles, setListingTitles] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const ids = (searchParams.get('properties') || '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (ids.length === 0) return;
+    (async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('id, property_title, address, city')
+        .in('id', ids);
+      const map: Record<string, string> = {};
+      for (const l of ((data as any[]) || [])) {
+        map[l.id] = [l.property_title || l.address, l.city].filter(Boolean).join(' · ') || 'נכס';
+      }
+      setListingTitles(map);
+    })();
+  }, [searchParams]);
 
   // Wipes every draft in the multi-draft composer: local snapshots, the durable
   // cloud mirror and the composer session. Nothing published is touched.
@@ -5484,6 +5504,9 @@ const CampaignCenter = () => {
       sessionStorage.removeItem('rz-schedule-assignments');
     } catch { /* ignore */ }
     setRestoredSession(null);
+    // A fresh, empty list must start with generation ENABLED again, so the
+    // kill button shows the red stop icon rather than "resume".
+    resumeGeneration();
     await Promise.allSettled([clearComposerSession(chan), clearComposerDraftsCloud(chan)]);
     setDraftStatuses({});
     setPublishedDrafts(new Set());
@@ -6131,7 +6154,7 @@ const CampaignCenter = () => {
               .map((b, idx) => draftKeyFor(b, idx))
               .filter((k) => draftStatuses[k]?.canPublish && !publishedDrafts.has(k));
             return (
-              <div className="space-y-4 pb-24">
+              <div className="space-y-4 pb-44">
                 <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
                   נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
@@ -6149,6 +6172,7 @@ const CampaignCenter = () => {
                     variant={b.variant}
                     totalVariants={b.totalVariants}
                     status={draftStatuses[key] ?? null}
+                    fallbackTitle={b.listing ? listingTitles[b.listing] : undefined}
                     published={publishedDrafts.has(key)}
                     onPublish={() => { publishDraft(key); }}
                   >
@@ -6181,27 +6205,28 @@ const CampaignCenter = () => {
                   );
                 })}
                 {/* Bulk dispatch — publishes every ready draft one after another. */}
-                <div className="sticky bottom-2 z-40 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
+                <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
+                  <div className="mx-auto flex max-w-3xl flex-col gap-2">
                   <div className="flex items-stretch gap-2">
                     {generationStopped ? (
                       <button
                         type="button"
                         onClick={() => { resumeGeneration(); toast.success('יצירת התוכן חודשה'); }}
                         title="חידוש יצירת תוכן"
-                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-3 text-[12px] font-semibold text-emerald-700 transition hover:bg-emerald-500/20"
+                        aria-label="חידוש יצירת תוכן"
+                        className="inline-flex items-center justify-center rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-emerald-700 transition hover:bg-emerald-500/20"
                       >
                         <RefreshCw className="h-4 w-4" />
-                        המשך יצירה
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={() => { stopAllGeneration(); toast.info('כל היצירה נעצרה מיד. כל מה שנוצר עד כה נשמר.'); }}
                         title="עצור יצירת תוכן מיד (התוכן שנוצר נשמר)"
-                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-3 text-[12px] font-semibold text-destructive transition hover:bg-destructive/20"
+                        aria-label="עצור יצירת תוכן מיד"
+                        className="inline-flex items-center justify-center rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive transition hover:bg-destructive/20"
                       >
                         <Square className="h-4 w-4" />
-                        עצור יצירה
                       </button>
                     )}
                     <button
@@ -6239,20 +6264,22 @@ const CampaignCenter = () => {
                         )}
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => publishAllDrafts(blocks.map((b, idx) => draftKeyFor(b, idx)))}
-                      disabled={readyKeys.length === 0}
-                      className={cn(
-                        'flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
-                        readyKeys.length
-                          ? 'bg-[hsl(217,80%,18%)] text-white shadow-md hover:bg-[hsl(217,80%,14%)]'
-                          : 'cursor-not-allowed bg-muted text-muted-foreground/80',
-                      )}
-                    >
-                      <Megaphone className="h-4 w-4" />
-                      פרסם את כל הטיוטות ({readyKeys.length})
-                    </button>
+                  </div>
+                  {/* Publish sits alone on the very last row of the screen. */}
+                  <button
+                    type="button"
+                    onClick={() => publishAllDrafts(blocks.map((b, idx) => draftKeyFor(b, idx)))}
+                    disabled={readyKeys.length === 0}
+                    className={cn(
+                      'flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
+                      readyKeys.length
+                        ? 'bg-[hsl(217,80%,18%)] text-white shadow-md hover:bg-[hsl(217,80%,14%)]'
+                        : 'cursor-not-allowed bg-muted text-muted-foreground/80',
+                    )}
+                  >
+                    <Megaphone className="h-4 w-4" />
+                    פרסם את כל הטיוטות ({readyKeys.length})
+                  </button>
                   </div>
                 </div>
 

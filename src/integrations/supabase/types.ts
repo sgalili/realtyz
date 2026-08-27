@@ -943,6 +943,7 @@ export type Database = {
           recipient_email: string | null
           recipient_name: string | null
           recipient_phone: string | null
+          recurrence_rule: Json | null
           regen_prompt: string | null
           sent_at: string | null
           series_id: string | null
@@ -982,6 +983,7 @@ export type Database = {
           recipient_email?: string | null
           recipient_name?: string | null
           recipient_phone?: string | null
+          recurrence_rule?: Json | null
           regen_prompt?: string | null
           sent_at?: string | null
           series_id?: string | null
@@ -1021,6 +1023,7 @@ export type Database = {
           recipient_email?: string | null
           recipient_name?: string | null
           recipient_phone?: string | null
+          recurrence_rule?: Json | null
           regen_prompt?: string | null
           sent_at?: string | null
           series_id?: string | null
@@ -5314,6 +5317,10 @@ export type Database = {
       can_delete_leads: { Args: { _user_id: string }; Returns: boolean }
       can_manage_data: { Args: { _user_id: string }; Returns: boolean }
       can_use_closing_room: { Args: { _user_id: string }; Returns: boolean }
+      cancel_future_listing_posts: {
+        Args: { _listing_id: string }
+        Returns: number
+      }
       claim_autopilot_jobs: {
         Args: { p_limit?: number; p_worker?: string }
         Returns: {

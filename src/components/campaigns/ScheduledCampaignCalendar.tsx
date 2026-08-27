@@ -98,7 +98,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [recurrence, setRecurrence] = useState<Recurrence>('none');
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]); // 0=Sun..6=Sat
   // Rolling repeat: only the current slot + ONE next version are materialized.
-  const recurrenceCount = 2;
+  // Strict 1-slot lookahead: only the NEXT version of each post is queued.
+  const recurrenceCount = 1;
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [brandingPost, setBrandingPost] = useState(false);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
@@ -907,11 +908,11 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   }
                 }
 
-                // Only the current day + the single NEXT recurrence date are
-                // materialized. Every later version is created after a publish.
+                // Only ONE version per post lives in the queue at a time. The
+                // dispatcher materializes the next one after a successful publish.
                 const cappedDates = recurrenceDates
                   .sort((a, b) => a.getTime() - b.getTime())
-                  .slice(0, recurrence === 'none' ? 1 : 2);
+                  .slice(0, 1);
                 const slots: Date[] = cappedDates
                   .flatMap((day) => buildDaySlots(day))
                   .sort((a, b) => a.getTime() - b.getTime());
