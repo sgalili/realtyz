@@ -6236,6 +6236,25 @@ const CampaignCenter = () => {
                   </div>
                 </div>
 
+                {/* Delete-all confirmation. */}
+                <Dialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+                  <DialogContent dir="rtl" className="w-[92vw] sm:max-w-[420px]">
+                    <DialogHeader>
+                      <DialogTitle className="text-right">למחוק את כל הטיוטות?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground text-right">
+                      הפעולה מוחקת את כל {blocks.length} הטיוטות (טקסט, תמונות ותזמונים שלא פורסמו).
+                      פוסטים שכבר פורסמו או שתוזמנו בתור לא ייפגעו.
+                    </p>
+                    <div className="flex justify-start gap-2 pt-2">
+                      <Button variant="destructive" onClick={() => { void deleteAllDrafts(); }}>
+                        מחק הכל
+                      </Button>
+                      <Button variant="outline" onClick={() => setDeleteAllOpen(false)}>ביטול</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
                 {/* Bulk schedule dialog — applies to every draft in the multi-draft view. */}
                 <Dialog open={bulkScheduleDialogOpen} onOpenChange={setBulkScheduleDialogOpen}>
                   <DialogContent dir="rtl" className="w-[92vw] sm:max-w-[420px]">
