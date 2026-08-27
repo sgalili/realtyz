@@ -1680,6 +1680,44 @@ const InlineComposer = ({
     [listings, selectedListingId],
   );
   const imageCount = attachments.filter((a) => a.kind === 'image').length;
+  // Shared publish action — used by the sticky button inside the composer,
+  // by the collapsed draft card header, and by "publish all drafts".
+  const scheduledDateNow = scheduledLocal ? new Date(scheduledLocal) : null;
+  const scheduledValidNow = mode === 'now' || (!!scheduledDateNow && scheduledDateNow.getTime() > Date.now());
+  const hasSelectedPagesNow = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
+  const canPublish = hasBody && scheduledValidNow && hasSelectedPagesNow;
+
+  const submitDraft = useCallback((): boolean => {
+    const sd = scheduledLocal ? new Date(scheduledLocal) : null;
+    const valid = mode === 'now' || (!!sd && sd.getTime() > Date.now());
+    const pagesOk = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
+    if (!body.trim() || !valid || !pagesOk) return false;
+    onConfirm({
+      body,
+      original_ai_body: originalAiBody,
+      listing_id: selectedListingId || null,
+      mode,
+      media_urls: attachments
+        .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+        .map((a) => a.url as string),
+      scheduled_at: mode === 'scheduled' && sd ? sd.toISOString() : null,
+      group_ids: channel.id === 'facebook' ? groupIds : [],
+      selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
+      attach_wa_link: attachWaLink,
+      first_comment: firstCommentEnabled ? firstComment : '',
+      first_comment_enabled: firstCommentEnabled,
+      attach_msngr_link: attachMsngrLink,
+    });
+    return true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [body, originalAiBody, selectedListingId, mode, attachments, scheduledLocal, groupIds, selectedProfileIds, attachWaLink, firstComment, firstCommentEnabled, attachMsngrLink, channel.id, platformProfiles.length]);
+
+  useEffect(() => {
+    onRegisterPublish?.(submitDraft);
+    return () => onRegisterPublish?.(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitDraft]);
+
   useEffect(() => {
     onStatus?.({
       title: (activeListing?.property_title || activeListing?.address || '') as string,
@@ -1688,9 +1726,11 @@ const InlineComposer = ({
       images: imageCount,
       chars: count,
       ready: hasBody && imageCount > 0,
+      canPublish,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeListing, generating, firstCommentGenerating, photosLoading, imageCount, count, hasBody]);
+  }, [activeListing, generating, firstCommentGenerating, photosLoading, imageCount, count, hasBody, canPublish]);
+
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-16 shadow-sm space-y-4" dir="rtl">
