@@ -808,6 +808,7 @@ export default function PropertyDetail() {
         : [];
       return (
         <div className="p-3 sm:p-6 space-y-6" dir="rtl">
+          <TopProgressBar value={initialLoadProgress} />
           <header className="space-y-2">
             <h1 className="text-3xl font-bold leading-snug text-foreground">{propertySnapshot.title}</h1>
             {propertySnapshot.neighborhood && <p className="text-lg text-muted-foreground">{propertySnapshot.neighborhood}</p>}
