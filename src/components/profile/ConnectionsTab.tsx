@@ -17,9 +17,9 @@ function StatusPill({ label, tone }: { label: string; tone: Tone }) {
   return (
     <span
       className={cn(
-        'shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
+        'shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold',
         tone === 'ok'
-          ? 'border-primary/30 bg-primary/10 text-primary'
+          ? 'border-transparent bg-emerald-600 text-white'
           : 'border-border bg-muted text-muted-foreground',
       )}
     >
@@ -66,7 +66,7 @@ function ConnectionSection({
       {open && (
         <div
           className={cn(
-            'border-t px-1 pb-1 text-right',
+            'border-t px-1 pb-1 pt-[10px] text-right',
             // neutralize the nested Card chrome + hide its duplicate header
             '[&_[data-conn-body]>div]:border-0 [&_[data-conn-body]>div]:bg-transparent [&_[data-conn-body]>div]:shadow-none',
             '[&_[data-conn-body]>div>:first-child]:hidden',
@@ -132,20 +132,14 @@ export function ConnectionsTab() {
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
   // Collapsed header badge reads the exact same shared state as the expanded
-  // card badge and the global banner, and shows the real page name.
+  // card badge and the global banner. Status only — never the page name.
   const fbConnected = !!(fbHealth?.pageConnected || meta?.connected);
-  const fbName = fbHealth?.pageName ?? meta?.facebook?.name ?? null;
-  const fbHasIg = !!(fbHealth?.instagram || meta?.instagram);
-  const metaStatus: [string, Tone] = fbConnected
-    ? [fbName ? `מחובר · ${fbName}` : fbHasIg ? 'פייסבוק ואינסטגרם מחוברים' : 'פייסבוק מחובר', 'ok']
-    : fbHealth?.needsReconnect
-      ? ['נדרש חיבור מחדש', 'idle']
-      : ['לא מחובר', 'idle'];
+  const metaStatus: [string, Tone] = fbConnected ? ['מחובר', 'ok'] : ['מנותק', 'idle'];
 
   const sections: Array<{ id: string; title: string; status: string; tone: Tone; node: ReactNode }> = [
     {
       id: 'meta',
-      title: 'פרסום ישיר לפייסבוק ואינסטגרם',
+      title: 'פייסבוק / אינסטגרם',
       status: metaStatus[0],
       tone: metaStatus[1],
       node: <MetaDirectConnectionCard onStatus={setMeta} />,
