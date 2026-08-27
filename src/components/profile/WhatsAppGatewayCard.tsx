@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { MessageCircle, Save, Loader2, CheckCircle2, ImageDown } from 'lucide-react';
+import { MessageCircle, Save, Loader2, CheckCircle2, ImageDown, QrCode, PlusCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { useWaAvatarSync } from '@/hooks/useWaAvatarSync';
 
 /**
@@ -30,6 +32,11 @@ export function WhatsAppGatewayCard() {
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState<'unknown' | 'ok' | 'err'>('unknown');
   const [syncingAvatars, setSyncingAvatars] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrImage, setQrImage] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrNote, setQrNote] = useState<string>('');
+  const [creating, setCreating] = useState(false);
   const avatarSync = useWaAvatarSync();
 
   useEffect(() => {
@@ -188,6 +195,91 @@ export function WhatsAppGatewayCard() {
   };
 
 
+  /** Pulls a live QR code from Green API (server-side) and polls until linked. */
+  const openQr = async () => {
+    if (!instanceId.trim() || !token.trim()) {
+      toast.error('יש למלא Instance ID ו-API Token לפני סריקת QR');
+      return;
+    }
+    setQrOpen(true);
+    setQrImage(null);
+    setQrNote('');
+    setQrLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('greenapi-session', {
+        body: { action: 'qr', instance_id: instanceId.trim(), token: token.trim() },
+      });
+      if (error) throw error;
+      if ((data as any)?.status === 'connected') {
+        setQrNote('המספר כבר מחובר. לחיבור מספר אחר יש להתנתק קודם.');
+        setStatus('ok');
+        if ((data as any)?.phone) setWaPhone(String((data as any).phone).replace(/\D/g, ''));
+        await upsertSocialConnection('authorized');
+      } else if ((data as any)?.qr_image) {
+        setQrImage(String((data as any).qr_image));
+      } else {
+        setQrNote((data as any)?.error ?? 'לא ניתן להפיק קוד QR כרגע');
+      }
+    } catch (e: any) {
+      setQrNote(e?.message ?? 'שגיאה בהפקת קוד QR');
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  // While the QR dialog is open, poll the live state so the card flips to
+  // "פעיל" the moment the user finishes scanning.
+  useEffect(() => {
+    if (!qrOpen || !instanceId || !token) return;
+    const timer = setInterval(async () => {
+      try {
+        const { data } = await supabase.functions.invoke('greenapi-session', {
+          body: { action: 'status', instance_id: instanceId.trim(), token: token.trim() },
+        });
+        if ((data as any)?.status === 'connected') {
+          setStatus('ok');
+          if ((data as any)?.phone) setWaPhone(String((data as any).phone).replace(/\D/g, ''));
+          await upsertSocialConnection('authorized');
+          setQrOpen(false);
+          toast.success('WhatsApp חובר בהצלחה');
+        }
+      } catch { /* keep polling */ }
+    }, 5000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrOpen, instanceId, token]);
+
+  /** Creates a fresh Green API instance automatically (Partner API). */
+  const createInstance = async () => {
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('greenapi-session', {
+        body: { action: 'create_instance' },
+      });
+      if (error) throw error;
+      const newId = (data as any)?.instance_id;
+      const newToken = (data as any)?.token;
+      if (!newId || !newToken) {
+        toast.error((data as any)?.error ?? 'יצירת מכונה נכשלה');
+        return;
+      }
+      setInstanceId(String(newId));
+      setToken(String(newToken));
+      setWaPhone('');
+      setStatus('unknown');
+      await supabase.functions.invoke('manage-api-configs', {
+        method: 'POST',
+        body: { service_name: 'Green API', api_key: `${newId}:${newToken}`, is_active: true },
+      });
+      toast.success('מכונה חדשה נוצרה ונשמרה · כעת סרוק את קוד ה-QR');
+      setTimeout(() => { void openQr(); }, 400);
+    } catch (e: any) {
+      toast.error(`יצירת מכונה נכשלה: ${e?.message ?? e}`);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <Card dir="rtl" className="text-right">
       <CardHeader>
@@ -209,8 +301,7 @@ export function WhatsAppGatewayCard() {
           <Input
             dir="ltr"
             readOnly
-            placeholder={waPhone ? '' : 'יוצג לאחר בדיקת חיבור'}
-            value={waPhone ? `+${waPhone}` : ''}
+            value={waPhone ? formatPhoneDisplay(waPhone) : ''}
             className="bg-muted/40"
           />
         </div>
@@ -275,6 +366,27 @@ export function WhatsAppGatewayCard() {
             )}
             סנכרון תמונות
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={createInstance}
+            disabled={creating || loading}
+            title="צור מכונת Green API חדשה אוטומטית"
+            className="px-2 text-xs whitespace-nowrap"
+          >
+            {creating ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <PlusCircle className="ml-1 h-3.5 w-3.5" />}
+            מכונה חדשה
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openQr}
+            disabled={loading}
+            className="px-2 text-xs whitespace-nowrap"
+          >
+            <QrCode className="ml-1 h-3.5 w-3.5" />
+            סרוק קוד QR
+          </Button>
           <Button variant="outline" size="sm" onClick={test} disabled={testing || loading}
             className="px-2 text-xs whitespace-nowrap">
             {testing ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : null}
@@ -287,6 +399,27 @@ export function WhatsAppGatewayCard() {
           </Button>
         </div>
       </CardContent>
+
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent dir="rtl" className="max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle className="text-center">סריקת קוד QR · WhatsApp</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3 py-2">
+            {qrLoading && <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />}
+            {!qrLoading && qrImage && (
+              <img src={qrImage} alt="קוד QR לחיבור WhatsApp" className="h-56 w-56 rounded-md border" />
+            )}
+            {!qrLoading && qrNote && <p className="text-sm text-muted-foreground">{qrNote}</p>}
+            <p className="text-xs text-muted-foreground">
+              WhatsApp → הגדרות → מכשירים מקושרים → קישור מכשיר, ולאחר מכן סרוק את הקוד.
+            </p>
+            <Button variant="outline" size="sm" onClick={openQr} disabled={qrLoading}>
+              רענן קוד
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

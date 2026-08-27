@@ -31,8 +31,13 @@ const corsHeaders = {
 };
 
 const BodySchema = z.object({
-  action: z.enum(["qr", "status", "logout"]),
+  action: z.enum(["qr", "status", "logout", "create_instance"]),
+  // Optional inline credentials (used by the profile card, which stores the
+  // instance in api_configs rather than workspace_whatsapp_settings).
+  instance_id: z.string().trim().max(64).optional(),
+  token: z.string().trim().max(200).optional(),
 });
+
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -78,20 +83,83 @@ Deno.serve(async (req) => {
       .eq("workspace_owner_id", ownerId)
       .maybeSingle();
 
+    const persist = async (patch: Record<string, unknown>) => {
+      await admin
+        .from("workspace_whatsapp_settings")
+        .upsert(
+          {
+            workspace_owner_id: ownerId,
+            ...patch,
+            last_checked_at: new Date().toISOString(),
+          },
+          { onConflict: "workspace_owner_id" },
+        );
+    };
+
+    // ── create_instance ────────────────────────────────────────────────────
+    // Provisions a brand new Green API instance via the Partner API and stores
+    // the returned credentials, so the user never touches green-api.com.
+    if (parsed.data.action === "create_instance") {
+      const partnerToken = (Deno.env.get("GREENAPI_PARTNER_TOKEN") ?? "").trim();
+      if (!partnerToken) {
+        return json(
+          {
+            error:
+              "חסר GREENAPI_PARTNER_TOKEN. יש להוסיף את מפתח ה-Partner של Green API כדי לאפשר יצירת מכונה אוטומטית.",
+            code: "missing_partner_token",
+          },
+          400,
+        );
+      }
+      const res = await fetch(
+        `https://api.green-api.com/partner/createInstance/${partnerToken}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Realtyz WhatsApp",
+            webhookUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/greenapi-webhook`,
+            incomingWebhook: "yes",
+            outgoingWebhook: "yes",
+            outgoingMessageWebhook: "yes",
+            outgoingAPIMessageWebhook: "yes",
+            stateWebhook: "yes",
+          }),
+        },
+      );
+      const raw = await res.text();
+      let data: any = {};
+      try { data = JSON.parse(raw); } catch { /* keep raw */ }
+      const newId = String(data?.idInstance ?? "").trim();
+      const newToken = String(data?.apiTokenInstance ?? "").trim();
+      if (!res.ok || !newId || !newToken) {
+        console.error("greenapi createInstance failed", res.status, raw.slice(0, 500));
+        return json(
+          { error: "יצירת מכונה ב-Green API נכשלה", status: res.status, details: raw.slice(0, 300) },
+          502,
+        );
+      }
+      await persist({
+        green_api_instance_id: newId,
+        green_api_token: newToken,
+        qr_status: "pending",
+        qr_phone: null,
+      });
+      return json({ success: true, instance_id: newId, token: newToken, status: "pending" });
+    }
+
     const creds: GreenApiCreds = {
-      instance_id: String((settings as any)?.green_api_instance_id ?? "").trim(),
-      token: String((settings as any)?.green_api_token ?? "").trim(),
+      instance_id: String(parsed.data.instance_id ?? (settings as any)?.green_api_instance_id ?? "").trim(),
+      token: String(parsed.data.token ?? (settings as any)?.green_api_token ?? "").trim(),
     };
     if (!creds.instance_id || !creds.token) {
       return json({ error: "חסרים פרטי Green API (Instance ID ו-API Token)" }, 400);
     }
+    // Keep the workspace row in sync when creds arrive inline from the UI.
+    if (parsed.data.instance_id && parsed.data.token) {
+      await persist({ green_api_instance_id: creds.instance_id, green_api_token: creds.token });
+    }
 
-    const persist = async (patch: Record<string, unknown>) => {
-      await admin
-        .from("workspace_whatsapp_settings")
-        .update({ ...patch, last_checked_at: new Date().toISOString() })
-        .eq("workspace_owner_id", ownerId);
-    };
 
     // Point the instance at our inbound receiver the moment it is live, so
     // customer messages reach the CRM + AI autopilot with zero manual setup.

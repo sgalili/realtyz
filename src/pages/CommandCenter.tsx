@@ -109,7 +109,7 @@ export default function CommandCenter() {
         </p>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3">
         <MetricCard
           icon={<AlarmClock className="h-5 w-5 text-destructive" />}
           label="משימות באיחור"
