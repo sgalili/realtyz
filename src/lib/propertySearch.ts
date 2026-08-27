@@ -362,16 +362,19 @@ export async function searchAllSources(
     // filtered server-side via ilike). Every token must appear in at least one
     // text field — this avoids requiring the whole free-text phrase to match.
     const tokens = tokenize(f.q).map((t) => t.toLowerCase());
-    return tokens.length === 0
-      ? all
-      : all.filter((r) => {
-          if (r.localId) return true; // already filtered server-side
-          const hay = [r.title, r.description, r.city, r.address, r.neighborhood]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase();
-          return tokens.every((t) => hay.includes(t));
-        });
+    const filteredRows =
+      tokens.length === 0
+        ? all
+        : all.filter((r) => {
+            if (r.localId) return true; // already filtered server-side
+            const hay = [r.title, r.description, r.city, r.address, r.neighborhood]
+              .filter(Boolean)
+              .join(' ')
+              .toLowerCase();
+            return tokens.every((t) => hay.includes(t));
+          });
+
+    return sortYad2First(filteredRows);
   };
 
   const collected: Array<{ label: PropertySource; results: UnifiedResult[] }> = [];
