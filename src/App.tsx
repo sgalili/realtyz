@@ -175,6 +175,8 @@ const App = () => (
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
               <Route path="/" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
+              <Route path="/command-center" element={<ProtectedRoute allowGuestDemo><CommandCenter /></ProtectedRoute>} />
+              <Route path="/tasks" element={<Navigate to="/command-center" replace />} />
               <Route path="/crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/lead-crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
