@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { CalendarClock, CheckCircle2, ExternalLink, EyeOff, Pencil, Send, XCircle } from 'lucide-react';
+import { CalendarClock, CheckCircle2, ExternalLink, EyeOff, Pencil, Send, XCircle, Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -225,7 +225,7 @@ export default function ApprovalQueue() {
                       <Button variant="destructive" onClick={() => reject(item)}><XCircle className="h-4 w-4" /> דחה</Button>
                     </div>
                   )}
-                  {item.status === 'approved' && <div className="grid gap-2 md:grid-cols-[auto_1fr_auto]"><Button onClick={() => publishItem.mutate(item)}><Send className="h-4 w-4" /> פרסום עכשיו</Button><Input type="datetime-local" value={scheduleAt[item.id] || ''} onChange={(e) => setScheduleAt((cur) => ({ ...cur, [item.id]: e.target.value }))} /><Button variant="outline" onClick={() => scheduleItem.mutate(item)}><CalendarClock className="h-4 w-4" /> תזמון</Button></div>}
+                  {item.status === 'approved' && <div className="grid gap-2 md:grid-cols-[auto_1fr_auto]"><Button onClick={() => publishItem.mutate(item)}><Megaphone className="h-4 w-4" /> פרסום עכשיו</Button><Input type="datetime-local" value={scheduleAt[item.id] || ''} onChange={(e) => setScheduleAt((cur) => ({ ...cur, [item.id]: e.target.value }))} /><Button variant="outline" onClick={() => scheduleItem.mutate(item)}><CalendarClock className="h-4 w-4" /> תזמון</Button></div>}
                   {item.live_post_url && <Button asChild variant="ghost" size="sm"><a href={item.live_post_url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /> צפייה בפוסט החי</a></Button>}
                 </CardContent>
               </Card>

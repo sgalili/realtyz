@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2, RefreshCw, AlertTriangle, Calendar as CalendarIcon } from 'lucide-react';
+import { Send, Loader2, RefreshCw, AlertTriangle, Calendar as CalendarIcon, Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { stripAddressNumbers } from '@/lib/formatAddress';
@@ -701,7 +701,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
             <CalendarIcon className="h-4 w-4" />
           </Button>
           <Button onClick={repost} disabled={posting || regenerating || !body.trim()}>
-            {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />}
             פרסם עכשיו
           </Button>
         </DialogFooter>
