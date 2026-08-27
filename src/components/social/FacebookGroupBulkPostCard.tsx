@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Users, Send, Loader2, CheckCircle2, XCircle, Search, Eye, MessageCircle, Share2, Sparkles, CalendarClock } from 'lucide-react';
+import { Users, Send, Loader2, CheckCircle2, XCircle, Search, Eye, MessageCircle, Share2, Sparkles, CalendarClock, Megaphone } from 'lucide-react';
 
 type Group = {
   group_id: string;
@@ -424,7 +424,7 @@ export const FacebookGroupBulkPostCard = () => {
               תזמן פרסום
             </Button>
             <Button size="sm" onClick={publish} disabled={sending || scheduling} className="gap-1">
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />}
               פרסום לקבוצות
             </Button>
           </div>

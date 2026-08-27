@@ -13,8 +13,7 @@ import {
   BedDouble, Ruler, MapPin, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink, Pencil, Save, X,
-  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2, ChevronLeft, ChevronRight,
-} from 'lucide-react';
+  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2, ChevronLeft, ChevronRight, Megaphone } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
   type HomelyProperty,
@@ -1069,7 +1068,7 @@ export default function PropertyDetail() {
                   title="צור פוסט לנכס"
                   className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
                 >
-                  <Send className="h-5 w-5" />
+                  <Megaphone className="h-5 w-5" />
                 </button>
                 <PropertyShareMenu
                   results={[{
