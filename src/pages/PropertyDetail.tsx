@@ -430,8 +430,9 @@ export default function PropertyDetail() {
     const started = Date.now();
     const timer = setInterval(() => {
       const elapsed = Date.now() - started;
-      setInitialLoadProgress(Math.min(92, 8 + Math.round((elapsed / 5000) * 84)));
-    }, 100);
+      // Text import is budgeted at <3s, so the bar tracks that window.
+      setInitialLoadProgress(Math.min(94, 8 + Math.round((elapsed / 2600) * 86)));
+    }, 60);
     return () => clearInterval(timer);
   }, [isLoading]);
 
@@ -519,12 +520,13 @@ export default function PropertyDetail() {
         return Math.min(ceiling, p + stepSize);
       });
     }, 80);
-    // Safety valve: the text view is already usable, so close the loader fast.
+    // Safety valve: the text import is budgeted under 3s, so the loader is
+    // force-closed right after that window — never a frozen screen.
     const bail = setTimeout(() => {
       metaTargetRef.current = 100;
       setHydrateProgress(100);
       setHydrating(false);
-    }, 15000);
+    }, 3200);
     return () => {
       clearInterval(timer);
       clearTimeout(bail);
@@ -806,6 +808,7 @@ export default function PropertyDetail() {
         : [];
       return (
         <div className="p-3 sm:p-6 space-y-6" dir="rtl">
+          <TopProgressBar value={initialLoadProgress} />
           <header className="space-y-2">
             <h1 className="text-3xl font-bold leading-snug text-foreground">{propertySnapshot.title}</h1>
             {propertySnapshot.neighborhood && <p className="text-lg text-muted-foreground">{propertySnapshot.neighborhood}</p>}
@@ -833,9 +836,36 @@ export default function PropertyDetail() {
         </div>
       );
     }
+    // No snapshot yet: show the real page skeleton (never a blank screen) with
+    // a smooth top progress bar + centered percentage ring.
     return (
-      <div className="flex min-h-[50vh] items-center justify-center p-6" dir="rtl">
-        <ProgressRing value={initialLoadProgress} size={112} strokeWidth={8} />
+      <div className="p-3 sm:p-6 space-y-6" dir="rtl">
+        <TopProgressBar value={initialLoadProgress} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Skeleton className="h-6 w-40" />
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </div>
+        <div className="space-y-3">
+          <Skeleton className="h-9 w-3/4 max-w-xl" />
+          <Skeleton className="h-6 w-1/3 max-w-sm" />
+          <Skeleton className="h-10 w-48" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}
+        </div>
+        <Skeleton className="h-[280px] w-full rounded-xl" />
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-full max-w-3xl" />
+          <Skeleton className="h-5 w-full max-w-2xl" />
+          <Skeleton className="h-5 w-2/3 max-w-xl" />
+        </div>
+        <div className="pointer-events-none fixed left-1/2 top-24 z-50 -translate-x-1/2 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
+          <ProgressRing value={initialLoadProgress} size={72} strokeWidth={6} />
+        </div>
       </div>
     );
   }
@@ -1711,6 +1741,18 @@ export default function PropertyDetail() {
         property={property}
         open={shareOpen}
         onOpenChange={setShareOpen}
+      />
+    </div>
+  );
+}
+
+/** Slim, smooth top-of-page progress bar shown while property data streams in. */
+function TopProgressBar({ value }: { value: number }) {
+  return (
+    <div className="fixed inset-x-0 top-0 z-50 h-1 bg-muted">
+      <div
+        className="h-full bg-primary transition-[width] duration-200 ease-out"
+        style={{ width: `${Math.max(4, Math.min(100, value))}%` }}
       />
     </div>
   );
