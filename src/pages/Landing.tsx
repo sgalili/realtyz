@@ -195,17 +195,6 @@ export default function Landing() {
             </p>
           </Reveal>
 
-          <Reveal delay={240}>
-            <div className="mt-9 flex flex-col items-center gap-2">
-              <Link to="/auth">
-                <Button size="lg" className="group h-14 px-8 text-base font-extrabold shadow-2xl shadow-primary/25">
-                  התחל בחינם
-                  <ArrowLeft className="ms-2 h-5 w-5 transition-transform group-hover:-translate-x-1" />
-                </Button>
-              </Link>
-              
-            </div>
-          </Reveal>
 
           <Reveal delay={320}>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-semibold text-muted-foreground">
