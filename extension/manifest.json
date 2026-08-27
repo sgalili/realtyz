@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Realtyz Group Sync",
+  "version": "1.0.0",
+  "description": "מסנכרן את קבוצות הפייסבוק שלך אל Realtyz ומאפשר פרסום ממוקד.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://*.facebook.com/*",
+    "https://realtyz.co.il/*",
+    "https://*.realtyz.co.il/*",
+    "https://*.lovable.app/*",
+    "http://localhost/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://*.facebook.com/*"],
+      "js": ["facebook.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://realtyz.co.il/*",
+        "https://*.realtyz.co.il/*",
+        "https://*.lovable.app/*",
+        "http://localhost/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
