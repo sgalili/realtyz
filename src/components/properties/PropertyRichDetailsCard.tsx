@@ -431,8 +431,16 @@ export function PropertyRichDetailsCard({
     ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
     : null;
 
+  // Numeric attributes (מ״ר, חדרים, קומה…) always render as a single clean
+  // number — no units, no extra values glued onto it.
+  const cleanNumeric = (name: string, raw: string): string => {
+    if (!/מ״ר|מ"ר|חדרים|קומה|קומות|חניות|מרפסות/.test(name)) return raw;
+    const m = raw.replace(/,/g, '').match(/\d+(\.\d+)?/);
+    return m ? m[0] : raw;
+  };
+
   const rowValue = (name: string, fallback: unknown) =>
-    rowOverrides[`row:${name}`] ?? renderValue(fallback);
+    rowOverrides[`row:${name}`] ?? cleanNumeric(name, renderValue(fallback));
 
   return (
     <Card className="p-4 sm:p-6 space-y-8" dir="rtl">
