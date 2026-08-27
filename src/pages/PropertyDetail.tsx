@@ -39,6 +39,7 @@ import { buildDescriptionBlocks, sanitizeDescription } from '@/lib/descriptionBl
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { formatIsoDate } from '@/lib/listingDates';
+import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -1074,6 +1075,7 @@ export default function PropertyDetail() {
     '';
   const sourceOrigin = String((meta as JsonRecord).source_origin ?? '').toLowerCase();
   const isYad2Listing = /yad2\.co\.il/i.test(resolvedSourceUrl);
+  const yad2Status = useYad2AdStatus(isYad2Listing ? resolvedSourceUrl : null);
   const isHomelyListing = !isYad2Listing && (sourceOrigin === 'homely' || String(data?.row?.source ?? '').toLowerCase() === 'homely');
   const yad2Url = isYad2Listing ? resolvedSourceUrl : '';
   const originalDate = formatIsoDate(
@@ -1166,7 +1168,7 @@ export default function PropertyDetail() {
 
 
                 {/* Yad2 live ad first, campaign second (positions swapped). */}
-                {yad2Url && (
+                {yad2Url && yad2Status === 'live' && (
                   <a
                     href={yad2Url}
                     target="_blank"
