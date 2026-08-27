@@ -1746,6 +1746,18 @@ export default function PropertyDetail() {
   );
 }
 
+/** Slim, smooth top-of-page progress bar shown while property data streams in. */
+function TopProgressBar({ value }: { value: number }) {
+  return (
+    <div className="fixed inset-x-0 top-0 z-50 h-1 bg-muted">
+      <div
+        className="h-full bg-primary transition-[width] duration-200 ease-out"
+        style={{ width: `${Math.max(4, Math.min(100, value))}%` }}
+      />
+    </div>
+  );
+}
+
 function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
