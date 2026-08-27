@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Check } from 'lucide-react';
 import { CreditBalancePill } from '@/components/CreditBalancePill';
-import { FREE_CONTACTS, FREE_PROPERTIES, PRICE_PER_CONTACT, quoteForContacts } from '@/lib/pricing';
+import { FREE_CONTACTS, FREE_PROPERTIES, quoteForContacts } from '@/lib/pricing';
 import { fmtILS } from '@/lib/formatCurrency';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 
@@ -53,13 +53,14 @@ export default function PlanTab() {
             <p className="mt-3 text-sm font-bold text-foreground">
               {quote.isFree
                 ? `מסלול חינם נצחי - עד ${FREE_CONTACTS} אנשי קשר ו-${FREE_PROPERTIES} נכסים`
-                : `${fmtILS(PRICE_PER_CONTACT, { fractionDigits: 2 })} לאיש קשר לחודש · ${FREE_CONTACTS} הראשונים חינם`}
+                : `${fmtILS(quote.ratePerContact, { fractionDigits: 2 })} לאיש קשר לחודש · ${FREE_CONTACTS} הראשונים חינם`}
             </p>
-            {quote.discountRate > 0 && (
+            {!quote.isFree && (
               <span className="mt-3 inline-block rounded-full bg-primary/15 px-3 py-1 text-xs font-bold text-primary">
-                הנחת כמות {Math.round(quote.discountRate * 100)}%
+                {quote.tierLabel}
               </span>
             )}
+
           </div>
 
           <div className="space-y-3">
