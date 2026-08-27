@@ -4040,16 +4040,14 @@ const PublishedFeed = () => {
                   );
                 })() : isPaused ? null : failed ? (
                   <span
-                    className={cn(
-                      'inline-flex items-start gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive ring-1 ring-destructive/30',
-                      isOpen ? 'max-w-full rounded-lg whitespace-pre-wrap break-words text-right' : 'max-w-[60%] items-center',
-                    )}
+                    className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive ring-1 ring-destructive/30 max-w-[60%]"
                     title={failureReason ?? undefined}
                   >
-                    <AlertTriangle className="h-3 w-3 shrink-0 mt-[2px]" />
-                    <span className={isOpen ? 'whitespace-pre-wrap break-words' : 'truncate'}>נכשל · {failureReason}</span>
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                    <span className="truncate">נכשל · {failureReason}</span>
                   </span>
                 ) : scheduled ? (() => {
+
 
 
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
