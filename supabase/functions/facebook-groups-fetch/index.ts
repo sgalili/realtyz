@@ -1,7 +1,10 @@
 // facebook-groups-fetch — direct Graph API group reads.
 // Hotfix rule: never throw a non-2xx response. The campaign UI must stay
 // renderable even when Meta permissions/tokens are missing or rejected.
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { resolveMetaPage } from "../_shared/metaPage.ts";
+
 
 const META_GROUPS_URL = "https://graph.facebook.com/v26.0/me/groups";
 
