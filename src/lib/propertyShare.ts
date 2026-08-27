@@ -7,6 +7,7 @@ import type { UnifiedResult } from '@/lib/propertySearch';
 import { publicUrl } from '@/lib/publicUrl';
 import { ensureFullPropertyImport } from '@/lib/propertyFullSync';
 import { autoImportResult } from '@/lib/propertyAutoImport';
+import { openOfficialWhatsApp, sendViaOfficialWaba } from '@/lib/officialWa';
 
 
 export type ShareMode = 'whatsapp' | 'sms' | 'copy';
@@ -145,13 +146,15 @@ export async function shareProperties(
       : buildMultiMessage(minted);
 
   if (mode === 'whatsapp') {
-    window.open(
-      phone
-        ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
-        : `https://wa.me/?text=${encodeURIComponent(text)}`,
-      '_blank',
-      'noopener,noreferrer',
-    );
+    // HARD RULE: outbound WhatsApp must originate from our official Meta WBA
+    // number only. With a recipient we dispatch through the official gateway;
+    // without one we open a chat with the official number itself.
+    if (phone) {
+      const res = await sendViaOfficialWaba({ phone_number: phone, message: text });
+      if (!res.ok) throw new Error(res.error || 'שליחה בוואטסאפ הרשמי נכשלה');
+      return;
+    }
+    await openOfficialWhatsApp(text);
     return;
   }
   if (mode === 'sms') {
