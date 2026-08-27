@@ -365,6 +365,9 @@ export default function DealRoom() {
 
 
   const stageColumns = useMemo(() => columnsFor(activeDealType), [activeDealType]);
+  // Every stage card starts collapsed; the broker opens only what they need.
+  const [openStages, setOpenStages] = useState<Record<string, boolean>>({});
+  const toggleStage = (key: string) => setOpenStages((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const grouped = useMemo(() => {
     const map: Record<LeadStage, Lead[]> = {
