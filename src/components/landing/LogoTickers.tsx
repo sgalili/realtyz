@@ -49,7 +49,7 @@ export function PlatformTicker() {
 export function StackTicker() {
   return (
     <div className="landing-ticker" dir="ltr">
-      <div className="landing-ticker-track landing-ticker-slow">
+      <div className="landing-ticker-track landing-ticker-slow landing-ticker-reverse">
         {[0, 1].map((dup) => (
           <div key={dup} className="landing-ticker-group" aria-hidden={dup === 1}>
             {STACK.map((s) => (
@@ -58,7 +58,15 @@ export function StackTicker() {
                 className="inline-flex items-center gap-2 whitespace-nowrap text-lg font-extrabold tracking-tight"
                 style={{ color: s.color }}
               >
-                {s.icon && <BrandIcon name={s.icon} className="h-6 w-6 shrink-0" />}
+                {s.icon && (
+                  s.chip ? (
+                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white">
+                      <BrandIcon name={s.icon} className="h-5 w-5" style={{ color: '#000000' }} />
+                    </span>
+                  ) : (
+                    <BrandIcon name={s.icon} className="h-6 w-6 shrink-0" />
+                  )
+                )}
                 {s.img && (
                   <img
                     src={s.img}
