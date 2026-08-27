@@ -6,6 +6,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeImageUrls } from '@/lib/imageHealth';
 import type { PropertySource } from '@/components/properties/SourceBadge';
+import { sanitizeSqm } from '@/lib/propertyMeasures';
+
 
 export type UnifiedResult = {
   key: string;                 // stable client-side id
