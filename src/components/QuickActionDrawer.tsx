@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Zap, StickyNote, BellRing, MessageSquarePlus, Home, Loader2, Search, ArrowLeft } from 'lucide-react';
+import { Zap, StickyNote, BellRing, MessageSquarePlus, Home, Loader2, Search, ArrowLeft, CalendarCheck2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
@@ -20,10 +20,10 @@ type LeadLite = { id: string; full_name: string | null; phone_number: string | n
 type ListingLite = { id: string; property_title: string | null; city: string | null; neighborhood: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null };
 
 const TABS: Array<{ key: TabKey; label: string; icon: typeof StickyNote }> = [
-  { key: 'note', label: 'רשומה', icon: StickyNote },
+  { key: 'note', label: 'פתק', icon: StickyNote },
   { key: 'reminder', label: 'תזכורת', icon: BellRing },
-  { key: 'interaction', label: 'אינטראקציה', icon: MessageSquarePlus },
-  { key: 'matches', label: 'התאמות', icon: Home },
+  { key: 'interaction', label: 'סיכום שיחה', icon: MessageSquarePlus },
+  { key: 'matches', label: 'התאמת נכס', icon: Home },
 ];
 
 const CHANNELS: Array<{ value: string; label: string }> = [
@@ -63,6 +63,9 @@ export default function QuickActionDrawer() {
   const [reminderPriority, setReminderPriority] = useState('medium');
   const [interactionChannel, setInteractionChannel] = useState('whatsapp');
   const [interactionText, setInteractionText] = useState('');
+  const [calendarSlots, setCalendarSlots] = useState<Array<{ start: string; end: string }>>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
 
   // matches
   const [matches, setMatches] = useState<ListingLite[] | null>(null);
@@ -113,6 +116,25 @@ export default function QuickActionDrawer() {
     setReminderTitle('');
     setInteractionText('');
     setReminderWhen(localDefaultDue());
+  };
+
+  const loadCalendarSlots = async () => {
+    setCalendarLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-availability', {
+        body: { lead_id: lead?.id ?? null, duration_minutes: 30, create_booking_token: false },
+      });
+      if (error || !data?.ok) throw new Error(data?.error || error?.message || 'calendar_unavailable');
+      const slots = Array.isArray(data.slots) ? data.slots : [];
+      setCalendarSlots(slots);
+      setCalendarConnected(true);
+      if (slots[0]?.start) setReminderWhen(toLocalDateTime(slots[0].start));
+    } catch {
+      setCalendarSlots([]);
+      setCalendarConnected(false);
+    } finally {
+      setCalendarLoading(false);
+    }
   };
 
   async function logActivity(actionType: string, platform: string, content: string) {
@@ -171,6 +193,18 @@ export default function QuickActionDrawer() {
         },
       });
       if (error) throw error;
+      if (calendarConnected) {
+        const { data: calendarData, error: calendarError } = await supabase.functions.invoke('calendar-schedule-action', {
+          body: {
+            title: reminderTitle.trim(),
+            notes: noteText.trim(),
+            starts_at: new Date(reminderWhen).toISOString(),
+            duration_minutes: 30,
+            lead_id: lead?.id ?? null,
+          },
+        });
+        if (calendarError || !calendarData?.ok) throw new Error(calendarData?.error || calendarError?.message || 'Calendar sync failed');
+      }
       toast.success('התזכורת נקבעה');
       resetAfterSave();
       queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
@@ -226,7 +260,7 @@ export default function QuickActionDrawer() {
 
   const leadPicker = (
     <div className="space-y-2">
-      <Label className="text-sm font-semibold">מתעניין מקושר {tab === 'interaction' ? '' : '(אופציונלי)'}</Label>
+      <Label className="text-sm font-semibold">מתעניין מקושר</Label>
       {lead ? (
         <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
           <div className="min-w-0">
@@ -273,26 +307,13 @@ export default function QuickActionDrawer() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="פעולות מהירות"
-        className="fixed bottom-6 start-6 z-40 flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-primary-foreground shadow-xl ring-1 ring-primary/40 transition hover:scale-[1.03] hover:bg-primary/90 active:scale-95"
-      >
-        <Zap className="h-5 w-5" />
-        <span className="hidden text-sm font-bold sm:inline">פעולות מהירות</span>
-      </button>
-
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" dir="rtl" className="flex w-full flex-col gap-0 overflow-y-auto border-border bg-background p-0 sm:max-w-md">
-          <SheetHeader className="border-b border-border bg-muted/40 px-5 py-4 text-right">
-            <SheetTitle className="flex items-center gap-2 text-lg font-extrabold">
+          <SheetHeader className="border-b border-border bg-muted/40 px-5 py-4 text-center">
+            <SheetTitle className="flex items-center justify-center gap-2 text-lg font-extrabold">
               <Zap className="h-5 w-5 text-primary" />
               פעולות מהירות
             </SheetTitle>
-            <SheetDescription className="text-xs text-muted-foreground">
-              רשומה, תזכורת, אינטראקציה או התאמות נכסים — בלי לצאת מהעמוד הנוכחי.
-            </SheetDescription>
           </SheetHeader>
 
           <div className="grid grid-cols-4 gap-1 border-b border-border bg-background px-3 py-2">
@@ -304,8 +325,8 @@ export default function QuickActionDrawer() {
                   key={t.key}
                   type="button"
                   onClick={() => setTab(t.key)}
-                  className={`flex flex-col items-center gap-1 rounded-lg px-1 py-2 text-[11px] font-bold transition ${
-                    active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent'
+                  className={`group flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[11px] font-bold transition ${
+                    active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-primary hover:text-primary-foreground'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -321,18 +342,17 @@ export default function QuickActionDrawer() {
             {tab === 'note' && (
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">תוכן הרשומה</Label>
+                  <Label className="text-sm font-semibold">תוכן הפתק</Label>
                   <Textarea
                     value={noteText}
                     onChange={(e) => setNoteText(e.target.value)}
                     rows={6}
-                    placeholder="מה קרה? מה הצעד הבא?"
                     className="resize-none"
                   />
                 </div>
                 <Button className="w-full font-bold" onClick={saveNote} disabled={saving}>
                   {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <StickyNote className="me-2 h-4 w-4" />}
-                  שמור רשומה
+                  שמור פתק
                 </Button>
               </div>
             )}
@@ -341,8 +361,28 @@ export default function QuickActionDrawer() {
               <div className="space-y-3">
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">כותרת התזכורת</Label>
-                  <Input value={reminderTitle} onChange={(e) => setReminderTitle(e.target.value)} placeholder="לחזור לשיחה עם הלקוח" />
+                  <Input value={reminderTitle} onChange={(e) => setReminderTitle(e.target.value)} />
                 </div>
+                <Button type="button" variant="outline" className="w-full gap-2" onClick={loadCalendarSlots} disabled={calendarLoading}>
+                  {calendarLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck2 className="h-4 w-4" />}
+                  בדיקת זמינות ביומן Google
+                </Button>
+                {calendarConnected === false && <p className="text-sm text-muted-foreground">היומן אינו מחובר. ניתן לבחור מועד ידנית.</p>}
+                {calendarSlots.length > 0 && (
+                  <div className="grid grid-cols-1 gap-2">
+                    {calendarSlots.map((slot) => {
+                      const value = toLocalDateTime(slot.start);
+                      const selected = reminderWhen === value;
+                      return (
+                        <Button key={slot.start} type="button" variant={selected ? 'default' : 'outline'} onClick={() => setReminderWhen(value)} className="justify-between">
+                          <span>{new Date(slot.start).toLocaleDateString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
+                          <span>{new Date(slot.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className={selected ? 'text-primary-foreground' : 'text-success'}>פנוי</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">מועד</Label>
@@ -361,7 +401,7 @@ export default function QuickActionDrawer() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">הערה (אופציונלי)</Label>
+                  <Label className="text-sm font-semibold">הערה</Label>
                   <Textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={3} className="resize-none" />
                 </div>
                 <Button className="w-full font-bold" onClick={saveReminder} disabled={saving}>
@@ -388,13 +428,12 @@ export default function QuickActionDrawer() {
                     value={interactionText}
                     onChange={(e) => setInteractionText(e.target.value)}
                     rows={5}
-                    placeholder="על מה דיברתם? מה הוסכם?"
                     className="resize-none"
                   />
                 </div>
                 <Button className="w-full font-bold" onClick={saveInteraction} disabled={saving}>
                   {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <MessageSquarePlus className="me-2 h-4 w-4" />}
-                  רשום אינטראקציה
+                  שמור סיכום שיחה
                 </Button>
               </div>
             )}
