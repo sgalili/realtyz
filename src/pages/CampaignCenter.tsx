@@ -60,6 +60,18 @@ import { SourceBadge } from '@/components/properties/SourceBadge';
 
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 import {
+  type ComposerSession,
+  type ComposerAssignment,
+  readComposerSessionLocal,
+  fetchComposerSession,
+  saveComposerSession,
+  clearComposerSession,
+  saveComposerDraftCloud,
+  fetchComposerDraftCloud,
+  clearComposerDraftCloud,
+} from '@/lib/composerSession';
+
+import {
   hebrewOnlyParts, hebrewPropertyType, sanitizeFloor, sanitizeRooms, sanitizeSqm,
   floorsInBuildingFromSqm,
 } from '@/lib/propertyMeasures';
