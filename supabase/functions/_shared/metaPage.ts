@@ -37,23 +37,86 @@ export async function resolveMetaPage(
   ownerId: string | null,
 ): Promise<MetaPage | null> {
   if (ownerId) {
-    const { data } = await db
-      .from("messenger_page_bindings")
-      .select("page_id, page_name, page_access_token")
-      .eq("owner_id", ownerId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const row: any = data;
-    if (row?.page_id && row?.page_access_token) {
-      return {
-        pageId: String(row.page_id),
-        pageName: row.page_name ?? null,
-        token: String(row.page_access_token),
-      };
-    }
+    const own = await resolveOwnMetaPage(db, ownerId);
+    // A workspace token minted by an unreviewed Meta app fails with
+    // `#10 pages_read_engagement`. Probe it once (cached per isolate) and fall
+    // back to the SuperAdmin's central approved app when it is rejected.
+    if (own && await tokenUsable(own)) return own;
+    const shared = await resolveSharedMetaPage(db);
+    if (shared) return shared;
+    if (own) return own;
+    return null;
   }
   return await resolveSharedMetaPage(db);
+}
+
+const tokenProbeCache = new Map<string, boolean>();
+
+/** Cheap, cached probe: can this Page token still read the Page itself? */
+export async function tokenUsable(page: MetaPage): Promise<boolean> {
+  const key = `${page.pageId}:${page.token.slice(-12)}`;
+  const cached = tokenProbeCache.get(key);
+  if (typeof cached === "boolean") return cached;
+  let ok = true;
+  try {
+    const res = await fetch(
+      `${GRAPH}/${page.pageId}?fields=id&access_token=${encodeURIComponent(page.token)}`,
+    );
+    const payload = await res.json().catch(() => ({}));
+    ok = res.ok && !isMetaPermissionError(payload);
+  } catch {
+    ok = true; // network hiccup: don't discard a valid token
+  }
+  tokenProbeCache.set(key, ok);
+  return ok;
+}
+
+/**
+ * Every Page credential we may use, ordered by how likely Meta is to accept it.
+ *
+ * The platform-shared binding belongs to the SuperAdmin's central, App-Review
+ * approved Meta application, so it is always tried as a fallback when the
+ * workspace's own (possibly unreviewed) app token is rejected with a
+ * permission error such as `#10 pages_read_engagement`.
+ */
+export async function resolveMetaPageCandidates(
+  db: SupabaseClient,
+  ownerId: string | null,
+): Promise<Array<MetaPage & { scope: "workspace" | "platform_shared" }>> {
+  const out: Array<MetaPage & { scope: "workspace" | "platform_shared" }> = [];
+  const own = ownerId ? await resolveOwnMetaPage(db, ownerId) : null;
+  if (own) out.push({ ...own, scope: "workspace" });
+  const shared = await resolveSharedMetaPage(db);
+  if (shared && !out.some((c) => c.token === shared.token)) {
+    out.push({ ...shared, scope: "platform_shared" });
+  }
+  return out;
+}
+
+/** The workspace's own binding only (no shared fallback). */
+export async function resolveOwnMetaPage(
+  db: SupabaseClient,
+  ownerId: string,
+): Promise<MetaPage | null> {
+  const { data } = await db
+    .from("messenger_page_bindings")
+    .select("page_id, page_name, page_access_token")
+    .eq("owner_id", ownerId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const row: any = data;
+  if (!row?.page_id || !row?.page_access_token) return null;
+  return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
+}
+
+/** True when Meta rejected the call for missing/unapproved permissions. */
+export function isMetaPermissionError(payload: any): boolean {
+  const err = payload?.error ?? payload ?? {};
+  const code = Number(err?.code ?? 0);
+  const msg = String(err?.message ?? payload ?? "");
+  return code === 10 || code === 3 || code === 200 || code === 190 ||
+    /pages_read_engagement|pages_show_list|permission/i.test(msg);
 }
 
 /** The platform-wide shared Page binding (used when a workspace has none). */

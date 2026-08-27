@@ -2,7 +2,7 @@
 // workspace's connected Page token) and persist every native Page post into
 // campaign_logs. campaign_logs is the permanent source of truth for the feed.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { resolveMetaPage } from "../_shared/metaPage.ts";
+import { isMetaPermissionError, resolveMetaPage, resolveMetaPageCandidates } from "../_shared/metaPage.ts";
 import { resolveCaller } from "../_shared/fbPersonal.ts";
 
 const corsHeaders = {
@@ -470,10 +470,11 @@ Deno.serve(async (req) => {
       return { token: "", pageId: null, source: null };
     };
 
-    const fetchGraphHistory = async (): Promise<
+    const fetchGraphHistoryWith = async (
+      cred: { token: string; pageId: string | null; source: string | null },
+    ): Promise<
       { posts: RawPost[]; status: number; error: any; source: string | null }
     > => {
-      const cred = await resolveGraphCredential();
       if (!cred.token || !cred.pageId) {
         return {
           posts: [],
@@ -580,6 +581,33 @@ Deno.serve(async (req) => {
       return { posts: rows, status, error, source: cred.source };
     };
 
+    /**
+     * Route through the SuperAdmin's central (App-Review approved) Meta app
+     * whenever the workspace's own token is rejected with a permission error
+     * such as `#10 pages_read_engagement`.
+     */
+    const fetchGraphHistory = async (): Promise<
+      { posts: RawPost[]; status: number; error: any; source: string | null; blocked: boolean }
+    > => {
+      const candidates = await resolveMetaPageCandidates(admin, ownerId);
+      const ordered = candidates.length
+        ? candidates.map((c) => ({ token: c.token, pageId: c.pageId, source: c.scope }))
+        : [await resolveGraphCredential()];
+      let last: { posts: RawPost[]; status: number; error: any; source: string | null } = {
+        posts: [],
+        status: 0,
+        error: "facebook_page_access_token_missing",
+        source: null,
+      };
+      for (const cred of ordered) {
+        const res = await fetchGraphHistoryWith(cred);
+        if (res.posts.length > 0) return { ...res, blocked: false };
+        last = res;
+        if (!isMetaPermissionError(res.error)) break;
+      }
+      return { ...last, blocked: isMetaPermissionError(last.error) };
+    };
+
     const allById = new Map<string, RawPost>();
     const diagnostics: any[] = [];
     let lastStatus = 0;
@@ -594,9 +622,33 @@ Deno.serve(async (req) => {
       }
     };
 
+    // Posts scraped by the companion browser extension (DOM fallback) arrive
+    // here so a Graph permission block never leaves the user empty-handed.
+    const extensionPosts: any[] = Array.isArray(body?.posts) ? body.posts : [];
+    let permissionBlocked = false;
     let graphSource: string | null = null;
+    if (extensionPosts.length > 0) {
+      mergePosts(
+        extensionPosts.map((it: any) => ({
+          item: {
+            ...it,
+            post: it.post ?? it.message ?? it.text ?? "",
+            fbId: it.fbId ?? it.post_id ?? it.id ?? null,
+            postId: it.postId ?? it.post_id ?? it.id ?? null,
+            created: it.created ?? it.created_time ?? it.date ?? null,
+            postUrl: it.postUrl ?? it.url ?? it.permalink_url ?? null,
+          },
+          source: "generic" as const,
+          refId: null,
+          fbId: ws?.facebook_page_id ?? null,
+          fbName: ws?.facebook_page_name ?? null,
+        })),
+      );
+      diagnostics.push({ source: "extension", count: extensionPosts.length });
+    }
     {
       const graphResult = await fetchGraphHistory();
+      permissionBlocked = graphResult.blocked;
       diagnostics.push({ source: "graph", profile: graphResult.source, status: graphResult.status, count: graphResult.posts.length, error: graphResult.error });
       graphSource = graphResult.source;
       lastStatus = graphResult.status || lastStatus;
@@ -886,6 +938,8 @@ Deno.serve(async (req) => {
         raw_status: lastStatus,
         raw_error: lastError,
         graph_source: graphSource,
+        permission_blocked: permissionBlocked,
+        needs_extension: permissionBlocked && posts.length === 0,
         diagnostics,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
