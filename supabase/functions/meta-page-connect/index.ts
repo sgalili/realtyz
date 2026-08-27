@@ -546,6 +546,12 @@ Deno.serve(async (req) => {
       const pages: any[] = Array.isArray(pagesRes.payload?.data) ? pagesRes.payload.data : [];
       if (!pagesRes.ok || pages.length === 0) {
         const detail = logGraphFailure("list_pages", pagesRes.payload);
+        // A permission/scope rejection means the platform app is not yet approved
+        // for advanced access for THIS user: tell the UI to retry the dialog with
+        // the review-free basic scopes instead of dead-ending the user.
+        const permissionBlocked = !pagesRes.ok &&
+          ([200, 3, 10, 102, 190].includes(Number(detail.code)) ||
+            /permission|scope|advanced access/i.test(detail.message ?? ""));
         return json(
           {
             error: pagesRes.ok
@@ -554,11 +560,13 @@ Deno.serve(async (req) => {
             error_detail: detail,
             fb_message: detail.message,
             stage: "list_pages",
+            retry_basic: permissionBlocked,
             pages: [],
           },
           400,
         );
       }
+
 
       const selectable = pages.filter((p) => !isBlockedPage(p) && p?.access_token);
       let chosen = PRIMARY_PAGE_ID
