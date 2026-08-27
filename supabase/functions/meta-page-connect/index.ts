@@ -31,6 +31,14 @@ const PAGE_SCOPES = [
   "pages_read_engagement",
 ];
 
+/**
+ * Permissions Meta grants to ANY user without App Review. Used as an automatic
+ * second attempt so a brand-new workspace can always finish the login dialog
+ * and bind its page identity, even before advanced access is approved.
+ */
+const BASIC_PAGE_SCOPES = ["public_profile", "pages_show_list"];
+
+
 // A Login-for-Business config_id makes Meta IGNORE `scope`, which is why the
 // page/group permissions were never granted. It is opt-in through env only.
 const CONFIG_ID = Deno.env.get("META_PAGE_CONFIG_ID")?.trim() || "";
