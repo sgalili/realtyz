@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { PriceTag } from '@/components/PriceTag';
 import { ArrowLeft, Check, Star } from 'lucide-react';
-import { FREE_CONTACTS, FREE_PROPERTIES } from '@/lib/pricing';
+import { FREE_CONTACTS, FREE_PROPERTIES, PACKAGES, limitLabel } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
+
 
 import { PlatformTicker, StackTicker } from '@/components/landing/LogoTickers';
 import realtyzLogo from '@/assets/realtyz-logo.png';
