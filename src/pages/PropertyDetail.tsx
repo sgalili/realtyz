@@ -819,7 +819,16 @@ export default function PropertyDetail() {
    */
   const ensureGalleryLoaded = async (options: { silent?: boolean } = {}): Promise<boolean> => {
     if (galleryPulledRef.current || pullingImages) return false;
+    // With zero photos on screen we always try (the backend can mirror images
+    // straight from source_metadata even when no source_url is stored).
+    if (photos.length === 0) {
+      galleryPulledRef.current = true;
+      const first = await pullAllImages(options);
+      if (!first) galleryPulledRef.current = false;
+      return true;
+    }
     if (!sourceUrl || photos.length >= Math.max(2, totalSourcePhotos)) return false;
+
     galleryPulledRef.current = true;
     const completed = await pullAllImages(options);
     if (!completed) galleryPulledRef.current = false;
