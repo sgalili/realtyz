@@ -6838,11 +6838,27 @@ const CampaignCenter = () => {
                     return visible.length ? visible.map((r) => {
                       const media = Array.isArray(r.media_urls) ? r.media_urls : [];
                       const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
+                      const groupCount = Array.isArray(r.group_ids) ? r.group_ids.length : 0;
                       return <div key={r.id} className="flex gap-3 rounded-lg border border-border p-3">
                         {image ? <img src={typeof image === 'string' ? image : image?.url} alt="" className="h-20 w-20 shrink-0 rounded-md object-cover" /> : null}
-                        <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>{r.series_index != null && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">גרסה {Number(r.series_index) + 1}</span>}</div><p className="line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.sent_at).toLocaleString('he-IL')}{r.needs_regeneration ? ' · וריאציית AI תיווצר לאחר פרסום מוצלח' : ''}</p></div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>
+                            {r.series_index != null && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">גרסה {Number(r.series_index) + 1}</span>}
+                            {groupCount > 0 && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{groupCount} קבוצות</span>}
+                          </div>
+                          <ScheduledCountdown iso={r.sent_at} className="mt-1" />
+                          <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p>
+                          {r.needs_regeneration && <p className="mt-1 text-xs text-muted-foreground">וריאציית AI תיווצר לאחר פרסום מוצלח</p>}
+                          <div className="mt-2">
+                            <Button size="sm" variant="outline" className="text-[12px]" onClick={() => setEditSeriesRow(r)}>
+                              עריכת קבוצות ונכסים
+                            </Button>
+                          </div>
+                        </div>
                       </div>;
                     }) : <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
+
                   })()}
                 </TabsContent>
               </>
