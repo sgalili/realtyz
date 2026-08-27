@@ -1557,6 +1557,8 @@ const InlineComposer = ({
   // Called automatically right after the main post is generated, and manually
   // via the refresh button on the first-comment textarea.
   const handleGenerateFirstComment = async (postBody?: string) => {
+    if (isGenerationStopped()) return;
+    const ctrl = registerGeneration();
     setFirstCommentGenerating(true);
     try {
       const listing = selectedListing;
@@ -1592,7 +1594,9 @@ const InlineComposer = ({
           listingFocusOnly: false,
           skipLicenseFooter: true,
         },
+        signal: ctrl.signal,
       });
+      if (ctrl.signal.aborted) return;
       if (error) throw error;
       let text = cleanFirstComment(String(data?.content || data?.text || ''));
       // Enforce strict 2-line layout: a single property line capped at 10
