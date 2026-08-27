@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Users, Check, Loader2, RefreshCw, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
+import { ExtensionGroupSyncCard } from "@/components/social/ExtensionGroupSyncCard";
 
 export type FacebookGroup = {
   group_id: string;
@@ -202,6 +203,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
           {syncing ? "מסנכרן…" : "סנכרן קבוצות"}
         </button>
       </div>
+
+      <ExtensionGroupSyncCard onSynced={() => void load()} />
 
       {(loading || syncing) && !hasVisibleGroups && (
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
