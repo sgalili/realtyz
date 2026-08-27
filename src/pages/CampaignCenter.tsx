@@ -6130,6 +6130,23 @@ const CampaignCenter = () => {
           const body = confirmPayload?.body ?? '';
           const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
           const publishedChannelId = pickedChannel?.id;
+          // Multi-draft mode: only the dispatched draft is retired — the other
+          // drafts (and the channel) must stay exactly as they are.
+          const draftKey = activeDraftKeyRef.current;
+          activeDraftKeyRef.current = null;
+          if (draftKey) {
+            setConfirmPayload(null);
+            setPublishedDrafts((curr) => new Set(curr).add(draftKey));
+            if (publishedChannelId) {
+              try {
+                localStorage.removeItem(`rz-composer-draft:v2:${publishedChannelId}:${draftKey}`);
+                sessionStorage.removeItem(`rz-composer-draft:v2:${publishedChannelId}:${draftKey}`);
+              } catch {}
+            }
+            toast.success('הטיוטה פורסמה');
+            advanceBulkQueue();
+            return;
+          }
           setConfirmPayload(null);
           setPickedChannel(null);
           setPickedChannelIds(new Set());
