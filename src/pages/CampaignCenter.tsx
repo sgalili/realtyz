@@ -1043,6 +1043,30 @@ const InlineComposer = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel.id, deepLinkListingId]);
 
+  // Cloud fallback: if this browser has no local copy of the draft (cleared
+  // cache, new tab, other device), pull the durable mirror back in.
+  useEffect(() => {
+    if (deepLinkListingId) return;
+    const local = readDraft();
+    if (local && (String(local.body || '').trim() || (local.attachments || []).length > 0)) return;
+    let cancelled = false;
+    (async () => {
+      const cloud = await fetchComposerDraftCloud(channel.id, instanceId ?? 'single');
+      if (cancelled || !cloud) return;
+      if (String(cloud.body || '').trim()) setBody(cleanBody(cloud.body));
+      if (cloud.customInstructions) setCustomInstructions(cloud.customInstructions);
+      if (cloud.selectedListingId) setSelectedListingId(cloud.selectedListingId);
+      if (Array.isArray(cloud.attachments) && cloud.attachments.length) setAttachments(cloud.attachments);
+      if (cloud.logId) setLogId(cloud.logId);
+      if (cloud.firstComment) setFirstComment(cloud.firstComment);
+      if (typeof cloud.firstCommentEnabled === 'boolean') setFirstCommentEnabled(cloud.firstCommentEnabled);
+      if (typeof cloud.attachWaLink === 'boolean') setAttachWaLink(cloud.attachWaLink);
+      if (typeof cloud.attachMsngrLink === 'boolean') setAttachMsngrLink(cloud.attachMsngrLink);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel.id, instanceId, deepLinkListingId]);
+
 
 
   // Auto-save: persist edits + attachments + selected property to ai_content_logs (debounced).
