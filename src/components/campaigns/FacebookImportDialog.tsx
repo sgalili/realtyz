@@ -11,7 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { requestExtensionPagePosts } from '@/lib/extensionPostBridge';
+import { requestExtensionPagePosts, requestExtensionPostComments } from '@/lib/extensionPostBridge';
 
 type Report = {
   ok: boolean;
