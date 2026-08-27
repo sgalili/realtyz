@@ -5478,6 +5478,7 @@ export type Database = {
         Args: { l: Database["public"]["Tables"]["listings"]["Row"] }
         Returns: string
       }
+      listing_photo_pool: { Args: { _listing_id: string }; Returns: string[] }
       match_knowledge_chunks: {
         Args: {
           match_count?: number
