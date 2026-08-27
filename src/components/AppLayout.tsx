@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
-import { Bot, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff } from 'lucide-react';
+import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -476,6 +476,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 aria-label="פתח עוזר AI"
               >
                 <Bot className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 p-0 text-primary hover:bg-primary/10 hover:text-primary"
+                onClick={() => window.dispatchEvent(new Event('open-quick-actions'))}
+                aria-label="פעולות מהירות"
+                title="פעולות מהירות"
+              >
+                <Zap className="h-5 w-5" />
               </Button>
 
             </div>

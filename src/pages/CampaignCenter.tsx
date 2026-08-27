@@ -4723,7 +4723,7 @@ const VoiceLeadPickerDialog = ({
                   {/* Property promotion picker — mirrors the FB post flow */}
                   <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                     <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
-                      קדם נכס ספציפי בשיחה (אופציונלי)
+                      קדם נכס ספציפי בשיחה
                     </label>
                     <Select
                       value={selectedListingId ?? '__none'}
@@ -4746,7 +4746,7 @@ const VoiceLeadPickerDialog = ({
 
                   <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                     <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
-                      הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
+                      הוראות, נושא או תסריט מותאם לשיחה
                     </label>
                     <Textarea
                       value={instructions}

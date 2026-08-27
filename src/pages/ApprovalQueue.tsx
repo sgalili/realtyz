@@ -219,7 +219,7 @@ export default function ApprovalQueue() {
                   )}
                   {item.status === 'pending' && (
                     <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto]">
-                      <Input placeholder="סיבת דחייה אופציונלית" value={rejecting[item.id] || ''} onChange={(e) => setRejecting((cur) => ({ ...cur, [item.id]: e.target.value }))} />
+                      <Input placeholder="סיבת דחייה " value={rejecting[item.id] || ''} onChange={(e) => setRejecting((cur) => ({ ...cur, [item.id]: e.target.value }))} />
                       <Button variant="outline" onClick={() => updateItem.mutate({ id: item.id, patch: { edited_content: editing[item.id] ?? item.proposed_content } }, { onSuccess: () => toast.success('העריכה נשמרה') })}><Pencil className="h-4 w-4" /> שמור עריכה</Button>
                       <Button onClick={() => approve(item)}><CheckCircle2 className="h-4 w-4" /> אשר</Button>
                       <Button variant="destructive" onClick={() => reject(item)}><XCircle className="h-4 w-4" /> דחה</Button>

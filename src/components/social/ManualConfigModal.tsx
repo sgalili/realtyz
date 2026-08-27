@@ -138,7 +138,7 @@ const SPEC: Record<string, PlatformManualSpec> = {
     fields: [
       { key: 'oauth_client_id',     label: 'OAuth Client ID',     placeholder: 'xxxxxxxx.apps.googleusercontent.com', hint: 'Google Workspace · Web application' },
       { key: 'oauth_client_secret', label: 'OAuth Client Secret', type: 'password' },
-      { key: 'workspace_domain',    label: 'דומיין Workspace (אופציונלי)', placeholder: 'example.com', hint: 'מגביל התחברות לדומיין מסוים (hd=)' },
+      { key: 'workspace_domain',    label: 'דומיין Workspace', placeholder: 'example.com', hint: 'מגביל התחברות לדומיין מסוים (hd=)' },
     ],
   },
   youtube: {

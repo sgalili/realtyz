@@ -121,7 +121,7 @@ async function runMetadataSync(
     }, 150);
     await withTimeout(
       Promise.resolve(supabase.functions.invoke('yad2-unlocker', { body: { url: sourceUrl, limit: 1 } })),
-      60000,
+      12000,
       'metadata scrape',
     );
     clearInterval(creep);

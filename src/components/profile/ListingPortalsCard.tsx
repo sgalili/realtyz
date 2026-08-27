@@ -29,7 +29,7 @@ const PORTALS: Portal[] = [
       { col: 'homely_agency', label: 'קוד משרד (Client)', dir: 'ltr', placeholder: 'agency code' },
       { col: 'homely_username', label: 'שם משתמש', dir: 'ltr' },
       { col: 'homely_password', label: 'סיסמה', type: 'password', dir: 'ltr', placeholder: '••••••••' },
-      { col: 'homely_api_key', label: 'API Key (OpenCard — אופציונלי)', type: 'password', dir: 'ltr', placeholder: 'Homely API key' },
+      { col: 'homely_api_key', label: 'API Key (OpenCard — )', type: 'password', dir: 'ltr', placeholder: 'Homely API key' },
     ],
   },
   {

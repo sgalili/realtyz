@@ -337,7 +337,7 @@ export const UniversalKnowledgeInput = () => {
           {/* TEXT */}
           <TabsContent value="text" className="mt-4 space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="text-title" className="text-xs">כותרת (אופציונלי)</Label>
+              <Label htmlFor="text-title" className="text-xs">כותרת</Label>
               <Input
                 id="text-title"
                 value={textTitle}
@@ -459,7 +459,7 @@ export const UniversalKnowledgeInput = () => {
             {transcript && (
               <div className="space-y-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="voice-title" className="text-xs">כותרת (אופציונלי)</Label>
+                  <Label htmlFor="voice-title" className="text-xs">כותרת</Label>
                   <Input
                     id="voice-title"
                     value={voiceTitle}

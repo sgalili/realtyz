@@ -298,11 +298,11 @@ export const FacebookGroupBulkPostCard = () => {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label className="text-xs">קישור לנכס (אופציונלי)</Label>
+            <Label className="text-xs">קישור לנכס</Label>
             <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://realtyz.co.il/..." className="text-sm" dir="ltr" />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs">כתובת תמונה (אופציונלי)</Label>
+            <Label className="text-xs">כתובת תמונה</Label>
             <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." className="text-sm" dir="ltr" />
           </div>
         </div>
@@ -394,7 +394,7 @@ export const FacebookGroupBulkPostCard = () => {
         <div className="space-y-2">
           <Label className="text-xs flex items-center gap-1">
             <CalendarClock className="h-3.5 w-3.5 text-blue-600" />
-            תזמון פרסום אוטומטי (אופציונלי)
+            תזמון פרסום אוטומטי
           </Label>
           <Input
             type="datetime-local"

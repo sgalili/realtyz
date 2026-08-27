@@ -120,6 +120,49 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
     setRawPreviewSourceUrl(immediateSourceUrl);
     setHydrating(true);
     try {
+      // Exact source URLs already stored in our database should open from the
+      // local snapshot immediately. Do not spend 60+ seconds scraping them
+      // again merely because the user pasted the same URL.
+      if (immediateSourceUrl) {
+        const { data: existing } = await (supabase as any)
+          .from('listings')
+          .select('property_title, description, asking_price, city, neighborhood, address, rooms, sqm, floor, parking, elevator, source_url, source_metadata, media_photos, features')
+          .eq('source_url', immediateSourceUrl)
+          .maybeSingle();
+        const hasUsefulLocalData = Boolean(
+          existing &&
+          (existing.city || existing.address || existing.neighborhood) &&
+          Number(existing.asking_price) > 0 &&
+          (Number(existing.rooms) > 0 || Number(existing.sqm) > 0) &&
+          String(existing.description || '').trim().length >= 10
+        );
+        if (existing && hasUsefulLocalData) {
+          const meta = existing.source_metadata && typeof existing.source_metadata === 'object' ? existing.source_metadata : {};
+          const localPhotos = Array.isArray(existing.media_photos) ? existing.media_photos.filter((p: unknown): p is string => typeof p === 'string') : [];
+          const localParsed = {
+            title: existing.property_title || 'נכס',
+            description: existing.description || '',
+            price: Number(existing.asking_price) || 0,
+            city: existing.city || '',
+            neighborhood: existing.neighborhood || existing.address || '',
+            rooms: existing.rooms == null ? undefined : Number(existing.rooms),
+            sqm: existing.sqm == null ? undefined : Number(existing.sqm),
+            floor: existing.floor == null ? undefined : Number(existing.floor),
+            parking: existing.parking ? 1 : 0,
+            elevator: Boolean(existing.elevator),
+            property_type: typeof meta.property_type === 'string' ? meta.property_type : 'apartment',
+            listing_type: Number(existing.asking_price) < 50_000 ? 'rent' : 'sale',
+            source_url: immediateSourceUrl,
+            source_metadata: meta,
+            photos: localPhotos,
+            images: localPhotos,
+          } as ParsedListing;
+          setRawPreviewPhotos(localPhotos);
+          setParsed(localParsed);
+          toast.success('הנכס נטען מיד מהמאגר');
+          return;
+        }
+      }
       const { data, error } = await supabase.functions.invoke('parse-listing-text', {
         body: { text: inputText },
       });

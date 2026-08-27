@@ -223,7 +223,7 @@ export default function HomelyAdmin() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label className="text-xs">סיבה (אופציונלי)</Label>
+            <Label className="text-xs">סיבה</Label>
             <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="לדוגמה: חשבון פג תוקף" />
           </div>
           <DialogFooter>

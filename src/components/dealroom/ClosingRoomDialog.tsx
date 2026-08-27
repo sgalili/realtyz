@@ -197,7 +197,7 @@ export function ClosingRoomDialog({
           </div>
 
           <div>
-            <Label className="text-xs">נכס מקושר (אופציונלי)</Label>
+            <Label className="text-xs">נכס מקושר</Label>
             <Select value={listingId || 'none'} onValueChange={(v) => setListingId(v === 'none' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="ללא" />
@@ -227,7 +227,7 @@ export function ClosingRoomDialog({
           </div>
 
           <div>
-            <Label className="text-xs">סעיפים מותאמים (אופציונלי)</Label>
+            <Label className="text-xs">סעיפים מותאמים</Label>
             <Textarea
               rows={3}
               placeholder="השאירו ריק כדי להשתמש בסעיף הסטנדרטי של התבנית."

@@ -97,7 +97,7 @@ export function LossReasonDialog({ leadId, outcome, open, onOpenChange, onSaved 
         </div>
 
         <div className="grid gap-1.5">
-          <Label className="text-xs font-semibold">הערה (אופציונלי)</Label>
+          <Label className="text-xs font-semibold">הערה</Label>
           <Textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}

@@ -166,7 +166,7 @@ export function WorkspaceSelectorModal() {
                 <Input dir="ltr" type="email" placeholder="user@example.com" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">טלפון (אופציונלי, +972...)</Label>
+                <Label className="text-xs text-muted-foreground">טלפון</Label>
                 <Input dir="ltr" type="tel" placeholder="+972501234567" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
               </div>
               <div className="flex gap-2 justify-end">

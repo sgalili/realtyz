@@ -390,7 +390,7 @@ export function ListingOutreachDialog({
         </Tabs>
 
         <div className="space-y-2">
-          <Label htmlFor="agent-note">הערת סוכן (אופציונלי)</Label>
+          <Label htmlFor="agent-note">הערת סוכן</Label>
           <Input
             id="agent-note"
             value={agentNote}

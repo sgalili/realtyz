@@ -38,6 +38,8 @@ import { ProgressRing } from '@/components/ui/ProgressRing';
 import { buildDescriptionBlocks, sanitizeDescription } from '@/lib/descriptionBlocks';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import type { UnifiedResult } from '@/lib/propertySearch';
+import { formatIsoDate } from '@/lib/listingDates';
+import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -86,6 +88,60 @@ function hasCorePropertyText(row: unknown): boolean {
   );
   const hasDetails = Boolean(row.asking_price || row.rooms || row.sqm || row.features || row.source_metadata);
   return hasText && hasDetails;
+}
+
+function snapshotToDetail(snapshot: UnifiedResult | undefined) {
+  if (!snapshot) return undefined;
+  const raw = isRecord(snapshot.raw) ? snapshot.raw : {};
+  const meta = isRecord(raw.source_metadata) ? raw.source_metadata : {};
+  const featureValues = Array.isArray(raw.features)
+    ? raw.features.filter((item): item is string => typeof item === 'string')
+    : [];
+  const property: HomelyProperty = {
+    id: snapshot.localId || snapshot.key,
+    source: 'listings',
+    title: snapshot.title || 'נכס',
+    description: sanitizeDescription(snapshot.description) || '',
+    price: Number(snapshot.price) || 0,
+    currency: '₪',
+    city: snapshot.city || '',
+    address: snapshot.address || snapshot.neighborhood || '',
+    rooms: Number(snapshot.rooms) || 0,
+    size_sqm: Number(snapshot.size_sqm) || 0,
+    floor: snapshot.floor == null ? undefined : Number(snapshot.floor),
+    property_type: ((meta.property_type as PropertyType) || 'apartment') as PropertyType,
+    listing_type: snapshot.listing_type,
+    photos: snapshot.photos || [],
+    url: snapshot.url,
+    features: featureValues,
+  };
+  return {
+    row: raw,
+    property,
+    meta,
+    amenities: {
+      parking: Number(raw.parking ?? meta.parking ?? 0) || 0,
+      elevator: boolFromMeta(raw.elevator ?? meta.elevator) ?? false,
+      balcony: boolFromMeta(meta.balcony),
+      ac: boolFromMeta(meta.ac) ?? false,
+      shelter: boolFromMeta(meta.shelter ?? meta.mamad) ?? false,
+      solar: boolFromMeta(meta.solar ?? meta.solar_heater) ?? false,
+    },
+    neighborhood: snapshot.neighborhood ?? null,
+    projectName: typeof raw.project_name === 'string' ? raw.project_name : null,
+    sourceUrl: snapshot.url,
+    documents: [],
+    rich: {
+      aboutBlocks: buildDescriptionBlocks(raw),
+      about: sanitizeDescription(snapshot.description) || null,
+      furniture: null,
+      additional: null,
+      amenities: null,
+      priceHistory: [],
+      latitude: null,
+      longitude: null,
+    },
+  };
 }
 
 function boolFromMeta(value: unknown): boolean | null {
@@ -202,6 +258,8 @@ export default function PropertyDetail() {
     // never hide metadata that has already been persisted.
     staleTime: 0,
     refetchOnMount: 'always',
+    initialData: () => snapshotToDetail(propertySnapshot),
+    initialDataUpdatedAt: 0,
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
@@ -337,12 +395,26 @@ export default function PropertyDetail() {
       };
     },
   });
+  const [initialLoadProgress, setInitialLoadProgress] = useState(8);
+  useEffect(() => {
+    if (!isLoading) {
+      setInitialLoadProgress(100);
+      return;
+    }
+    const started = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - started;
+      setInitialLoadProgress(Math.min(92, 8 + Math.round((elapsed / 5000) * 84)));
+    }, 100);
+    return () => clearInterval(timer);
+  }, [isLoading]);
 
   const property = data?.property;
   const meta: JsonRecord = data?.meta || {};
   const neighborhood = data?.neighborhood;
   const projectName = data?.projectName ?? null;
   const sourceUrl = data?.sourceUrl ?? null;
+  const liveYad2Status = useYad2AdStatus(sourceUrl && /yad2\.co\.il/i.test(sourceUrl) ? sourceUrl : null);
   const amenities = data?.amenities;
   const documents = data?.documents ?? [];
   const ownerId = data?.row?.owner_id ? String(data.row.owner_id) : null;
@@ -695,14 +767,14 @@ export default function PropertyDetail() {
           )}
           {propertySnapshot.description && <p className="max-w-4xl whitespace-pre-line text-lg leading-8 text-foreground">{propertySnapshot.description}</p>}
           <div className="fixed bottom-4 left-4 z-50 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
-            <ProgressRing value={35} size={44} strokeWidth={4} />
+             <ProgressRing value={initialLoadProgress} size={44} strokeWidth={4} />
           </div>
         </div>
       );
     }
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-6" dir="rtl">
-        <ProgressRing value={35} size={76} strokeWidth={6} />
+        <ProgressRing value={initialLoadProgress} size={76} strokeWidth={6} />
       </div>
     );
   }
@@ -1016,18 +1088,29 @@ export default function PropertyDetail() {
     (typeof (meta as JsonRecord).source_url === 'string' ? (meta as JsonRecord).source_url as string : '') ||
     '';
   const sourceOrigin = String((meta as JsonRecord).source_origin ?? '').toLowerCase();
-  const isYad2Listing = sourceOrigin === 'yad2' || /yad2\.co\.il/i.test(resolvedSourceUrl);
+  const isYad2Listing = /yad2\.co\.il/i.test(resolvedSourceUrl);
+  const isHomelyListing = !isYad2Listing && (sourceOrigin === 'homely' || String(data?.row?.source ?? '').toLowerCase() === 'homely');
   const yad2Url = isYad2Listing ? resolvedSourceUrl : '';
+  const originalDate = formatIsoDate(
+    typeof meta.published_at === 'string' ? meta.published_at
+      : typeof meta.original_published_at === 'string' ? meta.original_published_at
+        : typeof (isRecord(meta.homely_raw) ? meta.homely_raw.startdate : null) === 'string'
+          ? String((meta.homely_raw as JsonRecord).startdate)
+          : null,
+  );
+  const sourceUpdatedDate = formatIsoDate(
+    typeof meta.updated_at_source === 'string' ? meta.updated_at_source
+      : typeof (isRecord(meta.homely_raw) ? meta.homely_raw.lastdate : null) === 'string'
+        ? String((meta.homely_raw as JsonRecord).lastdate)
+        : null,
+  );
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* Metadata refresh runs in the background: the text view is already
-          usable, so the indicator is a small floating pill (bottom corner),
-          never a centered overlay. */}
+      {/* Metadata refresh is non-blocking and remains visible in the viewport. */}
       {hydrating && (
-        <div className="pointer-events-none fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full bg-card/95 px-3 py-2 shadow-lg ring-1 ring-border">
-          <ProgressRing value={hydrateProgress} size={34} strokeWidth={4} />
-          <span className="text-xs text-muted-foreground">מרענן נתוני נכס…</span>
+        <div className="pointer-events-none fixed left-1/2 top-24 z-50 -translate-x-1/2 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
+          <ProgressRing value={hydrateProgress} size={58} strokeWidth={5} />
         </div>
       )}
 
@@ -1098,7 +1181,7 @@ export default function PropertyDetail() {
 
 
                 {/* Yad2 live ad first, campaign second (positions swapped). */}
-                {yad2Url && (
+                {yad2Url && liveYad2Status === 'live' && (
                   <a
                     href={yad2Url}
                     target="_blank"
@@ -1108,6 +1191,23 @@ export default function PropertyDetail() {
                     className="inline-flex items-center transition-opacity hover:opacity-80"
                   >
                     <Yad2Icon className="h-6 w-6" />
+                  </a>
+                )}
+                {isHomelyListing && resolvedSourceUrl && (
+                  <a
+                    href={resolvedSourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="צפייה במודעה המקורית ב-Homely"
+                    title="צפייה במודעה המקורית ב-Homely"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded border border-primary text-sm font-extrabold text-primary transition hover:bg-primary hover:text-primary-foreground"
+                  >
+                    H
+                  </a>
+                )}
+                {!isYad2Listing && !isHomelyListing && resolvedSourceUrl && (
+                  <a href={resolvedSourceUrl} target="_blank" rel="noopener noreferrer" aria-label="צפייה במקור" title="צפייה במקור" className="text-muted-foreground transition hover:text-primary">
+                    <ExternalLink className="h-5 w-5" />
                   </a>
                 )}
                 <button
@@ -1206,6 +1306,13 @@ export default function PropertyDetail() {
           </div>
         </div>
 
+        {(originalDate || sourceUpdatedDate) && (
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            {originalDate && <span>פורסם במקור: {originalDate}</span>}
+            {sourceUpdatedDate && <span>עודכן במקור: {sourceUpdatedDate}</span>}
+          </div>
+        )}
+
       </header>
 
       {/* Gallery + sidebar */}
@@ -1243,18 +1350,20 @@ export default function PropertyDetail() {
                     <button
                       type="button"
                       onClick={() => stepPhoto(-1)}
+                      disabled={pullingImages}
                       aria-label="התמונה הקודמת"
                       title="התמונה הקודמת"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ChevronRight className="h-5 w-5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => stepPhoto(1)}
+                      disabled={pullingImages}
                       aria-label="התמונה הבאה"
                       title="התמונה הבאה"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
