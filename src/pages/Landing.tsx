@@ -202,6 +202,9 @@ export default function Landing() {
           {/* Platforms — official brand logos, infinite scroll, no labels */}
           <Reveal delay={400}>
             <div className="mt-14">
+              <p className="mb-3 text-sm font-extrabold tracking-widest text-muted-foreground">
+                כל הכלים במקום אחד
+              </p>
               <PlatformTicker />
             </div>
           </Reveal>
