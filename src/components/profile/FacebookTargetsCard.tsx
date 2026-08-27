@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { shortenName } from '@/lib/shortenName';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 
-type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; selected: boolean };
+type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean };
 
 /** Minimum readable font size across this card. */
 const TEXT_SM = 'text-[14px]';
@@ -41,7 +41,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     try {
       const { data } = await (supabase as any)
         .from('fb_user_groups')
-        .select('id, group_id, group_name, group_icon, group_url, is_selected')
+        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected')
         .order('group_name', { ascending: true });
       const nextGroups: GroupTarget[] = ((data ?? []) as any[]).map((r) => ({
         id: String(r.id),
@@ -49,6 +49,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
         name: String(r.group_name || r.group_id),
         icon: r.group_icon ?? null,
         url: r.group_url ?? null,
+        members: typeof r.member_count === 'number' ? r.member_count : null,
         selected: r.is_selected !== false,
       }));
       setGroups(nextGroups);
@@ -145,9 +146,14 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                   <button
                     type="button"
                     onClick={() => void toggleGroup(g)}
-                    className={cn('min-w-0 flex-1 truncate text-right', TEXT_MD)}
+                    className={cn('min-w-0 flex-1 text-right', TEXT_MD)}
                   >
-                    {shortenName(g.name)}
+                    <span className="block truncate">{shortenName(g.name)}</span>
+                    {typeof g.members === 'number' && g.members > 0 && (
+                      <span className={cn('block text-muted-foreground tabular-nums', TEXT_SM)}>
+                        {g.members.toLocaleString('he-IL')} חברים
+                      </span>
+                    )}
                   </button>
                   <button
                     type="button"
