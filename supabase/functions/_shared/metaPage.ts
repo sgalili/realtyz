@@ -25,7 +25,13 @@ export async function graphCall(path: string, init?: RequestInit) {
   return { ok: res.ok, status: res.status, payload };
 }
 
-/** Resolve the Page identity + token for a workspace owner (env fallback). */
+/**
+ * Resolve the Page identity + token for a workspace owner.
+ *
+ * Order: the workspace's own binding first, then the platform-shared binding
+ * (`is_platform_shared = true`) so every workspace gets a working Facebook
+ * connection out of the box. Env-based FB_PAGE_* fallbacks stay removed.
+ */
 export async function resolveMetaPage(
   db: SupabaseClient,
   ownerId: string | null,
@@ -47,15 +53,27 @@ export async function resolveMetaPage(
       };
     }
   }
-  // TENANT ISOLATION: the platform-level FB_PAGE_* env credentials belong to a
-  // single workspace and are never used as a fallback — not even for
-  // owner-less/system invocations. Every Page token must come from the calling
-  // workspace's own binding, so a shared Meta app can never leak posts, groups
-  // or pages between accounts.
-  return null;
-
-
+  return await resolveSharedMetaPage(db);
 }
+
+/** The platform-wide shared Page binding (used when a workspace has none). */
+export async function resolveSharedMetaPage(db: SupabaseClient): Promise<MetaPage | null> {
+  const { data } = await db
+    .from("messenger_page_bindings")
+    .select("page_id, page_name, page_access_token")
+    .eq("is_platform_shared", true)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const row: any = data;
+  if (!row?.page_id || !row?.page_access_token) return null;
+  return {
+    pageId: String(row.page_id),
+    pageName: row.page_name ?? null,
+    token: String(row.page_access_token),
+  };
+}
+
 
 /** Find the workspace owner that owns a given Meta Page id (webhook routing). */
 export async function ownerForPage(db: SupabaseClient, pageId: string): Promise<MetaPage & { ownerId: string } | null> {
