@@ -1374,7 +1374,11 @@ Deno.serve(async (req) => {
         senderPhone,
         payload?.message_id ? String(payload.message_id) : undefined,
         text,
-        { skipStore: true, leadId: payload?.lead_id ? String(payload.lead_id) : null },
+        {
+          skipStore: true,
+          leadId: payload?.lead_id ? String(payload.lead_id) : null,
+          senderName: payload?.sender_name ? String(payload.sender_name) : null,
+        },
       );
       console.log("[autopilot] leg finished", JSON.stringify(result));
       return jsonResponse({ ...result, mode: "autopilot_only" });

@@ -74,7 +74,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const stored = window.localStorage.getItem(workspaceStorageKey(user.id));
       const validStored = stored && rows.some((r) => r.workspace_owner_id === stored) ? stored : null;
       const profileActive = (profile as any)?.active_workspace_owner_id as string | null | undefined;
-      const validProfile = profileActive && rows.some((r) => r.workspace_owner_id === profileActive) ? profileActive : null;
       const fallback = rows.find((r) => r.is_self)?.workspace_owner_id ?? rows[0]?.workspace_owner_id ?? user.id;
       // A browser choice is explicit and account-scoped. Without one, always
       // start in the user's own empty workspace; never inherit a workspace

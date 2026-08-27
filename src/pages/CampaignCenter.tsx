@@ -4975,6 +4975,25 @@ const CampaignCenter = () => {
   });
   const [socialAccountProfiles, setSocialAccountProfiles] = useState<SocialAccountProfile[]>([]);
 
+  useEffect(() => {
+    const channelsKey = connectionStorageKey('rz-connected-channels', user?.id, workspaceOwnerId);
+    const namesKey = connectionStorageKey('rz-connected-channel-names', user?.id, workspaceOwnerId);
+    try {
+      const rawChannels = localStorage.getItem(channelsKey) || sessionStorage.getItem(channelsKey);
+      const nextChannels = new Set<string>();
+      if (rawChannels) (JSON.parse(rawChannels) as string[]).filter((id) => id !== 'facebook').forEach((id) => nextChannels.add(id));
+      setConnectedChannels(nextChannels.size ? nextChannels : EMPTY_CONNECTED);
+      const rawNames = localStorage.getItem(namesKey) || sessionStorage.getItem(namesKey);
+      const nextNames = rawNames ? JSON.parse(rawNames) as Record<string, string> : {};
+      delete nextNames.facebook;
+      setChannelAccountNames(nextNames);
+    } catch {
+      setConnectedChannels(EMPTY_CONNECTED);
+      setChannelAccountNames({});
+    }
+    setSocialAccountProfiles([]);
+  }, [user?.id, workspaceOwnerId]);
+
   const clearSocialConnectionState = (channels: string[] = ['facebook']) => {
     setConnectedChannels((prev) => new Set([...prev].filter((id) => !channels.includes(id))));
     setSocialAccountProfiles((prev) => prev.filter((p) => !channels.includes(p.platform) && !(channels.includes('facebook') && p.platform.startsWith('facebook'))));
