@@ -2532,6 +2532,27 @@ const ConfirmDispatchDialog = ({
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
+  // Pre-send statistics for the selected Facebook groups (count + reach).
+  const [groupStats, setGroupStats] = useState<{ known: number; members: number }>({ known: 0, members: 0 });
+  useEffect(() => {
+    if (!open || !groupIds?.length) { setGroupStats({ known: 0, members: 0 }); return; }
+    (async () => {
+      const ids = groupIds.map((g) => String(g).replace(/^ext:/, ''));
+      try {
+        const { data } = await (supabase as any)
+          .from('fb_user_groups')
+          .select('group_id, member_count')
+          .in('group_id', ids);
+        const rows = (data || []) as any[];
+        const members = rows.reduce((sum, r) => sum + (Number(r?.member_count) || 0), 0);
+        setGroupStats({ known: rows.filter((r) => Number(r?.member_count) > 0).length, members });
+      } catch {
+        setGroupStats({ known: 0, members: 0 });
+      }
+    })();
+  }, [open, groupIds]);
+
+
 
   useEffect(() => {
     if (!open || !channel || !user) return;
@@ -2697,7 +2718,9 @@ const ConfirmDispatchDialog = ({
               }));
             } catch { /* noop */ }
           }
-          const { data, error } = await supabase.functions.invoke('meta-publish', {
+          // Hard timeout: a hanging Graph call must never leave the dialog in a
+          // silent "nothing happened" state.
+          const invocation = supabase.functions.invoke('meta-publish', {
             body: {
               post: bodyToPublish,
               channels: [channel.id],
@@ -2714,8 +2737,16 @@ const ConfirmDispatchDialog = ({
               first_comment: firstComment || null,
             },
           });
+          const { data, error } = await Promise.race([
+            invocation,
+            new Promise<any>((_, reject) =>
+              setTimeout(() => reject(new Error('השידור לא הסתיים בזמן (120 שניות). נסה שוב או תזמן לשידור מאוחר יותר.')), 120000)
+            ),
+          ]);
+          console.log('[campaign] meta-publish result', { target: target?.name ?? null, groups: apiGroupIds.length, data, error });
           results.push({ data, error, target });
         }
+
 
 
         // Circuit-breaker short-circuit: the backend is intentionally pausing
@@ -2776,18 +2807,20 @@ const ConfirmDispatchDialog = ({
         const duplicateOnly = !scheduledAt && results.length > 0 &&
           results.every((r) => (r.data as any)?.duplicate === true);
 
+        const reachNote = groupStats.members > 0 ? ` · חשיפה פוטנציאלית ${groupStats.members.toLocaleString('he-IL')} חברים` : '';
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
-          toast.success(`הפוסט תוזמן ל-${when} ב-${targets.length} יעד(ים)`);
+          toast.success(`הפוסט תוזמן ל-${when} · ${targets.length} יעד(ים) · ${groupIds.length} קבוצות${reachNote}`);
         } else if (duplicateOnly) {
           toast.info((results[0]?.data as any)?.message || 'הפוסט הזה כבר פורסם — לא נשלח שוב.');
         } else if (groupIds.length > 0 && groupFailures.length === 0) {
-          toast.success('הפוסט שותף בהצלחה בכל הקבוצות שנבחרו!');
+          toast.success(`הפוסט שותף בהצלחה ב-${groupIds.length} קבוצות${reachNote}`);
         } else if (groupIds.length > 0 && groupFailures.length > 0) {
-          toast.error(`פורסם אך נכשל ב-${groupFailures.length} קבוצות`);
+          toast.error(`פורסם ב-${groupIds.length - groupFailures.length} קבוצות · נכשל ב-${groupFailures.length}`);
         } else {
           toast.success(`הקמפיין פורסם בהצלחה ב-${targets.length} יעד(ים)!`);
         }
+
 
       } else {
         // Direct-messaging channels (SMS / email / IVR / AI Voice) broadcast to leads.
@@ -2876,7 +2909,7 @@ const ConfirmDispatchDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent dir="rtl" className="max-w-md">
+      <DialogContent dir="rtl" className="w-[calc(100vw-1rem)] max-w-lg max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-center text-lg">אישור פרסום</DialogTitle>
           <DialogDescription className="text-center">
@@ -2919,6 +2952,50 @@ const ConfirmDispatchDialog = ({
             )}
           </div>
         </div>
+
+        {/* Pre-send statistics — exactly what is about to go out and to where. */}
+        <div className="rounded-xl border border-border bg-muted/30 p-3 text-right">
+          <div className="mb-2 text-sm font-semibold text-foreground">סטטיסטיקה לפני שידור</div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="rounded-lg bg-background p-2">
+              <div className="text-[11px] text-muted-foreground">קבוצות נבחרות</div>
+              <div className="text-lg font-bold tabular-nums text-foreground">{groupIds.length}</div>
+            </div>
+            <div className="rounded-lg bg-background p-2">
+              <div className="text-[11px] text-muted-foreground">חברים בכל הקבוצות</div>
+              <div className="text-lg font-bold tabular-nums text-foreground">
+                {groupStats.members > 0 ? groupStats.members.toLocaleString('he-IL') : '—'}
+              </div>
+              {groupIds.length > 0 && groupStats.known < groupIds.length && (
+                <div className="text-[10px] text-muted-foreground">נתוני חברים ל-{groupStats.known} מתוך {groupIds.length}</div>
+              )}
+            </div>
+            <div className="rounded-lg bg-background p-2">
+              <div className="text-[11px] text-muted-foreground">יעדי עמוד / פרופיל</div>
+              <div className="text-lg font-bold tabular-nums text-foreground">{publishTargets.length || 1}</div>
+            </div>
+            <div className="rounded-lg bg-background p-2">
+              <div className="text-[11px] text-muted-foreground">תמונות בפוסט</div>
+              <div className="text-lg font-bold tabular-nums text-foreground">{mediaUrls.length}</div>
+            </div>
+            <div className="rounded-lg bg-background p-2">
+              <div className="text-[11px] text-muted-foreground">תגובה ראשונה</div>
+              <div className="text-sm font-bold text-foreground">{firstComment?.trim() ? 'כן' : 'לא'}</div>
+            </div>
+            <div className="rounded-lg bg-background p-2">
+              <div className="text-[11px] text-muted-foreground">מועד שידור</div>
+              <div className="text-sm font-bold text-foreground">
+                {scheduledAt ? new Date(scheduledAt).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'עכשיו'}
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            סה"כ שידורים צפויים: <span className="font-bold tabular-nums">{(publishTargets.length || 1) + groupIds.length}</span>
+            {' · '}אורך הטקסט: <span className="font-bold tabular-nums">{body.trim().length}</span> תווים
+          </div>
+        </div>
+
+
 
 
         <DialogFooter className="!justify-between gap-2 sm:gap-2 flex-row-reverse">
