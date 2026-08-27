@@ -5906,7 +5906,7 @@ const CampaignCenter = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [campaignHistoryOpen, user?.id, workspaceOwnerId]);
+  }, [campaignHistoryOpen, user?.id, workspaceOwnerId, historyRefreshTick]);
   // Hydrate connection state from localStorage so a page refresh (or a new
   // tab) doesn't visually "disconnect" channels while verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
