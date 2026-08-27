@@ -451,12 +451,33 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     : !!health?.pageConnected || !!page?.connected || !!(binding?.hasToken && binding?.pageId);
 
 
+  const actionButtons = (
+    <>
+      <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="h-8 gap-1.5 text-xs">
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />}
+        בדיקה
+      </Button>
+      {isConnected && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={disconnect}
+          disabled={disconnecting}
+          className="h-8 gap-1.5 text-xs text-destructive"
+          aria-label="נתק את עמוד הפייסבוק"
+        >
+          {disconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
+        </Button>
+      )}
+    </>
+  );
+
   return (
     <Card key={connectionEpoch} ref={ref} dir="rtl" className="text-right">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-right">
           <Facebook className="h-5 w-5 text-primary" />
-          <span>פרסום ישיר לפייסבוק ואינסטגרם (Meta Graph)</span>
+          <span>פייסבוק ואינסטגרם</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -472,16 +493,10 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             )}
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold">{pageName ?? 'עמוד פייסבוק'}</div>
-              <div className="flex items-center gap-1.5 text-[11px] text-emerald-700">
-                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                מחובר ומוכן לפרסום
-              </div>
             </div>
-            <Badge className="gap-1 rounded-full border-0 bg-emerald-500 px-3 py-1 text-[12px] font-bold text-white shadow-md shadow-emerald-500/40 ring-2 ring-emerald-500/20 hover:bg-emerald-600">
+            <Badge className="gap-1 rounded-full border-0 bg-emerald-600 px-3 py-1 text-[12px] font-bold text-white hover:bg-emerald-700">
               <CheckCircle2 className="h-4 w-4" strokeWidth={2.75} /> פעיל
             </Badge>
-
-
           </div>
         ) : (
           <div className="rounded-xl border border-dashed p-3 space-y-2">
@@ -520,15 +535,52 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           </div>
         )}
 
-        {isConnected && <FacebookTargetsCard key={`targets-${connectionEpoch}`} />}
-
+        {isConnected ? (
+          <FacebookTargetsCard key={`targets-${connectionEpoch}`} actions={actionButtons} />
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">{actionButtons}</div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={igHandle ? 'default' : 'secondary'} className="gap-1.5">
             <Instagram className="h-3.5 w-3.5" />
             {igHandle ? `אינסטגרם: @${igHandle}` : 'אינסטגרם לא מקושר'}
           </Badge>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() => setIgHelpOpen(true)}
+          >
+            <Instagram className="h-3.5 w-3.5" /> איך מחברים?
+          </Button>
         </div>
+
+        <Dialog open={igHelpOpen} onOpenChange={setIgHelpOpen}>
+          <DialogContent dir="rtl" className="text-right sm:max-w-md">
+            <DialogHeader className="text-right">
+              <DialogTitle>חיבור אינסטגרם ב-3 צעדים</DialogTitle>
+              <DialogDescription>
+                אינסטגרם מתחבר דרך עמוד הפייסבוק — אין צורך בהתחברות נפרדת.
+              </DialogDescription>
+            </DialogHeader>
+            <ol className="list-inside list-decimal space-y-1.5 text-xs text-muted-foreground">
+              <li>ודא שחשבון האינסטגרם הוא חשבון מקצועי (Business או Creator).</li>
+              <li>באפליקציית אינסטגרם: הגדרות ← קישור חשבונות ← פייסבוק, ובחר את עמוד הפייסבוק המחובר כאן.</li>
+              <li>חזור לכאן ולחץ "בדיקה" — האינסטגרם יופיע מקושר אוטומטית.</li>
+            </ol>
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => { setIgHelpOpen(false); void probe(true); }}
+            >
+              בדוק חיבור אינסטגרם
+            </Button>
+          </DialogContent>
+        </Dialog>
+
 
         {status && !status.connected && status.message && (
           <p className="text-xs text-destructive">{status.message}</p>
