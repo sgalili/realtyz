@@ -608,6 +608,8 @@ export function ScheduleCurrentPostDialog({
         onScheduled();
         onClose();
         navigate('/campaigns?tab=calendar');
+        try { window.dispatchEvent(new CustomEvent('rz:open-schedule-calendar')); } catch { /* noop */ }
+
       } else {
 
         toast.error(firstErr ? `תזמון נכשל: ${firstErr}` : 'תזמון נכשל');
