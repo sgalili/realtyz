@@ -711,6 +711,7 @@ type ComposerStatus = {
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
+  onRegisterPublish,
 }: {
   channel: ChannelCard;
   brandName: string;
@@ -724,6 +725,12 @@ const InlineComposer = ({
   instanceId?: string;
   /** Lets a collapsed wrapper card mirror this draft's live status. */
   onStatus?: (status: ComposerStatus) => void;
+  /**
+   * Exposes this draft's publish action to the parent, so a collapsed card
+   * header and the "publish all drafts" bar can dispatch it without expanding.
+   * The returned function reports whether the draft was publishable.
+   */
+  onRegisterPublish?: (fn: (() => boolean) | null) => void;
 }) => {
   // Persistent draft key — namespaced per replicated instance so multiple
   // composers on the same page don't clobber each other's drafts. Persisted
