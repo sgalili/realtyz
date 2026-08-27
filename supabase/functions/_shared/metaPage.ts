@@ -37,23 +37,38 @@ export async function resolveMetaPage(
   ownerId: string | null,
 ): Promise<MetaPage | null> {
   if (ownerId) {
-    const { data } = await db
-      .from("messenger_page_bindings")
-      .select("page_id, page_name, page_access_token")
-      .eq("owner_id", ownerId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const row: any = data;
-    if (row?.page_id && row?.page_access_token) {
-      return {
-        pageId: String(row.page_id),
-        pageName: row.page_name ?? null,
-        token: String(row.page_access_token),
-      };
-    }
+    const own = await resolveOwnMetaPage(db, ownerId);
+    // A workspace token minted by an unreviewed Meta app fails with
+    // `#10 pages_read_engagement`. Probe it once (cached per isolate) and fall
+    // back to the SuperAdmin's central approved app when it is rejected.
+    if (own && await tokenUsable(own)) return own;
+    const shared = await resolveSharedMetaPage(db);
+    if (shared) return shared;
+    if (own) return own;
+    return null;
   }
   return await resolveSharedMetaPage(db);
+}
+
+const tokenProbeCache = new Map<string, boolean>();
+
+/** Cheap, cached probe: can this Page token still read the Page itself? */
+export async function tokenUsable(page: MetaPage): Promise<boolean> {
+  const key = `${page.pageId}:${page.token.slice(-12)}`;
+  const cached = tokenProbeCache.get(key);
+  if (typeof cached === "boolean") return cached;
+  let ok = true;
+  try {
+    const res = await fetch(
+      `${GRAPH}/${page.pageId}?fields=id&access_token=${encodeURIComponent(page.token)}`,
+    );
+    const payload = await res.json().catch(() => ({}));
+    ok = res.ok && !isMetaPermissionError(payload);
+  } catch {
+    ok = true; // network hiccup: don't discard a valid token
+  }
+  tokenProbeCache.set(key, ok);
+  return ok;
 }
 
 /**
