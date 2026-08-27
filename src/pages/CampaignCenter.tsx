@@ -3077,6 +3077,26 @@ const ConfirmDispatchDialog = ({
 
         </div>
 
+        {/* Inline group editor — rendered in-dialog so the list scrolls freely. */}
+        {groupPickerOpen && (
+          <div className="rounded-xl border border-border bg-background p-3" dir="rtl">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-sm font-semibold text-foreground">בחירת קבוצות לשידור</div>
+              <Button type="button" size="sm" variant="outline" onClick={() => {
+                saveCampaignGroups(workspaceOwnerId, groupIds);
+                setGroupPickerOpen(false);
+              }}>
+                סיום ({groupIds.length})
+              </Button>
+            </div>
+            <div className="max-h-[45vh] overflow-y-auto overscroll-contain">
+              <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
+            </div>
+          </div>
+        )}
+
+
+
 
 
 
