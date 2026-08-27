@@ -60,9 +60,9 @@ Deno.serve(async (req) => {
     // Try the current official endpoint first, then fall back to legacy paths.
     // The token must be sent as a Bearer token in the Authorization header.
     const endpoints = [
-      'https://api.brightdata.com/client/balance',
       'https://api.brightdata.com/balance',
       'https://api.brightdata.com/customer/balance',
+      'https://api.brightdata.com/client/balance',
     ];
 
     let res: Response | null = null;
