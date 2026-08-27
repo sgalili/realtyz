@@ -623,18 +623,23 @@ const buildFirstCommentKeywordLine = (listing: CampaignListing | null | undefine
   const featuresObj = (listing.features && !Array.isArray(listing.features) && typeof listing.features === 'object')
     ? (listing.features as Record<string, unknown>)
     : {};
-  const sourceType = String(meta.property_type || featuresObj.property_type || '') || 'דירה';
+  // Hebrew only: never surface English source values such as "apartment".
+  const sourceType = hebrewPropertyType(meta.property_type || featuresObj.property_type || '');
+  const sqm = sanitizeSqm(listing.sqm);
+  const floor = sanitizeFloor(listing.floor);
+  const rooms = sanitizeRooms(listing.rooms);
   const parts = [
     sourceType,
     listing.city ? String(listing.city) : null,
     listing.address ? stripAddressNumbers(listing.address) : (listing.neighborhood ? String(listing.neighborhood) : null),
-    listing.rooms ? `${listing.rooms} חדרים` : null,
-    listing.floor !== null && listing.floor !== undefined ? `קומה ${listing.floor}` : null,
-    listing.sqm ? `${listing.sqm} מ"ר` : null,
+    rooms !== null ? `${rooms} חדרים` : null,
+    floor !== null ? `קומה ${floor}` : null,
+    sqm !== null ? `${sqm} מ"ר` : null,
     ...extractListingFeatureFlags(listing),
   ].filter(Boolean) as string[];
-  return Array.from(new Set(parts.map((s) => s.trim()))).join(' | ');
+  return Array.from(new Set(hebrewOnlyParts(parts.map((s) => s.trim())))).join(' | ');
 };
+
 
 // Hard cap: the property line in the first comment is at most 10 words.
 const limitToTenWords = (line: string) =>
