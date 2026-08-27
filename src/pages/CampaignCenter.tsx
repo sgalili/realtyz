@@ -2909,7 +2909,7 @@ const ConfirmDispatchDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent dir="rtl" className="max-w-md">
+      <DialogContent dir="rtl" className="w-[calc(100vw-1rem)] max-w-lg max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-center text-lg">אישור פרסום</DialogTitle>
           <DialogDescription className="text-center">
