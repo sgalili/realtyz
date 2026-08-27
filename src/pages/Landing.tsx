@@ -277,7 +277,7 @@ export default function Landing() {
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f, i) => (
               <Reveal key={f.title} delay={(i % 3) * 90}>
-                <article className="landing-card group relative h-full min-h-[15rem] overflow-hidden rounded-2xl border border-border/70 transition-transform duration-300 will-change-transform hover:-translate-y-1.5">
+                <article className="landing-card group relative h-full min-h-[11.5rem] overflow-hidden rounded-2xl border border-border/70 transition-transform duration-300 will-change-transform hover:-translate-y-1.5">
                   <img
                     src={f.image}
                     alt=""
@@ -288,10 +288,11 @@ export default function Landing() {
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <div aria-hidden className="landing-card-veil absolute inset-0" />
-                  <div className="relative flex h-full flex-col justify-end p-6">
+                  <div className="relative flex h-full flex-col justify-end p-4">
                     <h3 className="text-lg font-extrabold text-white drop-shadow">{f.title}</h3>
-                    <p className="mt-2 text-[15px] leading-relaxed text-white/85">{f.body}</p>
+                    <p className="mt-1.5 text-[14px] leading-snug text-white/90">{f.body}</p>
                   </div>
+
                 </article>
               </Reveal>
             ))}
