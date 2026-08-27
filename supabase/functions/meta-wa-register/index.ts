@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
     }
 
     if (!phoneNumberId || !accessToken) {
-      return json({ success: false, error: "יש לשמור קודם Phone Number ID ו-Access Token" }, 400);
+      return json({ success: false, error: "לא נמצאו פרטי חיבור ל-WhatsApp — הזן Phone Number ID ו-Access Token ולחץ \"שמור פרטי חיבור\"." }, 400);
     }
 
     // ── status ──────────────────────────────────────────────────────────────
