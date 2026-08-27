@@ -1394,7 +1394,16 @@ function walkForFeedItems(root: any, emit: (item: any) => void) {
 /**
  * Parses a single item HTML page.
  */
-function parseItem(html: string, srcUrl: string): Scraped {
+function isBlockedItemPage(html: string): boolean {
+  return /<title>\s*Radware Page\s*<\/title>/i.test(html)
+    || /incident-id/i.test(html)
+    || /radware/i.test(html.slice(0, 20_000));
+}
+
+function parseItem(html: string, srcUrl: string): Scraped | null {
+  // A Radware challenge is valid HTML but contains no listing. Returning a
+  // shell row here incorrectly stopped the Scraping Browser fallback.
+  if (isBlockedItemPage(html)) return null;
   const $ = cheerio.load(html);
   const dealType = detectDealType(srcUrl);
   const text = $("body").text();
@@ -1508,7 +1517,7 @@ function parseItem(html: string, srcUrl: string): Scraped {
     ?? (() => { for (const b of jsonBlobs) { const d = deepDescription(b); if (d) return d; } return null; })()
     ?? descriptionFromHtml($);
 
-  return {
+  const parsed: Scraped = {
     source_url: srcUrl,
     external_id: idMatch?.[1] ?? null,
     title: clean(ad?.title ?? $("h1").first().text()),
@@ -1538,6 +1547,13 @@ function parseItem(html: string, srcUrl: string): Scraped {
     published_at: publishedAt,
     updated_at_source: jsonDates.updated_at_source,
   };
+  const hasListingSignal = Boolean(
+    parsed.price || parsed.rooms || parsed.sqm || parsed.description ||
+    parsed.address || parsed.city || parsed.photos?.length ||
+    Object.keys(parsed.additional_details ?? {}).length ||
+    Object.keys(parsed.attributes ?? {}).length,
+  );
+  return hasListingSignal ? parsed : null;
 
 }
 
@@ -2016,7 +2032,8 @@ Deno.serve(async (req) => {
         console.log(`[yad2-unlocker] falling back to HTML: ${pageUrl}`);
         try {
           const html = await unlock(pageUrl, { maxAttempts: 2 });
-          out = isItemUrl ? [parseItem(html, pageUrl)] : parseSearch(html, pageUrl, limit);
+          const item = isItemUrl ? parseItem(html, pageUrl) : null;
+          out = isItemUrl ? (item ? [item] : []) : parseSearch(html, pageUrl, limit);
           diagnostics.push({ endpoint: pageUrl, kind: "html", status: out.length ? "ok" : "empty", count: out.length });
         } catch (e: any) {
           const err = String(e?.message ?? e).slice(0, 400);
