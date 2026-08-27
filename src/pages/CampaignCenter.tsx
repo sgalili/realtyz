@@ -6196,7 +6196,7 @@ const CampaignCenter = () => {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => { stopAllGeneration(); toast.info('עצרנו את יצירת התוכן. כל מה שנוצר נשמר.'); }}
+                        onClick={() => { stopAllGeneration(); toast.info('כל היצירה נעצרה מיד. כל מה שנוצר עד כה נשמר.'); }}
                         title="עצור יצירת תוכן מיד (התוכן שנוצר נשמר)"
                         className="inline-flex items-center justify-center gap-1 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-3 text-[12px] font-semibold text-destructive transition hover:bg-destructive/20"
                       >
