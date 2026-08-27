@@ -18,7 +18,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid,
+  Megaphone, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon,
   RefreshCw,
@@ -44,7 +44,8 @@ import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle } from '@/lib/formatListingTitle';
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
 import { ensureFullPropertyImport, triggerFullPropertyImport } from '@/lib/propertyFullSync';
-import { isNewListing } from '@/lib/listingFreshness';
+import { isNewListing, isOldListing } from '@/lib/listingFreshness';
+import { isRelevantListing } from '@/lib/listingRelevance';
 import { sourceYad2Url } from '@/lib/yad2Ad';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
@@ -486,10 +487,13 @@ export default function Properties() {
   // Transaction-type toggle filters the rendered list instantly (the live
   // search re-runs in parallel through the effect below).
   const typeFiltered = useMemo(() => {
+    // Blank / half-scraped rows never reach the screen.
+    const relevant = results.filter(isRelevantListing);
+    const results_ = relevant;
     const bySource = sourceFilter
-      ? results.filter((r) => (r.sources ?? [r.source]).includes(sourceFilter))
-      : results;
-    const base = sourceFilter && !bySource.length ? results : bySource;
+      ? results_.filter((r) => (r.sources ?? [r.source]).includes(sourceFilter))
+      : results_;
+    const base = sourceFilter && !bySource.length ? results_ : bySource;
     if (listingType === 'all') return base;
     const narrowed = base.filter((r) => r.listing_type === listingType);
     // Never let a toggle blank the table — keep the wider pool instead.
@@ -1181,11 +1185,15 @@ function ResultCard({
             {LISTING_TYPE_LABELS_HE[result.listing_type]}
           </Badge>
         )}
-        {isNewListing(result) && (
+        {isNewListing(result) ? (
           <Badge className="absolute top-11 left-3 z-10 border-0 bg-[#FF7A00] text-white shadow-sm">
             חדש
           </Badge>
-        )}
+        ) : isOldListing(result) ? (
+          <Badge className="absolute top-11 left-3 z-10 border-0 bg-slate-500 text-white shadow-sm">
+            ותיק
+          </Badge>
+        ) : null}
 
         {importing && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm z-20">
@@ -1249,7 +1257,7 @@ function ResultCard({
                 title="צור קמפיין לנכס"
                 aria-label="צור קמפיין לנכס"
               >
-                <Send className="h-4 w-4" />
+                <Megaphone className="h-4 w-4" />
                 פרסם
               </Button>
             )}
@@ -1439,9 +1447,11 @@ function ResultTable({
                       : <span title={label}>{label}</span>;
                     return (
                       <span className="inline-flex items-center gap-1.5 min-w-0">
-                        {isNewListing(r) && (
+                        {isNewListing(r) ? (
                           <span className="shrink-0 rounded-full bg-[#FF7A00] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm">חדש</span>
-                        )}
+                        ) : isOldListing(r) ? (
+                          <span className="shrink-0 rounded-full bg-slate-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm">ותיק</span>
+                        ) : null}
                         <span className="truncate">{link}</span>
                       </span>
                     );
@@ -1492,7 +1502,7 @@ function ResultTable({
                       onClick={(e) => { e.stopPropagation(); onCampaign ? onCampaign(r) : onSelect(r); }}
                       className="h-8 w-8"
                     >
-                      {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Megaphone className="h-3.5 w-3.5" />}
                     </Button>
 
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
