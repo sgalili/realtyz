@@ -143,7 +143,7 @@ export default function TourSchedulerDialog({ open, onOpenChange, token, propert
             {slotError && <p className="text-[12px] font-medium text-destructive">{slotError}</p>}
 
             <div className="space-y-1.5">
-              <Label htmlFor="tour-notes">הערות (אופציונלי)</Label>
+              <Label htmlFor="tour-notes">הערות</Label>
               <Textarea id="tour-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} rows={2} />
             </div>
 

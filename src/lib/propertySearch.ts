@@ -224,9 +224,8 @@ export async function searchAllSources(
       (homelyFilters.deal && homelyFilters.deal !== 'all'),
   );
 
-  // STAGED PIPELINE (API conservation): each stage only starts after the
-  // previous one has painted. Local DB first (free, instant), Yad2 second,
-  // Homely/Webtiv last — so a cancelled search never burns external quota.
+  // Paint the free local database first. External sources then run in
+  // parallel so a slow Yad2 request can never hold back Homely results.
   const localTask = () =>
     searchLocal(f)
 
@@ -330,13 +329,6 @@ export async function searchAllSources(
   // NOTE: `webtiv-homely-sync` is a CONTACT sync job (buyers/sellers → Homely),
   // not a property search endpoint, so the office's Webtiv inventory is served
   // through `homely-fetch-property` (same AutomaionJson stream, sale AND rent).
-  const stages: Array<{ label: PropertySource; run: () => Promise<{ label: PropertySource; results: UnifiedResult[] }> }> = [
-    { label: 'mine', run: localTask },
-    { label: 'yad2', run: yad2Task },
-    { label: 'homely', run: homelyTask },
-  ];
-
-
   // Merge + dedupe + text-filter a set of settled source buckets.
   const mergeSettled = (buckets: Array<{ label: PropertySource; results: UnifiedResult[] }>) => {
     const all: UnifiedResult[] = [];
@@ -379,29 +371,28 @@ export async function searchAllSources(
         });
   };
 
-  // Stream sequentially: paint after each stage completes, then move on to
-  // the next (more expensive) source. `onPartial` fires once per stage.
-  const labels: PropertySource[] = stages.map((s) => s.label);
   const collected: Array<{ label: PropertySource; results: UnifiedResult[] }> = [];
-  const total = stages.length;
-  let done = 0;
+  const local = await localTask();
+  collected.push(local);
+  const localResults = mergeSettled(collected);
+  onPartial?.({
+    results: localResults,
+    sources: { ...sources },
+    progress: { done: 1, total: 3, loaded: localResults.length, pending: ['yad2', 'homely'] },
+  });
 
-  for (const stage of stages) {
-    try {
-      collected.push(await stage.run());
-    } catch (e) {
-      console.error('[propertySearch] source stage rejected', stage.label, e);
-      collected.push({ label: stage.label, results: [] });
-    }
-    done += 1;
-    const partial = mergeSettled(collected);
-    const pending = labels.filter((l) => !collected.some((c) => c.label === l));
-    onPartial?.({
-      results: partial,
-      sources: { ...sources },
-      progress: { done, total, loaded: partial.length, pending },
-    });
-  }
+  await Promise.all([
+    yad2Task().then((result) => {
+      collected.push(result);
+      const partial = mergeSettled(collected);
+      onPartial?.({ results: partial, sources: { ...sources }, progress: { done: collected.length, total: 3, loaded: partial.length, pending: collected.some((c) => c.label === 'homely') ? [] : ['homely'] } });
+    }),
+    homelyTask().then((result) => {
+      collected.push(result);
+      const partial = mergeSettled(collected);
+      onPartial?.({ results: partial, sources: { ...sources }, progress: { done: collected.length, total: 3, loaded: partial.length, pending: collected.some((c) => c.label === 'yad2') ? [] : ['yad2'] } });
+    }),
+  ]);
 
 
   const filtered = mergeSettled(collected);

@@ -160,14 +160,14 @@ export default function QuickActionDrawer() {
   }
 
   const saveNote = async () => {
-    if (!noteText.trim()) { toast.error('כתוב תוכן לרשומה'); return; }
+    if (!noteText.trim()) { toast.error('כתוב תוכן לפתק'); return; }
     setSaving(true);
     try {
       await logActivity('note', 'internal', noteText.trim());
       if (lead?.id) {
         await (supabase as any).from('leads').update({ last_interaction_at: new Date().toISOString() }).eq('id', lead.id);
       }
-      toast.success('הרשומה נשמרה');
+      toast.success('הפתק נשמר');
       resetAfterSave();
       queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
     } catch (e: any) {
@@ -223,15 +223,15 @@ export default function QuickActionDrawer() {
 
   const saveInteraction = async () => {
     if (!lead) { toast.error('בחר מתעניין'); return; }
-    if (!interactionText.trim()) { toast.error('תאר את האינטראקציה'); return; }
+    if (!interactionText.trim()) { toast.error('כתוב סיכום שיחה'); return; }
     setSaving(true);
     try {
       await logActivity('interaction', interactionChannel, interactionText.trim());
       await (supabase as any).from('leads').update({ last_interaction_at: new Date().toISOString() }).eq('id', lead.id);
-      toast.success('האינטראקציה נרשמה');
+      toast.success('סיכום השיחה נשמר');
       resetAfterSave();
     } catch (e: any) {
-      toast.error(e?.message ?? 'רישום האינטראקציה נכשל');
+      toast.error(e?.message ?? 'שמירת סיכום השיחה נכשלה');
     } finally {
       setSaving(false);
     }
@@ -286,7 +286,6 @@ export default function QuickActionDrawer() {
             <Input
               value={leadQuery}
               onChange={(e) => setLeadQuery(e.target.value)}
-              placeholder="חיפוש לפי שם או טלפון"
               className="ps-9"
             />
           </div>
@@ -429,7 +428,7 @@ export default function QuickActionDrawer() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">סיכום האינטראקציה</Label>
+                  <Label className="text-sm font-semibold">סיכום שיחה</Label>
                   <Textarea
                     value={interactionText}
                     onChange={(e) => setInteractionText(e.target.value)}
