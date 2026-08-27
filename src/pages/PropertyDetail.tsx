@@ -25,6 +25,8 @@ import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternat
 import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard';
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
 import SmartTimelineCard from '@/components/SmartTimelineCard';
+import QuickMessageCard from '@/components/messaging/QuickMessageCard';
+
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
