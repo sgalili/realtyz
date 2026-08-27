@@ -1,3 +1,4 @@
+import SmartTimelineCard from '@/components/SmartTimelineCard';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
