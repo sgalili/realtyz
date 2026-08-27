@@ -1135,10 +1135,18 @@ export default function PropertyDetail() {
 
 
 
-      {/* Actions are intentionally first so they stay predictable on mobile. */}
-      <div className="flex min-h-9 flex-wrap items-center justify-end gap-3">
+      {/* Actions are intentionally first so they stay predictable on mobile.
+          The owner sits on the opposite side of the same row. */}
+      <div className="flex min-h-9 flex-wrap items-center justify-between gap-3">
+        {owner ? (
+          <Link to={`/crm/profile/${owner.id}`} className="shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
+            {owner.full_name}
+          </Link>
+        ) : <span />}
+        <div className="flex flex-wrap items-center justify-end gap-3">
         {!editMode ? (
           <>
+
             {yad2Url && liveYad2Status === 'live' && (
               <a href={yad2Url} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה החיה ביד2" title="צפייה במודעה החיה ביד2" className="inline-flex items-center transition-opacity hover:opacity-80">
                 <Yad2Icon className="h-6 w-6" />
