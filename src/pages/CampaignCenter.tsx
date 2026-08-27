@@ -715,7 +715,7 @@ type ComposerStatus = {
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
-  onRegisterPublish,
+  onRegisterPublish, bulkGroupIds, bulkScheduleIso,
 }: {
   channel: ChannelCard;
   brandName: string;
@@ -731,10 +731,13 @@ const InlineComposer = ({
   onStatus?: (status: ComposerStatus) => void;
   /**
    * Exposes this draft's publish action to the parent, so a collapsed card
-   * header and the "publish all drafts" bar can dispatch it without expanding.
+   * header and the "publish all drafts" bar can dispatch it.
    * The returned function reports whether the draft was publishable.
    */
   onRegisterPublish?: (fn: (() => boolean) | null) => void;
+  /** Bulk override from the page-level bottom bar — updates all drafts at once. */
+  bulkGroupIds?: string[];
+  bulkScheduleIso?: string | null;
 }) => {
   // Persistent draft key — namespaced per replicated instance so multiple
   // composers on the same page don't clobber each other's drafts. Persisted
@@ -866,6 +869,23 @@ const InlineComposer = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Bulk override from the page-level bottom bar — update every draft at once.
+  useEffect(() => {
+    if (bulkGroupIds) setGroupIds(bulkGroupIds);
+  }, [bulkGroupIds]);
+
+  useEffect(() => {
+    if (bulkScheduleIso) {
+      const d = new Date(bulkScheduleIso);
+      if (!Number.isNaN(d.getTime())) {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        setScheduledLocal(local);
+        setMode('scheduled');
+      }
+    }
+  }, [bulkScheduleIso]);
 
 
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
@@ -2080,8 +2100,8 @@ const InlineComposer = ({
         const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
         const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
         const canSend = hasBody && scheduledValid && hasSelectedPages;
-        // Calendar-initiated flow: hide the secondary schedule button and
-        // render one unified primary button showing the exact target slot.
+        // Calendar-initiated flow: always keep the secondary schedule button
+        // visible so the user can update the slot before publishing.
         const calendarLocked = isFromScheduling && !!scheduledDate;
         const scheduledLabel = scheduledDate
           ? scheduledDate.toLocaleString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -2104,7 +2124,6 @@ const InlineComposer = ({
                 {calendarLocked ? `פרסם ב-${scheduledLabel}` : (mode === 'scheduled' ? 'פרסם בזמן שנבחר' : 'פרסם עכשיו')}
               </button>
               <div className="flex items-stretch gap-2">
-              {!calendarLocked && (
               <button
                 type="button"
                 onClick={() => setScheduleDialogOpen(true)}
@@ -2120,7 +2139,6 @@ const InlineComposer = ({
               >
                 <CalendarIcon className="h-4 w-4" />
               </button>
-              )}
               {channel.id === 'facebook' && (
                 <button
                   type="button"
@@ -5259,6 +5277,12 @@ const CampaignCenter = () => {
   const activeDraftKeyRef = useRef<string | null>(null);
   const bulkQueueRef = useRef<string[]>([]);
   const [publishedDrafts, setPublishedDrafts] = useState<Set<string>>(new Set());
+  // Bulk controls shared across every draft in the multi-draft view so the user
+  // can update schedule/groups once before publishing all drafts.
+  const [bulkGroupIds, setBulkGroupIds] = useState<string[]>([]);
+  const [bulkScheduleIso, setBulkScheduleIso] = useState<string | null>(null);
+  const [bulkGroupPickerOpen, setBulkGroupPickerOpen] = useState(false);
+  const [bulkScheduleDialogOpen, setBulkScheduleDialogOpen] = useState(false);
 
   const publishDraft = useCallback((key: string) => {
     const fn = publishFnsRef.current.get(key);
@@ -5970,6 +5994,8 @@ const CampaignCenter = () => {
                       presetVariant={b.variant}
                       presetVariants={b.totalVariants}
                       instanceId={key}
+                      bulkGroupIds={bulkGroupIds}
+                      bulkScheduleIso={bulkScheduleIso}
                       onRegisterPublish={(fn) => {
                         if (fn) publishFnsRef.current.set(key, fn);
                         else publishFnsRef.current.delete(key);
@@ -5985,24 +6011,108 @@ const CampaignCenter = () => {
                 })}
                 {/* Bulk dispatch — publishes every ready draft one after another. */}
                 <div className="sticky bottom-2 z-40 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
-                  <button
-                    type="button"
-                    onClick={() => publishAllDrafts(blocks.map((b, idx) => `${idx}-${b.listing || 'na'}`))}
-                    disabled={readyKeys.length === 0}
-                    className={cn(
-                      'flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
-                      readyKeys.length
-                        ? 'bg-[hsl(217,80%,18%)] text-white shadow-md hover:bg-[hsl(217,80%,14%)]'
-                        : 'cursor-not-allowed bg-muted text-muted-foreground/80',
+                  <div className="flex items-stretch gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBulkScheduleDialogOpen(true)}
+                      title="עדכן תאריך ושעה לכל הטיוטות"
+                      aria-label="עדכן תאריך ושעה לכל הטיוטות"
+                      className="inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
+                    >
+                      <CalendarIcon className="h-4 w-4" />
+                    </button>
+                    {pickedChannel?.id === 'facebook' && (
+                      <button
+                        type="button"
+                        onClick={() => setBulkGroupPickerOpen(true)}
+                        title="בחירת קבוצות לכל הטיוטות"
+                        aria-label="בחירת קבוצות לכל הטיוטות"
+                        className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
+                      >
+                        <Users className="h-4 w-4" />
+                        {bulkGroupIds.length > 0 && (
+                          <span className="absolute -top-1 -left-1 min-w-[18px] rounded-full bg-[hsl(217,80%,18%)] px-1 text-[10px] font-bold leading-[18px] text-white" dir="ltr">
+                            {bulkGroupIds.length}
+                          </span>
+                        )}
+                      </button>
                     )}
-                  >
-                    <Megaphone className="h-4 w-4" />
-                    פרסם את כל הטיוטות ({readyKeys.length})
-                  </button>
-                  <p className="mt-1 text-center text-[11px] text-muted-foreground">
-                    כל טיוטה מוכנה תישלח לאישור ושיגור בתור, אחת אחרי השנייה.
-                  </p>
+                    <button
+                      type="button"
+                      onClick={() => publishAllDrafts(blocks.map((b, idx) => `${idx}-${b.listing || 'na'}`))}
+                      disabled={readyKeys.length === 0}
+                      className={cn(
+                        'flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
+                        readyKeys.length
+                          ? 'bg-[hsl(217,80%,18%)] text-white shadow-md hover:bg-[hsl(217,80%,14%)]'
+                          : 'cursor-not-allowed bg-muted text-muted-foreground/80',
+                      )}
+                    >
+                      <Megaphone className="h-4 w-4" />
+                      פרסם את כל הטיוטות ({readyKeys.length})
+                    </button>
+                  </div>
                 </div>
+
+                {/* Bulk schedule dialog — applies to every draft in the multi-draft view. */}
+                <Dialog open={bulkScheduleDialogOpen} onOpenChange={setBulkScheduleDialogOpen}>
+                  <DialogContent dir="rtl" className="w-[92vw] sm:max-w-[420px]">
+                    <DialogHeader>
+                      <DialogTitle className="text-right">עדכן תזמון לכל הטיוטות</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <label className="block text-sm font-semibold text-foreground">תאריך ושעת פרסום</label>
+                      <input
+                        type="datetime-local"
+                        value={(() => {
+                          if (!bulkScheduleIso) return '';
+                          const d = new Date(bulkScheduleIso);
+                          if (Number.isNaN(d.getTime())) return '';
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                        })()}
+                        min={(() => {
+                          const floor = new Date(Date.now() + 60_000);
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          return `${floor.getFullYear()}-${pad(floor.getMonth() + 1)}-${pad(floor.getDate())}T${pad(floor.getHours())}:${pad(floor.getMinutes())}`;
+                        })()}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v) {
+                            const d = new Date(v);
+                            if (!Number.isNaN(d.getTime()) && d.getTime() > Date.now()) {
+                              setBulkScheduleIso(d.toISOString());
+                            } else {
+                              setBulkScheduleIso(null);
+                            }
+                          } else {
+                            setBulkScheduleIso(null);
+                          }
+                        }}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                        dir="ltr"
+                      />
+                    </div>
+                    <DialogFooter className="sm:justify-start">
+                      <Button type="button" onClick={() => setBulkScheduleDialogOpen(false)}>אישור</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Bulk groups dialog — applies to every draft in the multi-draft view. */}
+                <Dialog open={bulkGroupPickerOpen} onOpenChange={setBulkGroupPickerOpen}>
+                  <DialogContent dir="rtl" className="w-[96vw] sm:max-w-[720px]">
+                    <DialogHeader>
+                      <DialogTitle className="text-right">קבוצות לכל הטיוטות</DialogTitle>
+                    </DialogHeader>
+                    <CampaignGroupSelector selectedIds={bulkGroupIds} onChange={setBulkGroupIds} />
+                    <DialogFooter className="sm:justify-start">
+                      <Button type="button" onClick={() => setBulkGroupPickerOpen(false)}>
+                        אישור{bulkGroupIds.length > 0 ? ` (${bulkGroupIds.length})` : ''}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             );
           })()}
