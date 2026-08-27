@@ -97,7 +97,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
   const [recurrence, setRecurrence] = useState<Recurrence>('none');
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]); // 0=Sun..6=Sat
-  const [recurrenceCount, setRecurrenceCount] = useState<number>(4); // iterations
+  // Rolling repeat: only the current slot + ONE next version are materialized.
+  const recurrenceCount = 2;
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [brandingPost, setBrandingPost] = useState(false);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
@@ -121,7 +122,6 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     setSelectedGroupIds(prefs.selectedGroupIds);
     setRecurrence(prefs.recurrence);
     setRecurrenceDays(prefs.recurrenceDays);
-    setRecurrenceCount(prefs.recurrenceCount);
     setRecurrenceOpen(false);
     setGroupDailyLimit(prefs.groupDailyLimit);
 
