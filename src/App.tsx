@@ -173,7 +173,7 @@ const App = () => (
               <Route path="/portal/:token" element={<Suspense fallback={<PageLoader />}><ClientPortal /></Suspense>} />
               <Route path="/share/property/:token" element={<Suspense fallback={<PageLoader />}><SharedProperty /></Suspense>} />
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
-              <Route path="/" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
+              <Route path="/" element={<ProtectedRoute allowGuestDemo><CommandCenter /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/command-center" element={<ProtectedRoute allowGuestDemo><CommandCenter /></ProtectedRoute>} />
               <Route path="/tasks" element={<Navigate to="/command-center" replace />} />
