@@ -480,6 +480,10 @@ Deno.serve(async (req) => {
         "comments.summary(true).limit(0)",
         "shares",
       ].join(",");
+      // Import window: everything from 2026-07-27 onward unless the caller
+      // asked for a different `since`. Keeps the feed complete + fast.
+      const sinceParam = since || "2026-07-27";
+      const untilParam = until || "";
       let nextUrl = `${
         new URL(`${cred.pageId}/posts`, "https://graph.facebook.com/v26.0/")
           .toString()
@@ -487,9 +491,12 @@ Deno.serve(async (req) => {
         new URLSearchParams({
           fields,
           limit: String(Math.min(100, Math.max(10, pageSize))),
+          since: sinceParam,
+          ...(untilParam ? { until: untilParam } : {}),
           access_token: cred.token,
         }).toString()
       }`;
+
       const rows: RawPost[] = [];
       const seen = new Set<string>();
       let status = 0;

@@ -1116,12 +1116,22 @@ export default function PropertyDetail() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
+      {/* Slim top progress bar: clear page-loading status while data streams in. */}
+      {hydrating && (
+        <div className="fixed inset-x-0 top-0 z-50 h-1 bg-muted">
+          <div
+            className="h-full bg-primary transition-[width] duration-300 ease-out"
+            style={{ width: `${Math.max(4, Math.min(100, hydrateProgress))}%` }}
+          />
+        </div>
+      )}
       {/* Metadata refresh is non-blocking and remains visible in the viewport. */}
       {hydrating && (
         <div className="pointer-events-none fixed left-1/2 top-24 z-50 -translate-x-1/2 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
           <ProgressRing value={hydrateProgress} size={58} strokeWidth={5} />
         </div>
       )}
+
 
 
 

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Zap, StickyNote, BellRing, MessageSquarePlus, Home, Loader2, Search, ArrowLeft, CalendarCheck2 } from 'lucide-react';
+import { invalidateLiveData } from '@/lib/liveSync';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
@@ -169,7 +170,7 @@ export default function QuickActionDrawer() {
       }
       toast.success('הפתק נשמר');
       resetAfterSave();
-      queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
+      invalidateLiveData(queryClient);
     } catch (e: any) {
       toast.error(e?.message ?? 'שמירת הרשומה נכשלה');
     } finally {
@@ -213,7 +214,7 @@ export default function QuickActionDrawer() {
       }
       toast.success('התזכורת נקבעה');
       resetAfterSave();
-      queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
+      invalidateLiveData(queryClient);
     } catch (e: any) {
       toast.error(e?.message ?? 'קביעת התזכורת נכשלה');
     } finally {
@@ -230,6 +231,8 @@ export default function QuickActionDrawer() {
       await (supabase as any).from('leads').update({ last_interaction_at: new Date().toISOString() }).eq('id', lead.id);
       toast.success('סיכום השיחה נשמר');
       resetAfterSave();
+      invalidateLiveData(queryClient);
+
     } catch (e: any) {
       toast.error(e?.message ?? 'שמירת סיכום השיחה נכשלה');
     } finally {

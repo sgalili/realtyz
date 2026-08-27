@@ -600,22 +600,56 @@ Deno.serve(async (req) => {
     // Optional per-group text variations (anti-duplicate filter): { [group_id]: text }
     const groupTexts: Record<string, string> =
       body?.group_texts && typeof body.group_texts === "object" ? body.group_texts : {};
-    for (const gid of groupIds) {
-      const groupText = typeof groupTexts[gid] === "string" && groupTexts[gid].trim()
+
+    // Facebook flags identical posts across groups as spam. Every group gets a
+    // different main picture (rotated, and re-mixed when there are >10 photos)
+    // plus a light text variation when the caller did not supply one.
+    const shuffle = <T,>(arr: T[]): T[] => {
+      const out = [...arr];
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    };
+    const groupVariants = [
+      "",
+      "\n\nמוזמנים לפנות לפרטים נוספים.",
+      "\n\nאשמח לענות על שאלות בפרטי.",
+      "\n\nזמין לתיאום צפייה בהמשך השבוע.",
+      "\n\nניתן לקבל עוד תמונות ומידע בהודעה.",
+    ];
+
+    for (let gi = 0; gi < groupIds.length; gi++) {
+      const gid = groupIds[gi];
+      // Per-group media set: >10 photos means a fresh random mix of 10 each time.
+      const groupMedia = media.length > 10 ? shuffle(media).slice(0, 10) : media;
+      const groupImage = groupMedia.length
+        ? groupMedia[gi % groupMedia.length]
+        : null;
+      const baseText = typeof groupTexts[gid] === "string" && groupTexts[gid].trim()
         ? String(groupTexts[gid])
-        : text;
+        : `${text}${groupVariants[gi % groupVariants.length]}`;
+      const groupText = baseText;
       const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fb-group-publish`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ group_id: gid, message: groupText, image_url: media[0] ?? null, workspace_owner_id: ownerId }),
+        body: JSON.stringify({
+          group_id: gid,
+          message: groupText,
+          image_url: groupImage,
+          media_urls: groupMedia,
+          workspace_owner_id: ownerId,
+        }),
       })
         .then((r) => r.json())
         .catch((e) => ({ ok: false, reason: String(e) }));
       groupResults.push({ group_id: gid, ...r });
     }
+
 
     // One history row per channel attempt. A retry of the same content REUSES
     // the previous failed row (updated in place) so the queue never fills with
