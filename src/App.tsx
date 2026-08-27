@@ -130,8 +130,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
 }
 
 /** Root: guests see the public landing page, signed-in users get the app. */
+/** The public marketing domain always opens the landing page at the root. */
+const ROOT_MARKETING_HOSTS = new Set(['realtyz.co.il', 'www.realtyz.co.il']);
+
 function RootRoute() {
   const { user, loading } = useAuth();
+  const isMarketingHost = typeof window !== 'undefined' &&
+    ROOT_MARKETING_HOSTS.has(window.location.hostname.toLowerCase());
+  if (isMarketingHost && !user && !loading) return <Navigate to="/landing" replace />;
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" />
