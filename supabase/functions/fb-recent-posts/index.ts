@@ -438,7 +438,14 @@ Deno.serve(async (req) => {
       url.searchParams.get("persist") !== "false";
     const ownerId = asText(
       body?.user_id ?? body?.owner_id ?? url.searchParams.get("user_id"),
-    ) || DEFAULT_OWNER_ID;
+    );
+    if (!ownerId) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "missing_user_id", posts: [], count: 0 }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
