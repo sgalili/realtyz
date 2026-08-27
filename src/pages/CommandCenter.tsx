@@ -167,10 +167,16 @@ export default function CommandCenter() {
           <ul className="space-y-2">
             {visible.map((task, idx) => {
               const midpoint = Math.ceil(visible.length / 2);
-
               const due = dueLabel(task.dueAt);
               return (
+                <Fragment key={`${task.source}-${task.id}`}>
+                {idx === midpoint && (
+                  <li className="py-2 text-center">
+                    <QuickActionsButton />
+                  </li>
+                )}
                 <li
+
                   key={`${task.source}-${task.id}`}
                   className="rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent/40"
                 >
