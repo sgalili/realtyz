@@ -162,10 +162,9 @@ export default function Landing() {
           </Link>
           <nav className="hidden items-center gap-7 text-sm font-semibold text-muted-foreground md:flex">
             <a href="#features" className="transition-colors hover:text-foreground">יכולות</a>
-            <a href="#impact" className="transition-colors hover:text-foreground">תוצאות</a>
             <a href="#whatsapp" className="transition-colors hover:text-foreground">ווטסאפ AI</a>
-            <a href="#pricing" className="transition-colors hover:text-foreground">תמחור</a>
             <a href="#free" className="transition-colors hover:text-foreground">מסלול חינם</a>
+
           </nav>
           <Link to="/" aria-label="Realtyz AI">
             <img src={realtyzLogo} alt="Realtyz AI" className="h-[3.12rem] w-auto object-contain" />
