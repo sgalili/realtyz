@@ -133,11 +133,12 @@ export function ScheduleCurrentPostDialog({
       workspaceOwnerId,
       {
         winStart, winEnd, winCount, recurrence, recurrenceDays,
-        recurrenceCount, recurrenceCountInput, selectedGroupIds, groupDailyLimit,
+        recurrenceCount, selectedGroupIds, groupDailyLimit,
       },
       'composer',
     );
-  }, [open, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, recurrenceCountInput, selectedGroupIds, groupDailyLimit]);
+  }, [open, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedGroupIds, groupDailyLimit]);
+
 
   // Property name + address for the dialog header.
   useEffect(() => {
