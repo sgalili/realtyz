@@ -398,18 +398,19 @@ const ChannelGrid = ({
                         if (url) window.open(url, '_blank', 'noopener,noreferrer');
                       };
                       return (
-                        <span key={profile.id} className="block max-w-full text-center">
+                        <span key={profile.id} className="block min-w-0 max-w-full text-center">
                           <span
                             role={url ? 'link' : undefined}
                             tabIndex={url ? 0 : undefined}
                             onClick={url ? handleOpen : undefined}
                             onKeyDown={url ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(e as unknown as React.MouseEvent); } : undefined}
-                            className={cn('block truncate text-[10px] font-bold text-[#8a7327]', url && 'cursor-pointer hover:underline')}
+                            className={cn('block truncate whitespace-nowrap text-[10px] font-bold text-[#8a7327]', url && 'cursor-pointer hover:underline')}
                             title={profile.name}
                           >
-                            {profile.name}
+                            {shortenName(profile.name, 26)}
                           </span>
                         </span>
+
                       );
                     })}
                     {profiles.length > 2 && <span className="text-[9px] font-semibold text-muted-foreground">+{profiles.length - 2}</span>}
