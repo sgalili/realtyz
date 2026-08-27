@@ -733,37 +733,46 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
                 )}
               </div>
             </div>
-
-
+            {/* Group picker — rendered INSIDE the dialog so mouse wheel and
+                touch scrolling work (a portaled popover is blocked by the
+                dialog's scroll lock). */}
+            {groupsOpen && (
+              <div className="rounded-xl border border-border bg-background">
+                <CampaignGroupSelector
+                  selectedIds={selectedGroupIds}
+                  onChange={setSelectedGroupIds}
+                  className="border-0 shadow-none"
+                />
+                <div className="flex justify-start border-t border-border p-2">
+                  <Button type="button" size="sm" onClick={() => setGroupsOpen(false)}>
+                    סגור{selectedGroupIds.length > 0 ? ` (${selectedGroupIds.length})` : ''}
+                  </Button>
+                </div>
+              </div>
+            )}
 
           </div>
           <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full items-center">
             <Button variant="outline" onClick={() => setScheduleDay(null)}>ביטול</Button>
             <div className="flex items-center gap-2">
-              <Popover open={groupsOpen} onOpenChange={setGroupsOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    title="בחר קבוצות פייסבוק לפרסום"
-                    aria-label="קבוצות פייסבוק"
-                    className="relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors"
-                  >
-                    <Users className="h-5 w-5" />
-                    {selectedGroupIds.length > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
-                        {selectedGroupIds.length}
-                      </span>
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="center" side="top" className="w-[360px] p-0" dir="rtl">
-                  <CampaignGroupSelector
-                    selectedIds={selectedGroupIds}
-                    onChange={setSelectedGroupIds}
-                    className="border-0 shadow-none"
-                  />
-                </PopoverContent>
-              </Popover>
+              <button
+                type="button"
+                title="בחר קבוצות פייסבוק לפרסום"
+                aria-label="קבוצות פייסבוק"
+                onClick={() => setGroupsOpen((v) => !v)}
+                className={cn(
+                  'relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors',
+                  groupsOpen && 'text-primary',
+                )}
+              >
+                <Users className="h-5 w-5" />
+                {selectedGroupIds.length > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
+                    {selectedGroupIds.length}
+                  </span>
+                )}
+              </button>
+
               <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
                 <PopoverTrigger asChild>
                   <button
