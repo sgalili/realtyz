@@ -176,6 +176,32 @@ export default function Properties() {
     return () => window.removeEventListener('properties:add', handler);
   }, []);
 
+  // LIVE SYNC — on entering the page we kick a throttled background refresh of
+  // Homely + Yad2 inventory into our own `listings` table (max once every 30
+  // minutes), then repaint from the DB. Never blocks the UI.
+  const syncedRef = useRef(false);
+  useEffect(() => {
+    if (syncedRef.current) return;
+    syncedRef.current = true;
+    const KEY = 'realtyz:properties:last-live-sync';
+    const last = Number(localStorage.getItem(KEY) ?? 0);
+    if (Date.now() - last < 30 * 60 * 1000) return;
+    localStorage.setItem(KEY, String(Date.now()));
+    void (async () => {
+      await Promise.allSettled([
+        supabase.functions.invoke('homely-daily-sync', { body: { reason: 'properties_page' } }),
+        supabase.functions.invoke('properties-scheduled-sync', { body: { reason: 'properties_page' } }),
+      ]);
+      defaultPoolRef.current.clear();
+      const pool = await loadDefaultPool(listingType).catch(() => [] as UnifiedResult[]);
+      if (pool.length) setResults((cur) => (cur.length ? cur : pool));
+      queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
+
   // LOCAL-FIRST: entering the page never triggers a live scraper call.
   // The default pool is read straight from our own `listings` table
   // (100 newest for sale + 100 newest for rent across the workspace's home
