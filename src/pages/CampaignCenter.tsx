@@ -712,6 +712,14 @@ type ComposerStatus = {
   thumb: string | null;
 };
 
+/**
+ * Stable identity of a draft inside the multi-draft composer.
+ * Keyed by listing + variant (NOT by array index) so restoring after a refresh
+ * or a reshuffled property rotation always finds the same saved draft.
+ */
+const draftKeyFor = (b: { listing?: string | null; variant?: number }, idx: number): string =>
+  `${b.listing || `na${idx}`}::v${b.variant ?? 1}`;
+
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
@@ -1483,6 +1491,14 @@ const InlineComposer = ({
         setBody(text);
         setBodyManuallyEdited(false);
         setOriginalAiBody(text);
+        // Flush immediately (local + cloud). A refresh in the middle of a bulk
+        // generation must never lose an already-generated draft.
+        try {
+          const prev = readDraft() || {};
+          const snapshot = { ...prev, body: text, customInstructions, selectedListingId, attachments, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink };
+          localStorage.setItem(draftKey, JSON.stringify(snapshot));
+          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot);
+        } catch {}
 
         // so subsequent manual edits + media updates flow into the same record.
         try {
@@ -6042,7 +6058,7 @@ const CampaignCenter = () => {
               ? assignments
               : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
             const readyKeys = blocks
-              .map((b, idx) => `${idx}-${b.listing || 'na'}`)
+              .map((b, idx) => draftKeyFor(b, idx))
               .filter((k) => draftStatuses[k]?.canPublish && !publishedDrafts.has(k));
             return (
               <div className="space-y-4 pb-24">
@@ -6050,7 +6066,11 @@ const CampaignCenter = () => {
                   נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
                 {blocks.map((b, idx) => {
-                  const key = `${idx}-${b.listing || 'na'}`;
+                  // Order-independent key: a refresh (or a reshuffled property
+                  // rotation) must map every draft back to the SAME stored
+                  // snapshot, otherwise restored work looks lost and the AI
+                  // regenerates from scratch.
+                  const key = draftKeyFor(b, idx);
                   return (
                   <DraftCollapsibleCard
                     key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`}
