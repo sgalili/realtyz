@@ -424,15 +424,10 @@ export default function PropertyDetail() {
     const src = data.sourceUrl;
     if (!src || !/yad2\.co\.il/i.test(src)) return;
 
-    // Once a property's metadata has been hydrated it lives in our DB forever —
-    // never scrape the source again (zero BrightData credits).
+    // A property is only "done" once our DB row is actually complete (real
+    // description + structure + date + attribute bag). The old localStorage
+    // flag alone let half-scraped rows stay half-empty forever.
     const doneKey = `realtyz:meta:${id}`;
-    try {
-      if (window.localStorage.getItem(doneKey) || window.localStorage.getItem(`realtyz:imported:${id}`)) {
-        hydratedRef.current = id;
-        return;
-      }
-    } catch { /* private mode — fall through to the DB check */ }
 
     hydratedRef.current = id;
     let cancelled = false;
@@ -444,7 +439,9 @@ export default function PropertyDetail() {
         try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
         return;
       }
+      try { window.localStorage.removeItem(doneKey); } catch { /* ignore */ }
       if (cancelled) return;
+
 
       const shouldShowHydrationProgress = !hasCorePropertyText(data.row);
       metaTargetRef.current = shouldShowHydrationProgress ? 0 : 100;
