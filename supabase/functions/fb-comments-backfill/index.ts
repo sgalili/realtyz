@@ -8,6 +8,7 @@ import {
   fetchCommentTree,
   persistComment,
   persistTrackedComments,
+  toFlatComment,
 } from "../_shared/metaComments.ts";
 
 const json = (b: unknown, s = 200) =>
@@ -15,6 +16,24 @@ const json = (b: unknown, s = 200) =>
     status: s,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+/**
+ * Graph errors that mean "this app/token may never read this node" — they are
+ * permanent for the current permission set, so the caller should fall back to
+ * the browser-extension DOM scraper instead of surfacing a failure.
+ */
+const isUnsupportedGraphError = (err: unknown): boolean => {
+  const s = String(err ?? "").toLowerCase();
+  return (
+    s.includes("unsupported get request") ||
+    s.includes("(#100)") ||
+    s.includes("(#10)") ||
+    s.includes("(#200)") ||
+    s.includes("permission") ||
+    s.includes("הרשא")
+  );
+};
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
