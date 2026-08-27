@@ -2182,6 +2182,36 @@ export type Database = {
         }
         Relationships: []
       }
+      fb_group_post_log: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          post_count: number
+          posted_on: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          post_count?: number
+          posted_on?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          post_count?: number
+          posted_on?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       fb_personal_connections: {
         Row: {
           access_token: string | null
@@ -2241,6 +2271,7 @@ export type Database = {
           imported_at: string
           is_administrator: boolean
           is_selected: boolean
+          max_posts_per_day: number | null
           member_count: number | null
           privacy: string | null
           updated_at: string
@@ -2256,6 +2287,7 @@ export type Database = {
           imported_at?: string
           is_administrator?: boolean
           is_selected?: boolean
+          max_posts_per_day?: number | null
           member_count?: number | null
           privacy?: string | null
           updated_at?: string
@@ -2271,6 +2303,7 @@ export type Database = {
           imported_at?: string
           is_administrator?: boolean
           is_selected?: boolean
+          max_posts_per_day?: number | null
           member_count?: number | null
           privacy?: string | null
           updated_at?: string
@@ -5279,6 +5312,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_fb_group_post_slot: {
+        Args: { _group: string; _limit: number; _owner: string }
+        Returns: boolean
+      }
       cleanup_expired_email_login_otps: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
@@ -5503,6 +5540,10 @@ export type Database = {
           _sender_type: string
         }
         Returns: string
+      }
+      release_fb_group_post_slot: {
+        Args: { _group: string; _owner: string }
+        Returns: undefined
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
       seed_demo_data: { Args: never; Returns: Json }

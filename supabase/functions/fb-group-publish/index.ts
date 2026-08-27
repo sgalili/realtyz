@@ -55,11 +55,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Targeted publishing: a group the broker de-selected is never posted to.
+    // Targeted publishing: a group the broker de-selected is never posted to,
+    // and a group that already burned its daily quota is blocked until tomorrow.
+    let dailyLimit: number | null = null;
     try {
       const { data: sel } = await admin
         .from("fb_user_groups")
-        .select("is_selected")
+        .select("is_selected, max_posts_per_day")
         .eq("workspace_owner_id", workspaceOwnerId)
         .eq("group_id", groupId)
         .maybeSingle();
@@ -69,10 +71,42 @@ Deno.serve(async (req) => {
           200,
         );
       }
+      const cap = Number((sel as any)?.max_posts_per_day);
+      dailyLimit = Number.isFinite(cap) && cap > 0 ? cap : null;
     } catch { /* selection lookup is best-effort */ }
+
+    // Atomically claim one of today's slots for this group.
+    let slotClaimed = false;
+    try {
+      const { data: allowed } = await admin.rpc("claim_fb_group_post_slot", {
+        _owner: workspaceOwnerId,
+        _group: groupId,
+        _limit: dailyLimit,
+      });
+      slotClaimed = allowed !== false;
+      if (allowed === false) {
+        return json(
+          {
+            ok: false,
+            code: "daily_limit_reached",
+            reason: `הקבוצה הגיעה למקסימום הפרסומים היומי (${dailyLimit}). הפרסום ייחסם עד מחר.`,
+          },
+          200,
+        );
+      }
+    } catch { /* counter unavailable — never block publishing on it */ }
+
+    const releaseSlot = async () => {
+      if (!slotClaimed) return;
+      try {
+        await admin.rpc("release_fb_group_post_slot", { _owner: workspaceOwnerId, _group: groupId });
+      } catch { /* best effort */ }
+    };
+
 
     const conn = await loadConnection(admin, workspaceOwnerId);
     if (!conn?.access_token) {
+      await releaseSlot();
       return json(
         {
           ok: false,
@@ -109,12 +143,14 @@ Deno.serve(async (req) => {
       const reason = humanizeGraphError(respBody);
       const code = String(respBody?.error?.code ?? res.status);
       console.error("[fb-group-publish] failed", groupId, code, respBody);
+      await releaseSlot();
       await admin
         .from("fb_personal_connections")
         .update({ last_error: reason, updated_at: new Date().toISOString() })
         .eq("workspace_owner_id", workspaceOwnerId);
       return json({ ok: false, code, reason, raw: respBody?.error ?? null }, 200);
     }
+
 
     const postId = String(respBody.post_id ?? respBody.id);
     console.log("[fb-group-publish] published", groupId, postId);

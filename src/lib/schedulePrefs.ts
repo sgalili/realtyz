@@ -17,6 +17,8 @@ export type SchedulePrefs = {
   recurrenceCountInput?: string;
   selectedListingIds: string[];
   selectedGroupIds: string[];
+  /** Max posts per day allowed for EACH selected group (0 = unlimited). */
+  groupDailyLimit: number;
 };
 
 export const DEFAULT_SCHEDULE_PREFS: SchedulePrefs = {
@@ -29,7 +31,9 @@ export const DEFAULT_SCHEDULE_PREFS: SchedulePrefs = {
   recurrenceCountInput: '',
   selectedListingIds: [],
   selectedGroupIds: [],
+  groupDailyLimit: 0,
 };
+
 
 const key = (scope: string | null | undefined, slot: string) =>
   `rz:${scope ?? 'anon'}:schedule-prefs:${slot}`;
@@ -46,6 +50,8 @@ export function loadSchedulePrefs(scope: string | null | undefined, slot = 'defa
       selectedListingIds: Array.isArray(parsed?.selectedListingIds) ? parsed.selectedListingIds : [],
       selectedGroupIds: Array.isArray(parsed?.selectedGroupIds) ? parsed.selectedGroupIds : [],
       winCount: Math.max(1, Math.min(20, Number(parsed?.winCount) || 1)),
+      groupDailyLimit: Math.max(0, Math.min(50, Number(parsed?.groupDailyLimit) || 0)),
+
     };
   } catch {
     return { ...DEFAULT_SCHEDULE_PREFS };

@@ -7,7 +7,8 @@
 // with a `scheduled_at` timestamp.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Repeat, Users, ChevronLeft, X, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Repeat, Users, ChevronLeft, X, Loader2, MapPin } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -18,8 +19,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
-import { pickListingImages, MAX_POST_IMAGES } from '@/lib/listingImages';
+import { listingImagePool, randomImageSet, MAX_POST_IMAGES } from '@/lib/listingImages';
+import { loadGroupLimitState, saveGroupDailyLimit, allowedGroupsForDay, type GroupLimitState } from '@/lib/groupDailyLimits';
+import { celebrate } from '@/lib/celebrate';
 import { cn } from '@/lib/utils';
+
 
 type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
 
@@ -91,6 +95,12 @@ export function ScheduleCurrentPostDialog({
   const [progress, setProgress] = useState(0);
   // Up to 10 random property photos are always attached to the scheduled posts.
   const [postImages, setPostImages] = useState<string[]>([]);
+  // Full allowed photo pool — every scheduled slot draws its own random mix.
+  const [imagePool, setImagePool] = useState<string[]>([]);
+  const [groupDailyLimit, setGroupDailyLimit] = useState<number>(initialPrefs.groupDailyLimit);
+  const [limitState, setLimitState] = useState<GroupLimitState>({ limits: {}, usedToday: {} });
+  const [listingHeader, setListingHeader] = useState<{ title: string; address: string } | null>(null);
+  const navigate = useNavigate();
 
   // JIT generation cap: only fully generate distinct AI variants for the next
   // few slots. Every slot beyond this cap is scheduled with the ORIGINAL body
@@ -106,6 +116,7 @@ export function ScheduleCurrentPostDialog({
       setRecurrence(prefs.recurrence);
       setRecurrenceDays(prefs.recurrenceDays);
       setRecurrenceCountInput(prefs.recurrenceCountInput ?? '');
+      setGroupDailyLimit(prefs.groupDailyLimit);
       setSelectedGroupIds(
         prefs.selectedGroupIds.length > 0 ? prefs.selectedGroupIds : (defaultGroupIds || []),
       );
@@ -121,11 +132,41 @@ export function ScheduleCurrentPostDialog({
       workspaceOwnerId,
       {
         winStart, winEnd, winCount, recurrence, recurrenceDays,
-        recurrenceCount, recurrenceCountInput, selectedGroupIds,
+        recurrenceCount, recurrenceCountInput, selectedGroupIds, groupDailyLimit,
       },
       'composer',
     );
-  }, [open, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, recurrenceCountInput, selectedGroupIds]);
+  }, [open, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, recurrenceCountInput, selectedGroupIds, groupDailyLimit]);
+
+  // Property name + address for the dialog header.
+  useEffect(() => {
+    if (!open || !listingId) { setListingHeader(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('listings')
+        .select('property_title, address, neighborhood, city')
+        .eq('id', listingId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setListingHeader({
+        title: String((data as any).property_title || (data as any).address || 'נכס'),
+        address: [(data as any).address, (data as any).neighborhood, (data as any).city].filter(Boolean).join(', '),
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [open, listingId]);
+
+  // Live per-group daily limits + today's usage for the selected groups.
+  useEffect(() => {
+    if (!open || selectedGroupIds.length === 0) { setLimitState({ limits: {}, usedToday: {} }); return; }
+    let cancelled = false;
+    (async () => {
+      const state = await loadGroupLimitState(selectedGroupIds);
+      if (!cancelled) setLimitState(state);
+    })();
+    return () => { cancelled = true; };
+  }, [open, selectedGroupIds]);
 
   // Resolve the media attached to every scheduled slot: the composer's own
   // media first, topped up with random property photos (max 10 in total).
@@ -134,13 +175,16 @@ export function ScheduleCurrentPostDialog({
     let cancelled = false;
     (async () => {
       const own = (Array.isArray(mediaUrls) ? mediaUrls : []).filter(Boolean);
-      const extra = own.length >= MAX_POST_IMAGES ? [] : await pickListingImages(listingId, MAX_POST_IMAGES);
+      const pool = await listingImagePool(listingId);
       if (cancelled) return;
+      setImagePool(Array.from(new Set([...own, ...pool])));
+      const extra = own.length >= MAX_POST_IMAGES ? [] : randomImageSet(pool, MAX_POST_IMAGES);
       const merged = Array.from(new Set([...own, ...extra])).slice(0, MAX_POST_IMAGES);
       setPostImages(merged);
     })();
     return () => { cancelled = true; };
   }, [open, mediaUrls, listingId]);
+
 
 
 
@@ -368,6 +412,44 @@ export function ScheduleCurrentPostDialog({
     let firstErr: string | null = null;
     setProgress(0);
 
+    // ---- Per-group daily limits -------------------------------------------
+    // Persist the cap the broker typed, then plan the groups slot-by-slot so no
+    // group receives more posts on a single day than its daily limit allows.
+    const baseGroupIds = channelId === 'facebook' ? (selectedGroupIds || []) : [];
+    if (channelId === 'facebook' && baseGroupIds.length > 0) {
+      await saveGroupDailyLimit(baseGroupIds, groupDailyLimit > 0 ? groupDailyLimit : null);
+    }
+    const liveLimits: GroupLimitState = channelId === 'facebook' && baseGroupIds.length > 0
+      ? {
+          limits: baseGroupIds.reduce<Record<string, number>>((acc, id) => {
+            const cap = groupDailyLimit > 0 ? groupDailyLimit : limitState.limits[id];
+            if (cap) acc[id] = cap;
+            return acc;
+          }, {}),
+          usedToday: limitState.usedToday,
+        }
+      : { limits: {}, usedToday: {} };
+
+    const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const todayKey = dayKey(new Date());
+    const plannedPerDay = new Map<string, Record<string, number>>();
+    const blockedGroups = new Set<string>();
+    const groupsForSlot = (slot: Date): string[] => {
+      if (baseGroupIds.length === 0) return [];
+      const key = dayKey(slot);
+      const planned = plannedPerDay.get(key) ?? {};
+      const { allowed, blocked } = allowedGroupsForDay(baseGroupIds, liveLimits, planned, key === todayKey);
+      for (const b of blocked) blockedGroups.add(b);
+      for (const id of allowed) planned[id] = (planned[id] ?? 0) + 1;
+      plannedPerDay.set(key, planned);
+      return allowed;
+    };
+
+    // Every slot gets its own random mix: distinct main picture + 9 more.
+    const imagesForSlot = (): string[] =>
+      imagePool.length > 0 ? randomImageSet(imagePool, MAX_POST_IMAGES) : postImages;
+
+
     try {
       // ---- SLOT 0 -----------------------------------------------------------
       // Publish the first chronological slot for real via meta-publish so it
@@ -377,6 +459,9 @@ export function ScheduleCurrentPostDialog({
       const totalOps = slots.length * fanoutTargets.length;
       let done = 0;
 
+      const firstSlotGroups = groupsForSlot(firstSlot);
+      const firstSlotImages = imagesForSlot();
+
       for (const target of fanoutTargets) {
         const nameForTarget = target ? `${campaignName} · ${target.name}` : campaignName;
         try {
@@ -384,7 +469,7 @@ export function ScheduleCurrentPostDialog({
             detail: {
               channel: channelId,
               body,
-              media_urls: postImages,
+              media_urls: firstSlotImages,
               campaign_name: nameForTarget,
               scheduled_at: firstSlot.toISOString(),
               needs_regeneration: false,
@@ -396,10 +481,10 @@ export function ScheduleCurrentPostDialog({
           post: body,
           channels: [channelId],
           campaign_name: nameForTarget,
-          media_urls: postImages,
+          media_urls: firstSlotImages,
           scheduled_at: firstSlot.toISOString(),
           workspace_owner_id: ownerScope,
-          group_ids: channelId === 'facebook' ? (selectedGroupIds || []) : [],
+          group_ids: firstSlotGroups,
           target_profile_id: target?.id ?? null,
           target_account_ref: target?.accountRef ?? null,
           target_profile_key: target?.profileKey ?? null,
@@ -409,6 +494,7 @@ export function ScheduleCurrentPostDialog({
           series_index: 0,
           series_total: slots.length,
         };
+
         try {
           const { data, error } = await supabase.functions.invoke('meta-publish', {
             body: invokeBody,
@@ -438,6 +524,8 @@ export function ScheduleCurrentPostDialog({
       const placeholderRows: any[] = [];
       for (let i = 1; i < slots.length; i++) {
         const slot = slots[i];
+        const slotGroups = groupsForSlot(slot);
+        const slotImages = imagesForSlot();
         for (const target of fanoutTargets) {
           const nameForTarget = target ? `${campaignName} · ${target.name}` : campaignName;
           const rotateNote = buildRotateInstruction(i, slots.length);
@@ -454,8 +542,8 @@ export function ScheduleCurrentPostDialog({
             regen_prompt: rotateNote,
             listing_id: listingId ?? null,
             first_comment: firstComment || null,
-            media_urls: postImages,
-            group_ids: channelId === 'facebook' ? (selectedGroupIds || []) : [],
+            media_urls: slotImages,
+            group_ids: slotGroups,
             target_profile_key: target?.profileKey ?? null,
             target_account_ref: target?.accountRef ?? null,
             series_id: seriesId,
@@ -468,7 +556,7 @@ export function ScheduleCurrentPostDialog({
               detail: {
                 channel: channelId,
                 body,
-                media_urls: postImages,
+                media_urls: slotImages,
                 campaign_name: nameForTarget,
                 scheduled_at: slot.toISOString(),
                 needs_regeneration: true,
@@ -477,6 +565,7 @@ export function ScheduleCurrentPostDialog({
           } catch { /* noop */ }
         }
       }
+
 
       if (placeholderRows.length > 0) {
         // Chunk to keep single requests small.
@@ -509,22 +598,18 @@ export function ScheduleCurrentPostDialog({
         toast.success(
           `תוזמנו ${ok} פרסומים${failed ? ` (${failed} נכשלו)` : ''}`,
           {
-            description:
-              'הפוסט הראשון נוצר עכשיו. כל השאר יווצרו אוטומטית רגע לפני מועד הפרסום. ניתן לצפות ולבטל בלוח השנה.',
-            action: {
-              label: 'פתח לוח שנה',
-              onClick: () => {
-                try {
-                  window.dispatchEvent(new CustomEvent('rz:open-schedule-calendar'));
-                } catch { /* noop */ }
-              },
-            },
+            description: blockedGroups.size > 0
+              ? `${blockedGroups.size} קבוצות הגיעו למקסימום הפרסומים היומי ולכן דולגו בחלק מהמועדים.`
+              : 'הפוסט הראשון נוצר עכשיו. כל השאר יווצרו אוטומטית רגע לפני מועד הפרסום.',
             duration: 8000,
           },
         );
+        celebrate();
         onScheduled();
         onClose();
+        navigate('/campaigns?tab=calendar');
       } else {
+
         toast.error(firstErr ? `תזמון נכשל: ${firstErr}` : 'תזמון נכשל');
       }
     } catch (e: any) {
@@ -540,6 +625,17 @@ export function ScheduleCurrentPostDialog({
     <Dialog open={open} onOpenChange={(o) => { if (!o && !submitting) onClose(); }}>
       <DialogContent dir="rtl" className="max-w-md">
         <DialogHeader>
+          {listingHeader && (
+            <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-right mb-1">
+              <div className="text-base font-bold text-foreground">{listingHeader.title}</div>
+              {listingHeader.address && (
+                <div className="mt-0.5 inline-flex flex-row-reverse items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                  {listingHeader.address}
+                </div>
+              )}
+            </div>
+          )}
           <DialogTitle className="flex items-center gap-2 justify-end">
             תזמון פרסומים ליום {dayLabel}
           </DialogTitle>
@@ -547,6 +643,7 @@ export function ScheduleCurrentPostDialog({
             בחר תאריך, חלון שעות וכמות פוסטים. אפשר להוסיף חזרתיות יומית/שבועית/חודשית ולעצור את הסדרה בכל שלב מלוח השנה.
           </DialogDescription>
         </DialogHeader>
+
         <div className="space-y-3">
           <div>
             <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">תאריך</label>
@@ -684,9 +781,22 @@ export function ScheduleCurrentPostDialog({
                 className="text-right"
               />
             </div>
+            <div className="w-32">
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">מקס' לקבוצה/יום</label>
+              <Input
+                type="number"
+                min={0}
+                max={50}
+                placeholder="ללא הגבלה"
+                value={groupDailyLimit || ''}
+                onChange={(e) => setGroupDailyLimit(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                className="text-right"
+              />
+            </div>
             <div className="flex-1 h-9 flex items-center justify-end rounded-md border border-input bg-muted/40 px-3 text-xs text-muted-foreground">
               מפרסם את התוכן הנוכחי
             </div>
+
           </div>
 
           {/* Preview before posting: text, attached photos, first comment */}
