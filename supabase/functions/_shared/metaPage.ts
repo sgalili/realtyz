@@ -48,13 +48,12 @@ export async function resolveMetaPage(
     }
   }
   // TENANT ISOLATION: the platform-level FB_PAGE_* env credentials belong to a
-  // single workspace. Never fall back to them for an identified owner — doing so
-  // imported one workspace's Page posts into every other account.
-  if (ownerId) return null;
-  const envId = Deno.env.get("FB_PAGE_ID")?.trim();
-  const envToken = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim();
-  if (envId && envToken) return { pageId: envId, pageName: null, token: envToken };
+  // single workspace and are never used as a fallback — not even for
+  // owner-less/system invocations. Every Page token must come from the calling
+  // workspace's own binding, so a shared Meta app can never leak posts, groups
+  // or pages between accounts.
   return null;
+
 
 }
 
