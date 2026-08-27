@@ -5006,6 +5006,11 @@ const CampaignCenter = () => {
   // Bump to force-remount the InlineComposer so its body/selectedListingId/media
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
+  // Unpublished multi-property draft session (properties + slots + variants).
+  // Restored from localStorage instantly and from the cloud right after, so
+  // leaving the page or refreshing never loses the open drafts.
+  const [restoredSession, setRestoredSession] = useState<ComposerSession | null>(null);
+
   const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
   const [campaignHistoryRows, setCampaignHistoryRows] = useState<any[]>([]);
   const [campaignDraftRows, setCampaignDraftRows] = useState<any[]>([]);
