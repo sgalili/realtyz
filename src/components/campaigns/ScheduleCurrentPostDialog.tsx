@@ -729,25 +729,14 @@ export function ScheduleCurrentPostDialog({
                 )}
                 {recurrence !== 'none' && (
                   <div className="mt-2 border-t pt-2">
-                    <label className="text-[11px] text-muted-foreground block mb-1 text-right">
-                      {recurrence === 'weekly' || recurrence === 'custom'
-                        ? 'מספר שבועות'
-                        : recurrence === 'monthly' ? 'מספר חודשים' : 'מספר ימים'}
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={52}
-                      value={recurrenceCountInput}
-                      onChange={(e) => setRecurrenceCountInput(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder=""
-                      className="h-8 text-right"
-                    />
-                    <p className="mt-1 text-[10px] text-muted-foreground text-right">
-                      השאר ריק לסדרה פתוחה ללא סוף (ניתן לעצור בכל שלב מ״בטל סדרה״).
+                    <p className="text-[10px] text-muted-foreground text-right leading-relaxed">
+                      הסדרה תמשיך לרוץ ללא הגבלה. בכל רגע נשמרת בתור רק הגרסה הבאה אחת,
+                      והגרסה שאחריה נוצרת רק אחרי פרסום מוצלח. הסדרה נעצרת אוטומטית כשהנכס
+                      מסומן כנמכר / הושכר / בהמתנה / מושבת.
                     </p>
                   </div>
                 )}
+
               </PopoverContent>
             </Popover>
             <div className="flex-1">
