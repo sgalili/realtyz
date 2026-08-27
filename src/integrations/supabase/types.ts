@@ -3971,6 +3971,45 @@ export type Database = {
         }
         Relationships: []
       }
+      quick_message_templates: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          id: string
+          is_active: boolean
+          scope: string
+          sort_order: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          scope?: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          scope?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scheduled_items: {
         Row: {
           approval_queue_id: string | null
@@ -4220,6 +4259,45 @@ export type Database = {
           source_type?: string
           source_url?: string | null
           topic?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      speed_to_lead_settings: {
+        Row: {
+          created_at: string
+          followup_body: string
+          followup_delay_minutes: number
+          followup_enabled: boolean
+          greeting_body: string
+          greeting_enabled: boolean
+          quiet_hours_end: number
+          quiet_hours_start: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          followup_body?: string
+          followup_delay_minutes?: number
+          followup_enabled?: boolean
+          greeting_body?: string
+          greeting_enabled?: boolean
+          quiet_hours_end?: number
+          quiet_hours_start?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          followup_body?: string
+          followup_delay_minutes?: number
+          followup_enabled?: boolean
+          greeting_body?: string
+          greeting_enabled?: boolean
+          quiet_hours_end?: number
+          quiet_hours_start?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

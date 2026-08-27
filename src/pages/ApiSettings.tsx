@@ -40,6 +40,8 @@ import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnec
 import { MetaWabaHealthCard } from '@/components/settings/MetaWabaHealthCard';
 import { WhatsAppTwoWayTestCard } from '@/components/settings/WhatsAppTwoWayTestCard';
 import { WaTemplatesSyncCard } from '@/components/settings/WaTemplatesSyncCard';
+import { SpeedToLeadCard } from '@/components/settings/SpeedToLeadCard';
+
 import { MetaDirectConnectionCard } from '@/components/profile/MetaDirectConnectionCard';
 import { FacebookPersonalConnectCard } from '@/components/social/FacebookPersonalConnectCard';
 
@@ -1297,8 +1299,13 @@ const ApiSettings = () => {
       </div>
 
       <div className="mb-4">
+        <SpeedToLeadCard />
+      </div>
+
+      <div className="mb-4">
         <WaTemplatesSyncCard />
       </div>
+
 
       <div className="mb-4">
         <WhatsAppTwoWayTestCard />
