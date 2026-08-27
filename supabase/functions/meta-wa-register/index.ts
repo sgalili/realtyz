@@ -132,14 +132,36 @@ Deno.serve(async (req) => {
 
   const cfg: Cfg = { ...((existing?.config as Cfg) ?? {}) };
 
-  const wabaId = String(input.waba_id ?? cfg.waba_id ?? Deno.env.get("META_WABA_ID") ?? "");
+  // ── Shared platform number: WhatsApp runs on ONE official Meta number for all
+  // workspaces. If this tenant has no credentials of its own, fall back (read-only)
+  // to the active official WBA row so status/registration keeps working.
+  let sharedCfg: Cfg = {};
+  if (!cfg.phone_number_id || !cfg.access_token) {
+    const { data: shared } = await admin
+      .from("wa_providers")
+      .select("config")
+      .eq("provider_name", "WBA")
+      .eq("is_active", true)
+      .not("config->>phone_number_id", "is", null)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    sharedCfg = ((shared as any)?.config as Cfg) ?? {};
+  }
+
+  const wabaId = String(
+    input.waba_id ?? cfg.waba_id ?? sharedCfg.waba_id ?? Deno.env.get("META_WABA_ID") ?? "",
+  );
   let phoneNumberId = String(
-    input.phone_number_id ?? cfg.phone_number_id ?? Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? "",
+    input.phone_number_id ?? cfg.phone_number_id ?? sharedCfg.phone_number_id ??
+      Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? "",
   ).trim();
 
   const accessToken = String(
-    input.access_token ?? cfg.access_token ?? Deno.env.get("META_WA_ACCESS_TOKEN") ?? "",
+    input.access_token ?? cfg.access_token ?? sharedCfg.access_token ??
+      Deno.env.get("META_WA_ACCESS_TOKEN") ?? "",
   );
+
   const apiVersion = String(input.api_version ?? cfg.api_version ?? DEFAULT_API_VERSION);
 
   const persist = async (patch: Cfg) => {
@@ -217,7 +239,7 @@ Deno.serve(async (req) => {
     }
 
     if (!phoneNumberId || !accessToken) {
-      return json({ success: false, error: "יש לשמור קודם Phone Number ID ו-Access Token" }, 400);
+      return json({ success: false, error: "לא נמצאו פרטי חיבור ל-WhatsApp — הזן Phone Number ID ו-Access Token ולחץ \"שמור פרטי חיבור\"." }, 400);
     }
 
     // ── status ──────────────────────────────────────────────────────────────
