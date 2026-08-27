@@ -715,7 +715,7 @@ type ComposerStatus = {
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
-  onRegisterPublish, bulkGroupIds, bulkScheduleIso,
+  onRegisterPublish, bulkGroupIds, bulkScheduleIso, hideBottomBar,
 }: {
   channel: ChannelCard;
   brandName: string;
@@ -738,6 +738,8 @@ const InlineComposer = ({
   /** Bulk override from the page-level bottom bar — updates all drafts at once. */
   bulkGroupIds?: string[];
   bulkScheduleIso?: string | null;
+  /** When rendered inside a collapsed draft card the page-level bar handles dispatch. */
+  hideBottomBar?: boolean;
 }) => {
   // Persistent draft key — namespaced per replicated instance so multiple
   // composers on the same page don't clobber each other's drafts. Persisted
