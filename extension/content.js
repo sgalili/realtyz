@@ -1,4 +1,5 @@
-/* Realtyz Group Sync — hands the collected groups to the Realtyz app. */
+/* Realtyz Group Sync — hands the collected groups, posts and comments to the
+ * Realtyz app. */
 (function () {
   const GROUPS_KEY = 'rz-ext-fb-groups';
   const INSTALLED_KEY = 'rz-ext-installed';
@@ -8,13 +9,36 @@
     try { document.documentElement.setAttribute('data-realtyz-extension', '1'); } catch (e) { /* noop */ }
   };
 
+  const emit = (type, detailKey, value, eventName) => {
+    try { window.postMessage({ source: 'realtyz-extension', type, [detailKey]: value }, window.location.origin); } catch (e) { /* noop */ }
+    try { document.dispatchEvent(new CustomEvent(eventName, { detail: value })); } catch (e) { /* noop */ }
+  };
+
   const deliver = () => {
     chrome.storage.local.get(['rzGroups'], (res) => {
       const groups = res && res.rzGroups;
       if (!Array.isArray(groups) || groups.length === 0) return;
       try { localStorage.setItem(GROUPS_KEY, JSON.stringify(groups)); } catch (e) { /* noop */ }
-      try { window.postMessage({ source: 'realtyz-extension', type: 'RZ_FB_GROUPS', groups }, window.location.origin); } catch (e) { /* noop */ }
-      try { document.dispatchEvent(new CustomEvent('rz:ext-fb-groups', { detail: groups })); } catch (e) { /* noop */ }
+      emit('RZ_FB_GROUPS', 'groups', groups, 'rz:ext-fb-groups');
+    });
+  };
+
+  const deliverPosts = () => {
+    chrome.storage.local.get(['rzPosts'], (res) => {
+      const posts = (res && res.rzPosts) || [];
+      emit('RZ_FB_POSTS', 'posts', posts, 'rz:ext-fb-posts');
+    });
+  };
+
+  const deliverComments = (postIds) => {
+    chrome.storage.local.get(['rzComments'], (res) => {
+      let comments = (res && res.rzComments) || [];
+      if (Array.isArray(postIds) && postIds.length) {
+        const wanted = new Set(postIds.map(String));
+        const filtered = comments.filter((c) => wanted.has(String(c.post_id)));
+        if (filtered.length) comments = filtered;
+      }
+      emit('RZ_FB_COMMENTS', 'comments', comments, 'rz:ext-fb-comments');
     });
   };
 
@@ -27,6 +51,10 @@
     const d = e.data;
     if (!d || typeof d !== 'object') return;
     if (d.type === 'RZ_FB_GROUPS_REQUEST') deliver();
+    if (d.type === 'RZ_FB_POSTS_REQUEST') deliverPosts();
+    if (d.type === 'RZ_FB_COMMENTS_REQUEST') deliverComments(d.postIds);
   });
   document.addEventListener('rz:ext-fb-groups:request', deliver);
+  document.addEventListener('rz:ext-fb-posts:request', deliverPosts);
+  document.addEventListener('rz:ext-fb-comments:request', (e) => deliverComments(e?.detail?.postIds));
 })();
