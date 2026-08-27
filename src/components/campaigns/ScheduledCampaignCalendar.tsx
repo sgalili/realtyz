@@ -122,7 +122,13 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
     setWinEnd(prefs.winEnd);
     setWinCount(prefs.winCount);
     setSelectedListingIds(prefs.selectedListingIds);
-    setSelectedGroupIds(prefs.selectedGroupIds);
+    {
+      // Shared selection wins so the dialog always shows the same count as the
+      // create-post bar.
+      const shared = loadCampaignGroups(workspaceOwnerId);
+      setSelectedGroupIds(shared.length ? shared : prefs.selectedGroupIds);
+    }
+
     setRecurrence(prefs.recurrence);
     setRecurrenceDays(prefs.recurrenceDays);
     setRecurrenceOpen(false);
