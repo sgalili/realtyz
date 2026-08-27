@@ -5,6 +5,7 @@ import { Loader2, RefreshCw, Users, Flag } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 
 type PageTarget = { id: string; pageId: string; name: string; avatar: string | null; selected: boolean };
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; selected: boolean };
