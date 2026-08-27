@@ -47,10 +47,15 @@ export async function resolveMetaPage(
       };
     }
   }
+  // TENANT ISOLATION: the platform-level FB_PAGE_* env credentials belong to a
+  // single workspace. Never fall back to them for an identified owner — doing so
+  // imported one workspace's Page posts into every other account.
+  if (ownerId) return null;
   const envId = Deno.env.get("FB_PAGE_ID")?.trim();
   const envToken = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim();
   if (envId && envToken) return { pageId: envId, pageName: null, token: envToken };
   return null;
+
 }
 
 /** Find the workspace owner that owns a given Meta Page id (webhook routing). */
