@@ -1115,6 +1115,8 @@ const InlineComposer = ({
         attachWaLink,
         attachMsngrLink,
         groupIds,
+        mode,
+        scheduledLocal,
       };
       // Never downgrade a stored draft that has text into a textless one.
       if (!snapshot.body.trim()) {
@@ -1132,7 +1134,7 @@ const InlineComposer = ({
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, groupIds, hydrated]);
+  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, groupIds, mode, scheduledLocal, hydrated]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -1188,7 +1190,13 @@ const InlineComposer = ({
     setFirstCommentEnabled(saved.firstCommentEnabled ?? true);
     setAttachWaLink(saved.attachWaLink ?? true);
     setAttachMsngrLink(!!saved.attachMsngrLink);
-    setMode('now');
+    const restoredSchedule = String(saved.scheduledLocal || '').trim();
+    if (restoredSchedule) {
+      setScheduledLocal(restoredSchedule);
+      setMode('scheduled');
+    } else if (!presetScheduleIso) {
+      setMode(saved.mode === 'scheduled' ? 'scheduled' : 'now');
+    }
     setListingQuery('');
     setSaveState('idle');
     if (savedHasWork) setHydrated(true);
@@ -1218,6 +1226,10 @@ const InlineComposer = ({
         if (typeof cloud.firstCommentEnabled === 'boolean') setFirstCommentEnabled(cloud.firstCommentEnabled);
         if (typeof cloud.attachWaLink === 'boolean') setAttachWaLink(cloud.attachWaLink);
         if (typeof cloud.attachMsngrLink === 'boolean') setAttachMsngrLink(cloud.attachMsngrLink);
+        if (cloud.scheduledLocal) {
+          setScheduledLocal(String(cloud.scheduledLocal));
+          setMode('scheduled');
+        }
       }
       setHydrated(true);
     })();
@@ -2595,28 +2607,13 @@ const ConfirmDispatchDialog = ({
     if (open) setGroupIds(groupIdsProp);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, groupIdsProp.join(',')]);
-  // Ticking "time left" until the first broadcast goes out.
-  const [nowTs, setNowTs] = useState(() => Date.now());
-  useEffect(() => {
-    if (!open) return;
-    const t = window.setInterval(() => setNowTs(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, [open]);
-  const countdownLabel = (() => {
-    if (!scheduledAt) return 'מיד עם האישור';
-    const diff = new Date(scheduledAt).getTime() - nowTs;
-    if (!Number.isFinite(diff)) return '—';
-    if (diff <= 0) return 'מיד עם האישור';
-    const total = Math.floor(diff / 1000);
-    const days = Math.floor(total / 86400);
-    const hours = Math.floor((total % 86400) / 3600);
-    const mins = Math.floor((total % 3600) / 60);
-    const secs = total % 60;
-    if (days > 0) return `בעוד ${days} ימים ו-${hours} שעות`;
-    if (hours > 0) return `בעוד ${hours} שעות ו-${mins} דקות`;
-    if (mins > 0) return `בעוד ${mins} דקות ו-${secs} שניות`;
-    return `בעוד ${secs} שניות`;
-  })();
+  const firstBroadcastLabel = scheduledAt
+    ? new Date(scheduledAt).toLocaleString('he-IL', {
+        weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      })
+    : new Date().toLocaleString('he-IL', {
+        weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      });
 
 
   // Pre-send statistics for the selected Facebook groups (count + reach).
@@ -2624,7 +2621,11 @@ const ConfirmDispatchDialog = ({
   useEffect(() => {
     if (!open || !groupIds?.length) { setGroupStats({ known: 0, members: 0 }); return; }
     (async () => {
-      const ids = groupIds.map((g) => String(g).replace(/^ext:/, ''));
+      const ids = Array.from(new Set(groupIds.flatMap((g) => {
+        const id = String(g);
+        const bare = id.replace(/^ext:/, '');
+        return [id, bare, `ext:${bare}`];
+      })));
       try {
         const { data } = await (supabase as any)
           .from('fb_user_groups')
@@ -2779,7 +2780,7 @@ const ConfirmDispatchDialog = ({
         const groupTexts: Record<string, string> = {};
         let variationEnabled = true;
         try { variationEnabled = localStorage.getItem('campaign:groupTextVariation') !== 'false'; } catch { /* noop */ }
-        if (channel.id === 'facebook' && variationEnabled && apiGroupIds.length > 1) {
+        if (!scheduledAt && channel.id === 'facebook' && variationEnabled && apiGroupIds.length > 1) {
           await Promise.all(apiGroupIds.map(async (gid, i) => {
             try {
               const { data, error } = await supabase.functions.invoke('spin-group-post', {
@@ -3080,15 +3081,9 @@ const ConfirmDispatchDialog = ({
                 {scheduledAt ? new Date(scheduledAt).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'עכשיו'}
               </div>
             </div>
-            {/* Live countdown to the first broadcast of this scheduled post. */}
             <div className="rounded-lg bg-background p-2">
-              <div className="text-[11px] text-muted-foreground">זמן עד השידור הראשון</div>
-              <div className="text-sm font-bold text-foreground">{countdownLabel}</div>
-              {scheduledAt && (
-                <div className="text-[10px] text-muted-foreground">
-                  {new Date(scheduledAt).toLocaleString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                </div>
-              )}
+              <div className="text-[11px] text-muted-foreground">השידור הראשון בקמפיין</div>
+              <div className="text-sm font-bold text-foreground">{firstBroadcastLabel}</div>
             </div>
           </div>
 
@@ -6446,13 +6441,22 @@ const CampaignCenter = () => {
             const blocks = assignments.length > 0
               ? assignments
               : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
+            const distinctCampaignProperties = new Set([
+              ...propertyIds,
+              ...blocks.map((b) => b.listing).filter((id): id is string => Boolean(id)),
+            ]).size;
+            // Older restored sessions may contain the seven slots but not the
+            // redundant propertyIds array. In that case each slot still
+            // represents its property, so never render a misleading zero.
+            const campaignPropertyCount = distinctCampaignProperties || blocks.length;
+            const unpublishedCount = blocks.filter((b, idx) => !publishedDrafts.has(draftKeyFor(b, idx))).length;
             const readyKeys = blocks
               .map((b, idx) => draftKeyFor(b, idx))
               .filter((k) => draftStatuses[k]?.canPublish && !publishedDrafts.has(k));
             return (
               <div className="space-y-4 pb-44">
                 <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
-                  נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
+                  נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{campaignPropertyCount}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
                 {blocks.map((b, idx) => {
                   // Order-independent key: a refresh (or a reshuffled property
@@ -6576,7 +6580,7 @@ const CampaignCenter = () => {
                         : 'cursor-not-allowed bg-muted text-muted-foreground/80',
                     )}
                   >
-                    פרסם את כל הטיוטות ({readyKeys.length})
+                    פרסם את כל הטיוטות ({unpublishedCount})
                   </button>
 
                   </div>

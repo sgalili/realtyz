@@ -51,6 +51,7 @@ export function ExtensionGroupSyncCard({
           group_name: g.group_name,
           group_icon: g.group_icon,
           group_url: g.group_url,
+          ...(g.member_count !== null ? { member_count: g.member_count } : {}),
           is_selected: true,
           imported_at: now,
           updated_at: now,
