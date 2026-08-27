@@ -183,7 +183,7 @@ export default function Landing() {
             <a href="#free" className="transition-colors hover:text-foreground">מסלול חינם</a>
           </nav>
           <Link to="/" aria-label="Realtyz AI">
-            <img src={realtyzLogo} alt="Realtyz AI" className="h-8 w-auto object-contain" />
+            <img src={realtyzLogo} alt="Realtyz AI" className="h-[2.6rem] w-auto object-contain" />
           </Link>
         </div>
       </header>
