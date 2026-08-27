@@ -394,7 +394,7 @@ type Extracted =
   | { kind: "media"; downloadUrl: string; mimeType?: string; fileName?: string; caption?: string; mediaKind: "image" | "video" | "document" };
 
 function extractNormalizedInboundMessage(payload: any):
-  | { senderPhone: string; messageId?: string; extracted: Extracted }
+  | { senderPhone: string; senderName?: string; messageId?: string; extracted: Extracted }
   | null {
   if (!payload) return null;
   // GreenAPI normally sends typeWebhook='incomingMessageReceived', but some
@@ -414,6 +414,7 @@ function extractNormalizedInboundMessage(payload: any):
   const senderPhone = normalizePhone(senderRaw);
   if (!senderPhone) return null;
   const messageId = payload?.idMessage ?? payload?.message_id;
+  const senderName = String(payload?.senderData?.senderName ?? payload?.senderName ?? '').trim() || undefined;
 
   const md = payload?.messageData ?? {};
 
@@ -431,7 +432,7 @@ function extractNormalizedInboundMessage(payload: any):
     payload?.data?.text ??
     null;
   if (textBody && typeof textBody === "string" && textBody.trim()) {
-    return { senderPhone, messageId, extracted: { kind: "text", text: textBody.trim() } };
+    return { senderPhone, senderName, messageId, extracted: { kind: "text", text: textBody.trim() } };
   }
 
   // 2. Audio / voice note
@@ -665,7 +666,7 @@ async function handleLeadInboxInbound(
   // and this call only runs the autopilot leg: lead resolution → AI → send.
   // `leadId` lets the upstream webhook hand us the exact lead it resolved so we
   // never lose the thread to a phone-format mismatch.
-  opts?: { skipStore?: boolean; leadId?: string | null },
+  opts?: { skipStore?: boolean; leadId?: string | null; senderName?: string | null },
 ) {
   const skipStore = opts?.skipStore === true;
 
@@ -737,7 +738,7 @@ async function handleLeadInboxInbound(
         .from("leads")
         .insert({
           phone_number: senderPhone,
-          full_name: null,
+          full_name: opts?.senderName?.trim() || "מתעניין/ת חדש/ה",
           city: shortLink?.city ?? null,
           neighborhood: shortLink?.neighborhood ?? null,
           interest_tag: shortLink?.listing_id ?? null,
@@ -772,7 +773,15 @@ async function handleLeadInboxInbound(
     } catch (e) {
       console.warn("auto lead create threw:", e instanceof Error ? e.message : e);
     }
-  } else if (lead?.id && shortLink && !lead.interest_tag) {
+  } else if (lead?.id && opts?.senderName?.trim() && (!lead.full_name || /@(?:whatsapp\.)?realtyz\.local$/i.test(String(lead.full_name)) || lead.full_name === "מתעניין/ת חדש/ה")) {
+    try {
+      await admin.from("leads").update({ full_name: opts.senderName.trim() }).eq("id", lead.id);
+      lead.full_name = opts.senderName.trim();
+    } catch (e) {
+      console.warn("lead profile name update soft-fail:", e instanceof Error ? e.message : e);
+    }
+  }
+  if (lead?.id && shortLink && !lead.interest_tag) {
     try {
       await admin
         .from("leads")
@@ -1511,7 +1520,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, ignored: "not_a_supported_inbound_message" }, 200);
   }
 
-  const { senderPhone, messageId, extracted: msg } = extracted;
+  const { senderPhone, senderName, messageId, extracted: msg } = extracted;
 
   if (msg.kind === "text" && !isKnowledgeCommand(msg.text)) {
     // ============================================================
@@ -1533,6 +1542,7 @@ Deno.serve(async (req) => {
           senderPhone,
           messageId,
           msg.text,
+          { senderName },
         );
         return jsonResponse({ ...result, classified_as: "customer_lead_inquiry" });
       } catch (e) {
@@ -1765,6 +1775,7 @@ Deno.serve(async (req) => {
         senderPhone,
         messageId,
         msg.text,
+        { senderName },
       );
       return jsonResponse(result);
     } catch (e) {

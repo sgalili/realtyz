@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 
 /* Realtyz — סיור מוצר לנרשמים חדשים.
@@ -16,6 +18,7 @@ type TourStep = {
   title: string;
   bullets: string[];
   cta?: { label: string; to: string };
+  connections?: boolean;
 };
 
 const STEPS: TourStep[] = [
@@ -70,14 +73,14 @@ const STEPS: TourStep[] = [
     cta: { label: 'צפה בתמחור ובחשבון', to: '/billing' },
   },
   {
-    eyebrow: 'מתחילים',
-    title: 'שלוש דקות והמערכת עובדת בשבילך',
+    eyebrow: 'חיבורים',
+    title: 'מחברים רק את החשבונות שלך',
     bullets: [
-      'חבר ווטסאפ ואת החשבונות החברתיים בהגדרות החיבורים.',
-      'הוסף נכס ראשון ואיש קשר ראשון.',
-      'אמן את ה-AI בכמה שורות על סגנון העבודה שלך.',
+      'שום חשבון Facebook או WhatsApp לא מתחבר אוטומטית.',
+      'WhatsApp פועל כברירת מחדל רק דרך Meta Cloud API הרשמי.',
+      'כל החיבורים והמידע נשמרים בסביבת העבודה שלך בלבד.',
     ],
-    cta: { label: 'פתח חיבורים', to: '/profile?tab=connections' },
+    connections: true,
   },
 ];
 
@@ -88,6 +91,7 @@ export function ProductTour() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
+  const [officialWaPhone, setOfficialWaPhone] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -110,6 +114,17 @@ export function ProductTour() {
     })().catch(() => setOpen(true));
     return () => { cancelled = true; };
   }, [user]);
+
+  useEffect(() => {
+    if (!open || !STEPS[index]?.connections) return;
+    supabase.functions.invoke('meta-wa-register', { body: { action: 'status' } })
+      .then(({ data }) => {
+        const config = (data as any)?.config;
+        const phone = String(config?.display_phone_number ?? '').replace(/\D/g, '');
+        setOfficialWaPhone(config?.authorized && phone ? phone : null);
+      })
+      .catch(() => setOfficialWaPhone(null));
+  }, [open, index]);
 
   const finish = async (navigateTo?: string) => {
     setOpen(false);
@@ -179,6 +194,35 @@ export function ProductTour() {
               <span>{step.cta.label}</span>
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Button>
+          )}
+          {step.connections && (
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <Button
+                variant="outline"
+                className="h-12 justify-between text-base font-bold"
+                onClick={() => void finish('/profile?tab=connections&connect=facebook')}
+              >
+                <span>חיבור Facebook</span>
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+              </Button>
+              <Button
+                className="h-12 justify-between text-base font-bold"
+                onClick={() => void finish('/profile?tab=connections&connect=whatsapp-meta')}
+              >
+                <span>חיבור WhatsApp רשמי</span>
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+              </Button>
+              {officialWaPhone && (
+                <div className="sm:col-span-2 flex items-center justify-center gap-4 rounded-md border bg-muted/30 p-4">
+                  <QRCodeSVG value={`https://wa.me/${officialWaPhone}`} size={104} title="קוד QR לפתיחת WhatsApp הרשמי" />
+                  <div className="text-right">
+                    <p className="font-bold">המספר הרשמי מחובר</p>
+                    <p dir="ltr" className="mt-1 text-sm text-muted-foreground">{formatPhoneDisplay(officialWaPhone)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">סריקה פותחת שיחה עם המספר הרשמי.</p>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 

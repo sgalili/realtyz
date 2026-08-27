@@ -12,6 +12,7 @@ import { CalendarSyncCard } from '@/components/profile/CalendarSyncCard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
 import { useFacebookHealth } from '@/hooks/useFacebookHealth';
+import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
 
 type Tone = 'ok' | 'idle';
 
@@ -95,7 +96,11 @@ export function ConnectionsTab() {
   // so its card mounts and can surface the success/error state immediately.
   const [openId, setOpenId] = useState<string | null>(() => {
     try {
-      return new URLSearchParams(window.location.search).has('fb') ? 'meta' : null;
+      const params = new URLSearchParams(window.location.search);
+      const target = params.get('connect');
+      if (params.has('fb') || target === 'facebook') return 'meta';
+      if (target === 'whatsapp-meta' || target === 'whatsapp') return 'wa-meta';
+      return null;
     } catch {
       return null;
     }
@@ -172,6 +177,13 @@ export function ConnectionsTab() {
       status: metaStatus[0],
       tone: metaStatus[1],
       node: <MetaDirectConnectionCard onStatus={setMeta} />,
+    },
+    {
+      id: 'wa-meta',
+      title: 'WhatsApp רשמי (Meta Cloud API)',
+      status: waPhone ? formatPhoneDisplay(waPhone) : 'לא מחובר',
+      tone: waPhone ? 'ok' : 'idle',
+      node: <MetaWhatsAppAuthCard />,
     },
     {
       id: 'wa-mode',
