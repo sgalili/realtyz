@@ -24,6 +24,8 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard';
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
+import { PropertyYad2SectionsCard, type Yad2Sections } from '@/components/properties/PropertyYad2SectionsCard';
+
 import SmartTimelineCard from '@/components/SmartTimelineCard';
 import QuickMessageCard from '@/components/messaging/QuickMessageCard';
 
