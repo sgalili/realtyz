@@ -2570,6 +2570,15 @@ const ConfirmDispatchDialog = ({
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
+  // Groups are editable right here in the confirmation step: clicking the count
+  // opens the picker so targets can be added / removed before broadcasting.
+  const [groupIds, setGroupIds] = useState<string[]>(groupIdsProp);
+  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
+  useEffect(() => {
+    if (open) setGroupIds(groupIdsProp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, groupIdsProp.join(',')]);
+
   // Pre-send statistics for the selected Facebook groups (count + reach).
   const [groupStats, setGroupStats] = useState<{ known: number; members: number }>({ known: 0, members: 0 });
   useEffect(() => {
