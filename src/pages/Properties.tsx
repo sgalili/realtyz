@@ -146,6 +146,7 @@ export default function Properties() {
   // Active source filter from the breakdown popup (null = all sources).
   const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
   const [searching, setSearching] = useState(false);
+  const voiceSearchPendingRef = useRef(false);
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
   const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.hasSearched || !!cached?.results?.length);
@@ -536,6 +537,14 @@ export default function Properties() {
     runSearch();
   }, [q, runSearch, navigate]);
 
+  // Voice commands are committed to state first and then submitted, ensuring
+  // the search parser receives the complete transcript rather than stale text.
+  useEffect(() => {
+    if (!voiceSearchPendingRef.current || !q.trim()) return;
+    voiceSearchPendingRef.current = false;
+    void submitQuery();
+  }, [q, submitQuery]);
+
 
   // Local rows navigate immediately. Starting a full source scrape here used
   // to compete with the detail query for bandwidth and backend capacity; the
@@ -799,7 +808,11 @@ export default function Properties() {
               <VoiceInputButton
                 size="sm"
                 title="חיפוש קולי"
-                onTranscript={(t) => setQ((prev) => (prev ? `${prev} ${t}` : t))}
+                language="he"
+                onTranscript={(t) => {
+                  voiceSearchPendingRef.current = true;
+                  setQ(t);
+                }}
               />
              </div>
             <Button
