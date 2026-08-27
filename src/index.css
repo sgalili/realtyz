@@ -1398,6 +1398,7 @@
   will-change: transform;
 }
 .landing-ticker-slow { animation-duration: 38s; }
+.landing-ticker-reverse { animation-direction: reverse; }
 .landing-ticker-group {
   display: flex;
   align-items: center;
