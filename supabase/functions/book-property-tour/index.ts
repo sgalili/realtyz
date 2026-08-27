@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
         const plain = await callWa({
           message:
             `שלום ${b.client_name}, הסיור בנכס ${address ?? title ?? ""} נקבע לתאריך ${dateHe} בשעה ${b.time}.\n` +
-            `לצפייה בנכס: ${propertyUrl}`,
+            `לסיור בנכס: ${propertyUrl}`,
         });
         waOk = plain.ok;
         if (!waOk) waError = plain.body;
