@@ -5728,6 +5728,26 @@ const CampaignCenter = () => {
     return ok;
   }, []);
 
+  /**
+   * Retires a published draft everywhere: the live list (via publishedDrafts),
+   * the session assignments and the durable composer session — so a refresh
+   * never resurrects a post that already went out.
+   */
+  const retirePublishedDraft = useCallback((key: string, channelId?: string) => {
+    setPublishedDrafts((curr) => new Set(curr).add(key));
+    setDraftStatuses((curr) => { const next = { ...curr }; delete next[key]; return next; });
+    publishFnsRef.current.delete(key);
+    try {
+      const raw = sessionStorage.getItem('rz-schedule-assignments');
+      const list: ComposerAssignment[] = raw ? JSON.parse(raw) || [] : [];
+      const kept = list.filter((a, idx) => draftKeyFor(a, idx) !== key);
+      sessionStorage.setItem('rz-schedule-assignments', JSON.stringify(kept));
+      const keptIds = Array.from(new Set(kept.map((a) => a.listing).filter((v): v is string => Boolean(v))));
+      setRestoredSession((prev) => (prev ? { ...prev, assignments: kept, propertyIds: keptIds } : prev));
+      if (channelId) void saveComposerSession(channelId, keptIds, kept);
+    } catch {}
+  }, []);
+
   const publishAllDrafts = useCallback((keys: string[]) => {
     const queue = keys.filter((k) => !publishedDrafts.has(k) && publishFnsRef.current.has(k));
     if (!queue.length) { toast.info('אין טיוטות מוכנות לפרסום'); return; }
