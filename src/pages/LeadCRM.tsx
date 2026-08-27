@@ -1,4 +1,6 @@
 import SmartTimelineCard from '@/components/SmartTimelineCard';
+import QuickMessageCard from '@/components/messaging/QuickMessageCard';
+
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
