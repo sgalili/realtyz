@@ -56,7 +56,7 @@ import { ReferralButton } from '@/components/referrals/ReferralButton';
 import ClientPortalShareButton from '@/components/dealroom/ClientPortalShareButton';
 import { CommissionEditor } from '@/components/dealroom/CommissionEditor';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
-import { Wallet } from 'lucide-react';
+import { Wallet, ChevronDown } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
   Select,
