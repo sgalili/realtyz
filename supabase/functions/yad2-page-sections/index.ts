@@ -130,6 +130,7 @@ function asPricePoint(o: Record<string, unknown>): PricePoint | null {
 type SchoolCard = {
   name: string | null; type: string | null; grades: string | null;
   address: string | null; distance: string | null; supervision: string | null;
+  walking_distance: string | null; driving_distance: string | null;
 };
 
 function asSchool(o: Record<string, unknown>): SchoolCard | null {
@@ -144,6 +145,8 @@ function asSchool(o: Record<string, unknown>): SchoolCard | null {
     address: clean(o.address ?? o.street ?? o.fullAddress),
     distance: clean(o.distance ?? o.distanceText ?? o.walkingDistance),
     supervision: clean(o.supervision ?? o.sector ?? o.religiousType),
+    walking_distance: clean(o.walkingDistance ?? o.walking_distance ?? o.walkDistance ?? o.distanceText ?? o.distance),
+    driving_distance: clean(o.drivingDistance ?? o.driving_distance ?? o.driveDistance ?? o.carDistance),
   };
 }
 

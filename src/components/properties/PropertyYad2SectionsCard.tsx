@@ -171,9 +171,9 @@ export function PropertyYad2SectionsCard({
 
       {schools.length > 0 && (
         <SectionShell icon={GraduationCap} title="מוסדות חינוך באזור" count={schools.length}>
-          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 scroll-smooth" dir="rtl">
+          <div className="grid max-h-[744px] grid-cols-1 gap-3 overflow-y-auto pe-1 scroll-smooth sm:max-h-[372px] sm:grid-cols-2 lg:max-h-[244px] lg:grid-cols-3" dir="rtl">
             {schools.map((s, i) => (
-              <Card key={`${s.name ?? 'school'}-${i}`} className="w-[min(88vw,360px)] shrink-0 snap-start p-4 sm:w-[360px]">
+              <Card key={`${s.name ?? 'school'}-${i}`} className="h-[112px] min-w-0 p-4">
                 <div className="flex min-w-0 items-center justify-between gap-3">
                   <p className="min-w-0 flex-1 truncate text-lg font-semibold" title={s.name ?? ''}>{s.name}</p>
                   <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
