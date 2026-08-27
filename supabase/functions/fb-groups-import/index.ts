@@ -37,10 +37,14 @@ async function candidateTokens(admin: any, workspaceOwnerId: string): Promise<st
   const conn = await loadConnection(admin, workspaceOwnerId);
   push(conn?.access_token);
 
+  // TENANT ISOLATION: only tokens that belong to THIS workspace owner. Reading
+  // every row (or the platform env tokens) exposed one workspace's groups to
+  // every other account.
   try {
     const { data } = await admin
       .from("messenger_page_bindings")
       .select("page_access_token")
+      .eq("owner_id", workspaceOwnerId)
       .order("updated_at", { ascending: false })
       .limit(10);
     for (const r of (data ?? []) as any[]) push(r?.page_access_token);
@@ -50,6 +54,7 @@ async function candidateTokens(admin: any, workspaceOwnerId: string): Promise<st
     const { data } = await admin
       .from("social_connections")
       .select("credentials")
+      .eq("created_by", workspaceOwnerId)
       .in("platform", ["facebook", "meta", "instagram"])
       .order("updated_at", { ascending: false })
       .limit(10);
@@ -62,15 +67,9 @@ async function candidateTokens(admin: any, workspaceOwnerId: string): Promise<st
     }
   } catch { /* ignore */ }
 
-  for (const k of [
-    "FB_USER_ACCESS_TOKEN",
-    "FB_PAGE_ACCESS_TOKEN",
-    "META_PAGE_ACCESS_TOKEN",
-    "META_SYSTEM_USER_TOKEN",
-  ]) push(Deno.env.get(k));
-
   return out;
 }
+
 
 /** Read one /{node}/groups edge with pagination. Returns raw group objects. */
 async function readGroups(
