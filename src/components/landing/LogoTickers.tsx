@@ -11,6 +11,11 @@ const PLATFORMS = [
 ];
 
 const STACK: { label: string; color: string; icon?: string }[] = [
+  { label: 'OpenAI', color: '#FFFFFF', icon: 'openai' },
+  { label: 'Gemini', color: '#4285F4', icon: 'gemini' },
+  { label: 'Claude', color: '#D97757', icon: 'claude' },
+  { label: 'Claude Code', color: '#D97757', icon: 'claude' },
+  { label: 'React', color: '#61DAFB', icon: 'react' },
   { label: 'Google Cloud', color: '#4285F4', icon: 'googlecloud' },
   { label: 'AWS', color: '#FF9900', icon: 'amazonaws' },
   { label: 'Supabase', color: '#3ECF8E', icon: 'supabase' },
@@ -18,6 +23,7 @@ const STACK: { label: string; color: string; icon?: string }[] = [
   { label: 'GreenAPI', color: '#25D366' },
   { label: '019', color: '#E4002B' },
 ];
+
 
 
 export function PlatformTicker() {
