@@ -485,6 +485,9 @@ export default function PropertyDetail() {
   // When a property is opened and key Yad2 metadata is missing (ארנונה,
   // ועד בית, מספר תשלומים, or the "על הנכס" text), re-parse the source ad
   // once, persist it server-side, and refresh the view.
+  // Maximum time the UI is willing to wait for a fresh scrape before falling
+  // back to the data already stored in our database.
+  const UI_HYDRATION_BUDGET_MS = 4000;
   const hydratedRef = useRef<string | null>(null);
   const [hydrating, setHydrating] = useState(false);
   const [hydrateError, setHydrateError] = useState<string | null>(null);
@@ -510,8 +513,16 @@ export default function PropertyDetail() {
         return Math.min(ceiling, p + stepSize);
       });
     }, 80);
+    // Hard watchdog: whatever happens to the scraper, the ring completes and
+    // the loader disappears — it can never park on 97%.
+    const watchdog = setTimeout(() => {
+      metaTargetRef.current = 100;
+      setHydrateProgress(100);
+      setTimeout(() => setHydrating(false), 200);
+    }, UI_HYDRATION_BUDGET_MS + 800);
     return () => {
       clearInterval(timer);
+      clearTimeout(watchdog);
     };
   }, [hydrating]);
 
@@ -560,17 +571,22 @@ export default function PropertyDetail() {
         // Metadata only — images stay lazy until the user touches the gallery.
         // Progress comes from real hydration milestones, capped at 95 until the
         // refreshed row is actually on screen.
-        await ensureMetadataImport(id, src, (p) => {
+        // The scrape itself keeps running in the background; the UI only waits
+        // for a short budget, then falls back to the locally stored data.
+        const importTask = ensureMetadataImport(id, src, (p) => {
           metaTargetRef.current = Math.max(metaTargetRef.current, Math.min(95, p));
-        });
-        // Refetch BEFORE closing the ring so the fresh values are on screen
-        // the moment the loader disappears (no hard refresh needed).
-        await qc.refetchQueries({ queryKey: ['property-detail', id] });
+        })
+          .then(() => qc.refetchQueries({ queryKey: ['property-detail', id] }))
+          .catch(() => { /* silent: never blocks or alerts the user */ });
+        await Promise.race([
+          importTask,
+          new Promise((resolve) => setTimeout(resolve, UI_HYDRATION_BUDGET_MS)),
+        ]);
         try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'ייבוא תוכן הנכס נכשל';
-        setHydrateError(message);
-        toast.error(message);
+      } catch {
+        // Scraper delays/timeouts are non-events for the UI: the page already
+        // shows everything stored locally, so we finish the ring silently and
+        // let the background sync retry on the next visit.
       }
       if (cancelled) return;
       metaTargetRef.current = 100;
@@ -1241,11 +1257,6 @@ export default function PropertyDetail() {
             className="h-full bg-primary transition-[width] duration-300 ease-out"
             style={{ width: `${Math.max(4, Math.min(100, hydrateProgress))}%` }}
           />
-        </div>
-      )}
-      {hydrateError && (
-        <div className="fixed left-1/2 top-24 z-50 w-[min(92vw,520px)] -translate-x-1/2 rounded-md border border-destructive/30 bg-card p-3 text-center text-sm text-destructive shadow-lg">
-          ייבוא התוכן מיד2 לא הושלם: {hydrateError}
         </div>
       )}
       {/* Metadata refresh is non-blocking and remains visible in the viewport. */}
