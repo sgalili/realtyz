@@ -271,10 +271,10 @@ function MetricCard({
     >
       <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">{icon}</span>
       <span className="min-w-0">
-        <span className="block text-xl font-bold leading-tight">
+        <span className="block text-2xl font-bold leading-tight">
           {value === undefined ? '—' : value}
         </span>
-        <span className="block truncate text-xs text-muted-foreground">{label}</span>
+        <span className="block text-sm text-muted-foreground">{label}</span>
       </span>
     </button>
   );
