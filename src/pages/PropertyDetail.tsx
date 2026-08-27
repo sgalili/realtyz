@@ -33,6 +33,8 @@ import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
+import { filterBlockedPhotos, nextBlockedKeys } from '@/lib/mediaBlocklist';
+
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { sourcePhotoCount } from '@/lib/photoCount';
@@ -300,7 +302,13 @@ export default function PropertyDetail() {
         ...(Array.isArray((meta as any).photos) ? ((meta as any).photos as unknown[]) : []),
         ...(Array.isArray((meta as any).images) ? ((meta as any).images as unknown[]) : []),
       ];
-      const photos = normalizeImageUrls(photoSources.map(photoUrlFrom).filter((s): s is string => !!s));
+      // Deleted photos are blocklisted forever — never render them again even
+      // if a later sync re-imported the same URL.
+      const photos = filterBlockedPhotos(
+        normalizeImageUrls(photoSources.map(photoUrlFrom).filter((s): s is string => !!s)),
+        meta,
+      );
+
 
       const docsRaw: unknown[] = [
         ...(Array.isArray((row as any).media_documents) ? ((row as any).media_documents as unknown[]) : []),
@@ -708,6 +716,9 @@ export default function PropertyDetail() {
     if (!form || !id) return;
     setSaving(true);
     try {
+      // Photos the broker removed in this edit join a permanent blocklist so no
+      // future sync (Yad2 / Homely / Facebook) can restore them.
+      const removedPhotoKeys = nextBlockedKeys(data?.meta, data?.property?.photos ?? [], form.photos);
       const newMeta = {
         ...(data?.meta || {}),
         vaad_bayit: form.vaad_bayit ? Number(form.vaad_bayit) : null,
@@ -728,10 +739,12 @@ export default function PropertyDetail() {
         solar_heater: form.solar,
         photos: form.photos,
         images: form.photos,
+        removed_photo_keys: removedPhotoKeys,
         deal_type: form.deal_type || null,
         listing_type: form.deal_type || null,
         source_url: form.source_url || null,
       };
+
       const manualFeatures = form.features_text
         .split(/[,\n·]/)
         .map((f) => f.trim())
