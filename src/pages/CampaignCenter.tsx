@@ -6009,24 +6009,108 @@ const CampaignCenter = () => {
                 })}
                 {/* Bulk dispatch — publishes every ready draft one after another. */}
                 <div className="sticky bottom-2 z-40 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
-                  <button
-                    type="button"
-                    onClick={() => publishAllDrafts(blocks.map((b, idx) => `${idx}-${b.listing || 'na'}`))}
-                    disabled={readyKeys.length === 0}
-                    className={cn(
-                      'flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
-                      readyKeys.length
-                        ? 'bg-[hsl(217,80%,18%)] text-white shadow-md hover:bg-[hsl(217,80%,14%)]'
-                        : 'cursor-not-allowed bg-muted text-muted-foreground/80',
+                  <div className="flex items-stretch gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBulkScheduleDialogOpen(true)}
+                      title="עדכן תאריך ושעה לכל הטיוטות"
+                      aria-label="עדכן תאריך ושעה לכל הטיוטות"
+                      className="inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
+                    >
+                      <CalendarIcon className="h-4 w-4" />
+                    </button>
+                    {pickedChannel?.id === 'facebook' && (
+                      <button
+                        type="button"
+                        onClick={() => setBulkGroupPickerOpen(true)}
+                        title="בחירת קבוצות לכל הטיוטות"
+                        aria-label="בחירת קבוצות לכל הטיוטות"
+                        className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
+                      >
+                        <Users className="h-4 w-4" />
+                        {bulkGroupIds.length > 0 && (
+                          <span className="absolute -top-1 -left-1 min-w-[18px] rounded-full bg-[hsl(217,80%,18%)] px-1 text-[10px] font-bold leading-[18px] text-white" dir="ltr">
+                            {bulkGroupIds.length}
+                          </span>
+                        )}
+                      </button>
                     )}
-                  >
-                    <Megaphone className="h-4 w-4" />
-                    פרסם את כל הטיוטות ({readyKeys.length})
-                  </button>
-                  <p className="mt-1 text-center text-[11px] text-muted-foreground">
-                    כל טיוטה מוכנה תישלח לאישור ושיגור בתור, אחת אחרי השנייה.
-                  </p>
+                    <button
+                      type="button"
+                      onClick={() => publishAllDrafts(blocks.map((b, idx) => `${idx}-${b.listing || 'na'}`))}
+                      disabled={readyKeys.length === 0}
+                      className={cn(
+                        'flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
+                        readyKeys.length
+                          ? 'bg-[hsl(217,80%,18%)] text-white shadow-md hover:bg-[hsl(217,80%,14%)]'
+                          : 'cursor-not-allowed bg-muted text-muted-foreground/80',
+                      )}
+                    >
+                      <Megaphone className="h-4 w-4" />
+                      פרסם את כל הטיוטות ({readyKeys.length})
+                    </button>
+                  </div>
                 </div>
+
+                {/* Bulk schedule dialog — applies to every draft in the multi-draft view. */}
+                <Dialog open={bulkScheduleDialogOpen} onOpenChange={setBulkScheduleDialogOpen}>
+                  <DialogContent dir="rtl" className="w-[92vw] sm:max-w-[420px]">
+                    <DialogHeader>
+                      <DialogTitle className="text-right">עדכן תזמון לכל הטיוטות</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <label className="block text-sm font-semibold text-foreground">תאריך ושעת פרסום</label>
+                      <input
+                        type="datetime-local"
+                        value={(() => {
+                          if (!bulkScheduleIso) return '';
+                          const d = new Date(bulkScheduleIso);
+                          if (Number.isNaN(d.getTime())) return '';
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                        })()}
+                        min={(() => {
+                          const floor = new Date(Date.now() + 60_000);
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          return `${floor.getFullYear()}-${pad(floor.getMonth() + 1)}-${pad(floor.getDate())}T${pad(floor.getHours())}:${pad(floor.getMinutes())}`;
+                        })()}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v) {
+                            const d = new Date(v);
+                            if (!Number.isNaN(d.getTime()) && d.getTime() > Date.now()) {
+                              setBulkScheduleIso(d.toISOString());
+                            } else {
+                              setBulkScheduleIso(null);
+                            }
+                          } else {
+                            setBulkScheduleIso(null);
+                          }
+                        }}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                        dir="ltr"
+                      />
+                    </div>
+                    <DialogFooter className="sm:justify-start">
+                      <Button type="button" onClick={() => setBulkScheduleDialogOpen(false)}>אישור</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Bulk groups dialog — applies to every draft in the multi-draft view. */}
+                <Dialog open={bulkGroupPickerOpen} onOpenChange={setBulkGroupPickerOpen}>
+                  <DialogContent dir="rtl" className="w-[96vw] sm:max-w-[720px]">
+                    <DialogHeader>
+                      <DialogTitle className="text-right">קבוצות לכל הטיוטות</DialogTitle>
+                    </DialogHeader>
+                    <CampaignGroupSelector selectedIds={bulkGroupIds} onChange={setBulkGroupIds} />
+                    <DialogFooter className="sm:justify-start">
+                      <Button type="button" onClick={() => setBulkGroupPickerOpen(false)}>
+                        אישור{bulkGroupIds.length > 0 ? ` (${bulkGroupIds.length})` : ''}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             );
           })()}
