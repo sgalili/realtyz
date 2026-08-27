@@ -300,7 +300,13 @@ export default function PropertyDetail() {
         ...(Array.isArray((meta as any).photos) ? ((meta as any).photos as unknown[]) : []),
         ...(Array.isArray((meta as any).images) ? ((meta as any).images as unknown[]) : []),
       ];
-      const photos = normalizeImageUrls(photoSources.map(photoUrlFrom).filter((s): s is string => !!s));
+      // Deleted photos are blocklisted forever — never render them again even
+      // if a later sync re-imported the same URL.
+      const photos = filterBlockedPhotos(
+        normalizeImageUrls(photoSources.map(photoUrlFrom).filter((s): s is string => !!s)),
+        meta,
+      );
+
 
       const docsRaw: unknown[] = [
         ...(Array.isArray((row as any).media_documents) ? ((row as any).media_documents as unknown[]) : []),
