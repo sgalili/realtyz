@@ -59,6 +59,10 @@ import { autoImportResult } from '@/lib/propertyAutoImport';
 import { SourceBadge } from '@/components/properties/SourceBadge';
 
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
+import {
+  hebrewOnlyParts, hebrewPropertyType, sanitizeFloor, sanitizeRooms, sanitizeSqm,
+} from '@/lib/propertyMeasures';
+
 
 
 type TabValue = 'create' | 'published' | 'calendar';
