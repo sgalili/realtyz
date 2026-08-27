@@ -1323,7 +1323,7 @@ const InlineComposer = ({
         });
         if (!exists) deduped.push({ url, source: 'campaign_composer', created_at: new Date().toISOString() });
       });
-      const { error: updErr } = await supabase.from('listings').update({ media_photos: deduped }).eq('id', listingId);
+      const { error: updErr } = await supabase.from('listings').update({ media_photos: deduped as any[] }).eq('id', listingId);
       if (updErr) throw updErr;
     } catch (e) {
       console.warn('[CampaignCenter] append listing images failed', e);
