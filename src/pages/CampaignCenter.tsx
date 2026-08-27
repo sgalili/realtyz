@@ -5170,6 +5170,8 @@ const DraftCollapsibleCard = ({
 
 const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  // Live status per collapsed draft card (keyed by composer instanceId).
+  const [draftStatuses, setDraftStatuses] = useState<Record<string, ComposerStatus>>({});
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
