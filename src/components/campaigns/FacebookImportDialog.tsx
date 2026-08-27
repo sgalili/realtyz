@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { requestExtensionPagePosts } from '@/lib/extensionPostBridge';
 
 type Report = {
   ok: boolean;
@@ -61,10 +62,36 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
         problems.push(`ייבוא הפוסטים נכשל: ${error.message}`);
         fixes.push('רענן את הדף ונסה שוב. אם זה חוזר, התחבר מחדש לאפליקציה.');
       } else {
-        const res: any = data ?? {};
+        let res: any = data ?? {};
         posts = Number(res.upserted ?? res.count ?? 0) || 0;
         images = Number(res.enriched_media ?? 0) || 0;
         counters = Number(res.enriched_counters ?? 0) || 0;
+
+        // Graph blocked us on permissions (e.g. #10 pages_read_engagement):
+        // fall back silently to the browser extension's DOM scraper instead of
+        // alerting the user.
+        if (res.needs_extension || (res.permission_blocked && posts === 0)) {
+          setStep('פייסבוק חסמה את הקריאה ישירות — מייבא דרך התוסף…');
+          const scraped = await requestExtensionPagePosts({ since });
+          if (scraped.length > 0) {
+            const { data: extData } = await supabase.functions.invoke('fb-recent-posts', {
+              body: { since, persist: true, sync_comments: false, posts: scraped },
+            });
+            const extRes: any = extData ?? {};
+            if (Number(extRes.upserted ?? extRes.count ?? 0) > 0) {
+              res = { ...extRes, permission_blocked: false, needs_extension: false, raw_error: null };
+              posts = Number(extRes.upserted ?? extRes.count ?? 0) || 0;
+              images = Number(extRes.enriched_media ?? 0) || 0;
+              counters = Number(extRes.enriched_counters ?? 0) || 0;
+            }
+          }
+          if (res.needs_extension || res.permission_blocked) {
+            // No extension available — explain the one-time install, quietly.
+            fixes.push('התקן את תוסף Realtyz לדפדפן והישאר מחובר לפייסבוק, ואז הרץ ייבוא שוב.');
+            res = { ...res, raw_error: null, ok: true, permission_blocked: false, needs_extension: false };
+          }
+        }
+
         if (res.ok === false || res.raw_error) {
           const raw = res.raw_error;
           const rawText = typeof raw === 'string' ? raw : (raw?.message ?? JSON.stringify(raw ?? {}));
