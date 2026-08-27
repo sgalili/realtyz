@@ -1185,9 +1185,10 @@ export default function PropertyDetail() {
             <Button size="icon" variant="ghost" onClick={handleSave} disabled={saving} aria-label="שמירה" title="שמירה" className="h-8 w-8 text-primary"><Save className="h-5 w-5" /></Button>
           </>
         )}
+        </div>
       </div>
 
-      {/* Headline · neighborhood · price · owner */}
+      {/* Headline · neighborhood · price */}
       <header className="space-y-2">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <div
@@ -1216,12 +1217,8 @@ export default function PropertyDetail() {
               </>
             ) : <span className="text-2xl font-semibold text-amber-600">פרטים חסרים · Draft</span>}
           </div>
-          {owner ? (
-            <Link to={`/crm/profile/${owner.id}`} className="shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
-              {owner.full_name}
-            </Link>
-          ) : <span />}
         </div>
+
 
         {(originalDate || sourceUpdatedDate) && (
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
