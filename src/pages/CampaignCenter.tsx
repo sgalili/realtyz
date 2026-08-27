@@ -5831,7 +5831,11 @@ const CampaignCenter = () => {
               }
               sessionStorage.removeItem('rz-schedule-assignments');
             } catch {}
+            // Only a published post retires the durable session mirror.
+            setRestoredSession(null);
+            void clearComposerSession(publishedChannelId);
           }
+
 
           setAlsoEmail(false);
           if (shouldEmail) {
