@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
 import { cn } from '@/lib/utils';
 
 type ScheduledRow = {
@@ -67,6 +69,7 @@ const listingLabel = (l: ListingLite) => {
 
 export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number; groupIds?: string[]; properties?: string[]; assignments?: Array<{ iso: string; listing: string | null; variant: number; totalVariants: number }> }) => void; onClose?: () => void }) {
   const queryClient = useQueryClient();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState<Date>(() => {
@@ -98,18 +101,24 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [propertiesOpen, setPropertiesOpen] = useState(false);
   const [listingsPopoverOpen, setListingsPopoverOpen] = useState(false);
 
+  // Restore the broker's last dialog configuration (window, count, recurrence,
+  // properties, groups) every time the dialog opens — it survives refreshes.
   useEffect(() => {
     if (!scheduleDay) return;
     let cancelled = false;
+    const prefs = loadSchedulePrefs(workspaceOwnerId);
     setListingsLoading(true);
     setListingSearch('');
-    setSelectedListingIds([]);
-    setSelectedGroupIds([]);
-    setRecurrence('none');
-    setRecurrenceDays([]);
-    setRecurrenceCount(4);
+    setWinStart(prefs.winStart);
+    setWinEnd(prefs.winEnd);
+    setWinCount(prefs.winCount);
+    setSelectedListingIds(prefs.selectedListingIds);
+    setSelectedGroupIds(prefs.selectedGroupIds);
+    setRecurrence(prefs.recurrence);
+    setRecurrenceDays(prefs.recurrenceDays);
+    setRecurrenceCount(prefs.recurrenceCount);
     setRecurrenceOpen(false);
-    setBrandingPost(false);
+    setBrandingPost(prefs.selectedListingIds.length === 0);
     setPropertiesOpen(false);
     (async () => {
       const { data, error } = await supabase
@@ -127,7 +136,25 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
       setListingsLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [scheduleDay]);
+  }, [scheduleDay, workspaceOwnerId]);
+
+  // Persist every configuration change so it survives leaving the page.
+  useEffect(() => {
+    if (!scheduleDay) return;
+    saveSchedulePrefs(workspaceOwnerId, {
+      winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount,
+      selectedListingIds, selectedGroupIds,
+    });
+  }, [scheduleDay, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedListingIds, selectedGroupIds]);
+
+  // The number of posts follows the number of properties picked in the dropdown.
+  useEffect(() => {
+    if (!scheduleDay) return;
+    if (selectedListingIds.length > 0) {
+      setWinCount(Math.min(20, selectedListingIds.length));
+    }
+  }, [selectedListingIds, scheduleDay]);
+
 
   const filteredListings = useMemo(() => {
     const q = listingSearch.trim().toLowerCase();
@@ -809,7 +836,9 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                 const buildDaySlots = (base: Date): Date[] => {
                   const out: Date[] = [];
                   for (let i = 0; i < n; i++) {
-                    const offset = startMin + i * bucket + Math.random() * bucket;
+                    // Never fire exactly on the window edges — always a random
+                    // minute somewhere in between.
+                    const offset = randomSlotMinutes(startMin, endMin, i, n);
                     const total = Math.floor(offset);
                     const d = new Date(base);
                     d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);

@@ -17,6 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
+import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
+import { pickListingImages, MAX_POST_IMAGES } from '@/lib/listingImages';
 import { cn } from '@/lib/utils';
 
 type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -67,23 +69,28 @@ export function ScheduleCurrentPostDialog({
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   });
-  const [winStart, setWinStart] = useState('09:00');
-  const [winEnd, setWinEnd] = useState('21:00');
-  const [winCount, setWinCount] = useState(1);
-  const [recurrence, setRecurrence] = useState<Recurrence>('none');
-  const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
+  const initialPrefs = useMemo(() => loadSchedulePrefs(workspaceOwnerId, 'composer'), [workspaceOwnerId]);
+  const [winStart, setWinStart] = useState(initialPrefs.winStart);
+  const [winEnd, setWinEnd] = useState(initialPrefs.winEnd);
+  const [winCount, setWinCount] = useState(initialPrefs.winCount);
+  const [recurrence, setRecurrence] = useState<Recurrence>(initialPrefs.recurrence);
+  const [recurrenceDays, setRecurrenceDays] = useState<number[]>(initialPrefs.recurrenceDays);
   // Blank = infinite/open-ended sequence (materialized as 52 slots, user can
   // stop the series any time via "בטל סדרה" on the calendar).
   const INFINITE_CAP = 52;
-  const [recurrenceCountInput, setRecurrenceCountInput] = useState<string>('');
+  const [recurrenceCountInput, setRecurrenceCountInput] = useState<string>(initialPrefs.recurrenceCountInput ?? '');
   const recurrenceCount = recurrenceCountInput.trim() === ''
     ? INFINITE_CAP
     : Math.max(1, Math.min(INFINITE_CAP, Number(recurrenceCountInput) || 1));
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(defaultGroupIds || []);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
+    initialPrefs.selectedGroupIds.length > 0 ? initialPrefs.selectedGroupIds : (defaultGroupIds || []),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
+  // Up to 10 random property photos are always attached to the scheduled posts.
+  const [postImages, setPostImages] = useState<string[]>([]);
 
   // JIT generation cap: only fully generate distinct AI variants for the next
   // few slots. Every slot beyond this cap is scheduled with the ORIGINAL body
@@ -92,11 +99,49 @@ export function ScheduleCurrentPostDialog({
 
   useEffect(() => {
     if (open) {
-      setSelectedGroupIds(defaultGroupIds || []);
+      const prefs = loadSchedulePrefs(workspaceOwnerId, 'composer');
+      setWinStart(prefs.winStart);
+      setWinEnd(prefs.winEnd);
+      setWinCount(prefs.winCount);
+      setRecurrence(prefs.recurrence);
+      setRecurrenceDays(prefs.recurrenceDays);
+      setRecurrenceCountInput(prefs.recurrenceCountInput ?? '');
+      setSelectedGroupIds(
+        prefs.selectedGroupIds.length > 0 ? prefs.selectedGroupIds : (defaultGroupIds || []),
+      );
       setSubmitting(false);
       setProgress(0);
     }
-  }, [open, defaultGroupIds]);
+  }, [open, defaultGroupIds, workspaceOwnerId]);
+
+  // Persist the configuration so it is still there after a refresh.
+  useEffect(() => {
+    if (!open) return;
+    saveSchedulePrefs(
+      workspaceOwnerId,
+      {
+        winStart, winEnd, winCount, recurrence, recurrenceDays,
+        recurrenceCount, recurrenceCountInput, selectedGroupIds,
+      },
+      'composer',
+    );
+  }, [open, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, recurrenceCountInput, selectedGroupIds]);
+
+  // Resolve the media attached to every scheduled slot: the composer's own
+  // media first, topped up with random property photos (max 10 in total).
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const own = (Array.isArray(mediaUrls) ? mediaUrls : []).filter(Boolean);
+      const extra = own.length >= MAX_POST_IMAGES ? [] : await pickListingImages(listingId, MAX_POST_IMAGES);
+      if (cancelled) return;
+      const merged = Array.from(new Set([...own, ...extra])).slice(0, MAX_POST_IMAGES);
+      setPostImages(merged);
+    })();
+    return () => { cancelled = true; };
+  }, [open, mediaUrls, listingId]);
+
 
 
   const dayLabel = useMemo(() => {
@@ -124,7 +169,8 @@ export function ScheduleCurrentPostDialog({
     const buildDaySlots = (dayBase: Date): Date[] => {
       const out: Date[] = [];
       for (let i = 0; i < n; i++) {
-        const offset = startMin + i * bucket + (n > 1 ? Math.random() * bucket : 0);
+        // Random minute inside the window — never on the start/end boundary.
+        const offset = randomSlotMinutes(startMin, endMin, i, n);
         const total = Math.floor(offset);
         const d = new Date(dayBase);
         d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);
@@ -338,7 +384,7 @@ export function ScheduleCurrentPostDialog({
             detail: {
               channel: channelId,
               body,
-              media_urls: mediaUrls,
+              media_urls: postImages,
               campaign_name: nameForTarget,
               scheduled_at: firstSlot.toISOString(),
               needs_regeneration: false,
@@ -350,7 +396,7 @@ export function ScheduleCurrentPostDialog({
           post: body,
           channels: [channelId],
           campaign_name: nameForTarget,
-          media_urls: Array.isArray(mediaUrls) ? mediaUrls : [],
+          media_urls: postImages,
           scheduled_at: firstSlot.toISOString(),
           workspace_owner_id: ownerScope,
           group_ids: channelId === 'facebook' ? (selectedGroupIds || []) : [],
@@ -408,7 +454,7 @@ export function ScheduleCurrentPostDialog({
             regen_prompt: rotateNote,
             listing_id: listingId ?? null,
             first_comment: firstComment || null,
-            media_urls: Array.isArray(mediaUrls) ? mediaUrls : [],
+            media_urls: postImages,
             group_ids: channelId === 'facebook' ? (selectedGroupIds || []) : [],
             target_profile_key: target?.profileKey ?? null,
             target_account_ref: target?.accountRef ?? null,
@@ -422,7 +468,7 @@ export function ScheduleCurrentPostDialog({
               detail: {
                 channel: channelId,
                 body,
-                media_urls: mediaUrls,
+                media_urls: postImages,
                 campaign_name: nameForTarget,
                 scheduled_at: slot.toISOString(),
                 needs_regeneration: true,
@@ -640,6 +686,40 @@ export function ScheduleCurrentPostDialog({
             </div>
             <div className="flex-1 h-9 flex items-center justify-end rounded-md border border-input bg-muted/40 px-3 text-xs text-muted-foreground">
               מפרסם את התוכן הנוכחי
+            </div>
+          </div>
+
+          {/* Preview before posting: text, attached photos, first comment */}
+          <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+            <div className="text-xs font-semibold text-muted-foreground text-right">תצוגה מקדימה של הפוסט</div>
+            <div className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md border border-input bg-background p-2 text-[13px] text-right leading-relaxed">
+              {body?.trim() || 'אין תוכן לפוסט'}
+            </div>
+            {firstComment?.trim() && (
+              <div className="rounded-md border border-dashed border-input bg-background/60 p-2 text-right">
+                <div className="text-[11px] font-semibold text-muted-foreground mb-1">תגובה ראשונה</div>
+                <div className="whitespace-pre-wrap text-[12px] leading-relaxed">{firstComment.trim()}</div>
+              </div>
+            )}
+            <div>
+              <div className="text-[11px] font-semibold text-muted-foreground mb-1 text-right">
+                תמונות מצורפות ({postImages.length})
+              </div>
+              {postImages.length === 0 ? (
+                <div className="text-[11px] text-muted-foreground text-right">אין תמונות זמינות לנכס הזה</div>
+              ) : (
+                <div className="grid grid-cols-5 gap-1">
+                  {postImages.map((url) => (
+                    <img
+                      key={url}
+                      src={url}
+                      alt="תמונת נכס לפוסט"
+                      loading="lazy"
+                      className="h-14 w-full rounded-md object-cover ring-1 ring-border"
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
