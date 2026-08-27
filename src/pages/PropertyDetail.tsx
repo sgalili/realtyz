@@ -85,17 +85,6 @@ function formatMetaValue(key: string, value: unknown): string {
   return String(value);
 }
 
-function hasCorePropertyText(row: unknown): boolean {
-  if (!isRecord(row)) return false;
-  const hasText = Boolean(
-    (typeof row.description === 'string' && row.description.trim()) ||
-    (typeof row.long_description === 'string' && row.long_description.trim()) ||
-    (typeof row.short_description === 'string' && row.short_description.trim()),
-  );
-  const hasDetails = Boolean(row.asking_price || row.rooms || row.sqm || row.features || row.source_metadata);
-  return hasText && hasDetails;
-}
-
 function snapshotToDetail(snapshot: UnifiedResult | undefined) {
   if (!snapshot) return undefined;
   const raw = isRecord(snapshot.raw) ? snapshot.raw : {};
@@ -498,6 +487,7 @@ export default function PropertyDetail() {
   // once, persist it server-side, and refresh the view.
   const hydratedRef = useRef<string | null>(null);
   const [hydrating, setHydrating] = useState(false);
+  const [hydrateError, setHydrateError] = useState<string | null>(null);
   // Determinate-looking progress for the metadata ring (0-100).
   const [hydrateProgress, setHydrateProgress] = useState(0);
   // The ring is driven by REAL hydration milestones (see `ensureMetadataImport`),
@@ -520,16 +510,8 @@ export default function PropertyDetail() {
         return Math.min(ceiling, p + stepSize);
       });
     }, 80);
-    // Safety valve: the text import is budgeted under 3s, so the loader is
-    // force-closed right after that window — never a frozen screen.
-    const bail = setTimeout(() => {
-      metaTargetRef.current = 100;
-      setHydrateProgress(100);
-      setHydrating(false);
-    }, 3200);
     return () => {
       clearInterval(timer);
-      clearTimeout(bail);
     };
   }, [hydrating]);
 
@@ -567,9 +549,12 @@ export default function PropertyDetail() {
       if (cancelled) return;
 
 
-      const shouldShowHydrationProgress = !hasCorePropertyText(data.row);
+      // A partial database snapshot may already paint text, but the loader
+      // remains visible until the complete import is confirmed.
+      const shouldShowHydrationProgress = true;
       metaTargetRef.current = shouldShowHydrationProgress ? 0 : 100;
       setHydrateProgress(shouldShowHydrationProgress ? 0 : 100);
+      setHydrateError(null);
       if (shouldShowHydrationProgress) setHydrating(true);
       try {
         // Metadata only — images stay lazy until the user touches the gallery.
@@ -578,11 +563,15 @@ export default function PropertyDetail() {
         await ensureMetadataImport(id, src, (p) => {
           metaTargetRef.current = Math.max(metaTargetRef.current, Math.min(95, p));
         });
-        try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
         // Refetch BEFORE closing the ring so the fresh values are on screen
         // the moment the loader disappears (no hard refresh needed).
         await qc.refetchQueries({ queryKey: ['property-detail', id] });
-      } catch { /* keep the page usable */ }
+        try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'ייבוא תוכן הנכס נכשל';
+        setHydrateError(message);
+        toast.error(message);
+      }
       if (cancelled) return;
       metaTargetRef.current = 100;
       setHydrateProgress(100);
@@ -1214,6 +1203,11 @@ export default function PropertyDetail() {
           />
         </div>
       )}
+      {hydrateError && (
+        <div className="fixed left-1/2 top-24 z-50 w-[min(92vw,520px)] -translate-x-1/2 rounded-md border border-destructive/30 bg-card p-3 text-center text-sm text-destructive shadow-lg">
+          ייבוא התוכן מיד2 לא הושלם: {hydrateError}
+        </div>
+      )}
       {/* Metadata refresh is non-blocking and remains visible in the viewport. */}
       {hydrating && (
         <div className="pointer-events-none fixed left-1/2 top-24 z-50 -translate-x-1/2 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
@@ -1658,6 +1652,7 @@ export default function PropertyDetail() {
               sections={(isRecord(meta) && isRecord((meta as any).yad2_sections)
                 ? ((meta as any).yad2_sections as Yad2Sections)
                 : null)}
+              propertyAddress={[property.address, property.city].filter(Boolean).join(', ')}
             />
           )}
 

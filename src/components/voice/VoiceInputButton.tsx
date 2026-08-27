@@ -2,6 +2,7 @@ import { Loader2, Mic, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   /** Receives the transcript. Return value ignored. */
@@ -36,8 +37,10 @@ export function VoiceInputButton({
   const icon = size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4';
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       onClick={() => { void rec.toggle(); }}
       disabled={disabled || rec.isTranscribing}
       aria-label={rec.isRecording ? 'עצור הקלטה ותמלל' : 'הקלטה קולית'}
@@ -59,7 +62,7 @@ export function VoiceInputButton({
       ) : (
         <Mic className={icon} />
       )}
-    </button>
+    </Button>
   );
 }
 

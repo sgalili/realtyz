@@ -10,7 +10,7 @@ import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
 import {
-  Building2, GraduationCap, Handshake, RefreshCw, Sparkles, TrendingUp, ImageIcon, ExternalLink,
+  Building2, Car, Footprints, GraduationCap, Handshake, RefreshCw, TrendingUp,
 } from 'lucide-react';
 
 export type Yad2SoldDeal = {
@@ -21,18 +21,12 @@ export type Yad2PricePoint = { date: string | null; price: number | null; label?
 export type Yad2School = {
   name: string | null; type: string | null; grades: string | null;
   address: string | null; distance: string | null; supervision: string | null;
-};
-export type Yad2ListingCard = {
-  token: string | null; url: string | null; title: string | null; address: string | null;
-  price: number | null; rooms: number | null; sqm: number | null; floor: number | null;
-  image: string | null; agency: string | null; is_project?: boolean;
+  walking_distance?: string | null; driving_distance?: string | null;
 };
 export type Yad2Sections = {
   sold_deals?: Yad2SoldDeal[];
   valuation_history?: Yad2PricePoint[];
   schools?: Yad2School[];
-  recommended?: Yad2ListingCard[];
-  new_in_area?: Yad2ListingCard[];
   fetched_at?: string;
 };
 
@@ -53,58 +47,21 @@ function SectionShell({
   );
 }
 
-function ListingCards({ rows }: { rows: Yad2ListingCard[] }) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {rows.map((r, i) => (
-        <Card key={r.token ?? i} className="overflow-hidden transition-shadow hover:shadow-lg">
-          <div className="aspect-[4/3] bg-muted">
-            {r.image ? (
-              <img src={r.image} alt={r.title ?? r.address ?? 'נכס'} loading="lazy" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                <ImageIcon className="h-8 w-8" />
-              </div>
-            )}
-          </div>
-          <div className="space-y-1.5 p-3">
-            <p className="line-clamp-1 text-lg font-semibold">{r.title || r.address || 'נכס'}</p>
-            {r.address && <p className="line-clamp-1 text-base text-muted-foreground">{r.address}</p>}
-            <div className="flex flex-wrap gap-x-3 text-base text-muted-foreground">
-              {r.rooms ? <span>{r.rooms} חדרים</span> : null}
-              {r.sqm ? <span>{r.sqm} מ״ר</span> : null}
-              {r.floor != null ? <span>קומה {r.floor}</span> : null}
-            </div>
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <span className="text-xl font-bold text-success tabular-nums">{shekel(r.price)}</span>
-              {r.url && (
-                <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition hover:text-primary" title="פתיחה ביד2">
-                  <ExternalLink className="h-5 w-5" />
-                </a>
-              )}
-            </div>
-            {r.agency && <p className="text-sm text-muted-foreground">{r.agency}</p>}
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
 /**
- * All the secondary Yad2 item-page sections: sold deals nearby, valuation
- * history graph, education institutions, recommended listings and new
- * projects in the area. Data is imported by the `yad2-page-sections` function
+ * Secondary Yad2 item-page sections: sold deals nearby, valuation history,
+ * and education institutions. Data is imported by `yad2-page-sections`
  * and cached on the listing, so the card renders instantly on repeat visits.
  */
 export function PropertyYad2SectionsCard({
   listingId,
   sourceUrl,
   sections,
+  propertyAddress,
 }: {
   listingId: string;
   sourceUrl?: string | null;
   sections?: Yad2Sections | null;
+  propertyAddress?: string | null;
 }) {
   const qc = useQueryClient();
   const [live, setLive] = useState<Yad2Sections | null>(null);
@@ -114,7 +71,7 @@ export function PropertyYad2SectionsCard({
   const sync = useMutation({
     mutationFn: async () => {
       const { data: res, error } = await supabase.functions.invoke('yad2-page-sections', {
-        body: { listing_id: listingId, url: sourceUrl },
+        body: { listing_id: listingId, url: sourceUrl, property_address: propertyAddress },
       });
       if (error) throw error;
       if (res?.error) throw new Error(String(res.detail ?? res.error));
@@ -124,7 +81,6 @@ export function PropertyYad2SectionsCard({
       setLive(res ?? null);
       const total =
         (res?.sold_deals?.length ?? 0) + (res?.schools?.length ?? 0) +
-        (res?.recommended?.length ?? 0) + (res?.new_in_area?.length ?? 0) +
         (res?.valuation_history?.length ?? 0);
       toast.success(total ? `יובאו ${total} פריטים מיד2` : 'לא נמצאו סקשנים נוספים בעמוד המקור');
       void qc.invalidateQueries({ queryKey: ['property-detail', listingId] });
@@ -137,8 +93,7 @@ export function PropertyYad2SectionsCard({
   const deals = data?.sold_deals ?? [];
   const history = (data?.valuation_history ?? []).filter((p) => p?.price != null);
   const schools = data?.schools ?? [];
-  const newInArea = data?.new_in_area ?? [];
-  const empty = !deals.length && !history.length && !schools.length && !newInArea.length;
+  const empty = !deals.length && !history.length && !schools.length;
 
 
   const chart = history.map((p, i) => ({ name: p.date || p.label || `#${i + 1}`, price: Number(p.price) }));
@@ -162,7 +117,7 @@ export function PropertyYad2SectionsCard({
       {empty && !sync.isPending && (
         <p className="text-lg text-muted-foreground">
           עוד לא יובאו סקשנים מעמוד היד2. לחצו על "ייבוא כל הסקשנים" כדי לשלוף עסקאות באזור,
-          היסטוריית שווי, מוסדות חינוך ופרויקטים חדשים.
+          היסטוריית שווי ומוסדות חינוך.
         </p>
       )}
 
@@ -218,27 +173,29 @@ export function PropertyYad2SectionsCard({
 
       {schools.length > 0 && (
         <SectionShell icon={GraduationCap} title="מוסדות חינוך באזור" count={schools.length}>
-          <div className="flex flex-wrap gap-3">
-            {schools.slice(0, 10).map((s, i) => (
-              <Card key={i} className="flex-1 min-w-[220px] max-w-[280px] p-3">
-                <p className="text-lg font-semibold line-clamp-1" title={s.name ?? ''}>{s.name}</p>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {s.type && <Badge variant="secondary" className="text-sm">{s.type}</Badge>}
-                  {s.grades && <Badge variant="outline" className="text-sm">{s.grades}</Badge>}
-                  {s.supervision && <Badge variant="outline" className="text-sm">{s.supervision}</Badge>}
+          <div className="grid max-h-[744px] grid-cols-1 gap-3 overflow-y-auto pe-1 scroll-smooth sm:max-h-[372px] sm:grid-cols-2 lg:max-h-[244px] lg:grid-cols-3" dir="rtl">
+            {schools.map((s, i) => (
+              <Card key={`${s.name ?? 'school'}-${i}`} className="h-[112px] min-w-0 p-4">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <p className="min-w-0 flex-1 truncate text-lg font-semibold" title={s.name ?? ''}>{s.name}</p>
+                  <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                    {s.type && <Badge variant="secondary" className="text-sm">{s.type}</Badge>}
+                    {s.grades && <Badge variant="outline" className="text-sm">{s.grades}</Badge>}
+                    {s.supervision && <Badge variant="outline" className="text-sm">{s.supervision}</Badge>}
+                  </div>
                 </div>
                 {s.address && <p className="mt-1 text-base text-muted-foreground line-clamp-1" title={s.address}>{s.address}</p>}
-                {s.distance && <p className="text-base text-muted-foreground">{s.distance}</p>}
+                <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+                  {(s.walking_distance || s.distance) && (
+                    <span className="inline-flex items-center gap-1"><Footprints className="h-4 w-4" /> הליכה: {s.walking_distance || s.distance}</span>
+                  )}
+                  {s.driving_distance && (
+                    <span className="inline-flex items-center gap-1"><Car className="h-4 w-4" /> נסיעה: {s.driving_distance}</span>
+                  )}
+                </div>
               </Card>
             ))}
           </div>
-        </SectionShell>
-      )}
-
-
-      {newInArea.length > 0 && (
-        <SectionShell icon={Sparkles} title="נכסים ופרויקטים חדשים באזור" count={newInArea.length}>
-          <ListingCards rows={newInArea.slice(0, 10)} />
         </SectionShell>
       )}
 

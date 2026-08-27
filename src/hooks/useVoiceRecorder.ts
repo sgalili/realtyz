@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { encodeWav, peakLevel } from '@/lib/wavEncoder';
 
 export type VoiceRecorderState = 'idle' | 'recording' | 'transcribing';
@@ -62,7 +63,12 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
           ...(language !== 'auto' ? { language } : {}),
         },
       });
-      if (error) throw error;
+      if (error) {
+        const detail = error instanceof FunctionsHttpError
+          ? await error.context.json().catch(() => null) as { error?: string } | null
+          : null;
+        throw new Error(detail?.error || error.message || 'תמלול נכשל');
+      }
       const text = String((data as { text?: string } | null)?.text ?? '').trim();
       if (!text) throw new Error('לא זוהה דיבור בהקלטה');
       onTranscript?.(text);

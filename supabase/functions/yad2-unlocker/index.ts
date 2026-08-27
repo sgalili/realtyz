@@ -273,7 +273,11 @@ async function unlock(
         if (/client_10090/.test(zoneErr)) bdZoneBroken = true;
         if (/policy_20140|KYC/i.test(zoneErr) && isGw) bdGatewayRestBlocked = true;
         const e = new Error(
-          /policy_20140|KYC/i.test(zoneErr) ? `brightdata_kyc_gateway: ${zoneErr}` : `brightdata_zone_mode: ${zoneErr}`,
+          /client_10020|account is suspended/i.test(zoneErr)
+            ? 'שירות ייבוא יד2 מושעה עקב חשבון Bright Data לא פעיל'
+            : /policy_20140|KYC/i.test(zoneErr)
+              ? `brightdata_kyc_gateway: ${zoneErr}`
+              : `brightdata_zone_mode: ${zoneErr}`,
         );
         (e as Error & { permanent?: boolean }).permanent = true;
         throw e;
