@@ -345,7 +345,7 @@ export default function Landing() {
               </p>
               <Link to="/auth" className="mt-7 inline-block">
                 <Button size="lg" className="h-14 px-8 text-base font-extrabold">
-                  נסו את זה בחינם עכשיו
+                  נסו בחינם עכשיו
                 </Button>
               </Link>
             </div>
