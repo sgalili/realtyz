@@ -1040,12 +1040,23 @@ const InlineComposer = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetListingId]);
 
+  // True once this instance finished restoring (locally or from the cloud).
+  // Auto-generation must wait for it, otherwise a refresh re-writes the draft.
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
     const saved = readDraft() || {};
-    const deepLinked = !!deepLinkListingId;
+    // A saved draft ALWAYS wins over the preset/deep-linked listing: after a
+    // refresh every replica is re-mounted with its preset listing, and wiping
+    // here is exactly what used to erase the operator's 7 drafts.
+    const savedHasWork =
+      String(saved.body || '').trim().length > 0 ||
+      (Array.isArray(saved.attachments) && saved.attachments.length > 0) ||
+      String(saved.firstComment || '').trim().length > 0;
+    const deepLinked = !!deepLinkListingId && !savedHasWork;
     setBody(deepLinked ? '' : cleanBody(saved.body || ''));
     setCustomInstructions(saved.customInstructions || '');
-    setSelectedListingId(deepLinkListingId ?? saved.selectedListingId ?? null);
+    setSelectedListingId(saved.selectedListingId ?? deepLinkListingId ?? null);
     setAttachments(deepLinked ? [] : (saved.attachments || []));
     setLogId(deepLinked ? null : (saved.logId ?? null));
     setFirstComment(deepLinked ? '' : (saved.firstComment || ''));
@@ -1055,28 +1066,35 @@ const InlineComposer = ({
     setMode('now');
     setListingQuery('');
     setSaveState('idle');
+    if (savedHasWork) setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel.id, deepLinkListingId]);
 
   // Cloud fallback: if this browser has no local copy of the draft (cleared
-  // cache, new tab, other device), pull the durable mirror back in.
+  // cache, new tab, other device, new auth session), pull the durable mirror
+  // back in — even for preset/deep-linked replicas.
   useEffect(() => {
-    if (deepLinkListingId) return;
     const local = readDraft();
-    if (local && (String(local.body || '').trim() || (local.attachments || []).length > 0)) return;
+    if (local && (String(local.body || '').trim() || (local.attachments || []).length > 0)) {
+      setHydrated(true);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const cloud = await fetchComposerDraftCloud(channel.id, instanceId ?? 'single');
-      if (cancelled || !cloud) return;
-      if (String(cloud.body || '').trim()) setBody(cleanBody(cloud.body));
-      if (cloud.customInstructions) setCustomInstructions(cloud.customInstructions);
-      if (cloud.selectedListingId) setSelectedListingId(cloud.selectedListingId);
-      if (Array.isArray(cloud.attachments) && cloud.attachments.length) setAttachments(cloud.attachments);
-      if (cloud.logId) setLogId(cloud.logId);
-      if (cloud.firstComment) setFirstComment(cloud.firstComment);
-      if (typeof cloud.firstCommentEnabled === 'boolean') setFirstCommentEnabled(cloud.firstCommentEnabled);
-      if (typeof cloud.attachWaLink === 'boolean') setAttachWaLink(cloud.attachWaLink);
-      if (typeof cloud.attachMsngrLink === 'boolean') setAttachMsngrLink(cloud.attachMsngrLink);
+      if (cancelled) return;
+      if (cloud) {
+        if (String(cloud.body || '').trim()) setBody(cleanBody(cloud.body));
+        if (cloud.customInstructions) setCustomInstructions(cloud.customInstructions);
+        if (cloud.selectedListingId) setSelectedListingId(cloud.selectedListingId);
+        if (Array.isArray(cloud.attachments) && cloud.attachments.length) setAttachments(cloud.attachments);
+        if (cloud.logId) setLogId(cloud.logId);
+        if (cloud.firstComment) setFirstComment(cloud.firstComment);
+        if (typeof cloud.firstCommentEnabled === 'boolean') setFirstCommentEnabled(cloud.firstCommentEnabled);
+        if (typeof cloud.attachWaLink === 'boolean') setAttachWaLink(cloud.attachWaLink);
+        if (typeof cloud.attachMsngrLink === 'boolean') setAttachMsngrLink(cloud.attachMsngrLink);
+      }
+      setHydrated(true);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
