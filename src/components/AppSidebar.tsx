@@ -7,6 +7,7 @@ import {
   Building2,
   Handshake,
   ClipboardList,
+  HelpCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
@@ -184,6 +185,19 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <div className="truncate text-sm font-bold text-slate-900">{userDisplayName}</div>
                   <div className="truncate text-[11px] text-slate-500">{officeName}</div>
                 </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isMobile) setOpenMobile(false);
+                  window.dispatchEvent(new Event('realtyz:start-tour'));
+                }}
+                title="הדרכה מהירה"
+                aria-label="הדרכה מהירה"
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-slate-200 px-2 py-1.5 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+              >
+                <HelpCircle className="h-4 w-4" />
+                הדרכה מהירה
               </button>
             </SidebarGroupContent>
           </SidebarGroup>

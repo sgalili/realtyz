@@ -43,6 +43,7 @@ import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdo
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
+import { MAX_POST_IMAGES, randomImageSet, requestSmartMediaFilter } from '@/lib/listingImages';
 import { resolveMediaUrl, resolveMediaUrls, mediaDedupeKey } from '@/lib/postMediaUrl';
 
 import { stripAddressNumbers } from '@/lib/formatAddress';
@@ -947,6 +948,8 @@ const InlineComposer = ({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>(initial.attachments || []);
+  // True while the property's gallery is being pulled/attached.
+  const [photosLoading, setPhotosLoading] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
 
 
@@ -1153,27 +1156,44 @@ const InlineComposer = ({
   const selectedListing = listings.find((l) => l.id === selectedListingId)
     || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', description: null, city: null, neighborhood: null, address: null, rooms: null, sqm: null, floor: null, asking_price: null, features: null, source_metadata: null, status: null, is_published: null, created_at: null } : null);
 
-  // Always attach the property's first 10 photos when a listing is promoted —
-  // covers deep-links / calendar fan-out / restored drafts, not just manual picks.
+  // Always attach up to 10 RANDOM photos of the promoted property — covers
+  // deep-links / calendar fan-out / restored drafts, not just manual picks.
+  // The server pool (listing_photo_pool) also honours the permanent blocklist
+  // and borrows the twin listing's gallery when this row has no photos, and the
+  // smart vision filter purges logos / photos of people for good.
   const autoPhotoListingRef = useRef<string | null>(null);
   useEffect(() => {
     if (!selectedListingId) return;
     if (autoPhotoListingRef.current === selectedListingId) return;
     let cancelled = false;
+    setPhotosLoading(true);
     (async () => {
       const local = listings.find((l) => l.id === selectedListingId) || null;
-      let urls = extractListingPhotoUrls(local as CampaignListing | null).slice(0, 10);
-      if (urls.length === 0) {
+      let pool: string[] = [];
+      try {
+        const { data } = await (supabase as any).rpc('listing_photo_pool', {
+          _listing_id: selectedListingId,
+        });
+        pool = (Array.isArray(data) ? data : []).filter(
+          (u: unknown): u is string => typeof u === 'string' && /^https?:\/\//i.test(u),
+        );
+      } catch { /* fall back to the locally cached gallery */ }
+      if (pool.length === 0) pool = extractListingPhotoUrls(local as CampaignListing | null);
+      if (pool.length === 0) {
         try {
           const { data } = await supabase
             .from('listings')
             .select('id, property_title, address, media_photos, source_metadata')
             .eq('id', selectedListingId)
             .maybeSingle();
-          if (data) urls = extractListingPhotoUrls(data as unknown as CampaignListing).slice(0, 10);
+          if (data) pool = extractListingPhotoUrls(data as unknown as CampaignListing);
         } catch { /* ignore */ }
       }
-      if (cancelled || urls.length === 0) return;
+      // Background cleanup: permanently drop logo-only frames and photos of people.
+      requestSmartMediaFilter(selectedListingId);
+      const urls = randomImageSet(pool, MAX_POST_IMAGES);
+      if (cancelled) return;
+      if (urls.length === 0) { setPhotosLoading(false); return; }
       autoPhotoListingRef.current = selectedListingId;
       const label = (local?.property_title || local?.address || 'property') as string;
       setAttachments((curr) => {
@@ -1183,12 +1203,13 @@ const InlineComposer = ({
         const nonImages = curr.filter((a) => a.kind !== 'image');
         const images = curr.filter((a) => a.kind === 'image');
         const added = missing
-          .slice(0, Math.max(0, 10 - images.length))
+          .slice(0, Math.max(0, MAX_POST_IMAGES - images.length))
           .map((u, i) => ({ name: `${label}-${images.length + i + 1}.jpg`, kind: 'image' as const, url: u }));
         return [...images, ...added, ...nonImages];
       });
+      setPhotosLoading(false);
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; setPhotosLoading(false); };
   }, [selectedListingId, listings]);
 
   useEffect(() => {
@@ -1828,6 +1849,12 @@ const InlineComposer = ({
               </button>
             </PopoverContent>
           </Popover>
+          {photosLoading && (
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              מייבא תמונות הנכס…
+            </span>
+          )}
           {attachments.length > 0 && (
             <div className="relative flex items-center gap-1 flex-nowrap flex-1 min-w-0 overflow-x-auto">
               {attachments.map((att, i) => {

@@ -162,10 +162,27 @@ export function ProductTour() {
     }
   };
 
+  // Manual replay (the "?" button in the sidebar) always opens the tour.
+  useEffect(() => {
+    const replay = () => { setIndex(0); setOpen(true); };
+    window.addEventListener('realtyz:start-tour', replay);
+    return () => window.removeEventListener('realtyz:start-tour', replay);
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     const key = `${LOCAL_KEY}:${user.id}`;
     if (window.localStorage.getItem(key) === '1') return;
+
+    // Auto-open only for brand-new signups. Existing accounts are marked as
+    // done silently and can replay the tour from the sidebar "?" button.
+    const createdAt = Date.parse(String((user as any).created_at ?? '')) || 0;
+    const isNewSignup = createdAt > 0 && Date.now() - createdAt < 10 * 60_000;
+    if (!isNewSignup) {
+      window.localStorage.setItem(key, '1');
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       const { data } = await supabase
