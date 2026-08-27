@@ -152,7 +152,7 @@ export function VoiceAgentPanel() {
         </div>
 
         <div className="space-y-2">
-          <Label>מספר טלפון (אופציונלי)</Label>
+          <Label>מספר טלפון</Label>
           <Input
             placeholder="לדוגמה: +972-50-123-4567"
             value={row.elevenlabs_phone_number || ''}

@@ -293,7 +293,7 @@ export function PersonaCalibrationPanel() {
             <Textarea
               value={enquiry}
               onChange={(e) => setEnquiry(e.target.value)}
-              placeholder="טקסט הפנייה (אופציונלי). אם תשאיר ריק, תופעל פנייה לדוגמה על דירת 4 חדרים, מחיר וחניה."
+              placeholder="טקסט הפנייה. אם תשאיר ריק, תופעל פנייה לדוגמה על דירת 4 חדרים, מחיר וחניה."
               className="min-h-[80px] text-sm"
               maxLength={1500}
             />

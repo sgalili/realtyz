@@ -177,7 +177,7 @@ export function AgentPersonaPanel() {
 
             {/* Signature */}
             <div className="grid gap-1.5">
-              <Label htmlFor="vt-signature" className="text-xs font-semibold">חתימה (אופציונלי)</Label>
+              <Label htmlFor="vt-signature" className="text-xs font-semibold">חתימה</Label>
               <Input
                 id="vt-signature"
                 value={signature}

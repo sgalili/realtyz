@@ -274,7 +274,7 @@ export default function AiDialer() {
             {showActions && (
               <div className="rounded-2xl border border-[#0f1b3d]/15 bg-background p-4 space-y-3">
                 <label className="text-[13px] font-semibold text-[#0f1b3d] text-right block">
-                  הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
+                  הוראות, נושא או תסריט מותאם לשיחה
                 </label>
                 <Textarea value={instructions} onChange={(e) => setInstructions(e.target.value)}
                   className="text-right min-h-[110px] rounded-xl border-[#0f1b3d]/20 bg-muted/30" />

@@ -75,7 +75,7 @@ const PLATFORMS: Platform[] = [
     link: { url: 'https://platform.openai.com/api-keys', label: 'OpenAI API Keys' },
     instructions: [
       'platform.openai.com → API Keys → Create new secret key.',
-      'אופציונלי – נדרש רק אם רוצים גיבוי לקריאות LLM ישירות.',
+      ' – נדרש רק אם רוצים גיבוי לקריאות LLM ישירות.',
     ],
     fields: [{ name: 'api_key', label: 'OpenAI API Key', type: 'password' }],
   },

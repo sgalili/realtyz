@@ -1025,7 +1025,7 @@ const ApiSettings = () => {
             <div className="space-y-1">
               <Label className="text-xs">סוכן ברירת מחדל</Label>
               <Input
-                placeholder="אילן (אופציונלי)"
+                placeholder="אילן"
                 value={homelyDefaultAgent}
                 onChange={(e) => setHomelyDefaultAgent(e.target.value)}
               />
@@ -1279,7 +1279,7 @@ const ApiSettings = () => {
             <Input placeholder="123456789" value={metaPageId} onChange={(e) => setMetaPageId(e.target.value)} dir="ltr" />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs">Pixel ID (אופציונלי)</Label>
+            <Label className="text-xs">Pixel ID</Label>
             <Input placeholder="123456789" value={metaPixelId} onChange={(e) => setMetaPixelId(e.target.value)} dir="ltr" />
           </div>
         </div>
@@ -1469,7 +1469,7 @@ const ApiSettings = () => {
             <Input placeholder="https://n8n.your-domain.com/webhook/..." value={n8nWebhookUrl} onChange={(e) => setN8nWebhookUrl(e.target.value)} dir="ltr" />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs">מפתח אימות (אופציונלי)</Label>
+            <Label className="text-xs">מפתח אימות</Label>
             <div className="relative">
               <Input placeholder="Bearer token..." type={showKeys.n8n ? 'text' : 'password'} value={n8nApiKey} onChange={(e) => setN8nApiKey(e.target.value)} dir="ltr" className="pl-9" />
               <Button variant="ghost" size="icon" className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowKeys((p) => ({ ...p, n8n: !p.n8n }))}>

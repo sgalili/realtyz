@@ -258,7 +258,7 @@ export function WhatsAppConversationImporter() {
         </div>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <label className="font-medium">שם סוכן (עקיפה אופציונלית):</label>
+          <label className="font-medium">שם סוכן (עקיפה ):</label>
           <input
             type="text"
             placeholder="זיהוי אוטומטי מהשולח הפעיל ביותר"

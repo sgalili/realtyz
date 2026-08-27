@@ -119,7 +119,7 @@ export const NewWhatsAppChatDialog = ({ open, onOpenChange, onStarted, currentUs
             />
           </div>
           <div className="space-y-1.5">
-            <Label>שם (אופציונלי)</Label>
+            <Label>שם</Label>
             <Input
               className="bg-blue-50 border-blue-200"
               placeholder="שם המתעניין"

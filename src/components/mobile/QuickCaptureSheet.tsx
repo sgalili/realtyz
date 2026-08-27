@@ -81,7 +81,7 @@ export function QuickCaptureSheet({ open, onOpenChange }: QuickCaptureSheetProps
 
         <div className="grid gap-3 py-4">
           <div className="grid gap-1.5">
-            <Label htmlFor="qc-title" className="text-xs">כותרת (אופציונלי)</Label>
+            <Label htmlFor="qc-title" className="text-xs">כותרת</Label>
             <Input
               id="qc-title"
               value={title}

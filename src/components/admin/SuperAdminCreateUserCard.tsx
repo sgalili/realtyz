@@ -95,7 +95,7 @@ export function SuperAdminCreateUserCard() {
           <Input id="su-name" value={fullName} onChange={(e) => setFullName(e.target.value)} onKeyDown={blockEnter} placeholder="שם מלא" />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="su-phone">טלפון WhatsApp (אופציונלי)</Label>
+          <Label htmlFor="su-phone">טלפון WhatsApp</Label>
           <Input id="su-phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} onKeyDown={blockEnter} placeholder="05X-XXXXXXX" />
         </div>
         <div className="grid gap-1.5">

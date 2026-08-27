@@ -402,7 +402,7 @@ export default function KnowledgeBase() {
                 <Input
                   value={textTitle}
                   onChange={(e) => setTextTitle(e.target.value)}
-                  placeholder="כותרת (אופציונלי)"
+                  placeholder="כותרת"
                 />
                 <Textarea
                   value={textBody}
@@ -472,7 +472,7 @@ export default function KnowledgeBase() {
                     <Input
                       value={voiceTitle}
                       onChange={(e) => setVoiceTitle(e.target.value)}
-                      placeholder="כותרת (אופציונלי)"
+                      placeholder="כותרת"
                     />
                     <Textarea
                       value={voiceText}
@@ -483,7 +483,7 @@ export default function KnowledgeBase() {
                     <Textarea
                       value={voiceIntent}
                       onChange={(e) => setVoiceIntent(e.target.value)}
-                      placeholder="מה ללמוד מההקלטה הזו? (אופציונלי)"
+                      placeholder="מה ללמוד מההקלטה הזו?"
                       className="min-h-[60px]"
                     />
                     <div className="flex justify-between gap-2">
