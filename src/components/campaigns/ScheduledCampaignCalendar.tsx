@@ -108,6 +108,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
   const [listingsPopoverOpen, setListingsPopoverOpen] = useState(false);
   // Max posts allowed per day for EACH selected group (0 = unlimited).
   const [groupDailyLimit, setGroupDailyLimit] = useState<number>(0);
+  const groupsHydratedRef = useRef(false);
 
 
   // Restore the broker's last dialog configuration (window, count, recurrence,
@@ -127,6 +128,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
       // create-post bar.
       const shared = loadCampaignGroups(workspaceOwnerId);
       setSelectedGroupIds(shared.length ? shared : prefs.selectedGroupIds);
+      groupsHydratedRef.current = true;
     }
 
     setRecurrence(prefs.recurrence);
@@ -175,7 +177,11 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
       selectedListingIds, selectedGroupIds, groupDailyLimit,
     });
     // Group selection is shared with the create-post bar — one source of truth.
-    saveCampaignGroups(workspaceOwnerId, selectedGroupIds);
+    // Opening the dialog briefly renders an empty array before preferences are
+    // restored. Do not overwrite the shared selection during that frame.
+    if (groupsHydratedRef.current && selectedGroupIds.length > 0) {
+      saveCampaignGroups(workspaceOwnerId, selectedGroupIds);
+    }
   }, [scheduleDay, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedListingIds, selectedGroupIds, groupDailyLimit]);
 
 
