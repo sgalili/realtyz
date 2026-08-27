@@ -193,8 +193,8 @@ export function WhatsAppGatewayCard() {
       <CardHeader>
         <CardTitle className="text-right flex items-center gap-2 justify-end">
           {status === 'ok' && (
-            <Badge variant="outline" className="gap-1 text-emerald-700 border-emerald-300">
-              <CheckCircle2 className="h-3 w-3" /> פעיל
+            <Badge className="gap-1 rounded-full border-0 bg-emerald-600 px-3 py-1 text-[12px] font-bold text-white hover:bg-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.75} /> פעיל
             </Badge>
           )}
           <span>מספר אישי בסריקת QR (Green API)</span>

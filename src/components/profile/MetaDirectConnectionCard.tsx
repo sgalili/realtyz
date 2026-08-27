@@ -458,7 +458,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
   const actionButtons = (
     <>
-      <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="h-8 gap-1.5 text-[15px]">
+      <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="h-8 gap-1.5 text-[12px]">
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />}
         בדיקה
       </Button>

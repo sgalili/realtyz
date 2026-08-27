@@ -57,7 +57,7 @@ export function ExtensionDownloadButton({ className }: { className?: string }) {
         variant="outline"
         aria-disabled={installed}
         title={installed ? 'התוסף מותקן — לחיצה תוריד אותו מחדש' : 'הורד את תוסף סנכרון הקבוצות'}
-        className={cn('h-8 gap-1 text-[15px]', installed && 'opacity-50', className)}
+        className={cn('h-8 gap-1 text-[12px]', installed && 'opacity-50', className)}
         onClick={download}
       >
         <Download className="h-3.5 w-3.5" /> תוסף

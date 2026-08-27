@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { ExternalLink, Loader2, Users } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { shortenName } from '@/lib/shortenName';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; selected: boolean };
@@ -128,7 +129,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                     {g.icon ? (
                       <img src={g.icon} alt={g.name} className="h-5 w-5 rounded object-cover" loading="lazy" />
                     ) : null}
-                    <span className={cn('min-w-0 flex-1 truncate', TEXT_MD)}>{g.name}</span>
+                    <span className={cn('min-w-0 flex-1 truncate', TEXT_MD)}>{shortenName(g.name)}</span>
                   </label>
                   <button
                     type="button"
