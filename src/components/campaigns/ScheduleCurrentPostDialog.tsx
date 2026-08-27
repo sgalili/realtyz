@@ -551,6 +551,17 @@ export function ScheduleCurrentPostDialog({
             series_id: seriesId,
             series_index: i,
             series_total: slots.length,
+            // Endless rolling repeat: the dispatcher uses this rule to create
+            // the NEXT single version only after this one was published.
+            recurrence_rule: recurrence === 'none' ? null : {
+              pattern: recurrence,
+              days: recurrenceDays,
+              win_start: winStart,
+              win_end: winEnd,
+              per_day: Math.max(1, winCount),
+              endless: true,
+            },
+
           });
 
           try {
