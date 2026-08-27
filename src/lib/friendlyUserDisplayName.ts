@@ -12,8 +12,11 @@ export function friendlyUserDisplayName(user: AuthUserLike, fallback = 'ללא �
   const named = [meta.full_name, meta.name, meta.display_name]
     .find((value) => typeof value === 'string' && value.trim()) as string | undefined;
   if (named) return named.trim();
-  const email = String(user?.email ?? '').trim();
-  if (email && !isSyntheticWhatsAppEmail(email)) return email;
-  const phone = String(user?.phone ?? '').trim();
-  return phone || fallback;
+  // Never fall back to an email address or a phone number: the default display
+  // name is always the neutral Hebrew placeholder.
+  return fallback;
+}
+
+export function isSyntheticEmail(value: string | null | undefined): boolean {
+  return !!value && isSyntheticWhatsAppEmail(String(value));
 }
