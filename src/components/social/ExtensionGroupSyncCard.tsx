@@ -102,7 +102,13 @@ export function ExtensionGroupSyncCard({
   };
 
   return (
-    <div dir="rtl" className={cn('flex flex-wrap items-center gap-2 text-right', className)}>
+    <div
+      dir="rtl"
+      className={cn(
+        'flex items-center gap-1.5 overflow-x-auto text-right [&>*]:shrink-0',
+        className,
+      )}
+    >
       <Button type="button" size="sm" className="h-8 gap-1 text-[12px]" onClick={() => setOpen(true)} disabled={saving}>
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />} סנכרון
       </Button>
