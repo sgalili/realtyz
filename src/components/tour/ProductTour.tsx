@@ -13,7 +13,7 @@ import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 
 /* Realtyz — סיור מוצר לנרשמים חדשים.
-   טקסט גדול, הסברים קצרים, וכולל מקטע תמחור לפי איש קשר פעיל. */
+   טקסט גדול, הסברים קצרים, וכולל מקטע תמחור לפי חבילות. */
 
 type TourStep = {
   eyebrow: string;
