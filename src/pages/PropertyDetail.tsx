@@ -1506,17 +1506,21 @@ export default function PropertyDetail() {
           )}
 
 
-          {/* Description — editable text only (no heading in view mode) */}
+          {/* Descriptions — every text field on the listing is editable */}
           {editMode && form && (
-            <Card className="p-4 sm:p-5">
-              <Textarea
-                dir="rtl"
-                rows={8}
-                value={form.description}
-                onChange={(e) => setField('description', e.target.value)}
-              />
+            <Card className="space-y-4 p-4 sm:p-5">
+              <Field label="תיאור ראשי">
+                <Textarea dir="rtl" rows={8} value={form.description} onChange={(e) => setField('description', e.target.value)} />
+              </Field>
+              <Field label="תיאור קצר">
+                <Textarea dir="rtl" rows={3} value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} />
+              </Field>
+              <Field label="תיאור מלא (מהמקור)">
+                <Textarea dir="rtl" rows={10} value={form.long_description} onChange={(e) => setField('long_description', e.target.value)} />
+              </Field>
             </Card>
           )}
+
 
           {!editMode && documents.length > 0 && (
             <Card className="p-4 sm:p-5">
