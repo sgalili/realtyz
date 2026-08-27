@@ -5446,6 +5446,32 @@ const CampaignCenter = () => {
   // Bump to force-remount the InlineComposer so its body/selectedListingId/media
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+
+  // Wipes every draft in the multi-draft composer: local snapshots, the durable
+  // cloud mirror and the composer session. Nothing published is touched.
+  const deleteAllDrafts = async () => {
+    const chan = pickedChannel?.id ?? 'facebook';
+    try {
+      for (const store of [localStorage, sessionStorage]) {
+        const keys: string[] = [];
+        for (let i = 0; i < store.length; i++) {
+          const k = store.key(i);
+          if (k && (k.startsWith('rz-composer-draft:') || k.startsWith('rz-composer-session:'))) keys.push(k);
+        }
+        keys.forEach((k) => store.removeItem(k));
+      }
+      sessionStorage.removeItem('rz-schedule-assignments');
+    } catch { /* ignore */ }
+    setRestoredSession(null);
+    await Promise.allSettled([clearComposerSession(chan), clearComposerDraftsCloud(chan)]);
+    setDraftStatuses({});
+    setPublishedDrafts(new Set());
+    setComposerResetTick((n) => n + 1);
+    setDeleteAllOpen(false);
+    toast.success('כל הטיוטות נמחקו');
+    setSearchParams(new URLSearchParams());
+  };
   // Unpublished multi-property draft session (properties + slots + variants).
   // Restored from localStorage instantly and from the cloud right after, so
   // leaving the page or refreshing never loses the open drafts.
@@ -6160,6 +6186,15 @@ const CampaignCenter = () => {
                     )}
                     <button
                       type="button"
+                      onClick={() => setDeleteAllOpen(true)}
+                      title="מחק את כל הטיוטות"
+                      aria-label="מחק את כל הטיוטות"
+                      className="inline-flex items-center justify-center rounded-xl border border-destructive/30 bg-card px-4 py-3 text-destructive shadow-sm transition hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setBulkGlobalScheduleOpen(true)}
                       title="תזמון קמפיין גלובלי לכל הטיוטות"
                       aria-label="תזמון קמפיין גלובלי לכל הטיוטות"
@@ -6186,7 +6221,7 @@ const CampaignCenter = () => {
                     )}
                     <button
                       type="button"
-                      onClick={() => publishAllDrafts(blocks.map((b, idx) => `${idx}-${b.listing || 'na'}`))}
+                      onClick={() => publishAllDrafts(blocks.map((b, idx) => draftKeyFor(b, idx)))}
                       disabled={readyKeys.length === 0}
                       className={cn(
                         'flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
