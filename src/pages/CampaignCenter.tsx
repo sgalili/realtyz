@@ -5352,8 +5352,8 @@ const CampaignCenter = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const { settings } = useWhiteLabel();
+
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
   const [pickedChannelIds, setPickedChannelIds] = useState<Set<string>>(new Set());
