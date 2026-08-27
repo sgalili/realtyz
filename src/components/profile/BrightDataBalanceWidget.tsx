@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw, Wallet, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw, Wallet, AlertTriangle, ExternalLink } from 'lucide-react';
 
 export type BrightDataBalance = {
   ok: boolean;
@@ -48,10 +48,18 @@ export function BrightDataBalanceWidget({
             <Badge variant="outline" className="text-emerald-700 border-emerald-300">Zone פעיל</Badge>
           )}
         </div>
+        <div className="flex items-center gap-1">
+        <Button size="sm" variant="ghost" asChild className="h-7 gap-1 px-2">
+          <a href="https://brightdata.com/cp/billing/settings" target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span className="text-xs">טעינת קרדיט</span>
+          </a>
+        </Button>
         <Button size="sm" variant="ghost" onClick={onRefresh} disabled={loading} className="h-7 gap-1 px-2">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           <span className="text-xs">רענון</span>
         </Button>
+        </div>
       </div>
 
       {data?.ok ? (
