@@ -450,17 +450,53 @@ export default function Properties() {
   }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results]);
 
 
-  // When the user commits a URL (Yad2) in the search box, hand off to
-  // the quick-import flow via AddPropertyDialog.
-  const submitQuery = useCallback(() => {
+  // A pasted Yad2 link is scraped end-to-end on the spot (full page: details,
+  // gallery, description) and the user lands directly on the imported card.
+  const submitQuery = useCallback(async () => {
     const raw = q.trim();
-    if (/^https?:\/\/\S+/i.test(raw)) {
+    const url = raw.match(/https?:\/\/\S+/i)?.[0];
+    if (url && /yad2\.co\.il/i.test(url)) {
+      const toastId = toast.loading('סורק את עמוד יד2 ומייבא את כל הפרטים…');
+      setSearching(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('yad2-unlocker', {
+          body: { url, limit: 1, pages: 1 },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(String(data.detail || data.error));
+        const row = Array.isArray(data?.results) ? data.results[0] : null;
+        if (!row) throw new Error('לא הצלחתי לחלץ נתונים מהעמוד הזה');
+
+        let localId: string | null = null;
+        if (row.external_id) {
+          const { data: found } = await supabase
+            .from('listings').select('id')
+            .eq('source', 'yad2').eq('external_id', String(row.external_id)).limit(1);
+          localId = found?.[0]?.id ?? null;
+        }
+        if (!localId && row.source_url) {
+          const { data: found } = await supabase
+            .from('listings').select('id').eq('source_url', row.source_url).limit(1);
+          localId = found?.[0]?.id ?? null;
+        }
+        toast.success('הנכס יובא מיד2', { id: toastId });
+        if (localId) { navigate(`/properties/${localId}`); return; }
+        toast.info('הנכס נסרק אך לא נשמר במאגר — נסה שוב', { id: toastId });
+      } catch (e: any) {
+        toast.error('ייבוא מיד2 נכשל: ' + String(e?.message ?? 'שגיאה'), { id: toastId });
+      } finally {
+        setSearching(false);
+      }
+      return;
+    }
+    if (url) {
       setQuickLinkSeed(raw);
       setAddOpen(true);
       return;
     }
     runSearch();
-  }, [q, runSearch]);
+  }, [q, runSearch, navigate]);
+
 
   // Local rows navigate immediately. Starting a full source scrape here used
   // to compete with the detail query for bandwidth and backend capacity; the
