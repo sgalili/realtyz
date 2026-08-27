@@ -1275,8 +1275,29 @@ const InlineComposer = ({
     return () => { cancelled = true; };
   }, [listingPickerOpen]);
 
+  // The full listing list is only loaded when the picker opens, so a deep-linked
+  // draft fetches its own row. That way the card title shows the REAL property
+  // (type + address) instead of a generic placeholder.
+  const [soloListing, setSoloListing] = useState<CampaignListing | null>(null);
+  useEffect(() => {
+    if (!selectedListingId) { setSoloListing(null); return; }
+    if (listings.some((l) => l.id === selectedListingId)) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
+        .eq('id', selectedListingId)
+        .maybeSingle();
+      if (!cancelled && data) setSoloListing(data as unknown as CampaignListing);
+    })();
+    return () => { cancelled = true; };
+  }, [selectedListingId, listings]);
+
   const selectedListing = listings.find((l) => l.id === selectedListingId)
-    || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', description: null, city: null, neighborhood: null, address: null, rooms: null, sqm: null, floor: null, asking_price: null, features: null, source_metadata: null, status: null, is_published: null, created_at: null } : null);
+    || (soloListing && soloListing.id === selectedListingId ? soloListing : null)
+    || (selectedListingId ? { id: selectedListingId, property_title: null, description: null, city: null, neighborhood: null, address: null, rooms: null, sqm: null, floor: null, asking_price: null, features: null, source_metadata: null, media_photos: null, status: null, is_published: null, created_at: null } as CampaignListing : null);
+
 
   // Always attach up to 10 RANDOM photos of the promoted property — covers
   // deep-links / calendar fan-out / restored drafts, not just manual picks.
