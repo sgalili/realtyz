@@ -892,20 +892,35 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   .flatMap((day) => buildDaySlots(day))
                   .sort((a, b) => a.getTime() - b.getTime());
 
-                // Distribute properties across slots (round-robin) and compute
-                // per-listing variant index so the composer can synthesize
-                // distinct copy variations when the same property repeats.
-                const picks = selectedListingIds;
-                const perListingTotal = new Map<string, number>();
-                if (picks.length > 0) {
-                  for (let i = 0; i < slots.length; i++) {
-                    const lid = picks[i % picks.length];
-                    perListingTotal.set(lid, (perListingTotal.get(lid) || 0) + 1);
+                // Persist the per-group daily cap the broker typed.
+                if (selectedGroupIds.length > 0) {
+                  void saveGroupDailyLimit(selectedGroupIds, groupDailyLimit > 0 ? groupDailyLimit : null);
+                }
+
+                // Distribute properties across slots RANDOMLY (each cycle is a
+                // fresh shuffle, so no run posts the properties in list order)
+                // and compute per-listing variant index so the composer can
+                // synthesize distinct copy variations when a property repeats.
+                const shuffleIds = (arr: string[]) => {
+                  const out = [...arr];
+                  for (let i = out.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [out[i], out[j]] = [out[j], out[i]];
                   }
+                  return out;
+                };
+                const picks: string[] = [];
+                if (selectedListingIds.length > 0) {
+                  while (picks.length < slots.length) picks.push(...shuffleIds(selectedListingIds));
+                }
+                const perListingTotal = new Map<string, number>();
+                for (let i = 0; i < slots.length && picks.length > 0; i++) {
+                  const lid = picks[i];
+                  perListingTotal.set(lid, (perListingTotal.get(lid) || 0) + 1);
                 }
                 const seenByListing = new Map<string, number>();
                 const assignments = slots.map((d, i) => {
-                  const lid = picks.length > 0 ? picks[i % picks.length] : null;
+                  const lid = picks.length > 0 ? picks[i] : null;
                   let variant = 1;
                   let totalVariants = 1;
                   if (lid) {
@@ -916,6 +931,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   }
                   return { iso: d.toISOString(), listing: lid, variant, totalVariants };
                 });
+
 
                 try {
                   sessionStorage.setItem('rz-schedule-queue', JSON.stringify(assignments.slice(1)));
