@@ -6,6 +6,7 @@ import {
   MessageCircle,
   Building2,
   Handshake,
+  ClipboardList,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
