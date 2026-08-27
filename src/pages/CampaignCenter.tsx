@@ -5906,40 +5906,71 @@ const CampaignCenter = () => {
             const blocks = assignments.length > 0
               ? assignments
               : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
+            const readyKeys = blocks
+              .map((b, idx) => `${idx}-${b.listing || 'na'}`)
+              .filter((k) => draftStatuses[k]?.canPublish && !publishedDrafts.has(k));
             return (
-              <div className="space-y-4">
+              <div className="space-y-4 pb-24">
                 <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
                   נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
-                {blocks.map((b, idx) => (
+                {blocks.map((b, idx) => {
+                  const key = `${idx}-${b.listing || 'na'}`;
+                  return (
                   <DraftCollapsibleCard
                     key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`}
                     index={idx}
                     iso={b.iso}
                     variant={b.variant}
                     totalVariants={b.totalVariants}
-                    status={draftStatuses[`${idx}-${b.listing || 'na'}`] ?? null}
+                    status={draftStatuses[key] ?? null}
+                    published={publishedDrafts.has(key)}
+                    onPublish={() => { publishDraft(key); }}
                   >
                     <InlineComposer
                       channel={pickedChannel}
                       brandName={brandName}
                       socialProfiles={socialAccountProfiles}
-                      onConfirm={(p) => setConfirmPayload(p)}
+                      onConfirm={(p) => { activeDraftKeyRef.current = key; setConfirmPayload(p); }}
                       onOpenScheduleCalendar={() => handleChange('calendar')}
                       presetListingId={b.listing}
                       presetScheduleIso={b.iso}
                       presetVariant={b.variant}
                       presetVariants={b.totalVariants}
-                      instanceId={`${idx}-${b.listing || 'na'}`}
+                      instanceId={key}
+                      onRegisterPublish={(fn) => {
+                        if (fn) publishFnsRef.current.set(key, fn);
+                        else publishFnsRef.current.delete(key);
+                      }}
                       onStatus={(s) => setDraftStatuses((curr) => (
-                        curr[`${idx}-${b.listing || 'na'}`] &&
-                        JSON.stringify(curr[`${idx}-${b.listing || 'na'}`]) === JSON.stringify(s)
+                        curr[key] && JSON.stringify(curr[key]) === JSON.stringify(s)
                           ? curr
-                          : { ...curr, [`${idx}-${b.listing || 'na'}`]: s }
+                          : { ...curr, [key]: s }
                       ))}
                     />
                   </DraftCollapsibleCard>
-                ))}
+                  );
+                })}
+                {/* Bulk dispatch — publishes every ready draft one after another. */}
+                <div className="sticky bottom-2 z-40 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
+                  <button
+                    type="button"
+                    onClick={() => publishAllDrafts(blocks.map((b, idx) => `${idx}-${b.listing || 'na'}`))}
+                    disabled={readyKeys.length === 0}
+                    className={cn(
+                      'flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
+                      readyKeys.length
+                        ? 'bg-[hsl(217,80%,18%)] text-white shadow-md hover:bg-[hsl(217,80%,14%)]'
+                        : 'cursor-not-allowed bg-muted text-muted-foreground/80',
+                    )}
+                  >
+                    <Megaphone className="h-4 w-4" />
+                    פרסם את כל הטיוטות ({readyKeys.length})
+                  </button>
+                  <p className="mt-1 text-center text-[11px] text-muted-foreground">
+                    כל טיוטה מוכנה תישלח לאישור ושיגור בתור, אחת אחרי השנייה.
+                  </p>
+                </div>
               </div>
             );
           })()}
