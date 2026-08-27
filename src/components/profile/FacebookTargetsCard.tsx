@@ -127,8 +127,12 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                   <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-[11px]">
                     <Checkbox checked={g.selected} onCheckedChange={() => void toggleGroup(g)} />
                     {g.icon ? (
-                      <img src={g.icon} alt={g.name} className="h-5 w-5 rounded object-cover" loading="lazy" />
-                    ) : null}
+                      <img src={g.icon} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+                        {g.name.trim().charAt(0) || '?'}
+                      </div>
+                    )}
                     <span className={cn('min-w-0 flex-1 truncate', TEXT_MD)}>{shortenName(g.name)}</span>
                   </label>
                   <button

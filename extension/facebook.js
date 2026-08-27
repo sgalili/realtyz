@@ -8,7 +8,11 @@
       if (!id || ['joins', 'feed', 'discover', 'create'].includes(id)) return;
       const name = (a.innerText || '').trim().split('\n')[0];
       if (!name) return;
-      const icon = a.querySelector('img')?.src || null;
+      const row = a.closest('[role="listitem"], [role="row"], li, div');
+      const image = a.querySelector('img') || row?.querySelector('img');
+      const backgroundNode = row?.querySelector('[style*="background-image"]');
+      const background = backgroundNode?.style?.backgroundImage?.match(/url\(["']?([^"')]+)["']?\)/)?.[1] || null;
+      const icon = image?.currentSrc || image?.src || background;
       if (!map.has(id)) {
         map.set(id, { group_id: id, group_name: name, group_icon: icon, group_url: `https://www.facebook.com/groups/${id}` });
       }

@@ -121,7 +121,7 @@ async function runMetadataSync(
     }, 150);
     await withTimeout(
       Promise.resolve(supabase.functions.invoke('yad2-unlocker', { body: { url: sourceUrl, limit: 1 } })),
-      14000,
+      60000,
       'metadata scrape',
     );
     clearInterval(creep);
@@ -133,16 +133,19 @@ async function runMetadataSync(
   await Promise.allSettled([
     withTimeout(
       Promise.resolve(supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } })),
-      12000,
+      30000,
       'metadata backfill',
     ).finally(tick),
     withTimeout(
       Promise.resolve(supabase.functions.invoke('owner-crm-sync', { body: { listing_id: listingId } })),
-      12000,
+      30000,
       'owner crm sync',
     ).finally(tick),
   ]);
-  metaCachedIds.add(listingId);
+  // Only cache a proven-complete row. A timed-out scraper keeps running on the
+  // server, so marking the id complete here used to leave the current tab with
+  // its original thin snapshot forever.
+  if (await isListingMetadataImported(listingId)) metaCachedIds.add(listingId);
   step(100);
 }
 
