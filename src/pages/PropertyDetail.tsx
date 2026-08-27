@@ -875,9 +875,22 @@ export default function PropertyDetail() {
   const isRent = property.price < 50_000;
   // Hard-override: render straight from listing.media_photos (dbPhotos). No filtering,
   // no "broken" gating, no live-image fallback. If the DB has photos, they render.
-  const photos = editMode && form
-    ? form.photos
-    : Array.from(new Set([...dbPhotos, ...streamPhotos]));
+  // Attached videos (media_documents / source_metadata) join the same carousel so
+  // they get a real player, arrows and a thumbnail like any other media item.
+  const videoMedia = Array.from(new Set(
+    [
+      ...documents.map((d) => (typeof d === 'string' ? d : (d as any)?.url ?? '')),
+      String((meta as any)?.video_url ?? ''),
+      String((meta as any)?.video ?? ''),
+      ...(Array.isArray((meta as any)?.videos) ? (meta as any).videos.map((v: unknown) => String(v ?? '')) : []),
+    ]
+      .map((u) => String(u || '').trim())
+      .filter((u) => /^https?:\/\//i.test(u) && /\.(mp4|mov|m4v|webm|ogv|3gp)(\?|#|$)/i.test(u)),
+  ));
+  const photos = Array.from(new Set([
+    ...(editMode && form ? form.photos : [...dbPhotos, ...streamPhotos]),
+    ...videoMedia,
+  ]));
   const main = photos[activePhoto];
   // Total images the SOURCE page advertises — shown even before mirroring.
   const totalSourcePhotos = sourcePhotoCount(
