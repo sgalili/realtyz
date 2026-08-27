@@ -638,23 +638,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             </div>
           )}
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="gap-1.5">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            בדיקת חיבור
-          </Button>
-          {isConnected && (
-            <>
-              <Button variant="outline" size="sm" onClick={connect} disabled={connecting} className="gap-1.5">
-                <Facebook className="h-4 w-4" /> החלף עמוד
-              </Button>
-              <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting} className="gap-1.5 text-destructive">
-                {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />} נתק
-              </Button>
-            </>
-          )}
-        </div>
       </CardContent>
     </Card>
   );
