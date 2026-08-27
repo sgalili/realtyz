@@ -889,17 +889,23 @@ const InlineComposer = ({
 
 
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
-  // Persisted to localStorage so a reload / background refresh doesn't wipe the selection.
-  const [groupIds, setGroupIds] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem('campaign:groupIds');
-      const parsed = raw ? JSON.parse(raw) : null;
-      return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
-    } catch { return []; }
-  });
+  // Persisted to localStorage (per workspace) so a reload / background refresh
+  // doesn't wipe the selection, and the bulk picker stays in sync with drafts.
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const groupStorageKey = workspaceOwnerId ? `campaign:groupIds:${workspaceOwnerId}` : 'campaign:groupIds';
+  const [groupIds, setGroupIds] = useState<string[]>([]);
   useEffect(() => {
-    try { localStorage.setItem('campaign:groupIds', JSON.stringify(groupIds)); } catch {}
-  }, [groupIds]);
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(groupStorageKey) || localStorage.getItem('campaign:groupIds');
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed) && parsed.length) setGroupIds(parsed.filter((x) => typeof x === 'string'));
+    } catch {}
+  }, [groupStorageKey]);
+  useEffect(() => {
+    try { localStorage.setItem(groupStorageKey, JSON.stringify(groupIds)); } catch {}
+  }, [groupIds, groupStorageKey]);
+
 
   // Group picker modal (opened from the group icon button next to "פרסם").
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
@@ -5283,6 +5289,38 @@ const CampaignCenter = () => {
   const [bulkScheduleIso, setBulkScheduleIso] = useState<string | null>(null);
   const [bulkGroupPickerOpen, setBulkGroupPickerOpen] = useState(false);
   const [bulkScheduleDialogOpen, setBulkScheduleDialogOpen] = useState(false);
+
+  // Persist bulk choices per workspace so a refresh doesn't lose the last
+  // group/time selection for current and future multi-draft campaigns.
+  useEffect(() => {
+    try {
+      const gKey = workspaceOwnerId ? `campaign:bulkGroupIds:${workspaceOwnerId}` : 'campaign:bulkGroupIds';
+      const sKey = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';
+      const rawGroups = localStorage.getItem(gKey);
+      const parsedGroups = rawGroups ? JSON.parse(rawGroups) : null;
+      if (Array.isArray(parsedGroups)) setBulkGroupIds(parsedGroups.filter((x) => typeof x === 'string'));
+      const rawIso = localStorage.getItem(sKey);
+      if (rawIso) {
+        const d = new Date(rawIso);
+        if (!Number.isNaN(d.getTime()) && d.getTime() > Date.now() + 60_000) setBulkScheduleIso(rawIso);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    try {
+      const key = workspaceOwnerId ? `campaign:bulkGroupIds:${workspaceOwnerId}` : 'campaign:bulkGroupIds';
+      localStorage.setItem(key, JSON.stringify(bulkGroupIds));
+    } catch {}
+  }, [bulkGroupIds, workspaceOwnerId]);
+  useEffect(() => {
+    try {
+      const key = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';
+      if (bulkScheduleIso) localStorage.setItem(key, bulkScheduleIso);
+      else localStorage.removeItem(key);
+    } catch {}
+  }, [bulkScheduleIso, workspaceOwnerId]);
+
 
   const publishDraft = useCallback((key: string) => {
     const fn = publishFnsRef.current.get(key);
