@@ -1,30 +1,40 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw, Users, Flag } from 'lucide-react';
+import { Loader2, Users, Flag } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 
 type PageTarget = { id: string; pageId: string; name: string; avatar: string | null; selected: boolean };
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; selected: boolean };
 
+/** Local cache so pages + groups render instantly on the next visit. */
+const CACHE_KEY = 'realtyz_fb_targets_cache';
+
+function readCache(): { pages: PageTarget[]; groups: GroupTarget[] } | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.pages) || !Array.isArray(parsed.groups)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * FacebookTargetsCard — the single place where a broker chooses WHICH connected
  * Facebook pages and imported groups the system is allowed to publish to.
- *
- * Selection is persisted on the rows themselves (`is_selected`), so every
- * publishing path (composer, scheduler, queue worker) reads the same truth.
  */
-export function FacebookTargetsCard({ className }: { className?: string }) {
-  const [pages, setPages] = useState<PageTarget[]>([]);
-  const [groups, setGroups] = useState<GroupTarget[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+export function FacebookTargetsCard({ className, actions }: { className?: string; actions?: ReactNode }) {
+  const cached = readCache();
+  const [pages, setPages] = useState<PageTarget[]>(cached?.pages ?? []);
+  const [groups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
+  const [loading, setLoading] = useState(!cached);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const [pageRes, groupRes] = await Promise.all([
         (supabase as any)
@@ -36,24 +46,25 @@ export function FacebookTargetsCard({ className }: { className?: string }) {
           .select('id, group_id, group_name, group_icon, is_selected')
           .order('group_name', { ascending: true }),
       ]);
-      setPages(
-        ((pageRes?.data ?? []) as any[]).map((r) => ({
-          id: String(r.id),
-          pageId: String(r.page_id),
-          name: String(r.page_name || r.page_id),
-          avatar: r.page_avatar_url ?? null,
-          selected: r.is_selected !== false,
-        })),
-      );
-      setGroups(
-        ((groupRes?.data ?? []) as any[]).map((r) => ({
-          id: String(r.id),
-          groupId: String(r.group_id),
-          name: String(r.group_name || r.group_id),
-          icon: r.group_icon ?? null,
-          selected: r.is_selected !== false,
-        })),
-      );
+      const nextPages: PageTarget[] = ((pageRes?.data ?? []) as any[]).map((r) => ({
+        id: String(r.id),
+        pageId: String(r.page_id),
+        name: String(r.page_name || r.page_id),
+        avatar: r.page_avatar_url ?? null,
+        selected: r.is_selected !== false,
+      }));
+      const nextGroups: GroupTarget[] = ((groupRes?.data ?? []) as any[]).map((r) => ({
+        id: String(r.id),
+        groupId: String(r.group_id),
+        name: String(r.group_name || r.group_id),
+        icon: r.group_icon ?? null,
+        selected: r.is_selected !== false,
+      }));
+      setPages(nextPages);
+      setGroups(nextGroups);
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ pages: nextPages, groups: nextGroups }));
+      } catch { /* noop */ }
     } finally {
       setLoading(false);
     }
@@ -101,37 +112,11 @@ export function FacebookTargetsCard({ className }: { className?: string }) {
     }
   };
 
-  const sync = async () => {
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('fb-groups-import', { body: {} });
-      if (error) throw error;
-      const imported = Number((data as any)?.imported ?? 0);
-      const note = String((data as any)?.error ?? '').trim();
-      if (imported > 0) toast.success(`יובאו ${imported} קבוצות מפייסבוק`);
-      else toast.error(note || 'לא נמצאו קבוצות בחשבון המחובר');
-      await load();
-    } catch (e: any) {
-      toast.error('סנכרון הקבוצות נכשל', { description: e?.message });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const selectedGroups = groups.filter((g) => g.selected).length;
 
   return (
     <div dir="rtl" className={cn('rounded-xl border border-border bg-background p-3 space-y-3', className)}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold">יעדי פרסום מאושרים</span>
-        <Button type="button" variant="outline" size="sm" onClick={sync} disabled={syncing} className="h-7 gap-1 text-xs">
-          {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-          ייבוא קבוצות
-        </Button>
-      </div>
-
-      <ExtensionGroupSyncCard onSynced={() => void load()} />
-
+      <ExtensionGroupSyncCard onSynced={() => void load()} actions={actions} />
 
       {loading ? (
         <div className="flex items-center justify-center py-5">
@@ -177,7 +162,7 @@ export function FacebookTargetsCard({ className }: { className?: string }) {
               )}
             </div>
             {groups.length === 0 ? (
-              <p className="text-xs text-muted-foreground">אין קבוצות מיובאות. לחץ "ייבוא קבוצות".</p>
+              <p className="text-xs text-muted-foreground">אין קבוצות מיובאות. לחץ "סנכרן קבוצות".</p>
             ) : (
               <div className="max-h-56 space-y-1 overflow-y-auto pe-1">
                 {groups.map((g) => (

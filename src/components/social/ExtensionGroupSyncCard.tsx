@@ -1,33 +1,38 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Chrome, Loader2, RefreshCw, Users } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Loader2, RefreshCw, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { useExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
+import { useExtensionGroups, readExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
 
 const FB_GROUPS_URL = 'https://www.facebook.com/groups/joins/?nav_source=tab';
 
 /**
- * ExtensionGroupSyncCard — restores the companion-extension group sync flow.
+ * ExtensionGroupSyncCard — companion-extension group sync.
  *
  * The extension pushes the broker's real Facebook groups into the page (see
  * `extensionGroupBridge`); this card persists them into `fb_user_groups` so the
- * publishing selectors read them like any other target, bypassing the Meta
- * Graph group permission restrictions.
+ * publishing selectors read them like any other target.
+ *
+ * `actions` lets the parent render the connection action buttons in the very
+ * same row as the sync buttons.
  */
 export function ExtensionGroupSyncCard({
   className,
   onSynced,
+  actions,
 }: {
   className?: string;
   onSynced?: () => void;
+  actions?: ReactNode;
 }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
-  const { groups, lastSyncAt, refresh } = useExtensionGroups();
+  const { groups, refresh } = useExtensionGroups();
   const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [open, setOpen] = useState(false);
   const savedRef = useRef<string>('');
 
@@ -70,47 +75,47 @@ export function ExtensionGroupSyncCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, workspaceOwnerId]);
 
+  /** "בדוק שוב" — ask the extension, wait for the push, then persist + list. */
+  const checkNow = async () => {
+    if (checking) return;
+    setChecking(true);
+    try {
+      refresh();
+      let found: ExtensionGroup[] = [];
+      for (let i = 0; i < 12; i++) {
+        await new Promise((r) => setTimeout(r, 400));
+        found = readExtensionGroups();
+        if (found.length > 0) break;
+        if (i % 3 === 2) refresh();
+      }
+      if (found.length === 0) {
+        toast.error('לא זוהו קבוצות מהתוסף', { description: 'פתח את עמוד הקבוצות בפייסבוק וגלול עד הסוף.' });
+        return;
+      }
+      savedRef.current = found.map((g) => g.group_id).sort().join('|');
+      await persist(found, false);
+      setOpen(false);
+    } finally {
+      setChecking(false);
+    }
+  };
+
   return (
-    <div dir="rtl" className={cn('rounded-xl border border-border bg-background p-3 space-y-2 text-right', className)}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-sm font-semibold">
-          <Chrome className="h-4 w-4 text-primary" /> סנכרון קבוצות מהתוסף
-        </span>
-        {saving ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        {groups.length > 0
-          ? `זוהו ${groups.length} קבוצות מהתוסף${lastSyncAt ? ` · עודכן ${new Date(lastSyncAt).toLocaleTimeString('he-IL')}` : ''}.`
-          : 'התוסף מייבא את הקבוצות שלך ישירות מהחשבון, בלי הרשאות Meta לקבוצות.'}
-      </p>
-
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" className="h-7 gap-1 text-xs" onClick={() => setOpen(true)}>
-          <Users className="h-3.5 w-3.5" /> סנכרן קבוצות
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-7 gap-1 text-xs"
-          onClick={() => { refresh(); toast.info('נשלחה בקשת סנכרון לתוסף'); }}
-        >
-          <RefreshCw className="h-3.5 w-3.5" /> רענון מהתוסף
-        </Button>
-        {groups.length > 0 && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs"
-            disabled={saving}
-            onClick={() => void persist(groups, false)}
-          >
-            שמור מחדש למערכת
-          </Button>
-        )}
-      </div>
+    <div dir="rtl" className={cn('flex flex-wrap items-center gap-2 text-right', className)}>
+      <Button type="button" size="sm" className="h-8 gap-1 text-xs" onClick={() => setOpen(true)} disabled={saving}>
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />} סנכרן קבוצות
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-8 gap-1 text-xs"
+        disabled={checking}
+        onClick={() => void checkNow()}
+      >
+        {checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} רענון
+      </Button>
+      {actions}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent dir="rtl" className="text-right sm:max-w-md">
@@ -135,8 +140,15 @@ export function ExtensionGroupSyncCard({
             >
               פתח את עמוד הקבוצות בפייסבוק
             </Button>
-            <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => refresh()}>
-              בדוק שוב
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1 text-xs"
+              disabled={checking}
+              onClick={() => void checkNow()}
+            >
+              {checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} בדוק שוב
             </Button>
           </div>
         </DialogContent>
