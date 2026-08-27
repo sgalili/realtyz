@@ -715,7 +715,7 @@ type ComposerStatus = {
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
-  onRegisterPublish, bulkGroupIds, bulkScheduleIso,
+  onRegisterPublish, bulkGroupIds, bulkScheduleIso, hideBottomBar,
 }: {
   channel: ChannelCard;
   brandName: string;
@@ -738,6 +738,8 @@ const InlineComposer = ({
   /** Bulk override from the page-level bottom bar — updates all drafts at once. */
   bulkGroupIds?: string[];
   bulkScheduleIso?: string | null;
+  /** When rendered inside a collapsed draft card the page-level bar handles dispatch. */
+  hideBottomBar?: boolean;
 }) => {
   // Persistent draft key — namespaced per replicated instance so multiple
   // composers on the same page don't clobber each other's drafts. Persisted
@@ -889,17 +891,23 @@ const InlineComposer = ({
 
 
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
-  // Persisted to localStorage so a reload / background refresh doesn't wipe the selection.
-  const [groupIds, setGroupIds] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem('campaign:groupIds');
-      const parsed = raw ? JSON.parse(raw) : null;
-      return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
-    } catch { return []; }
-  });
+  // Persisted to localStorage (per workspace) so a reload / background refresh
+  // doesn't wipe the selection, and the bulk picker stays in sync with drafts.
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const groupStorageKey = workspaceOwnerId ? `campaign:groupIds:${workspaceOwnerId}` : 'campaign:groupIds';
+  const [groupIds, setGroupIds] = useState<string[]>([]);
   useEffect(() => {
-    try { localStorage.setItem('campaign:groupIds', JSON.stringify(groupIds)); } catch {}
-  }, [groupIds]);
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(groupStorageKey) || localStorage.getItem('campaign:groupIds');
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed) && parsed.length) setGroupIds(parsed.filter((x) => typeof x === 'string'));
+    } catch {}
+  }, [groupStorageKey]);
+  useEffect(() => {
+    try { localStorage.setItem(groupStorageKey, JSON.stringify(groupIds)); } catch {}
+  }, [groupIds, groupStorageKey]);
+
 
   // Group picker modal (opened from the group icon button next to "פרסם").
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
@@ -1301,7 +1309,31 @@ const InlineComposer = ({
   }, [listings, listingQuery]);
 
 
+  // Append user-uploaded campaign images to the selected listing's gallery so
+  // they survive beyond the current post and stay available everywhere.
+  const appendImagesToListing = async (listingId: string, newUrls: string[]) => {
+    if (!listingId || !newUrls.length) return;
+    try {
+      const { data: row, error } = await supabase.from('listings').select('media_photos').eq('id', listingId).maybeSingle();
+      if (error) throw error;
+      const existing = Array.isArray(row?.media_photos) ? (row.media_photos as unknown[]) : [];
+      const deduped = existing.slice();
+      newUrls.forEach((url) => {
+        const exists = deduped.some((p) => {
+          if (typeof p === 'string') return p === url;
+          return (p as any)?.url === url || (p as any)?.src === url || (p as any)?.image_url === url;
+        });
+        if (!exists) deduped.push({ url, source: 'campaign_composer', created_at: new Date().toISOString() });
+      });
+      const { error: updErr } = await supabase.from('listings').update({ media_photos: deduped as any[] }).eq('id', listingId);
+      if (updErr) throw updErr;
+    } catch (e) {
+      console.warn('[CampaignCenter] append listing images failed', e);
+    }
+  };
+
   const handleFiles = async (files: FileList | null, kind: 'image' | 'file') => {
+
     if (!files) return;
     const max = 25 * 1024 * 1024;
     const list = Array.from(files);
@@ -2106,8 +2138,10 @@ const InlineComposer = ({
         const scheduledLabel = scheduledDate
           ? scheduledDate.toLocaleString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
           : '';
+        if (hideBottomBar) return null;
         return (
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-0 pt-2 backdrop-blur">
+
             <div className="flex flex-row-reverse items-stretch justify-between gap-2">
               <button
                 type="button"
@@ -5283,6 +5317,42 @@ const CampaignCenter = () => {
   const [bulkScheduleIso, setBulkScheduleIso] = useState<string | null>(null);
   const [bulkGroupPickerOpen, setBulkGroupPickerOpen] = useState(false);
   const [bulkScheduleDialogOpen, setBulkScheduleDialogOpen] = useState(false);
+  const [bulkGlobalScheduleOpen, setBulkGlobalScheduleOpen] = useState(false);
+
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+
+  // Persist bulk choices per workspace so a refresh doesn't lose the last
+
+  // group/time selection for current and future multi-draft campaigns.
+  useEffect(() => {
+    try {
+      const gKey = workspaceOwnerId ? `campaign:bulkGroupIds:${workspaceOwnerId}` : 'campaign:bulkGroupIds';
+      const sKey = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';
+      const rawGroups = localStorage.getItem(gKey);
+      const parsedGroups = rawGroups ? JSON.parse(rawGroups) : null;
+      if (Array.isArray(parsedGroups)) setBulkGroupIds(parsedGroups.filter((x) => typeof x === 'string'));
+      const rawIso = localStorage.getItem(sKey);
+      if (rawIso) {
+        const d = new Date(rawIso);
+        if (!Number.isNaN(d.getTime()) && d.getTime() > Date.now() + 60_000) setBulkScheduleIso(rawIso);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    try {
+      const key = workspaceOwnerId ? `campaign:bulkGroupIds:${workspaceOwnerId}` : 'campaign:bulkGroupIds';
+      localStorage.setItem(key, JSON.stringify(bulkGroupIds));
+    } catch {}
+  }, [bulkGroupIds, workspaceOwnerId]);
+  useEffect(() => {
+    try {
+      const key = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';
+      if (bulkScheduleIso) localStorage.setItem(key, bulkScheduleIso);
+      else localStorage.removeItem(key);
+    } catch {}
+  }, [bulkScheduleIso, workspaceOwnerId]);
+
 
   const publishDraft = useCallback((key: string) => {
     const fn = publishFnsRef.current.get(key);
@@ -5312,8 +5382,8 @@ const CampaignCenter = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const { settings } = useWhiteLabel();
+
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
   const [pickedChannelIds, setPickedChannelIds] = useState<Set<string>>(new Set());
@@ -5996,6 +6066,7 @@ const CampaignCenter = () => {
                       instanceId={key}
                       bulkGroupIds={bulkGroupIds}
                       bulkScheduleIso={bulkScheduleIso}
+                      hideBottomBar
                       onRegisterPublish={(fn) => {
                         if (fn) publishFnsRef.current.set(key, fn);
                         else publishFnsRef.current.delete(key);
@@ -6006,6 +6077,7 @@ const CampaignCenter = () => {
                           : { ...curr, [key]: s }
                       ))}
                     />
+
                   </DraftCollapsibleCard>
                   );
                 })}
@@ -6014,11 +6086,12 @@ const CampaignCenter = () => {
                   <div className="flex items-stretch gap-2">
                     <button
                       type="button"
-                      onClick={() => setBulkScheduleDialogOpen(true)}
-                      title="עדכן תאריך ושעה לכל הטיוטות"
-                      aria-label="עדכן תאריך ושעה לכל הטיוטות"
+                      onClick={() => setBulkGlobalScheduleOpen(true)}
+                      title="תזמון קמפיין גלובלי לכל הטיוטות"
+                      aria-label="תזמון קמפיין גלובלי לכל הטיוטות"
                       className="inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
                     >
+
                       <CalendarIcon className="h-4 w-4" />
                     </button>
                     {pickedChannel?.id === 'facebook' && (
@@ -6099,7 +6172,45 @@ const CampaignCenter = () => {
                   </DialogContent>
                 </Dialog>
 
-                {/* Bulk groups dialog — applies to every draft in the multi-draft view. */}
+                {/* Global campaign scheduler — distributes all drafts across groups and time slots. */}
+                <Dialog open={bulkGlobalScheduleOpen} onOpenChange={setBulkGlobalScheduleOpen}>
+                  <DialogContent dir="rtl" className="w-[96vw] sm:max-w-5xl max-h-[92vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-right">תזמון קמפיין לכל הטיוטות</DialogTitle>
+                    </DialogHeader>
+                    <ScheduledCampaignCalendar
+                      onCreateAt={(iso, extras) => {
+                        const next = new URLSearchParams(searchParams);
+                        next.set('tab', 'create');
+                        next.set('schedule', iso);
+                        if (extras?.listing) next.set('listing', extras.listing); else next.delete('listing');
+                        if (extras?.properties && extras.properties.length > 0) {
+                          next.set('properties', extras.properties.join(','));
+                        } else {
+                          next.delete('properties');
+                        }
+                        if (extras?.variant && extras?.totalVariants && extras.totalVariants > 1) {
+                          next.set('variant', String(extras.variant));
+                          next.set('variants', String(extras.totalVariants));
+                        } else {
+                          next.delete('variant');
+                          next.delete('variants');
+                        }
+                        if (extras?.assignments) {
+                          try { sessionStorage.setItem('rz-schedule-assignments', JSON.stringify(extras.assignments)); } catch {}
+                        }
+                        if (extras?.groupIds && extras.groupIds.length > 0) {
+                          try { localStorage.setItem('campaign:groupIds', JSON.stringify(extras.groupIds)); } catch {}
+                          setBulkGroupIds(extras.groupIds);
+                        }
+                        setBulkGlobalScheduleOpen(false);
+                        setSearchParams(next, { replace: false });
+                      }}
+                      onClose={() => setBulkGlobalScheduleOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+
                 <Dialog open={bulkGroupPickerOpen} onOpenChange={setBulkGroupPickerOpen}>
                   <DialogContent dir="rtl" className="w-[96vw] sm:max-w-[720px]">
                     <DialogHeader>
