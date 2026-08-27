@@ -5317,6 +5317,8 @@ const CampaignCenter = () => {
   const [bulkScheduleIso, setBulkScheduleIso] = useState<string | null>(null);
   const [bulkGroupPickerOpen, setBulkGroupPickerOpen] = useState(false);
   const [bulkScheduleDialogOpen, setBulkScheduleDialogOpen] = useState(false);
+  const [bulkGlobalScheduleOpen, setBulkGlobalScheduleOpen] = useState(false);
+
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
 
   // Persist bulk choices per workspace so a refresh doesn't lose the last
