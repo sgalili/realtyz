@@ -3004,10 +3004,15 @@ const ConfirmDispatchDialog = ({
         <div className="rounded-xl border border-border bg-muted/30 p-3 text-right">
           <div className="mb-2 text-sm font-semibold text-foreground">סטטיסטיקה לפני שידור</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <div className="rounded-lg bg-background p-2">
-              <div className="text-[11px] text-muted-foreground">קבוצות נבחרות</div>
-              <div className="text-lg font-bold tabular-nums text-foreground">{groupIds.length}</div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setGroupPickerOpen(true)}
+              className="rounded-lg bg-background p-2 text-right transition hover:bg-primary/5 hover:ring-1 hover:ring-primary/40"
+              title="לחץ לעריכת רשימת הקבוצות"
+            >
+              <div className="text-[11px] text-muted-foreground">קבוצות נבחרות (לחץ לעריכה)</div>
+              <div className="text-lg font-bold tabular-nums text-primary underline decoration-dotted">{groupIds.length}</div>
+            </button>
             <div className="rounded-lg bg-background p-2">
               <div className="text-[11px] text-muted-foreground">חברים בכל הקבוצות</div>
               <div className="text-lg font-bold tabular-nums text-foreground">
@@ -3035,11 +3040,18 @@ const ConfirmDispatchDialog = ({
                 {scheduledAt ? new Date(scheduledAt).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'עכשיו'}
               </div>
             </div>
+            {/* Live countdown to the first broadcast of this scheduled post. */}
+            <div className="rounded-lg bg-background p-2">
+              <div className="text-[11px] text-muted-foreground">זמן עד השידור הראשון</div>
+              <div className="text-sm font-bold text-foreground">{countdownLabel}</div>
+              {scheduledAt && (
+                <div className="text-[10px] text-muted-foreground">
+                  {new Date(scheduledAt).toLocaleString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="mt-2 text-[11px] text-muted-foreground">
-            סה"כ שידורים צפויים: <span className="font-bold tabular-nums">{(publishTargets.length || 1) + groupIds.length}</span>
-            {' · '}אורך הטקסט: <span className="font-bold tabular-nums">{body.trim().length}</span> תווים
-          </div>
+
         </div>
 
 
