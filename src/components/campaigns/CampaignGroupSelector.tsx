@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { shortenName } from "@/lib/shortenName";
 import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
@@ -209,7 +210,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                     </div>
                   )}
                   <div className="min-w-0 flex-1 ps-[3px]">
-                    <div className="truncate text-[15px] font-medium text-foreground">{g.group_name}</div>
+                    <div className="truncate text-[15px] font-medium text-foreground">{shortenName(g.group_name)}</div>
                   </div>
                   {g.group_url && (
                     <button
