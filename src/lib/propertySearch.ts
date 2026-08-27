@@ -382,18 +382,29 @@ export async function searchAllSources(
     progress: { done: 1, total: 3, loaded: localResults.length, pending: ['yad2', 'homely'] },
   });
 
-  await Promise.all([
-    yad2Task().then((result) => {
-      collected.push(result);
-      const partial = mergeSettled(collected);
-      onPartial?.({ results: partial, sources: { ...sources }, progress: { done: collected.length, total: 3, loaded: partial.length, pending: collected.some((c) => c.label === 'homely') ? [] : ['homely'] } });
-    }),
-    homelyTask().then((result) => {
-      collected.push(result);
-      const partial = mergeSettled(collected);
-      onPartial?.({ results: partial, sources: { ...sources }, progress: { done: collected.length, total: 3, loaded: partial.length, pending: collected.some((c) => c.label === 'yad2') ? [] : ['yad2'] } });
-    }),
-  ]);
+  // Yad2 is the PRIMARY external source: it always runs first. Homely is only
+  // queried when Yad2 produced nothing for this query (no Yad2 page exists),
+  // which also saves Homely API calls on every ordinary search.
+  const yad2Result = await yad2Task();
+  collected.push(yad2Result);
+  const afterYad2 = mergeSettled(collected);
+  onPartial?.({
+    results: afterYad2,
+    sources: { ...sources },
+    progress: { done: 2, total: 3, loaded: afterYad2.length, pending: yad2Result.results.length ? [] : ['homely'] },
+  });
+
+  if (yad2Result.results.length === 0) {
+    const homelyResult = await homelyTask();
+    collected.push(homelyResult);
+    const afterHomely = mergeSettled(collected);
+    onPartial?.({
+      results: afterHomely,
+      sources: { ...sources },
+      progress: { done: 3, total: 3, loaded: afterHomely.length, pending: [] },
+    });
+  }
+
 
 
   const filtered = mergeSettled(collected);
