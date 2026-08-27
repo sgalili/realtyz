@@ -2621,7 +2621,11 @@ const ConfirmDispatchDialog = ({
   useEffect(() => {
     if (!open || !groupIds?.length) { setGroupStats({ known: 0, members: 0 }); return; }
     (async () => {
-      const ids = groupIds.map((g) => String(g).replace(/^ext:/, ''));
+      const ids = Array.from(new Set(groupIds.flatMap((g) => {
+        const id = String(g);
+        const bare = id.replace(/^ext:/, '');
+        return [id, bare, `ext:${bare}`];
+      })));
       try {
         const { data } = await (supabase as any)
           .from('fb_user_groups')
