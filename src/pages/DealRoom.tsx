@@ -774,21 +774,35 @@ export default function DealRoom() {
         {stageColumns.map((col) => {
           const Icon = col.icon;
           const items = grouped[col.key];
+          const isOpen = !!openStages[col.key];
           return (
             <section
               key={col.key}
-              className="flex flex-col rounded-xl border bg-card/40 backdrop-blur-sm min-h-[60vh]"
+              className={cn(
+                'flex flex-col rounded-xl border bg-card/40 backdrop-blur-sm',
+                isOpen && 'min-h-[60vh]',
+              )}
             >
-              <header className="flex items-center justify-between px-4 py-3 border-b">
+              <button
+                type="button"
+                onClick={() => toggleStage(col.key)}
+                aria-expanded={isOpen}
+                className={cn(
+                  'flex items-center justify-between gap-2 px-4 py-3 text-right transition-colors hover:bg-muted/40',
+                  isOpen && 'border-b',
+                )}
+              >
                 <div className="flex items-center gap-2">
+                  <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
                   <Icon className={cn('h-4 w-4', col.accent)} />
                   <h2 className="font-medium text-sm">{col.title}</h2>
                 </div>
                 <Badge variant="outline" className="text-xs font-normal">
                   {items.length}
                 </Badge>
-              </header>
+              </button>
 
+              {isOpen && (
               <ScrollArea className="flex-1 p-3">
                 <div className="space-y-3">
                   {isLoading &&
