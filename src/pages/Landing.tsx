@@ -149,20 +149,8 @@ function Reveal({ children, delay = 0, className }: { children: React.ReactNode;
   );
 }
 
-const MAX_CONTACTS = 10_000;
-
 export default function Landing() {
-  const [contacts, setContacts] = useState(250);
-  const [draft, setDraft] = useState('250');
-  const quote = useMemo(() => quoteForContacts(contacts), [contacts]);
-  const animatedPrice = useCounter(quote.monthlyPrice);
-  const animatedContacts = useCounter(quote.contacts, 300);
 
-  const applyContacts = (n: number) => {
-    const clamped = Math.min(MAX_CONTACTS * 5, Math.max(0, Math.round(n)));
-    setContacts(clamped);
-    setDraft(String(clamped));
-  };
 
   return (
     <div dir="rtl" className="realtyz-landing min-h-screen bg-background text-foreground antialiased">
