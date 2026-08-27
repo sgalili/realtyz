@@ -146,6 +146,9 @@ function parseMetaCredential(raw: unknown): { token: string; pageId: string | nu
 async function resolveGraphToken(ownerId: string | null): Promise<{ token: string; pageId: string | null }> {
   const page = await resolveMetaPage(admin, ownerId);
   if (page?.token) return { token: page.token, pageId: page.pageId };
+  // Tenant isolation: never borrow the platform-level page token for a
+  // specific workspace owner.
+  if (ownerId) return { token: "", pageId: null };
   const env = parseMetaCredential(
     Deno.env.get("FB_PAGE_ACCESS_TOKEN") ||
       Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN") ||
@@ -153,6 +156,7 @@ async function resolveGraphToken(ownerId: string | null): Promise<{ token: strin
   );
   return { token: env.token, pageId: env.pageId };
 }
+
 
 function collectFromGraphEntry(entry: any): string[] {
   const urls: string[] = [];

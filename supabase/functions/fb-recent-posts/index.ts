@@ -11,7 +11,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
 
-const DEFAULT_OWNER_ID = "8f66ac1a-070a-4485-ac3b-07697d6c4b9e";
+// No default owner: a missing user_id must NOT resolve to another tenant.
 const MIN_SAFE_PURGE_POSTS = 50;
 
 const asText = (
@@ -438,7 +438,14 @@ Deno.serve(async (req) => {
       url.searchParams.get("persist") !== "false";
     const ownerId = asText(
       body?.user_id ?? body?.owner_id ?? url.searchParams.get("user_id"),
-    ) || DEFAULT_OWNER_ID;
+    );
+    if (!ownerId) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "missing_user_id", posts: [], count: 0 }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
