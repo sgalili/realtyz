@@ -190,8 +190,7 @@ export default function Landing() {
 
           <Reveal delay={160}>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              פוסטים אוטומטיים לקבוצות פייסבוק ואינסטגרם, שיחות מכל האפליקציות והרשתות, עוזר AI שמדבר איתכם
-              בהקלטות קוליות וסנכרון מלא לגוגל. הכל בעברית, הכל תחת השליטה שלכם.
+              סוכני AI שמנהלים 24/7 את כל הלידים, נכסים, התאמות, שיווק, תקשורת ומעקבים בשליטה מלאה מהווטסאפ שלכם
             </p>
           </Reveal>
 
