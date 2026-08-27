@@ -716,6 +716,9 @@ export default function PropertyDetail() {
     if (!form || !id) return;
     setSaving(true);
     try {
+      // Photos the broker removed in this edit join a permanent blocklist so no
+      // future sync (Yad2 / Homely / Facebook) can restore them.
+      const removedPhotoKeys = nextBlockedKeys(data?.meta, data?.property?.photos ?? [], form.photos);
       const newMeta = {
         ...(data?.meta || {}),
         vaad_bayit: form.vaad_bayit ? Number(form.vaad_bayit) : null,
@@ -736,10 +739,12 @@ export default function PropertyDetail() {
         solar_heater: form.solar,
         photos: form.photos,
         images: form.photos,
+        removed_photo_keys: removedPhotoKeys,
         deal_type: form.deal_type || null,
         listing_type: form.deal_type || null,
         source_url: form.source_url || null,
       };
+
       const manualFeatures = form.features_text
         .split(/[,\n·]/)
         .map((f) => f.trim())
