@@ -5100,6 +5100,72 @@ const AddVoiceByIdDialog = ({
 };
 
 
+/* ───────────── Collapsed draft card ─────────────
+   Every draft in a multi-property fan-out starts COLLAPSED and shows only its
+   live status (generating / importing photos / ready). The composer inside
+   stays mounted while collapsed so generation and photo import keep running. */
+
+const DraftCollapsibleCard = ({
+  index, iso, variant, totalVariants, children, status,
+}: {
+  index: number;
+  iso: string;
+  variant: number;
+  totalVariants: number;
+  status: ComposerStatus | null;
+  children: React.ReactNode;
+}) => {
+  const [open, setOpen] = useState(false);
+  const busy = !!status && (status.generating || status.photosLoading);
+  const statusLabel = !status
+    ? 'טוען…'
+    : status.generating
+      ? 'מנסח תוכן…'
+      : status.photosLoading
+        ? 'מייבא תמונות…'
+        : status.ready
+          ? `מוכן · ${status.images} תמונות`
+          : status.chars > 0
+            ? `טיוטה · ${status.images} תמונות`
+            : 'ממתין';
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card shadow-sm" dir="rtl">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-3 px-4 py-3 text-right"
+      >
+        {open ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[13px] font-semibold text-foreground">
+            טיוטה #{index + 1}
+            {status?.title ? ` · ${status.title}` : ''}
+          </div>
+          <div className="truncate text-[11px] text-muted-foreground">
+            {new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+            {totalVariants > 1 ? ` · וריאציה ${variant}/${totalVariants}` : ''}
+          </div>
+        </div>
+        <span
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+            busy
+              ? 'bg-amber-50 text-amber-700'
+              : status?.ready
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-muted text-muted-foreground',
+          )}
+        >
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : status?.ready ? <CheckCircle2 className="h-3 w-3" /> : null}
+          {statusLabel}
+        </span>
+      </button>
+      {/* Kept mounted (hidden) so background work never restarts on toggle. */}
+      <div className={open ? 'border-t border-border/60 p-1' : 'hidden'}>{children}</div>
+    </div>
+  );
+};
+
 /* ───────────── Page ───────────── */
 
 const CampaignCenter = () => {
