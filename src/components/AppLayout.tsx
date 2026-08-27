@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import realtyzLogo from '@/assets/realtyz-logo.png';
 import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { RotatingHeadline } from '@/components/RotatingHeadline';
 import NotificationCenter from '@/components/NotificationCenter';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
 import QuickActionDrawer from '@/components/QuickActionDrawer';
+import ProductTour from '@/components/tour/ProductTour';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
@@ -461,8 +463,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
               aria-label={`${headerName} - דף הבית`}
               className="absolute left-1/2 top-1/2 inline-flex max-w-[48vw] -translate-x-1/2 -translate-y-1/2 items-center gap-2 overflow-hidden text-center"
             >
-              {headerLogo && <img src={headerLogo} alt={headerName} className="h-10 max-w-[160px] object-contain" />}
-              <span className="truncate text-sm font-bold text-foreground">{headerName}</span>
+              {headerLogo ? (
+                <>
+                  <img src={headerLogo} alt={headerName} className="h-10 max-w-[160px] object-contain" />
+                  <span className="truncate text-sm font-bold text-foreground">{headerName}</span>
+                </>
+              ) : (
+                <img src={realtyzLogo} alt="Realtyz AI" className="h-11 max-w-[190px] object-contain" />
+              )}
             </Link>
 
             {/* Action buttons on visual left (RTL end) */}
@@ -498,6 +506,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </main>
           <AiAgentDrawer />
           <QuickActionDrawer />
+          <ProductTour />
           <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
             <DialogContent dir="rtl" className="premium-auth-modal sm:max-w-md">
               <DialogHeader className="text-right">
