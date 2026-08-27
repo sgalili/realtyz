@@ -11,7 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { requestExtensionPagePosts } from '@/lib/extensionPostBridge';
+import { requestExtensionPagePosts, requestExtensionPostComments } from '@/lib/extensionPostBridge';
 
 type Report = {
   ok: boolean;
@@ -115,8 +115,30 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
       if (cErr) {
         problems.push(`ייבוא התגובות נכשל: ${cErr.message}`);
       } else {
-        const res: any = cData ?? {};
+        let res: any = cData ?? {};
         comments = Number(res.comments ?? 0) || 0;
+
+        // Graph refused specific post IDs ("Unsupported get request" /
+        // permission). Scrape those posts' comments via the extension and
+        // re-ingest them, so the import completes instead of failing.
+        const blockedIds: string[] = Array.isArray(res.extension_post_ids) ? res.extension_post_ids : [];
+        if (blockedIds.length > 0) {
+          setStep('פייסבוק חסמה חלק מהפוסטים — מייבא תגובות דרך התוסף…');
+          const bundles = await requestExtensionPostComments(blockedIds);
+          if (bundles.length > 0) {
+            const { data: extData } = await supabase.functions.invoke('fb-comments-backfill', {
+              body: { since, max_posts: 200, scraped_comments: bundles },
+            });
+            const extRes: any = extData ?? {};
+            if (Number(extRes.comments ?? 0) > 0) {
+              comments = Number(extRes.comments ?? 0) || comments;
+              res = { ...extRes, message: null, failures: [], failed_posts: 0 };
+            }
+          } else {
+            fixes.push('התקן את תוסף Realtyz לדפדפן והישאר מחובר לפייסבוק כדי לייבא תגובות מפוסטים חסומים.');
+          }
+        }
+
         if (res.message) problems.push(String(res.message));
         (Array.isArray(res.how_to_fix) ? res.how_to_fix : []).forEach((f: string) => fixes.push(f));
         if (Array.isArray(res.failures) && res.failures.length > 0) {
@@ -128,6 +150,7 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
           );
         }
       }
+
     } catch (err: any) {
       problems.push(`הייבוא נעצר: ${err?.message ?? 'שגיאה לא ידועה'}`);
     }

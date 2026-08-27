@@ -42,6 +42,8 @@ import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsS
 import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
+import { ScheduledCountdown } from '@/components/campaigns/ScheduledCountdown';
+import { EditScheduledSeriesDialog } from '@/components/campaigns/EditScheduledSeriesDialog';
 import { CustomGroupsQuickShare } from '@/components/social/CustomGroupsQuickShare';
 import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdown';
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
@@ -2576,7 +2578,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, selectedProfileIds, attachWaLink, firstComment, onConfirmed,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, selectedProfileIds, attachWaLink, firstComment, onConfirmed, autoConfirm = false,
 
 }: {
   open: boolean;
@@ -2593,7 +2595,10 @@ const ConfirmDispatchDialog = ({
   attachWaLink: boolean;
   firstComment: string;
   onConfirmed: () => void;
+  /** Bulk mode: dispatch immediately, with no confirmation UI at all. */
+  autoConfirm?: boolean;
 }) => {
+
   const { user } = useAuth();
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -2639,6 +2644,18 @@ const ConfirmDispatchDialog = ({
       }
     })();
   }, [open, groupIds]);
+
+  // ── Silent bulk dispatch ───────────────────────────────────────────────
+  // In bulk mode the dialog renders nothing and fires the broadcast itself as
+  // soon as the publishing targets are resolved.
+  const autoFiredRef = useRef(false);
+  const handleConfirmRef = useRef<null | (() => Promise<void>)>(null);
+  useEffect(() => { if (!open) autoFiredRef.current = false; }, [open]);
+  useEffect(() => {
+    if (!open || !autoConfirm || autoFiredRef.current || pagesLoading) return;
+    autoFiredRef.current = true;
+    void handleConfirmRef.current?.();
+  }, [open, autoConfirm, pagesLoading]);
 
 
 
@@ -2992,10 +3009,12 @@ const ConfirmDispatchDialog = ({
     }
   };
 
-
-
+  handleConfirmRef.current = handleConfirm;
+  // Bulk mode: no confirmation UI whatsoever.
+  if (autoConfirm) return null;
 
   return (
+
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dir="rtl" className="w-[calc(100vw-1rem)] max-w-lg max-h-[92vh] overflow-y-auto">
         <DialogHeader>
@@ -5689,6 +5708,17 @@ const CampaignCenter = () => {
   }, [bulkScheduleIso, workspaceOwnerId]);
 
 
+  // One-click bulk publishing: every draft is dispatched silently, with no
+  // per-draft confirmation dialog.
+  const [bulkSilent, setBulkSilent] = useState(false);
+  // Controlled history dialog so a finished bulk dispatch can land the user
+  // directly on the "פוסטים עתידיים" tab with fresh rows.
+  const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
+  const [historyTab, setHistoryTab] = useState<'published' | 'drafts' | 'future'>('published');
+  const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
+  const [editSeriesRow, setEditSeriesRow] = useState<any | null>(null);
+
+
   const publishDraft = useCallback((key: string) => {
     const fn = publishFnsRef.current.get(key);
     if (!fn) return false;
@@ -5701,18 +5731,29 @@ const CampaignCenter = () => {
   const publishAllDrafts = useCallback((keys: string[]) => {
     const queue = keys.filter((k) => !publishedDrafts.has(k) && publishFnsRef.current.has(k));
     if (!queue.length) { toast.info('אין טיוטות מוכנות לפרסום'); return; }
+    // No confirmation dialogs in bulk mode — a single click ships them all.
+    setBulkSilent(true);
     bulkQueueRef.current = queue.slice(1);
-    if (!publishDraft(queue[0])) bulkQueueRef.current = [];
+    if (!publishDraft(queue[0])) { bulkQueueRef.current = []; setBulkSilent(false); }
   }, [publishedDrafts, publishDraft]);
 
   /** Advances the bulk queue after one draft finished dispatching. */
   const advanceBulkQueue = useCallback(() => {
     const next = bulkQueueRef.current.shift();
-    if (!next) return false;
-    // Let the dialog fully close before opening it for the next draft.
-    window.setTimeout(() => { if (!publishDraft(next)) advanceBulkQueue(); }, 450);
+    if (!next) {
+      if (bulkSilent) {
+        setBulkSilent(false);
+        // Show the freshly scheduled posts immediately.
+        setHistoryTab('future');
+        setHistoryRefreshTick((t) => t + 1);
+        setCampaignHistoryOpen(true);
+      }
+      return false;
+    }
+    window.setTimeout(() => { if (!publishDraft(next)) advanceBulkQueue(); }, 200);
     return true;
-  }, [publishDraft]);
+  }, [publishDraft, bulkSilent]);
+
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -5811,7 +5852,8 @@ const CampaignCenter = () => {
     toast.success('כל הטיוטות נמחקו');
     setSearchParams(new URLSearchParams());
   };
-  const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
+  // (campaignHistoryOpen is declared above, next to the bulk-publish plumbing)
+
   const [campaignHistoryRows, setCampaignHistoryRows] = useState<any[]>([]);
   const [campaignDraftRows, setCampaignDraftRows] = useState<any[]>([]);
   const [campaignHistoryLoading, setCampaignHistoryLoading] = useState(false);
@@ -5867,7 +5909,7 @@ const CampaignCenter = () => {
       const scope = workspaceOwnerId ?? user.id;
       const [{ data: logs }, { data: drafts }] = await Promise.all([
         supabase.from('campaign_logs')
-          .select('id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration')
+          .select('id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration,group_ids,recurrence_rule')
           .or(`workspace_owner_id.eq.${scope},user_id.eq.${scope}`)
           .eq('is_archived', false)
           .order('sent_at', { ascending: false, nullsFirst: false })
@@ -5885,7 +5927,7 @@ const CampaignCenter = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [campaignHistoryOpen, user?.id, workspaceOwnerId]);
+  }, [campaignHistoryOpen, user?.id, workspaceOwnerId, historyRefreshTick]);
   // Hydrate connection state from localStorage so a page refresh (or a new
   // tab) doesn't visually "disconnect" channels while verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
@@ -6757,7 +6799,7 @@ const CampaignCenter = () => {
             </DialogTitle>
             <DialogDescription className="text-right">כל הפוסטים, הטיוטות והסדרות המתוזמנות במקום אחד.</DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="published" className="min-h-0">
+          <Tabs value={historyTab} onValueChange={(v) => setHistoryTab(v as typeof historyTab)} className="min-h-0">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="published">פוסטים שפורסמו</TabsTrigger>
               <TabsTrigger value="drafts">טיוטות</TabsTrigger>
@@ -6800,11 +6842,27 @@ const CampaignCenter = () => {
                     return visible.length ? visible.map((r) => {
                       const media = Array.isArray(r.media_urls) ? r.media_urls : [];
                       const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
+                      const groupCount = Array.isArray(r.group_ids) ? r.group_ids.length : 0;
                       return <div key={r.id} className="flex gap-3 rounded-lg border border-border p-3">
                         {image ? <img src={typeof image === 'string' ? image : image?.url} alt="" className="h-20 w-20 shrink-0 rounded-md object-cover" /> : null}
-                        <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>{r.series_index != null && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">גרסה {Number(r.series_index) + 1}</span>}</div><p className="line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.sent_at).toLocaleString('he-IL')}{r.needs_regeneration ? ' · וריאציית AI תיווצר לאחר פרסום מוצלח' : ''}</p></div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>
+                            {r.series_index != null && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">גרסה {Number(r.series_index) + 1}</span>}
+                            {groupCount > 0 && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{groupCount} קבוצות</span>}
+                          </div>
+                          <ScheduledCountdown iso={r.sent_at} className="mt-1" />
+                          <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p>
+                          {r.needs_regeneration && <p className="mt-1 text-xs text-muted-foreground">וריאציית AI תיווצר לאחר פרסום מוצלח</p>}
+                          <div className="mt-2">
+                            <Button size="sm" variant="outline" className="text-[12px]" onClick={() => setEditSeriesRow(r)}>
+                              עריכת קבוצות ונכסים
+                            </Button>
+                          </div>
+                        </div>
                       </div>;
                     }) : <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
+
                   })()}
                 </TabsContent>
               </>
@@ -6812,6 +6870,13 @@ const CampaignCenter = () => {
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      <EditScheduledSeriesDialog
+        open={!!editSeriesRow}
+        onOpenChange={(v) => { if (!v) setEditSeriesRow(null); }}
+        row={editSeriesRow}
+        onUpdated={() => setHistoryRefreshTick((t) => t + 1)}
+      />
 
       <ConfirmDispatchDialog
         open={!!confirmPayload}
@@ -6827,6 +6892,8 @@ const CampaignCenter = () => {
         selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
         attachWaLink={confirmPayload?.attach_wa_link ?? false}
         firstComment={confirmPayload?.first_comment ?? ''}
+        autoConfirm={bulkSilent}
+
         onConfirmed={async () => {
           const body = confirmPayload?.body ?? '';
           const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
