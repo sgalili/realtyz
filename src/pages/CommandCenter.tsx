@@ -103,11 +103,12 @@ export default function CommandCenter() {
   return (
     <div dir="rtl" className="space-y-6 p-4 md:p-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">חדר בקרה · משימות היום</h1>
+        <h1 className="text-2xl font-bold tracking-tight">משימות היום</h1>
         <p className="text-sm text-muted-foreground">
           כל המעקבים, השיחות והפגישות שממתינים לך, לפי דחיפות ותאריך יעד.
         </p>
       </header>
+
 
       <section className="grid grid-cols-2 gap-3">
         <MetricCard
