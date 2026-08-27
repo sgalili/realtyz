@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ensureMetadataImport, isListingMetadataImported } from '@/lib/propertyFullSync';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -37,6 +37,7 @@ import { sourcePhotoCount } from '@/lib/photoCount';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { buildDescriptionBlocks, sanitizeDescription } from '@/lib/descriptionBlocks';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import type { UnifiedResult } from '@/lib/propertySearch';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -158,6 +159,8 @@ async function invokeWithTimeout<T>(
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const propertySnapshot = (location.state as { propertySnapshot?: UnifiedResult } | null)?.propertySnapshot;
   const qc = useQueryClient();
   const [activePhoto, setActivePhoto] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
@@ -292,18 +295,6 @@ export default function PropertyDetail() {
         solar: Boolean(meta.solar_heater ?? meta.solar ?? false),
       };
 
-      // Owner (linked crm_profile) — separate lightweight fetch.
-      let owner: { id: string; full_name: string } | null = null;
-      const ownerId = (row as any).owner_id as string | null;
-      if (ownerId) {
-        const { data: op } = await (supabase as any)
-          .from('crm_profiles')
-          .select('id, full_name')
-          .eq('id', ownerId)
-          .maybeSingle();
-        if (op?.id) owner = { id: String(op.id), full_name: String(op.full_name || '') };
-      }
-
       const r = row as any;
       return {
         row,
@@ -314,7 +305,6 @@ export default function PropertyDetail() {
         projectName: row.project_name,
         sourceUrl: row.source_url,
         documents,
-        owner,
         rich: {
           aboutBlocks: buildDescriptionBlocks(r),
           about:
@@ -355,6 +345,25 @@ export default function PropertyDetail() {
   const sourceUrl = data?.sourceUrl ?? null;
   const amenities = data?.amenities;
   const documents = data?.documents ?? [];
+  const ownerId = data?.row?.owner_id ? String(data.row.owner_id) : null;
+  // Owner enrichment is intentionally separate from the property query. The
+  // complete property text can paint immediately without waiting for a second
+  // database round trip.
+  const { data: owner = null } = useQuery({
+    queryKey: ['property-owner', ownerId],
+    enabled: !!ownerId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data: profile } = await supabase
+        .from('crm_profiles')
+        .select('id, full_name')
+        .eq('id', ownerId as string)
+        .maybeSingle();
+      return profile?.id
+        ? { id: String(profile.id), full_name: String(profile.full_name || '') }
+        : null;
+    },
+  });
 
   const dbPhotos = property?.photos ?? [];
 
@@ -365,7 +374,7 @@ export default function PropertyDetail() {
   const ownerSyncedRef = useRef<string | null>(null);
   useEffect(() => {
     const listingId = data?.row?.id ? String(data.row.id) : null;
-    if (!listingId || data?.owner) return;
+    if (!listingId || owner) return;
     if (ownerSyncedRef.current === listingId) return;
     ownerSyncedRef.current = listingId;
     (async () => {
@@ -380,7 +389,7 @@ export default function PropertyDetail() {
         /* silent: owner enrichment must never block the detail view */
       }
     })();
-  }, [data?.row?.id, data?.owner, qc]);
+  }, [data?.row?.id, owner, qc]);
 
 
 
@@ -659,10 +668,41 @@ export default function PropertyDetail() {
   };
 
   if (isLoading) {
+    if (propertySnapshot) {
+      const raw = isRecord(propertySnapshot.raw) ? propertySnapshot.raw : {};
+      const snapshotFeatures = Array.isArray(raw.features)
+        ? raw.features.filter((item): item is string => typeof item === 'string')
+        : [];
+      return (
+        <div className="p-3 sm:p-6 space-y-6" dir="rtl">
+          <header className="space-y-2">
+            <h1 className="text-3xl font-bold leading-snug text-foreground">{propertySnapshot.title}</h1>
+            {propertySnapshot.neighborhood && <p className="text-lg text-muted-foreground">{propertySnapshot.neighborhood}</p>}
+            {propertySnapshot.price ? (
+              <p className="text-[38px] font-extrabold leading-none text-success tabular-nums">{formatPrice(propertySnapshot.price)}</p>
+            ) : null}
+          </header>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {propertySnapshot.rooms ? <Spec icon={BedDouble} label="חדרים" value={String(propertySnapshot.rooms)} /> : null}
+            {propertySnapshot.size_sqm ? <Spec icon={Ruler} label="מ״ר בנוי" value={String(propertySnapshot.size_sqm)} /> : null}
+            {propertySnapshot.floor != null ? <Spec icon={Layers} label="קומה" value={String(propertySnapshot.floor)} /> : null}
+            {propertySnapshot.address ? <Spec icon={MapPin} label="כתובת" value={propertySnapshot.address} /> : null}
+          </div>
+          {snapshotFeatures.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {snapshotFeatures.map((feature) => <span key={feature} className="rounded-full border bg-muted px-3 py-1 text-sm font-medium">{feature}</span>)}
+            </div>
+          )}
+          {propertySnapshot.description && <p className="max-w-4xl whitespace-pre-line text-lg leading-8 text-foreground">{propertySnapshot.description}</p>}
+          <div className="fixed bottom-4 left-4 z-50 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
+            <ProgressRing value={35} size={44} strokeWidth={4} />
+          </div>
+        </div>
+      );
+    }
     return (
-      <div className="p-6 space-y-4" dir="rtl">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
+      <div className="flex min-h-[50vh] items-center justify-center p-6" dir="rtl">
+        <ProgressRing value={35} size={76} strokeWidth={6} />
       </div>
     );
   }
@@ -779,26 +819,23 @@ export default function PropertyDetail() {
       }
 
       setImageProgress(30);
-      let done = 0;
-      for (const url of candidates) {
-        try {
-          const { data: one, timedOut: imageTimedOut } = await invokeWithTimeout<{ photos?: string[] }>(
-            'fetch-property-all-images',
-            { listing_id: property.id, only: [url], append: true },
-            20000,
-          );
-          if (imageTimedOut) continue;
-          const added = (one as { photos?: string[] } | null)?.photos ?? [];
-          if (added.length) {
-            setStreamPhotos((prev) => Array.from(new Set([...prev, ...added])));
-          }
-        } catch (e) {
-          console.warn('[gallery] image import failed', url, e);
-        }
-        done += 1;
-        // Map the real imported/total fraction onto the 30-98 band.
-        setImageProgress(30 + Math.round((done / candidates.length) * 68));
-      }
+      // Mirror the gallery in one request rather than paying one function
+      // round-trip per photo. A bounded progress creep keeps the counter useful
+      // while the backend transfers the batch.
+      const transferTimer = setInterval(() => {
+        setImageProgress((p) => (p >= 92 ? p : Math.min(92, p + Math.max(1, (92 - p) * 0.08))));
+      }, 120);
+      const { data: batch, timedOut: batchTimedOut, error: batchError } = await invokeWithTimeout<{ photos?: string[] }>(
+        'fetch-property-all-images',
+        { listing_id: property.id, only: candidates, append: true },
+        60000,
+      );
+      clearInterval(transferTimer);
+      if (batchTimedOut) return false;
+      if (batchError) throw batchError;
+      const added = batch?.photos ?? [];
+      if (added.length) setStreamPhotos((prev) => Array.from(new Set([...prev, ...added])));
+      setImageProgress(98);
 
       await qc.refetchQueries({ queryKey: ['property-detail', id] });
       qc.invalidateQueries({ queryKey: ['properties-search'] });
@@ -1042,13 +1079,13 @@ export default function PropertyDetail() {
 
         {/* Owner (visual right, RTL start) + action buttons (visual left) */}
         <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
-          {data?.owner ? (
+          {owner ? (
             <Link
-              to={`/crm/profile/${data.owner.id}`}
+              to={`/crm/profile/${owner.id}`}
               className="text-[16px] font-semibold text-primary hover:underline"
               title="פתיחת כרטיס הלקוח"
             >
-              {data.owner.full_name}
+              {owner.full_name}
             </Link>
           ) : (
             <span />
