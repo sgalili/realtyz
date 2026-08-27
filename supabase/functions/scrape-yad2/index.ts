@@ -12,6 +12,7 @@
 //     "limit": 40
 //   }
 
+import { cleanSqm } from "../_shared/measures.ts";
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 import { parseHebrewAddress } from "../_shared/addressParse.ts";
@@ -216,7 +217,7 @@ Deno.serve(async (req) => {
             city: r.city,
             neighborhood: r.neighborhood,
             address: r.address,
-            sqm: toInt(r.sqm),
+            sqm: cleanSqm(r.sqm),
             floor: toInt(r.floor),
             photos: Array.isArray(r.photos) ? r.photos.slice(0, 20) : [],
             deal_type: dealType,
