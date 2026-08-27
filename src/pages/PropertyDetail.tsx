@@ -1073,7 +1073,7 @@ export default function PropertyDetail() {
   const isVideoMedia = (url?: string | null) =>
     !!url && /\.(mp4|mov|m4v|webm|ogv|3gp)(\?|#|$)/i.test(url);
 
-  const stepPhoto = async (delta: number) => 
+  const stepPhoto = async (delta: number) => { 
     if (editMode) {
       if (photos.length > 1) setActivePhoto((i) => (i + delta + photos.length) % photos.length);
       return;
