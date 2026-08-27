@@ -74,7 +74,8 @@ async function invokeMetaPublish(row: any, body: string): Promise<{ ok: boolean;
         group_ids: Array.isArray(row.group_ids) ? row.group_ids : [],
         target_profile_key: row.target_profile_key ?? null,
         target_account_ref: row.target_account_ref ?? null,
-        first_comment: row.first_comment ?? null,
+        first_comment: ensureWaLink(row.first_comment),
+
         listing_id: row.listing_id ?? null,
         series_id: row.series_id ?? null,
         series_index: row.series_index ?? null,
