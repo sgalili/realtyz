@@ -123,7 +123,41 @@ Deno.serve(async (req) => {
     const sourceUrl = listing.source_url || sourceUrlIn || "";
     const source = String(listing.source || "").toLowerCase();
 
-    // --- Step 1: re-scrape the original source so we get the FULL gallery ---
+    // Gather persisted candidates before considering a source scrape. Detail
+    // pages must get an immediate discovery response whenever our DB already
+    // knows the gallery; a Yad2 refresh can happen separately during sync.
+    const persistedCandidates: string[] = [];
+    if (Array.isArray(listing.media_photos)) {
+      for (const p of listing.media_photos as unknown[]) {
+        if (isHttp(p)) persistedCandidates.push(p.trim());
+        else if (p && typeof p === "object") harvestUrls(p, persistedCandidates);
+      }
+    }
+    harvestUrls(listing.source_metadata, persistedCandidates);
+
+    const uniquePersisted: string[] = [];
+    const persistedSeen = new Set<string>();
+    for (const raw of persistedCandidates) {
+      const u = raw.trim();
+      if (!isHttp(u) || isPlaceholder(u)) continue;
+      const k = photoKey(u);
+      if (persistedSeen.has(k)) continue;
+      persistedSeen.add(k);
+      uniquePersisted.push(u);
+      if (uniquePersisted.length >= MAX_IMAGES) break;
+    }
+
+    if (discover && uniquePersisted.length > 0) {
+      return json({
+        ok: true,
+        listing_id: listing.id,
+        candidates: uniquePersisted,
+        count: uniquePersisted.length,
+        rescrape: "skipped:persisted_gallery",
+      });
+    }
+
+    // --- Step 1: re-scrape only when no gallery has been persisted yet. ---
     // Skipped entirely in per-image (`only`) mode: the candidate list was
     // already discovered, so re-scraping would burn credits on every image.
     let rescrape: string | null = null;
