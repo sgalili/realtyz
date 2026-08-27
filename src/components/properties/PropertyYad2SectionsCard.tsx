@@ -137,9 +137,9 @@ export function PropertyYad2SectionsCard({
   const deals = data?.sold_deals ?? [];
   const history = (data?.valuation_history ?? []).filter((p) => p?.price != null);
   const schools = data?.schools ?? [];
-  const recommended = data?.recommended ?? [];
   const newInArea = data?.new_in_area ?? [];
-  const empty = !deals.length && !history.length && !schools.length && !recommended.length && !newInArea.length;
+  const empty = !deals.length && !history.length && !schools.length && !newInArea.length;
+
 
   const chart = history.map((p, i) => ({ name: p.date || p.label || `#${i + 1}`, price: Number(p.price) }));
 
@@ -162,9 +162,10 @@ export function PropertyYad2SectionsCard({
       {empty && !sync.isPending && (
         <p className="text-lg text-muted-foreground">
           עוד לא יובאו סקשנים מעמוד היד2. לחצו על "ייבוא כל הסקשנים" כדי לשלוף עסקאות באזור,
-          היסטוריית שווי, מוסדות חינוך, נכסים מומלצים ופרויקטים חדשים.
+          היסטוריית שווי, מוסדות חינוך ופרויקטים חדשים.
         </p>
       )}
+
 
       {chart.length > 1 && (
         <SectionShell icon={TrendingUp} title="היסטוריית שווי הנכס">
@@ -217,16 +218,16 @@ export function PropertyYad2SectionsCard({
 
       {schools.length > 0 && (
         <SectionShell icon={GraduationCap} title="מוסדות חינוך באזור" count={schools.length}>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {schools.map((s, i) => (
-              <Card key={i} className="p-3">
-                <p className="text-lg font-semibold">{s.name}</p>
+          <div className="flex flex-wrap gap-3">
+            {schools.slice(0, 10).map((s, i) => (
+              <Card key={i} className="flex-1 min-w-[220px] max-w-[280px] p-3">
+                <p className="text-lg font-semibold line-clamp-1" title={s.name ?? ''}>{s.name}</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {s.type && <Badge variant="secondary" className="text-sm">{s.type}</Badge>}
                   {s.grades && <Badge variant="outline" className="text-sm">{s.grades}</Badge>}
                   {s.supervision && <Badge variant="outline" className="text-sm">{s.supervision}</Badge>}
                 </div>
-                {s.address && <p className="mt-1 text-base text-muted-foreground">{s.address}</p>}
+                {s.address && <p className="mt-1 text-base text-muted-foreground line-clamp-1" title={s.address}>{s.address}</p>}
                 {s.distance && <p className="text-base text-muted-foreground">{s.distance}</p>}
               </Card>
             ))}
@@ -234,17 +235,13 @@ export function PropertyYad2SectionsCard({
         </SectionShell>
       )}
 
-      {recommended.length > 0 && (
-        <SectionShell icon={Building2} title="נכסים מומלצים נוספים" count={recommended.length}>
-          <ListingCards rows={recommended} />
-        </SectionShell>
-      )}
 
       {newInArea.length > 0 && (
         <SectionShell icon={Sparkles} title="נכסים ופרויקטים חדשים באזור" count={newInArea.length}>
-          <ListingCards rows={newInArea} />
+          <ListingCards rows={newInArea.slice(0, 10)} />
         </SectionShell>
       )}
+
 
       {data?.fetched_at && (
         <p className="text-sm text-muted-foreground">
