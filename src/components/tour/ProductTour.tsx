@@ -10,6 +10,10 @@ import { PACKAGES, FREE_CONTACTS, FREE_PROPERTIES, limitLabel } from '@/lib/pric
 import { META_APP_ID } from '@/lib/metaApp';
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
+import { useQueryClient } from '@tanstack/react-query';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 
 /* Realtyz — סיור מוצר לנרשמים חדשים.
@@ -21,6 +25,7 @@ type TourStep = {
   bullets: string[];
   cta?: { label: string; to: string };
   connections?: boolean;
+  profileForm?: boolean;
 };
 
 const STEPS: TourStep[] = [
@@ -32,6 +37,15 @@ const STEPS: TourStep[] = [
       'הכל במקום אחד: שיחות, נכסים, משימות ופרסום.',
       'הסיור לוקח דקה. אפשר לצאת בכל רגע.',
     ],
+  },
+  {
+    eyebrow: 'הפרטים שלך',
+    title: 'נכיר אותך רגע לפני שמתחילים',
+    bullets: [
+      'השם שלך יופיע בהודעות, בפוסטים ובדפים המשותפים.',
+      'עיר הפעילות תהיה אזור החיפוש הקבוע שלך בכל האפליקציה.',
+    ],
+    profileForm: true,
   },
   {
     eyebrow: 'משימות היום',
@@ -109,8 +123,44 @@ function startFacebookLogin() {
 export function ProductTour() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [activityCity, setActivityCity] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  /** Persists the intake details: name, optional email and the default work city. */
+  const saveProfileDetails = async () => {
+    if (!user) return;
+    const name = fullName.trim();
+    const mail = email.trim();
+    const city = activityCity.trim();
+    if (!name && !mail && !city) return;
+    setSavingProfile(true);
+    try {
+      const patch: Record<string, unknown> = {};
+      if (name) patch.full_name = name;
+      if (mail) patch.email = mail;
+      if (city) {
+        patch.city = city;
+        patch.service_areas = [city];
+      }
+      if (Object.keys(patch).length) {
+        await supabase.from('profiles').update(patch).eq('id', user.id);
+      }
+      const metaPatch: Record<string, unknown> = {};
+      if (name) metaPatch.full_name = name;
+      if (city) metaPatch.activity_city = city;
+      if (Object.keys(metaPatch).length) await supabase.auth.updateUser({ data: metaPatch });
+      queryClient.invalidateQueries({ queryKey: ['service_areas'] });
+    } catch {
+      // non-fatal — the user can complete this later in the profile page
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -129,6 +179,9 @@ export function ProductTour() {
         window.localStorage.setItem(key, '1');
         return;
       }
+      const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+      const metaName = String(meta.full_name ?? meta.name ?? '').trim();
+      if (metaName) setFullName(metaName);
       setOpen(true);
     })().catch(() => setOpen(true));
     return () => { cancelled = true; };
@@ -203,6 +256,34 @@ export function ProductTour() {
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Button>
           )}
+          {step.profileForm && (
+            <div className="mt-6 space-y-4 text-right" dir="rtl">
+              <div className="space-y-1.5">
+                <Label className="text-base font-bold">שם מלא</Label>
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="למשל: אודי ויטמן"
+                  className="h-12 text-base"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-base font-bold">כתובת אימייל</Label>
+                <Input
+                  dir="ltr"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="h-12 text-left text-base"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-base font-bold">עיר הפעילות שלך</Label>
+                <IsraeliCityPicker value={activityCity} onChange={setActivityCity} placeholder="בחר עיר" />
+              </div>
+            </div>
+          )}
           {step.connections && (
             <div className="mt-6">
               <Button
@@ -240,7 +321,12 @@ export function ProductTour() {
             )}
             <Button
               className={cn('h-11 text-base font-bold')}
-              onClick={() => (isLast ? void finish() : setIndex((i) => i + 1))}
+              disabled={savingProfile}
+              onClick={() => void (async () => {
+                if (step.profileForm) await saveProfileDetails();
+                if (isLast) await finish();
+                else setIndex((i) => i + 1);
+              })()}
             >
               {isLast ? 'מתחילים לעבוד' : 'הבא'}
             </Button>
