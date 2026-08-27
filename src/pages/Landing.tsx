@@ -296,7 +296,7 @@ export default function Landing() {
                 מפעיל מבצע, פותח משימות ומתאם סיורים - בזמן אמת, בלי לפתוח את המערכת.
               </p>
               <Link to="/auth" className="mt-7 inline-block">
-                <Button size="lg" className="h-13 px-8 text-base font-extrabold">
+                <Button size="lg" className="h-14 px-8 text-base font-extrabold">
                   נסו את זה בחינם עכשיו
                 </Button>
               </Link>
