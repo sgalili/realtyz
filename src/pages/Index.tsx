@@ -281,7 +281,7 @@ const Dashboard = () => {
       <CollapsibleSection
         id="scheduled-tours"
         title="סיורים מתוזמנים"
-        description="סיורים שנקבעו על ידי מתעניינים מדפי הנכס הציבוריים"
+        
         icon={<CalendarCheck2 className="h-4 w-4 text-primary" />}
       >
         <ScheduledToursCard />

@@ -147,11 +147,10 @@ export default function ClientPortal() {
   const { lead, listings, agent, branding } = data;
   const firstName = (lead.full_name ?? "").split(" ")[0] || "שלום";
 
-  const waLink = agent.whatsapp_phone
-    ? `https://wa.me/${agent.whatsapp_phone.replace(/\D/g, "")}?text=${encodeURIComponent(
-        `שלום ${agent.name}, יש לי שאלה לגבי הנכסים שהראית לי בפורטל.`,
-      )}`
-    : null;
+  // Always the official Meta WBA number — never the agent's personal number.
+  const waLink = officialWaLink(
+    `שלום ${agent.name}, יש לי שאלה לגבי הנכסים שהראית לי בפורטל.`,
+  );
   const mailLink = agent.email
     ? `mailto:${agent.email}?subject=${encodeURIComponent("שאלה מפורטל הלקוח")}`
     : null;

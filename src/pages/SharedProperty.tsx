@@ -206,11 +206,11 @@ export default function SharedProperty() {
     .map((b) => ({ ...b, items: perkList.filter((x) => b.re.test(x)) }))
     .filter((b) => b.items.length > 0);
 
-  const wa = normalizeWA(data?.owner_wa) ?? normalizeWA(data?.broker_wa);
-  const waMsg = encodeURIComponent(
+  // HARD RULE: public property pages always open our official Meta WBA number,
+  // never the owner's / broker's personal WhatsApp.
+  const waHref = officialWaLink(
     `שלום, ראיתי את הנכס "${displayTitle}" ואשמח לקבל פרטים נוספים.`,
   );
-  const waHref = wa ? `https://wa.me/${wa}?text=${waMsg}` : null;
 
 
 

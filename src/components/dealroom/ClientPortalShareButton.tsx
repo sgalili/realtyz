@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Share2, Copy, Check, RefreshCw, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { openOfficialWhatsApp, sendViaOfficialWaba } from "@/lib/officialWa";
 import { publicUrl } from '@/lib/publicUrl';
 
 interface Props {
@@ -98,14 +99,18 @@ export default function ClientPortalShareButton({
     setTimeout(() => setCopied(false), 1800);
   }
 
-  function sendWhatsApp() {
+  async function sendWhatsApp() {
     if (!url) return;
     const phone = (leadPhone ?? "").replace(/\D/g, "");
-    const msg = encodeURIComponent(
-      `שלום${leadName ? ` ${leadName.split(" ")[0]}` : ""}, הכנתי לך פורטל אישי לעקוב אחרי התקדמות העסקה והנכסים שאנחנו בוחנים יחד:\n${url}`,
-    );
-    const target = phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
-    window.open(target, "_blank", "noopener");
+    const msg = `שלום${leadName ? ` ${leadName.split(" ")[0]}` : ""}, הכנתי לך פורטל אישי לעקוב אחרי התקדמות העסקה והנכסים שאנחנו בוחנים יחד:\n${url}`;
+    // Official Meta WBA number only.
+    if (phone) {
+      const res = await sendViaOfficialWaba({ phone_number: phone, message: msg });
+      if (res.ok) toast.success("נשלח מהמספר הרשמי");
+      else toast.error(res.error || "השליחה נכשלה");
+      return;
+    }
+    await openOfficialWhatsApp(msg);
   }
 
   return (
