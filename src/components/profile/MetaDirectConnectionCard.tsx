@@ -230,8 +230,12 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         }
         toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
         // Import the groups reachable from the fresh token so the targets list
-        // is populated without an extra manual step.
+        // is populated without an extra manual step. Meta deprecated the Graph
+        // groups API for new apps, so the companion extension is asked in
+        // parallel — whichever source answers first fills the list.
         void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
+        requestExtensionGroups();
+
         refreshBinding();
         refreshHealth();
         await probe(false).catch(() => undefined);
