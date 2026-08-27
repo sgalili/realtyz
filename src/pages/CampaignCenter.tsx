@@ -700,7 +700,7 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
 
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
-  presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId,
+  presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
 }: {
   channel: ChannelCard;
   brandName: string;
@@ -712,6 +712,8 @@ const InlineComposer = ({
   presetVariant?: number;
   presetVariants?: number;
   instanceId?: string;
+  /** Lets a collapsed wrapper card mirror this draft's live status. */
+  onStatus?: (status: ComposerStatus) => void;
 }) => {
   // Persistent draft key — namespaced per replicated instance so multiple
   // composers on the same page don't clobber each other's drafts. Persisted
