@@ -13,6 +13,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetailsCard';
+import { sanitizeSqm, sanitizeFloor, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
+
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
 import TourSchedulerDialog from '@/components/properties/TourSchedulerDialog';
 import { Button } from '@/components/ui/button';
@@ -188,8 +190,12 @@ export default function SharedProperty() {
 
   const specs: { label: string; value: string; icon: any }[] = [];
   if (Number(p.rooms) > 0) specs.push({ label: 'חדרים', value: String(p.rooms), icon: Bed });
-  if (Number(p.sqm) > 0) specs.push({ label: 'מ״ר בנוי', value: `${Number(p.sqm)} מ״ר`, icon: Ruler });
-  if (p.floor != null && p.floor !== '') specs.push({ label: 'קומה', value: String(p.floor), icon: Layers });
+  const sharedSqm = sanitizeSqm(p.sqm);
+  const sharedFloorsInBuilding = (p as any).floors_in_building ?? floorsInBuildingFromSqm(p.sqm);
+  if (sharedSqm) specs.push({ label: 'מ״ר בנוי', value: `${sharedSqm} מ״ר`, icon: Ruler });
+  if (p.floor != null && p.floor !== '') specs.push({ label: 'קומה', value: String(sanitizeFloor(p.floor) ?? p.floor), icon: Layers });
+  if (sharedFloorsInBuilding) specs.push({ label: 'קומות בבניין', value: String(sharedFloorsInBuilding), icon: Building2 });
+
   if (p.neighborhood) specs.push({ label: 'שכונה', value: String(p.neighborhood), icon: MapPin });
   if (p.city) specs.push({ label: 'עיר', value: String(p.city), icon: Building2 });
   if (p.project_name) specs.push({ label: 'פרויקט', value: String(p.project_name), icon: Home });

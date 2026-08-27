@@ -148,15 +148,24 @@ const interestHebrew: Record<string, string> = {
   Legal: 'משפט', Campaign: 'קמפיין', 'Smart Link': 'קישור חכם', Engagement: 'מעורבות',
 };
 const statusHebrew: Record<string, string> = {
-  // Real-estate CRM lead statuses
+  // Real-estate CRM lead statuses (Hebrew only in the UI)
+  new: 'מתעניין חדש',
+  lead: 'מתעניין חדש',
   cold: 'מתעניין קר',
   qualified: 'מתעניין מוסמך',
   negotiation: 'במשא ומתן',
-  closed: 'נסגר',
+  closed: 'נסגרה עסקה',
   // Legacy fallbacks
-  lead: 'מתעניין קר', supporter: 'נסגר', active: 'מתעניין מוסמך',
-  inactive: 'לא רלוונטי', contacted: 'נוצר קשר', voted: 'נסגר',
+  supporter: 'נסגרה עסקה', active: 'מתעניין מוסמך',
+  inactive: 'לא רלוונטי כרגע', contacted: 'נוצר קשר', voted: 'נסגרה עסקה',
 };
+/** Hebrew display dictionary for the sentiment ("יחס הלקוח") filter. */
+const SENTIMENT_LABEL_HE: Record<string, string> = {
+  positive: 'חיובי',
+  neutral: 'ניטרלי',
+  negative: 'שלילי',
+};
+
 const loyaltyConfig: Record<string, { label: string; color: string }> = {
   cold: { label: 'מתעניין קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
   qualified: { label: 'מתעניין מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
@@ -388,6 +397,8 @@ const LeadCRM = () => {
   const [profileFilter, setProfileFilter] = useState<string>('all');
   const [dealTypeFilter, setDealTypeFilter] = useState<string>('all');
   const [leadKindFilter, setLeadKindFilter] = useState<'all' | 'buyer' | 'seller' | 'renter' | 'landlord'>('all');
+  const [sentimentFilter, setSentimentFilter] = useState<string>('all');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
   const [compactMode, setCompactMode] = useState<boolean>(() => {
     try { return localStorage.getItem('crm.compact') === '1'; } catch { return false; }
   });
@@ -502,7 +513,7 @@ const LeadCRM = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter, dealTypeFilter, leadKindFilter],
+    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter, dealTypeFilter, leadKindFilter, sentimentFilter, channelFilter],
     enabled: !isDemoMode,
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase.from('leads').select('*', { count: 'exact' });
@@ -534,6 +545,8 @@ const LeadCRM = () => {
       if (statusFilter !== 'all') query = query.eq('status', statusFilter);
       if (dealTypeFilter !== 'all') query = query.eq('deal_type', dealTypeFilter);
       if (leadKindFilter !== 'all') query = query.eq('preferences->>lead_kind', leadKindFilter);
+      if (sentimentFilter !== 'all') query = query.eq('sentiment', sentimentFilter);
+      if (channelFilter !== 'all') query = query.eq('preferences->>arrival_channel', channelFilter);
 
       const from = pageParam * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
@@ -659,11 +672,13 @@ const LeadCRM = () => {
     queryKey: ['lead-filter-options'],
     enabled: !isDemoMode,
     queryFn: async () => {
-      const { data } = await supabase.from('leads').select('city, interest_tag, status');
+      const { data } = await supabase.from('leads').select('city, interest_tag, status, sentiment, preferences');
       const cities = [...new Set((data ?? []).map(v => v.city).filter(Boolean))];
       const interests = [...new Set((data ?? []).map(v => v.interest_tag).filter(Boolean))];
       const statuses = [...new Set((data ?? []).map(v => v.status).filter(Boolean))];
-      return { cities, interests, statuses };
+      const sentiments = [...new Set((data ?? []).map(v => v.sentiment).filter(Boolean))];
+      const channels = [...new Set((data ?? []).map(v => (v.preferences as any)?.arrival_channel).filter(Boolean))] as string[];
+      return { cities, interests, statuses, sentiments, channels };
     },
     staleTime: 10 * 60 * 1000,
   });
@@ -1474,6 +1489,22 @@ const LeadCRM = () => {
                 <SelectItem value="all">כל סוגי העסקה</SelectItem>
                 <SelectItem value="sale">קנייה / מכירה</SelectItem>
                 <SelectItem value="rent">שכירות / השכרה</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
+              <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder="יחס הלקוח" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל רמות היחס</SelectItem>
+                {(filterOptions?.sentiments ?? ['positive', 'neutral', 'negative']).map((s) => (
+                  <SelectItem key={s} value={s!}>{SENTIMENT_LABEL_HE[s!] || 'ניטרלי'}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="ערוץ הגעה" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל ערוצי ההגעה</SelectItem>
+                {(filterOptions?.channels ?? []).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>}
