@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { cleanMeasurementValue } from '@/lib/propertyMeasures';
+
 import {
   Sofa, TrendingUp, MapPin, Navigation, Pencil, Plus, Trash2, X, Save,
   ArrowUpCircle, Wind, Grid2X2, ShieldCheck, Sun, Armchair, DoorClosed,
@@ -431,13 +433,11 @@ export function PropertyRichDetailsCard({
     ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
     : null;
 
-  // Numeric attributes (מ״ר, חדרים, קומה…) always render as a single clean
-  // number — no units, no extra values glued onto it.
-  const cleanNumeric = (name: string, raw: string): string => {
-    if (!/מ״ר|מ"ר|חדרים|קומה|קומות|חניות|מרפסות/.test(name)) return raw;
-    const m = raw.replace(/,/g, '').match(/\d+(\.\d+)?/);
-    return m ? m[0] : raw;
-  };
+  // Numeric attributes (מ״ר, חדרים, קומה…) always render as a single clean,
+  // plausible number — no units, no glued values (80 never becomes 280).
+  const cleanNumeric = (name: string, raw: string): string =>
+    cleanMeasurementValue(name, raw);
+
 
   const rowValue = (name: string, fallback: unknown) =>
     rowOverrides[`row:${name}`] ?? cleanNumeric(name, renderValue(fallback));

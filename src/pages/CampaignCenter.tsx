@@ -59,6 +59,10 @@ import { autoImportResult } from '@/lib/propertyAutoImport';
 import { SourceBadge } from '@/components/properties/SourceBadge';
 
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
+import {
+  hebrewOnlyParts, hebrewPropertyType, sanitizeFloor, sanitizeRooms, sanitizeSqm,
+} from '@/lib/propertyMeasures';
+
 
 
 type TabValue = 'create' | 'published' | 'calendar';
@@ -574,8 +578,20 @@ const cleanFirstComment = (value: string) => String(value || '')
   .replace(/\n*\s*(?:📞|☎️|📱)?\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, '')
   .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, '')
   .replace(/\n*\s*רישיון\s*תיווך[^\n]*/gu, '')
+  // No English keywords in first comments (URLs are preserved as-is).
+  .split('\n')
+  .map((line) => (/https?:\/\/|wa\.me|m\.me/i.test(line)
+    ? line
+    : line
+        .replace(/\b[A-Za-z][A-Za-z'׳-]*\b/g, '')
+        .replace(/\|\s*(?=\|)/g, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/\s*\|\s*$/, '')
+        .trimEnd()))
+  .join('\n')
   .replace(/\n{3,}/g, '\n\n')
   .trim();
+
 
 const extractListingFeatureFlags = (listing: CampaignListing | null | undefined) => {
   if (!listing) return [] as string[];
@@ -623,18 +639,23 @@ const buildFirstCommentKeywordLine = (listing: CampaignListing | null | undefine
   const featuresObj = (listing.features && !Array.isArray(listing.features) && typeof listing.features === 'object')
     ? (listing.features as Record<string, unknown>)
     : {};
-  const sourceType = String(meta.property_type || featuresObj.property_type || '') || 'דירה';
+  // Hebrew only: never surface English source values such as "apartment".
+  const sourceType = hebrewPropertyType(meta.property_type || featuresObj.property_type || '');
+  const sqm = sanitizeSqm(listing.sqm);
+  const floor = sanitizeFloor(listing.floor);
+  const rooms = sanitizeRooms(listing.rooms);
   const parts = [
     sourceType,
     listing.city ? String(listing.city) : null,
     listing.address ? stripAddressNumbers(listing.address) : (listing.neighborhood ? String(listing.neighborhood) : null),
-    listing.rooms ? `${listing.rooms} חדרים` : null,
-    listing.floor !== null && listing.floor !== undefined ? `קומה ${listing.floor}` : null,
-    listing.sqm ? `${listing.sqm} מ"ר` : null,
+    rooms !== null ? `${rooms} חדרים` : null,
+    floor !== null ? `קומה ${floor}` : null,
+    sqm !== null ? `${sqm} מ"ר` : null,
     ...extractListingFeatureFlags(listing),
   ].filter(Boolean) as string[];
-  return Array.from(new Set(parts.map((s) => s.trim()))).join(' | ');
+  return Array.from(new Set(hebrewOnlyParts(parts.map((s) => s.trim())))).join(' | ');
 };
+
 
 // Hard cap: the property line in the first comment is at most 10 words.
 const limitToTenWords = (line: string) =>
@@ -1414,17 +1435,32 @@ const InlineComposer = ({
     setFirstComment((curr) => (curr || '').replace(line, '').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, ''));
   };
 
+  // Hard de-dup: a first comment must never contain more than one WhatsApp /
+  // Messenger link, even after regeneration, draft restore or re-toggle.
+  const stripAllWaLinkLines = () => {
+    setFirstComment((curr) => (curr || '')
+      .replace(/\n*[^\n]*(?:wa\.me\/\d+|realtyz\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\s+$/, ''));
+  };
+  const stripAllMsngrLinkLines = () => {
+    setFirstComment((curr) => (curr || '')
+      .replace(/\n*[^\n]*m\.me\/[^\s\n]*[^\n]*/gi, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\s+$/, ''));
+  };
+
+
   // When WA link is toggled ON, mint a branded shortlink and inject a CTA
   // line into the first-comment textarea with a random intro phrase.
   useEffect(() => {
     if (!attachWaLink) {
-      if (waInjectedRef.current) {
-        removeFirstCommentLine(waInjectedRef.current);
-        waInjectedRef.current = '';
-      }
+      stripAllWaLinkLines();
+      waInjectedRef.current = '';
       setWaShortUrl('');
       return;
     }
+
     let cancelled = false;
     (async () => {
       // Fallback CTA must always target the official Meta WhatsApp Business
@@ -1455,8 +1491,9 @@ const InlineComposer = ({
       if (cancelled) return;
       setWaShortUrl(url);
       const line = `${pickRandom(WA_INTRO_PHRASES)}: ${url}`;
-      if (waInjectedRef.current) removeFirstCommentLine(waInjectedRef.current);
+      stripAllWaLinkLines();
       waInjectedRef.current = line;
+
       injectFirstCommentLine(line);
     })();
     return () => { cancelled = true; };
@@ -1465,10 +1502,8 @@ const InlineComposer = ({
   // Messenger deep-link uses the connected FB Page ref.
   useEffect(() => {
     if (!attachMsngrLink) {
-      if (msngrInjectedRef.current) {
-        removeFirstCommentLine(msngrInjectedRef.current);
-        msngrInjectedRef.current = '';
-      }
+      stripAllMsngrLinkLines();
+      msngrInjectedRef.current = '';
       setMsngrShortUrl('');
       return;
     }
@@ -1476,8 +1511,9 @@ const InlineComposer = ({
     const url = pageRef ? `https://m.me/${pageRef}` : 'https://m.me/';
     setMsngrShortUrl(url);
     const line = `${pickRandom(MSNGR_INTRO_PHRASES)}: ${url}`;
-    if (msngrInjectedRef.current) removeFirstCommentLine(msngrInjectedRef.current);
+    stripAllMsngrLinkLines();
     msngrInjectedRef.current = line;
+
     injectFirstCommentLine(line);
   }, [attachMsngrLink, socialProfiles]);
 
