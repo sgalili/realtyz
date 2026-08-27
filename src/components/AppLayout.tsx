@@ -18,6 +18,7 @@ import { RotatingHeadline } from '@/components/RotatingHeadline';
 import NotificationCenter from '@/components/NotificationCenter';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
 import QuickActionDrawer from '@/components/QuickActionDrawer';
+import ProductTour from '@/components/tour/ProductTour';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
