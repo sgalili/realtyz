@@ -15,6 +15,85 @@
 export const EXT_POSTS_REQUEST = 'RZ_FB_POSTS_REQUEST';
 export const EXT_POSTS_MESSAGE = 'RZ_FB_POSTS';
 export const EXT_POSTS_EVENT = 'rz:ext-fb-posts';
+export const EXT_COMMENTS_REQUEST = 'RZ_FB_COMMENTS_REQUEST';
+export const EXT_COMMENTS_MESSAGE = 'RZ_FB_COMMENTS';
+export const EXT_COMMENTS_EVENT = 'rz:ext-fb-comments';
+
+export type ExtensionCommentBundle = {
+  post_id: string;
+  comments: Array<{
+    id: string;
+    message: string;
+    created_time: string | null;
+    from: { id: string | null; name: string | null };
+    permalink_url: string | null;
+    parent: { id: string } | null;
+  }>;
+};
+
+const normalizeCommentBundles = (input: any): ExtensionCommentBundle[] => {
+  const arr = Array.isArray(input) ? input : Array.isArray(input?.comments) ? input.comments : [];
+  return arr
+    .map((entry: any) => {
+      const postId = String(entry?.post_id ?? entry?.postId ?? '').trim();
+      const list = Array.isArray(entry?.comments) ? entry.comments : [];
+      if (!postId || list.length === 0) return null;
+      return {
+        post_id: postId,
+        comments: list
+          .map((c: any) => ({
+            id: String(c?.id ?? '').trim(),
+            message: String(c?.message ?? c?.text ?? '').trim(),
+            created_time: c?.created_time ?? null,
+            from: { id: c?.from?.id ?? null, name: c?.from?.name ?? null },
+            permalink_url: c?.permalink_url ?? null,
+            parent: c?.parent?.id ? { id: String(c.parent.id) } : null,
+          }))
+          .filter((c: any) => c.id && c.message),
+      };
+    })
+    .filter((b: any): b is ExtensionCommentBundle => !!b && b.comments.length > 0);
+};
+
+/**
+ * Ask the extension for the DOM-scraped comment trees of specific post IDs.
+ * Resolves with an empty array when no extension answers — the caller treats
+ * that as "fallback unavailable", never as an error to alert on.
+ */
+export const requestExtensionPostComments = (
+  postIds: string[],
+  timeoutMs = 12000,
+): Promise<ExtensionCommentBundle[]> =>
+  new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve([]);
+    let done = false;
+    const finish = (bundles: ExtensionCommentBundle[]) => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('message', onMessage);
+      document.removeEventListener(EXT_COMMENTS_EVENT, onEvent as EventListener);
+      window.clearTimeout(timer);
+      resolve(bundles);
+    };
+    const onMessage = (event: MessageEvent) => {
+      const data: any = event.data;
+      if (!data || data.source !== 'realtyz-extension') return;
+      if (data.type !== EXT_COMMENTS_MESSAGE) return;
+      finish(normalizeCommentBundles(data.comments ?? data.payload));
+    };
+    const onEvent = (event: CustomEvent) => finish(normalizeCommentBundles(event.detail?.comments ?? event.detail));
+
+    window.addEventListener('message', onMessage);
+    document.addEventListener(EXT_COMMENTS_EVENT, onEvent as EventListener);
+    const timer = window.setTimeout(() => finish([]), timeoutMs);
+
+    const payload = { source: 'realtyz-app', type: EXT_COMMENTS_REQUEST, postIds };
+    try { window.postMessage(payload, window.location.origin); } catch { /* noop */ }
+    try {
+      document.dispatchEvent(new CustomEvent(`${EXT_COMMENTS_EVENT}:request`, { detail: payload }));
+    } catch { /* noop */ }
+  });
+
 
 export type ExtensionPost = {
   post_id: string;
