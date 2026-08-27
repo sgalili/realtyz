@@ -123,11 +123,12 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
 
   return (data ?? []).map((row: any): UnifiedResult => {
     const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
-    // Any row that lives in our DB is "local" from the user's perspective.
-    // The upstream provenance is retained in row.source / meta, but for the
-    // multi-source counters + badges we treat every hydrated listing as
-    // 'mine' so imports don't keep showing up as "still external".
-    const source: PropertySource = 'mine';
+    // Keep the upstream provenance visible: a row scraped from Yad2 stays
+    // badged as Yad2 even after it is hydrated locally, so the source counter
+    // reflects where the property actually came from.
+    const origin = String(row.source ?? (meta as any)?.source_origin ?? '').toLowerCase();
+    const source: PropertySource = origin === 'yad2' ? 'yad2' : origin === 'homely' ? 'homely' : 'mine';
+
     const price = normPhone(row.asking_price);
     return {
       key: `local:${row.id}`,
@@ -362,7 +363,7 @@ export async function searchAllSources(
     return tokens.length === 0
       ? all
       : all.filter((r) => {
-          if (r.source === 'mine') return true;
+          if (r.localId) return true; // already filtered server-side
           const hay = [r.title, r.description, r.city, r.address, r.neighborhood]
             .filter(Boolean)
             .join(' ')
@@ -381,18 +382,29 @@ export async function searchAllSources(
     progress: { done: 1, total: 3, loaded: localResults.length, pending: ['yad2', 'homely'] },
   });
 
-  await Promise.all([
-    yad2Task().then((result) => {
-      collected.push(result);
-      const partial = mergeSettled(collected);
-      onPartial?.({ results: partial, sources: { ...sources }, progress: { done: collected.length, total: 3, loaded: partial.length, pending: collected.some((c) => c.label === 'homely') ? [] : ['homely'] } });
-    }),
-    homelyTask().then((result) => {
-      collected.push(result);
-      const partial = mergeSettled(collected);
-      onPartial?.({ results: partial, sources: { ...sources }, progress: { done: collected.length, total: 3, loaded: partial.length, pending: collected.some((c) => c.label === 'yad2') ? [] : ['yad2'] } });
-    }),
-  ]);
+  // Yad2 is the PRIMARY external source: it always runs first. Homely is only
+  // queried when Yad2 produced nothing for this query (no Yad2 page exists),
+  // which also saves Homely API calls on every ordinary search.
+  const yad2Result = await yad2Task();
+  collected.push(yad2Result);
+  const afterYad2 = mergeSettled(collected);
+  onPartial?.({
+    results: afterYad2,
+    sources: { ...sources },
+    progress: { done: 2, total: 3, loaded: afterYad2.length, pending: yad2Result.results.length ? [] : ['homely'] },
+  });
+
+  if (yad2Result.results.length === 0) {
+    const homelyResult = await homelyTask();
+    collected.push(homelyResult);
+    const afterHomely = mergeSettled(collected);
+    onPartial?.({
+      results: afterHomely,
+      sources: { ...sources },
+      progress: { done: 3, total: 3, loaded: afterHomely.length, pending: [] },
+    });
+  }
+
 
 
   const filtered = mergeSettled(collected);
