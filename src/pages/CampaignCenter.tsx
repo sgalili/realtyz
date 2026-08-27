@@ -1844,7 +1844,7 @@ const InlineComposer = ({
           : '';
         return (
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-0 pt-2 backdrop-blur">
-            <div className="flex items-stretch gap-2">
+            <div className="flex items-stretch justify-between gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -1872,7 +1872,7 @@ const InlineComposer = ({
                 }}
                 disabled={!canSend}
                 className={cn(
-                  'flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition',
+                  'inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition',
                   canSend
                     ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
                     : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
@@ -1881,6 +1881,7 @@ const InlineComposer = ({
                 <Send className="h-4 w-4 -scale-x-100" />
                 {calendarLocked ? `פרסם ב-${scheduledLabel}` : (mode === 'scheduled' ? 'פרסם בזמן שנבחר' : 'פרסם עכשיו')}
               </button>
+              <div className="flex items-stretch gap-2">
               {!calendarLocked && (
               <button
                 type="button"
@@ -1914,6 +1915,7 @@ const InlineComposer = ({
                   )}
                 </button>
               )}
+              </div>
             </div>
           </div>
 
@@ -1924,7 +1926,7 @@ const InlineComposer = ({
 
       {/* Facebook groups picker — opened from the group icon button */}
       <Dialog open={groupPickerOpen} onOpenChange={setGroupPickerOpen}>
-        <DialogContent dir="rtl" className="max-w-lg">
+        <DialogContent dir="rtl" className="w-[96vw] sm:max-w-[720px]">
           <DialogHeader>
             <DialogTitle className="text-right">קבוצות לפרסום</DialogTitle>
           </DialogHeader>
@@ -1935,8 +1937,8 @@ const InlineComposer = ({
               <span className="text-sm font-semibold text-foreground">שינוי טקסט לקבוצות</span>
             </label>
           </div>
-          <DialogFooter>
-            <Button type="button" onClick={() => setGroupPickerOpen(false)}>
+          <DialogFooter className="sm:justify-start">
+            <Button type="button" className="w-auto" onClick={() => setGroupPickerOpen(false)}>
               אישור{groupIds.length > 0 ? ` (${groupIds.length})` : ''}
             </Button>
           </DialogFooter>

@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Users, Check, Loader2, RefreshCw, Plus } from "lucide-react";
+import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
-import { ExtensionGroupSyncCard } from "@/components/social/ExtensionGroupSyncCard";
 
 export type FacebookGroup = {
   group_id: string;
@@ -35,11 +34,11 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [groups, setGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [syncNote, setSyncNote] = useState<string | null>(null);
   const [manualName, setManualName] = useState("");
   const [manualUrl, setManualUrl] = useState("");
   const [addingManual, setAddingManual] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
 
   const hasVisibleGroups = groups.length > 0;
 
@@ -101,50 +100,6 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
-  const syncFromGraph = async () => {
-    setSyncing(true);
-    try {
-      // Bounded: a Graph permission stall must never hang the card.
-      const { data, error } = (await Promise.race([
-        supabase.functions.invoke("fb-groups-import", { body: {} }),
-        new Promise((_r, rej) =>
-          setTimeout(() => rej(new Error("סנכרון הקבוצות ארך זמן רב מדי. ניתן להוסיף קבוצות ידנית.")), 20000)
-        ),
-      ])) as any;
-      if (error) throw error;
-      const returned: FacebookGroup[] = Array.isArray((data as any)?.groups)
-        ? (data as any).groups.filter((r: any) => r?.group_id).map(mapRow)
-        : [];
-      const imported = Number((data as any)?.imported ?? returned.length);
-      const note = String((data as any)?.error || (data as any)?.advice || "").trim();
-      if (imported > 0) {
-        setSyncNote(null);
-        toast.success(`סונכרנו ${imported} קבוצות מפייסבוק`);
-      } else if (note) {
-        setSyncNote(note);
-        toast.error(note);
-      } else {
-        const fallback = "לא נמצאו קבוצות בחשבון המחובר. ודא שאתה מנהל הקבוצה.";
-        setSyncNote(fallback);
-        toast.error(fallback);
-      }
-      // Prefer the stored rows, but fall back to what the function returned
-      // (RLS can hide fb_user_groups from the browser session).
-      const stored = await fetchStoredGroups();
-      setGroups(stored.length > 0 ? stored : returned);
-    } catch (e: any) {
-      // Meta App Review can restrict user_managed_groups entirely — degrade to
-      // the stored/manual list instead of leaving the card spinning.
-      const note = String(e?.message || "").trim() ||
-        "פייסבוק לא אישר את הרשאת הקבוצות (App Review). ניתן להוסיף קבוצות ידנית ולפרסם דרכן.";
-      setSyncNote(note);
-      toast.error(note);
-      try { setGroups(await fetchStoredGroups()); } catch { /* keep current list */ }
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const addManualGroup = async () => {
     const name = manualName.trim();
     const url = manualUrl.trim();
@@ -184,67 +139,26 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
   return (
     <div className={cn("rounded-xl border border-border bg-background p-3 space-y-3", className)} dir="rtl">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold text-foreground">פרסום בקבוצות פייסבוק</span>
-          {groups.length > 0 && (
-            <span className="text-xs text-muted-foreground">({selectedIds.length}/{groups.length})</span>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={syncFromGraph}
-          disabled={syncing}
-          title="סנכרן קבוצות מפייסבוק"
-          className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
-        >
-          {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-          {syncing ? "מסנכרן…" : "סנכרן קבוצות"}
-        </button>
+      <div className="flex items-center gap-2">
+        <Users className="h-4 w-4 text-primary" />
+        <span className="text-[15px] font-semibold text-foreground">פרסום בקבוצות פייסבוק</span>
+        {groups.length > 0 && (
+          <span className="text-[14px] text-muted-foreground">({selectedIds.length}/{groups.length})</span>
+        )}
       </div>
 
-      <ExtensionGroupSyncCard onSynced={() => void load()} />
-
-      {(loading || syncing) && !hasVisibleGroups && (
-        <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+      {loading && !hasVisibleGroups && (
+        <div className="flex items-center justify-center gap-2 py-6 text-[14px] text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           טוען קבוצות מחוברות…
         </div>
       )}
 
-      {!loading && !syncing && !hasVisibleGroups && (
-        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-xs text-muted-foreground">
-          {syncNote || 'אין קבוצות זמינות. חבר את פרופיל הפייסבוק בעמוד החיבורים ולחץ "סנכרן קבוצות", או הוסף קבוצה ידנית.'}
+      {!loading && !hasVisibleGroups && (
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-[14px] text-muted-foreground">
+          {syncNote || 'אין קבוצות זמינות. סנכרן את הקבוצות בעמוד החיבורים, או הוסף קבוצה ידנית.'}
         </div>
       )}
-
-      <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr_auto]">
-        <input
-          value={manualName}
-          onChange={(e) => setManualName(e.target.value)}
-          placeholder="שם קבוצה"
-          maxLength={120}
-          className="rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
-        />
-        <input
-          value={manualUrl}
-          onChange={(e) => setManualUrl(e.target.value)}
-          placeholder="https://www.facebook.com/groups/..."
-          dir="ltr"
-          maxLength={500}
-          className="rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
-        />
-        <button
-          type="button"
-          onClick={addManualGroup}
-          disabled={addingManual}
-          className="inline-flex items-center justify-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60"
-        >
-          <Plus className="h-3 w-3" />
-          {addingManual ? "מוסיף…" : "הוסף ידנית"}
-        </button>
-      </div>
 
       {hasVisibleGroups && (
         <div className="rounded-lg border border-border overflow-hidden">
@@ -263,8 +177,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
               {someSelected && <div className="h-0.5 w-2 bg-primary-foreground rounded" />}
             </div>
             <input type="checkbox" className="sr-only" checked={allSelected} onChange={toggleAll} />
-            <span className="text-sm font-semibold text-foreground flex-1">בחר הכל</span>
-            <span className="text-xs text-muted-foreground tabular-nums">{selectedIds.length}/{groups.length}</span>
+            <span className="text-[15px] font-semibold text-foreground flex-1">בחר הכל</span>
+            <span className="text-[14px] text-muted-foreground tabular-nums">{selectedIds.length}/{groups.length}</span>
           </label>
 
           <div className="max-h-72 overflow-y-auto divide-y divide-border">
@@ -294,21 +208,68 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                       <Users className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-foreground">{g.group_name}</div>
-                    <div className="flex items-center gap-1">
-                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      <span className="text-[10px] text-muted-foreground">מחובר</span>
-                    </div>
+                  <div className="min-w-0 flex-1 ps-[3px]">
+                    <div className="truncate text-[15px] font-medium text-foreground">{g.group_name}</div>
                   </div>
+                  {g.group_url && (
+                    <button
+                      type="button"
+                      title="פתח קבוצה בלשונית חדשה"
+                      onClick={(e) => { e.preventDefault(); window.open(g.group_url!, '_blank', 'noopener,noreferrer'); }}
+                      className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </button>
+                  )}
                 </label>
               );
             })}
           </div>
         </div>
       )}
+
+      {/* Manual add — collapsed by default, below the groups list */}
+      <div className="rounded-lg border border-border">
+        <button
+          type="button"
+          onClick={() => setManualOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-[15px] font-semibold text-foreground"
+        >
+          <span className="inline-flex items-center gap-2"><Plus className="h-4 w-4" /> הוסף ידנית</span>
+          <ChevronDown className={cn("h-4 w-4 transition", manualOpen && "rotate-180")} />
+        </button>
+        {manualOpen && (
+          <div className="grid gap-2 border-t border-border p-3 sm:grid-cols-[1fr_1.4fr_auto]">
+            <input
+              value={manualName}
+              onChange={(e) => setManualName(e.target.value)}
+              placeholder="שם קבוצה"
+              maxLength={120}
+              className="rounded-md border border-border bg-background px-2 py-1.5 text-[15px] text-foreground"
+            />
+            <input
+              value={manualUrl}
+              onChange={(e) => setManualUrl(e.target.value)}
+              placeholder="https://www.facebook.com/groups/..."
+              dir="ltr"
+              maxLength={500}
+              className="rounded-md border border-border bg-background px-2 py-1.5 text-[15px] text-foreground"
+            />
+            <button
+              type="button"
+              onClick={addManualGroup}
+              disabled={addingManual}
+              className="inline-flex items-center justify-center gap-1 rounded-md border border-border bg-muted/40 px-3 py-1.5 text-[15px] font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+            >
+              <Plus className="h-4 w-4" />
+              {addingManual ? "מוסיף…" : "הוסף"}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
+
 
 export default CampaignGroupSelector;
