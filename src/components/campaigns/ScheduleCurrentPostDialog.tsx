@@ -79,14 +79,15 @@ export function ScheduleCurrentPostDialog({
   const [winCount, setWinCount] = useState(initialPrefs.winCount);
   const [recurrence, setRecurrence] = useState<Recurrence>(initialPrefs.recurrence);
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>(initialPrefs.recurrenceDays);
-  // Blank = infinite/open-ended sequence (materialized as 52 slots, user can
-  // stop the series any time via "בטל סדרה" on the calendar).
-  const INFINITE_CAP = 52;
-  const [recurrenceCountInput, setRecurrenceCountInput] = useState<string>(initialPrefs.recurrenceCountInput ?? '');
-  const recurrenceCount = recurrenceCountInput.trim() === ''
-    ? INFINITE_CAP
-    : Math.max(1, Math.min(INFINITE_CAP, Number(recurrenceCountInput) || 1));
+  // Rolling series: the queue never holds more than ONE future version.
+  // The first slot publishes now/at the chosen time, exactly one next version
+  // is materialized, and every further version is created by the dispatcher
+  // only after the previous one was published successfully. The series runs
+  // forever until the property is marked sold / rented / hold / disabled.
+  const ROLLING_CYCLES = 2; // current slot + the single next version
+  const recurrenceCount = ROLLING_CYCLES;
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
+
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
     initialPrefs.selectedGroupIds.length > 0 ? initialPrefs.selectedGroupIds : (defaultGroupIds || []),
