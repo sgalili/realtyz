@@ -12,16 +12,17 @@ const PLATFORMS = [
   'linkedin', 'x', 'tiktok', 'youtube', 'gmail', 'sms', 'google_drive',
 ];
 
-const STACK: { label: string; color: string; icon?: string; img?: string }[] = [
+const STACK: { label: string; color: string; icon?: string; img?: string; chip?: boolean }[] = [
   { label: 'OpenAI', color: '#FFFFFF', icon: 'openai' },
-  { label: 'Gemini', color: '#4285F4', icon: 'gemini' },
-  { label: 'Claude', color: '#D97757', icon: 'claude' },
+  { label: 'Gemini', color: '#9B72CB', icon: 'gemini' },
   { label: 'Claude Code', color: '#D97757', icon: 'claude' },
   { label: 'React', color: '#61DAFB', icon: 'react' },
+  { label: 'Meta', color: '#0866FF', icon: 'meta' },
+  { label: 'WhatsApp Business', color: '#25D366', icon: 'whatsapp' },
   { label: 'Google Cloud', color: '#4285F4', icon: 'googlecloud' },
   { label: 'AWS', color: '#FF9900', icon: 'amazonaws' },
   { label: 'Supabase', color: '#3ECF8E', icon: 'supabase' },
-  { label: 'GitHub', color: '#E6EDF3', icon: 'github' },
+  { label: 'GitHub', color: '#E6EDF3', icon: 'github', chip: true },
   { label: 'GreenAPI', color: '#25D366', img: greenApiLogo },
   { label: '019', color: '#E4002B', img: logo019 },
 ];
@@ -48,7 +49,7 @@ export function PlatformTicker() {
 export function StackTicker() {
   return (
     <div className="landing-ticker" dir="ltr">
-      <div className="landing-ticker-track landing-ticker-slow">
+      <div className="landing-ticker-track landing-ticker-slow landing-ticker-reverse">
         {[0, 1].map((dup) => (
           <div key={dup} className="landing-ticker-group" aria-hidden={dup === 1}>
             {STACK.map((s) => (
@@ -57,7 +58,15 @@ export function StackTicker() {
                 className="inline-flex items-center gap-2 whitespace-nowrap text-lg font-extrabold tracking-tight"
                 style={{ color: s.color }}
               >
-                {s.icon && <BrandIcon name={s.icon} className="h-6 w-6 shrink-0" />}
+                {s.icon && (
+                  s.chip ? (
+                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white">
+                      <BrandIcon name={s.icon} className="h-5 w-5" style={{ color: '#000000' }} />
+                    </span>
+                  ) : (
+                    <BrandIcon name={s.icon} className="h-6 w-6 shrink-0" />
+                  )
+                )}
                 {s.img && (
                   <img
                     src={s.img}
