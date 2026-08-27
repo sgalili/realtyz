@@ -5625,9 +5625,13 @@ const CampaignCenter = () => {
   // Persist bulk choices per workspace so a refresh doesn't lose the last
 
   // group/time selection for current and future multi-draft campaigns.
+  // Hydration must wait for the workspace id, otherwise we would read the wrong
+  // storage key, find nothing, and then overwrite the real selection with [].
+  const groupsHydratedRef = useRef(false);
   useEffect(() => {
+    if (!workspaceOwnerId || groupsHydratedRef.current) return;
     try {
-      const sKey = workspaceOwnerId ? `campaign:bulkScheduleIso:${workspaceOwnerId}` : 'campaign:bulkScheduleIso';
+      const sKey = `campaign:bulkScheduleIso:${workspaceOwnerId}`;
       const parsedGroups = loadCampaignGroups(workspaceOwnerId);
       if (parsedGroups.length) setBulkGroupIds(parsedGroups);
       const rawIso = localStorage.getItem(sKey);
@@ -5637,8 +5641,8 @@ const CampaignCenter = () => {
       }
       setBulkRecurrence(loadSchedulePrefs(workspaceOwnerId).recurrence);
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    groupsHydratedRef.current = true;
+  }, [workspaceOwnerId]);
   // Live sync: any group change made in the scheduling dialog updates the bubble.
   useEffect(() => subscribeCampaignGroups((ids) => {
     setBulkGroupIds((curr) => (JSON.stringify(curr) === JSON.stringify(ids) ? curr : ids));
@@ -5654,8 +5658,11 @@ const CampaignCenter = () => {
     }
   }, [bulkGlobalScheduleOpen, workspaceOwnerId]);
   useEffect(() => {
+    // Never persist before hydration — that is what used to zero the count.
+    if (!workspaceOwnerId || !groupsHydratedRef.current) return;
     saveCampaignGroups(workspaceOwnerId, bulkGroupIds);
   }, [bulkGroupIds, workspaceOwnerId]);
+
 
   useEffect(() => {
     try {
