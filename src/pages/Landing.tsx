@@ -200,39 +200,29 @@ export default function Landing() {
         </div>
 
         <div className="mx-auto w-full max-w-6xl px-4 pb-20 pt-16 text-center sm:pt-24">
-          <Reveal>
-            <p className="text-[15px] font-bold text-primary">
-              ה-CRM הראשון בישראל שמנוהל על ידי סוכני AI
-            </p>
-          </Reveal>
-
           <Reveal delay={80}>
-            <h1 className="mx-auto mt-5 max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
-              כל העסק שלכם על טייס אוטומטי
-              <span className="landing-gradient-text block"> ישר מהווטסאפ, 24 שעות ביממה</span>
+            <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
+              <span className="landing-title-gradient block">מכונת המתווך הבלתי אפשרית</span>
+              <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים - שאין לו מתחרים בשוק</span>
             </h1>
           </Reveal>
 
           <Reveal delay={160}>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
               פוסטים אוטומטיים לקבוצות פייסבוק ואינסטגרם, שיחות מכל האפליקציות והרשתות, עוזר AI שמדבר איתכם
-              בהקלטות קוליות בווטסאפ וסנכרון מלא לגוגל. הכל בעברית, הכל תחת השליטה שלכם.
+              בהקלטות קוליות וסנכרון מלא לגוגל. הכל בעברית, הכל תחת השליטה שלכם.
             </p>
           </Reveal>
 
           <Reveal delay={240}>
-            <div className="mt-9 flex flex-row flex-wrap items-center justify-center gap-3">
+            <div className="mt-9 flex flex-col items-center gap-2">
               <Link to="/auth">
                 <Button size="lg" className="group h-14 px-8 text-base font-extrabold shadow-2xl shadow-primary/25">
-                  התחל בחינם - בלי כרטיס אשראי
+                  התחל בחינם
                   <ArrowLeft className="ms-2 h-5 w-5 transition-transform group-hover:-translate-x-1" />
                 </Button>
               </Link>
-              <a href="#pricing">
-                <Button size="lg" variant="outline" className="h-14 px-7 text-base font-bold">
-                  חשב את העלות שלי
-                </Button>
-              </a>
+              <p className="text-xs font-semibold text-muted-foreground">בלי כרטיס אשראי</p>
             </div>
           </Reveal>
 
@@ -257,9 +247,7 @@ export default function Landing() {
               <p className="text-sm font-extrabold tracking-widest text-muted-foreground">
                 תשתית טכנולוגית
               </p>
-              <p className="mt-1 text-xs font-semibold text-muted-foreground/80">
-                בנוי ומופעל על תשתיות ענן ואבטחה מובילות בעולם
-              </p>
+
               <div className="mt-4">
                 <StackTicker />
               </div>
