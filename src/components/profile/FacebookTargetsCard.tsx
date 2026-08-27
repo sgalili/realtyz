@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { ExternalLink, Loader2, Users } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { shortenName } from '@/lib/shortenName';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; selected: boolean };
