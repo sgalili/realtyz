@@ -756,7 +756,24 @@ const InlineComposer = ({
   const draftKey = `rz-composer-draft:v2:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
     if (typeof window === 'undefined') return null;
-    try { return JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
+    try {
+      const direct = JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null');
+      if (direct && String(direct.body || '').trim()) return direct;
+      // Legacy rescue: drafts saved under the old index-based key
+      // (`...:<idx>-<listingId>`) are recovered by matching the listing.
+      if (presetListingId) {
+        const prefix = `rz-composer-draft:v2:${channel.id}:`;
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k || !k.startsWith(prefix) || k === draftKey) continue;
+          try {
+            const val = JSON.parse(localStorage.getItem(k) || 'null');
+            if (val && String(val.body || '').trim() && val.selectedListingId === presetListingId) return val;
+          } catch { /* skip */ }
+        }
+      }
+      return direct;
+    } catch { return null; }
   };
   // Strip any auto-generated WhatsApp CTA line the AI (or a stale draft) may
   // emit. The CTA is now opt-in via the "הוסף קישור לוואטסאפ" checkbox and
