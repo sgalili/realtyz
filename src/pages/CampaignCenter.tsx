@@ -1624,13 +1624,9 @@ const InlineComposer = ({
   useEffect(() => {
     if (autoGenTriggeredRef.current) return;
     if (listingsLoading) return;
+    // Never regenerate over restored work: wait for hydration to finish first.
+    if (!hydrated) return;
     if (body.trim().length > 0) return; // honor draft restoration
-    // Fire auto-gen when the composer was launched from the scheduling
-    // calendar. Two entry points:
-    //  1. Multi-property fan-out — `presetListingId` prop is set per replica.
-    //  2. Single-property (or branding) — the calendar deep-links via
-    //     ?schedule=ISO plus optionally ?listing= / ?properties=. In that case
-    //     the InlineComposer receives no props but must still auto-generate.
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const fromCalendar = !!presetScheduleIso || !!params?.get('schedule');
     const listingFromUrl = params?.get('listing') || (params?.get('properties') || '').split(',').map((s) => s.trim()).filter(Boolean)[0] || null;
@@ -1646,7 +1642,7 @@ const InlineComposer = ({
     const t = setTimeout(() => { handleGenerate().catch(() => {}); }, 80);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presetListingId, presetScheduleIso, selectedListingId, listingsLoading]);
+  }, [presetListingId, presetScheduleIso, selectedListingId, listingsLoading, hydrated]);
 
   // True when this composer was launched from the scheduling calendar
   // (the date is already locked in); we hide the standalone calendar
@@ -1655,6 +1651,24 @@ const InlineComposer = ({
 
   const hasBody = body.trim().length > 0;
   const count = body.length;
+
+  // Mirror this draft's live status onto its collapsed wrapper card.
+  const activeListing = useMemo(
+    () => listings.find((l) => l.id === selectedListingId) || null,
+    [listings, selectedListingId],
+  );
+  const imageCount = attachments.filter((a) => a.kind === 'image').length;
+  useEffect(() => {
+    onStatus?.({
+      title: (activeListing?.property_title || activeListing?.address || '') as string,
+      generating: generating || firstCommentGenerating,
+      photosLoading,
+      images: imageCount,
+      chars: count,
+      ready: hasBody && imageCount > 0,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeListing, generating, firstCommentGenerating, photosLoading, imageCount, count, hasBody]);
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-16 shadow-sm space-y-4" dir="rtl">
