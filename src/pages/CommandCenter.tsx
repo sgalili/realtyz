@@ -253,7 +253,9 @@ export default function CommandCenter() {
                     </div>
                   </div>
                 </li>
+                </Fragment>
               );
+
             })}
           </ul>
         )}
