@@ -5268,9 +5268,11 @@ const AddVoiceByIdDialog = ({
    stays mounted while collapsed so generation and photo import keep running. */
 
 const DraftCollapsibleCard = ({
-  index, iso, variant, totalVariants, children, status, onPublish, published,
+  index, iso, variant, totalVariants, children, status, onPublish, published, fallbackTitle,
 }: {
   index: number;
+  /** Property name resolved by the page, shown until the composer reports one. */
+  fallbackTitle?: string;
   iso: string;
   variant: number;
   totalVariants: number;
@@ -5319,7 +5321,7 @@ const DraftCollapsibleCard = ({
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-semibold leading-snug text-foreground break-words">
               טיוטה #{index + 1}
-              {status?.title ? ` · ${status.title}` : ''}
+              {(status?.title || fallbackTitle) ? ` · ${status?.title || fallbackTitle}` : ''}
             </div>
             <div className="text-[11px] text-muted-foreground">
               {new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
@@ -5467,6 +5469,24 @@ const CampaignCenter = () => {
   // state fully clear after a successful (or paused) dispatch.
   const [composerResetTick, setComposerResetTick] = useState(0);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  // Property titles for the collapsed draft cards. Fetched at page level so a
+  // card shows the address even before its composer finished hydrating.
+  const [listingTitles, setListingTitles] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const ids = (searchParams.get('properties') || '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (ids.length === 0) return;
+    (async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('id, property_title, address, city')
+        .in('id', ids);
+      const map: Record<string, string> = {};
+      for (const l of ((data as any[]) || [])) {
+        map[l.id] = [l.property_title || l.address, l.city].filter(Boolean).join(' · ') || 'נכס';
+      }
+      setListingTitles(map);
+    })();
+  }, [searchParams]);
 
   // Wipes every draft in the multi-draft composer: local snapshots, the durable
   // cloud mirror and the composer session. Nothing published is touched.
@@ -6134,7 +6154,7 @@ const CampaignCenter = () => {
               .map((b, idx) => draftKeyFor(b, idx))
               .filter((k) => draftStatuses[k]?.canPublish && !publishedDrafts.has(k));
             return (
-              <div className="space-y-4 pb-24">
+              <div className="space-y-4 pb-44">
                 <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
                   נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
@@ -6152,6 +6172,7 @@ const CampaignCenter = () => {
                     variant={b.variant}
                     totalVariants={b.totalVariants}
                     status={draftStatuses[key] ?? null}
+                    fallbackTitle={b.listing ? listingTitles[b.listing] : undefined}
                     published={publishedDrafts.has(key)}
                     onPublish={() => { publishDraft(key); }}
                   >
