@@ -96,6 +96,9 @@ async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise
   ]);
 }
 
+/** Hard ceiling for the whole textual import: the UI must never wait longer. */
+const TEXT_IMPORT_BUDGET_MS = 2600;
+
 async function runMetadataSync(
   listingId: string,
   sourceUrl?: string | null,
@@ -107,35 +110,40 @@ async function runMetadataSync(
     reported = p;
     try { onProgress?.(p); } catch { /* ignore */ }
   };
-  step(8);
+  step(10);
   if (await isListingMetadataImported(listingId)) { step(100); return; }
-  step(18);
+  step(22);
 
+  // Time-based creep so the bar/ring keeps moving smoothly for the (short)
+  // duration of the parallel fetch instead of freezing on a milestone.
+  const started = Date.now();
+  const creep = setInterval(() => {
+    const elapsed = Date.now() - started;
+    step(22 + Math.min(68, Math.round((elapsed / TEXT_IMPORT_BUDGET_MS) * 68)));
+  }, 100);
+
+  // Both calls fire TOGETHER and share one budget — the scrape no longer
+  // blocks the backfill, which is what pushed this path past 10s before.
+  const tasks: Promise<unknown>[] = [
+    withTimeout(
+      Promise.resolve(supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } })),
+      TEXT_IMPORT_BUDGET_MS,
+      'metadata backfill',
+    ),
+  ];
   if (sourceUrl && /yad2\.co\.il/i.test(sourceUrl)) {
-    // Fine-grained time-based progress while the (single) source parse runs, so
-    // the ring keeps moving instead of freezing at the milestone value.
-    const started = Date.now();
-    const creep = setInterval(() => {
-      const elapsed = Date.now() - started;
-      step(18 + Math.min(50, Math.round((elapsed / 12000) * 50)));
-    }, 150);
-    await withTimeout(
-      Promise.resolve(supabase.functions.invoke('yad2-unlocker', { body: { url: sourceUrl, limit: 1 } })),
-      6000,
-      'metadata scrape',
+    tasks.push(
+      withTimeout(
+        Promise.resolve(supabase.functions.invoke('yad2-unlocker', { body: { url: sourceUrl, limit: 1, text_only: true } })),
+        TEXT_IMPORT_BUDGET_MS,
+        'metadata scrape',
+      ),
     );
-    clearInterval(creep);
   }
-  step(70);
+  await Promise.all(tasks);
+  clearInterval(creep);
+  step(92);
 
-  // Owner provisioning is managed independently by the detail page. Keeping
-  // it out of this critical path avoids two duplicate 30s calls per visit.
-  await withTimeout(
-    Promise.resolve(supabase.functions.invoke('listings-metadata-backfill', { body: { listing_ids: [listingId] } })),
-    6000,
-    'metadata backfill',
-  );
-  step(95);
   // Only cache a proven-complete row. A timed-out scraper keeps running on the
   // server, so marking the id complete here used to leave the current tab with
   // its original thin snapshot forever.
