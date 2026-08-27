@@ -6437,10 +6437,14 @@ const CampaignCenter = () => {
             const blocks = assignments.length > 0
               ? assignments
               : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
-            const campaignPropertyCount = new Set([
+            const distinctCampaignProperties = new Set([
               ...propertyIds,
               ...blocks.map((b) => b.listing).filter((id): id is string => Boolean(id)),
             ]).size;
+            // Older restored sessions may contain the seven slots but not the
+            // redundant propertyIds array. In that case each slot still
+            // represents its property, so never render a misleading zero.
+            const campaignPropertyCount = distinctCampaignProperties || blocks.length;
             const unpublishedCount = blocks.filter((b, idx) => !publishedDrafts.has(draftKeyFor(b, idx))).length;
             const readyKeys = blocks
               .map((b, idx) => draftKeyFor(b, idx))
