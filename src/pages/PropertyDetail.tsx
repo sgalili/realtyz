@@ -1605,6 +1605,18 @@ export default function PropertyDetail() {
           )}
 
           {!editMode && (
+            <PropertyYad2SectionsCard
+              listingId={property.id}
+              sourceUrl={resolvedSourceUrl || sourceUrl || null}
+              sections={(isRecord(meta) && isRecord((meta as any).yad2_sections)
+                ? ((meta as any).yad2_sections as Yad2Sections)
+                : null)}
+            />
+          )}
+
+
+
+          {!editMode && (
             <AreaMarketFactsCard
               city={property.city}
               neighborhood={neighborhood || null}
