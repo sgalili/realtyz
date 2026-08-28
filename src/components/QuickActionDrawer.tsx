@@ -63,6 +63,11 @@ export default function QuickActionDrawer() {
   const [lead, setLead] = useState<LeadLite | null>(null);
   const [searching, setSearching] = useState(false);
 
+  // property picker (notes can be attached to a listing)
+  const [listingQuery, setListingQuery] = useState('');
+  const [listingResults, setListingResults] = useState<ListingLite[]>([]);
+  const [listing, setListing] = useState<ListingLite | null>(null);
+
   // forms
   const [noteText, setNoteText] = useState('');
   const [reminderTitle, setReminderTitle] = useState('');
@@ -144,6 +149,24 @@ export default function QuickActionDrawer() {
     }
   };
 
+  // Live property search for the note tab.
+  useEffect(() => {
+    if (!open) return;
+    const q = listingQuery.trim();
+    if (q.length < 2) { setListingResults([]); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const { data } = await (supabase as any)
+        .from('listings')
+        .select('id, property_title, city, neighborhood, rooms, asking_price, deal_type')
+        .or(`property_title.ilike.%${q}%,address.ilike.%${q}%,city.ilike.%${q}%`)
+        .limit(8);
+      if (cancelled) return;
+      setListingResults(Array.isArray(data) ? data : []);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [listingQuery, open]);
+
   async function logActivity(actionType: string, platform: string, content: string) {
     if (!user) return;
     const { error } = await (supabase as any).from('interaction_activity_log').insert({
@@ -155,7 +178,11 @@ export default function QuickActionDrawer() {
       actor_id: user.id,
       actor_label: 'סוכן',
       content,
-      metadata: { lead_id: lead?.id ?? null, source: 'quick_action_drawer' },
+      metadata: {
+        lead_id: lead?.id ?? null,
+        listing_id: listing?.id ?? null,
+        source: 'quick_action_drawer',
+      },
     });
     if (error) throw error;
   }
@@ -170,6 +197,8 @@ export default function QuickActionDrawer() {
       }
       toast.success('הפתק נשמר');
       resetAfterSave();
+      queryClient.invalidateQueries({ queryKey: ['property-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
       invalidateLiveData(queryClient);
     } catch (e: any) {
       toast.error(e?.message ?? 'שמירת הרשומה נכשלה');
@@ -349,6 +378,44 @@ export default function QuickActionDrawer() {
 
             {tab === 'note' && (
               <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">נכס מקושר (אופציונלי)</Label>
+                  {listing ? (
+                    <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
+                      <p className="truncate text-sm font-bold text-foreground">
+                        {listing.property_title || [listing.neighborhood, listing.city].filter(Boolean).join(', ') || 'נכס'}
+                      </p>
+                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setListing(null); setListingQuery(''); }}>
+                        החלף
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Input
+                        value={listingQuery}
+                        onChange={(e) => setListingQuery(e.target.value)}
+                        placeholder="חיפוש נכס לפי כתובת, עיר או כותרת"
+                      />
+                      {listingResults.length > 0 && (
+                        <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border p-1">
+                          {listingResults.map((r) => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              onClick={() => { setListing(r); setListingResults([]); }}
+                              className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-right transition hover:bg-accent"
+                            >
+                              <span className="truncate text-sm font-semibold">
+                                {r.property_title || [r.neighborhood, r.city].filter(Boolean).join(', ') || 'נכס'}
+                              </span>
+                              <span className="shrink-0 text-xs text-muted-foreground">{r.city ?? ''}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">תוכן הפתק</Label>
                   <Textarea
