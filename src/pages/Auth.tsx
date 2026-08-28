@@ -198,13 +198,14 @@ const Auth = () => {
     if (code.length === 4) {
       const ok = await tryMasterOtp(code, normalizedPhone);
       if (ok) { setLoading(false); return; }
-      if (isPreviewHost) {
+      if (isPreviewHost && activeMethod !== 'whatsapp') {
         setOtpAttempts((a) => a + 1);
         setOtp('');
         toast.error('קוד מאסטר שגוי');
         setLoading(false);
         return;
       }
+
     }
 
     const { error } = activeMethod === 'whatsapp'
