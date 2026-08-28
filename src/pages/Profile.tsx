@@ -623,7 +623,7 @@ export default function Profile() {
           {isAgency && <TabsTrigger value="managers">מנהלים</TabsTrigger>}
           <TabsTrigger value="workspace">המשרד</TabsTrigger>
           <TabsTrigger value="connections">חיבורים</TabsTrigger>
-          <TabsTrigger value="billing">חבילות וקרדיטים</TabsTrigger>
+          <TabsTrigger value="billing">חבילה</TabsTrigger>
         </TabsList>
         <TabsContent value="personal" className="mt-[20px] space-y-4">
           <PersonalTab />
