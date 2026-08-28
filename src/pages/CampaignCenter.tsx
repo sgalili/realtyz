@@ -26,7 +26,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 
 import { supabase } from '@/integrations/supabase/client';
-import { FacebookImportDialog } from '@/components/campaigns/FacebookImportDialog';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -4491,9 +4490,6 @@ const PublishedFeed = () => {
         open={!!supportChannel}
         onOpenChange={(v) => { if (!v) setSupportChannel(null); }}
       />
-      <div className="flex items-center justify-end">
-        <FacebookImportDialog />
-      </div>
       <GlobalSocialFeed
         rows={rows ?? []}
         activeChannel={activeChannel}

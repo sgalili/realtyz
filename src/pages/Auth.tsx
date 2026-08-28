@@ -13,6 +13,7 @@ import { ArrowRight, Mail, MessageSquareText } from 'lucide-react';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { cn } from '@/lib/utils';
 import { RealtyzWave } from '@/components/RealtyzWave';
+import realtyzLogo from '@/assets/realtyz-logo.png';
 
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
 
@@ -244,6 +245,13 @@ const Auth = () => {
     <div
       className="auth-gradient-shell min-h-screen relative overflow-hidden px-4 py-8"
     >
+      {/* Futuristic backdrop — same aurora + grid language as the landing page */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        <div className="landing-aurora landing-aurora-a" />
+        <div className="landing-aurora landing-aurora-b" />
+        <div className="landing-aurora landing-aurora-c" />
+        <div className="landing-grid absolute inset-0 opacity-[0.35]" />
+      </div>
       {/* Gold halo */}
       <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-gold/10 blur-[120px]" />
       {/* Top header bar with auth-only rotating headline and Demo switch */}
@@ -275,8 +283,12 @@ const Auth = () => {
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
         <div className="mb-8 translate-y-5 text-center">
-          <div className="realtyz-logo auth-text-logo" aria-label="Realtyz">Realtyz</div>
-          <p className="auth-official-slogan">הפלטפורמה שהופכת דאטה קרה למכונת המרה</p>
+          <img
+            src={realtyzLogo}
+            alt="Realtyz AI"
+            className="auth-official-logo mx-auto mb-6 h-[3.6rem] w-auto object-contain"
+          />
+          <p className="auth-official-slogan">כלי העבודה היחיד שכל מתווך חייב בעידן ה AI.</p>
         </div>
 
         {!codeSent && <h1 className="auth-login-title">הרשמה/התחברות</h1>}

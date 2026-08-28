@@ -268,7 +268,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/properties\/[^/]+/, title: 'פרטי נכס' },
   { match: /^\/properties/, title: 'נכסים' },
   { match: /^\/automations/, title: 'Automation Studio' },
-  { match: /^\/campaigns/, title: 'פוסטים ותגובות' },
+  { match: /^\/campaigns/, title: 'פוסטים' },
   { match: /^\/campaign-strategy/, title: 'אסטרטגיית קמפיין' },
   { match: /^\/approval(-queue)?/, title: 'אישור פרסומים' },
   { match: /^\/calendar/, title: 'יומן תוכן' },
@@ -359,7 +359,7 @@ export function PageHero() {
         </h1>
 
         {/* Visual left (RTL flex end): page-specific action button */}
-        <div className="flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
+        <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
           <BrightDataHeroPill />
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
