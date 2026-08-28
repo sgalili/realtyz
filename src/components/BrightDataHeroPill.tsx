@@ -73,7 +73,7 @@ export function BrightDataHeroPill() {
       )}
     >
       {amount ? (
-        <span dir="ltr" className="tabular-nums">{`$${amount}`}</span>
+        <span dir="ltr" className="tabular-nums">{`Yad2 :\u00a0$${amount}`}</span>
       ) : isLoading ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : (
