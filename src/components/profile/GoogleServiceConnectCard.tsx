@@ -45,20 +45,13 @@ export function GoogleServiceConnectCard({
   const identity = (data?.credentials as any)?.verified_identity;
   const connected = !!data?.is_connected;
 
-  useEffect(() => {
-    const handler = async (ev: MessageEvent) => {
-      if (ev.origin !== window.location.origin) return;
-      const m: any = ev.data;
-      if (!m || m.type !== 'realtyz-oauth-callback') return;
-      if (!String(m.state || '').startsWith(`${platform}:`)) return;
-      if (m.error) {
-        toast.error('החיבור בוטל', { description: m.errorDescription || m.error });
-        return;
-      }
+  /** Exchange an authorization code returned by Google for tokens. */
+  const exchange = useCallback(
+    async (code: string, redirectUri: string) => {
       const tId = toast.loading('מחבר לחשבון Google...');
       try {
         const { data: resp, error } = await supabase.functions.invoke('google-oauth-exchange', {
-          body: { platform, code: m.code, redirect_uri: `${window.location.origin}/oauth/callback` },
+          body: { platform, code, redirect_uri: redirectUri },
         });
         if (error || !(resp as any)?.ok) throw new Error((resp as any)?.error || error?.message || 'נכשל');
         toast.success('החיבור הושלם', { id: tId, description: (resp as any).identity?.email });
@@ -66,10 +59,38 @@ export function GoogleServiceConnectCard({
       } catch (e: any) {
         toast.error('החיבור נכשל', { id: tId, description: e?.message });
       }
+    },
+    [platform, refetch],
+  );
+
+  // Full-page redirect flow: the /oauth/callback route stashes the returned
+  // code, we pick it up here on mount and complete the token exchange.
+  useEffect(() => {
+    const pending = takePendingOAuth(`${platform}:`);
+    if (!pending) return;
+    if (pending.error || !pending.code) {
+      toast.error('החיבור בוטל', { description: pending.errorDescription || pending.error || 'לא הוחזר קוד אימות' });
+      return;
+    }
+    void exchange(pending.code, pending.redirectUri || oauthRedirectUri());
+  }, [platform, exchange]);
+
+  // Popup path (kept for browsers where the callback runs in a second window).
+  useEffect(() => {
+    const handler = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) return;
+      const m: any = ev.data;
+      if (!m || m.type !== 'realtyz-oauth-callback') return;
+      if (!String(m.state || '').startsWith(`${platform}:`)) return;
+      if (m.error || !m.code) {
+        toast.error('החיבור בוטל', { description: m.errorDescription || m.error });
+        return;
+      }
+      void exchange(m.code, m.redirectUri || oauthRedirectUri());
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [platform, refetch]);
+  }, [platform, exchange]);
 
   const connect = async () => {
     setConfigError(false);
@@ -78,27 +99,33 @@ export function GoogleServiceConnectCard({
       const { data: cfg, error } = await supabase.functions.invoke('google-oauth-config', { body: {} });
       if (error) throw error;
       if ((cfg as any)?.configured && (cfg as any)?.client_id) {
-        clientId = (cfg as any).client_id;
+        clientId = String((cfg as any).client_id).trim();
       }
     } catch {
       // fall through to the setup notice
     }
     if (!clientId) {
       setConfigError(true);
+      toast.error('לא הוגדרו אישורי Google', { description: 'שמרו Client ID ו־Client Secret ולאחר מכן נסו שוב.' });
       return;
     }
+    clearPendingOAuth();
+    // Return-origin is encoded in the last state segment so the canonical
+    // callback can bounce back to preview / custom domains.
+    const returnToken = btoa(encodeURIComponent(currentOrigin())).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const redirectUri = oauthRedirectUri(); // https://realtyz.co.il/oauth/callback
     const params = new URLSearchParams({
       client_id: clientId,
-      redirect_uri: `${window.location.origin}/oauth/callback`,
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope: OAUTH_SCOPES[platform].join(' '),
       access_type: 'offline',
       prompt: 'consent select_account',
       include_granted_scopes: 'true',
-      state: `${platform}:${crypto.randomUUID()}`,
+      state: `${platform}:${returnToken}`,
     });
-    window.open(`${OAUTH_AUTHORIZE_URLS[platform]}?${params}`, 'realtyz-google-oauth', 'width=520,height=640');
-  };
+    window.location.assign(`${OAUTH_AUTHORIZE_URLS[platform]}?${params.toString()}`);
+
 
   return (
     <div dir="rtl" className="rounded-xl border bg-muted/30 p-3 text-right">
