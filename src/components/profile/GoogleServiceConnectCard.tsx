@@ -75,8 +75,17 @@ export function GoogleServiceConnectCard({
     void exchange(pending.code, pending.redirectUri || oauthRedirectUri());
   }, [platform, exchange]);
 
-  // Popup path (kept for browsers where the callback runs in a second window).
+  // Popup path: the callback either finished the exchange itself and reports
+  // via the bridge, or hands back the raw code for us to exchange here.
   useEffect(() => {
+    const unsubscribe = onOAuthResult(platform, (res) => {
+      if (res.ok) {
+        toast.success('החיבור הושלם', { description: res.name || undefined });
+        refetch();
+      } else if (res.reason && res.reason !== 'needs_page_selection') {
+        toast.error('החיבור נכשל', { description: res.reason });
+      }
+    });
     const handler = (ev: MessageEvent) => {
       if (ev.origin !== window.location.origin) return;
       const m: any = ev.data;
@@ -89,8 +98,12 @@ export function GoogleServiceConnectCard({
       void exchange(m.code, m.redirectUri || oauthRedirectUri());
     };
     window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [platform, exchange]);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('message', handler);
+    };
+  }, [platform, exchange, refetch]);
+
 
   const connect = async () => {
     setConfigError(false);
