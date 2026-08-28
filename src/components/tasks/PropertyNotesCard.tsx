@@ -78,18 +78,29 @@ export function PropertyNotesCard() {
       ) : (
         <ul className="space-y-2">
           {notes.map((n) => (
-            <li key={n.id} className="rounded-lg border border-border bg-card p-3">
-              <div className="flex flex-wrap items-start justify-between gap-2">
+            <li key={n.id} className="w-full rounded-lg border border-border bg-card p-3">
+              <div className="flex items-start gap-3">
+                {n.listingThumb ? (
+                  <img
+                    src={n.listingThumb}
+                    alt={n.listingLabel ?? 'נכס'}
+                    loading="lazy"
+                    className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-border"
+                  />
+                ) : (
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1 space-y-1">
                   <Link
                     to={`/properties/${n.listingId}`}
                     className="inline-flex items-center gap-1 text-base font-semibold hover:underline"
                   >
-                    <Building2 className="h-4 w-4 opacity-60" />
                     {n.listingLabel ?? 'נכס'}
                     <ChevronLeft className="h-4 w-4" />
                   </Link>
-                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+                  <p className="w-full whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
                     <span className="font-bold">{propertyNoteKindLabel(n.kind)}: </span>
                     {n.content}
                   </p>
@@ -104,25 +115,31 @@ export function PropertyNotesCard() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" className="h-9 gap-1 text-sm" onClick={() => setEditing(n)}>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="עריכה"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={() => setEditing(n)}
+                  >
                     <Pencil className="h-4 w-4" />
-                    עריכה
                   </Button>
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="ghost"
-                    className="h-9 gap-1 text-sm text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="מחיקה"
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     onClick={() => remove(n)}
                   >
                     <Trash2 className="h-4 w-4" />
-                    מחק
                   </Button>
                 </div>
               </div>
             </li>
           ))}
         </ul>
+
       )}
 
       <Dialog open={!!editing} onOpenChange={(v) => { if (!v) setEditing(null); }}>
