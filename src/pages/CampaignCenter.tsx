@@ -2395,16 +2395,22 @@ const InlineComposer = ({
                 type="button"
                 onClick={() => setScheduleDialogOpen(true)}
                 disabled={!hasBody}
-                title="תזמן פרסום (כולל חזרות)"
+                title={recurrenceBubble ? `תזמון פרסום · חזרתיות: ${recurrenceBubble}` : 'תזמן פרסום (כולל חזרות)'}
                 aria-label="תזמן פרסום כולל חזרות"
                 className={cn(
-                  'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition border',
+                  'relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition border',
                   hasBody
                     ? 'bg-card text-[hsl(217,80%,18%)] border-[hsl(217,80%,18%)]/30 hover:bg-[hsl(217,80%,18%)]/5 shadow-sm'
                     : 'bg-muted text-muted-foreground/80 border-transparent cursor-not-allowed',
+                  recurrenceBubble && hasBody && 'border-[hsl(217,80%,18%)]/60',
                 )}
               >
                 <CalendarIcon className="h-4 w-4" />
+                {recurrenceBubble && (
+                  <span className="absolute -top-2 -right-1 rounded-full bg-[hsl(217,80%,18%)] px-1.5 text-[10px] font-bold leading-[16px] text-white shadow">
+                    {recurrenceBubble}
+                  </span>
+                )}
               </button>
               {channel.id === 'facebook' && (
                 <button
