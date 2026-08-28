@@ -257,7 +257,6 @@ export default function CommandCenter() {
                       aria-expanded={isOpen}
                       className="flex min-w-0 flex-1 items-start gap-3 text-right"
                     >
-                      <CardThumb task={task} />
                       <span className="min-w-0 flex-1 space-y-1.5">
                         <span className="flex flex-wrap items-center gap-2">
                           <span className={`rounded-full px-2 py-0.5 text-[13px] font-semibold ${PRIORITY_STYLE[task.priority]}`}>
@@ -279,17 +278,21 @@ export default function CommandCenter() {
                               {TASK_STATUS_LABEL[task.status]}
                             </Badge>
                           )}
-                        </span>
-                        <span className="flex flex-wrap items-center gap-3 text-[13px] text-muted-foreground">
                           <span
-                            className={`inline-flex items-center gap-1 ${
-                              due.overdue ? 'font-semibold text-destructive' : due.today ? 'font-semibold text-primary' : ''
+                            className={`inline-flex items-center gap-1 text-[13px] ${
+                              due.overdue
+                                ? 'font-semibold text-destructive'
+                                : due.today
+                                  ? 'font-semibold text-primary'
+                                  : 'text-muted-foreground'
                             }`}
                           >
                             <CalendarClock className="h-3.5 w-3.5" />
                             {due.overdue ? `באיחור · ${due.text}` : due.text}
                           </span>
-                          {task.leadPhone && <span>{formatPhoneDisplay(task.leadPhone)}</span>}
+                          {task.leadPhone && (
+                            <span className="text-[13px] text-muted-foreground">{formatPhoneDisplay(task.leadPhone)}</span>
+                          )}
                         </span>
                       </span>
                     </button>
