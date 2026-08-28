@@ -21,6 +21,10 @@ const fmt = (n?: number) =>
 
 const CACHE_KEY = 'realtyz:brightdata:balance';
 
+/** Direct Bright Data top-up billing flow (opens in a new tab). */
+export const TOPUP_URL =
+  'https://brightdata.com/cp/billing_flow?id=hl_2432c380&type=top_up';
+
 /** Last known balance, so the pill NEVER blanks out between refreshes. */
 function readCache(): BalanceResponse | null {
   try {
@@ -60,7 +64,7 @@ export function BrightDataHeroPill() {
   return (
     <a
       dir="rtl"
-      href="https://brightdata.com/cp/billing/settings"
+      href={TOPUP_URL}
       target="_blank"
       rel="noopener noreferrer"
       title="יתרת קרדיט Bright Data — לחצו לטעינת קרדיט"
