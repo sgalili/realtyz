@@ -6998,15 +6998,36 @@ const CampaignCenter = () => {
                 </TabsContent>
                 <TabsContent value="drafts" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
                   {campaignDraftRows.map((r) => (
-                    <button key={r.id} type="button" className="flex w-full gap-3 rounded-lg border border-border p-3 text-right hover:bg-muted/40" onClick={() => {
-                      const next = new URLSearchParams(searchParams);
-                      next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
-                      if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
-                      setSearchParams(next); setCampaignHistoryOpen(false);
-                    }}>
-                      {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
-                      <div className="min-w-0"><p className="font-semibold">{r.topic || 'טיוטת פוסט'}</p><p className="line-clamp-2 text-sm text-muted-foreground">{r.generated_text}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}</p></div>
-                    </button>
+                    <div key={r.id} className="flex items-start gap-2 rounded-lg border border-border p-3 hover:bg-muted/40">
+                      <button type="button" className="flex min-w-0 flex-1 gap-3 text-right" onClick={() => {
+                        const next = new URLSearchParams(searchParams);
+                        next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
+                        if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
+                        setSearchParams(next); setCampaignHistoryOpen(false);
+                      }}>
+                        {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
+                        <div className="min-w-0"><p className="font-semibold">{r.topic || 'טיוטת פוסט'}</p><p className="line-clamp-2 text-sm text-muted-foreground">{r.generated_text}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}</p></div>
+                      </button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="מחק טיוטה"
+                        aria-label="מחק טיוטה"
+                        className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
+                        onClick={async () => {
+                          setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
+                          const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
+                          if (error) {
+                            toast.error('מחיקת הטיוטה נכשלה');
+                            setHistoryRefreshTick((t) => t + 1);
+                          } else {
+                            toast.success('הטיוטה נמחקה');
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   ))}
                   {campaignDraftRows.length === 0 && <p className="py-12 text-center text-sm text-muted-foreground">אין טיוטות</p>}
                 </TabsContent>
