@@ -2,10 +2,12 @@
  * Compact Bright Data credit balance pill for the blue hero (wave) strip.
  * Reads the live balance through the `brightdata-balance` edge function.
  */
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { BrightDataUsageDialog } from '@/components/BrightDataUsageDialog';
 
 type BalanceResponse = {
   ok?: boolean;
@@ -36,6 +38,7 @@ function readCache(): BalanceResponse | null {
 }
 
 export function BrightDataHeroPill() {
+  const [usageOpen, setUsageOpen] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ['brightdata-balance-hero'],
     staleTime: 5 * 60 * 1000,
