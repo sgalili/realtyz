@@ -1655,7 +1655,17 @@ function ResultTable({
 
 
               </tr>
+              {rowNotes && rowNotes.length > 0 && (
+                <tr className="border-t-0 bg-amber-50/40">
+                  <td className="px-2 pb-2" />
+                  <td className="px-2 pb-2" colSpan={12}>
+                    <PropertyNotesBlock notes={rowNotes} />
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             );
+
           })}
         </tbody>
       </table>
