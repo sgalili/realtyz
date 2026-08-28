@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -225,6 +225,8 @@ export default function CommandCenter() {
               const due = task.source === 'note'
                 ? { ...dueLabel(task.dueAt), overdue: false }
                 : dueLabel(task.dueAt);
+              const cardKey = `${task.source}-${task.id}`;
+              const isOpen = openIds.has(cardKey);
               return (
                 <Fragment key={`${task.source}-${task.id}`}>
                 {idx === midpoint && (
@@ -239,7 +241,15 @@ export default function CommandCenter() {
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1 space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleCard(cardKey)}
+                        aria-expanded={isOpen}
+                        className="flex w-full flex-wrap items-center gap-2 text-right"
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                        />
                         <span className={`rounded-full px-2 py-0.5 text-[13px] font-semibold ${PRIORITY_STYLE[task.priority]}`}>
                           {PRIORITY_LABEL[task.priority]}
                         </span>
@@ -259,9 +269,9 @@ export default function CommandCenter() {
                             {TASK_STATUS_LABEL[task.status]}
                           </Badge>
                         )}
-                      </div>
-                      {task.description && (
-                        <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                      </button>
+                      {isOpen && task.description && (
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                           {task.description}
                         </p>
                       )}
@@ -278,7 +288,17 @@ export default function CommandCenter() {
                       </div>
                     </div>
 
+                    {isOpen && (
                     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 gap-1 text-sm"
+                        onClick={() => setEditing(task)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        עריכה
+                      </Button>
                       {task.leadId && (
                         <Button
                           size="sm"
@@ -325,6 +345,7 @@ export default function CommandCenter() {
                         מחק
                       </Button>
                     </div>
+                    )}
                   </div>
                 </li>
                 </Fragment>
@@ -335,8 +356,97 @@ export default function CommandCenter() {
         )}
       </Card>
 
+      <PropertyNotesCard />
+
       <PostsActivityCard />
+
+      <EditTaskDialog
+        task={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => qc.invalidateQueries({ queryKey: ['command-center-tasks'] })}
+      />
     </div>
+  );
+}
+
+function toLocalInput(iso: string | null) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Inline editor for any quick-action card (note, reminder, call summary, meeting). */
+function EditTaskDialog({
+  task,
+  onClose,
+  onSaved,
+}: {
+  task: CommandTask | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [when, setWhen] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!task) return;
+    setTitle(task.title ?? '');
+    setDescription(task.description ?? '');
+    setWhen(toLocalInput(task.dueAt));
+  }, [task]);
+
+  const save = async () => {
+    if (!task) return;
+    setSaving(true);
+    try {
+      await updateCommandTask(task, {
+        title: task.source === 'note' ? undefined : title.trim() || 'משימה',
+        description: description.trim() || null,
+        dueAt: task.source === 'note' ? undefined : when ? new Date(when).toISOString() : null,
+      });
+      toast.success('הכרטיס עודכן');
+      onSaved();
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'עדכון הכרטיס נכשל');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!task} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent dir="rtl" className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>עריכת כרטיס</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {task?.source !== 'note' && (
+            <div className="space-y-1.5">
+              <Label htmlFor="et-title">כותרת</Label>
+              <Input id="et-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="et-desc">תוכן</Label>
+            <Textarea id="et-desc" rows={5} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          {task?.source !== 'note' && (
+            <div className="space-y-1.5">
+              <Label htmlFor="et-when">מועד</Label>
+              <Input id="et-when" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+            </div>
+          )}
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>ביטול</Button>
+          <Button onClick={save} disabled={saving}>שמירה</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
