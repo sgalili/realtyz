@@ -11,7 +11,7 @@
  */
 import * as React from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, Calendar as CalendarIcon, History, DownloadCloud, Loader2, Bot } from 'lucide-react';
+import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, DownloadCloud, Loader2, Bot } from 'lucide-react';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { toast } from 'sonner';
 import { SidebarTrigger } from '@/components/ui/sidebar';
