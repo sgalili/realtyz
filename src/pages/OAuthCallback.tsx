@@ -96,9 +96,18 @@ export default function OAuthCallback() {
 
   useEffect(() => {
     let cancelled = false;
+    // UI safety: after 4 seconds, stop the spinner and offer a manual return.
+    safetyTimerRef.current = window.setTimeout(() => {
+      if (cancelled || settledRef.current) return;
+      setFatalError(
+        'החיבור אורך יותר מהצפוי',
+        'הבקשה לא הושלמה תוך 4 שניות. ניתן לחזור למערכת ולנסות שוב.',
+      );
+    }, SAFETY_UI_TIMEOUT_MS);
+
     // Absolute escape hatch: whatever happens, never sit on the loader.
     hardTimerRef.current = window.setTimeout(() => {
-      if (cancelled) return;
+      if (cancelled || settledRef.current) return;
       if (isOAuthPopup()) {
         notifyOAuthOpener({ provider: 'oauth', ok: false, reason: 'timeout' });
         window.setTimeout(() => {
