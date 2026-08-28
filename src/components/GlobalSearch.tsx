@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Search, User, MapPin, Radio, LayoutDashboard, Building2, MessageSquare, CalendarClock } from 'lucide-react';
+import { Search, User, MapPin, Radio, LayoutDashboard, Building2, MessageSquare, CalendarClock, Loader2 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
@@ -257,7 +257,11 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-lg p-0 gap-0 glass-card" dir="rtl">
         <div className="flex items-center border-b border-border/50 px-4">
-          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          {loading ? (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+          ) : (
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}

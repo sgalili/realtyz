@@ -10,7 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { TOPUP_URL } from '@/components/BrightDataHeroPill';
+/** Direct Bright Data top-up billing flow. */
+const TOPUP_URL = 'https://brightdata.com/cp/billing_flow?id=hl_2432c380&type=top_up';
 
 type LineItem = {
   date: string | null;
