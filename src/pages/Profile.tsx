@@ -516,7 +516,7 @@ function WorkspaceTab() {
     <Card>
       <CardHeader>
         <CardTitle className="text-right flex items-center justify-between gap-2">
-          <span>פרטי המשרד והסוכנות</span>
+          <span>{'\n'}</span>
           {!isOwner && (
             <span className="text-[11px] font-normal text-muted-foreground">לצפייה בלבד · מנוהל ע״י בעל החשבון</span>
           )}
