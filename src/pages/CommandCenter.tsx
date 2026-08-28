@@ -9,6 +9,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlarmClock,
+  ChevronDown,
+  Pencil,
+  StickyNote,
   Building2,
   CalendarClock,
   Check,
@@ -33,8 +36,14 @@ import {
   NOTE_ACTION_LABEL,
   deleteCommandTask,
   deletePostActivity,
+  updateCommandTask,
   type CommandTask,
 } from '@/hooks/useCommandCenter';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { PropertyNotesCard } from '@/components/tasks/PropertyNotesCard';
 
 function QuickActionsButton() {
   return (
@@ -84,6 +93,16 @@ export default function CommandCenter() {
   const { data: tasks = [], isLoading } = useCommandCenterTasks();
   const { data: metrics } = useCommandCenterMetrics();
   const [filter, setFilter] = useState<'today' | 'overdue' | 'all'>('today');
+  // Every card starts COLLAPSED when entering the page.
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<CommandTask | null>(null);
+  const toggleCard = (key: string) =>
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const counts = useMemo(() => {
     const now = Date.now();
