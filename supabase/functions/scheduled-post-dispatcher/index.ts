@@ -14,6 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { enforceSingleEmojis, RICH_TEMPLATE_CONTRACT } from "../_shared/emoji.ts";
+import { ensureMandatoryComment } from "../_shared/mandatoryComment.ts";
 
 // HARD posting window: nothing is ever published before 09:00 or after 21:00.
 const WINDOW_START_MIN = 9 * 60;
@@ -97,7 +98,7 @@ async function invokeMetaPublish(row: any, body: string): Promise<{ ok: boolean;
         group_ids: Array.isArray(row.group_ids) ? row.group_ids : [],
         target_profile_key: row.target_profile_key ?? null,
         target_account_ref: row.target_account_ref ?? null,
-        first_comment: ensureWaLink(row.first_comment),
+        first_comment: ensureMandatoryComment(row.first_comment),
 
         listing_id: row.listing_id ?? null,
         series_id: row.series_id ?? null,
@@ -224,7 +225,7 @@ async function enqueueNextVersion(admin: any, row: any): Promise<void> {
       needs_regeneration: true,
       regen_prompt: row.regen_prompt,
       listing_id: row.listing_id ?? null,
-      first_comment: row.first_comment ?? null,
+      first_comment: ensureMandatoryComment(row.first_comment),
       media_urls: Array.isArray(row.media_urls) ? row.media_urls : [],
       group_ids: Array.isArray(row.group_ids) ? row.group_ids : [],
       target_profile_key: row.target_profile_key ?? null,

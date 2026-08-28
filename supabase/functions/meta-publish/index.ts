@@ -11,6 +11,7 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 import { isBlockedPage } from "../_shared/metaPages.ts";
+import { ensureMandatoryComment } from "../_shared/mandatoryComment.ts";
 
 const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
@@ -466,7 +467,8 @@ Deno.serve(async (req) => {
     const link = String(body?.link ?? "").trim() || null;
     const campaignName = String(body?.campaign_name ?? "Realtyz").trim();
     const scheduledIso = body?.scheduled_at ? String(body.scheduled_at) : null;
-    const firstComment = String(body?.first_comment ?? "").trim();
+    // HARD RULE: every published post carries the mandatory contact comment.
+    const firstComment = ensureMandatoryComment(body?.first_comment);
     const requestedGroupIds: string[] = (Array.isArray(body?.group_ids) ? body.group_ids : []).map((g: unknown) => String(g));
     // Targeted publishing: imported groups the broker de-selected are dropped.
     const groupIds: string[] = await (async () => {
