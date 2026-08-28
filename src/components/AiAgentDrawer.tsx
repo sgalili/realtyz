@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateLiveData } from '@/lib/liveSync';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
@@ -482,6 +484,12 @@ ${shareUrl}
 
       if (error) {
         throw new Error(error.message || 'שגיאה בקריאה ל-AI');
+      }
+
+      // Quick actions the AI executed (notes / reminders / contacts) must show
+      // up instantly on Today's Tasks and in the CRM.
+      if (Array.isArray(data?.actions_executed) && data.actions_executed.some((r: any) => r?.ok)) {
+        invalidateLiveData(queryClient);
       }
 
       let assistantMsg: Message;
