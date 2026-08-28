@@ -125,6 +125,9 @@ export function GoogleServiceConnectCard({
       state: `${platform}:${returnToken}`,
     });
     window.location.assign(`${OAUTH_AUTHORIZE_URLS[platform]}?${params.toString()}`);
+  };
+
+
 
 
   return (
