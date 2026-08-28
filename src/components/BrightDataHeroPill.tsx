@@ -19,7 +19,7 @@ const fmt = (n?: number) =>
     ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : null;
 
-const CACHE_KEY = 'realtyz:brightdata:balance';
+const CACHE_KEY = 'realtyz:brightdata:balance:v2';
 
 /** Direct Bright Data top-up billing flow (opens in a new tab). */
 export const TOPUP_URL =
@@ -47,7 +47,7 @@ export function BrightDataHeroPill() {
       // A failed probe must never remove the pill: fall back to the cache.
       if (error) return readCache();
       const next = (data ?? null) as BalanceResponse | null;
-      const value = next?.available ?? next?.balance;
+      const value = next?.balance ?? next?.available;
       if (typeof value === 'number' && Number.isFinite(value)) {
         try { window.localStorage.setItem(CACHE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
         return next;
@@ -56,10 +56,10 @@ export function BrightDataHeroPill() {
     },
   });
 
-  const amount = fmt(data?.available ?? data?.balance);
+  const amount = fmt(data?.balance ?? data?.available);
   // The pill is permanent — with no value yet we still render it (as a
   // clickable top-up shortcut) instead of disappearing.
-  const low = typeof (data?.available ?? data?.balance) === 'number' && (data?.available ?? data?.balance)! < 5;
+  const low = typeof (data?.balance ?? data?.available) === 'number' && (data?.balance ?? data?.available)! < 5;
 
   return (
     <a
@@ -70,8 +70,7 @@ export function BrightDataHeroPill() {
       title="יתרת ארנק Bright Data — לחצו לטעינת קרדיט"
       aria-label="יתרת ארנק Bright Data — פתיחת דף טעינת הקרדיט"
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[12px] font-semibold text-white/90 underline decoration-white/40 decoration-dotted underline-offset-4 transition-colors hover:text-white hover:decoration-white',
-        low && 'text-amber-200 decoration-amber-300/70',
+        'inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[12px] font-semibold text-white no-underline transition-opacity hover:opacity-80',
       )}
     >
       {amount ? (
