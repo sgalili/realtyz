@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Repeat, Users, ChevronLeft, X, Loader2, MapPin } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -651,7 +651,7 @@ export function ScheduleCurrentPostDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o && !submitting) onClose(); }}>
-      <DialogContent dir="rtl" className="max-w-md">
+      <DialogContent dir="rtl" className="max-w-md max-h-[88vh] overflow-y-auto">
         <DialogHeader>
           {listingHeader && (
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-right mb-1">
