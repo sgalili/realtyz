@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export type CommandTask = {
   id: string;
-  source: 'task' | 'meeting';
+  source: 'task' | 'meeting' | 'note';
   title: string;
   description: string | null;
   priority: 'high' | 'medium' | 'low';
