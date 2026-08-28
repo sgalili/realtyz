@@ -62,6 +62,9 @@ export function useFacebookHealth() {
     enabled: !!user?.id,
     staleTime: 0,
     refetchInterval: 5 * 60_000,
+    // Never poll while the tab is hidden/backgrounded — zero idle credit drain.
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
     refetchOnMount: 'always',
     retry: 1,
     queryFn: async () => {
