@@ -6,7 +6,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText, detectDominantLanguage } from "../_shared/textSanitize.ts";
-import { enforceSingleEmojis } from "../_shared/emoji.ts";
 import {
   adminClient,
   loadKbSnippets,
@@ -648,8 +647,8 @@ Deno.serve(async (req) => {
       if (start < 0 || end <= start) return null;
       try {
         const obj = JSON.parse(t.slice(start, end + 1));
-        const pub = enforceSingleEmojis(sanitizeOutboundText(String(obj?.public_comment ?? "")).trim();
-        const dm = enforceSingleEmojis(sanitizeOutboundText(String(obj?.private_messenger_dm ?? "")).trim();
+        const pub = sanitizeOutboundText(String(obj?.public_comment ?? "")).trim();
+        const dm = sanitizeOutboundText(String(obj?.private_messenger_dm ?? "")).trim();
         if (!pub) return null;
         return { public_comment: pub, private_messenger_dm: dm };
       } catch {
@@ -660,7 +659,7 @@ Deno.serve(async (req) => {
     let split = parseSplit(raw);
     // Fallback: treat the whole response as the public_comment if JSON parsing failed.
     if (!split) {
-      const pub = enforceSingleEmojis(sanitizeOutboundText(raw);
+      const pub = sanitizeOutboundText(raw);
       split = { public_comment: pub, private_messenger_dm: "" };
     }
 
@@ -716,8 +715,8 @@ Deno.serve(async (req) => {
                 ? `יש לי את הפרטים על ${primaryListing.title}${primaryListing.rooms ? `, ${primaryListing.rooms} חדרים` : ""}${primaryListing.asking_price ? `, שכ\"ד ${Number(primaryListing.asking_price).toLocaleString("he-IL")} ₪/חודש` : ""}.`
                 : "יש לי את כל הפרטים הרלוונטיים עבורך."));
       split = {
-        public_comment: enforceSingleEmojis(sanitizeOutboundText(pubAnswer).trim(),
-        private_messenger_dm: enforceSingleEmojis(sanitizeOutboundText(safeDm).trim(),
+        public_comment: sanitizeOutboundText(pubAnswer).trim(),
+        private_messenger_dm: sanitizeOutboundText(safeDm).trim(),
       };
     }
 
@@ -771,7 +770,7 @@ Deno.serve(async (req) => {
         });
         if (dmRes.ok) {
           const dj = await dmRes.json();
-          const dmText = enforceSingleEmojis(sanitizeOutboundText(String(dj?.choices?.[0]?.message?.content ?? "")).trim();
+          const dmText = sanitizeOutboundText(String(dj?.choices?.[0]?.message?.content ?? "")).trim();
           if (dmText) split.private_messenger_dm = stripNoAlternativeDisclaimers(dmText);
         }
       } catch (_e) {
