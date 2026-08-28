@@ -659,9 +659,6 @@ export function ScheduleCurrentPostDialog({
           <DialogTitle className="flex items-center gap-2 justify-end">
             תזמון פרסומים ליום {dayLabel}
           </DialogTitle>
-          <DialogDescription className="text-right">
-            {"\n"}
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -676,87 +673,6 @@ export function ScheduleCurrentPostDialog({
             />
           </div>
           <div className="flex items-end gap-2 flex-row-reverse">
-            <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  title="חזרתיות"
-                  aria-label="חזרתיות"
-                  className={cn(
-                    'relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors',
-                    recurrence !== 'none' && 'text-primary',
-                  )}
-                >
-                  <Repeat className="h-5 w-5" />
-                  {recurrence !== 'none' && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" side="bottom" className="w-64 p-2" dir="rtl">
-                <div className="text-xs font-semibold text-muted-foreground px-2 py-1">חזרתיות</div>
-                <div className="flex flex-col">
-                  {([
-                    ['none', 'ללא חזרה'],
-                    ['daily', 'בכל יום'],
-                    ['weekly', 'בכל שבוע'],
-                    ['monthly', 'בכל חודש'],
-                    ['custom', 'ימים ושעות נבחרים'],
-                  ] as Array<[Recurrence, string]>).map(([key, label]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setRecurrence(key)}
-                      className={cn(
-                        'text-right text-sm rounded-md px-2 py-1.5 hover:bg-muted/60',
-                        recurrence === key && 'bg-primary/10 text-primary font-semibold',
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {recurrence === 'custom' && (
-                  <div className="mt-2 border-t pt-2">
-                    <div className="text-[11px] text-muted-foreground mb-1 text-right">בחר ימי שבוע</div>
-                    <div className="flex flex-wrap gap-1 justify-end">
-                      {HEBREW_WEEKDAYS.map((d, i) => {
-                        const active = recurrenceDays.includes(i);
-                        return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() =>
-                              setRecurrenceDays((prev) =>
-                                prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i],
-                              )
-                            }
-                            className={cn(
-                              'h-7 w-7 text-[11px] rounded-full border',
-                              active
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-background text-foreground border-border hover:bg-muted/60',
-                            )}
-                          >
-                            {d}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                {recurrence !== 'none' && (
-                  <div className="mt-2 border-t pt-2">
-                    <p className="text-[10px] text-muted-foreground text-right leading-relaxed">
-                      הסדרה תמשיך לרוץ ללא הגבלה. בכל רגע נשמרת בתור רק הגרסה הבאה אחת,
-                      והגרסה שאחריה נוצרת רק אחרי פרסום מוצלח. הסדרה נעצרת אוטומטית כשהנכס
-                      מסומן כנמכר / הושכר / בהמתנה / מושבת.
-                    </p>
-                  </div>
-                )}
-
-              </PopoverContent>
-            </Popover>
             <div className="flex-1">
               <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">עד שעה</label>
               <Input
@@ -802,11 +718,108 @@ export function ScheduleCurrentPostDialog({
                 className="text-right"
               />
             </div>
-            <div className="flex-1 h-9 flex items-center justify-end rounded-md border border-input bg-muted/40 px-3 text-xs text-muted-foreground">
-              {"\n"}
+            <div className="flex-1">
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">חזרתיות</label>
+              <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    title="חזרתיות"
+                    aria-label="חזרתיות"
+                    className={cn(
+                      'w-full h-9 inline-flex flex-row-reverse items-center justify-between gap-1 rounded-md border border-input bg-background px-2 text-xs font-semibold transition-colors hover:bg-muted/50',
+                      recurrence !== 'none' ? 'text-primary border-primary/50' : 'text-muted-foreground',
+                    )}
+                  >
+                    <Repeat className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{RECURRENCE_LABELS[recurrence]}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" side="bottom" className="w-64 p-2" dir="rtl">
+                  <div className="flex items-center justify-between px-2 py-1">
+                    <div className="text-xs font-semibold text-muted-foreground">חזרתיות</div>
+                    {recurrence !== 'none' && (
+                      <button
+                        type="button"
+                        onClick={() => { setRecurrence('none'); setRecurrenceDays([]); }}
+                        className="text-[11px] font-semibold text-destructive hover:underline"
+                      >
+                        בטל חזרתיות
+                      </button>
+                    )}
+                  </div>
+                  {recurrence !== 'none' && (
+                    <div className="mb-1 mx-1 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary text-right">
+                      פעיל כרגע: {RECURRENCE_LABELS[recurrence]}
+                      {recurrence === 'custom' && recurrenceDays.length > 0 && (
+                        <> · {recurrenceDays.slice().sort().map((i) => HEBREW_WEEKDAYS[i]).join(', ')}</>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex flex-col">
+                    {([
+                      ['none', 'ללא חזרה'],
+                      ['daily', 'בכל יום'],
+                      ['weekly', 'בכל שבוע'],
+                      ['monthly', 'בכל חודש'],
+                      ['custom', 'ימים ושעות נבחרים'],
+                    ] as Array<[Recurrence, string]>).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setRecurrence(key)}
+                        className={cn(
+                          'text-right text-sm rounded-md px-2 py-1.5 hover:bg-muted/60',
+                          recurrence === key && 'bg-primary/10 text-primary font-semibold',
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {recurrence === 'custom' && (
+                    <div className="mt-2 border-t pt-2">
+                      <div className="text-[11px] text-muted-foreground mb-1 text-right">בחר ימי שבוע</div>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {HEBREW_WEEKDAYS.map((d, i) => {
+                          const active = recurrenceDays.includes(i);
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() =>
+                                setRecurrenceDays((prev) =>
+                                  prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i],
+                                )
+                              }
+                              className={cn(
+                                'h-7 w-7 text-[11px] rounded-full border',
+                                active
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'bg-background text-foreground border-border hover:bg-muted/60',
+                              )}
+                            >
+                              {d}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {recurrence !== 'none' && (
+                    <div className="mt-2 border-t pt-2">
+                      <p className="text-[10px] text-muted-foreground text-right leading-relaxed">
+                        הסדרה תמשיך לרוץ ללא הגבלה. בכל רגע נשמרת בתור רק הגרסה הבאה אחת,
+                        והגרסה שאחריה נוצרת רק אחרי פרסום מוצלח. הסדרה נעצרת אוטומטית כשהנכס
+                        מסומן כנמכר / הושכר / בהמתנה / מושבת.
+                      </p>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
-
           </div>
+
 
           {/* Preview before posting: text, attached photos, first comment */}
           <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
