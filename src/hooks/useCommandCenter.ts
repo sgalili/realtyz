@@ -169,10 +169,33 @@ export function useCommandCenterTasks() {
         });
       }
 
+      for (const n of notes) {
+        const m = (n.metadata ?? {}) as any;
+        const lead = m.lead_id ? leadMap.get(m.lead_id) : null;
+        const kind = String(n.action_type ?? 'note');
+        tasks.push({
+          id: n.id,
+          source: 'note',
+          title: lead?.full_name
+            ? `${NOTE_ACTION_LABEL[kind] ?? 'פתק'} · ${lead.full_name}`
+            : (NOTE_ACTION_LABEL[kind] ?? 'פתק'),
+          description: n.content ?? null,
+          priority: 'low',
+          status: 'note',
+          dueAt: n.created_at ?? null,
+          leadId: m.lead_id ?? null,
+          leadName: lead?.full_name ?? null,
+          leadPhone: lead?.phone_number ?? null,
+          listingId: m.listing_id ?? null,
+          listingLabel: null,
+          actionType: kind,
+        });
+      }
+
       tasks.sort((a, b) => {
         const now = Date.now();
-        const aOver = a.dueAt ? new Date(a.dueAt).getTime() < now : false;
-        const bOver = b.dueAt ? new Date(b.dueAt).getTime() < now : false;
+        const aOver = a.source !== 'note' && (a.dueAt ? new Date(a.dueAt).getTime() < now : false);
+        const bOver = b.source !== 'note' && (b.dueAt ? new Date(b.dueAt).getTime() < now : false);
         if (aOver !== bOver) return aOver ? -1 : 1;
         const pa = PRIORITY_WEIGHT[a.priority] ?? 1;
         const pb = PRIORITY_WEIGHT[b.priority] ?? 1;
