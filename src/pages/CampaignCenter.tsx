@@ -6642,15 +6642,17 @@ const CampaignCenter = () => {
             <div key={r.id} className="flex gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
               {image ? <img src={typeof image === 'string' ? image : image?.url} alt="" className="h-20 w-20 shrink-0 rounded-md object-cover" /> : null}
               <div className="min-w-0 flex-1">
-                <p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>
+                <p className="font-semibold">
+                  {String(r.message_body || '').trim().split('\n')[0] || r.campaign_name || 'פוסט עתידי'}
+                </p>
                 <GroupStatusChips
                   groupIds={groupIds}
                   meta={historyGroupMeta}
                   defaultState="pending"
+                  countdownIso={r.sent_at}
                   emptyLabel="ללא קבוצות — פרסום לעמוד בלבד"
                 />
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <ScheduledCountdown iso={r.sent_at} />
                   <span className="text-xs text-muted-foreground">{new Date(r.sent_at).toLocaleString('he-IL')}</span>
                 </div>
                 <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p>
@@ -6659,9 +6661,11 @@ const CampaignCenter = () => {
                     עריכת קבוצות ונכסים
                   </Button>
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="ghost"
-                    className="text-[12px] text-destructive hover:bg-destructive/10"
+                    title="מחק פוסט מתוזמן"
+                    aria-label="מחק פוסט מתוזמן"
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
                     onClick={async () => {
                       setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
                       const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
@@ -6669,8 +6673,7 @@ const CampaignCenter = () => {
                       else toast.success('הפוסט המתוזמן נמחק');
                     }}
                   >
-                    <Trash2 className="ml-1 h-3.5 w-3.5" />
-                    מחיקה
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
