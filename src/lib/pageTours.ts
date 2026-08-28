@@ -179,11 +179,11 @@ export const PAGE_TOURS: PageTourDefinition[] = [
   },
   {
     path: '/campaigns',
-    title: 'פוסטים ותגובות',
+    title: 'פוסטים',
     emoji: '📣',
     prefixMatch: true,
     splash: {
-      eyebrow: 'מרכז הקמפיינים',
+      eyebrow: 'פוסטים',
       title: 'פרסמו נכסים בכל הערוצים',
       bullets: [
         'ה-AI כותב פוסטים, בוחר תמונות ומפרסם לקבוצות פייסבוק.',

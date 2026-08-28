@@ -90,7 +90,7 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/deals'],
   },
   {
-    title: 'קמפיינים',
+    title: 'פוסטים',
     url: '/campaigns',
     icon: Megaphone,
     iconColor: 'text-orange-500',
