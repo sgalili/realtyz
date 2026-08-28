@@ -9,25 +9,20 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  AlarmClock,
   ChevronDown,
   Pencil,
   Building2,
   CalendarClock,
   Check,
   ChevronLeft,
-  ClipboardList,
-  Hourglass,
   Megaphone,
-  Phone,
-  StickyNote,
+  Plus,
   Trash2,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import {
-  useCommandCenterMetrics,
   useCommandCenterTasks,
   useCommandCenterPosts,
   ACTION_TYPE_LABEL,
