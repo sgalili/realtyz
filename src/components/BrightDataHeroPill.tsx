@@ -59,7 +59,6 @@ export function BrightDataHeroPill() {
   const amount = fmt(data?.balance ?? data?.available);
   // The pill is permanent — with no value yet we still render it (as a
   // clickable top-up shortcut) instead of disappearing.
-  const low = typeof (data?.balance ?? data?.available) === 'number' && (data?.balance ?? data?.available)! < 5;
 
   return (
     <a
