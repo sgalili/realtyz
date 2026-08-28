@@ -127,7 +127,9 @@ export function ScheduleCurrentPostDialog({
       const prefs = loadSchedulePrefs(workspaceOwnerId, 'composer');
       setWinStart(prefs.winStart);
       setWinEnd(prefs.winEnd);
-      setWinCount(prefs.winCount);
+      // Fully automatic — the system derives the daily post count from the
+      // per-group rate limit instead of a manual field.
+      setWinCount(autoPostsPerDay(0, prefs.groupDailyLimit));
       setRecurrence(prefs.recurrence);
       setRecurrenceDays(prefs.recurrenceDays);
       setGroupDailyLimit(prefs.groupDailyLimit);
