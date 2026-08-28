@@ -4712,31 +4712,48 @@ const PublishedFeed = ({
                   )}
                 </div>
 
-                <h3 className={cn('flex-1 font-semibold text-foreground line-clamp-2', alignClass)} dir={dirAttr}>
+                {/* Title = the real first line of the post. Clicking it opens the
+                    post inside the Facebook group / page in a new tab. */}
+                <h3
+                  className={cn(
+                    'flex-1 font-semibold text-foreground line-clamp-2',
+                    alignClass,
+                    postUrl && 'cursor-pointer hover:underline',
+                  )}
+                  dir={dirAttr}
+                  onClick={(e) => {
+                    if (!postUrl) return;
+                    e.stopPropagation();
+                    window.open(postUrl, '_blank', 'noopener,noreferrer');
+                  }}
+                  title={postUrl ? 'פתח את הפוסט בפייסבוק' : undefined}
+                >
                   {(bodyText.trim().split('\n')[0] || r.campaign_name)}
                 </h3>
+                {postUrl && (
+                  <button
+                    type="button"
+                    aria-label="פתח בפייסבוק"
+                    title="פתח בפייסבוק"
+                    className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
+                    onClick={(e) => { e.stopPropagation(); window.open(postUrl, '_blank', 'noopener,noreferrer'); }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
 
-              {/* Pending target groups (name + avatar) shown ABOVE the scheduled time */}
-              {scheduled && Array.isArray((r as any).group_ids) && (r as any).group_ids.length > 0 && (
-                <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                  {((r as any).group_ids as any[]).slice(0, 4).map((raw) => {
-                    const gid = String(raw);
-                    const meta = fbGroupMeta[gid] ?? fbGroupMeta[gid.replace(/^ext:/, '')];
-                    const name = meta?.name || `קבוצה ${gid.slice(-4)}`;
-                    return (
-                      <span key={gid} className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-foreground">
-                        {meta?.icon
-                          ? <img src={meta.icon} alt="" className="h-4 w-4 rounded-full object-cover" loading="lazy" />
-                          : <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 text-[9px] font-bold text-primary">{name.slice(0, 1)}</span>}
-                        <span className="max-w-[160px] truncate">{name}</span>
-                      </span>
-                    );
-                  })}
-                  {((r as any).group_ids as any[]).length > 4 && (
-                    <span className="text-[11px] text-muted-foreground">+{((r as any).group_ids as any[]).length - 4}</span>
-                  )}
+              {/* Target groups — collapsed summary (count + dd/hh/mm/ss countdown) */}
+              {Array.isArray((r as any).group_ids) && (r as any).group_ids.length > 0 && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <GroupStatusChips
+                    groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
+                    meta={fbGroupMeta}
+                    results={groupResultMap((r.provider_response as any)?.group_results)}
+                    defaultState={scheduled ? 'pending' : failed ? 'failed' : 'published'}
+                    countdownIso={scheduled ? r.sent_at : null}
+                  />
                 </div>
               )}
 
