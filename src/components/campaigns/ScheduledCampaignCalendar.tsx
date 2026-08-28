@@ -27,6 +27,14 @@ type ScheduledRow = {
   status: string | null;
   provider_message_id: string | null;
   provider_response: any;
+  recurrence_rule?: any;
+};
+
+const RECURRENCE_BUBBLE: Record<string, string> = {
+  daily: 'יומי',
+  weekly: 'שבועי',
+  monthly: 'חודשי',
+  custom: 'מותאם',
 };
 
 const CHANNEL_COLORS: Record<string, string> = {
@@ -211,7 +219,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
     setLoading(true);
     const { data, error } = await supabase
       .from('campaign_logs')
-      .select('id, campaign_name, channel, message_body, created_at, sent_at, status, provider_message_id, provider_response')
+      .select('id, campaign_name, channel, message_body, created_at, sent_at, status, provider_message_id, provider_response, recurrence_rule')
       .eq('is_archived', false)
       .in('status', ['scheduled', 'pending'])
       .gt('sent_at', new Date().toISOString())
@@ -529,6 +537,12 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
                         <span className="tabular-nums">{t.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                         <span className="mx-1">·</span>
                         <span className="truncate">{(r.message_body || r.campaign_name).split('\n')[0]}</span>
+                        {r.recurrence_rule?.pattern && (
+                          <span className="ms-1 inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-[1px] text-[9px] font-bold text-primary align-middle">
+                            <Repeat className="h-2.5 w-2.5" />
+                            {RECURRENCE_BUBBLE[String(r.recurrence_rule.pattern)] || 'חזרתי'}
+                          </span>
+                        )}
                       </button>
                     );
                   })}

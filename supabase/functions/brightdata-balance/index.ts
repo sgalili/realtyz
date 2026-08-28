@@ -26,7 +26,8 @@ Deno.serve(async (req) => {
     const user = userData?.user;
     if (!user) return json({ ok: false, error: 'unauthorized' }, 401);
 
-    let token = (Deno.env.get('BRIGHTDATA_API_TOKEN') ?? '').trim();
+    // Account-level (admin/billing) token wins: only it can read the wallet.
+    let token = (Deno.env.get('BRIGHTDATA_ADMIN_API_TOKEN') ?? Deno.env.get('BRIGHTDATA_API_TOKEN') ?? '').trim();
     let zone = '';
     const { data: keys } = await authed
       .from('user_api_keys')
