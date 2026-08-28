@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import BillingTab from '@/components/profile/BillingTab';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -617,11 +618,12 @@ export default function Profile() {
   return (
     <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4">
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
-        <TabsList className={`grid w-full ${isAgency ? 'grid-cols-4' : 'grid-cols-3'} mb-[15px]`}>
+        <TabsList className={`grid w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} mb-[15px]`}>
           <TabsTrigger value="personal">פרופיל</TabsTrigger>
           {isAgency && <TabsTrigger value="managers">מנהלים</TabsTrigger>}
           <TabsTrigger value="workspace">המשרד</TabsTrigger>
           <TabsTrigger value="connections">חיבורים</TabsTrigger>
+          <TabsTrigger value="billing">חבילות וקרדיטים</TabsTrigger>
         </TabsList>
         <TabsContent value="personal" className="mt-[20px] space-y-4">
           <PersonalTab />
@@ -636,6 +638,9 @@ export default function Profile() {
         </TabsContent>
         <TabsContent value="connections" className="mt-[20px] space-y-4" dir="rtl">
           <ConnectionsTab />
+        </TabsContent>
+        <TabsContent value="billing" className="mt-[20px] space-y-4" dir="rtl">
+          <BillingTab />
         </TabsContent>
 
       </Tabs>
