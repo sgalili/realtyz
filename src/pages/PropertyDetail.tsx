@@ -774,7 +774,17 @@ export default function PropertyDetail() {
     }
   };
 
-  if (isLoading) {
+  // Pre-validation gate: a source-backed row that still has NO photos and no
+  // real description is an un-scraped placeholder (the empty "חליל" case).
+  // While the mandatory source hydration runs we keep the loading template on
+  // screen instead of rendering a hollow property page.
+  const isUnscrapedPlaceholder =
+    !!property &&
+    !!resolvedSourceUrl &&
+    (dbPhotos?.length ?? 0) === 0 &&
+    !String(property.description ?? '').trim();
+
+  if (isLoading || (isUnscrapedPlaceholder && hydrating)) {
     // A single loading template for BOTH cases: it mirrors the real page
     // structure (header, specs, gallery, features, details, description,
     // contact) so nothing jumps around, and any value we already have from the
