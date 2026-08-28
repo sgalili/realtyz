@@ -29,6 +29,14 @@ type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
 
 const HEBREW_WEEKDAYS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 
+const RECURRENCE_LABELS: Record<Recurrence, string> = {
+  none: 'ללא חזרה',
+  daily: 'בכל יום',
+  weekly: 'בכל שבוע',
+  monthly: 'בכל חודש',
+  custom: 'ימים נבחרים',
+};
+
 export type ScheduleTarget = {
   id: string;
   name: string;
