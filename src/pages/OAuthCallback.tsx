@@ -197,12 +197,13 @@ export default function OAuthCallback() {
           if (fnError) throw new Error(String(fnError.message ?? fnError));
           const payload = (data as any) ?? {};
           if (payload.error || payload.ok === false) throw new Error(String(payload.error || 'exchange_failed'));
-          if (cancelled) return;
+          if (cancelled || settledRef.current) return;
           const email = String(payload?.identity?.email ?? '');
           finish(
             `${CONNECTIONS_PATH}&google=connected${email ? `&google_account=${encodeURIComponent(email)}` : ''}`,
             { ok: true, name: email || null, provider: googlePlatform },
             () => {
+              if (settledRef.current) return;
               setStatus('success');
               setMessage('החיבור הושלם בהצלחה.');
               setShowReturnButton(true);
