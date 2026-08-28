@@ -10,7 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
+import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes, clampWindowTime, POSTING_WINDOW_START_MIN, POSTING_WINDOW_END_MIN } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups } from '@/lib/campaignGroups';
 
 import { saveGroupDailyLimit } from '@/lib/groupDailyLimits';
@@ -615,7 +615,9 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
                 <Input
                   type="time"
                   value={winEnd}
-                  onChange={(e) => setWinEnd(e.target.value)}
+                  min="09:00"
+                  max="21:00"
+                  onChange={(e) => setWinEnd(clampWindowTime(e.target.value, '21:00'))}
                   dir="rtl"
                   className="text-left [&::-webkit-datetime-edit]:text-left [&::-webkit-datetime-edit-fields-wrapper]:justify-start [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:order-last [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-0"
                 />
@@ -625,7 +627,9 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
                 <Input
                   type="time"
                   value={winStart}
-                  onChange={(e) => setWinStart(e.target.value)}
+                  min="09:00"
+                  max="21:00"
+                  onChange={(e) => setWinStart(clampWindowTime(e.target.value, '09:00'))}
                   dir="rtl"
                   className="text-left [&::-webkit-datetime-edit]:text-left [&::-webkit-datetime-edit-fields-wrapper]:justify-start [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:order-last [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-0"
                 />
@@ -883,8 +887,9 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
                 if (!scheduleDay) return;
                 const [sh, sm] = winStart.split(':').map(Number);
                 const [eh, em] = winEnd.split(':').map(Number);
-                const startMin = sh * 60 + (sm || 0);
-                const endMin = eh * 60 + (em || 0);
+                // HARD window: posts may only go out between 09:00 and 21:00.
+                const startMin = Math.min(POSTING_WINDOW_END_MIN - 30, Math.max(POSTING_WINDOW_START_MIN, sh * 60 + (sm || 0)));
+                const endMin = Math.max(startMin + 30, Math.min(POSTING_WINDOW_END_MIN, eh * 60 + (em || 0)));
                 if (endMin <= startMin) {
                   toast.error('שעת הסיום חייבת להיות אחרי שעת ההתחלה');
                   return;

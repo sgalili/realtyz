@@ -13,6 +13,27 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { enforceSingleEmojis, RICH_TEMPLATE_CONTRACT } from "../_shared/emoji.ts";
+
+// HARD posting window: nothing is ever published before 09:00 or after 21:00.
+const WINDOW_START_MIN = 9 * 60;
+const WINDOW_END_MIN = 21 * 60;
+
+/** True when a moment falls inside the allowed 09:00-21:00 window. */
+function insideWindow(d: Date): boolean {
+  const min = d.getHours() * 60 + d.getMinutes();
+  return min >= WINDOW_START_MIN && min <= WINDOW_END_MIN;
+}
+
+/** Moves a moment to a random time inside the next allowed window. */
+function moveIntoWindow(d: Date): Date {
+  const out = new Date(d);
+  const min = out.getHours() * 60 + out.getMinutes();
+  if (min > WINDOW_END_MIN) out.setDate(out.getDate() + 1);
+  const target = WINDOW_START_MIN + Math.floor(Math.random() * 90);
+  out.setHours(Math.floor(target / 60), target % 60, Math.floor(Math.random() * 60), 0);
+  return out;
+}
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -108,7 +129,7 @@ async function regenerateBody(row: any): Promise<string> {
       body: JSON.stringify({
         topic: "פוסט קידום נכס (וריאציה בסדרה מתוזמנת)",
         platform: row.channel,
-        customInstructions: row.regen_prompt,
+        customInstructions: `${row.regen_prompt}\n\n${RICH_TEMPLATE_CONTRACT}`,
         selectedListingId: row.listing_id,
         listingFocusOnly: true,
       }),
@@ -116,7 +137,7 @@ async function regenerateBody(row: any): Promise<string> {
     const data = await res.json().catch(() => ({}));
     const next = data?.content || data?.text || data?.body;
     const clean = typeof next === "string" ? next.trim() : "";
-    return clean || fallback;
+    return enforceSingleEmojis(clean || fallback);
   } catch {
     return fallback;
   }
@@ -149,9 +170,10 @@ function applyWindow(day: Date, rule: any): Date {
     const m = String(v ?? "").match(/^(\d{1,2}):(\d{2})$/);
     return m ? Number(m[1]) * 60 + Number(m[2]) : fallback;
   };
-  const startMin = parse(rule?.win_start, 9 * 60);
-  const endMin = Math.max(startMin + 30, parse(rule?.win_end, 21 * 60));
-  const minute = startMin + Math.floor(Math.random() * (endMin - startMin));
+  // Never allow a rule to push a post outside the hard 09:00-21:00 window.
+  const startMin = Math.max(WINDOW_START_MIN, parse(rule?.win_start, WINDOW_START_MIN));
+  const endMin = Math.min(WINDOW_END_MIN, Math.max(startMin + 30, parse(rule?.win_end, WINDOW_END_MIN)));
+  const minute = startMin + Math.floor(Math.random() * Math.max(1, endMin - startMin));
   const out = new Date(day);
   out.setHours(Math.floor(minute / 60), minute % 60, Math.floor(Math.random() * 60), 0);
   return out;
@@ -253,6 +275,18 @@ Deno.serve(async (req) => {
 
   const results: Array<{ id: string; ok: boolean; error?: string }> = [];
   for (const row of candidates ?? []) {
+    // HARD posting window: never publish before 09:00 or after 21:00. Slots
+    // that drifted outside the window are pushed into the next window.
+    const slotWhen = new Date(row.sent_at ?? Date.now());
+    if (!insideWindow(slotWhen)) {
+      const moved = moveIntoWindow(slotWhen);
+      await admin
+        .from("campaign_logs")
+        .update({ sent_at: moved.toISOString(), locked_at: null, locked_by: null })
+        .eq("id", row.id);
+      results.push({ id: row.id, ok: false, error: "outside_posting_window_rescheduled" });
+      continue;
+    }
     // Hard stop: a property on hold / sold / rented / disabled must never post
     // again. Drop the slot (and any sibling future slot) instead of firing it.
     if (row.listing_id) {

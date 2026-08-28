@@ -41,6 +41,9 @@ import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { sourcePhotoCount } from '@/lib/photoCount';
 import { ProgressRing } from '@/components/ui/ProgressRing';
+import { ProgressiveImage } from '@/components/ui/ProgressiveImage';
+import { BackgroundSyncPill } from '@/components/property/BackgroundSyncPill';
+import { PropertyLoadingTemplate } from '@/components/property/PropertyLoadingTemplate';
 import { buildDescriptionBlocks, sanitizeDescription } from '@/lib/descriptionBlocks';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import type { UnifiedResult } from '@/lib/propertySearch';
@@ -482,47 +485,19 @@ export default function PropertyDetail() {
 
 
   // ---- Automatic on-view metadata hydration -------------------------------
-  // When a property is opened and key Yad2 metadata is missing (ארנונה,
-  // ועד בית, מספר תשלומים, or the "על הנכס" text), re-parse the source ad
-  // once, persist it server-side, and refresh the view.
-  // Maximum time the UI is willing to wait for a fresh scrape before falling
-  // back to the data already stored in our database.
-  const UI_HYDRATION_BUDGET_MS = 4000;
+  // The page ALWAYS renders instantly from whatever is already in our DB /
+  // navigation snapshot. Missing source data (ארנונה, ועד בית, "על הנכס",
+  // structure, images) is pulled in the background and streamed into the
+  // already-visible layout. Nothing here ever blocks or hides the page.
   const hydratedRef = useRef<string | null>(null);
   const [hydrating, setHydrating] = useState(false);
-  // Determinate-looking progress for the metadata ring (0-100).
-  const [hydrateProgress, setHydrateProgress] = useState(0);
-  // The ring is driven by REAL hydration milestones (see `ensureMetadataImport`),
-  // but between two milestones it eases forward asymptotically towards a soft
-  // ceiling slightly ahead of the last reported value, so it can never sit
-  // frozen on a low number (the old "stuck at 3%" behaviour) while a slow
-  // scrape is running. It stops the instant hydration completes.
-  const metaTargetRef = useRef(0);
+  // Absolute ceiling for the corner indicator, so a dead scraper can't leave a
+  // spinner running forever. The sync itself keeps going server-side.
+  const HYDRATION_INDICATOR_MAX_MS = 90_000;
   useEffect(() => {
     if (!hydrating) return;
-    const timer = setInterval(() => {
-      setHydrateProgress((p) => {
-        const target = metaTargetRef.current;
-        if (target >= 100) return 100;
-        // Generous soft ceiling so the ring never parks on a milestone value
-        // (the old "stuck at 38%" behaviour = milestone 20 + 18 headroom).
-        const ceiling = Math.min(97, target + 30);
-        if (p >= ceiling) return p;
-        const stepSize = Math.max(0.8, (ceiling - p) * 0.07);
-        return Math.min(ceiling, p + stepSize);
-      });
-    }, 80);
-    // Hard watchdog: whatever happens to the scraper, the ring completes and
-    // the loader disappears — it can never park on 97%.
-    const watchdog = setTimeout(() => {
-      metaTargetRef.current = 100;
-      setHydrateProgress(100);
-      setTimeout(() => setHydrating(false), 200);
-    }, UI_HYDRATION_BUDGET_MS + 800);
-    return () => {
-      clearInterval(timer);
-      clearTimeout(watchdog);
-    };
+    const stop = setTimeout(() => setHydrating(false), HYDRATION_INDICATOR_MAX_MS);
+    return () => clearTimeout(stop);
   }, [hydrating]);
 
 
@@ -559,37 +534,32 @@ export default function PropertyDetail() {
       if (cancelled) return;
 
 
-      // A partial database snapshot may already paint text, but the loader
-      // remains visible until the complete import is confirmed.
-      const shouldShowHydrationProgress = true;
-      metaTargetRef.current = shouldShowHydrationProgress ? 0 : 100;
-      setHydrateProgress(shouldShowHydrationProgress ? 0 : 100);
-      if (shouldShowHydrationProgress) setHydrating(true);
+      // The page is already painted from local data. From here on we only
+      // stream the missing pieces in and flip the corner indicator off when
+      // the real import finishes — never on a timer, never faking 100%.
+      setHydrating(true);
       try {
-        // Metadata only — images stay lazy until the user touches the gallery.
-        // Progress comes from real hydration milestones, capped at 95 until the
-        // refreshed row is actually on screen.
-        // The scrape itself keeps running in the background; the UI only waits
-        // for a short budget, then falls back to the locally stored data.
-        const importTask = ensureMetadataImport(id, src, (p) => {
-          metaTargetRef.current = Math.max(metaTargetRef.current, Math.min(95, p));
-        })
-          .then(() => qc.refetchQueries({ queryKey: ['property-detail', id] }))
-          .catch(() => { /* silent: never blocks or alerts the user */ });
-        await Promise.race([
-          importTask,
-          new Promise((resolve) => setTimeout(resolve, UI_HYDRATION_BUDGET_MS)),
-        ]);
+        // Refetch on EVERY reported milestone so freshly-scraped values (features,
+        // "על הנכס", ארנונה, structure) appear in the open page as they land.
+        let lastRefetch = 0;
+        await ensureMetadataImport(id, src, () => {
+          if (cancelled) return;
+          const now = Date.now();
+          if (now - lastRefetch > 1200) {
+            lastRefetch = now;
+            void qc.refetchQueries({ queryKey: ['property-detail', id] });
+          }
+        });
+        if (cancelled) return;
+        await qc.refetchQueries({ queryKey: ['property-detail', id] });
         try { window.localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
       } catch {
-        // Scraper delays/timeouts are non-events for the UI: the page already
-        // shows everything stored locally, so we finish the ring silently and
-        // let the background sync retry on the next visit.
+        // Scraper delays/timeouts are non-events: the page already shows
+        // everything stored locally and the sync retries on the next visit.
       }
       if (cancelled) return;
-      metaTargetRef.current = 100;
-      setHydrateProgress(100);
-      setTimeout(() => { if (!cancelled) setHydrating(false); }, 200);
+      setHydrating(false);
+
 
     })();
 
@@ -805,74 +775,24 @@ export default function PropertyDetail() {
   };
 
   if (isLoading) {
-    if (propertySnapshot) {
-      const raw = isRecord(propertySnapshot.raw) ? propertySnapshot.raw : {};
-      const snapshotFeatures = Array.isArray(raw.features)
-        ? raw.features.filter((item): item is string => typeof item === 'string')
-        : [];
-      return (
-        <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-          <TopProgressBar value={initialLoadProgress} />
-          <header className="space-y-2">
-            <h1 className="text-3xl font-bold leading-snug text-foreground">{propertySnapshot.title}</h1>
-            {propertySnapshot.neighborhood && <p className="text-lg text-muted-foreground">{propertySnapshot.neighborhood}</p>}
-            {propertySnapshot.price ? (
-              <p className="text-[38px] font-extrabold leading-none text-success tabular-nums">{formatPrice(propertySnapshot.price)}</p>
-            ) : null}
-          </header>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {propertySnapshot.rooms ? <Spec icon={BedDouble} label="חדרים" value={String(propertySnapshot.rooms)} /> : null}
-            {sanitizeSqm(propertySnapshot.size_sqm) ? <Spec icon={Ruler} label="מ״ר בנוי" value={String(sanitizeSqm(propertySnapshot.size_sqm))} /> : null}
-            {propertySnapshot.floor != null ? <Spec icon={Layers} label="קומה" value={String(sanitizeFloor(propertySnapshot.floor) ?? propertySnapshot.floor)} /> : null}
-            {floorsInBuildingFromSqm(propertySnapshot.size_sqm) ? <Spec icon={Layers} label="קומות בבניין" value={String(floorsInBuildingFromSqm(propertySnapshot.size_sqm))} /> : null}
-
-            {propertySnapshot.address ? <Spec icon={MapPin} label="כתובת" value={propertySnapshot.address} /> : null}
-          </div>
-          {snapshotFeatures.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {snapshotFeatures.map((feature) => <span key={feature} className="rounded-full border bg-muted px-3 py-1 text-sm font-medium">{feature}</span>)}
-            </div>
-          )}
-          {propertySnapshot.description && <p className="max-w-4xl whitespace-pre-line text-lg leading-8 text-foreground">{propertySnapshot.description}</p>}
-          <div className="fixed bottom-5 left-5 z-50 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
-             <ProgressRing value={initialLoadProgress} size={64} strokeWidth={5} />
-          </div>
-        </div>
-      );
-    }
-    // No snapshot yet: show the real page skeleton (never a blank screen) with
-    // a smooth top progress bar + centered percentage ring.
+    // A single loading template for BOTH cases: it mirrors the real page
+    // structure (header, specs, gallery, features, details, description,
+    // contact) so nothing jumps around, and any value we already have from the
+    // catalog snapshot is painted immediately instead of a grey block.
+    const raw = propertySnapshot && isRecord(propertySnapshot.raw) ? propertySnapshot.raw : {};
+    const snapshotFeatures = Array.isArray((raw as any).features)
+      ? ((raw as any).features as unknown[]).filter((item): item is string => typeof item === 'string')
+      : [];
+    const snapPhoto = propertySnapshot?.photos?.[0] ?? null;
     return (
-      <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-        <TopProgressBar value={initialLoadProgress} />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Skeleton className="h-6 w-40" />
-          <div className="flex gap-2">
-            <Skeleton className="h-9 w-24" />
-            <Skeleton className="h-9 w-24" />
-            <Skeleton className="h-9 w-24" />
-          </div>
-        </div>
-        <div className="space-y-3">
-          <Skeleton className="h-9 w-3/4 max-w-xl" />
-          <Skeleton className="h-6 w-1/3 max-w-sm" />
-          <Skeleton className="h-10 w-48" />
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}
-        </div>
-        <Skeleton className="h-[280px] w-full rounded-xl" />
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-full max-w-3xl" />
-          <Skeleton className="h-5 w-full max-w-2xl" />
-          <Skeleton className="h-5 w-2/3 max-w-xl" />
-        </div>
-        <div className="pointer-events-none fixed left-1/2 top-24 z-50 -translate-x-1/2 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
-          <ProgressRing value={initialLoadProgress} size={72} strokeWidth={6} />
-        </div>
-      </div>
+      <PropertyLoadingTemplate
+        snapshot={propertySnapshot ?? null}
+        features={snapshotFeatures}
+        photo={typeof snapPhoto === 'string' ? snapPhoto : null}
+      />
     );
   }
+
 
   if (!property) {
     return (
@@ -1248,21 +1168,9 @@ export default function PropertyDetail() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* Slim top progress bar: clear page-loading status while data streams in. */}
-      {hydrating && (
-        <div className="fixed inset-x-0 top-0 z-50 h-1 bg-muted">
-          <div
-            className="h-full bg-primary transition-[width] duration-300 ease-out"
-            style={{ width: `${Math.max(4, Math.min(100, hydrateProgress))}%` }}
-          />
-        </div>
-      )}
-      {/* Metadata refresh is non-blocking and remains visible in the viewport. */}
-      {hydrating && (
-        <div className="pointer-events-none fixed left-1/2 top-24 z-50 -translate-x-1/2 rounded-full bg-card/95 p-2 shadow-lg ring-1 ring-border">
-          <ProgressRing value={hydrateProgress} size={58} strokeWidth={5} />
-        </div>
-      )}
+      {/* Background sync is NEVER blocking: the whole page stays interactive and
+          a subtle corner pill reports honest progress (no fake 100%). */}
+      {hydrating && <BackgroundSyncPill />}
 
 
 
@@ -1386,7 +1294,13 @@ export default function PropertyDetail() {
                     className="h-full w-full bg-black object-contain"
                   />
                 ) : main ? (
-                  <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
+                  <ProgressiveImage
+                    src={main}
+                    alt={dynamicHeadline}
+                    eager
+                    placeholderSrc={photos[activePhoto - 1] ?? undefined}
+                    className="h-full w-full"
+                  />
                 ) : (meta as any)?.media_status === 'images_unavailable' ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
                     <ImageIcon className="h-10 w-10" />
@@ -1464,7 +1378,7 @@ export default function PropertyDetail() {
                   {isVideoMedia(p) ? (
                     <video src={p} muted preload="metadata" className="h-full w-full bg-black object-cover" />
                   ) : (
-                    <img src={p} alt="" className="h-full w-full object-cover" draggable={false} />
+                    <img src={p} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" draggable={false} />
                   )}
                   {editMode && (
                     <span
