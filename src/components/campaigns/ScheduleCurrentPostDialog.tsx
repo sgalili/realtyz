@@ -725,17 +725,6 @@ export function ScheduleCurrentPostDialog({
             </div>
           </div>
           <div className="flex items-end gap-2 flex-row-reverse">
-            <div className="w-28">
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">כמות פוסטים</label>
-              <Input
-                type="number"
-                min={1}
-                max={20}
-                value={winCount}
-                onChange={(e) => setWinCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
-                className="text-right"
-              />
-            </div>
             <div className="w-32">
               <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">מקס' לקבוצה/יום</label>
               <Input
