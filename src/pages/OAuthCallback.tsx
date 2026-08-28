@@ -312,7 +312,7 @@ export default function OAuthCallback() {
         )}
         {(status === 'error' || showReturnButton) && (
           <Button onClick={returnToApp} className="mt-2">
-            חזור למערכת
+            חזרה למערכת
           </Button>
         )}
         {status === 'loading' && (
