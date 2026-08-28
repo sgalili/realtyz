@@ -4729,35 +4729,14 @@ const PublishedFeed = ({
                   )}
                 </div>
 
-                {/* Title = the real first line of the post. Clicking it opens the
-                    post inside the Facebook group / page in a new tab. */}
+                {/* Title = the real first line of the post. Clicking anywhere on
+                    the card only toggles expand/collapse — never opens Facebook. */}
                 <h3
-                  className={cn(
-                    'flex-1 font-semibold text-foreground line-clamp-2',
-                    alignClass,
-                    postUrl && 'cursor-pointer hover:underline',
-                  )}
+                  className={cn('flex-1 font-semibold text-foreground line-clamp-2', alignClass)}
                   dir={dirAttr}
-                  onClick={(e) => {
-                    if (!postUrl) return;
-                    e.stopPropagation();
-                    window.open(postUrl, '_blank', 'noopener,noreferrer');
-                  }}
-                  title={postUrl ? 'פתח את הפוסט בפייסבוק' : undefined}
                 >
                   {(bodyText.trim().split('\n')[0] || r.campaign_name)}
                 </h3>
-                {postUrl && (
-                  <button
-                    type="button"
-                    aria-label="פתח בפייסבוק"
-                    title="פתח בפייסבוק"
-                    className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
-                    onClick={(e) => { e.stopPropagation(); window.open(postUrl, '_blank', 'noopener,noreferrer'); }}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </button>
-                )}
               </div>
 
 
