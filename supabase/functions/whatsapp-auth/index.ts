@@ -42,14 +42,39 @@ const hashCode = async (phone: string, code: string) => {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 };
 
-const otpTemplate = (code: string) => {
-  const name = Deno.env.get("META_WA_OTP_TEMPLATE_NAME") ?? Deno.env.get("WHATSAPP_OTP_TEMPLATE_NAME") ?? "";
+/**
+ * Resolves the Meta template used to deliver the login code.
+ * Order: explicit env override -> synced APPROVED AUTHENTICATION template ->
+ * null (free-text fallback, only valid inside an open 24h window).
+ */
+const resolveOtpTemplate = async (admin: any, code: string) => {
+  let name = Deno.env.get("META_WA_OTP_TEMPLATE_NAME") ?? Deno.env.get("WHATSAPP_OTP_TEMPLATE_NAME") ?? "";
+  let language = Deno.env.get("META_WA_OTP_TEMPLATE_LANGUAGE") ?? Deno.env.get("WHATSAPP_OTP_TEMPLATE_LANGUAGE") ?? "";
+  let copyCode = (Deno.env.get("META_WA_OTP_COPY_CODE_BUTTON") ?? "").toLowerCase() === "true";
+
+  if (!name) {
+    const { data } = await admin
+      .from("wa_message_templates")
+      .select("name, language, category, status")
+      .eq("category", "AUTHENTICATION")
+      .eq("status", "APPROVED")
+      .order("synced_at", { ascending: false })
+      .limit(1);
+    const row = (data ?? [])[0] as { name?: string; language?: string } | undefined;
+    if (row?.name) {
+      name = row.name;
+      language = language || String(row.language ?? "he");
+      // Meta AUTHENTICATION templates always carry a copy-code button.
+      copyCode = true;
+    }
+  }
+
   if (!name) return null;
-  const language = Deno.env.get("META_WA_OTP_TEMPLATE_LANGUAGE") ?? Deno.env.get("WHATSAPP_OTP_TEMPLATE_LANGUAGE") ?? "he";
+
   const components: unknown[] = [
     { type: "body", parameters: [{ type: "text", text: code }] },
   ];
-  if ((Deno.env.get("META_WA_OTP_COPY_CODE_BUTTON") ?? "").toLowerCase() === "true") {
+  if (copyCode) {
     components.push({
       type: "button",
       sub_type: "copy_code",
@@ -57,8 +82,9 @@ const otpTemplate = (code: string) => {
       parameters: [{ type: "coupon_code", coupon_code: code }],
     });
   }
-  return { name, language, components };
+  return { name, language: language || "he", components };
 };
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
