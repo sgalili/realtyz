@@ -20,6 +20,8 @@ export type PropertyNote = {
   createdAt: string | null;
   kind: 'note' | 'interaction' | 'office';
   listingLabel: string | null;
+  /** First allowed photo of the property — used as the card thumbnail. */
+  listingThumb: string | null;
 };
 
 const NOTE_KIND_LABEL: Record<PropertyNote['kind'], string> = {
@@ -32,6 +34,19 @@ export function propertyNoteKindLabel(kind: PropertyNote['kind']) {
   return NOTE_KIND_LABEL[kind] ?? 'פתק';
 }
 
+/** First usable photo URL out of a listing row. */
+export function listingThumbOf(row: any): string | null {
+  const photos = row?.media_photos;
+  if (Array.isArray(photos)) {
+    for (const p of photos) {
+      const url = typeof p === 'string' ? p : (p?.url ?? p?.src);
+      if (typeof url === 'string' && url.trim()) return url.trim();
+    }
+  }
+  if (typeof row?.image_url === 'string' && row.image_url.trim()) return row.image_url.trim();
+  return null;
+}
+
 async function fetchPropertyNotes(): Promise<PropertyNote[]> {
   const [logRes, listingRes] = await Promise.all([
     (supabase as any)
@@ -42,7 +57,7 @@ async function fetchPropertyNotes(): Promise<PropertyNote[]> {
       .limit(400),
     (supabase as any)
       .from('listings')
-      .select('id, office_notes, property_title, address, city, updated_at')
+      .select('id, office_notes, property_title, address, city, updated_at, media_photos, image_url')
       .not('office_notes', 'is', null)
       .limit(400),
   ]);
@@ -64,6 +79,7 @@ async function fetchPropertyNotes(): Promise<PropertyNote[]> {
       createdAt: r.created_at ?? null,
       kind: r.action_type === 'interaction' ? 'interaction' : 'note',
       listingLabel: null,
+      listingThumb: null,
     });
   }
 
@@ -77,6 +93,7 @@ async function fetchPropertyNotes(): Promise<PropertyNote[]> {
       createdAt: l.updated_at ?? null,
       kind: 'office',
       listingLabel: labelOf(l),
+      listingThumb: listingThumbOf(l),
     });
   }
 
@@ -87,11 +104,12 @@ async function fetchPropertyNotes(): Promise<PropertyNote[]> {
   if (missing.length) {
     const { data } = await (supabase as any)
       .from('listings')
-      .select('id, property_title, address, city')
+      .select('id, property_title, address, city, media_photos, image_url')
       .in('id', missing);
     const map = new Map<string, any>((data ?? []).map((l: any) => [l.id, l]));
     for (const n of out) {
       if (!n.listingLabel) n.listingLabel = labelOf(map.get(n.listingId));
+      if (!n.listingThumb) n.listingThumb = listingThumbOf(map.get(n.listingId));
     }
   }
 
@@ -110,8 +128,9 @@ export function usePropertyNotes() {
   return useQuery({
     queryKey: ['property-notes', user?.id ?? 'anon'],
     enabled: !!user,
-    staleTime: 30_000,
+    staleTime: 0,
     refetchOnMount: 'always',
+    refetchInterval: 20_000,
     queryFn: fetchPropertyNotes,
   });
 }
