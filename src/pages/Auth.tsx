@@ -245,6 +245,13 @@ const Auth = () => {
     <div
       className="auth-gradient-shell min-h-screen relative overflow-hidden px-4 py-8"
     >
+      {/* Futuristic backdrop — same aurora + grid language as the landing page */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        <div className="landing-aurora landing-aurora-a" />
+        <div className="landing-aurora landing-aurora-b" />
+        <div className="landing-aurora landing-aurora-c" />
+        <div className="landing-grid absolute inset-0 opacity-[0.35]" />
+      </div>
       {/* Gold halo */}
       <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-gold/10 blur-[120px]" />
       {/* Top header bar with auth-only rotating headline and Demo switch */}
