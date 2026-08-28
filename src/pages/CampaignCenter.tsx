@@ -42,6 +42,7 @@ import { SentimentAutomationToggles } from '@/components/automation/SentimentAut
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
+import { GroupStatusChips, groupResultMap } from '@/components/campaigns/GroupStatusChips';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { ScheduledCountdown } from '@/components/campaigns/ScheduledCountdown';
 import { EditScheduledSeriesDialog } from '@/components/campaigns/EditScheduledSeriesDialog';
@@ -6071,17 +6072,23 @@ const CampaignCenter = () => {
           .eq('created_by', user.id)
           .order('updated_at', { ascending: false })
           .limit(100),
+        // No workspace filter: group rows may be imported under a different
+        // workspace stamp, and a missing name would show as "קבוצה 1234".
         (supabase as any).from('fb_user_groups')
           .select('group_id,group_name,group_icon')
-          .eq('workspace_owner_id', scope)
-          .limit(500),
+          .limit(2000),
       ]);
       if (!cancelled) {
         setCampaignHistoryRows([...(sentLogs ?? []), ...(futureLogs ?? [])]);
         setCampaignDraftRows(drafts ?? []);
         const meta: Record<string, { name: string; icon: string | null }> = {};
         (groups ?? []).forEach((g: any) => {
-          if (g?.group_id) meta[String(g.group_id)] = { name: g.group_name || String(g.group_id), icon: g.group_icon ?? null };
+          const id = String(g?.group_id ?? '');
+          if (!id) return;
+          const entry = { name: g.group_name || id, icon: g.group_icon ?? null };
+          meta[id] = entry;
+          // Index the bare id too — campaign_logs stores "ext:<id>"/"manual:<id>".
+          meta[id.replace(/^(ext:|manual:)/, '')] = entry;
         });
         setHistoryGroupMeta(meta);
         setCampaignHistoryLoading(false);
@@ -6988,12 +6995,46 @@ const CampaignCenter = () => {
             ) : (
               <>
                 <TabsContent value="published" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
-                  {campaignHistoryRows.filter((r) => ['sent', 'published', 'completed'].includes(r.status)).map((r) => (
-                    <div key={r.id} className="flex gap-3 rounded-lg border border-border p-3">
-                      {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
-                      <div className="min-w-0"><p className="font-semibold">{r.campaign_name || 'פוסט'}</p><p className="line-clamp-2 text-sm text-muted-foreground">{r.message_body}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.sent_at || r.created_at).toLocaleString('he-IL')}</p></div>
-                    </div>
-                  ))}
+                  {campaignHistoryRows.filter((r) => ['sent', 'published', 'completed'].includes(r.status)).map((r) => {
+                    const gids: string[] = Array.isArray(r.group_ids) ? r.group_ids.map((g: any) => String(g)) : [];
+                    const results = groupResultMap(r.provider_response?.group_results);
+                    return (
+                      <div key={r.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                        {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold">{r.campaign_name || 'פוסט'}</p>
+                          <p className="line-clamp-2 text-sm text-muted-foreground">{r.message_body}</p>
+                          <GroupStatusChips
+                            groupIds={gids}
+                            meta={historyGroupMeta}
+                            results={results}
+                            defaultState="pending"
+                            emptyLabel="פורסם לעמוד בלבד (ללא קבוצות)"
+                          />
+                          <p className="mt-1 text-xs text-muted-foreground">{new Date(r.sent_at || r.created_at).toLocaleString('he-IL')}</p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          title="מחק פוסט"
+                          aria-label="מחק פוסט"
+                          className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
+                          onClick={async () => {
+                            setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
+                            const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
+                            if (error) {
+                              toast.error('מחיקת הפוסט נכשלה');
+                              setHistoryRefreshTick((t) => t + 1);
+                            } else {
+                              toast.success('הפוסט נמחק מההיסטוריה');
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                   {!campaignHistoryRows.some((r) => ['sent', 'published', 'completed'].includes(r.status)) && <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים שפורסמו</p>}
                 </TabsContent>
                 <TabsContent value="drafts" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
@@ -7006,7 +7047,17 @@ const CampaignCenter = () => {
                         setSearchParams(next); setCampaignHistoryOpen(false);
                       }}>
                         {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
-                        <div className="min-w-0"><p className="font-semibold">{r.topic || 'טיוטת פוסט'}</p><p className="line-clamp-2 text-sm text-muted-foreground">{r.generated_text}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}</p></div>
+                        <div className="min-w-0">
+                          <p className="font-semibold">{r.topic || 'טיוטת פוסט'}</p>
+                          <p className="line-clamp-2 text-sm text-muted-foreground">{r.generated_text}</p>
+                          <GroupStatusChips
+                            groupIds={bulkGroupIds}
+                            meta={historyGroupMeta}
+                            defaultState="pending"
+                            emptyLabel="לא נבחרו קבוצות לטיוטה"
+                          />
+                          <p className="mt-1 text-xs text-muted-foreground">{new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}</p>
+                        </div>
                       </button>
                       <Button
                         size="icon"
@@ -7049,24 +7100,13 @@ const CampaignCenter = () => {
                             <p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>
                             {r.series_index != null && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">גרסה {Number(r.series_index) + 1}</span>}
                           </div>
-                          {/* Target groups (name + avatar) ABOVE the scheduled time */}
-                          {groupIds.length > 0 && (
-                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                              {groupIds.slice(0, 4).map((gid) => {
-                                const meta = historyGroupMeta[gid];
-                                const name = meta?.name || `קבוצה ${gid.slice(-4)}`;
-                                return (
-                                  <span key={gid} className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-foreground">
-                                    {meta?.icon
-                                      ? <img src={meta.icon} alt="" className="h-4 w-4 rounded-full object-cover" loading="lazy" />
-                                      : <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 text-[9px] font-bold text-primary">{name.slice(0, 1)}</span>}
-                                    <span className="max-w-[150px] truncate">{name}</span>
-                                  </span>
-                                );
-                              })}
-                              {groupIds.length > 4 && <span className="text-[11px] text-muted-foreground">+{groupIds.length - 4}</span>}
-                            </div>
-                          )}
+                          {/* Target groups (real name + avatar) ABOVE the scheduled time */}
+                          <GroupStatusChips
+                            groupIds={groupIds}
+                            meta={historyGroupMeta}
+                            defaultState="pending"
+                            emptyLabel="ללא קבוצות — פרסום לעמוד בלבד"
+                          />
                           <ScheduledCountdown iso={r.sent_at} className="mt-1" />
                           <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p>
                           {r.needs_regeneration && <p className="mt-1 text-xs text-muted-foreground">וריאציית AI תיווצר לאחר פרסום מוצלח</p>}

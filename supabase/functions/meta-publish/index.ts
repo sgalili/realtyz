@@ -710,6 +710,7 @@ Deno.serve(async (req) => {
         first_comment: firstComment || null,
         failure_reason: fail?.message ?? null,
         provider_message_id: match?.id ?? null,
+        group_ids: groupIds,
         provider_response: {
           provider: "meta_graph",
           page_id: page.pageId,
@@ -719,6 +720,15 @@ Deno.serve(async (req) => {
           content_hash: hashes[ch],
           error: fail?.message ?? null,
           last_attempt_at: new Date().toISOString(),
+          // Per-group outcome so the history dialog can show exactly which
+          // groups accepted the post and which rejected / deferred it.
+          group_results: groupResults.map((r: any) => ({
+            group_id: String(r?.group_id ?? ""),
+            ok: r?.ok === true,
+            code: r?.code ?? null,
+            reason: r?.reason ?? null,
+            post_id: r?.post_id ?? null,
+          })),
         },
       };
       const reuseId = await findReusableRow(db, ownerId, ch, hashes[ch], ["failed"]);
