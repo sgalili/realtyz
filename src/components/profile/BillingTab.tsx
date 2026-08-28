@@ -298,7 +298,7 @@ export default function BillingTab() {
                 <span className="ms-1 text-xs font-normal text-muted-foreground">/ חודש</span>
               </span>
               <span className="text-xs text-muted-foreground">
-                {limitLabel(pkg.contacts)} אנשי קשר · {limitLabel(includedTc(pkg.contacts))} T.C.
+                {limitLabel(pkg.contacts)} אנשי קשר
               </span>
               <Button
                 size="sm"
