@@ -1,4 +1,6 @@
 import { cleanSqm } from "../_shared/measures.ts";
+import { CRM_ACTIONS_CONTRACT, executeCrmActions } from "../_shared/crmActions.ts";
+
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -1565,7 +1567,8 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
 
 
     const systemPrompt = masterDirective + "\n\n" + (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
-      ? MASTER_AGENT_PROMPT + (webtivBlock ? "\n\n" + webtivBlock : "") + (marketIntelBlock ? "\n\n" + marketIntelBlock : "")
+      ? MASTER_AGENT_PROMPT + "\n\n" + CRM_ACTIONS_CONTRACT + (webtivBlock ? "\n\n" + webtivBlock : "") + (marketIntelBlock ? "\n\n" + marketIntelBlock : "")
+
       : SCHEMA_CONTEXT
           .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
           .replace("{{KB_CONTEXT}}", kbContext)
@@ -1869,7 +1872,33 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
       });
     }
 
+    // ─── CRM write actions (quick actions the owner asked the AI to do) ───
+    // Executed deterministically server-side so notes / reminders / calls /
+    // contacts appear instantly on "משימות היום" and in the CRM.
+    if (Array.isArray(parsed?.actions) && parsed.actions.length > 0) {
+      const results = await executeCrmActions(supabase, currentOwnerId, parsed.actions);
+      const failed = results.filter((r) => !r.ok);
+      let content = stripBrokerLicense(String(parsed.content || "")).trim();
+      if (failed.length) {
+        const reasons = failed.map((f) => f.error).join(", ");
+        content = (content ? content + "\n\n" : "")
+          + (reasons.includes("missing_phone")
+            ? "כדי לפתוח כרטיס לקוח חדש אני צריך מספר טלפון. שלח לי אותו ואשמור מיד."
+            : reasons.includes("contact_not_found")
+              ? "לא מצאתי את הלקוח הזה במערכת. תגיד לי שם ומספר טלפון ואפתח כרטיס."
+              : "חלק מהפעולות לא בוצעו. תבדוק ותנסה שוב.");
+      }
+      return new Response(JSON.stringify({
+        type: "text",
+        content: content || "בוצע.",
+        actions_executed: results,
+        sources: kbSources,
+        escalation,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (parsed.type === "text") {
+
       const cleanContent = stripBrokerLicense(String(parsed.content || ""));
       const fact_violations = factCheckDraft(cleanContent, listingFacts);
       return new Response(JSON.stringify({ ...parsed, content: cleanContent, sources: kbSources, research_sources: researchSources, escalation, fact_violations, webtiv_results: webtivResults, market_intel: marketIntelResults }), {

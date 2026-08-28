@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateLiveData } from '@/lib/liveSync';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
@@ -144,6 +146,7 @@ function AnimatedPlaceholder({ text, idx }: { text: string; idx: number }) {
 }
 
 export function SidebarIntelInput() {
+  const queryClient = useQueryClient();
   const [input, setInput] = useState('');
   const [files, setFiles] = useState<AttachedFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -224,6 +227,9 @@ export function SidebarIntelInput() {
       } else {
         const content = data?.content || data?.explanation || 'בוצע.';
         setReply({ role: 'assistant', content });
+        if (Array.isArray(data?.actions_executed) && data.actions_executed.some((r: any) => r?.ok)) {
+          invalidateLiveData(queryClient);
+        }
       }
       setInput('');
       setFiles([]);
