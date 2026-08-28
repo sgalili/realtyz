@@ -4,8 +4,8 @@
 // metadata row with the channel logo, date, live status and actions.
 //
 // No preview body text, excerpts or sub-text is ever rendered here.
-import type { ReactNode } from 'react';
-import { AlertTriangle, Calendar as CalendarIcon, CheckCircle2, Facebook, Loader2 } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { AlertTriangle, Calendar as CalendarIcon, CheckCircle2, ChevronDown, ChevronUp, Facebook, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GroupStatusChips, type GroupChipState, type GroupResult } from '@/components/campaigns/GroupStatusChips';
 import type { FbGroupMeta } from '@/hooks/useFbGroupMeta';
@@ -50,8 +50,8 @@ export function QueueCard({
   status,
   dateLabel,
   countdownIso,
-  onTitleClick,
   actions,
+  details,
 }: {
   title: string;
   imageUrl?: string | null;
@@ -64,14 +64,16 @@ export function QueueCard({
   status: QueueCardStatus;
   dateLabel?: string | null;
   countdownIso?: string | null;
-  onTitleClick?: () => void;
   actions?: ReactNode;
+  /** Extra content revealed when the card is expanded. */
+  details?: ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
   const countdown = status === 'scheduled' ? countdownLabel(countdownIso) : null;
 
   return (
     <article className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden" dir="rtl">
-      <div className="p-4 space-y-2">
+      <div className="p-4 space-y-2 cursor-pointer" onClick={() => setOpen((v) => !v)}>
         {/* Row 1: thumbnail + title only */}
         <div className="flex items-center gap-3">
           <div className="relative h-12 w-12 shrink-0">
@@ -89,26 +91,24 @@ export function QueueCard({
               </span>
             )}
           </div>
-          <h3
-            className={cn(
-              'flex-1 text-right font-semibold text-foreground line-clamp-2',
-              onTitleClick && 'cursor-pointer hover:underline',
-            )}
-            onClick={onTitleClick}
-          >
-            {title}
-          </h3>
+          <h3 className="flex-1 text-right font-semibold text-foreground line-clamp-2">{title}</h3>
         </div>
 
-        {/* Target groups — collapsed summary */}
-        <GroupStatusChips
-          groupIds={groupIds}
-          meta={groupMeta}
-          results={groupResults}
-          defaultState={groupChipState}
-          countdownIso={status === 'scheduled' ? countdownIso : null}
-          emptyLabel={groupEmptyLabel}
-        />
+        {/* Target groups + live status — revealed on expand only */}
+        {open && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <GroupStatusChips
+              groupIds={groupIds}
+              meta={groupMeta}
+              results={groupResults}
+              defaultState={groupChipState}
+              countdownIso={status === 'scheduled' ? countdownIso : null}
+              emptyLabel={groupEmptyLabel}
+              defaultOpen
+            />
+            {details}
+          </div>
+        )}
 
         {/* Row 2: logo · date .... status · actions */}
         <div className="flex items-center gap-2">
@@ -126,7 +126,15 @@ export function QueueCard({
             {status === 'scheduled' && <CalendarIcon className="h-3 w-3" />}
             {countdown ? <span className="tabular-nums" dir="ltr">{countdown}</span> : STATUS_LABEL[status]}
           </span>
-          {actions}
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>{actions}</div>
+          <button
+            type="button"
+            aria-label={open ? 'כווץ' : 'הרחב'}
+            className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
+            onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+          >
+            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
         </div>
       </div>
     </article>
