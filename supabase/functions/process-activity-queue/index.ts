@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
               message: compliant,
               link: (locked.payload ?? {}).link ?? null,
               image_url: (locked.payload ?? {}).image_url ?? null,
+              first_comment: (locked.payload ?? {}).first_comment ?? null,
               queue_id: locked.id,
             }),
           });

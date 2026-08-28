@@ -7,6 +7,7 @@
 // Callable both from the browser (bearer = user JWT) and server-to-server from
 // process-activity-queue (bearer = service role + explicit workspace_owner_id).
 import { corsHeaders } from "../_shared/cors.ts";
+import { ensureMandatoryComment } from "../_shared/mandatoryComment.ts";
 import {
   adminClient,
   GRAPH,
@@ -154,7 +155,26 @@ Deno.serve(async (req) => {
 
     const postId = String(respBody.post_id ?? respBody.id);
     console.log("[fb-group-publish] published", groupId, postId);
-    return json({ ok: true, post_id: postId });
+
+    // HARD RULE: every group post gets the mandatory first comment with the
+    // official contact tracking link. Failure here never fails the post.
+    const firstComment = ensureMandatoryComment(body?.first_comment);
+    let commentId: string | null = null;
+    try {
+      const cForm = new URLSearchParams({ message: firstComment, access_token: conn.access_token });
+      const cRes = await fetch(`${GRAPH}/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+        body: cForm.toString(),
+      });
+      const cBody = await cRes.json().catch(() => ({}));
+      if (cRes.ok && cBody?.id) commentId = String(cBody.id);
+      else console.error("[fb-group-publish] first comment failed", groupId, cBody);
+    } catch (cErr) {
+      console.error("[fb-group-publish] first comment error", groupId, cErr);
+    }
+
+    return json({ ok: true, post_id: postId, comment_id: commentId });
   } catch (e) {
     console.error("[fb-group-publish] fatal", e);
     return json({ ok: false, reason: String((e as any)?.message ?? e) }, 500);
