@@ -124,17 +124,17 @@ export default function QuickMessageCard({ scope, leadId, phone, vars, listingId
 
   return (
     <div className={`rounded-xl border border-border bg-card p-4 ${open ? 'space-y-3' : ''} ${className || ''}`} dir="rtl">
-      <button
-        type="button"
-        className="flex w-full items-center gap-2 text-start"
-        onClick={() => collapsible && setOpen((value) => !value)}
-        aria-expanded={open}
-      >
-        <MessageSquareText className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold">הודעות מהירות</h3>
-        <Badge variant="outline" className="text-[10px]">{templates.length} תבניות</Badge>
-        {collapsible && <ChevronDown className={`ms-auto h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />}
-      </button>
+      {collapsible && (
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 text-start"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+        >
+          <MessageSquareText className="h-4 w-4 text-primary" />
+          <ChevronDown className={`ms-auto h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      )}
 
       {open && <>
 
