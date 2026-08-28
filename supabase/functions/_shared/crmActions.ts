@@ -31,7 +31,7 @@ Supported actions (use exact "kind" values):
 - {"kind":"delete_task","task_id":"<uuid>"}
 
 Rules:
-- Israeli phones: keep digits only, normalize to 05XXXXXXXX / 9725XXXXXXXX.
+- Israeli phones: keep digits only, normalize to 05XXXXXXXX / 9725XXXXXXXX. A new contact REQUIRES a phone number; if the owner did not give one, ask for it instead of emitting create_contact.
 - due_at must be a real absolute ISO timestamp (resolve "מחר בעשר" against the current time), between 09:00 and 21:00 Israel time.
 - Only include fields you actually know. Never invent a phone, email or price.
 - "content" of the envelope is what the owner reads: state plainly what you did, in Hebrew, without JSON, UUIDs or markdown.
@@ -188,7 +188,8 @@ export async function executeCrmActions(
             out.push({ kind, ok: true, id: existing.id });
             break;
           }
-          if (!fields.full_name && !fields.phone_number) throw new Error("missing_name_and_phone");
+          // leads.phone_number is NOT NULL — never fabricate a number, ask instead.
+          if (!fields.phone_number) throw new Error("missing_phone");
           const { data, error } = await supabase
             .from("leads")
             .insert({ user_id: ownerId, ...fields, last_interaction_at: new Date().toISOString() })
