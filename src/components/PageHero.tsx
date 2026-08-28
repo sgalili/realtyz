@@ -359,7 +359,7 @@ export function PageHero() {
         </h1>
 
         {/* Visual left (RTL flex end): page-specific action button */}
-        <div className="flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
+        <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
           <BrightDataHeroPill />
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
