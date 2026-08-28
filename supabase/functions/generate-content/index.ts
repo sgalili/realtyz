@@ -15,7 +15,7 @@ import {
 } from "../_shared/grounding.ts";
 import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
 import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
-import { enforceSingleEmojis } from "../_shared/emoji.ts";
+import { enforceSingleEmojis, RICH_TEMPLATE_CONTRACT } from "../_shared/emoji.ts";
 
 
 const corsHeaders = {
@@ -325,6 +325,8 @@ GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
                 promotedListing?.property_title,
               ]),
               systemPrompt,
+              // Rich professional property-post template + strict single-emoji law.
+              promotedListing ? RICH_TEMPLATE_CONTRACT : "",
               await fetchLearnedOverridesBlock(admin as any, userId),
             ]
               .filter(Boolean)

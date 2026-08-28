@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 
 import { supabase } from '@/integrations/supabase/client';
+import { nextBlockedKeys } from '@/lib/mediaBlocklist';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -1415,6 +1416,32 @@ const InlineComposer = ({
   }, [listings, listingQuery]);
 
 
+  /**
+   * Permanently blocklists an image the broker deleted from the post generator.
+   * The key joins `listings.source_metadata.removed_photo_keys`, so no future
+   * Yad2 / Homely / Facebook sync (or any other workspace) can resurrect it.
+   */
+  const blocklistListingImage = async (listingId: string, url: string) => {
+    if (!listingId || !url) return;
+    try {
+      const { data: row, error } = await supabase
+        .from('listings').select('media_photos, source_metadata').eq('id', listingId).maybeSingle();
+      if (error) throw error;
+      const meta = (row?.source_metadata ?? {}) as Record<string, unknown>;
+      const before = Array.isArray(row?.media_photos) ? (row.media_photos as unknown[]) : [];
+      const keyOf = (p: unknown) =>
+        typeof p === 'string' ? p : String((p as any)?.url ?? (p as any)?.src ?? (p as any)?.image_url ?? '');
+      const after = before.filter((p) => keyOf(p) !== url);
+      const removed = nextBlockedKeys(meta, before.map(keyOf), after.map(keyOf));
+      await supabase.from('listings').update({
+        media_photos: after as any[],
+        source_metadata: { ...meta, photos: after, removed_photo_keys: removed } as any,
+      }).eq('id', listingId);
+    } catch (e) {
+      console.warn('[CampaignCenter] blocklist listing image failed', e);
+    }
+  };
+
   // Append user-uploaded campaign images to the selected listing's gallery so
   // they survive beyond the current post and stay available everywhere.
   const appendImagesToListing = async (listingId: string, newUrls: string[]) => {
@@ -2451,8 +2478,11 @@ const InlineComposer = ({
                     size="icon"
                     onClick={() => {
                       const nextUrl = hasNext ? imageUrls[idx + 1] : (hasPrev ? imageUrls[idx - 1] : null);
+                      const removedUrl = previewImageUrl;
                       setAttachments((a) => a.filter((att) => att.url !== previewImageUrl));
                       setPreviewImageUrl(nextUrl);
+                      // Deletion is permanent and global — never comes back.
+                      if (selectedListingId && removedUrl) void blocklistListingImage(selectedListingId, removedUrl);
                     }}
                     aria-label="מחק מהפוסט"
                   >

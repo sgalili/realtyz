@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
 import {
-  Building2, Car, Footprints, GraduationCap, Handshake, RefreshCw, TrendingUp,
+  Building2, Car, Footprints, GraduationCap, Handshake, TrendingUp,
 } from 'lucide-react';
 
 export type Yad2SoldDeal = {
@@ -38,7 +38,8 @@ function SectionShell({
 }: { icon: typeof Building2; title: string; count?: number; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-foreground">
+      {/* Title sized 5px below the previous text-2xl (24px) heading. */}
+      <h2 className="inline-flex items-center gap-2 text-[19px] font-bold text-foreground">
         <Icon className="h-5 w-5 text-primary" /> {title}
         {count ? <Badge variant="outline" className="text-sm">{count}</Badge> : null}
       </h2>
@@ -46,6 +47,7 @@ function SectionShell({
     </section>
   );
 }
+
 
 /**
  * Secondary Yad2 item-page sections: sold deals nearby, valuation history,
@@ -79,47 +81,41 @@ export function PropertyYad2SectionsCard({
     },
     onSuccess: (res) => {
       setLive(res ?? null);
-      const total =
-        (res?.sold_deals?.length ?? 0) + (res?.schools?.length ?? 0) +
-        (res?.valuation_history?.length ?? 0);
-      toast.success(total ? `יובאו ${total} פריטים מיד2` : 'לא נמצאו סקשנים נוספים בעמוד המקור');
       void qc.invalidateQueries({ queryKey: ['property-detail', listingId] });
     },
-    onError: (e: any) => toast.error(`ייבוא הסקשנים נכשל: ${e?.message ?? e}`),
+    // Silent background import — no red banners, no user action required.
+    onError: () => { /* keep the page quiet; data simply stays as-is */ },
   });
+
+  // Education institutions (and the rest of the Yad2 page sections) are
+  // MANDATORY: import them automatically, once per mount, whenever they are
+  // still missing for a Yad2-sourced listing.
+  const autoRan = useRef(false);
+  const hasSections = !!(sections?.schools?.length || sections?.sold_deals?.length || sections?.valuation_history?.length);
+  useEffect(() => {
+    if (autoRan.current || !isYad2 || hasSections || sync.isPending) return;
+    autoRan.current = true;
+    sync.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isYad2, hasSections]);
 
   if (!isYad2 && !data) return null;
 
   const deals = data?.sold_deals ?? [];
   const history = (data?.valuation_history ?? []).filter((p) => p?.price != null);
   const schools = data?.schools ?? [];
-  const empty = !deals.length && !history.length && !schools.length;
 
 
   const chart = history.map((p, i) => ({ name: p.date || p.label || `#${i + 1}`, price: Number(p.price) }));
 
   return (
     <Card className="space-y-8 p-4 sm:p-6" dir="rtl">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold text-foreground">מידע נוסף מעמוד המקור ביד2</h2>
-        <Button size="sm" variant="outline" onClick={() => sync.mutate()} disabled={sync.isPending}>
-          <RefreshCw className={`h-4 w-4 ms-1 ${sync.isPending ? 'animate-spin' : ''}`} />
-          {sync.isPending ? 'מייבא…' : data ? 'רענון הנתונים' : 'ייבוא כל הסקשנים'}
-        </Button>
-      </div>
-
       {sync.isPending && !data && (
         <div className="grid gap-4 sm:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
         </div>
       )}
 
-      {empty && !sync.isPending && (
-        <p className="text-lg text-muted-foreground">
-          עוד לא יובאו סקשנים מעמוד היד2. לחצו על "ייבוא כל הסקשנים" כדי לשלוף עסקאות באזור,
-          היסטוריית שווי ומוסדות חינוך.
-        </p>
-      )}
 
 
       {chart.length > 1 && (
@@ -173,9 +169,9 @@ export function PropertyYad2SectionsCard({
 
       {schools.length > 0 && (
         <SectionShell icon={GraduationCap} title="מוסדות חינוך באזור" count={schools.length}>
-          <div className="grid max-h-[744px] grid-cols-1 gap-3 overflow-y-auto pe-1 scroll-smooth sm:max-h-[372px] sm:grid-cols-2 lg:max-h-[244px] lg:grid-cols-3" dir="rtl">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" dir="rtl">
             {schools.map((s, i) => (
-              <Card key={`${s.name ?? 'school'}-${i}`} className="h-[112px] min-w-0 p-4">
+              <Card key={`${s.name ?? 'school'}-${i}`} className="min-w-0 p-4">
                 <div className="flex min-w-0 items-center justify-between gap-3">
                   <p className="min-w-0 flex-1 truncate text-lg font-semibold" title={s.name ?? ''}>{s.name}</p>
                   <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
@@ -184,8 +180,8 @@ export function PropertyYad2SectionsCard({
                     {s.supervision && <Badge variant="outline" className="text-sm">{s.supervision}</Badge>}
                   </div>
                 </div>
-                {s.address && <p className="mt-1 text-base text-muted-foreground line-clamp-1" title={s.address}>{s.address}</p>}
-                <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+                {s.address && <p className="mt-0.5 text-base text-muted-foreground line-clamp-1" title={s.address}>{s.address}</p>}
+                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   {(s.walking_distance || s.distance) && (
                     <span className="inline-flex items-center gap-1"><Footprints className="h-4 w-4" /> הליכה: {s.walking_distance || s.distance}</span>
                   )}

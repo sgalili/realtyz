@@ -774,7 +774,17 @@ export default function PropertyDetail() {
     }
   };
 
-  if (isLoading) {
+  // Pre-validation gate: a source-backed row that still has NO photos and no
+  // real description is an un-scraped placeholder (the empty "חליל" case).
+  // While the mandatory source hydration runs we keep the loading template on
+  // screen instead of rendering a hollow property page.
+  const isUnscrapedPlaceholder =
+    !!property &&
+    !!(sourceUrl || (data?.row as any)?.source_url) &&
+    (dbPhotos?.length ?? 0) === 0 &&
+    !String(property.description ?? '').trim();
+
+  if (isLoading || (isUnscrapedPlaceholder && hydrating)) {
     // A single loading template for BOTH cases: it mirrors the real page
     // structure (header, specs, gallery, features, details, description,
     // contact) so nothing jumps around, and any value we already have from the
@@ -1187,11 +1197,14 @@ export default function PropertyDetail() {
         {!editMode ? (
           <>
 
-            {yad2Url && liveYad2Status === 'live' && (
+            {/* Source link renders INSTANTLY whenever a Yad2 URL exists — the
+                liveness probe only hides it once it is confirmed 'gone'. */}
+            {yad2Url && liveYad2Status !== 'gone' && (
               <a href={yad2Url} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה החיה ביד2" title="צפייה במודעה החיה ביד2" className="inline-flex items-center transition-opacity hover:opacity-80">
                 <Yad2Icon className="h-6 w-6" />
               </a>
             )}
+
             {isHomelyListing && resolvedSourceUrl && (
               <a href={resolvedSourceUrl} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה המקורית ב-Homely" title="צפייה במודעה המקורית ב-Homely" className="inline-flex h-7 w-7 items-center justify-center rounded border border-primary text-sm font-extrabold text-primary transition hover:bg-primary hover:text-primary-foreground">H</a>
             )}

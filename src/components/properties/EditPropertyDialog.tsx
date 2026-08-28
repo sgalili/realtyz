@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { nextBlockedKeys } from '@/lib/mediaBlocklist';
 import {
   Dialog,
   DialogContent,
@@ -271,6 +272,15 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
             ...((property as any)?.source_metadata ?? {}),
             photos,
             videos,
+            // Images removed in this edit are blocklisted forever.
+            removed_photo_keys: nextBlockedKeys(
+              (property as any)?.source_metadata,
+              (Array.isArray((property as any)?.media_photos)
+                ? ((property as any).media_photos as unknown[])
+                : []
+              ).map((p) => (typeof p === 'string' ? p : String((p as any)?.url ?? (p as any)?.src ?? ''))),
+              photos,
+            ),
           },
           features: [{
             listing_type: listingType,

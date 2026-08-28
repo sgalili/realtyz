@@ -7,7 +7,7 @@ import type { UnifiedResult } from '@/lib/propertySearch';
 import { publicUrl } from '@/lib/publicUrl';
 import { ensureFullPropertyImport } from '@/lib/propertyFullSync';
 import { autoImportResult } from '@/lib/propertyAutoImport';
-import { openOfficialWhatsApp, sendViaOfficialWaba } from '@/lib/officialWa';
+import { openWhatsAppContactPicker, sendViaOfficialWaba } from '@/lib/officialWa';
 
 
 export type ShareMode = 'whatsapp' | 'sms' | 'copy';
@@ -146,17 +146,19 @@ export async function shareProperties(
       : buildMultiMessage(minted);
 
   if (mode === 'whatsapp') {
-    // HARD RULE: outbound WhatsApp must originate from our official Meta WBA
-    // number only. With a recipient we dispatch through the official gateway;
-    // without one we open a chat with the official number itself.
+    // With an explicit recipient we dispatch through our official Meta WBA
+    // gateway (HARD RULE: outbound sender identity is always the official
+    // number). Without a recipient we open the NATIVE WhatsApp app on its
+    // contact-picker with the text pre-filled, so the broker picks the contact.
     if (phone) {
       const res = await sendViaOfficialWaba({ phone_number: phone, message: text });
       if (!res.ok) throw new Error(res.error || 'שליחה בוואטסאפ הרשמי נכשלה');
       return;
     }
-    await openOfficialWhatsApp(text);
+    openWhatsAppContactPicker(text);
     return;
   }
+
   if (mode === 'sms') {
     window.location.href = `sms:${phone ?? ''}?&body=${encodeURIComponent(text)}`;
     return;
