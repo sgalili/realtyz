@@ -167,10 +167,16 @@ export default function CommandCenter() {
     return base;
   }, [tasks, posts.length]);
 
-  const overdue = useMemo(() => {
-    const now = Date.now();
-    return tasks.filter((t) => t.source !== 'note' && t.dueAt && new Date(t.dueAt).getTime() < now).length;
-  }, [tasks]);
+  /** Opens the quick-action drawer on the right form for the active tab. */
+  const addNew = (section: SectionTab) => {
+    if (section === 'posts') {
+      navigate('/campaigns');
+      return;
+    }
+    const quickTab = section === 'notes' ? 'note' : section === 'calls' ? 'interaction' : 'reminder';
+    window.dispatchEvent(new CustomEvent('open-quick-actions', { detail: { tab: quickTab } }));
+  };
+
 
   const visible = useMemo(
     () => (tab === 'posts' ? [] : tasks.filter((t) => sectionOf(t) === tab)),
