@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export type CommandTask = {
   id: string;
-  source: 'task' | 'meeting';
+  source: 'task' | 'meeting' | 'note';
   title: string;
   description: string | null;
   priority: 'high' | 'medium' | 'low';
@@ -41,15 +41,21 @@ export const TASK_STATUS_LABEL: Record<string, string> = {
   scheduled: 'מתוזמן',
 };
 
+export const NOTE_ACTION_LABEL: Record<string, string> = {
+  note: 'פתק',
+  interaction: 'סיכום שיחה',
+};
+
 export function useCommandCenterTasks() {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ['command-center-tasks', user?.id ?? 'anon'],
     enabled: !!user,
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async (): Promise<CommandTask[]> => {
-      const [itemsRes, meetingsRes] = await Promise.all([
+      const [itemsRes, meetingsRes, notesRes] = await Promise.all([
         (supabase as any)
           .from('scheduled_items')
           .select('id, title, content, item_type, status, scheduled_for, metadata')
@@ -61,6 +67,12 @@ export function useCommandCenterTasks() {
           .gte('starts_at', new Date(Date.now() - 12 * 3600_000).toISOString())
           .order('starts_at', { ascending: true })
           .limit(100),
+        (supabase as any)
+          .from('interaction_activity_log')
+          .select('id, action_type, platform, content, metadata, created_at')
+          .in('action_type', ['note', 'interaction'])
+          .order('created_at', { ascending: false })
+          .limit(60),
       ]);
 
       const rawItems: any[] = Array.isArray(itemsRes?.data) ? itemsRes.data : [];
@@ -82,6 +94,12 @@ export function useCommandCenterTasks() {
         ? meetingsRes.data.filter((m: any) => String(m.status ?? '').toLowerCase() !== 'cancelled')
         : [];
       for (const m of meetings) if (m.lead_id) leadIds.add(m.lead_id);
+
+      const notes: any[] = Array.isArray(notesRes?.data) ? notesRes.data : [];
+      for (const n of notes) {
+        const nid = (n.metadata ?? {})?.lead_id;
+        if (nid) leadIds.add(nid);
+      }
 
       const [leadsRes, listingsRes] = await Promise.all([
         leadIds.size
@@ -151,10 +169,33 @@ export function useCommandCenterTasks() {
         });
       }
 
+      for (const n of notes) {
+        const m = (n.metadata ?? {}) as any;
+        const lead = m.lead_id ? leadMap.get(m.lead_id) : null;
+        const kind = String(n.action_type ?? 'note');
+        tasks.push({
+          id: n.id,
+          source: 'note',
+          title: lead?.full_name
+            ? `${NOTE_ACTION_LABEL[kind] ?? 'פתק'} · ${lead.full_name}`
+            : (NOTE_ACTION_LABEL[kind] ?? 'פתק'),
+          description: n.content ?? null,
+          priority: 'low',
+          status: 'note',
+          dueAt: n.created_at ?? null,
+          leadId: m.lead_id ?? null,
+          leadName: lead?.full_name ?? null,
+          leadPhone: lead?.phone_number ?? null,
+          listingId: m.listing_id ?? null,
+          listingLabel: null,
+          actionType: kind,
+        });
+      }
+
       tasks.sort((a, b) => {
         const now = Date.now();
-        const aOver = a.dueAt ? new Date(a.dueAt).getTime() < now : false;
-        const bOver = b.dueAt ? new Date(b.dueAt).getTime() < now : false;
+        const aOver = a.source !== 'note' && (a.dueAt ? new Date(a.dueAt).getTime() < now : false);
+        const bOver = b.source !== 'note' && (b.dueAt ? new Date(b.dueAt).getTime() < now : false);
         if (aOver !== bOver) return aOver ? -1 : 1;
         const pa = PRIORITY_WEIGHT[a.priority] ?? 1;
         const pb = PRIORITY_WEIGHT[b.priority] ?? 1;
@@ -273,7 +314,8 @@ export function useCommandCenterPosts() {
   return useQuery({
     queryKey: ['command-center-posts', user?.id ?? 'anon'],
     enabled: !!user,
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async (): Promise<PostActivity[]> => {
       const [itemsRes, queueRes] = await Promise.all([
         (supabase as any)
@@ -331,4 +373,30 @@ export function useCommandCenterPosts() {
       return out.slice(0, 40);
     },
   });
+}
+
+/* ───────── Deletions ───────── */
+
+/** Permanently remove a task card (reminder, note, call summary or meeting). */
+export async function deleteCommandTask(task: CommandTask) {
+  if (task.source === 'task') {
+    const { error } = await (supabase as any).from('scheduled_items').delete().eq('id', task.id);
+    if (error) throw error;
+    return;
+  }
+  if (task.source === 'note') {
+    const { error } = await (supabase as any).from('interaction_activity_log').delete().eq('id', task.id);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await (supabase as any).from('meetings').delete().eq('id', task.id);
+  if (error) throw error;
+}
+
+/** Permanently remove a scheduled/published post card. */
+export async function deletePostActivity(post: PostActivity) {
+  const rawId = post.id.replace(/^(si|q)-/, '');
+  const table = post.source === 'queue' ? 'campaign_activity_queue' : 'scheduled_items';
+  const { error } = await (supabase as any).from(table).delete().eq('id', rawId);
+  if (error) throw error;
 }
