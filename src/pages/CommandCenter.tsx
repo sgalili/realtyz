@@ -87,26 +87,14 @@ function dueLabel(dueAt: string | null) {
   };
 }
 
-/** Property thumbnail (or a neutral icon tile when the listing has no photo). */
-function CardThumb({ task }: { task: CommandTask }) {
-  const section = sectionOf(task);
-  const Icon = section === 'calls' ? Phone : section === 'notes' ? StickyNote : section === 'reminders' ? AlarmClock : ClipboardList;
-  if (task.listingThumb) {
-    return (
-      <img
-        src={task.listingThumb}
-        alt={task.listingLabel ?? 'נכס'}
-        loading="lazy"
-        className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-border"
-      />
-    );
-  }
-  return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-      <Icon className="h-4 w-4 text-muted-foreground" />
-    </span>
-  );
-}
+const ADD_LABEL: Record<SectionTab, string> = {
+  tasks: 'משימה חדשה',
+  notes: 'הערה חדשה',
+  reminders: 'תזכורת חדשה',
+  calls: 'סיכום שיחה',
+  posts: 'פוסט חדש',
+};
+
 
 function IconAction({
   label,
