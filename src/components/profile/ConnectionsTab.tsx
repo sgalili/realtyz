@@ -13,6 +13,8 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
 import { useFacebookHealth } from '@/hooks/useFacebookHealth';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
+import { GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
+import { useUserRole } from '@/hooks/useUserRole';
 
 type Tone = 'ok' | 'idle';
 
@@ -115,6 +117,7 @@ export function ConnectionsTab() {
   const [greenPhone, setGreenPhone] = useState<string | null>(null);
   const [voicePhone, setVoicePhone] = useState<string | null>(null);
   const { data: fbHealth } = useFacebookHealth();
+  const { isSuperAdmin } = useUserRole();
 
   useEffect(() => {
     (async () => {
@@ -220,6 +223,31 @@ export function ConnectionsTab() {
       tone: 'idle',
       node: <CalendarSyncCard />,
     },
+    ...(isSuperAdmin
+      ? [{
+          id: 'google-admin',
+          title: 'Google API גלובלי (Gmail + יומן) · סופר-אדמין',
+          status: 'ניהול',
+          tone: 'idle' as Tone,
+          node: (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                חיבור חשבון Google הגלובלי של הפלטפורמה. משמש לשליחת מיילים וסנכרון יומן עבור כל חשבונות העבודה.
+              </p>
+              <GoogleServiceConnectCard
+                platform="gmail"
+                title="Gmail (שליחה וקבלה)"
+                hint="חיבור תיבת Gmail הגלובלית לשליחה וקבלה של מיילים."
+              />
+              <GoogleServiceConnectCard
+                platform="google_calendar"
+                title="Google Calendar"
+                hint="סנכרון פגישות וסיורים ליומן Google."
+              />
+            </div>
+          ),
+        }]
+      : []),
     {
       id: 'portals',
       title: 'פורטלי נדל"ן',
