@@ -57,6 +57,7 @@ export function useCommandCenterTasks() {
     enabled: !!user,
     staleTime: 0,
     refetchOnMount: 'always',
+    refetchInterval: 15_000,
     queryFn: async (): Promise<CommandTask[]> => {
       const [itemsRes, meetingsRes, notesRes] = await Promise.all([
         (supabase as any)
@@ -326,6 +327,7 @@ export function useCommandCenterPosts() {
     enabled: !!user,
     staleTime: 0,
     refetchOnMount: 'always',
+    refetchInterval: 15_000,
     queryFn: async (): Promise<PostActivity[]> => {
       const [itemsRes, queueRes] = await Promise.all([
         (supabase as any)
