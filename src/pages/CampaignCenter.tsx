@@ -983,6 +983,23 @@ const InlineComposer = ({
     setGroupIds(ids);
   }), []);
 
+  // Active repeat method of the composer scheduling dialog — surfaced as a
+  // bubble on the calendar button so the broker always sees the live series.
+  const [composerRecurrence, setComposerRecurrence] = useState<SchedulePrefs['recurrence']>('none');
+  useEffect(() => {
+    const read = () => setComposerRecurrence(loadSchedulePrefs(workspaceOwnerId, 'composer').recurrence);
+    read();
+    const t = window.setInterval(read, 1500);
+    return () => window.clearInterval(t);
+  }, [workspaceOwnerId, scheduleDialogOpen]);
+  const recurrenceBubble = composerRecurrence === 'daily' ? 'יומי'
+    : composerRecurrence === 'weekly' ? 'שבועי'
+    : composerRecurrence === 'monthly' ? 'חודשי'
+    : composerRecurrence === 'custom' ? 'מותאם'
+    : null;
+
+
+
   useEffect(() => {
     if (!groupsHydratedRef.current || groupIds.length === 0) return;
     onBulkGroupIdsChange?.(groupIds);
