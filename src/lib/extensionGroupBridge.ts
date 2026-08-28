@@ -1,3 +1,4 @@
+import { ensureMandatoryComment } from "@/lib/mandatoryComment";
 /**
  * extensionGroupBridge — connects the companion Realtyz browser extension to
  * the app's Facebook group selection + publishing state.
@@ -180,7 +181,8 @@ export const publishViaExtension = (payload: ExtensionPublishPayload): number =>
   const job = {
     source: "realtyz-app",
     type: EXT_PUBLISH_MESSAGE,
-    payload: { ...payload, groups: resolved, jobId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` },
+    // HARD RULE: the mandatory contact comment ships with every group post.
+    payload: { ...payload, firstComment: ensureMandatoryComment(payload.firstComment), groups: resolved, jobId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` },
   };
   try { window.postMessage(job, window.location.origin); } catch { /* noop */ }
   try { document.dispatchEvent(new CustomEvent(EXT_PUBLISH_EVENT, { detail: job.payload })); } catch { /* noop */ }

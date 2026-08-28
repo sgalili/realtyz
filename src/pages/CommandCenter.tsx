@@ -9,25 +9,20 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  AlarmClock,
   ChevronDown,
   Pencil,
   Building2,
   CalendarClock,
   Check,
   ChevronLeft,
-  ClipboardList,
-  Hourglass,
   Megaphone,
-  Phone,
-  StickyNote,
+  Plus,
   Trash2,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import {
-  useCommandCenterMetrics,
   useCommandCenterTasks,
   useCommandCenterPosts,
   ACTION_TYPE_LABEL,
@@ -92,26 +87,14 @@ function dueLabel(dueAt: string | null) {
   };
 }
 
-/** Property thumbnail (or a neutral icon tile when the listing has no photo). */
-function CardThumb({ task }: { task: CommandTask }) {
-  const section = sectionOf(task);
-  const Icon = section === 'calls' ? Phone : section === 'notes' ? StickyNote : section === 'reminders' ? AlarmClock : ClipboardList;
-  if (task.listingThumb) {
-    return (
-      <img
-        src={task.listingThumb}
-        alt={task.listingLabel ?? 'נכס'}
-        loading="lazy"
-        className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-border"
-      />
-    );
-  }
-  return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-      <Icon className="h-4 w-4 text-muted-foreground" />
-    </span>
-  );
-}
+const ADD_LABEL: Record<SectionTab, string> = {
+  tasks: 'משימה חדשה',
+  notes: 'הערה חדשה',
+  reminders: 'תזכורת חדשה',
+  calls: 'סיכום שיחה',
+  posts: 'פוסט חדש',
+};
+
 
 function IconAction({
   label,
@@ -147,7 +130,7 @@ export default function CommandCenter() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: tasks = [], isLoading } = useCommandCenterTasks();
-  const { data: metrics } = useCommandCenterMetrics();
+  
   const { data: posts = [] } = useCommandCenterPosts();
   const [tab, setTab] = useState<SectionTab>('tasks');
   // Every card starts COLLAPSED when entering the page.
@@ -167,10 +150,16 @@ export default function CommandCenter() {
     return base;
   }, [tasks, posts.length]);
 
-  const overdue = useMemo(() => {
-    const now = Date.now();
-    return tasks.filter((t) => t.source !== 'note' && t.dueAt && new Date(t.dueAt).getTime() < now).length;
-  }, [tasks]);
+  /** Opens the quick-action drawer on the right form for the active tab. */
+  const addNew = (section: SectionTab) => {
+    if (section === 'posts') {
+      navigate('/campaigns');
+      return;
+    }
+    const quickTab = section === 'notes' ? 'note' : section === 'calls' ? 'interaction' : 'reminder';
+    window.dispatchEvent(new CustomEvent('open-quick-actions', { detail: { tab: quickTab } }));
+  };
+
 
   const visible = useMemo(
     () => (tab === 'posts' ? [] : tasks.filter((t) => sectionOf(t) === tab)),
@@ -213,43 +202,24 @@ export default function CommandCenter() {
         </p>
       </header>
 
-      <section className="grid grid-cols-2 gap-3">
-        <MetricCard
-          icon={<AlarmClock className="h-5 w-5 text-destructive" />}
-          label="משימות באיחור"
-          value={overdue}
-          onClick={() => setTab('tasks')}
-        />
-        <MetricCard
-          icon={<Users className="h-5 w-5 text-emerald-600" />}
-          label="לקוחות פעילים"
-          value={metrics?.activeLeads}
-          onClick={() => navigate('/lead-crm')}
-        />
-        <MetricCard
-          icon={<Building2 className="h-5 w-5 text-amber-500" />}
-          label="נכסים בשיווק"
-          value={metrics?.marketedListings}
-          onClick={() => navigate('/properties')}
-        />
-        <MetricCard
-          icon={<Hourglass className="h-5 w-5 text-cyan-600" />}
-          label="ממתינים לתשובת לקוח"
-          value={metrics?.awaitingClientReply}
-          onClick={() => navigate('/inbox')}
-        />
-      </section>
 
       <Card className="p-4">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)} className="mb-4">
-          <TabsList className="w-full justify-start overflow-x-auto">
-            {(Object.keys(TAB_LABEL) as SectionTab[]).map((key) => (
-              <TabsTrigger key={key} value={key}>
-                {TAB_LABEL[key]} ({counts[key]})
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)}>
+            <TabsList className="justify-start overflow-x-auto">
+              {(Object.keys(TAB_LABEL) as SectionTab[]).map((key) => (
+                <TabsTrigger key={key} value={key}>
+                  {TAB_LABEL[key]} ({counts[key]})
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <Button size="sm" className="h-9 gap-1 text-sm" onClick={() => addNew(tab)}>
+            <Plus className="h-4 w-4" />
+            {ADD_LABEL[tab]}
+          </Button>
+        </div>
+
 
         {tab === 'posts' ? (
           <PostsActivityCard />
@@ -283,7 +253,6 @@ export default function CommandCenter() {
                       aria-expanded={isOpen}
                       className="flex min-w-0 flex-1 items-start gap-3 text-right"
                     >
-                      <CardThumb task={task} />
                       <span className="min-w-0 flex-1 space-y-1.5">
                         <span className="flex flex-wrap items-center gap-2">
                           <span className={`rounded-full px-2 py-0.5 text-[13px] font-semibold ${PRIORITY_STYLE[task.priority]}`}>
@@ -305,17 +274,21 @@ export default function CommandCenter() {
                               {TASK_STATUS_LABEL[task.status]}
                             </Badge>
                           )}
-                        </span>
-                        <span className="flex flex-wrap items-center gap-3 text-[13px] text-muted-foreground">
                           <span
-                            className={`inline-flex items-center gap-1 ${
-                              due.overdue ? 'font-semibold text-destructive' : due.today ? 'font-semibold text-primary' : ''
+                            className={`inline-flex items-center gap-1 text-[13px] ${
+                              due.overdue
+                                ? 'font-semibold text-destructive'
+                                : due.today
+                                  ? 'font-semibold text-primary'
+                                  : 'text-muted-foreground'
                             }`}
                           >
                             <CalendarClock className="h-3.5 w-3.5" />
                             {due.overdue ? `באיחור · ${due.text}` : due.text}
                           </span>
-                          {task.leadPhone && <span>{formatPhoneDisplay(task.leadPhone)}</span>}
+                          {task.leadPhone && (
+                            <span className="text-[13px] text-muted-foreground">{formatPhoneDisplay(task.leadPhone)}</span>
+                          )}
                         </span>
                       </span>
                     </button>
@@ -585,30 +558,3 @@ function PostsGroup({
   );
 }
 
-function MetricCard({
-  icon,
-  label,
-  value,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value?: number;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-right transition-colors hover:bg-accent/40"
-    >
-      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">{icon}</span>
-      <span className="min-w-0">
-        <span className="block text-2xl font-bold leading-tight">
-          {value === undefined ? '—' : value}
-        </span>
-        <span className="block text-sm text-muted-foreground">{label}</span>
-      </span>
-    </button>
-  );
-}

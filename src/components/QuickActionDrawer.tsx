@@ -84,7 +84,11 @@ export default function QuickActionDrawer() {
   const [matchesLoading, setMatchesLoading] = useState(false);
 
   useEffect(() => {
-    const openHandler = () => setOpen(true);
+    const openHandler = (e: Event) => {
+      const requested = (e as CustomEvent<{ tab?: TabKey }>).detail?.tab;
+      if (requested) setTab(requested);
+      setOpen(true);
+    };
     const keyHandler = (e: KeyboardEvent) => {
       if ((e.altKey || e.metaKey) && e.key.toLowerCase() === 'q') {
         e.preventDefault();
