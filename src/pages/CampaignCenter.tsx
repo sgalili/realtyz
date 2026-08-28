@@ -972,8 +972,16 @@ const InlineComposer = ({
     // Never write an empty selection before hydration finished — that wiped the
     // saved 24-group selection and reset every counter to 0.
     if (!workspaceOwnerId || !groupsHydratedRef.current) return;
-    saveCampaignGroups(workspaceOwnerId, groupIds);
+    const shared = loadCampaignGroups(workspaceOwnerId);
+    if (shared.join(',') !== groupIds.join(',')) saveCampaignGroups(workspaceOwnerId, groupIds);
   }, [groupIds, workspaceOwnerId, hideBottomBar]);
+
+  // The scheduling dialog and the calendar write to the same shared store —
+  // mirror their changes back so every counter shows the identical number.
+  useEffect(() => subscribeCampaignGroups((ids) => {
+    groupsHydratedRef.current = true;
+    setGroupIds(ids);
+  }), []);
 
   useEffect(() => {
     if (!groupsHydratedRef.current || groupIds.length === 0) return;
