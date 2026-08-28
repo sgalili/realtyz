@@ -6582,28 +6582,39 @@ const CampaignCenter = () => {
             groupEmptyLabel="לא נבחרו קבוצות לטיוטה"
             status="draft"
             dateLabel={new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}
-            onTitleClick={() => {
-              const next = new URLSearchParams(searchParams);
-              next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
-              if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
-              setSearchParams(next);
-            }}
             actions={
-              <Button
-                size="icon"
-                variant="ghost"
-                title="מחק טיוטה"
-                aria-label="מחק טיוטה"
-                className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
-                onClick={async () => {
-                  setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
-                  const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
-                  if (error) { toast.error('מחיקת הטיוטה נכשלה'); setHistoryRefreshTick((t) => t + 1); }
-                  else toast.success('הטיוטה נמחקה');
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  title="עריכת הטיוטה"
+                  aria-label="עריכת הטיוטה"
+                  className="h-8 w-8 shrink-0"
+                  onClick={() => {
+                    const next = new URLSearchParams(searchParams);
+                    next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
+                    if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
+                    setSearchParams(next);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  title="מחק טיוטה"
+                  aria-label="מחק טיוטה"
+                  className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
+                  onClick={async () => {
+                    setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
+                    const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
+                    if (error) { toast.error('מחיקת הטיוטה נכשלה'); setHistoryRefreshTick((t) => t + 1); }
+                    else toast.success('הטיוטה נמחקה');
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
             }
           />
         );
