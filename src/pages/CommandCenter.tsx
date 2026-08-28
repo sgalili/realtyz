@@ -215,15 +215,22 @@ export default function CommandCenter() {
 
 
       <Card className="p-4">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)} className="mb-4">
-          <TabsList className="w-full justify-start overflow-x-auto">
-            {(Object.keys(TAB_LABEL) as SectionTab[]).map((key) => (
-              <TabsTrigger key={key} value={key}>
-                {TAB_LABEL[key]} ({counts[key]})
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)}>
+            <TabsList className="justify-start overflow-x-auto">
+              {(Object.keys(TAB_LABEL) as SectionTab[]).map((key) => (
+                <TabsTrigger key={key} value={key}>
+                  {TAB_LABEL[key]} ({counts[key]})
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <Button size="sm" className="h-9 gap-1 text-sm" onClick={() => addNew(tab)}>
+            <Plus className="h-4 w-4" />
+            {ADD_LABEL[tab]}
+          </Button>
+        </div>
+
 
         {tab === 'posts' ? (
           <PostsActivityCard />
