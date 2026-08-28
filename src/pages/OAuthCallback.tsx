@@ -61,6 +61,19 @@ export default function OAuthCallback() {
 
   useEffect(() => {
     let cancelled = false;
+    // Absolute escape hatch: whatever happens, never sit on the loader.
+    const hardTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      if (isOAuthPopup()) {
+        notifyOAuthOpener({ provider: 'oauth', ok: false, reason: 'timeout' });
+        window.setTimeout(() => {
+          if (!window.closed) window.location.replace(CONNECTIONS_PATH);
+        }, 400);
+        return;
+      }
+      window.location.replace(CONNECTIONS_PATH);
+    }, HARD_TIMEOUT_MS);
+
 
     const run = async () => {
       const search = new URLSearchParams(window.location.search);
