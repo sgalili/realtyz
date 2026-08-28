@@ -171,7 +171,7 @@ export function appendLicenseFooter(
     .replace(/\n{3,}/g, "\n\n")
     .replace(/\s+$/g, "");
 
-  return `${cleaned}\n\n${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`;
+  return `${cleaned}\n\n${OWNER_SIGNATURE_BLOCK}`;
 }
 
 export function enforceOwnerLaws(
