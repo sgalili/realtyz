@@ -7,7 +7,7 @@ import type { UnifiedResult } from '@/lib/propertySearch';
 import { publicUrl } from '@/lib/publicUrl';
 import { ensureFullPropertyImport } from '@/lib/propertyFullSync';
 import { autoImportResult } from '@/lib/propertyAutoImport';
-import { openOfficialWhatsApp, sendViaOfficialWaba } from '@/lib/officialWa';
+import { openWhatsAppContactPicker, sendViaOfficialWaba } from '@/lib/officialWa';
 
 
 export type ShareMode = 'whatsapp' | 'sms' | 'copy';
