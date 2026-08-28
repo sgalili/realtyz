@@ -16,6 +16,7 @@ import {
   ClipboardList,
   Hourglass,
   Megaphone,
+  Trash2,
   Users,
   Zap,
 } from 'lucide-react';
@@ -29,6 +30,9 @@ import {
   TASK_STATUS_LABEL,
   POST_STATUS_LABEL,
   CHANNEL_LABEL,
+  NOTE_ACTION_LABEL,
+  deleteCommandTask,
+  deletePostActivity,
   type CommandTask,
 } from '@/hooks/useCommandCenter';
 
@@ -83,8 +87,9 @@ export default function CommandCenter() {
 
   const counts = useMemo(() => {
     const now = Date.now();
-    const overdue = tasks.filter((t) => t.dueAt && new Date(t.dueAt).getTime() < now).length;
+    const overdue = tasks.filter((t) => t.source !== 'note' && t.dueAt && new Date(t.dueAt).getTime() < now).length;
     const today = tasks.filter((t) => {
+      if (t.source === 'note') return true;
       if (!t.dueAt) return true;
       const d = new Date(t.dueAt);
       return d.getTime() < now || d.toDateString() === new Date().toDateString();
@@ -95,8 +100,9 @@ export default function CommandCenter() {
   const visible = useMemo(() => {
     const now = Date.now();
     if (filter === 'all') return tasks;
-    if (filter === 'overdue') return tasks.filter((t) => t.dueAt && new Date(t.dueAt).getTime() < now);
+    if (filter === 'overdue') return tasks.filter((t) => t.source !== 'note' && t.dueAt && new Date(t.dueAt).getTime() < now);
     return tasks.filter((t) => {
+      if (t.source === 'note') return true;
       if (!t.dueAt) return true;
       const d = new Date(t.dueAt);
       return d.getTime() < now || d.toDateString() === new Date().toDateString();
@@ -118,6 +124,20 @@ export default function CommandCenter() {
     }
     toast.success('המשימה סומנה כבוצעה');
     qc.invalidateQueries({ queryKey: ['command-center-tasks'] });
+  };
+
+  const removeTask = async (task: CommandTask) => {
+    try {
+      await deleteCommandTask(task);
+      qc.setQueryData<CommandTask[]>(
+        ['command-center-tasks', undefined],
+        (prev) => prev,
+      );
+      toast.success('הכרטיס נמחק');
+      qc.invalidateQueries({ queryKey: ['command-center-tasks'] });
+    } catch (e: any) {
+      toast.error(e?.message ?? 'מחיקת הכרטיס נכשלה');
+    }
   };
 
   return (
@@ -187,7 +207,9 @@ export default function CommandCenter() {
           <ul className="space-y-2">
             {visible.map((task, idx) => {
               const midpoint = Math.ceil(visible.length / 2);
-              const due = dueLabel(task.dueAt);
+              const due = task.source === 'note'
+                ? { ...dueLabel(task.dueAt), overdue: false }
+                : dueLabel(task.dueAt);
               return (
                 <Fragment key={`${task.source}-${task.id}`}>
                 {idx === midpoint && (
@@ -210,6 +232,11 @@ export default function CommandCenter() {
                         {task.actionType && (
                           <Badge variant="secondary" className="text-[13px]">
                             {ACTION_TYPE_LABEL[task.actionType] ?? task.actionType}
+                          </Badge>
+                        )}
+                        {task.source === 'note' && (
+                          <Badge variant="outline" className="text-[13px]">
+                            {NOTE_ACTION_LABEL[task.actionType ?? 'note'] ?? 'פתק'}
                           </Badge>
                         )}
                         {TASK_STATUS_LABEL[task.status] && (
@@ -261,14 +288,26 @@ export default function CommandCenter() {
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
                       )}
+                      {task.source !== 'note' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-9 gap-1 text-sm"
+                          onClick={() => completeTask(task)}
+                        >
+                          <Check className="h-4 w-4" />
+                          בוצע
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-9 gap-1 text-sm"
-                        onClick={() => completeTask(task)}
+                        className="h-9 gap-1 text-sm text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => removeTask(task)}
+                        aria-label="מחיקה"
                       >
-                        <Check className="h-4 w-4" />
-                        בוצע
+                        <Trash2 className="h-4 w-4" />
+                        מחק
                       </Button>
                     </div>
                   </div>
