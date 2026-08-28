@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { listingThumbOf } from '@/hooks/usePropertyNotes';
 
 export type CommandTask = {
   id: string;
@@ -15,8 +16,10 @@ export type CommandTask = {
   leadPhone: string | null;
   listingId: string | null;
   listingLabel: string | null;
+  listingThumb: string | null;
   actionType: string | null;
 };
+
 
 const PRIORITY_WEIGHT: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
