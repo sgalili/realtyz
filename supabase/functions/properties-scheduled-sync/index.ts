@@ -13,8 +13,11 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const DEFAULT_CITIES = ['הרצליה', 'רמת השרון'];
 const DEAL_TYPES: Array<'sale' | 'rent'> = ['sale', 'rent'];
-const BUDGET_MS = 110_000;
+// Keep well under the 150s edge idle timeout even though work runs in the
+// background after the response is flushed.
+const BUDGET_MS = 120_000;
 const FRESH_DAYS = 7;
+
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -38,20 +41,14 @@ async function callFunction(name: string, body: unknown) {
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
+async function runSync(
+  admin: any,
+  requestedOwner: string | undefined,
+  requestedCities: string[] | undefined,
+) {
   const started = Date.now();
   const timeLeft = () => BUDGET_MS - (Date.now() - started);
-  const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
-  const body = await req.json().catch(() => ({} as any));
-  const requestedOwner: string | undefined = body?.owner_id ? String(body.owner_id) : undefined;
-  const requestedCities: string[] | undefined = Array.isArray(body?.cities) && body.cities.length
-    ? body.cities.map(String)
-    : undefined;
-
-  // Resolve which workspaces to refresh.
   let owners: string[] = [];
   if (requestedOwner) {
     owners = [requestedOwner];
@@ -59,8 +56,6 @@ Deno.serve(async (req) => {
     const { data } = await admin.from('listings').select('user_id').not('user_id', 'is', null).limit(2000);
     owners = Array.from(new Set((data ?? []).map((r: any) => r.user_id).filter(Boolean))).slice(0, 10);
   }
-
-  const report: Array<Record<string, unknown>> = [];
 
   for (const owner of owners) {
     // Territory = the agent's configured service areas, else the house default.
@@ -76,8 +71,8 @@ Deno.serve(async (req) => {
     for (const city of cities) {
       for (const deal of DEAL_TYPES) {
         if (timeLeft() < 20_000) {
-          report.push({ owner, city, deal, status: 'skipped_budget' });
-          continue;
+          console.log('[properties-scheduled-sync] budget exhausted, stopping', { owner, city, deal });
+          return;
         }
         try {
           const d: any = await callFunction('yad2-unlocker', {
@@ -88,18 +83,30 @@ Deno.serve(async (req) => {
             limit: 40,
             pages: 1,
           });
-          report.push({
+          console.log('[properties-scheduled-sync] synced', {
             owner, city, deal,
-            status: d?.error ? 'error' : 'ok',
             count: Array.isArray(d?.results) ? d.results.length : 0,
             error: d?.error ? String(d.detail ?? d.error).slice(0, 200) : undefined,
           });
         } catch (e) {
-          report.push({ owner, city, deal, status: 'error', error: String((e as Error).message).slice(0, 200) });
+          console.warn('[properties-scheduled-sync] failed', { owner, city, deal, error: (e as Error).message });
         }
       }
     }
   }
+  console.log('[properties-scheduled-sync] done', { owners: owners.length, elapsed_ms: Date.now() - started });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+
+  const body = await req.json().catch(() => ({} as any));
+  const requestedOwner: string | undefined = body?.owner_id ? String(body.owner_id) : undefined;
+  const requestedCities: string[] | undefined = Array.isArray(body?.cities) && body.cities.length
+    ? body.cities.map(String)
+    : undefined;
 
   // Freshness stats for the "new in the last 7 days" badge/counter.
   const since = new Date(Date.now() - FRESH_DAYS * 864e5).toISOString();
@@ -108,11 +115,17 @@ Deno.serve(async (req) => {
     .select('*', { count: 'exact', head: true })
     .gte('created_at', since);
 
+  // Scraping every city/deal-type inline blows past the 150s idle timeout, so
+  // the work continues after the response is flushed.
+  const task = runSync(admin, requestedOwner, requestedCities)
+    .catch((e) => console.error('[properties-scheduled-sync] fatal', e));
+  // @ts-ignore EdgeRuntime is provided by the Supabase edge runtime.
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(task);
+
   return json({
     ok: true,
-    owners: owners.length,
+    queued: true,
     fresh_last_7_days: freshCount ?? 0,
-    elapsed_ms: Date.now() - started,
-    report,
   });
+
 });
