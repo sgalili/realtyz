@@ -58,28 +58,30 @@ export function BrightDataHeroPill() {
 
   const amount = fmt(data?.balance ?? data?.available);
   // The pill is permanent — with no value yet we still render it (as a
-  // clickable top-up shortcut) instead of disappearing.
+  // clickable usage/top-up shortcut) instead of disappearing.
 
   return (
-    <a
-      dir="rtl"
-      href={TOPUP_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-      title="יתרת ארנק Bright Data — לחצו לטעינת קרדיט"
-      aria-label="יתרת ארנק Bright Data — פתיחת דף טעינת הקרדיט"
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[12px] font-semibold text-white no-underline transition-opacity hover:opacity-80',
-      )}
-    >
-      {amount ? (
-        <span dir="ltr" className="tabular-nums">{`Yad2 :\u00a0$${amount}`}</span>
-      ) : isLoading ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <span dir="ltr" className="tabular-nums">—</span>
-      )}
-    </a>
+    <>
+      <button
+        type="button"
+        dir="rtl"
+        onClick={() => setUsageOpen(true)}
+        title="יתרת ארנק Bright Data — לחצו לפירוט צריכה ועלויות"
+        aria-label="יתרת ארנק Bright Data — פתיחת פירוט צריכה ועלויות"
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[12px] font-semibold text-white no-underline transition-opacity hover:opacity-80',
+        )}
+      >
+        {amount ? (
+          <span dir="ltr" className="tabular-nums">{`Yad2 :\u00a0$${amount}`}</span>
+        ) : isLoading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <span dir="ltr" className="tabular-nums">—</span>
+        )}
+      </button>
+      <BrightDataUsageDialog open={usageOpen} onOpenChange={setUsageOpen} />
+    </>
   );
 
 }
