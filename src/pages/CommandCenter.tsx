@@ -129,10 +129,6 @@ export default function CommandCenter() {
   const removeTask = async (task: CommandTask) => {
     try {
       await deleteCommandTask(task);
-      qc.setQueryData<CommandTask[]>(
-        ['command-center-tasks', undefined],
-        (prev) => prev,
-      );
       toast.success('הכרטיס נמחק');
       qc.invalidateQueries({ queryKey: ['command-center-tasks'] });
     } catch (e: any) {
@@ -229,7 +225,7 @@ export default function CommandCenter() {
                           {PRIORITY_LABEL[task.priority]}
                         </span>
                         <span className="break-words text-base font-semibold">{task.title}</span>
-                        {task.actionType && (
+                        {task.actionType && task.source !== 'note' && (
                           <Badge variant="secondary" className="text-[13px]">
                             {ACTION_TYPE_LABEL[task.actionType] ?? task.actionType}
                           </Badge>
@@ -328,6 +324,17 @@ export default function CommandCenter() {
 function PostsActivityCard() {
   const { data: posts = [], isLoading } = useCommandCenterPosts();
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const removePost = async (post: (typeof posts)[number]) => {
+    try {
+      await deletePostActivity(post);
+      toast.success('הפוסט נמחק');
+      qc.invalidateQueries({ queryKey: ['command-center-posts'] });
+    } catch (e: any) {
+      toast.error(e?.message ?? 'מחיקת הפוסט נכשלה');
+    }
+  };
+
   const scheduled = posts.filter((p) => p.scheduled);
   const past = posts.filter((p) => !p.scheduled);
 
@@ -355,10 +362,10 @@ function PostsActivityCard() {
       ) : (
         <div className="space-y-5">
           {scheduled.length > 0 && (
-            <PostsGroup title={`מתוזמנים (${scheduled.length})`} items={scheduled} />
+            <PostsGroup title={`מתוזמנים (${scheduled.length})`} items={scheduled} onDelete={removePost} />
           )}
           {past.length > 0 && (
-            <PostsGroup title="פורסמו לאחרונה" items={past.slice(0, 10)} />
+            <PostsGroup title="פורסמו לאחרונה" items={past.slice(0, 10)} onDelete={removePost} />
           )}
         </div>
       )}
@@ -366,12 +373,16 @@ function PostsActivityCard() {
   );
 }
 
+type PostItem = NonNullable<ReturnType<typeof useCommandCenterPosts>['data']>[number];
+
 function PostsGroup({
   title,
   items,
+  onDelete,
 }: {
   title: string;
-  items: ReturnType<typeof useCommandCenterPosts>['data'] extends (infer T)[] | undefined ? T[] : never;
+  items: PostItem[];
+  onDelete: (post: PostItem) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -404,6 +415,16 @@ function PostsGroup({
                     <CalendarClock className="h-3.5 w-3.5" />
                     {whenText}
                   </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 gap-1 text-sm text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => onDelete(p)}
+                    aria-label="מחיקת פוסט"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    מחק
+                  </Button>
                 </div>
               </div>
             </li>
