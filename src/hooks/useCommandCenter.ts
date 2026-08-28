@@ -102,6 +102,8 @@ export function useCommandCenterTasks() {
       for (const n of notes) {
         const nid = (n.metadata ?? {})?.lead_id;
         if (nid) leadIds.add(nid);
+        const lid = (n.metadata ?? {})?.listing_id;
+        if (lid) listingIds.add(lid);
       }
 
       const [leadsRes, listingsRes] = await Promise.all([
@@ -114,7 +116,7 @@ export function useCommandCenterTasks() {
         listingIds.size
           ? (supabase as any)
               .from('listings')
-              .select('id, property_title, address, city')
+              .select('id, property_title, address, city, media_photos, image_url')
               .in('id', Array.from(listingIds))
           : Promise.resolve({ data: [] }),
       ]);
@@ -125,6 +127,8 @@ export function useCommandCenterTasks() {
       const listingMap = new Map<string, any>(
         (listingsRes?.data ?? []).map((l: any) => [l.id, l]),
       );
+      const labelOfListing = (l: any) =>
+        l ? (l.property_title || [l.address, l.city].filter(Boolean).join(', ') || 'נכס') : null;
 
       const tasks: CommandTask[] = items.map((r) => {
         const m = (r.metadata ?? {}) as any;
@@ -146,10 +150,9 @@ export function useCommandCenterTasks() {
           leadName: lead?.full_name ?? null,
           leadPhone: lead?.phone_number ?? null,
           listingId: m.listing_id ?? null,
-          listingLabel: listing
-            ? listing.property_title || [listing.address, listing.city].filter(Boolean).join(', ') || 'נכס'
-            : null,
-          actionType: followup.action_type ?? null,
+          listingLabel: labelOfListing(listing),
+          listingThumb: listingThumbOf(listing),
+          actionType: followup.action_type ?? m.action_type ?? null,
         };
       });
 
@@ -168,6 +171,7 @@ export function useCommandCenterTasks() {
           leadPhone: lead?.phone_number ?? mt.lead_phone ?? null,
           listingId: null,
           listingLabel: null,
+          listingThumb: null,
           actionType: 'meeting',
         });
       }
@@ -175,13 +179,14 @@ export function useCommandCenterTasks() {
       for (const n of notes) {
         const m = (n.metadata ?? {}) as any;
         const lead = m.lead_id ? leadMap.get(m.lead_id) : null;
+        const listing = m.listing_id ? listingMap.get(m.listing_id) : null;
         const kind = String(n.action_type ?? 'note');
         tasks.push({
           id: n.id,
           source: 'note',
           title: lead?.full_name
             ? `${NOTE_ACTION_LABEL[kind] ?? 'פתק'} · ${lead.full_name}`
-            : (NOTE_ACTION_LABEL[kind] ?? 'פתק'),
+            : (labelOfListing(listing) ?? NOTE_ACTION_LABEL[kind] ?? 'פתק'),
           description: n.content ?? null,
           priority: 'low',
           status: 'note',
@@ -190,10 +195,12 @@ export function useCommandCenterTasks() {
           leadName: lead?.full_name ?? null,
           leadPhone: lead?.phone_number ?? null,
           listingId: m.listing_id ?? null,
-          listingLabel: null,
+          listingLabel: labelOfListing(listing),
+          listingThumb: listingThumbOf(listing),
           actionType: kind,
         });
       }
+
 
       tasks.sort((a, b) => {
         const now = Date.now();
