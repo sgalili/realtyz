@@ -9,6 +9,34 @@ export type AdDates = { published_at: string | null; updated_at: string | null }
 
 const cache = new Map<string, AdStatus>();
 const dateCache = new Map<string, AdDates>();
+
+// Persisted across reloads so a previously verified ad renders its source link
+// INSTANTLY on the next visit instead of waiting for a fresh probe.
+const STORE_KEY = 'realtyz:yad2:adstatus';
+type Persisted = Record<string, { status: AdStatus; dates?: AdDates; at: number }>;
+const PERSIST_TTL_MS = 24 * 60 * 60 * 1000;
+
+function readStore(): Persisted {
+  try { return JSON.parse(window.localStorage.getItem(STORE_KEY) ?? '{}') as Persisted; }
+  catch { return {}; }
+}
+function hydrate() {
+  const store = readStore();
+  const now = Date.now();
+  for (const [url, entry] of Object.entries(store)) {
+    if (!entry || now - entry.at > PERSIST_TTL_MS) continue;
+    if (entry.status === 'live' || entry.status === 'gone') cache.set(url, entry.status);
+    if (entry.dates) dateCache.set(url, entry.dates);
+  }
+}
+function persist(url: string, status: AdStatus) {
+  try {
+    const store = readStore();
+    store[url] = { status, dates: dateCache.get(url), at: Date.now() };
+    window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+  } catch { /* ignore */ }
+}
+hydrate();
 const listeners = new Set<() => void>();
 let pending: string[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -30,6 +58,7 @@ async function flush() {
     for (const u of batch) {
       const s = error ? 'unknown' : (statuses[u] as AdStatus | undefined) ?? 'unknown';
       cache.set(u, s);
+      persist(u, s);
     }
   } catch {
     for (const u of batch) cache.set(u, 'unknown');
