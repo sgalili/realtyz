@@ -7047,7 +7047,17 @@ const CampaignCenter = () => {
                         setSearchParams(next); setCampaignHistoryOpen(false);
                       }}>
                         {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
-                        <div className="min-w-0"><p className="font-semibold">{r.topic || 'טיוטת פוסט'}</p><p className="line-clamp-2 text-sm text-muted-foreground">{r.generated_text}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}</p></div>
+                        <div className="min-w-0">
+                          <p className="font-semibold">{r.topic || 'טיוטת פוסט'}</p>
+                          <p className="line-clamp-2 text-sm text-muted-foreground">{r.generated_text}</p>
+                          <GroupStatusChips
+                            groupIds={bulkGroupIds}
+                            meta={historyGroupMeta}
+                            defaultState="pending"
+                            emptyLabel="לא נבחרו קבוצות לטיוטה"
+                          />
+                          <p className="mt-1 text-xs text-muted-foreground">{new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}</p>
+                        </div>
                       </button>
                       <Button
                         size="icon"
