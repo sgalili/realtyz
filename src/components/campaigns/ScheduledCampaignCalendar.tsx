@@ -185,12 +185,21 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
       selectedListingIds, selectedGroupIds, groupDailyLimit,
     });
     // Group selection is shared with the create-post bar — one source of truth.
-    // Opening the dialog briefly renders an empty array before preferences are
-    // restored. Do not overwrite the shared selection during that frame.
-    if (groupsHydratedRef.current && selectedGroupIds.length > 0) {
-      saveCampaignGroups(workspaceOwnerId, selectedGroupIds);
+    // Only write AFTER hydration so the first (empty) render never wipes it,
+    // but a deliberate "clear all" by the broker does propagate everywhere.
+    if (groupsHydratedRef.current) {
+      const shared = loadCampaignGroups(workspaceOwnerId);
+      if (shared.join(',') !== selectedGroupIds.join(',')) {
+        saveCampaignGroups(workspaceOwnerId, selectedGroupIds);
+      }
     }
   }, [scheduleDay, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedListingIds, selectedGroupIds, groupDailyLimit]);
+
+  // Follow selection changes made in the composer / scheduling dialog live.
+  useEffect(() => subscribeCampaignGroups((ids) => {
+    groupsHydratedRef.current = true;
+    setSelectedGroupIds(ids);
+  }), []);
 
 
 
