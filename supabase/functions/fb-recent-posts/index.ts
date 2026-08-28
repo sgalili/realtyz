@@ -431,6 +431,10 @@ Deno.serve(async (req) => {
     const skipAnalytics = body?.skipAnalytics === true ||
       url.searchParams.get("skipAnalytics") === "true";
     const purge = body?.purge === true || url.searchParams.get("purge") === "true";
+    // Reconciliation: remove native-imported posts from OUR feed when they no
+    // longer exist on the Facebook Page (deleted natively on Facebook).
+    const pruneMissing = body?.prune_missing === true ||
+      url.searchParams.get("prune_missing") === "true";
     const syncComments = body?.sync_comments === true ||
       url.searchParams.get("sync_comments") === "true";
     const since = asText(body?.since ?? url.searchParams.get("since"));
@@ -775,6 +779,43 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Auto-delete: anything we previously imported from the Page that is no
+    // longer returned by Graph inside the same time window was deleted on
+    // Facebook — drop it from our feed too. Guarded so an empty/partial
+    // provider payload can never wipe the history.
+    let prunedMissing = 0;
+    if (persist && pruneMissing && posts.length >= 5) {
+      const liveIds = new Set(posts.map((p) => String(p.fb_post_id)).filter(Boolean));
+      const oldestLive = posts
+        .map((p) => new Date(p.created_at ?? Date.now()).getTime())
+        .filter((t) => Number.isFinite(t))
+        .sort((a, b) => a - b)[0];
+      const windowStart = new Date(oldestLive ?? Date.now()).toISOString();
+      const { data: mine } = await admin
+        .from("campaign_logs")
+        .select("id, provider_message_id, provider_response, sent_at")
+        .eq("user_id", ownerId)
+        .eq("channel", "facebook")
+        .eq("status", "sent")
+        .gte("sent_at", windowStart)
+        .limit(1000);
+      const stale = (mine ?? []).filter((row: any) =>
+        row?.provider_response?.imported_native_facebook === true &&
+        row.provider_message_id &&
+        !liveIds.has(String(row.provider_message_id))
+      );
+      if (stale.length > 0 && stale.length < (mine?.length ?? 0)) {
+        const ids = stale.map((r: any) => r.id);
+        for (let i = 0; i < ids.length; i += 100) {
+          const { error: delErr } = await admin
+            .from("campaign_logs")
+            .delete()
+            .in("id", ids.slice(i, i + 100));
+          if (!delErr) prunedMissing += ids.slice(i, i + 100).length;
+        }
+      }
+    }
+
     let commentSyncQueued = false;
     if (persist && syncComments && posts.length > 0) {
       const postIds = posts.map((p) => p.fb_post_id).filter(Boolean);
@@ -932,6 +973,7 @@ Deno.serve(async (req) => {
         purged: purgeApplied,
         purge_requested: purge && persist,
         purge_skipped_reason: purgeSkippedReason,
+        pruned_missing: prunedMissing,
         persist_error: persistError,
 
         owner_id: ownerId,

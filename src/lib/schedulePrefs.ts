@@ -46,6 +46,8 @@ export function loadSchedulePrefs(scope: string | null | undefined, slot = 'defa
     return {
       ...DEFAULT_SCHEDULE_PREFS,
       ...parsed,
+      winStart: clampWindowTime(String(parsed?.winStart ?? '09:00'), '09:00'),
+      winEnd: clampWindowTime(String(parsed?.winEnd ?? '21:00'), '21:00'),
       recurrenceDays: Array.isArray(parsed?.recurrenceDays) ? parsed.recurrenceDays : [],
       selectedListingIds: Array.isArray(parsed?.selectedListingIds) ? parsed.selectedListingIds : [],
       selectedGroupIds: Array.isArray(parsed?.selectedGroupIds) ? parsed.selectedGroupIds : [],
@@ -71,19 +73,52 @@ export function saveSchedulePrefs(
   }
 }
 
+/** HARD posting window — nothing is ever scheduled outside 09:00-21:00. */
+export const POSTING_WINDOW_START_MIN = 9 * 60;
+export const POSTING_WINDOW_END_MIN = 21 * 60;
+
+/** Clamps a "HH:MM" string into the allowed posting window. */
+export function clampWindowTime(value: string, fallback: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(value ?? ''));
+  const raw = m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  const min = Math.min(
+    POSTING_WINDOW_END_MIN,
+    Math.max(POSTING_WINDOW_START_MIN, raw ?? Number.NaN),
+  );
+  if (!Number.isFinite(min)) return fallback;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(Math.floor(min / 60))}:${pad(min % 60)}`;
+}
+
+/** Moves a Date into the allowed window (same day, or next day when too late). */
+export function clampDateToPostingWindow(input: Date): Date {
+  const out = new Date(input);
+  const min = out.getHours() * 60 + out.getMinutes();
+  if (min < POSTING_WINDOW_START_MIN) {
+    out.setHours(9, Math.floor(Math.random() * 45), 0, 0);
+  } else if (min > POSTING_WINDOW_END_MIN) {
+    out.setDate(out.getDate() + 1);
+    out.setHours(9, Math.floor(Math.random() * 45), 0, 0);
+  }
+  return out;
+}
+
 /**
  * Pick a random minute strictly INSIDE the [startMin, endMin] window, inside the
  * i-th of `count` buckets. Never lands exactly on the window edges so posts
- * never look machine-timed at the boundary hours.
+ * never look machine-timed at the boundary hours. The window itself is always
+ * clamped to the hard 09:00-21:00 posting hours.
  */
 export function randomSlotMinutes(startMin: number, endMin: number, i: number, count: number): number {
-  const span = Math.max(1, endMin - startMin);
+  const safeStart = Math.max(POSTING_WINDOW_START_MIN, Math.min(startMin, POSTING_WINDOW_END_MIN - 30));
+  const safeEnd = Math.min(POSTING_WINDOW_END_MIN, Math.max(endMin, safeStart + 30));
+  const span = Math.max(1, safeEnd - safeStart);
   const n = Math.max(1, count);
   const bucket = span / n;
   const margin = Math.min(bucket / 4, 7);
-  const lo = startMin + i * bucket + margin;
-  const hi = startMin + (i + 1) * bucket - margin;
+  const lo = safeStart + i * bucket + margin;
+  const hi = safeStart + (i + 1) * bucket - margin;
   const value = hi > lo ? lo + Math.random() * (hi - lo) : (lo + hi) / 2;
   // Clamp strictly inside the overall window.
-  return Math.min(Math.max(value, startMin + 1), endMin - 1);
+  return Math.min(Math.max(value, safeStart + 1), safeEnd - 1);
 }

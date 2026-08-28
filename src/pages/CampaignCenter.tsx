@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, type SchedulePrefs } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
+import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
 
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { cn } from '@/lib/utils';
@@ -3440,6 +3441,7 @@ try {
 const PublishedFeed = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
+  const fbGroupMeta = useFbGroupMeta();
   const initialScopedRows = workspaceOwnerId ? FEED_ROWS_CACHE.get(workspaceOwnerId) ?? null : null;
   const [rows, setRows] = useState<CampaignRow[] | null>(initialScopedRows);
   // True only during the very first cold load (no cache anywhere, in-memory or
@@ -3914,6 +3916,43 @@ const PublishedFeed = () => {
             console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
           }
         })();
+      }
+
+      // ALWAYS-ON background reconciliation with the native Facebook Page:
+      // pulls brand-new native posts, refreshes live engagement counters and
+      // removes from our feed anything that was deleted on Facebook itself.
+      // Throttled per session so entering the page repeatedly stays cheap.
+      if (!shouldImport) {
+        const syncKey = `realtyz.fb_native_reconcile.${ownerScope}`;
+        let mayReconcile = true;
+        try {
+          const raw = sessionStorage.getItem(syncKey);
+          const at = raw ? Number(raw) : 0;
+          mayReconcile = !Number.isFinite(at) || Date.now() - at > 2 * 60_000;
+        } catch { mayReconcile = true; }
+        if (mayReconcile) {
+          try { sessionStorage.setItem(syncKey, String(Date.now())); } catch { /* quota */ }
+          void (async () => {
+            try {
+              const { data } = await supabase.functions.invoke('fb-recent-posts', {
+                body: {
+                  lastRecords: 100,
+                  pageSize: 50,
+                  user_id: ownerScope,
+                  persist: true,
+                  prune_missing: true,
+                },
+              });
+              const removed = Number((data as any)?.pruned_missing) || 0;
+              if (removed > 0 || Number((data as any)?.upserted) > 0) {
+                // Repaint from the DB (skip a second provider round-trip).
+                void load({ skipFbImport: true });
+              }
+            } catch (err) {
+              console.warn('[PublishedFeed] native reconcile failed (non-fatal)', err);
+            }
+          })();
+        }
       }
     }
 
@@ -4585,6 +4624,28 @@ const PublishedFeed = () => {
                 </h3>
               </div>
 
+
+              {/* Pending target groups (name + avatar) shown ABOVE the scheduled time */}
+              {scheduled && Array.isArray((r as any).group_ids) && (r as any).group_ids.length > 0 && (
+                <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                  {((r as any).group_ids as any[]).slice(0, 4).map((raw) => {
+                    const gid = String(raw);
+                    const meta = fbGroupMeta[gid] ?? fbGroupMeta[gid.replace(/^ext:/, '')];
+                    const name = meta?.name || `קבוצה ${gid.slice(-4)}`;
+                    return (
+                      <span key={gid} className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-foreground">
+                        {meta?.icon
+                          ? <img src={meta.icon} alt="" className="h-4 w-4 rounded-full object-cover" loading="lazy" />
+                          : <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 text-[9px] font-bold text-primary">{name.slice(0, 1)}</span>}
+                        <span className="max-w-[160px] truncate">{name}</span>
+                      </span>
+                    );
+                  })}
+                  {((r as any).group_ids as any[]).length > 4 && (
+                    <span className="text-[11px] text-muted-foreground">+{((r as any).group_ids as any[]).length - 4}</span>
+                  )}
+                </div>
+              )}
 
               {/* Row 2 (single combined row): logo · date  ........  comments · shares · likes · chevron */}
               <div className={cn('flex items-center gap-2', isHe ? 'flex-row' : 'flex-row-reverse')}>
@@ -5712,6 +5773,7 @@ const CampaignCenter = () => {
   const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
   const [historyTab, setHistoryTab] = useState<'published' | 'drafts' | 'future'>('published');
   const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
+  const [historyGroupMeta, setHistoryGroupMeta] = useState<Record<string, { name: string; icon: string | null }>>({});
   const [editSeriesRow, setEditSeriesRow] = useState<any | null>(null);
 
 
@@ -5923,22 +5985,44 @@ const CampaignCenter = () => {
     setCampaignHistoryLoading(true);
     void (async () => {
       const scope = workspaceOwnerId ?? user.id;
-      const [{ data: logs }, { data: drafts }] = await Promise.all([
+      const cols = 'id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration,group_ids,recurrence_rule';
+      const nowIso = new Date().toISOString();
+      // Two dedicated queries: future scheduled slots (hundreds of them, some
+      // years out) must never crowd the published history out of the payload.
+      const [{ data: sentLogs }, { data: futureLogs }, { data: drafts }, { data: groups }] = await Promise.all([
         supabase.from('campaign_logs')
-          .select('id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration,group_ids,recurrence_rule')
+          .select(cols)
           .or(`workspace_owner_id.eq.${scope},user_id.eq.${scope}`)
           .eq('is_archived', false)
+          .in('status', ['sent', 'published', 'completed'])
           .order('sent_at', { ascending: false, nullsFirst: false })
           .limit(250),
+        supabase.from('campaign_logs')
+          .select(cols)
+          .or(`workspace_owner_id.eq.${scope},user_id.eq.${scope}`)
+          .eq('is_archived', false)
+          .in('status', ['scheduled', 'pending'])
+          .gt('sent_at', nowIso)
+          .order('sent_at', { ascending: true })
+          .limit(300),
         supabase.from('ai_content_logs')
           .select('id,topic,generated_text,platform,created_at,updated_at,media_urls,listing_id')
           .eq('created_by', user.id)
           .order('updated_at', { ascending: false })
           .limit(100),
+        (supabase as any).from('fb_user_groups')
+          .select('group_id,group_name,group_icon')
+          .eq('workspace_owner_id', scope)
+          .limit(500),
       ]);
       if (!cancelled) {
-        setCampaignHistoryRows(logs ?? []);
+        setCampaignHistoryRows([...(sentLogs ?? []), ...(futureLogs ?? [])]);
         setCampaignDraftRows(drafts ?? []);
+        const meta: Record<string, { name: string; icon: string | null }> = {};
+        (groups ?? []).forEach((g: any) => {
+          if (g?.group_id) meta[String(g.group_id)] = { name: g.group_name || String(g.group_id), icon: g.group_icon ?? null };
+        });
+        setHistoryGroupMeta(meta);
         setCampaignHistoryLoading(false);
       }
     })();
@@ -6868,28 +6952,63 @@ const CampaignCenter = () => {
                 <TabsContent value="future" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
                   {(() => {
                     const future = campaignHistoryRows
-                      .filter((r) => r.status === 'scheduled' && new Date(r.sent_at).getTime() > Date.now())
+                      .filter((r) => ['scheduled', 'pending'].includes(r.status) && new Date(r.sent_at).getTime() > Date.now())
                       .sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
                     const seen = new Map<string, number>();
                     const visible = future.filter((r) => { const key = r.series_id || r.id; const n = seen.get(key) || 0; seen.set(key, n + 1); return n < 3; });
                     return visible.length ? visible.map((r) => {
                       const media = Array.isArray(r.media_urls) ? r.media_urls : [];
                       const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
-                      const groupCount = Array.isArray(r.group_ids) ? r.group_ids.length : 0;
+                      const groupIds: string[] = Array.isArray(r.group_ids) ? r.group_ids.map((g: any) => String(g)) : [];
                       return <div key={r.id} className="flex gap-3 rounded-lg border border-border p-3">
                         {image ? <img src={typeof image === 'string' ? image : image?.url} alt="" className="h-20 w-20 shrink-0 rounded-md object-cover" /> : null}
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>
                             {r.series_index != null && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">גרסה {Number(r.series_index) + 1}</span>}
-                            {groupCount > 0 && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">{groupCount} קבוצות</span>}
                           </div>
+                          {/* Target groups (name + avatar) ABOVE the scheduled time */}
+                          {groupIds.length > 0 && (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                              {groupIds.slice(0, 4).map((gid) => {
+                                const meta = historyGroupMeta[gid];
+                                const name = meta?.name || `קבוצה ${gid.slice(-4)}`;
+                                return (
+                                  <span key={gid} className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-foreground">
+                                    {meta?.icon
+                                      ? <img src={meta.icon} alt="" className="h-4 w-4 rounded-full object-cover" loading="lazy" />
+                                      : <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 text-[9px] font-bold text-primary">{name.slice(0, 1)}</span>}
+                                    <span className="max-w-[150px] truncate">{name}</span>
+                                  </span>
+                                );
+                              })}
+                              {groupIds.length > 4 && <span className="text-[11px] text-muted-foreground">+{groupIds.length - 4}</span>}
+                            </div>
+                          )}
                           <ScheduledCountdown iso={r.sent_at} className="mt-1" />
                           <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p>
                           {r.needs_regeneration && <p className="mt-1 text-xs text-muted-foreground">וריאציית AI תיווצר לאחר פרסום מוצלח</p>}
-                          <div className="mt-2">
+                          <div className="mt-2 flex items-center gap-2">
                             <Button size="sm" variant="outline" className="text-[12px]" onClick={() => setEditSeriesRow(r)}>
                               עריכת קבוצות ונכסים
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-[12px] text-destructive hover:bg-destructive/10"
+                              onClick={async () => {
+                                setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
+                                const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
+                                if (error) {
+                                  toast.error('מחיקת הפוסט המתוזמן נכשלה');
+                                  setHistoryRefreshTick((t) => t + 1);
+                                } else {
+                                  toast.success('הפוסט המתוזמן נמחק');
+                                }
+                              }}
+                            >
+                              <Trash2 className="ml-1 h-3.5 w-3.5" />
+                              מחיקה
                             </Button>
                           </div>
                         </div>

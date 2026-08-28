@@ -15,6 +15,7 @@ import {
 } from "../_shared/grounding.ts";
 import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
 import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
+import { enforceSingleEmojis } from "../_shared/emoji.ts";
 
 
 const corsHeaders = {
@@ -195,7 +196,7 @@ LISTING-FOCUS MODE — EXACT MASTER TEMPLATE (mandatory, no deviation, blank lin
    • שם השכונה — חובה אם קיים בנתונים (אחרת דלג לגמרי, אל תמציא).
    • עיר וכמות חדרים — כשקיימים.
    • 1-2 מילות מפתח שיווקיות משכנעות ומדויקות (למשל: "הזדמנות נדירה", "מיקום מנצח", "מוכן לכניסה", "נוף פתוח", "שקט מוחלט") — רק אם הן נאמנות לנתונים.
-   פורמט מומלץ (גמיש בטון, אבל חייב לכלול את הפרטים): "🏡✨ <מילת מפתח משכנעת> — <סוג נכס> <חדרים> חדרים <למכירה/להשכרה> ברחוב <שם רחוב>, שכונת <שכונה>, <עיר>".
+   פורמט מומלץ (גמיש בטון, אבל חייב לכלול את הפרטים): "🏡 <מילת מפתח משכנעת> — <סוג נכס> <חדרים> חדרים <למכירה/להשכרה> ברחוב <שם רחוב>, שכונת <שכונה>, <עיר>".
    אסור: הצגה עצמית ("אני אודי", "כמתווך", "בתור מתווך"), מספרי בית, שכונה במספר/אות ("שכונה 10", "שכונה ג'"), מילות מפתח שקריות.
 2. Description: 1-2 short sentences on size, floor, view, and 1-2 standout features grounded in [PROMOTED LISTING]. Never include street numbers in the address — use street name only (e.g. "אריה לייב יפה", never "אריה לייב יפה 36").
 3. Location line: "🌇 <neighborhood + convenience>" — one short sentence.
@@ -214,7 +215,8 @@ LISTING-FOCUS MODE — EXACT MASTER TEMPLATE (mandatory, no deviation, blank lin
 
 
     const EMOJI_RULES = `EMOJI PALETTE (small and precise, Udi's clean template):
-- Allowed and expected in a listing post: 🏡✨ (opener line, once), 🌇 (location line, once), 💫 (lifestyle line, once), 📞 (CTA line, once). No other decorative emojis.
+- Allowed and expected in a listing post: 🏡 (opener line, once), 🌇 (location line, once), 💫 (lifestyle line, once), 📞 (CTA line, once). No other decorative emojis.
+- HARD RULE: never place two emojis next to each other (forbidden: "✨🏡", "🏡✨", "💫🌇"). Exactly ONE emoji per line, followed by a space and then the text.
 - Never stack emojis, never repeat, never decorate every line. Never end the post with a string of emojis.
 - Do NOT use ✅ bullets. Do NOT use 📍 or 💰 lines — the master template uses the emoji set above instead.
 - FORBIDDEN everywhere: 💎 🔥 🎉 💯 🌟 ❤️ 💪 👇 🙌 🤩 ⭐ and any hype/spam emoji.`;
@@ -254,7 +256,7 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
 איסור מוחלט: פוליטיקה, מפלגות, בחירות, וכל הקשר לא-נדל"ני.
 
 HIGH-CONVERTING REAL-ESTATE COPY STRUCTURE (apply when a specific נכס/PROMOTED LISTING exists — EXACT MASTER TEMPLATE):
-- Follow this exact order, one blank line between blocks: (1) הוק כותרת שכולל תמיד: סוג עסקה (למכירה/להשכרה) + סוג הנכס (דירה/פנטהאוז/דופלקס/קוטג'/וילה/גג/סטודיו) + מספר חדרים כשקיים + שם הרחוב (בלי מספר בית) + שם השכונה כשקיים + עיר, ובנוסף 1-2 מילות מפתח משכנעות ומדויקות (לדוגמה: "🏡✨ הזדמנות נדירה — דופלקס 5 חדרים למכירה ברחוב אריה לייב יפה, שכונת נווה עמל, הרצליה")  (2) 1-2 משפטים קצרים על שטח/קומה/נוף/פיצ'ר בולט  (3) "🌇 <שכונה + נוחות>"  (4) "💫 <יתרון לייף-סטייל>"  (5) "מחיר מבוקש: <מחיר>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" (מחיר + CTA בשורה אחת, ניסוח מדויק).
+- Follow this exact order, one blank line between blocks: (1) הוק כותרת שכולל תמיד: סוג עסקה (למכירה/להשכרה) + סוג הנכס (דירה/פנטהאוז/דופלקס/קוטג'/וילה/גג/סטודיו) + מספר חדרים כשקיים + שם הרחוב (בלי מספר בית) + שם השכונה כשקיים + עיר, ובנוסף 1-2 מילות מפתח משכנעות ומדויקות (לדוגמה: "🏡 הזדמנות נדירה — דופלקס 5 חדרים למכירה ברחוב אריה לייב יפה, שכונת נווה עמל, הרצליה")  (2) 1-2 משפטים קצרים על שטח/קומה/נוף/פיצ'ר בולט  (3) "🌇 <שכונה + נוחות>"  (4) "💫 <יתרון לייף-סטייל>"  (5) "מחיר מבוקש: <מחיר>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" (מחיר + CTA בשורה אחת, ניסוח מדויק).
 - Human, punchy, convincing, no filler, no walls of text, no ✅ bulleted feature list, no 📍/💰 lines, no keyword pipe-line inside the post body, no hashtags.
 - אסור בהחלט לפתוח את הפוסט בהצגה עצמית של אודי כמתווך ("אני אודי", "כמתווך", "בתור מתווך", "יש לי הכבוד", "אני גאה להציג", "אני שמח להציג"). נכנסים ישר לנכס.
 - Every concrete detail (רחוב, שכונה, חדרים, מ"ר, קומה, מחיר, פיצ'רים) חייב להישלף מ-[PROMOTED LISTING] בלבד. אל תמציא.
@@ -435,6 +437,9 @@ GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
     // to generated content — the user must explicitly choose to include one.
     // Strip any residual auto-injected CTA line from prior versions just in case.
     content = content.replace(/\n*[^\n]*דברו\s+איתנו\s+עכשיו[^\n]*/gu, "").replace(/\s+$/g, "");
+
+    // HARD EMOJI LAW: never two emojis side by side, always one emoji + space.
+    content = enforceSingleEmojis(content);
 
 
 
