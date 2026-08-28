@@ -240,6 +240,10 @@ export default function PropertyDetail() {
   const [imageProgress, setImageProgress] = useState(0);
   // Seeded from the local cache: a gallery mirrored once is never re-pulled.
   const galleryPulledRef = useRef(false);
+  const thumbStripRef = useRef<HTMLDivElement | null>(null);
+  const thumbDragRef = useRef<{ active: boolean; startX: number; startScroll: number; moved: boolean }>(
+    { active: false, startX: 0, startScroll: 0, moved: false },
+  );
   useEffect(() => {
     setStreamPhotos([]);
     try {
@@ -995,10 +999,6 @@ export default function PropertyDetail() {
     return true;
   };
 
-  const thumbStripRef = useRef<HTMLDivElement | null>(null);
-  const thumbDragRef = useRef<{ active: boolean; startX: number; startScroll: number; moved: boolean }>(
-    { active: false, startX: 0, startScroll: 0, moved: false },
-  );
   const onThumbDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = thumbStripRef.current;
     if (!el) return;
