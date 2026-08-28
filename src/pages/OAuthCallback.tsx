@@ -20,6 +20,8 @@ const FACEBOOK_PAGE_STATE_PREFIX = 'facebook_page';
 const CONNECTIONS_PATH = '/profile?tab=connections';
 /** Ceiling for the server-side exchange so the page never spins forever. */
 const EXCHANGE_TIMEOUT_MS = 20_000;
+/** UI safety timeout: show a manual return button if the exchange is not done. */
+const SAFETY_UI_TIMEOUT_MS = 4_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
 const HARD_TIMEOUT_MS = 25_000;
 /** Google states we can exchange right here in the callback. */
@@ -68,16 +70,24 @@ export default function OAuthCallback() {
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [showReturnButton, setShowReturnButton] = useState(false);
   const hardTimerRef = useRef<number | null>(null);
+  const safetyTimerRef = useRef<number | null>(null);
+  const settledRef = useRef(false);
 
   const returnToApp = () => {
     window.location.replace(CONNECTIONS_PATH);
   };
 
   const setFatalError = (title: string, detail: string | null) => {
+    if (settledRef.current) return;
+    settledRef.current = true;
     setStatus('error');
     setMessage(title);
     setErrorDetail(detail);
     setShowReturnButton(true);
+    if (safetyTimerRef.current) {
+      window.clearTimeout(safetyTimerRef.current);
+      safetyTimerRef.current = null;
+    }
     if (hardTimerRef.current) {
       window.clearTimeout(hardTimerRef.current);
       hardTimerRef.current = null;
@@ -86,9 +96,18 @@ export default function OAuthCallback() {
 
   useEffect(() => {
     let cancelled = false;
+    // UI safety: after 4 seconds, stop the spinner and offer a manual return.
+    safetyTimerRef.current = window.setTimeout(() => {
+      if (cancelled || settledRef.current) return;
+      setFatalError(
+        'החיבור אורך יותר מהצפוי',
+        'הבקשה לא הושלמה תוך 4 שניות. ניתן לחזור למערכת ולנסות שוב.',
+      );
+    }, SAFETY_UI_TIMEOUT_MS);
+
     // Absolute escape hatch: whatever happens, never sit on the loader.
     hardTimerRef.current = window.setTimeout(() => {
-      if (cancelled) return;
+      if (cancelled || settledRef.current) return;
       if (isOAuthPopup()) {
         notifyOAuthOpener({ provider: 'oauth', ok: false, reason: 'timeout' });
         window.setTimeout(() => {
@@ -178,12 +197,13 @@ export default function OAuthCallback() {
           if (fnError) throw new Error(String(fnError.message ?? fnError));
           const payload = (data as any) ?? {};
           if (payload.error || payload.ok === false) throw new Error(String(payload.error || 'exchange_failed'));
-          if (cancelled) return;
+          if (cancelled || settledRef.current) return;
           const email = String(payload?.identity?.email ?? '');
           finish(
             `${CONNECTIONS_PATH}&google=connected${email ? `&google_account=${encodeURIComponent(email)}` : ''}`,
             { ok: true, name: email || null, provider: googlePlatform },
             () => {
+              if (settledRef.current) return;
               setStatus('success');
               setMessage('החיבור הושלם בהצלחה.');
               setShowReturnButton(true);
@@ -235,11 +255,12 @@ export default function OAuthCallback() {
         // Automatic page selection failed — hand off to the picker in the card
         // instead of aborting the connection (the user token is already saved).
         if (payload.needs_page_selection) {
+          if (settledRef.current) return;
           finish(`${CONNECTIONS_PATH}&fb=choose`, { ok: false, reason: 'needs_page_selection' });
           return;
         }
         const pageName = String((data as any)?.page?.name ?? '');
-        if (cancelled) return;
+        if (cancelled || settledRef.current) return;
         // Best-effort group import so the publishing targets list is populated.
         void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
         finish(
@@ -256,6 +277,7 @@ export default function OAuthCallback() {
     void run();
     return () => {
       cancelled = true;
+      if (safetyTimerRef.current) window.clearTimeout(safetyTimerRef.current);
       if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
     };
   }, []);
@@ -290,7 +312,7 @@ export default function OAuthCallback() {
         )}
         {(status === 'error' || showReturnButton) && (
           <Button onClick={returnToApp} className="mt-2">
-            חזור למערכת
+            חזרה למערכת
           </Button>
         )}
         {status === 'loading' && (
