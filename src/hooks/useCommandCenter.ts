@@ -400,3 +400,43 @@ export async function deletePostActivity(post: PostActivity) {
   const { error } = await (supabase as any).from(table).delete().eq('id', rawId);
   if (error) throw error;
 }
+
+/* ───────── Editing ───────── */
+
+export type CommandTaskEdit = {
+  title?: string;
+  description?: string | null;
+  dueAt?: string | null;
+};
+
+/**
+ * Update a quick-action card in place (reminder / note / call summary / meeting).
+ * Notes only carry content; tasks and meetings also carry a title and due date.
+ */
+export async function updateCommandTask(task: CommandTask, edit: CommandTaskEdit) {
+  if (task.source === 'note') {
+    const { error } = await (supabase as any)
+      .from('interaction_activity_log')
+      .update({ content: (edit.description ?? '') || null })
+      .eq('id', task.id);
+    if (error) throw error;
+    return;
+  }
+
+  if (task.source === 'meeting') {
+    const patch: Record<string, unknown> = {};
+    if (edit.title !== undefined) patch.title = edit.title;
+    if (edit.description !== undefined) patch.description = edit.description;
+    if (edit.dueAt !== undefined) patch.starts_at = edit.dueAt;
+    const { error } = await (supabase as any).from('meetings').update(patch).eq('id', task.id);
+    if (error) throw error;
+    return;
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (edit.title !== undefined) patch.title = edit.title;
+  if (edit.description !== undefined) patch.content = edit.description;
+  if (edit.dueAt !== undefined) patch.scheduled_for = edit.dueAt;
+  const { error } = await (supabase as any).from('scheduled_items').update(patch).eq('id', task.id);
+  if (error) throw error;
+}
