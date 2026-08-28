@@ -19,21 +19,42 @@ const fmt = (n?: number) =>
     ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : null;
 
+const CACHE_KEY = 'realtyz:brightdata:balance';
+
+/** Last known balance, so the pill NEVER blanks out between refreshes. */
+function readCache(): BalanceResponse | null {
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY);
+    return raw ? (JSON.parse(raw) as BalanceResponse) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function BrightDataHeroPill() {
   const { data, isLoading } = useQuery({
     queryKey: ['brightdata-balance-hero'],
     staleTime: 5 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
+    // Persisted last-known value keeps the pill on screen permanently.
+    placeholderData: readCache() ?? undefined,
     queryFn: async (): Promise<BalanceResponse | null> => {
       const { data, error } = await supabase.functions.invoke('brightdata-balance', { body: {} });
-      if (error) return null;
-      return (data ?? null) as BalanceResponse | null;
+      // A failed probe must never remove the pill: fall back to the cache.
+      if (error) return readCache();
+      const next = (data ?? null) as BalanceResponse | null;
+      const value = next?.available ?? next?.balance;
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        try { window.localStorage.setItem(CACHE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+        return next;
+      }
+      return readCache() ?? next;
     },
   });
 
   const amount = fmt(data?.available ?? data?.balance);
-  if (!isLoading && !amount) return null;
-
+  // The pill is permanent — with no value yet we still render it (as a
+  // clickable top-up shortcut) instead of disappearing.
   const low = typeof (data?.available ?? data?.balance) === 'number' && (data?.available ?? data?.balance)! < 5;
 
   return (
@@ -50,10 +71,12 @@ export function BrightDataHeroPill() {
       )}
     >
       <Wallet className="h-3.5 w-3.5" />
-      {isLoading ? (
+      {amount ? (
+        <span dir="ltr" className="tabular-nums">{`$${amount}`}</span>
+      ) : isLoading ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : (
-        <span dir="ltr" className="tabular-nums">{`$${amount}`}</span>
+        <span dir="ltr" className="tabular-nums">—</span>
       )}
       <ExternalLink className="h-3 w-3 opacity-70" />
     </a>
