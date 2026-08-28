@@ -3,7 +3,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, Home } from 'lucide-react';
+import { Loader2, Users, Home, Search, Download } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
@@ -42,6 +43,11 @@ export function EditScheduledSeriesDialog({
   const [listings, setListings] = useState<ListingOption[]>([]);
   const [extraListingIds, setExtraListingIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  // Autosuggest search over the local catalogue, with a Yad2 fallback import.
+  const [query, setQuery] = useState('');
+  const [remote, setRemote] = useState<ListingOption[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     if (!open || !row) return;
@@ -62,10 +68,79 @@ export function EditScheduledSeriesDialog({
     })();
   }, [open, row]);
 
+  // Debounced DB search (2+ chars) so the picker is not limited to the 60
+  // most-recent listings.
+  useEffect(() => {
+    if (!open) return;
+    const q = query.trim();
+    if (q.length < 2) { setRemote([]); setSearching(false); return; }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('id, property_title, address, city, neighborhood, status')
+        .or(`property_title.ilike.%${q}%,address.ilike.%${q}%,city.ilike.%${q}%,neighborhood.ilike.%${q}%`)
+        .limit(30);
+      if (cancelled) return;
+      setRemote(((data ?? []) as any[])
+        .filter((l) => !['sold', 'rented', 'hold', 'disabled'].includes(String(l.status || '')))
+        .map((l) => ({
+          id: l.id,
+          label: [l.property_title, l.address, l.city].filter(Boolean).join(' · ') || l.id,
+        })));
+      setSearching(false);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); setSearching(false); };
+  }, [query, open]);
+
   const alreadyIncluded = useMemo(
     () => new Set([row?.listing_id].filter(Boolean) as string[]),
     [row?.listing_id],
   );
+
+  // Merge local + DB matches, de-duped, filtered by the free-text query.
+  const suggestions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const merged = new Map<string, ListingOption>();
+    for (const l of [...remote, ...listings]) {
+      if (alreadyIncluded.has(l.id)) continue;
+      if (q && !l.label.toLowerCase().includes(q)) continue;
+      if (!merged.has(l.id)) merged.set(l.id, l);
+    }
+    return Array.from(merged.values());
+  }, [remote, listings, alreadyIncluded, query]);
+
+  /** Nothing local matched: pull the property from Yad2 and import it. */
+  const importFromYad2 = async () => {
+    const q = query.trim();
+    if (!q) return;
+    setImporting(true);
+    try {
+      const isUrl = /^https?:\/\//i.test(q);
+      const { data, error } = isUrl
+        ? await supabase.functions.invoke('yad2-unlocker', { body: { url: q, limit: 1 } })
+        : await supabase.functions.invoke('yad2-search', { body: { q, limit: 20 } });
+      if (error) throw error;
+      const imported = Array.isArray((data as any)?.results) ? (data as any).results.length : 0;
+      const { data: fresh } = await supabase
+        .from('listings')
+        .select('id, property_title, address, city, status')
+        .or(`property_title.ilike.%${q}%,address.ilike.%${q}%,city.ilike.%${q}%`)
+        .limit(20);
+      const opts = ((fresh ?? []) as any[]).map((l) => ({
+        id: l.id,
+        label: [l.property_title, l.address, l.city].filter(Boolean).join(' · ') || l.id,
+      }));
+      setRemote(opts);
+      if (opts.length === 0) toast.error('לא נמצא נכס מתאים ביד2');
+      else toast.success(`יובאו ${imported || opts.length} נכסים מיד2`);
+    } catch (e: any) {
+      toast.error(`ייבוא מיד2 נכשל: ${e?.message ?? 'שגיאה'}`);
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const save = async () => {
     if (!row) return;
@@ -157,9 +232,34 @@ export function EditScheduledSeriesDialog({
               </span>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">{extraListingIds.length}</span>
             </div>
+            <div className="relative mb-2">
+              <Search className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="חיפוש נכס לפי כתובת, שכונה, עיר או קישור יד2"
+                className="pr-8 text-[13px]"
+              />
+              {searching && (
+                <Loader2 className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+              )}
+            </div>
             <div className="max-h-[28vh] space-y-1 overflow-y-auto overscroll-contain">
-              {listings.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">לא נמצאו נכסים פעילים</p>}
-              {listings.filter((l) => !alreadyIncluded.has(l.id)).map((l) => {
+              {suggestions.length === 0 && (
+                <div className="space-y-2 py-3 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    {query.trim().length >= 2 ? 'לא נמצא נכס תואם במערכת' : 'לא נמצאו נכסים פעילים'}
+                  </p>
+                  {query.trim().length >= 2 && (
+                    <Button size="sm" variant="outline" onClick={() => void importFromYad2()} disabled={importing}>
+                      {importing
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <><Download className="ms-1 h-4 w-4" /> ייבוא מיד2</>}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {suggestions.map((l) => {
                 const checked = extraListingIds.includes(l.id);
                 return (
                   <button

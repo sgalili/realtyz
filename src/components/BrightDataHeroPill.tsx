@@ -3,7 +3,7 @@
  * Reads the live balance through the `brightdata-balance` edge function.
  */
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Loader2, Wallet } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -74,8 +74,6 @@ export function BrightDataHeroPill() {
         low && 'text-amber-200 decoration-amber-300/70',
       )}
     >
-      <Wallet className="h-3.5 w-3.5" />
-      <span>יתרה</span>
       {amount ? (
         <span dir="ltr" className="tabular-nums">{`$${amount}`}</span>
       ) : isLoading ? (
@@ -83,7 +81,6 @@ export function BrightDataHeroPill() {
       ) : (
         <span dir="ltr" className="tabular-nums">—</span>
       )}
-      <ExternalLink className="h-3 w-3 opacity-70" />
     </a>
   );
 

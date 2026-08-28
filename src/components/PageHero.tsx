@@ -351,6 +351,8 @@ export function PageHero() {
           >
             <Menu className="h-6 w-6" />
           </SidebarTrigger>
+          {/* Live Bright Data wallet balance — sits right next to the burger. */}
+          <BrightDataHeroPill />
         </div>
 
         {/* Absolute-centered page title — locked to screen center */}
@@ -360,7 +362,6 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
-          <BrightDataHeroPill />
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
           {location.pathname.startsWith('/inbox') && <InboxAutopilotToggle />}
