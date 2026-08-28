@@ -7090,24 +7090,13 @@ const CampaignCenter = () => {
                             <p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>
                             {r.series_index != null && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">גרסה {Number(r.series_index) + 1}</span>}
                           </div>
-                          {/* Target groups (name + avatar) ABOVE the scheduled time */}
-                          {groupIds.length > 0 && (
-                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                              {groupIds.slice(0, 4).map((gid) => {
-                                const meta = historyGroupMeta[gid];
-                                const name = meta?.name || `קבוצה ${gid.slice(-4)}`;
-                                return (
-                                  <span key={gid} className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-foreground">
-                                    {meta?.icon
-                                      ? <img src={meta.icon} alt="" className="h-4 w-4 rounded-full object-cover" loading="lazy" />
-                                      : <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 text-[9px] font-bold text-primary">{name.slice(0, 1)}</span>}
-                                    <span className="max-w-[150px] truncate">{name}</span>
-                                  </span>
-                                );
-                              })}
-                              {groupIds.length > 4 && <span className="text-[11px] text-muted-foreground">+{groupIds.length - 4}</span>}
-                            </div>
-                          )}
+                          {/* Target groups (real name + avatar) ABOVE the scheduled time */}
+                          <GroupStatusChips
+                            groupIds={groupIds}
+                            meta={historyGroupMeta}
+                            defaultState="pending"
+                            emptyLabel="ללא קבוצות — פרסום לעמוד בלבד"
+                          />
                           <ScheduledCountdown iso={r.sent_at} className="mt-1" />
                           <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p>
                           {r.needs_regeneration && <p className="mt-1 text-xs text-muted-foreground">וריאציית AI תיווצר לאחר פרסום מוצלח</p>}
