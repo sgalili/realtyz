@@ -4491,9 +4491,6 @@ const PublishedFeed = () => {
         open={!!supportChannel}
         onOpenChange={(v) => { if (!v) setSupportChannel(null); }}
       />
-      <div className="flex items-center justify-end">
-        <FacebookImportDialog />
-      </div>
       <GlobalSocialFeed
         rows={rows ?? []}
         activeChannel={activeChannel}
