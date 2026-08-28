@@ -4740,8 +4740,8 @@ const PublishedFeed = ({
               </div>
 
 
-              {/* Target groups — collapsed summary (count + dd/hh/mm/ss countdown) */}
-              {Array.isArray((r as any).group_ids) && (r as any).group_ids.length > 0 && (
+              {/* Target groups + live per-group status — revealed on expand only */}
+              {isOpen && Array.isArray((r as any).group_ids) && (r as any).group_ids.length > 0 && (
                 <div onClick={(e) => e.stopPropagation()}>
                   <GroupStatusChips
                     groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
@@ -4749,6 +4749,7 @@ const PublishedFeed = ({
                     results={groupResultMap((r.provider_response as any)?.group_results)}
                     defaultState={scheduled ? 'pending' : failed ? 'failed' : 'published'}
                     countdownIso={scheduled ? r.sent_at : null}
+                    defaultOpen
                   />
                 </div>
               )}
