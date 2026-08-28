@@ -147,7 +147,7 @@ export default function CommandCenter() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: tasks = [], isLoading } = useCommandCenterTasks();
-  const { data: metrics } = useCommandCenterMetrics();
+  
   const { data: posts = [] } = useCommandCenterPosts();
   const [tab, setTab] = useState<SectionTab>('tasks');
   // Every card starts COLLAPSED when entering the page.
