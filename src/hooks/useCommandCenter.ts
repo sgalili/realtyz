@@ -314,7 +314,8 @@ export function useCommandCenterPosts() {
   return useQuery({
     queryKey: ['command-center-posts', user?.id ?? 'anon'],
     enabled: !!user,
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async (): Promise<PostActivity[]> => {
       const [itemsRes, queueRes] = await Promise.all([
         (supabase as any)
@@ -372,4 +373,30 @@ export function useCommandCenterPosts() {
       return out.slice(0, 40);
     },
   });
+}
+
+/* ───────── Deletions ───────── */
+
+/** Permanently remove a task card (reminder, note, call summary or meeting). */
+export async function deleteCommandTask(task: CommandTask) {
+  if (task.source === 'task') {
+    const { error } = await (supabase as any).from('scheduled_items').delete().eq('id', task.id);
+    if (error) throw error;
+    return;
+  }
+  if (task.source === 'note') {
+    const { error } = await (supabase as any).from('interaction_activity_log').delete().eq('id', task.id);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await (supabase as any).from('meetings').delete().eq('id', task.id);
+  if (error) throw error;
+}
+
+/** Permanently remove a scheduled/published post card. */
+export async function deletePostActivity(post: PostActivity) {
+  const rawId = post.id.replace(/^(si|q)-/, '');
+  const table = post.source === 'queue' ? 'campaign_activity_queue' : 'scheduled_items';
+  const { error } = await (supabase as any).from(table).delete().eq('id', rawId);
+  if (error) throw error;
 }
