@@ -4611,25 +4611,41 @@ const PublishedFeed = ({
       />
 
 
-      {/* Inline queue tabs — published / drafts / future, all managed on this page. */}
-      <div className="grid grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1" dir="rtl">
-        {([
-          { v: 'published' as FeedSubTab, label: 'פוסטים שפורסמו' },
-          { v: 'drafts' as FeedSubTab, label: 'טיוטות' },
-          { v: 'future' as FeedSubTab, label: 'פוסטים עתידיים' },
-        ]).map((t) => (
-          <button
-            key={t.v}
-            type="button"
-            onClick={() => onSubTabChange?.(t.v)}
-            className={cn(
-              'rounded-lg px-2 py-2 text-xs font-semibold transition sm:text-sm',
-              subTab === t.v ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Inline queue tabs — published / future / drafts, all managed on this page. */}
+      <div className="flex items-center gap-2" dir="rtl">
+        <div className="grid flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+          {([
+            { v: 'published' as FeedSubTab, label: 'פורסמו' },
+            { v: 'future' as FeedSubTab, label: 'עתידיים' },
+            { v: 'drafts' as FeedSubTab, label: 'טיוטות' },
+          ]).map((t) => (
+            <button
+              key={t.v}
+              type="button"
+              onClick={() => onSubTabChange?.(t.v)}
+              style={{ fontSize: 'calc(0.875rem + 3px)' }}
+              className={cn(
+                'rounded-lg px-2 py-2 font-semibold transition',
+                subTab === t.v
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          title="תצוגת לוח שנה"
+          aria-label="תצוגת לוח שנה"
+          className="shrink-0"
+          onClick={() => window.dispatchEvent(new Event('rz:open-schedule-calendar'))}
+        >
+          <CalendarIcon className="h-4 w-4" />
+        </Button>
       </div>
 
       {subTab !== 'published' ? altContent : filteredRows && filteredRows.length === 0 ? (
