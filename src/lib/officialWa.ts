@@ -52,6 +52,33 @@ export async function openOfficialWhatsApp(text?: string): Promise<void> {
 }
 
 /**
+ * Opens the NATIVE WhatsApp app straight on its contact-picker with the text
+ * pre-filled (no recipient in the URL), so the broker chooses whom to send to
+ * from their real WhatsApp contacts list.
+ *
+ * No phone number is placed in the link, so this never introduces a
+ * non-official sender identity: it is the device's own WhatsApp share sheet.
+ */
+export function openWhatsAppContactPicker(text: string): void {
+  const encoded = encodeURIComponent(text);
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    // Native protocol: opens the installed app directly on the contact list.
+    window.location.href = `whatsapp://send?text=${encoded}`;
+    // Safety net for devices without the custom scheme registered.
+    setTimeout(() => {
+      window.location.href = `https://api.whatsapp.com/send?text=${encoded}`;
+    }, 700);
+    return;
+  }
+  // Desktop: api.whatsapp.com hands off to WhatsApp Desktop / Web with the
+  // contact selection list open.
+  window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank', 'noopener,noreferrer');
+}
+
+
+/**
  * Sends a message to a recipient THROUGH the official WBA gateway
  * (`send-whatsapp` edge function) so the sender identity is always our
  * official number — never a personal device.
