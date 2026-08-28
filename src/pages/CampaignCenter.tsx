@@ -4611,25 +4611,41 @@ const PublishedFeed = ({
       />
 
 
-      {/* Inline queue tabs — published / drafts / future, all managed on this page. */}
-      <div className="grid grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1" dir="rtl">
-        {([
-          { v: 'published' as FeedSubTab, label: 'פוסטים שפורסמו' },
-          { v: 'drafts' as FeedSubTab, label: 'טיוטות' },
-          { v: 'future' as FeedSubTab, label: 'פוסטים עתידיים' },
-        ]).map((t) => (
-          <button
-            key={t.v}
-            type="button"
-            onClick={() => onSubTabChange?.(t.v)}
-            className={cn(
-              'rounded-lg px-2 py-2 text-xs font-semibold transition sm:text-sm',
-              subTab === t.v ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Inline queue tabs — published / future / drafts, all managed on this page. */}
+      <div className="flex items-center gap-2" dir="rtl">
+        <div className="grid flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+          {([
+            { v: 'published' as FeedSubTab, label: 'פורסמו' },
+            { v: 'future' as FeedSubTab, label: 'עתידיים' },
+            { v: 'drafts' as FeedSubTab, label: 'טיוטות' },
+          ]).map((t) => (
+            <button
+              key={t.v}
+              type="button"
+              onClick={() => onSubTabChange?.(t.v)}
+              style={{ fontSize: 'calc(0.875rem + 3px)' }}
+              className={cn(
+                'rounded-lg px-2 py-2 font-semibold transition',
+                subTab === t.v
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          title="תצוגת לוח שנה"
+          aria-label="תצוגת לוח שנה"
+          className="shrink-0"
+          onClick={() => window.dispatchEvent(new Event('rz:open-schedule-calendar'))}
+        >
+          <CalendarIcon className="h-4 w-4" />
+        </Button>
       </div>
 
       {subTab !== 'published' ? altContent : filteredRows && filteredRows.length === 0 ? (
@@ -4712,31 +4728,48 @@ const PublishedFeed = ({
                   )}
                 </div>
 
-                <h3 className={cn('flex-1 font-semibold text-foreground line-clamp-2', alignClass)} dir={dirAttr}>
+                {/* Title = the real first line of the post. Clicking it opens the
+                    post inside the Facebook group / page in a new tab. */}
+                <h3
+                  className={cn(
+                    'flex-1 font-semibold text-foreground line-clamp-2',
+                    alignClass,
+                    postUrl && 'cursor-pointer hover:underline',
+                  )}
+                  dir={dirAttr}
+                  onClick={(e) => {
+                    if (!postUrl) return;
+                    e.stopPropagation();
+                    window.open(postUrl, '_blank', 'noopener,noreferrer');
+                  }}
+                  title={postUrl ? 'פתח את הפוסט בפייסבוק' : undefined}
+                >
                   {(bodyText.trim().split('\n')[0] || r.campaign_name)}
                 </h3>
+                {postUrl && (
+                  <button
+                    type="button"
+                    aria-label="פתח בפייסבוק"
+                    title="פתח בפייסבוק"
+                    className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
+                    onClick={(e) => { e.stopPropagation(); window.open(postUrl, '_blank', 'noopener,noreferrer'); }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
 
-              {/* Pending target groups (name + avatar) shown ABOVE the scheduled time */}
-              {scheduled && Array.isArray((r as any).group_ids) && (r as any).group_ids.length > 0 && (
-                <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                  {((r as any).group_ids as any[]).slice(0, 4).map((raw) => {
-                    const gid = String(raw);
-                    const meta = fbGroupMeta[gid] ?? fbGroupMeta[gid.replace(/^ext:/, '')];
-                    const name = meta?.name || `קבוצה ${gid.slice(-4)}`;
-                    return (
-                      <span key={gid} className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-foreground">
-                        {meta?.icon
-                          ? <img src={meta.icon} alt="" className="h-4 w-4 rounded-full object-cover" loading="lazy" />
-                          : <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 text-[9px] font-bold text-primary">{name.slice(0, 1)}</span>}
-                        <span className="max-w-[160px] truncate">{name}</span>
-                      </span>
-                    );
-                  })}
-                  {((r as any).group_ids as any[]).length > 4 && (
-                    <span className="text-[11px] text-muted-foreground">+{((r as any).group_ids as any[]).length - 4}</span>
-                  )}
+              {/* Target groups — collapsed summary (count + dd/hh/mm/ss countdown) */}
+              {Array.isArray((r as any).group_ids) && (r as any).group_ids.length > 0 && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <GroupStatusChips
+                    groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
+                    meta={fbGroupMeta}
+                    results={groupResultMap((r.provider_response as any)?.group_results)}
+                    defaultState={scheduled ? 'pending' : failed ? 'failed' : 'published'}
+                    countdownIso={scheduled ? r.sent_at : null}
+                  />
                 </div>
               )}
 
@@ -6609,15 +6642,17 @@ const CampaignCenter = () => {
             <div key={r.id} className="flex gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
               {image ? <img src={typeof image === 'string' ? image : image?.url} alt="" className="h-20 w-20 shrink-0 rounded-md object-cover" /> : null}
               <div className="min-w-0 flex-1">
-                <p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>
+                <p className="font-semibold">
+                  {String(r.message_body || '').trim().split('\n')[0] || r.campaign_name || 'פוסט עתידי'}
+                </p>
                 <GroupStatusChips
                   groupIds={groupIds}
                   meta={historyGroupMeta}
                   defaultState="pending"
+                  countdownIso={r.sent_at}
                   emptyLabel="ללא קבוצות — פרסום לעמוד בלבד"
                 />
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <ScheduledCountdown iso={r.sent_at} />
                   <span className="text-xs text-muted-foreground">{new Date(r.sent_at).toLocaleString('he-IL')}</span>
                 </div>
                 <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p>
@@ -6626,9 +6661,11 @@ const CampaignCenter = () => {
                     עריכת קבוצות ונכסים
                   </Button>
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="ghost"
-                    className="text-[12px] text-destructive hover:bg-destructive/10"
+                    title="מחק פוסט מתוזמן"
+                    aria-label="מחק פוסט מתוזמן"
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
                     onClick={async () => {
                       setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
                       const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
@@ -6636,8 +6673,7 @@ const CampaignCenter = () => {
                       else toast.success('הפוסט המתוזמן נמחק');
                     }}
                   >
-                    <Trash2 className="ml-1 h-3.5 w-3.5" />
-                    מחיקה
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
