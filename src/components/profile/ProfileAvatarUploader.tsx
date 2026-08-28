@@ -105,7 +105,7 @@ export function ProfileAvatarUploader() {
 
   return (
     <div className="rounded-lg border bg-card/40 p-3 text-right">
-      <Label className="mb-2 block text-sm font-semibold">{'\n'}</Label>
+      <Label className="mb-2 block text-sm font-semibold"></Label>
       <div className="flex flex-col items-center gap-2">
         <button
           type="button"
@@ -131,7 +131,7 @@ export function ProfileAvatarUploader() {
           onChange={onFile}
           disabled={busy}
         />
-        <p className="text-xs text-muted-foreground">{busy ? 'מעלה תמונה...' : '\n'}</p>
+        <p className="text-xs text-muted-foreground">{busy ? 'מעלה תמונה...' : null}</p>
         <div className="flex justify-center">
           {avatarUrl && (
             <Button

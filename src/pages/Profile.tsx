@@ -285,7 +285,7 @@ function PersonalTab() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-right">{'\n'}</CardTitle>
+        <CardTitle className="text-right"></CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <ProfileAvatarUploader />
@@ -516,7 +516,7 @@ function WorkspaceTab() {
     <Card>
       <CardHeader>
         <CardTitle className="text-right flex items-center justify-between gap-2">
-          <span>{'\n'}</span>
+          <span></span>
           {!isOwner && (
             <span className="text-[11px] font-normal text-muted-foreground">לצפייה בלבד · מנוהל ע״י בעל החשבון</span>
           )}
