@@ -660,7 +660,7 @@ export function ScheduleCurrentPostDialog({
             תזמון פרסומים ליום {dayLabel}
           </DialogTitle>
           <DialogDescription className="text-right">
-            בחר תאריך, חלון שעות וכמות פוסטים. אפשר להוסיף חזרתיות יומית/שבועית/חודשית ולעצור את הסדרה בכל שלב מלוח השנה.
+            {"\n"}
           </DialogDescription>
         </DialogHeader>
 
@@ -803,14 +803,14 @@ export function ScheduleCurrentPostDialog({
               />
             </div>
             <div className="flex-1 h-9 flex items-center justify-end rounded-md border border-input bg-muted/40 px-3 text-xs text-muted-foreground">
-              מפרסם את התוכן הנוכחי
+              {"\n"}
             </div>
 
           </div>
 
           {/* Preview before posting: text, attached photos, first comment */}
           <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-            <div className="text-xs font-semibold text-muted-foreground text-right">תצוגה מקדימה של הפוסט</div>
+            <div className="text-xs font-semibold text-muted-foreground text-right">{"\n"}</div>
             <div className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md border border-input bg-background p-2 text-[13px] text-right leading-relaxed">
               {body?.trim() || 'אין תוכן לפוסט'}
             </div>
