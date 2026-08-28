@@ -42,6 +42,7 @@ import { SentimentAutomationToggles } from '@/components/automation/SentimentAut
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
+import { GroupStatusChips, groupResultMap } from '@/components/campaigns/GroupStatusChips';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { ScheduledCountdown } from '@/components/campaigns/ScheduledCountdown';
 import { EditScheduledSeriesDialog } from '@/components/campaigns/EditScheduledSeriesDialog';
