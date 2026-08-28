@@ -13,6 +13,7 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
 import { useFacebookHealth } from '@/hooks/useFacebookHealth';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
+import { GoogleApiCredentialsCard } from '@/components/profile/GoogleApiCredentialsCard';
 import { GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
 import { useUserRole } from '@/hooks/useUserRole';
 
@@ -234,6 +235,7 @@ export function ConnectionsTab() {
               <p className="text-xs text-muted-foreground">
                 חיבור חשבון Google הגלובלי של הפלטפורמה. משמש לשליחת מיילים וסנכרון יומן עבור כל חשבונות העבודה.
               </p>
+              <GoogleApiCredentialsCard />
               <GoogleServiceConnectCard
                 platform="gmail"
                 title="Gmail (שליחה וקבלה)"
