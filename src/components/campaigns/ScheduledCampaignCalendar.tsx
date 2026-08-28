@@ -203,13 +203,12 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
 
 
 
-  // The number of posts follows the number of properties picked in the dropdown.
+  // Fully automatic: the system derives how many posts to queue for the day from
+  // the picked properties and the per-group daily limit. No manual count field.
   useEffect(() => {
     if (!scheduleDay) return;
-    if (selectedListingIds.length > 0) {
-      setWinCount(Math.min(20, selectedListingIds.length));
-    }
-  }, [selectedListingIds, scheduleDay]);
+    setWinCount(autoPostsPerDay(selectedListingIds.length, groupDailyLimit));
+  }, [selectedListingIds, groupDailyLimit, scheduleDay]);
 
 
   const filteredListings = useMemo(() => {
