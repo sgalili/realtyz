@@ -38,7 +38,8 @@ function SectionShell({
 }: { icon: typeof Building2; title: string; count?: number; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-foreground">
+      {/* Title sized 5px below the previous text-2xl (24px) heading. */}
+      <h2 className="inline-flex items-center gap-2 text-[19px] font-bold text-foreground">
         <Icon className="h-5 w-5 text-primary" /> {title}
         {count ? <Badge variant="outline" className="text-sm">{count}</Badge> : null}
       </h2>
@@ -46,6 +47,7 @@ function SectionShell({
     </section>
   );
 }
+
 
 /**
  * Secondary Yad2 item-page sections: sold deals nearby, valuation history,
