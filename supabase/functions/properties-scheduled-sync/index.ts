@@ -13,8 +13,11 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const DEFAULT_CITIES = ['הרצליה', 'רמת השרון'];
 const DEAL_TYPES: Array<'sale' | 'rent'> = ['sale', 'rent'];
-const BUDGET_MS = 110_000;
+// Keep well under the 150s edge idle timeout even though work runs in the
+// background after the response is flushed.
+const BUDGET_MS = 120_000;
 const FRESH_DAYS = 7;
+
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
