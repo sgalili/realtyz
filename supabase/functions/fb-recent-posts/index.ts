@@ -455,13 +455,31 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const ownerId = caller.workspaceOwnerId;
+    // The browser may legitimately ask for a workspace other than the one
+    // stamped on the profile (the client persists its own active workspace).
+    // Accept any workspace the caller is actually a member of instead of
+    // hard-failing with 403 on a stale profile pointer.
+    let ownerId = caller.workspaceOwnerId;
     if (requestedOwnerId && requestedOwnerId !== ownerId) {
-      return new Response(JSON.stringify({ ok: false, error: "workspace_forbidden", posts: [], count: 0 }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      let allowed = requestedOwnerId === caller.userId;
+      if (!allowed) {
+        const { data: membership } = await admin
+          .from("workspace_memberships")
+          .select("workspace_owner_id")
+          .eq("user_id", caller.userId)
+          .eq("workspace_owner_id", requestedOwnerId)
+          .maybeSingle();
+        allowed = !!membership;
+      }
+      if (!allowed) {
+        return new Response(JSON.stringify({ ok: false, error: "workspace_forbidden", posts: [], count: 0 }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      ownerId = requestedOwnerId;
     }
+
 
     const page = await resolveMetaPage(admin, ownerId);
     const ws = { facebook_page_id: page?.pageId ?? null, facebook_page_name: page?.pageName ?? null };
