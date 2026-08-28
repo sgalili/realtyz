@@ -9,7 +9,6 @@
 //                               removed from our feed (or the group target is
 //                               flagged as failed/removed)
 //   - transient/permission   -> left untouched (never destructive on doubt)
-import { createClient } from "npm:@supabase/supabase-js@2";
 import { GRAPH, resolveMetaPage, isMetaPermissionError } from "../_shared/metaPage.ts";
 import { adminClient, resolveCaller } from "../_shared/fbPersonal.ts";
 
