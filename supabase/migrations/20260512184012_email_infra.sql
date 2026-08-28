@@ -35,6 +35,10 @@ CREATE TABLE IF NOT EXISTS public.email_send_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Supabase no longer grants public-schema access to service_role by default;
+-- emit the grant explicitly so edge functions can reach the table via PostgREST.
+GRANT ALL ON public.email_send_log TO service_role;
+
 ALTER TABLE public.email_send_log ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
@@ -113,6 +117,8 @@ DO $$ BEGIN
   ALTER TABLE public.email_send_state ADD COLUMN transactional_email_ttl_minutes INTEGER NOT NULL DEFAULT 60;
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
+
+GRANT ALL ON public.email_send_state TO service_role;
 
 ALTER TABLE public.email_send_state ENABLE ROW LEVEL SECURITY;
 
@@ -215,6 +221,8 @@ CREATE TABLE IF NOT EXISTS public.suppressed_emails (
   UNIQUE(email)
 );
 
+GRANT ALL ON public.suppressed_emails TO service_role;
+
 ALTER TABLE public.suppressed_emails ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
@@ -242,6 +250,8 @@ CREATE TABLE IF NOT EXISTS public.email_unsubscribe_tokens (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   used_at TIMESTAMPTZ
 );
+
+GRANT ALL ON public.email_unsubscribe_tokens TO service_role;
 
 ALTER TABLE public.email_unsubscribe_tokens ENABLE ROW LEVEL SECURITY;
 
