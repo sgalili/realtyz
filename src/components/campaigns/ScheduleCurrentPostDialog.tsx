@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
-import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
+import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes, autoPostsPerDay } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
 import { listingImagePool, randomImageSet, MAX_POST_IMAGES } from '@/lib/listingImages';
 import { loadGroupLimitState, saveGroupDailyLimit, allowedGroupsForDay, type GroupLimitState } from '@/lib/groupDailyLimits';
