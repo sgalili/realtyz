@@ -6072,17 +6072,23 @@ const CampaignCenter = () => {
           .eq('created_by', user.id)
           .order('updated_at', { ascending: false })
           .limit(100),
+        // No workspace filter: group rows may be imported under a different
+        // workspace stamp, and a missing name would show as "קבוצה 1234".
         (supabase as any).from('fb_user_groups')
           .select('group_id,group_name,group_icon')
-          .eq('workspace_owner_id', scope)
-          .limit(500),
+          .limit(2000),
       ]);
       if (!cancelled) {
         setCampaignHistoryRows([...(sentLogs ?? []), ...(futureLogs ?? [])]);
         setCampaignDraftRows(drafts ?? []);
         const meta: Record<string, { name: string; icon: string | null }> = {};
         (groups ?? []).forEach((g: any) => {
-          if (g?.group_id) meta[String(g.group_id)] = { name: g.group_name || String(g.group_id), icon: g.group_icon ?? null };
+          const id = String(g?.group_id ?? '');
+          if (!id) return;
+          const entry = { name: g.group_name || id, icon: g.group_icon ?? null };
+          meta[id] = entry;
+          // Index the bare id too — campaign_logs stores "ext:<id>"/"manual:<id>".
+          meta[id.replace(/^(ext:|manual:)/, '')] = entry;
         });
         setHistoryGroupMeta(meta);
         setCampaignHistoryLoading(false);
