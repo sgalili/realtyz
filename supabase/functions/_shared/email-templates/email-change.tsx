@@ -32,34 +32,32 @@ export const EmailChangeEmail = ({
   newEmail,
   confirmationUrl,
 }: EmailChangeEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="he" dir="rtl">
     <Head>
       <style>{darkModeCss}</style>
     </Head>
-    <Preview>Confirm your email change for {siteName}</Preview>
+    <Preview>אישור שינוי כתובת האימייל ב{siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm your email change</Heading>
+        <Text style={brand}>Realtyz AI+</Text>
+        <Heading style={h1}>אישור שינוי כתובת אימייל</Heading>
         <Text style={text}>
-          You requested to change your email address for {siteName} from{' '}
+          התקבלה בקשה לשנות את כתובת האימייל שלך ב{siteName} מהכתובת{' '}
           <Link href={`mailto:${oldEmail}`} style={link}>
             {oldEmail}
           </Link>{' '}
-          to{' '}
+          לכתובת{' '}
           <Link href={`mailto:${newEmail}`} style={link}>
             {newEmail}
           </Link>
           .
         </Text>
-        <Text style={text}>
-          Click the button below to confirm this change:
-        </Text>
+        <Text style={text}>לחיצה על הכפתור תאשר את השינוי:</Text>
         <Button className="dm-btn" style={button} href={confirmationUrl}>
-          Confirm Email Change
+          אישור השינוי
         </Button>
         <Text style={footer}>
-          If you didn't request this change, please secure your account
-          immediately.
+          אם לא ביקשת את השינוי, מומלץ לאבטח את החשבון שלך באופן מיידי.
         </Text>
       </Container>
     </Body>
@@ -68,36 +66,45 @@ export const EmailChangeEmail = ({
 
 export default EmailChangeEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = {
+  backgroundColor: '#ffffff',
+  fontFamily: 'Assistant, Arial, sans-serif',
+}
+const container = { padding: '20px 25px', textAlign: 'right' as const }
+const brand = {
+  fontSize: '16px',
+  fontWeight: 'bold' as const,
+  color: '#0B2647',
+  letterSpacing: '0.5px',
+  margin: '0 0 24px',
+}
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#081C35',
   margin: '0 0 20px',
 }
 const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
+  fontSize: '15px',
+  color: '#2E496B',
+  lineHeight: '1.7',
   margin: '0 0 25px',
 }
 const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: '#0B2647',
   color: '#ffffff',
-  fontSize: '14px',
-  border: '1px solid #000000',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  fontSize: '15px',
+  border: '1px solid #0B2647',
+  borderRadius: '12px',
+  padding: '12px 24px',
   textDecoration: 'none',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
-// Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
+const footer = { fontSize: '12px', color: '#8A97AA', margin: '30px 0 0' }
 const darkModeCss = `
   @media (prefers-color-scheme: dark) {
-    .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+    .dm-btn { background-color: #ffffff !important; color: #0B2647 !important; }
   }
-  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #0B2647 !important; }
+  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #0B2647 !important; }
 `

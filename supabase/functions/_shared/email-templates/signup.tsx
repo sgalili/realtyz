@@ -27,33 +27,30 @@ export const SignupEmail = ({
   recipient,
   confirmationUrl,
 }: SignupEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="he" dir="rtl">
     <Head>
       <style>{darkModeCss}</style>
     </Head>
-    <Preview>Confirm your email for {siteName}</Preview>
+    <Preview>אישור כתובת האימייל שלך ב{siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm your email</Heading>
+        <Text style={brand}>Realtyz AI+</Text>
+        <Heading style={h1}>אישור כתובת האימייל</Heading>
         <Text style={text}>
-          Thanks for signing up for{' '}
+          תודה שנרשמת ל
           <Link href={siteUrl} style={link}>
             <strong>{siteName}</strong>
           </Link>
-          !
+          , כלי העבודה היחיד שכל מתווך חייב בעידן ה AI.
         </Text>
         <Text style={text}>
-          Please confirm your email address (
-          <Link href={`mailto:${recipient}`} style={link}>
-            {recipient}
-          </Link>
-          ) by clicking the button below:
+          כדי להתחיל, יש לאשר את הכתובת {recipient} בלחיצה על הכפתור:
         </Text>
         <Button className="dm-btn" style={button} href={confirmationUrl}>
-          Verify Email
+          אישור והתחלה
         </Button>
         <Text style={footer}>
-          If you didn't create an account, you can safely ignore this email.
+          אם לא נרשמת, אפשר להתעלם מהמייל הזה.
         </Text>
       </Container>
     </Body>
@@ -62,36 +59,46 @@ export const SignupEmail = ({
 
 export default SignupEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = {
+  backgroundColor: '#ffffff',
+  fontFamily: 'Assistant, Arial, sans-serif',
+}
+const container = { padding: '20px 25px', textAlign: 'right' as const }
+const brand = {
+  fontSize: '16px',
+  fontWeight: 'bold' as const,
+  color: '#0B2647',
+  letterSpacing: '0.5px',
+  margin: '0 0 24px',
+}
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#081C35',
   margin: '0 0 20px',
 }
 const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
+  fontSize: '15px',
+  color: '#2E496B',
+  lineHeight: '1.7',
   margin: '0 0 25px',
 }
 const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: '#0B2647',
   color: '#ffffff',
-  fontSize: '14px',
-  border: '1px solid #000000',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  fontSize: '15px',
+  border: '1px solid #0B2647',
+  borderRadius: '12px',
+  padding: '12px 24px',
   textDecoration: 'none',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const footer = { fontSize: '12px', color: '#8A97AA', margin: '30px 0 0' }
 // Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
 const darkModeCss = `
   @media (prefers-color-scheme: dark) {
-    .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+    .dm-btn { background-color: #ffffff !important; color: #0B2647 !important; }
   }
-  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #0B2647 !important; }
+  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #0B2647 !important; }
 `
