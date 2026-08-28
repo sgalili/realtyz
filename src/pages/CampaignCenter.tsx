@@ -972,8 +972,33 @@ const InlineComposer = ({
     // Never write an empty selection before hydration finished — that wiped the
     // saved 24-group selection and reset every counter to 0.
     if (!workspaceOwnerId || !groupsHydratedRef.current) return;
-    saveCampaignGroups(workspaceOwnerId, groupIds);
+    const shared = loadCampaignGroups(workspaceOwnerId);
+    if (shared.join(',') !== groupIds.join(',')) saveCampaignGroups(workspaceOwnerId, groupIds);
   }, [groupIds, workspaceOwnerId, hideBottomBar]);
+
+  // The scheduling dialog and the calendar write to the same shared store —
+  // mirror their changes back so every counter shows the identical number.
+  useEffect(() => subscribeCampaignGroups((ids) => {
+    groupsHydratedRef.current = true;
+    setGroupIds(ids);
+  }), []);
+
+  // Active repeat method of the composer scheduling dialog — surfaced as a
+  // bubble on the calendar button so the broker always sees the live series.
+  const [composerRecurrence, setComposerRecurrence] = useState<SchedulePrefs['recurrence']>('none');
+  useEffect(() => {
+    const read = () => setComposerRecurrence(loadSchedulePrefs(workspaceOwnerId, 'composer').recurrence);
+    read();
+    const t = window.setInterval(read, 1500);
+    return () => window.clearInterval(t);
+  }, [workspaceOwnerId, scheduleDialogOpen]);
+  const recurrenceBubble = composerRecurrence === 'daily' ? 'יומי'
+    : composerRecurrence === 'weekly' ? 'שבועי'
+    : composerRecurrence === 'monthly' ? 'חודשי'
+    : composerRecurrence === 'custom' ? 'מותאם'
+    : null;
+
+
 
   useEffect(() => {
     if (!groupsHydratedRef.current || groupIds.length === 0) return;
@@ -2370,16 +2395,22 @@ const InlineComposer = ({
                 type="button"
                 onClick={() => setScheduleDialogOpen(true)}
                 disabled={!hasBody}
-                title="תזמן פרסום (כולל חזרות)"
+                title={recurrenceBubble ? `תזמון פרסום · חזרתיות: ${recurrenceBubble}` : 'תזמן פרסום (כולל חזרות)'}
                 aria-label="תזמן פרסום כולל חזרות"
                 className={cn(
-                  'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition border',
+                  'relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition border',
                   hasBody
                     ? 'bg-card text-[hsl(217,80%,18%)] border-[hsl(217,80%,18%)]/30 hover:bg-[hsl(217,80%,18%)]/5 shadow-sm'
                     : 'bg-muted text-muted-foreground/80 border-transparent cursor-not-allowed',
+                  recurrenceBubble && hasBody && 'border-[hsl(217,80%,18%)]/60',
                 )}
               >
                 <CalendarIcon className="h-4 w-4" />
+                {recurrenceBubble && (
+                  <span className="absolute -top-2 -right-1 rounded-full bg-[hsl(217,80%,18%)] px-1.5 text-[10px] font-bold leading-[16px] text-white shadow">
+                    {recurrenceBubble}
+                  </span>
+                )}
               </button>
               {channel.id === 'facebook' && (
                 <button

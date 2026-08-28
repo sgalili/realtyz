@@ -6,7 +6,7 @@
 // dispatches the composer payload to `meta-publish` for each computed slot
 // with a `scheduled_at` timestamp.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Repeat, Users, ChevronLeft, X, Loader2, MapPin } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -19,6 +19,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
+import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
 import { listingImagePool, randomImageSet, MAX_POST_IMAGES } from '@/lib/listingImages';
 import { loadGroupLimitState, saveGroupDailyLimit, allowedGroupsForDay, type GroupLimitState } from '@/lib/groupDailyLimits';
 import { celebrate } from '@/lib/celebrate';
@@ -97,9 +98,14 @@ export function ScheduleCurrentPostDialog({
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
 
   const [groupsOpen, setGroupsOpen] = useState(false);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
-    initialPrefs.selectedGroupIds.length > 0 ? initialPrefs.selectedGroupIds : (defaultGroupIds || []),
-  );
+  // Group selection is GLOBAL (shared store) — the composer, this dialog and the
+  // calendar always show the exact same groups and the exact same count.
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(() => {
+    const shared = loadCampaignGroups(workspaceOwnerId);
+    if (shared.length) return shared;
+    return initialPrefs.selectedGroupIds.length > 0 ? initialPrefs.selectedGroupIds : (defaultGroupIds || []);
+  });
+  const groupsHydratedRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
   // Up to 10 random property photos are always attached to the scheduled posts.
@@ -126,13 +132,23 @@ export function ScheduleCurrentPostDialog({
       setRecurrenceDays(prefs.recurrenceDays);
       setGroupDailyLimit(prefs.groupDailyLimit);
 
+      const shared = loadCampaignGroups(workspaceOwnerId);
       setSelectedGroupIds(
-        prefs.selectedGroupIds.length > 0 ? prefs.selectedGroupIds : (defaultGroupIds || []),
+        shared.length > 0
+          ? shared
+          : prefs.selectedGroupIds.length > 0 ? prefs.selectedGroupIds : (defaultGroupIds || []),
       );
+      groupsHydratedRef.current = true;
       setSubmitting(false);
       setProgress(0);
     }
   }, [open, defaultGroupIds, workspaceOwnerId]);
+
+  // Live-follow selection changes made anywhere else (composer bar / calendar).
+  useEffect(() => {
+    if (!open) return;
+    return subscribeCampaignGroups((ids) => setSelectedGroupIds(ids));
+  }, [open]);
 
   // Persist the configuration so it is still there after a refresh.
   useEffect(() => {
@@ -145,6 +161,12 @@ export function ScheduleCurrentPostDialog({
       },
       'composer',
     );
+    if (groupsHydratedRef.current) {
+      const shared = loadCampaignGroups(workspaceOwnerId);
+      if (shared.join(',') !== selectedGroupIds.join(',')) {
+        saveCampaignGroups(workspaceOwnerId, selectedGroupIds);
+      }
+    }
   }, [open, workspaceOwnerId, winStart, winEnd, winCount, recurrence, recurrenceDays, recurrenceCount, selectedGroupIds, groupDailyLimit]);
 
 
