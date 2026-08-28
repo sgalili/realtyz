@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
       const codeHash = await hashCode(phone, code);
       const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
 
-      const template = otpTemplate(code);
+      const template = await resolveOtpTemplate(admin, code);
       const payload: Record<string, unknown> = template
         ? {
             phone_number: phone,
