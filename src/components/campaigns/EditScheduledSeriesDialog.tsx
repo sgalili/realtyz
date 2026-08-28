@@ -120,9 +120,9 @@ export function EditScheduledSeriesDialog({
       const isUrl = /^https?:\/\//i.test(q);
       const { data, error } = isUrl
         ? await supabase.functions.invoke('yad2-unlocker', { body: { url: q, limit: 1 } })
-        : await supabase.functions.invoke('yad2-search', { body: { query: q, limit: 10, import: true } });
+        : await supabase.functions.invoke('yad2-search', { body: { q, limit: 20 } });
       if (error) throw error;
-      const imported = Number((data as any)?.imported ?? (data as any)?.saved ?? 0);
+      const imported = Array.isArray((data as any)?.results) ? (data as any).results.length : 0;
       const { data: fresh } = await supabase
         .from('listings')
         .select('id, property_title, address, city, status')
