@@ -70,16 +70,24 @@ export default function OAuthCallback() {
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [showReturnButton, setShowReturnButton] = useState(false);
   const hardTimerRef = useRef<number | null>(null);
+  const safetyTimerRef = useRef<number | null>(null);
+  const settledRef = useRef(false);
 
   const returnToApp = () => {
     window.location.replace(CONNECTIONS_PATH);
   };
 
   const setFatalError = (title: string, detail: string | null) => {
+    if (settledRef.current) return;
+    settledRef.current = true;
     setStatus('error');
     setMessage(title);
     setErrorDetail(detail);
     setShowReturnButton(true);
+    if (safetyTimerRef.current) {
+      window.clearTimeout(safetyTimerRef.current);
+      safetyTimerRef.current = null;
+    }
     if (hardTimerRef.current) {
       window.clearTimeout(hardTimerRef.current);
       hardTimerRef.current = null;
