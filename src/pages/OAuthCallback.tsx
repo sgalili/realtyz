@@ -27,7 +27,7 @@ const HARD_TIMEOUT_MS = 25_000;
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar'] as const;
 
-type Status = 'loading' | 'error' | 'success';
+type OAuthError = { title: string; detail: string | null } | null;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -65,49 +65,35 @@ function finish(
 }
 
 export default function OAuthCallback() {
-  const [status, setStatus] = useState<Status>('loading');
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+  const [error, setError] = useState<OAuthError>(null);
+  const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState('מסיים אימות...');
-  const [errorDetail, setErrorDetail] = useState<string | null>(null);
-  const [showReturnButton, setShowReturnButton] = useState(false);
   const hardTimerRef = useRef<number | null>(null);
   const safetyTimerRef = useRef<number | null>(null);
-  const settledRef = useRef(false);
+  const exchangeDoneRef = useRef(false);
 
   const returnToApp = () => {
     window.location.replace(CONNECTIONS_PATH);
   };
 
-  const setFatalError = (title: string, detail: string | null) => {
-    if (settledRef.current) return;
-    settledRef.current = true;
-    setStatus('error');
-    setMessage(title);
-    setErrorDetail(detail);
-    setShowReturnButton(true);
-    if (safetyTimerRef.current) {
-      window.clearTimeout(safetyTimerRef.current);
-      safetyTimerRef.current = null;
-    }
-    if (hardTimerRef.current) {
-      window.clearTimeout(hardTimerRef.current);
-      hardTimerRef.current = null;
-    }
-  };
-
+  // Independent mount timer: forces fallback UI after 4 seconds no matter
+  // what the async token exchange is doing.
   useEffect(() => {
-    let cancelled = false;
-    // UI safety: after 4 seconds, stop the spinner and offer a manual return.
     safetyTimerRef.current = window.setTimeout(() => {
-      if (cancelled || settledRef.current) return;
-      setFatalError(
-        'החיבור אורך יותר מהצפוי',
-        'הבקשה לא הושלמה תוך 4 שניות. ניתן לחזור למערכת ולנסות שוב.',
-      );
+      setIsLoading(false);
+      setHasTimedOut(true);
     }, SAFETY_UI_TIMEOUT_MS);
 
-    // Absolute escape hatch: whatever happens, never sit on the loader.
+    return () => {
+      if (safetyTimerRef.current) window.clearTimeout(safetyTimerRef.current);
+    };
+  }, []);
+
+  // Absolute escape hatch: whatever happens, never sit on the loader.
+  useEffect(() => {
     hardTimerRef.current = window.setTimeout(() => {
-      if (cancelled || settledRef.current) return;
       if (isOAuthPopup()) {
         notifyOAuthOpener({ provider: 'oauth', ok: false, reason: 'timeout' });
         window.setTimeout(() => {
@@ -118,6 +104,15 @@ export default function OAuthCallback() {
       window.location.replace(CONNECTIONS_PATH);
     }, HARD_TIMEOUT_MS);
 
+    return () => {
+      if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
+    };
+  }, []);
+
+  // Token exchange logic. Completely separate from the UI safety timer.
+  useEffect(() => {
+    let cancelled = false;
+
     const run = async () => {
       const search = new URLSearchParams(window.location.search);
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
@@ -126,7 +121,7 @@ export default function OAuthCallback() {
       const code = pick('code');
       const accessToken = pick('access_token') ?? pick('long_lived_token');
       const state = pick('state') ?? '';
-      const error = pick('error') ?? pick('error_code');
+      const providerError = pick('error') ?? pick('error_code');
       const errorDescription = pick('error_description') ?? pick('error_message');
       const returnOrigin = returnOriginFromOAuthState(state);
       // Exactly the URI Meta returned to — the exchange requires byte-for-byte
@@ -160,21 +155,24 @@ export default function OAuthCallback() {
       const googlePlatform = GOOGLE_STATE_PREFIXES.find((p) => state.startsWith(p)) ?? null;
 
       // The provider refused, the user cancelled, or nothing usable arrived.
-      if (error || !hasGrant) {
-        const reason = errorDescription || error || 'הספק לא החזיר קוד אימות. נסה להתחבר שוב.';
+      if (providerError || !hasGrant) {
+        const reason = errorDescription || providerError || 'הספק לא החזיר קוד אימות. נסה להתחבר שוב.';
         if (isFacebook) {
           finish(`${CONNECTIONS_PATH}&fb=error&fb_reason=${encodeURIComponent(reason)}`, { ok: false, reason });
           return;
         }
         if (googlePlatform) {
-          setFatalError('החיבור ל-Google נכשל', reason);
+          if (!cancelled) {
+            setIsLoading(false);
+            setError({ title: 'החיבור ל-Google נכשל', detail: reason });
+          }
           return;
         }
         storePendingOAuth({
           code,
           accessToken,
           state,
-          error: error || 'missing_code',
+          error: providerError || 'missing_code',
           errorDescription: reason,
           redirectUri: oauthRedirectUri(),
         });
@@ -197,22 +195,24 @@ export default function OAuthCallback() {
           if (fnError) throw new Error(String(fnError.message ?? fnError));
           const payload = (data as any) ?? {};
           if (payload.error || payload.ok === false) throw new Error(String(payload.error || 'exchange_failed'));
-          if (cancelled || settledRef.current) return;
+          if (cancelled || exchangeDoneRef.current) return;
+          exchangeDoneRef.current = true;
           const email = String(payload?.identity?.email ?? '');
           finish(
             `${CONNECTIONS_PATH}&google=connected${email ? `&google_account=${encodeURIComponent(email)}` : ''}`,
             { ok: true, name: email || null, provider: googlePlatform },
             () => {
-              if (settledRef.current) return;
-              setStatus('success');
+              if (cancelled || exchangeDoneRef.current) return;
+              setIsLoading(false);
+              setSuccess(true);
               setMessage('החיבור הושלם בהצלחה.');
-              setShowReturnButton(true);
             },
           );
         } catch (e: any) {
           if (cancelled) return;
           const reason = String(e?.message ?? 'unknown');
-          setFatalError('החיבור ל-Google נכשל', reason);
+          setIsLoading(false);
+          setError({ title: 'החיבור ל-Google נכשל', detail: reason });
         }
         return;
       }
@@ -255,12 +255,14 @@ export default function OAuthCallback() {
         // Automatic page selection failed — hand off to the picker in the card
         // instead of aborting the connection (the user token is already saved).
         if (payload.needs_page_selection) {
-          if (settledRef.current) return;
+          if (exchangeDoneRef.current) return;
+          exchangeDoneRef.current = true;
           finish(`${CONNECTIONS_PATH}&fb=choose`, { ok: false, reason: 'needs_page_selection' });
           return;
         }
         const pageName = String((data as any)?.page?.name ?? '');
-        if (cancelled || settledRef.current) return;
+        if (cancelled || exchangeDoneRef.current) return;
+        exchangeDoneRef.current = true;
         // Best-effort group import so the publishing targets list is populated.
         void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
         finish(
@@ -270,55 +272,57 @@ export default function OAuthCallback() {
       } catch (e: any) {
         if (cancelled) return;
         const reason = String(e?.message ?? 'unknown');
-        setFatalError('החיבור לפייסבוק נכשל', reason);
+        setIsLoading(false);
+        setError({ title: 'החיבור לפייסבוק נכשל', detail: reason });
       }
     };
 
     void run();
     return () => {
       cancelled = true;
-      if (safetyTimerRef.current) window.clearTimeout(safetyTimerRef.current);
-      if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
     };
   }, []);
+
+  const showFallback = !!error || hasTimedOut;
 
   return (
     <div dir="rtl" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
       <div className="text-center space-y-4 max-w-md w-full">
-        {status === 'loading' && (
+        {isLoading && !showFallback && (
           <div className="mx-auto h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
         )}
-        {status === 'error' && (
+        {showFallback && (
           <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
         )}
-        {status === 'success' && (
+        {success && !showFallback && (
           <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
             <span className="text-lg">✓</span>
           </div>
         )}
         <h1 className="text-lg font-semibold">
-          {status === 'loading' && 'מסיים אימות...'}
-          {status === 'error' && 'החיבור נכשל'}
-          {status === 'success' && 'החיבור הושלם'}
+          {showFallback
+            ? error?.title || 'החיבור אורך יותר מהצפוי'
+            : success
+              ? 'החיבור הושלם'
+              : 'מסיים אימות...'}
         </h1>
-        <p className="text-sm text-muted-foreground break-words">{message}</p>
-        {errorDetail && status === 'error' && (
+        <p className="text-sm text-muted-foreground break-words">
+          {showFallback
+            ? error?.detail || 'הבקשה לא הושלמה תוך 4 שניות. ניתן לחזור למערכת ולנסות שוב.'
+            : message}
+        </p>
+        {error?.detail && (
           <div
             dir="ltr"
             className="rounded-md bg-muted p-3 text-left text-xs font-mono break-all text-muted-foreground"
           >
-            {errorDetail}
+            {error.detail}
           </div>
         )}
-        {(status === 'error' || showReturnButton) && (
+        {showFallback && (
           <Button onClick={returnToApp} className="mt-2">
             חזרה למערכת
           </Button>
-        )}
-        {status === 'loading' && (
-          <a href={CONNECTIONS_PATH} className="block text-xs font-medium text-primary underline">
-            חזרה להגדרות החיבורים
-          </a>
         )}
       </div>
     </div>
