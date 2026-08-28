@@ -18,6 +18,10 @@ const FACEBOOK_PAGE_STATE_PREFIX = 'facebook_page';
 const CONNECTIONS_PATH = '/profile?tab=connections';
 /** Ceiling for the server-side exchange so the page never spins forever. */
 const EXCHANGE_TIMEOUT_MS = 20_000;
+/** Absolute ceiling for the whole callback: never sit on the loader. */
+const HARD_TIMEOUT_MS = 25_000;
+/** Google states we can exchange right here in the callback. */
+const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar'] as const;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -34,9 +38,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
  * result to the original app window and close. Otherwise (or if closing was
  * blocked) redirect this window to the connections screen.
  */
-function finish(path: string, result: { ok: boolean; name?: string | null; reason?: string | null }) {
+function finish(
+  path: string,
+  result: { ok: boolean; name?: string | null; reason?: string | null; provider?: string },
+) {
   if (isOAuthPopup()) {
-    notifyOAuthOpener({ provider: 'facebook_page', ...result });
+    notifyOAuthOpener({ provider: result.provider ?? 'facebook_page', ...result });
     // If the browser refused to close the window, fall back to a redirect so
     // the user never stares at a spinner.
     window.setTimeout(() => {
@@ -46,6 +53,7 @@ function finish(path: string, result: { ok: boolean; name?: string | null; reaso
   }
   window.location.replace(path);
 }
+
 
 export default function OAuthCallback() {
   const [message, setMessage] = useState('מסיים אימות...');
