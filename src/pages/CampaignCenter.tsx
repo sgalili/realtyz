@@ -6585,44 +6585,48 @@ const CampaignCenter = () => {
     <div className="flex h-52 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
   ) : historyTab === 'drafts' ? (
     <div className="space-y-2" dir="rtl">
-      {campaignDraftRows.map((r) => (
-        <div key={r.id} className="flex items-start gap-2 rounded-2xl border border-border/60 bg-card p-3 shadow-sm hover:bg-muted/30">
-          <button type="button" className="flex min-w-0 flex-1 gap-3 text-right" onClick={() => {
-            const next = new URLSearchParams(searchParams);
-            next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
-            if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
-            setSearchParams(next);
-          }}>
-            {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
-            <div className="min-w-0">
-              <p className="font-semibold">{r.topic || 'טיוטת פוסט'}</p>
-              <p className="line-clamp-2 text-sm text-muted-foreground">{r.generated_text}</p>
-              <GroupStatusChips
-                groupIds={bulkGroupIds}
-                meta={historyGroupMeta}
-                defaultState="pending"
-                emptyLabel="לא נבחרו קבוצות לטיוטה"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">{new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}</p>
-            </div>
-          </button>
-          <Button
-            size="icon"
-            variant="ghost"
-            title="מחק טיוטה"
-            aria-label="מחק טיוטה"
-            className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
-            onClick={async () => {
-              setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
-              const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
-              if (error) { toast.error('מחיקת הטיוטה נכשלה'); setHistoryRefreshTick((t) => t + 1); }
-              else toast.success('הטיוטה נמחקה');
+      {campaignDraftRows.map((r) => {
+        const media = Array.isArray(r.media_urls) ? r.media_urls : [];
+        const first = media[0];
+        const firstUrl = typeof first === 'string' ? first : (first as any)?.url ?? null;
+        const title = String(r.generated_text || '').trim().split('\n')[0] || r.topic || 'טיוטת פוסט';
+        return (
+          <QueueCard
+            key={r.id}
+            title={title}
+            imageUrl={firstUrl}
+            imageCount={media.length}
+            groupIds={bulkGroupIds}
+            groupMeta={historyGroupMeta}
+            groupEmptyLabel="לא נבחרו קבוצות לטיוטה"
+            status="draft"
+            dateLabel={new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}
+            onTitleClick={() => {
+              const next = new URLSearchParams(searchParams);
+              next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
+              if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
+              setSearchParams(next);
             }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ))}
+            actions={
+              <Button
+                size="icon"
+                variant="ghost"
+                title="מחק טיוטה"
+                aria-label="מחק טיוטה"
+                className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
+                onClick={async () => {
+                  setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
+                  const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
+                  if (error) { toast.error('מחיקת הטיוטה נכשלה'); setHistoryRefreshTick((t) => t + 1); }
+                  else toast.success('הטיוטה נמחקה');
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            }
+          />
+        );
+      })}
       {campaignDraftRows.length === 0 && <p className="py-12 text-center text-sm text-muted-foreground">אין טיוטות</p>}
     </div>
   ) : (
@@ -6637,35 +6641,39 @@ const CampaignCenter = () => {
         return visible.map((r) => {
           const media = Array.isArray(r.media_urls) ? r.media_urls : [];
           const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
+          const imageUrl = typeof image === 'string' ? image : (image as any)?.url ?? null;
           const groupIds: string[] = Array.isArray(r.group_ids) ? r.group_ids.map((g: any) => String(g)) : [];
+          const title = String(r.message_body || '').trim().split('\n')[0] || r.campaign_name || 'פוסט עתידי';
           return (
-            <div key={r.id} className="flex gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
-              {image ? <img src={typeof image === 'string' ? image : image?.url} alt="" className="h-20 w-20 shrink-0 rounded-md object-cover" /> : null}
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold">
-                  {String(r.message_body || '').trim().split('\n')[0] || r.campaign_name || 'פוסט עתידי'}
-                </p>
-                <GroupStatusChips
-                  groupIds={groupIds}
-                  meta={historyGroupMeta}
-                  defaultState="pending"
-                  countdownIso={r.sent_at}
-                  emptyLabel="ללא קבוצות — פרסום לעמוד בלבד"
-                />
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{new Date(r.sent_at).toLocaleString('he-IL')}</span>
-                </div>
-                <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <Button size="sm" variant="outline" className="text-[12px]" onClick={() => setEditSeriesRow(r)}>
-                    עריכת קבוצות ונכסים
+            <QueueCard
+              key={r.id}
+              title={title}
+              imageUrl={imageUrl}
+              imageCount={media.length}
+              groupIds={groupIds}
+              groupMeta={historyGroupMeta}
+              groupEmptyLabel="ללא קבוצות — פרסום לעמוד בלבד"
+              status="scheduled"
+              countdownIso={r.sent_at}
+              dateLabel={new Date(r.sent_at).toLocaleString('he-IL')}
+              actions={
+                <>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    title="עריכת קבוצות ונכסים"
+                    aria-label="עריכת קבוצות ונכסים"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => setEditSeriesRow(r)}
+                  >
+                    <Pencil className="h-4 w-4" />
                   </Button>
                   <Button
                     size="icon"
                     variant="ghost"
                     title="מחק פוסט מתוזמן"
                     aria-label="מחק פוסט מתוזמן"
-                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                    className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
                     onClick={async () => {
                       setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
                       const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
@@ -6675,9 +6683,9 @@ const CampaignCenter = () => {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                </div>
-              </div>
-            </div>
+                </>
+              }
+            />
           );
         });
       })()}
