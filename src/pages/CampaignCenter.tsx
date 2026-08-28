@@ -4780,33 +4780,17 @@ const PublishedFeed = ({
 
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
                   const diff = Number.isFinite(target) ? target - Date.now() : NaN;
-                  let label = 'מתוזמן';
+                  // Strict dd/hh/mm countdown — no extra wording, no series pill.
+                  let label = '';
                   if (Number.isFinite(diff)) {
-                    if (diff <= 0) {
-                      label = 'מפרסם עכשיו…';
-                    } else {
-                      const s = Math.floor(diff / 1000);
-                      const d = Math.floor(s / 86400);
-                      const h = Math.floor((s % 86400) / 3600);
-                      const m = Math.floor((s % 3600) / 60);
-                      const sec = s % 60;
-                      const parts = d > 0
-                        ? [`${d}י׳`, `${h}ש׳`, `${m}ד׳`]
-                        : h > 0
-                          ? [`${h}ש׳`, `${m}ד׳`, `${sec}שנ׳`]
-                          : [`${m}ד׳`, `${sec}שנ׳`];
-                      label = `פרסום בעוד ${parts.join(' ')}`;
-                    }
+                    const s = Math.max(0, Math.floor(diff / 1000));
+                    const pad = (n: number) => String(n).padStart(2, '0');
+                    label = `${pad(Math.floor(s / 86400))}/${pad(Math.floor((s % 86400) / 3600))}/${pad(Math.floor((s % 3600) / 60))}`;
                   }
                   return (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200 tabular-nums">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200 tabular-nums" dir="ltr">
                       <CalendarIcon className="h-3 w-3" />
                       {label}
-                      {isSeries && (
-                        <span className="ms-1 rounded-full bg-amber-800 text-amber-50 px-1.5 py-[1px] text-[10px] font-bold">
-                          סדרה · {seriesSlots!.length}
-                        </span>
-                      )}
                     </span>
                   );
                 })() : (
