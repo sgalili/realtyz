@@ -102,6 +102,7 @@ export default function OAuthCallback() {
       }
 
       const hasGrant = !!(code || accessToken);
+      const googlePlatform = GOOGLE_STATE_PREFIXES.find((p) => state.startsWith(p)) ?? null;
 
       // The provider refused, the user cancelled, or nothing usable arrived.
       if (error || !hasGrant) {
@@ -118,17 +119,49 @@ export default function OAuthCallback() {
           errorDescription: reason,
           redirectUri: oauthRedirectUri(),
         });
-        window.location.replace(backPath);
+        finish(backPath, { ok: false, reason, provider: googlePlatform ?? 'oauth' });
         return;
       }
 
-      // Personal-profile / calendar / other providers keep the stash-and-return
-      // contract: their own card performs the exchange after the redirect.
-      if (!isFacebook) {
-        storePendingOAuth({ code, accessToken, state, error: null, errorDescription: null, redirectUri });
-        window.location.replace(backPath);
+      // Google (Gmail / Calendar): exchange the code right here so the flow
+      // completes even when the card never remounts, then close / redirect.
+      if (googlePlatform && code) {
+        setMessage('שומר את חיבור Google...');
+        try {
+          const { data, error: fnError } = await withTimeout(
+            supabase.functions.invoke('google-oauth-exchange', {
+              body: { platform: googlePlatform, code, redirect_uri: redirectUri },
+            }),
+            EXCHANGE_TIMEOUT_MS,
+            'החיבור ל-Google לא הושלם בזמן. נסה שוב.',
+          );
+          if (fnError) throw new Error(String(fnError.message ?? fnError));
+          const payload = (data as any) ?? {};
+          if (payload.error || payload.ok === false) throw new Error(String(payload.error || 'exchange_failed'));
+          if (cancelled) return;
+          const email = String(payload?.identity?.email ?? '');
+          finish(
+            `${CONNECTIONS_PATH}&google=connected${email ? `&google_account=${encodeURIComponent(email)}` : ''}`,
+            { ok: true, name: email || null, provider: googlePlatform },
+          );
+        } catch (e: any) {
+          if (cancelled) return;
+          // Hand the code back to the card so it can retry the exchange there.
+          const reason = String(e?.message ?? 'unknown');
+          storePendingOAuth({ code, accessToken, state, error: null, errorDescription: null, redirectUri });
+          finish(backPath, { ok: false, reason, provider: googlePlatform });
+        }
         return;
       }
+
+      // Personal-profile / other providers keep the stash-and-return contract:
+      // their own card performs the exchange after the redirect.
+      if (!isFacebook) {
+        storePendingOAuth({ code, accessToken, state, error: null, errorDescription: null, redirectUri });
+        finish(backPath, { ok: true, provider: state.split(':')[0] || 'oauth' });
+        return;
+      }
+
 
       setMessage('שומר את חיבור עמוד הפייסבוק...');
       try {
