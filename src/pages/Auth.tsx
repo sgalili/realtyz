@@ -13,6 +13,7 @@ import { ArrowRight, Mail, MessageSquareText } from 'lucide-react';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { cn } from '@/lib/utils';
 import { RealtyzWave } from '@/components/RealtyzWave';
+import realtyzLogo from '@/assets/realtyz-logo.png';
 
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
 
@@ -275,8 +276,12 @@ const Auth = () => {
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
         <div className="mb-8 translate-y-5 text-center">
-          <div className="realtyz-logo auth-text-logo" aria-label="Realtyz">Realtyz</div>
-          <p className="auth-official-slogan">הפלטפורמה שהופכת דאטה קרה למכונת המרה</p>
+          <img
+            src={realtyzLogo}
+            alt="Realtyz AI"
+            className="auth-official-logo mx-auto mb-6 h-[3.6rem] w-auto object-contain"
+          />
+          <p className="auth-official-slogan">כלי העבודה היחיד שכל מתווך חייב בעידן ה AI.</p>
         </div>
 
         {!codeSent && <h1 className="auth-login-title">הרשמה/התחברות</h1>}
