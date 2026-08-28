@@ -213,32 +213,6 @@ export default function CommandCenter() {
         </p>
       </header>
 
-      <section className="grid grid-cols-2 gap-3">
-        <MetricCard
-          icon={<AlarmClock className="h-5 w-5 text-destructive" />}
-          label="משימות באיחור"
-          value={overdue}
-          onClick={() => setTab('tasks')}
-        />
-        <MetricCard
-          icon={<Users className="h-5 w-5 text-emerald-600" />}
-          label="לקוחות פעילים"
-          value={metrics?.activeLeads}
-          onClick={() => navigate('/lead-crm')}
-        />
-        <MetricCard
-          icon={<Building2 className="h-5 w-5 text-amber-500" />}
-          label="נכסים בשיווק"
-          value={metrics?.marketedListings}
-          onClick={() => navigate('/properties')}
-        />
-        <MetricCard
-          icon={<Hourglass className="h-5 w-5 text-cyan-600" />}
-          label="ממתינים לתשובת לקוח"
-          value={metrics?.awaitingClientReply}
-          onClick={() => navigate('/inbox')}
-        />
-      </section>
 
       <Card className="p-4">
         <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)} className="mb-4">
