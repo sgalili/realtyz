@@ -285,7 +285,7 @@ function PersonalTab() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-right">הפרופיל האישי שלי</CardTitle>
+        <CardTitle className="text-right">{'\n'}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <ProfileAvatarUploader />

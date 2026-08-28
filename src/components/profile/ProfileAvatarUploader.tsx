@@ -105,7 +105,7 @@ export function ProfileAvatarUploader() {
 
   return (
     <div className="rounded-lg border bg-card/40 p-3 text-right">
-      <Label className="mb-2 block text-sm font-semibold">תמונת פרופיל</Label>
+      <Label className="mb-2 block text-sm font-semibold">{'\n'}</Label>
       <div className="flex flex-col items-center gap-2">
         <button
           type="button"
