@@ -18,6 +18,10 @@ const FACEBOOK_PAGE_STATE_PREFIX = 'facebook_page';
 const CONNECTIONS_PATH = '/profile?tab=connections';
 /** Ceiling for the server-side exchange so the page never spins forever. */
 const EXCHANGE_TIMEOUT_MS = 20_000;
+/** Absolute ceiling for the whole callback: never sit on the loader. */
+const HARD_TIMEOUT_MS = 25_000;
+/** Google states we can exchange right here in the callback. */
+const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar'] as const;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -34,9 +38,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
  * result to the original app window and close. Otherwise (or if closing was
  * blocked) redirect this window to the connections screen.
  */
-function finish(path: string, result: { ok: boolean; name?: string | null; reason?: string | null }) {
+function finish(
+  path: string,
+  result: { ok: boolean; name?: string | null; reason?: string | null; provider?: string },
+) {
   if (isOAuthPopup()) {
-    notifyOAuthOpener({ provider: 'facebook_page', ...result });
+    notifyOAuthOpener({ provider: result.provider ?? 'facebook_page', ...result });
     // If the browser refused to close the window, fall back to a redirect so
     // the user never stares at a spinner.
     window.setTimeout(() => {
@@ -47,12 +54,26 @@ function finish(path: string, result: { ok: boolean; name?: string | null; reaso
   window.location.replace(path);
 }
 
+
 export default function OAuthCallback() {
   const [message, setMessage] = useState('מסיים אימות...');
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    // Absolute escape hatch: whatever happens, never sit on the loader.
+    const hardTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      if (isOAuthPopup()) {
+        notifyOAuthOpener({ provider: 'oauth', ok: false, reason: 'timeout' });
+        window.setTimeout(() => {
+          if (!window.closed) window.location.replace(CONNECTIONS_PATH);
+        }, 400);
+        return;
+      }
+      window.location.replace(CONNECTIONS_PATH);
+    }, HARD_TIMEOUT_MS);
+
 
     const run = async () => {
       const search = new URLSearchParams(window.location.search);
@@ -94,6 +115,7 @@ export default function OAuthCallback() {
       }
 
       const hasGrant = !!(code || accessToken);
+      const googlePlatform = GOOGLE_STATE_PREFIXES.find((p) => state.startsWith(p)) ?? null;
 
       // The provider refused, the user cancelled, or nothing usable arrived.
       if (error || !hasGrant) {
@@ -110,17 +132,49 @@ export default function OAuthCallback() {
           errorDescription: reason,
           redirectUri: oauthRedirectUri(),
         });
-        window.location.replace(backPath);
+        finish(backPath, { ok: false, reason, provider: googlePlatform ?? 'oauth' });
         return;
       }
 
-      // Personal-profile / calendar / other providers keep the stash-and-return
-      // contract: their own card performs the exchange after the redirect.
-      if (!isFacebook) {
-        storePendingOAuth({ code, accessToken, state, error: null, errorDescription: null, redirectUri });
-        window.location.replace(backPath);
+      // Google (Gmail / Calendar): exchange the code right here so the flow
+      // completes even when the card never remounts, then close / redirect.
+      if (googlePlatform && code) {
+        setMessage('שומר את חיבור Google...');
+        try {
+          const { data, error: fnError } = await withTimeout(
+            supabase.functions.invoke('google-oauth-exchange', {
+              body: { platform: googlePlatform, code, redirect_uri: redirectUri },
+            }),
+            EXCHANGE_TIMEOUT_MS,
+            'החיבור ל-Google לא הושלם בזמן. נסה שוב.',
+          );
+          if (fnError) throw new Error(String(fnError.message ?? fnError));
+          const payload = (data as any) ?? {};
+          if (payload.error || payload.ok === false) throw new Error(String(payload.error || 'exchange_failed'));
+          if (cancelled) return;
+          const email = String(payload?.identity?.email ?? '');
+          finish(
+            `${CONNECTIONS_PATH}&google=connected${email ? `&google_account=${encodeURIComponent(email)}` : ''}`,
+            { ok: true, name: email || null, provider: googlePlatform },
+          );
+        } catch (e: any) {
+          if (cancelled) return;
+          // Hand the code back to the card so it can retry the exchange there.
+          const reason = String(e?.message ?? 'unknown');
+          storePendingOAuth({ code, accessToken, state, error: null, errorDescription: null, redirectUri });
+          finish(backPath, { ok: false, reason, provider: googlePlatform });
+        }
         return;
       }
+
+      // Personal-profile / other providers keep the stash-and-return contract:
+      // their own card performs the exchange after the redirect.
+      if (!isFacebook) {
+        storePendingOAuth({ code, accessToken, state, error: null, errorDescription: null, redirectUri });
+        finish(backPath, { ok: true, provider: state.split(':')[0] || 'oauth' });
+        return;
+      }
+
 
       setMessage('שומר את חיבור עמוד הפייסבוק...');
       try {
@@ -173,7 +227,8 @@ export default function OAuthCallback() {
     };
 
     void run();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; window.clearTimeout(hardTimer); };
+
   }, []);
 
   return (
