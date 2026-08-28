@@ -183,12 +183,18 @@ async function resolveProvider(
   };
 
   const pick = (list: Array<{ config: Record<string, unknown> }>): ResolvedProvider | null => {
-    const row = list[0];
-    if (!row) return null;
-    const cfg = row.config ?? {};
-    if (!cfg.phone_number_id || !cfg.access_token) return null;
-    return { name: "WBA", is_official: true, config: cfg, source: "workspace" };
+    // Never stop at the newest row: partially-registered WABA rows (no
+    // phone_number_id / access_token yet) must be skipped in favour of a row
+    // that actually carries usable Cloud API credentials.
+    for (const row of list) {
+      const cfg = row?.config ?? {};
+      if (cfg.phone_number_id && cfg.access_token) {
+        return { name: "WBA", is_official: true, config: cfg, source: "workspace" };
+      }
+    }
+    return null;
   };
+
 
 
   const ids = [tenantId, userId].filter(Boolean) as string[];

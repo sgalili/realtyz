@@ -136,8 +136,9 @@ const Auth = () => {
     if (isGoogleFlow) return;
     setLoading(true);
 
-    // Preview-mode bypass: never send a real OTP.
-    if (isPreviewHost) {
+    // Preview-mode bypass applies ONLY to email / SMS. WhatsApp OTP always goes
+    // out through the official Meta WABA gateway so real codes arrive.
+    if (isPreviewHost && activeMethod !== 'whatsapp') {
       setCodeSent(true);
       setResendSeconds(0);
       setOtpAttempts(0);
@@ -146,6 +147,7 @@ const Auth = () => {
       toast.success('מצב Preview: השתמשו בקוד המאסטר 9321');
       return;
     }
+
 
     const normalizedPhone = formattedPhone.replace(/^0/, '+972').replace('-', '');
     const { error } = activeMethod === 'whatsapp'
@@ -196,13 +198,14 @@ const Auth = () => {
     if (code.length === 4) {
       const ok = await tryMasterOtp(code, normalizedPhone);
       if (ok) { setLoading(false); return; }
-      if (isPreviewHost) {
+      if (isPreviewHost && activeMethod !== 'whatsapp') {
         setOtpAttempts((a) => a + 1);
         setOtp('');
         toast.error('קוד מאסטר שגוי');
         setLoading(false);
         return;
       }
+
     }
 
     const { error } = activeMethod === 'whatsapp'
