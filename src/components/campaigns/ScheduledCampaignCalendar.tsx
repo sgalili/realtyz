@@ -10,7 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes, clampWindowTime, POSTING_WINDOW_START_MIN, POSTING_WINDOW_END_MIN } from '@/lib/schedulePrefs';
+import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes, clampWindowTime, autoPostsPerDay, POSTING_WINDOW_START_MIN, POSTING_WINDOW_END_MIN } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
 
 import { saveGroupDailyLimit } from '@/lib/groupDailyLimits';
