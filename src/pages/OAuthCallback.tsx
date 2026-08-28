@@ -227,7 +227,8 @@ export default function OAuthCallback() {
     };
 
     void run();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; window.clearTimeout(hardTimer); };
+
   }, []);
 
   return (
