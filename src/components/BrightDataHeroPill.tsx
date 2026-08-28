@@ -21,6 +21,10 @@ const fmt = (n?: number) =>
 
 const CACHE_KEY = 'realtyz:brightdata:balance';
 
+/** Direct Bright Data top-up billing flow (opens in a new tab). */
+export const TOPUP_URL =
+  'https://brightdata.com/cp/billing_flow?id=hl_2432c380&type=top_up';
+
 /** Last known balance, so the pill NEVER blanks out between refreshes. */
 function readCache(): BalanceResponse | null {
   try {
@@ -60,17 +64,18 @@ export function BrightDataHeroPill() {
   return (
     <a
       dir="rtl"
-      href="https://brightdata.com/cp/billing/settings"
+      href={TOPUP_URL}
       target="_blank"
       rel="noopener noreferrer"
-      title="יתרת קרדיט Bright Data — לחצו לטעינת קרדיט"
-      aria-label="יתרת קרדיט Bright Data — פתיחת דף החיוב לטעינת קרדיט"
+      title="יתרת ארנק Bright Data — לחצו לטעינת קרדיט"
+      aria-label="יתרת ארנק Bright Data — פתיחת דף טעינת הקרדיט"
       className={cn(
-        'flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[12px] font-semibold text-white transition-colors hover:bg-white/20',
-        low && 'border-amber-300/70 text-amber-200',
+        'inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[12px] font-semibold text-white/90 underline decoration-white/40 decoration-dotted underline-offset-4 transition-colors hover:text-white hover:decoration-white',
+        low && 'text-amber-200 decoration-amber-300/70',
       )}
     >
       <Wallet className="h-3.5 w-3.5" />
+      <span>יתרה</span>
       {amount ? (
         <span dir="ltr" className="tabular-nums">{`$${amount}`}</span>
       ) : isLoading ? (
@@ -81,4 +86,5 @@ export function BrightDataHeroPill() {
       <ExternalLink className="h-3 w-3 opacity-70" />
     </a>
   );
+
 }

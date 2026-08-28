@@ -50,7 +50,7 @@ export function BrightDataBalanceWidget({
         </div>
         <div className="flex items-center gap-1">
         <Button size="sm" variant="ghost" asChild className="h-7 gap-1 px-2">
-          <a href="https://brightdata.com/cp/billing/settings" target="_blank" rel="noopener noreferrer">
+          <a href="https://brightdata.com/cp/billing_flow?id=hl_2432c380&type=top_up" target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-3.5 w-3.5" />
             <span className="text-xs">טעינת קרדיט</span>
           </a>
