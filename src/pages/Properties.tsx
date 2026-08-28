@@ -38,6 +38,8 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { useAuth } from '@/hooks/useAuth';
 import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
+import { PropertyNotesBlock } from '@/components/properties/PropertyNotesBlock';
+import { usePropertyNotesByListing } from '@/hooks/usePropertyNotes';
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { sourcePhotoCount } from '@/lib/photoCount';
@@ -1192,6 +1194,8 @@ function ResultCard({
 
   const [pulledPhotos, setPulledPhotos] = useState<string[] | null>(null);
   const [pulling, setPulling] = useState(false);
+  const { notesByListing } = usePropertyNotesByListing();
+  const cardNotes = result.localId ? notesByListing.get(result.localId) : undefined;
   const photos = (pulledPhotos ?? result.photos ?? []).filter(Boolean);
   const hasPhotos = photos.length > 0;
   const hasMany = photos.length > 1;
@@ -1367,6 +1371,8 @@ function ResultCard({
 
       <div className="p-4 flex flex-col gap-3 flex-1">
         <h3 className="font-semibold text-base leading-tight line-clamp-2">{result.title}</h3>
+        {/* Property notes — full text, directly under the property name. */}
+        <PropertyNotesBlock notes={cardNotes} />
         {result.description && <p className="text-xs text-muted-foreground line-clamp-2">{result.description}</p>}
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -1449,6 +1455,7 @@ function ResultTable({
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const { notesByListing } = usePropertyNotesByListing();
 
   const toggleSort = (col: SortCol) => {
     if (sortCol === col) {
@@ -1539,8 +1546,10 @@ function ResultTable({
           {sorted.map((r) => {
             const isRent = r.listing_type === 'rent';
             const importing = importingKey === r.key;
+            const rowNotes = r.localId ? notesByListing.get(r.localId) : undefined;
             return (
-              <tr key={r.key} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
+              <Fragment key={r.key}>
+              <tr className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
                 <td className="px-2 py-1.5">
                   <div className="relative h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
