@@ -74,7 +74,11 @@ export default function OAuthCallback() {
       const isFacebook =
         state.startsWith(FACEBOOK_PAGE_STATE_PREFIX) ||
         (!state && !!(code || accessToken) && /facebook\.com/i.test(document.referrer || ''));
-      const backPath = state.startsWith('facebook') ? CONNECTIONS_PATH : '/profile';
+      const backPath =
+        state.startsWith('facebook') || state.startsWith('gmail') || state.startsWith('google_calendar')
+          ? CONNECTIONS_PATH
+          : '/profile';
+
 
       // Meta may require a canonical whitelisted callback. Bounce from there to
       // the origin that initiated login before touching anything else, so the
