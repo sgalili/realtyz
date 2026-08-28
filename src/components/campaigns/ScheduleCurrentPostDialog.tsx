@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
-import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes } from '@/lib/schedulePrefs';
+import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes, autoPostsPerDay } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
 import { listingImagePool, randomImageSet, MAX_POST_IMAGES } from '@/lib/listingImages';
 import { loadGroupLimitState, saveGroupDailyLimit, allowedGroupsForDay, type GroupLimitState } from '@/lib/groupDailyLimits';
@@ -127,7 +127,9 @@ export function ScheduleCurrentPostDialog({
       const prefs = loadSchedulePrefs(workspaceOwnerId, 'composer');
       setWinStart(prefs.winStart);
       setWinEnd(prefs.winEnd);
-      setWinCount(prefs.winCount);
+      // Fully automatic — the system derives the daily post count from the
+      // per-group rate limit instead of a manual field.
+      setWinCount(autoPostsPerDay(0, prefs.groupDailyLimit));
       setRecurrence(prefs.recurrence);
       setRecurrenceDays(prefs.recurrenceDays);
       setGroupDailyLimit(prefs.groupDailyLimit);
@@ -725,17 +727,6 @@ export function ScheduleCurrentPostDialog({
             </div>
           </div>
           <div className="flex items-end gap-2 flex-row-reverse">
-            <div className="w-28">
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">כמות פוסטים</label>
-              <Input
-                type="number"
-                min={1}
-                max={20}
-                value={winCount}
-                onChange={(e) => setWinCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
-                className="text-right"
-              />
-            </div>
             <div className="w-32">
               <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">מקס' לקבוצה/יום</label>
               <Input

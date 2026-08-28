@@ -122,3 +122,23 @@ export function randomSlotMinutes(startMin: number, endMin: number, i: number, c
   // Clamp strictly inside the overall window.
   return Math.min(Math.max(value, safeStart + 1), safeEnd - 1);
 }
+
+/**
+ * Smart built-in rate limit: how many posts a single Facebook group may receive
+ * per day when the broker did not set an explicit limit. Keeps the queue safe
+ * from Facebook spam heuristics without asking the user for a number.
+ */
+export const SMART_GROUP_DAILY_LIMIT = 2;
+
+/**
+ * Fully automatic post count for a scheduled day.
+ *
+ * The broker no longer types a total; the system derives it from the number of
+ * properties picked and the per-group daily cap, then spreads the slots evenly
+ * inside the 09:00-21:00 window.
+ */
+export function autoPostsPerDay(propertyCount: number, groupDailyLimit: number): number {
+  const cap = groupDailyLimit > 0 ? groupDailyLimit : SMART_GROUP_DAILY_LIMIT;
+  const base = propertyCount > 0 ? propertyCount : 1;
+  return Math.max(1, Math.min(20, Math.min(base, cap)));
+}

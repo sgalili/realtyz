@@ -10,7 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes, clampWindowTime, POSTING_WINDOW_START_MIN, POSTING_WINDOW_END_MIN } from '@/lib/schedulePrefs';
+import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes, clampWindowTime, autoPostsPerDay, POSTING_WINDOW_START_MIN, POSTING_WINDOW_END_MIN } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
 
 import { saveGroupDailyLimit } from '@/lib/groupDailyLimits';
@@ -203,13 +203,12 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
 
 
 
-  // The number of posts follows the number of properties picked in the dropdown.
+  // Fully automatic: the system derives how many posts to queue for the day from
+  // the picked properties and the per-group daily limit. No manual count field.
   useEffect(() => {
     if (!scheduleDay) return;
-    if (selectedListingIds.length > 0) {
-      setWinCount(Math.min(20, selectedListingIds.length));
-    }
-  }, [selectedListingIds, scheduleDay]);
+    setWinCount(autoPostsPerDay(selectedListingIds.length, groupDailyLimit));
+  }, [selectedListingIds, groupDailyLimit, scheduleDay]);
 
 
   const filteredListings = useMemo(() => {
@@ -660,17 +659,6 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
 
             </div>
             <div className="flex items-end gap-2 flex-row-reverse">
-              <div className="w-28">
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">כמות פוסטים</label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={winCount}
-                  onChange={(e) => setWinCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
-                  className="text-right"
-                />
-              </div>
               <div className="w-32">
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">מקס' לקבוצה/יום</label>
                 <Input

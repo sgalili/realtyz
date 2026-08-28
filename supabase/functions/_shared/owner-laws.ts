@@ -107,20 +107,25 @@ export function scrubForbiddenBylines(input: string): string {
   return out.replace(/[ \t]{2,}/g, " ");
 }
 
-const FOOTER_RE = /ר\.?\s*מ\s*[:：]\s*3251767/i;
-const OWNER_PHONE = "052-2973500";
-const PHONE_RE = /052[\s\-]?297[\s\-]?3500/;
-
-// HARD compliance constants. Udi's real byline + license — never replace,
+// HARD compliance constants. Udi's real signature block — never replace,
 // never read from env, never fall back to anything else.
 const DEFAULT_OWNER_LICENSE = "3251767";
-// STRICT canonical 3-line footer — exactly as the owner specified.
-const OWNER_BYLINE_LINE = 'אודי ויטמן | אנגלו סכסון הרצליה/רמ"ש';
-const OWNER_LICENSE_LINE = `ר.מ: ${DEFAULT_OWNER_LICENSE} | \u200fWhatsApp ${OWNER_PHONE}`;
+const OWNER_PHONE = "0522973500";
+const FOOTER_RE = /רישיון\s*תיווך\s*[:：]\s*3251767/;
+const PHONE_RE = /0522973500/;
+
+// STRICT canonical signature block — exactly as the owner specified.
+export const OWNER_SIGNATURE_BLOCK = [
+  "לפרטים ולתיאום ביקור:",
+  "אודי ויטמן",
+  'יועץ נדל״ן | אנגלו סכסון הרצליה | רמת השרון',
+  `📞 ${OWNER_PHONE}`,
+  `רישיון תיווך: ${DEFAULT_OWNER_LICENSE}`,
+].join("\n");
 
 function buildFooterBlock(_license?: string | null): string {
-  // Byline + license + office phone are HARDCODED — ignore any caller value.
-  return `${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`;
+  // Signature block is HARDCODED — ignore any caller value.
+  return OWNER_SIGNATURE_BLOCK;
 }
 
 /**
@@ -166,7 +171,7 @@ export function appendLicenseFooter(
     .replace(/\n{3,}/g, "\n\n")
     .replace(/\s+$/g, "");
 
-  return `${cleaned}\n\n${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`;
+  return `${cleaned}\n\n${OWNER_SIGNATURE_BLOCK}`;
 }
 
 export function enforceOwnerLaws(

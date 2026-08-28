@@ -198,27 +198,30 @@ LISTING-FOCUS MODE — EXACT MASTER TEMPLATE (mandatory, no deviation, blank lin
    • 1-2 מילות מפתח שיווקיות משכנעות ומדויקות (למשל: "הזדמנות נדירה", "מיקום מנצח", "מוכן לכניסה", "נוף פתוח", "שקט מוחלט") — רק אם הן נאמנות לנתונים.
    פורמט מומלץ (גמיש בטון, אבל חייב לכלול את הפרטים): "🏡 <מילת מפתח משכנעת> — <סוג נכס> <חדרים> חדרים <למכירה/להשכרה> ברחוב <שם רחוב>, שכונת <שכונה>, <עיר>".
    אסור: הצגה עצמית ("אני אודי", "כמתווך", "בתור מתווך"), מספרי בית, שכונה במספר/אות ("שכונה 10", "שכונה ג'"), מילות מפתח שקריות.
-2. Description: 1-2 short sentences on size, floor, view, and 1-2 standout features grounded in [PROMOTED LISTING]. Never include street numbers in the address — use street name only (e.g. "אריה לייב יפה", never "אריה לייב יפה 36").
-3. Location line: "🌇 <neighborhood + convenience>" — one short sentence.
-4. Lifestyle line: "💫 <lifestyle benefit>" — one short sentence.
-5. Price + CTA COMBINED on ONE line, verbatim format: "מחיר מבוקש: <price>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" (price taken verbatim from [PROMOTED LISTING]; do not split across two lines; do not vary the CTA wording).
-- FORBIDDEN: long broker-intro paragraphs, "אני אודי", "כמתווך", "בתור מתווך", "יש לי הכבוד", "אני שמח להציג", "אני גאה להציג", any self-branding preface, ✅ bullets, 📍 / 💰 lines, keyword pipe-line, hashtags, feature-list dumps.
-- Ground every concrete detail (address, rooms, sqm, floor, price, features) in [PROMOTED LISTING]. Do NOT invent details.
+2. שורת נתוני ליבה: "📐 <מ"ר בנוי / שטח> | <מספר חדרים> חדרים | קומה <קומה> מתוך <סה"כ קומות>" — כל שדה שקיים ב-[PROMOTED LISTING] חייב להופיע. אין לדלג על מ"ר, חדרים או קומה כשהם קיימים.
+3. בלוק פיצ'רים עשיר (חובה — לב הפוסט): 4-8 שורות בולט, כל שורה מתחילה באמוג'י אחד רלוונטי + רווח + הפיצ'ר. חובה למחות ולנצל את *כל* הפיצ'רים, המרפסות, השטחים, החניות, המחסן, המעלית, המיזוג, השיפוץ, הכיווני אוויר, הנוף, הממ"ד, הגישה לנכים והתוספות שקיימים בנתוני הנכס / עמוד המקור. אמוג'ים מותאמים: ✨ פיצ'ר בולט, 🏢 בניין/קומות, 🛗 מעלית, 🚗 חניה, 🌤️ מרפסת/נוף, 🛏️ חדרים, 🧱 מחסן, ❄️ מיזוג, 🛡️ ממ"ד, 🔑 מוכן לכניסה.
+4. שורת מיקום: "📍 <שכונה + נגישות, תחבורה, חינוך, מרכזי קניות>" — משפט אחד קצר ומדויק.
+5. שורת לייף-סטייל: "💫 <יתרון חיים אמיתי לרוכש>" — משפט אחד.
+6. שורת מחיר: "💰 מחיר מבוקש: <מחיר>" (המחיר מילולית מ-[PROMOTED LISTING]).
+- אורך מינימלי (HARD): לעולם אל תפיק פוסט קצר או גנרי. פוסט נכס תקין כולל לפחות 8 שורות תוכן, מתוכן לפחות 4 שורות בולט פיצ'רים. פוסט של 2-3 שורות נחשב כשלון.
+- חובה למחות מעמוד המקור/הנתונים כל פרט זמין: שטח, שטח מרפסות, חדרים, חדרי שירותים, קומה, סה"כ קומות, מעלית, חניות, מחסן, מיזוג, כיווני אוויר, נוף, מצב הנכס, תאריך כניסה, ועד/ארנונה, ממ"ד, גישה לנכים.
+- FORBIDDEN: long broker-intro paragraphs, "אני אודי", "כמתווך", "בתור מתווך", "יש לי הכבוד", "אני שמח להציג", "אני גאה להציג", any self-branding preface, ✅ bullets, keyword pipe-line, hashtags.
+- Ground every concrete detail (address, rooms, sqm, floor, price, features) in [PROMOTED LISTING]. Do NOT invent details. פיצ'ר שלא קיים בנתונים — פשוט לא מופיע.
 - FORBIDDEN: market statistics, transaction/comparable data, average prices per sqm, "נתוני שוק", "עסקאות אחרונות", neighborhood research or any data not belonging to this listing.
 
-- DO NOT copy the property's long free-text description into the post — it belongs to the FIRST COMMENT only.
 - STREET-NUMBER RULE (HARD): every address token must be street name only, never with house number, apartment number, or entrance number. "רחוב X 12" → "רחוב X". This applies to hook, description, location line, everywhere.
 - ABSOLUTELY FORBIDDEN: bracketed placeholders ("[insert license]", "[מספר טלפון]", "[TBD]", "[Real License Number]"), square-bracket tokens, or parenthetical instructions.
-- DO NOT write a signature, phone number, license number, byline, WhatsApp line, or contact line yourself. The system appends Udi's canonical 3-line footer (byline + license/WhatsApp + office phone) automatically.` : "";
+- DO NOT write a signature, phone number, license number, byline, WhatsApp line, or contact line yourself. The system appends Udi's canonical signature block automatically.` : "";
 
 
 
 
-    const EMOJI_RULES = `EMOJI PALETTE (small and precise, Udi's clean template):
-- Allowed and expected in a listing post: 🏡 (opener line, once), 🌇 (location line, once), 💫 (lifestyle line, once), 📞 (CTA line, once). No other decorative emojis.
-- HARD RULE: never place two emojis next to each other (forbidden: "✨🏡", "🏡✨", "💫🌇"). Exactly ONE emoji per line, followed by a space and then the text.
-- Never stack emojis, never repeat, never decorate every line. Never end the post with a string of emojis.
-- Do NOT use ✅ bullets. Do NOT use 📍 or 💰 lines — the master template uses the emoji set above instead.
+    const EMOJI_RULES = `EMOJI LAW (rich template, exactly one emoji per line):
+- כל שורה בפוסט מתחילה באמוג'י אחד רלוונטי בלבד, ואחריו רווח ואז הטקסט.
+- פלטת האמוג'ים המותרת: 🏡 ✨ 🏢 🛗 🚗 💰 📍 📐 💫 🌤️ 🛏️ 🧱 ❄️ 🛡️ 🔑 📞. בחר את האמוג'י שמתאים לתוכן השורה.
+- HARD RULE: אסור בהחלט שני אמוג'ים זה לצד זה (אסור "🏡✨", "✨🏡", "💫🌇"). אמוג'י אחד לכל שורה, לכל היותר.
+- Never stack emojis, never repeat the same emoji twice in the post, never end the post with a string of emojis.
+- Do NOT use ✅ bullets or "-"/"•" bullets — האמוג'י הוא הבולט.
 - FORBIDDEN everywhere: 💎 🔥 🎉 💯 🌟 ❤️ 💪 👇 🙌 🤩 ⭐ and any hype/spam emoji.`;
 
     const systemPrompt = `${BROKER_PERSONA}
@@ -256,14 +259,14 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
 איסור מוחלט: פוליטיקה, מפלגות, בחירות, וכל הקשר לא-נדל"ני.
 
 HIGH-CONVERTING REAL-ESTATE COPY STRUCTURE (apply when a specific נכס/PROMOTED LISTING exists — EXACT MASTER TEMPLATE):
-- Follow this exact order, one blank line between blocks: (1) הוק כותרת שכולל תמיד: סוג עסקה (למכירה/להשכרה) + סוג הנכס (דירה/פנטהאוז/דופלקס/קוטג'/וילה/גג/סטודיו) + מספר חדרים כשקיים + שם הרחוב (בלי מספר בית) + שם השכונה כשקיים + עיר, ובנוסף 1-2 מילות מפתח משכנעות ומדויקות (לדוגמה: "🏡 הזדמנות נדירה — דופלקס 5 חדרים למכירה ברחוב אריה לייב יפה, שכונת נווה עמל, הרצליה")  (2) 1-2 משפטים קצרים על שטח/קומה/נוף/פיצ'ר בולט  (3) "🌇 <שכונה + נוחות>"  (4) "💫 <יתרון לייף-סטייל>"  (5) "מחיר מבוקש: <מחיר>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" (מחיר + CTA בשורה אחת, ניסוח מדויק).
-- Human, punchy, convincing, no filler, no walls of text, no ✅ bulleted feature list, no 📍/💰 lines, no keyword pipe-line inside the post body, no hashtags.
+- מבנה חובה (שורה ריקה בין בלוקים): (1) 🏡 הוק כותרת: סוג עסקה + סוג הנכס + חדרים + שם הרחוב (בלי מספר בית) + שכונה + עיר + 1-2 מילות מפתח מדויקות  (2) 📐 שורת נתוני ליבה: מ"ר | חדרים | קומה מתוך סה"כ  (3) בלוק פיצ'רים עשיר של 4-8 שורות בולט (אמוג'י אחד לכל שורה) שממחה *כל* פיצ'ר, מרפסת, חניה, מחסן, מעלית, מיזוג, כיווני אוויר, נוף, ממ"ד ותוספת שקיימים בנתונים/עמוד המקור  (4) 📍 שורת מיקום ונגישות  (5) 💫 שורת לייף-סטייל  (6) 💰 מחיר מבוקש.
+- לעולם אל תפיק פוסט קצר או גנרי: מינימום 8 שורות תוכן, מתוכן לפחות 4 שורות פיצ'רים. פוסט של 2-3 שורות = כשלון.
+- Human, punchy, convincing, no filler, no walls of text, no ✅ bullets, no "-"/"•" bullets, no keyword pipe-line, no hashtags. האמוג'י הוא הבולט, אמוג'י אחד לכל שורה ואסור שני אמוג'ים צמודים.
 - אסור בהחלט לפתוח את הפוסט בהצגה עצמית של אודי כמתווך ("אני אודי", "כמתווך", "בתור מתווך", "יש לי הכבוד", "אני גאה להציג", "אני שמח להציג"). נכנסים ישר לנכס.
 - Every concrete detail (רחוב, שכונה, חדרים, מ"ר, קומה, מחיר, פיצ'רים) חייב להישלף מ-[PROMOTED LISTING] בלבד. אל תמציא.
 - כלל כתובת קשיח: לעולם אל תכלול מספר בית / דירה / כניסה בכתובת. השתמש בשם הרחוב בלבד (למשל "אריה לייב יפה", לא "אריה לייב יפה 36 2").
-- אסור להעתיק או לפרפרז את שורת התיאור החופשי של הנכס (description) לתוך גוף הפוסט — הטקסט התיאורי הארוך מיועד לתגובה הראשונה בלבד, לא לפוסט עצמו.
 - אסור בהחלט: סוגריים מרובעים ריקים/הוראות ("[insert license]", "[מספר טלפון]", "[TBD]", "[Real Phone Number]"), טקסט הוראה בסוגריים, או כל טוקן placeholder. כל ערך חייב להיות אמיתי או להיות מושמט לחלוטין.
-- אל תכתוב בעצמך חתימה/טלפון/רישיון/WhatsApp/byline — המערכת מוסיפה אוטומטית את חתימת אודי (2 שורות: byline + רישיון+WhatsApp) בסוף הפוסט.
+- אל תכתוב בעצמך חתימה/טלפון/רישיון/WhatsApp/byline — המערכת מוסיפה אוטומטית את בלוק החתימה של אודי בסוף הפוסט.
 
 
 כתוב בעברית בלבד, ישראלית טבעית, בגוף ראשון של אודי. החזר את הפוסט בלבד, בלי הסברים נלווים.`;
