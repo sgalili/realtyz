@@ -6,7 +6,7 @@
 // dispatches the composer payload to `meta-publish` for each computed slot
 // with a `scheduled_at` timestamp.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Repeat, Users, ChevronLeft, X, Loader2, MapPin } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
