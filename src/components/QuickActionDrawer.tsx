@@ -439,7 +439,7 @@ export default function QuickActionDrawer() {
             {tab === 'reminder' && (
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">כותרת התזכורת</Label>
+                        <Label className="text-sm font-semibold">כותרת</Label>
                   <Input value={reminderTitle} onChange={(e) => setReminderTitle(e.target.value)} />
                 </div>
                 <Button type="button" variant="outline" className="w-full gap-2" onClick={loadCalendarSlots} disabled={calendarLoading}>
