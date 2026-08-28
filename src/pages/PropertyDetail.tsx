@@ -780,7 +780,7 @@ export default function PropertyDetail() {
   // screen instead of rendering a hollow property page.
   const isUnscrapedPlaceholder =
     !!property &&
-    !!resolvedSourceUrl &&
+    !!(sourceUrl || (data?.row as any)?.source_url) &&
     (dbPhotos?.length ?? 0) === 0 &&
     !String(property.description ?? '').trim();
 
