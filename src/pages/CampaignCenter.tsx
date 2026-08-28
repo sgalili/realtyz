@@ -3500,7 +3500,18 @@ try {
   });
 } catch { /* ignore */ }
 
-const PublishedFeed = () => {
+type FeedSubTab = 'published' | 'drafts' | 'future';
+
+const PublishedFeed = ({
+  subTab = 'published',
+  onSubTabChange,
+  altContent,
+}: {
+  subTab?: FeedSubTab;
+  onSubTabChange?: (v: FeedSubTab) => void;
+  /** Rendered instead of the published list when a non-published tab is active. */
+  altContent?: React.ReactNode;
+} = {}) => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const fbGroupMeta = useFbGroupMeta();
