@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
 import { OAUTH_AUTHORIZE_URLS, OAUTH_SCOPES } from '@/lib/socialAutomationService';
 import { clearPendingOAuth, currentOrigin, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
+import { onOAuthResult } from '@/lib/oauthPopupBridge';
+
 
 
 type GooglePlatform = 'gmail' | 'google_calendar';
