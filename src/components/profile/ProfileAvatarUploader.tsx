@@ -131,7 +131,7 @@ export function ProfileAvatarUploader() {
           onChange={onFile}
           disabled={busy}
         />
-        <p className="text-xs text-muted-foreground">{busy ? 'מעלה תמונה...' : 'לחצו על התמונה להחלפה'}</p>
+        <p className="text-xs text-muted-foreground">{busy ? 'מעלה תמונה...' : '\n'}</p>
         <div className="flex justify-center">
           {avatarUrl && (
             <Button
