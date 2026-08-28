@@ -95,6 +95,12 @@ export function useCommandCenterTasks() {
         : [];
       for (const m of meetings) if (m.lead_id) leadIds.add(m.lead_id);
 
+      const notes: any[] = Array.isArray(notesRes?.data) ? notesRes.data : [];
+      for (const n of notes) {
+        const nid = (n.metadata ?? {})?.lead_id;
+        if (nid) leadIds.add(nid);
+      }
+
       const [leadsRes, listingsRes] = await Promise.all([
         leadIds.size
           ? (supabase as any)
