@@ -6988,12 +6988,46 @@ const CampaignCenter = () => {
             ) : (
               <>
                 <TabsContent value="published" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
-                  {campaignHistoryRows.filter((r) => ['sent', 'published', 'completed'].includes(r.status)).map((r) => (
-                    <div key={r.id} className="flex gap-3 rounded-lg border border-border p-3">
-                      {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
-                      <div className="min-w-0"><p className="font-semibold">{r.campaign_name || 'פוסט'}</p><p className="line-clamp-2 text-sm text-muted-foreground">{r.message_body}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(r.sent_at || r.created_at).toLocaleString('he-IL')}</p></div>
-                    </div>
-                  ))}
+                  {campaignHistoryRows.filter((r) => ['sent', 'published', 'completed'].includes(r.status)).map((r) => {
+                    const gids: string[] = Array.isArray(r.group_ids) ? r.group_ids.map((g: any) => String(g)) : [];
+                    const results = groupResultMap(r.provider_response?.group_results);
+                    return (
+                      <div key={r.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                        {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold">{r.campaign_name || 'פוסט'}</p>
+                          <p className="line-clamp-2 text-sm text-muted-foreground">{r.message_body}</p>
+                          <GroupStatusChips
+                            groupIds={gids}
+                            meta={historyGroupMeta}
+                            results={results}
+                            defaultState="pending"
+                            emptyLabel="פורסם לעמוד בלבד (ללא קבוצות)"
+                          />
+                          <p className="mt-1 text-xs text-muted-foreground">{new Date(r.sent_at || r.created_at).toLocaleString('he-IL')}</p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          title="מחק פוסט"
+                          aria-label="מחק פוסט"
+                          className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
+                          onClick={async () => {
+                            setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
+                            const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
+                            if (error) {
+                              toast.error('מחיקת הפוסט נכשלה');
+                              setHistoryRefreshTick((t) => t + 1);
+                            } else {
+                              toast.success('הפוסט נמחק מההיסטוריה');
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                   {!campaignHistoryRows.some((r) => ['sent', 'published', 'completed'].includes(r.status)) && <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים שפורסמו</p>}
                 </TabsContent>
                 <TabsContent value="drafts" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
