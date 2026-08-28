@@ -3500,7 +3500,18 @@ try {
   });
 } catch { /* ignore */ }
 
-const PublishedFeed = () => {
+type FeedSubTab = 'published' | 'drafts' | 'future';
+
+const PublishedFeed = ({
+  subTab = 'published',
+  onSubTabChange,
+  altContent,
+}: {
+  subTab?: FeedSubTab;
+  onSubTabChange?: (v: FeedSubTab) => void;
+  /** Rendered instead of the published list when a non-published tab is active. */
+  altContent?: React.ReactNode;
+} = {}) => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const fbGroupMeta = useFbGroupMeta();
@@ -4600,8 +4611,28 @@ const PublishedFeed = () => {
       />
 
 
+      {/* Inline queue tabs — published / drafts / future, all managed on this page. */}
+      <div className="grid grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1" dir="rtl">
+        {([
+          { v: 'published' as FeedSubTab, label: 'פוסטים שפורסמו' },
+          { v: 'drafts' as FeedSubTab, label: 'טיוטות' },
+          { v: 'future' as FeedSubTab, label: 'פוסטים עתידיים' },
+        ]).map((t) => (
+          <button
+            key={t.v}
+            type="button"
+            onClick={() => onSubTabChange?.(t.v)}
+            className={cn(
+              'rounded-lg px-2 py-2 text-xs font-semibold transition sm:text-sm',
+              subTab === t.v ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      {filteredRows && filteredRows.length === 0 ? (
+      {subTab !== 'published' ? altContent : filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
           <p className="text-sm font-semibold text-foreground">אין קמפיינים בערוץ זה</p>
           <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
@@ -4749,33 +4780,17 @@ const PublishedFeed = () => {
 
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
                   const diff = Number.isFinite(target) ? target - Date.now() : NaN;
-                  let label = 'מתוזמן';
+                  // Strict dd/hh/mm countdown — no extra wording, no series pill.
+                  let label = '';
                   if (Number.isFinite(diff)) {
-                    if (diff <= 0) {
-                      label = 'מפרסם עכשיו…';
-                    } else {
-                      const s = Math.floor(diff / 1000);
-                      const d = Math.floor(s / 86400);
-                      const h = Math.floor((s % 86400) / 3600);
-                      const m = Math.floor((s % 3600) / 60);
-                      const sec = s % 60;
-                      const parts = d > 0
-                        ? [`${d}י׳`, `${h}ש׳`, `${m}ד׳`]
-                        : h > 0
-                          ? [`${h}ש׳`, `${m}ד׳`, `${sec}שנ׳`]
-                          : [`${m}ד׳`, `${sec}שנ׳`];
-                      label = `פרסום בעוד ${parts.join(' ')}`;
-                    }
+                    const s = Math.max(0, Math.floor(diff / 1000));
+                    const pad = (n: number) => String(n).padStart(2, '0');
+                    label = `${pad(Math.floor(s / 86400))}/${pad(Math.floor((s % 86400) / 3600))}/${pad(Math.floor((s % 3600) / 60))}`;
                   }
                   return (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200 tabular-nums">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200 tabular-nums" dir="ltr">
                       <CalendarIcon className="h-3 w-3" />
                       {label}
-                      {isSeries && (
-                        <span className="ms-1 rounded-full bg-amber-800 text-amber-50 px-1.5 py-[1px] text-[10px] font-bold">
-                          סדרה · {seriesSlots!.length}
-                        </span>
-                      )}
                     </span>
                   );
                 })() : (
@@ -5832,8 +5847,7 @@ const CampaignCenter = () => {
   const [bulkSilent, setBulkSilent] = useState(false);
   // Controlled history dialog so a finished bulk dispatch can land the user
   // directly on the "פוסטים עתידיים" tab with fresh rows.
-  const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
-  const [historyTab, setHistoryTab] = useState<'published' | 'drafts' | 'future'>('published');
+  const [historyTab, setHistoryTab] = useState<FeedSubTab>('published');
   const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
   const [historyGroupMeta, setHistoryGroupMeta] = useState<Record<string, { name: string; icon: string | null }>>({});
   const [editSeriesRow, setEditSeriesRow] = useState<any | null>(null);
@@ -5886,7 +5900,6 @@ const CampaignCenter = () => {
         // Show the freshly scheduled posts immediately.
         setHistoryTab('future');
         setHistoryRefreshTick((t) => t + 1);
-        setCampaignHistoryOpen(true);
       }
       return false;
     }
@@ -6036,13 +6049,13 @@ const CampaignCenter = () => {
 
 
   useEffect(() => {
-    const open = () => setCampaignHistoryOpen(true);
+    const open = () => { setHistoryTab('published'); };
     window.addEventListener('rz:open-campaign-history', open);
     return () => window.removeEventListener('rz:open-campaign-history', open);
   }, []);
 
   useEffect(() => {
-    if (!campaignHistoryOpen || !user?.id) return;
+    if (!user?.id) return;
     let cancelled = false;
     setCampaignHistoryLoading(true);
     void (async () => {
@@ -6095,7 +6108,7 @@ const CampaignCenter = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [campaignHistoryOpen, user?.id, workspaceOwnerId, historyRefreshTick]);
+  }, [user?.id, workspaceOwnerId, historyRefreshTick]);
   // Hydrate connection state from localStorage so a page refresh (or a new
   // tab) doesn't visually "disconnect" channels while verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
@@ -6533,6 +6546,109 @@ const CampaignCenter = () => {
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]).join('').toUpperCase() || '?';
   const isTargetedMode = !!leadId && !!displayName;
 
+  // Inline queue lists (drafts / future) rendered inside the posts feed, right
+  // below the social-logos strip. Replaces the old history dialog.
+  const queueAltContent = campaignHistoryLoading ? (
+    <div className="flex h-52 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+  ) : historyTab === 'drafts' ? (
+    <div className="space-y-2" dir="rtl">
+      {campaignDraftRows.map((r) => (
+        <div key={r.id} className="flex items-start gap-2 rounded-2xl border border-border/60 bg-card p-3 shadow-sm hover:bg-muted/30">
+          <button type="button" className="flex min-w-0 flex-1 gap-3 text-right" onClick={() => {
+            const next = new URLSearchParams(searchParams);
+            next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
+            if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
+            setSearchParams(next);
+          }}>
+            {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
+            <div className="min-w-0">
+              <p className="font-semibold">{r.topic || 'טיוטת פוסט'}</p>
+              <p className="line-clamp-2 text-sm text-muted-foreground">{r.generated_text}</p>
+              <GroupStatusChips
+                groupIds={bulkGroupIds}
+                meta={historyGroupMeta}
+                defaultState="pending"
+                emptyLabel="לא נבחרו קבוצות לטיוטה"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">{new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}</p>
+            </div>
+          </button>
+          <Button
+            size="icon"
+            variant="ghost"
+            title="מחק טיוטה"
+            aria-label="מחק טיוטה"
+            className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
+            onClick={async () => {
+              setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
+              const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
+              if (error) { toast.error('מחיקת הטיוטה נכשלה'); setHistoryRefreshTick((t) => t + 1); }
+              else toast.success('הטיוטה נמחקה');
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      {campaignDraftRows.length === 0 && <p className="py-12 text-center text-sm text-muted-foreground">אין טיוטות</p>}
+    </div>
+  ) : (
+    <div className="space-y-2" dir="rtl">
+      {(() => {
+        const future = campaignHistoryRows
+          .filter((r) => ['scheduled', 'pending'].includes(r.status) && new Date(r.sent_at).getTime() > Date.now())
+          .sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
+        const seen = new Map<string, number>();
+        const visible = future.filter((r) => { const key = r.series_id || r.id; const n = seen.get(key) || 0; seen.set(key, n + 1); return n < 3; });
+        if (!visible.length) return <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
+        return visible.map((r) => {
+          const media = Array.isArray(r.media_urls) ? r.media_urls : [];
+          const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
+          const groupIds: string[] = Array.isArray(r.group_ids) ? r.group_ids.map((g: any) => String(g)) : [];
+          return (
+            <div key={r.id} className="flex gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
+              {image ? <img src={typeof image === 'string' ? image : image?.url} alt="" className="h-20 w-20 shrink-0 rounded-md object-cover" /> : null}
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>
+                <GroupStatusChips
+                  groupIds={groupIds}
+                  meta={historyGroupMeta}
+                  defaultState="pending"
+                  emptyLabel="ללא קבוצות — פרסום לעמוד בלבד"
+                />
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <ScheduledCountdown iso={r.sent_at} />
+                  <span className="text-xs text-muted-foreground">{new Date(r.sent_at).toLocaleString('he-IL')}</span>
+                </div>
+                <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <Button size="sm" variant="outline" className="text-[12px]" onClick={() => setEditSeriesRow(r)}>
+                    עריכת קבוצות ונכסים
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-[12px] text-destructive hover:bg-destructive/10"
+                    onClick={async () => {
+                      setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
+                      const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
+                      if (error) { toast.error('מחיקת הפוסט המתוזמן נכשלה'); setHistoryRefreshTick((t) => t + 1); }
+                      else toast.success('הפוסט המתוזמן נמחק');
+                    }}
+                  >
+                    <Trash2 className="ml-1 h-3.5 w-3.5" />
+                    מחיקה
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        });
+      })()}
+    </div>
+  );
+
+
   return (
     <div className="space-y-6" dir="rtl">
       {isTargetedMode && (
@@ -6673,7 +6789,7 @@ const CampaignCenter = () => {
                     כל הטיוטות פורסמו ונכנסו לתור הפוסטים העתידיים.
                   </div>
                   <div className="flex justify-center">
-                    <Button onClick={() => { setHistoryTab('future'); setHistoryRefreshTick((t) => t + 1); setCampaignHistoryOpen(true); }}>
+                    <Button onClick={() => { setHistoryTab('future'); setHistoryRefreshTick((t) => t + 1); }}>
                       צפייה בפוסטים העתידיים
                     </Button>
                   </div>
@@ -6937,7 +7053,7 @@ const CampaignCenter = () => {
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           
-          <PublishedFeed />
+          <PublishedFeed subTab={historyTab} onSubTabChange={setHistoryTab} altContent={queueAltContent} />
         </TabsContent>
         <TabsContent value="calendar" className="mt-6">
           <ScheduledCampaignCalendar
@@ -6975,175 +7091,6 @@ const CampaignCenter = () => {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={campaignHistoryOpen} onOpenChange={setCampaignHistoryOpen}>
-        <DialogContent dir="rtl" className="w-[96vw] max-w-5xl max-h-[88vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-right">
-              <History className="h-5 w-5" />
-              היסטוריית קמפיינים
-            </DialogTitle>
-            <DialogDescription className="text-right">כל הפוסטים, הטיוטות והסדרות המתוזמנות במקום אחד.</DialogDescription>
-          </DialogHeader>
-          <Tabs value={historyTab} onValueChange={(v) => setHistoryTab(v as typeof historyTab)} className="min-h-0">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="published">פוסטים שפורסמו</TabsTrigger>
-              <TabsTrigger value="drafts">טיוטות</TabsTrigger>
-              <TabsTrigger value="future">פוסטים עתידיים</TabsTrigger>
-            </TabsList>
-            {campaignHistoryLoading ? (
-              <div className="flex h-52 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : (
-              <>
-                <TabsContent value="published" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
-                  {campaignHistoryRows.filter((r) => ['sent', 'published', 'completed'].includes(r.status)).map((r) => {
-                    const gids: string[] = Array.isArray(r.group_ids) ? r.group_ids.map((g: any) => String(g)) : [];
-                    const results = groupResultMap(r.provider_response?.group_results);
-                    return (
-                      <div key={r.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
-                        {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold">{r.campaign_name || 'פוסט'}</p>
-                          <p className="line-clamp-2 text-sm text-muted-foreground">{r.message_body}</p>
-                          <GroupStatusChips
-                            groupIds={gids}
-                            meta={historyGroupMeta}
-                            results={results}
-                            defaultState="pending"
-                            emptyLabel="פורסם לעמוד בלבד (ללא קבוצות)"
-                          />
-                          <p className="mt-1 text-xs text-muted-foreground">{new Date(r.sent_at || r.created_at).toLocaleString('he-IL')}</p>
-                        </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          title="מחק פוסט"
-                          aria-label="מחק פוסט"
-                          className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
-                          onClick={async () => {
-                            setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
-                            const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
-                            if (error) {
-                              toast.error('מחיקת הפוסט נכשלה');
-                              setHistoryRefreshTick((t) => t + 1);
-                            } else {
-                              toast.success('הפוסט נמחק מההיסטוריה');
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  {!campaignHistoryRows.some((r) => ['sent', 'published', 'completed'].includes(r.status)) && <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים שפורסמו</p>}
-                </TabsContent>
-                <TabsContent value="drafts" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
-                  {campaignDraftRows.map((r) => (
-                    <div key={r.id} className="flex items-start gap-2 rounded-lg border border-border p-3 hover:bg-muted/40">
-                      <button type="button" className="flex min-w-0 flex-1 gap-3 text-right" onClick={() => {
-                        const next = new URLSearchParams(searchParams);
-                        next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
-                        if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
-                        setSearchParams(next); setCampaignHistoryOpen(false);
-                      }}>
-                        {Array.isArray(r.media_urls) && r.media_urls[0] ? <img src={typeof r.media_urls[0] === 'string' ? r.media_urls[0] : r.media_urls[0]?.url} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" /> : null}
-                        <div className="min-w-0">
-                          <p className="font-semibold">{r.topic || 'טיוטת פוסט'}</p>
-                          <p className="line-clamp-2 text-sm text-muted-foreground">{r.generated_text}</p>
-                          <GroupStatusChips
-                            groupIds={bulkGroupIds}
-                            meta={historyGroupMeta}
-                            defaultState="pending"
-                            emptyLabel="לא נבחרו קבוצות לטיוטה"
-                          />
-                          <p className="mt-1 text-xs text-muted-foreground">{new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}</p>
-                        </div>
-                      </button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        title="מחק טיוטה"
-                        aria-label="מחק טיוטה"
-                        className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
-                        onClick={async () => {
-                          setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
-                          const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
-                          if (error) {
-                            toast.error('מחיקת הטיוטה נכשלה');
-                            setHistoryRefreshTick((t) => t + 1);
-                          } else {
-                            toast.success('הטיוטה נמחקה');
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  {campaignDraftRows.length === 0 && <p className="py-12 text-center text-sm text-muted-foreground">אין טיוטות</p>}
-                </TabsContent>
-                <TabsContent value="future" className="max-h-[65vh] space-y-2 overflow-y-auto pt-2">
-                  {(() => {
-                    const future = campaignHistoryRows
-                      .filter((r) => ['scheduled', 'pending'].includes(r.status) && new Date(r.sent_at).getTime() > Date.now())
-                      .sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
-                    const seen = new Map<string, number>();
-                    const visible = future.filter((r) => { const key = r.series_id || r.id; const n = seen.get(key) || 0; seen.set(key, n + 1); return n < 3; });
-                    return visible.length ? visible.map((r) => {
-                      const media = Array.isArray(r.media_urls) ? r.media_urls : [];
-                      const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
-                      const groupIds: string[] = Array.isArray(r.group_ids) ? r.group_ids.map((g: any) => String(g)) : [];
-                      return <div key={r.id} className="flex gap-3 rounded-lg border border-border p-3">
-                        {image ? <img src={typeof image === 'string' ? image : image?.url} alt="" className="h-20 w-20 shrink-0 rounded-md object-cover" /> : null}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-semibold">{r.campaign_name || 'פוסט עתידי'}</p>
-                            {r.series_index != null && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">גרסה {Number(r.series_index) + 1}</span>}
-                          </div>
-                          {/* Target groups (real name + avatar) ABOVE the scheduled time */}
-                          <GroupStatusChips
-                            groupIds={groupIds}
-                            meta={historyGroupMeta}
-                            defaultState="pending"
-                            emptyLabel="ללא קבוצות — פרסום לעמוד בלבד"
-                          />
-                          <ScheduledCountdown iso={r.sent_at} className="mt-1" />
-                          <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{r.message_body}</p>
-                          {r.needs_regeneration && <p className="mt-1 text-xs text-muted-foreground">וריאציית AI תיווצר לאחר פרסום מוצלח</p>}
-                          <div className="mt-2 flex items-center gap-2">
-                            <Button size="sm" variant="outline" className="text-[12px]" onClick={() => setEditSeriesRow(r)}>
-                              עריכת קבוצות ונכסים
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-[12px] text-destructive hover:bg-destructive/10"
-                              onClick={async () => {
-                                setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
-                                const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
-                                if (error) {
-                                  toast.error('מחיקת הפוסט המתוזמן נכשלה');
-                                  setHistoryRefreshTick((t) => t + 1);
-                                } else {
-                                  toast.success('הפוסט המתוזמן נמחק');
-                                }
-                              }}
-                            >
-                              <Trash2 className="ml-1 h-3.5 w-3.5" />
-                              מחיקה
-                            </Button>
-                          </div>
-                        </div>
-                      </div>;
-                    }) : <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
-
-                  })()}
-                </TabsContent>
-              </>
-            )}
-          </Tabs>
-        </DialogContent>
-      </Dialog>
 
       <EditScheduledSeriesDialog
         open={!!editSeriesRow}

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { CampaignHistoryList } from '@/components/campaigns/CampaignHistoryList';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -117,6 +118,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
   // Max posts allowed per day for EACH selected group (0 = unlimited).
   const [groupDailyLimit, setGroupDailyLimit] = useState<number>(0);
   const groupsHydratedRef = useRef(false);
+  const [calView, setCalView] = useState<'calendar' | 'history'>('calendar');
 
 
   // Restore the broker's last dialog configuration (window, count, recurrence,
@@ -429,6 +431,21 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
 
   return (
     <div className="space-y-4" dir="rtl">
+
+      <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+        {([['calendar', 'לוח שנה'], ['history', 'היסטוריית פרסומים']] as const).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setCalView(v)}
+            className={`flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition ${calView === v ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {calView === 'history' ? <CampaignHistoryList /> : (<>
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -1037,6 +1054,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>)}
     </div>
   );
 }

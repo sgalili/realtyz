@@ -43,6 +43,9 @@ export function BrightDataHeroPill() {
     queryKey: ['brightdata-balance-hero'],
     staleTime: 5 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
+    // Never poll while the tab is hidden/backgrounded — zero idle credit drain.
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
     // Persisted last-known value keeps the pill on screen permanently.
     placeholderData: readCache() ?? undefined,
     queryFn: async (): Promise<BalanceResponse | null> => {
