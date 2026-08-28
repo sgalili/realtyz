@@ -164,13 +164,13 @@ export default function BillingTab() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{'\n'}</span>
+            <span className="text-muted-foreground"></span>
             <span className="font-bold tabular-nums">
-              {'\n'}
+              
             </span>
           </div>
           <Progress value={pct} className="h-2" />
-          <p className="text-xs text-muted-foreground">{'\n'}</p>
+          <p className="text-xs text-muted-foreground"></p>
         </CardContent>
       </Card>
 
@@ -178,7 +178,7 @@ export default function BillingTab() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">צריכת קרדיטים</CardTitle>
-          <CardDescription>{'\n'}</CardDescription>
+          <CardDescription></CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {CHANNEL_RATES.map((rate) => {
@@ -314,7 +314,7 @@ export default function BillingTab() {
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-4 w-4" /> חיובים וחשבוניות
           </CardTitle>
-          <CardDescription>{'\n'}</CardDescription>
+          <CardDescription></CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {invoices.length === 0 ? (
@@ -354,7 +354,7 @@ export default function BillingTab() {
 
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <Wallet className="h-3.5 w-3.5" />
-        {'\n'}
+        
       </p>
     </div>
   );
