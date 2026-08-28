@@ -41,15 +41,21 @@ export const TASK_STATUS_LABEL: Record<string, string> = {
   scheduled: 'מתוזמן',
 };
 
+export const NOTE_ACTION_LABEL: Record<string, string> = {
+  note: 'פתק',
+  interaction: 'סיכום שיחה',
+};
+
 export function useCommandCenterTasks() {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ['command-center-tasks', user?.id ?? 'anon'],
     enabled: !!user,
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async (): Promise<CommandTask[]> => {
-      const [itemsRes, meetingsRes] = await Promise.all([
+      const [itemsRes, meetingsRes, notesRes] = await Promise.all([
         (supabase as any)
           .from('scheduled_items')
           .select('id, title, content, item_type, status, scheduled_for, metadata')
@@ -61,6 +67,12 @@ export function useCommandCenterTasks() {
           .gte('starts_at', new Date(Date.now() - 12 * 3600_000).toISOString())
           .order('starts_at', { ascending: true })
           .limit(100),
+        (supabase as any)
+          .from('interaction_activity_log')
+          .select('id, action_type, platform, content, metadata, created_at')
+          .in('action_type', ['note', 'interaction'])
+          .order('created_at', { ascending: false })
+          .limit(60),
       ]);
 
       const rawItems: any[] = Array.isArray(itemsRes?.data) ? itemsRes.data : [];
