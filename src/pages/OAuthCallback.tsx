@@ -277,6 +277,7 @@ export default function OAuthCallback() {
     void run();
     return () => {
       cancelled = true;
+      if (safetyTimerRef.current) window.clearTimeout(safetyTimerRef.current);
       if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
     };
   }, []);
