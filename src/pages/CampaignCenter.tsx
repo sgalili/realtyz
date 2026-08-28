@@ -4204,6 +4204,43 @@ const PublishedFeed = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId, userId]);
 
+  // Live native-Facebook validation of the posts we show: for every Page post
+  // and per-group post id we hold, the backend asks the Graph API whether the
+  // object still exists and writes back the true state (published / rejected),
+  // deleting rows that were removed on Facebook itself. Runs only while the tab
+  // is actually visible and is throttled, so nothing polls in the background.
+  useEffect(() => {
+    const scope = workspaceOwnerId ?? userId;
+    if (!scope || !rows || rows.length === 0) return;
+    const key = `realtyz.fb_status_sync.${scope}`;
+    let cancelled = false;
+
+    const verify = async () => {
+      if (cancelled || document.visibilityState !== 'visible') return;
+      try {
+        const last = Number(sessionStorage.getItem(key) || 0);
+        if (Number.isFinite(last) && Date.now() - last < 3 * 60_000) return;
+        sessionStorage.setItem(key, String(Date.now()));
+      } catch { /* sessionStorage unavailable — still run */ }
+      const ids = (rows ?? [])
+        .filter((r) => String(r.channel || '').toLowerCase() === 'facebook')
+        .slice(0, 40)
+        .map((r) => r.id);
+      if (ids.length === 0) return;
+      try {
+        const { data } = await supabase.functions.invoke('fb-post-status-sync', { body: { ids } });
+        const changed = (Number((data as any)?.deleted) || 0) + (Number((data as any)?.updated) || 0);
+        if (changed > 0 && !cancelled) void load({ skipFbImport: true });
+      } catch { /* non-fatal: never block the feed on a provider hiccup */ }
+    };
+
+    void verify();
+    const onVisible = () => { if (document.visibilityState === 'visible') void verify(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceOwnerId, userId, rows?.length]);
+
 
 
 
