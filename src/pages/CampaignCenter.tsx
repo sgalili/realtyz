@@ -5847,8 +5847,7 @@ const CampaignCenter = () => {
   const [bulkSilent, setBulkSilent] = useState(false);
   // Controlled history dialog so a finished bulk dispatch can land the user
   // directly on the "פוסטים עתידיים" tab with fresh rows.
-  const [campaignHistoryOpen, setCampaignHistoryOpen] = useState(false);
-  const [historyTab, setHistoryTab] = useState<'published' | 'drafts' | 'future'>('published');
+  const [historyTab, setHistoryTab] = useState<FeedSubTab>('published');
   const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
   const [historyGroupMeta, setHistoryGroupMeta] = useState<Record<string, { name: string; icon: string | null }>>({});
   const [editSeriesRow, setEditSeriesRow] = useState<any | null>(null);
@@ -5901,7 +5900,6 @@ const CampaignCenter = () => {
         // Show the freshly scheduled posts immediately.
         setHistoryTab('future');
         setHistoryRefreshTick((t) => t + 1);
-        setCampaignHistoryOpen(true);
       }
       return false;
     }
@@ -6051,13 +6049,13 @@ const CampaignCenter = () => {
 
 
   useEffect(() => {
-    const open = () => setCampaignHistoryOpen(true);
+    const open = () => { setHistoryTab('published'); };
     window.addEventListener('rz:open-campaign-history', open);
     return () => window.removeEventListener('rz:open-campaign-history', open);
   }, []);
 
   useEffect(() => {
-    if (!campaignHistoryOpen || !user?.id) return;
+    if (!user?.id) return;
     let cancelled = false;
     setCampaignHistoryLoading(true);
     void (async () => {
@@ -6110,7 +6108,7 @@ const CampaignCenter = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [campaignHistoryOpen, user?.id, workspaceOwnerId, historyRefreshTick]);
+  }, [user?.id, workspaceOwnerId, historyRefreshTick]);
   // Hydrate connection state from localStorage so a page refresh (or a new
   // tab) doesn't visually "disconnect" channels while verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
@@ -6688,7 +6686,7 @@ const CampaignCenter = () => {
                     כל הטיוטות פורסמו ונכנסו לתור הפוסטים העתידיים.
                   </div>
                   <div className="flex justify-center">
-                    <Button onClick={() => { setHistoryTab('future'); setHistoryRefreshTick((t) => t + 1); setCampaignHistoryOpen(true); }}>
+                    <Button onClick={() => { setHistoryTab('future'); setHistoryRefreshTick((t) => t + 1); }}>
                       צפייה בפוסטים העתידיים
                     </Button>
                   </div>
