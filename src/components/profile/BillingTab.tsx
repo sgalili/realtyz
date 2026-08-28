@@ -181,7 +181,7 @@ export default function BillingTab() {
       {/* מדדי T.C. לפי ערוץ */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">מדדי צריכה חיים לפי ערוץ</CardTitle>
+          <CardTitle className="text-base">צריכת קרדיטים</CardTitle>
           <CardDescription>מתעדכן אוטומטית כל 15 שניות</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -214,26 +214,26 @@ export default function BillingTab() {
       {/* מדיניות T.C. */}
       <Card className="border-primary/40">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">מדיניות מגעי קרדיט (T.C.)</CardTitle>
+          <CardTitle className="text-base">מדיניות קרדיטים</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p className="flex items-start gap-2">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>
-              עד <b>{FREE_TC_PER_CONTACT} מגעי קרדיט לכל איש קשר בחודש</b> כלולים במלואם בחבילה.
+              עד <b>{FREE_TC_PER_CONTACT} פעולות מצד המערכת לכל איש קשר בחודש</b> כלולים במלואם בחבילה.
             </span>
           </p>
           <p className="flex items-start gap-2">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>
-              מגע נוסף מעל המכסה: <b><PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} /> לאיש קשר</b> —
-              החיוב הוא פר איש קשר בודד ולא לפי נפח מצטבר.
+              פעולה נוספת מעל המכסה: <b><PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} /> לאיש קשר</b>.&nbsp;
+              החיוב הוא לכל איש קשר בודד ולא לפי נפח מצטבר.
             </span>
           </p>
           <p className="flex items-start gap-2">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>
-              כל השירותים שמופעלים על ידי ה-AI (WhatsApp, SMS, אימייל, שיחות קוליות ו-IVR) כלולים בחבילה.
+              כל השירותים שמופעלים על ידי ה-AI (WhatsApp, SMS, אימייל, שיחות קוליות, פרסום ברשתות, מענה לתגובות ו-IVR) כלולים בחבילה.
               חיוב נוסף חל רק על הפצה פרטית שאינה נדרשת על ידי ה-AI.
             </span>
           </p>
