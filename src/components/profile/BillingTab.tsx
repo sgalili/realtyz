@@ -164,17 +164,13 @@ export default function BillingTab() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              מגעי קרדיט (T.C.) שנצרכו החודש
-            </span>
+            <span className="text-muted-foreground">{'\n'}</span>
             <span className="font-bold tabular-nums">
-              {heNum(usedTc)} / {included > 0 ? heNum(included) : '—'}
+              {'\n'}
             </span>
           </div>
           <Progress value={pct} className="h-2" />
-          <p className="text-xs text-muted-foreground">
-            {heNum(contactsUsed)} אנשי קשר · {FREE_TC_PER_CONTACT} מגעים כלולים לכל איש קשר בחודש
-          </p>
+          <p className="text-xs text-muted-foreground">{'\n'}</p>
         </CardContent>
       </Card>
 
@@ -182,7 +178,7 @@ export default function BillingTab() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">צריכת קרדיטים</CardTitle>
-          <CardDescription>מתעדכן אוטומטית כל 15 שניות</CardDescription>
+          <CardDescription>{'\n'}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {CHANNEL_RATES.map((rate) => {
@@ -267,9 +263,7 @@ export default function BillingTab() {
               );
             })}
           </div>
-          <p className="px-4 py-3 text-xs text-muted-foreground">
-            המחירים אינם כוללים מע"מ. הפצה שמבוצעת על ידי ה-AI אינה מחויבת בנוסף.
-          </p>
+          <p className="px-4 py-3 text-xs text-muted-foreground">{'המחירים אינם כוללים מע"מ.\u00a0'}</p>
         </CardContent>
       </Card>
 
@@ -320,7 +314,7 @@ export default function BillingTab() {
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-4 w-4" /> חיובים וחשבוניות
           </CardTitle>
-          <CardDescription>היסטוריית רכישות והטענות ארנק</CardDescription>
+          <CardDescription>{'\n'}</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {invoices.length === 0 ? (
@@ -360,7 +354,7 @@ export default function BillingTab() {
 
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <Wallet className="h-3.5 w-3.5" />
-        ריאלטיז מציעה את תעריפי ההפצה הזולים בישראל בכל הערוצים — SMS, WhatsApp, קול, IVR ואימייל.
+        {'\n'}
       </p>
     </div>
   );
