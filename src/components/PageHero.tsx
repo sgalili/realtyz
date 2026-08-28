@@ -132,26 +132,6 @@ function LeadsHeroAddButton() {
 }
 
 
-function CampaignsHeroCalendarButton() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const active = (searchParams.get('tab') ?? 'published') === 'calendar';
-  return (
-    <Button
-      size="icon"
-      variant="ghost"
-      onClick={() => navigate('/campaigns?tab=calendar')}
-      aria-label="לוח שנה מתוזמנים"
-      title="לוח שנה מתוזמנים"
-      className={cn(
-        'h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white',
-        active && 'bg-white/10'
-      )}
-    >
-      <CalendarIcon className="!h-5 !w-5" strokeWidth={2.5} />
-    </Button>
-  );
-}
 
 function CampaignsHeroAddButton() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -204,20 +184,6 @@ function CampaignsHeroAddButton() {
   );
 }
 
-function CampaignsHeroHistoryButton() {
-  return (
-    <Button
-      size="icon"
-      variant="ghost"
-      onClick={() => window.dispatchEvent(new CustomEvent('rz:open-campaign-history'))}
-      aria-label="היסטוריית קמפיינים"
-      title="היסטוריית קמפיינים"
-      className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
-    >
-      <History className="!h-5 !w-5" strokeWidth={2.5} />
-    </Button>
-  );
-}
 
 
 function InboxAutopilotToggle() {
@@ -365,8 +331,6 @@ export function PageHero() {
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
           {location.pathname.startsWith('/inbox') && <InboxAutopilotToggle />}
-          {location.pathname.startsWith('/campaigns') && <CampaignsHeroHistoryButton />}
-          {location.pathname.startsWith('/campaigns') && <CampaignsHeroCalendarButton />}
           {location.pathname.startsWith('/campaigns') && <CampaignsHeroAddButton />}
           {isPropertyDetail && (
             <Button
