@@ -585,30 +585,3 @@ function PostsGroup({
   );
 }
 
-function MetricCard({
-  icon,
-  label,
-  value,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value?: number;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-right transition-colors hover:bg-accent/40"
-    >
-      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">{icon}</span>
-      <span className="min-w-0">
-        <span className="block text-2xl font-bold leading-tight">
-          {value === undefined ? '—' : value}
-        </span>
-        <span className="block text-sm text-muted-foreground">{label}</span>
-      </span>
-    </button>
-  );
-}
