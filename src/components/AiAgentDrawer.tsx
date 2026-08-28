@@ -255,6 +255,7 @@ function useVoiceInput(onResult: (text: string) => void) {
 }
 
 export default function AiAgentDrawer() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);

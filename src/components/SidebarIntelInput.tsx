@@ -146,6 +146,7 @@ function AnimatedPlaceholder({ text, idx }: { text: string; idx: number }) {
 }
 
 export function SidebarIntelInput() {
+  const queryClient = useQueryClient();
   const [input, setInput] = useState('');
   const [files, setFiles] = useState<AttachedFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
