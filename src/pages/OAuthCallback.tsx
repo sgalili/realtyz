@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from '@/lib/oauthRedirect';
 import { isOAuthPopup, notifyOAuthOpener } from '@/lib/oauthPopupBridge';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle } from 'lucide-react';
 
 /**
  * Full-page OAuth landing page for Facebook / Google.
@@ -23,6 +25,8 @@ const HARD_TIMEOUT_MS = 25_000;
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar'] as const;
 
+type Status = 'loading' | 'error' | 'success';
+
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = window.setTimeout(() => reject(new Error(message)), ms);
@@ -41,28 +45,49 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 function finish(
   path: string,
   result: { ok: boolean; name?: string | null; reason?: string | null; provider?: string },
+  onCloseBlocked?: () => void,
 ) {
   if (isOAuthPopup()) {
     notifyOAuthOpener({ provider: result.provider ?? 'facebook_page', ...result });
     // If the browser refused to close the window, fall back to a redirect so
     // the user never stares at a spinner.
     window.setTimeout(() => {
-      if (!window.closed) window.location.replace(path);
-    }, 600);
+      if (!window.closed) {
+        if (onCloseBlocked) onCloseBlocked();
+        else window.location.replace(path);
+      }
+    }, 800);
     return;
   }
   window.location.replace(path);
 }
 
-
 export default function OAuthCallback() {
+  const [status, setStatus] = useState<Status>('loading');
   const [message, setMessage] = useState('מסיים אימות...');
-  const [failed, setFailed] = useState(false);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const [showReturnButton, setShowReturnButton] = useState(false);
+  const hardTimerRef = useRef<number | null>(null);
+
+  const returnToApp = () => {
+    window.location.replace(CONNECTIONS_PATH);
+  };
+
+  const setFatalError = (title: string, detail: string | null) => {
+    setStatus('error');
+    setMessage(title);
+    setErrorDetail(detail);
+    setShowReturnButton(true);
+    if (hardTimerRef.current) {
+      window.clearTimeout(hardTimerRef.current);
+      hardTimerRef.current = null;
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
     // Absolute escape hatch: whatever happens, never sit on the loader.
-    const hardTimer = window.setTimeout(() => {
+    hardTimerRef.current = window.setTimeout(() => {
       if (cancelled) return;
       if (isOAuthPopup()) {
         notifyOAuthOpener({ provider: 'oauth', ok: false, reason: 'timeout' });
@@ -73,7 +98,6 @@ export default function OAuthCallback() {
       }
       window.location.replace(CONNECTIONS_PATH);
     }, HARD_TIMEOUT_MS);
-
 
     const run = async () => {
       const search = new URLSearchParams(window.location.search);
@@ -100,7 +124,6 @@ export default function OAuthCallback() {
           ? CONNECTIONS_PATH
           : '/profile';
 
-
       // Meta may require a canonical whitelisted callback. Bounce from there to
       // the origin that initiated login before touching anything else, so the
       // preview / custom-domain session stays intact.
@@ -122,6 +145,10 @@ export default function OAuthCallback() {
         const reason = errorDescription || error || 'הספק לא החזיר קוד אימות. נסה להתחבר שוב.';
         if (isFacebook) {
           finish(`${CONNECTIONS_PATH}&fb=error&fb_reason=${encodeURIComponent(reason)}`, { ok: false, reason });
+          return;
+        }
+        if (googlePlatform) {
+          setFatalError('החיבור ל-Google נכשל', reason);
           return;
         }
         storePendingOAuth({
@@ -156,13 +183,16 @@ export default function OAuthCallback() {
           finish(
             `${CONNECTIONS_PATH}&google=connected${email ? `&google_account=${encodeURIComponent(email)}` : ''}`,
             { ok: true, name: email || null, provider: googlePlatform },
+            () => {
+              setStatus('success');
+              setMessage('החיבור הושלם בהצלחה.');
+              setShowReturnButton(true);
+            },
           );
         } catch (e: any) {
           if (cancelled) return;
-          // Hand the code back to the card so it can retry the exchange there.
           const reason = String(e?.message ?? 'unknown');
-          storePendingOAuth({ code, accessToken, state, error: null, errorDescription: null, redirectUri });
-          finish(backPath, { ok: false, reason, provider: googlePlatform });
+          setFatalError('החיבור ל-Google נכשל', reason);
         }
         return;
       }
@@ -174,7 +204,6 @@ export default function OAuthCallback() {
         finish(backPath, { ok: true, provider: state.split(':')[0] || 'oauth' });
         return;
       }
-
 
       setMessage('שומר את חיבור עמוד הפייסבוק...');
       try {
@@ -219,28 +248,56 @@ export default function OAuthCallback() {
         );
       } catch (e: any) {
         if (cancelled) return;
-        setFailed(true);
-        setMessage('החיבור לפייסבוק נכשל. מחזיר אותך להגדרות...');
         const reason = String(e?.message ?? 'unknown');
-        finish(`${CONNECTIONS_PATH}&fb=error&fb_reason=${encodeURIComponent(reason)}`, { ok: false, reason });
+        setFatalError('החיבור לפייסבוק נכשל', reason);
       }
     };
 
     void run();
-    return () => { cancelled = true; window.clearTimeout(hardTimer); };
-
+    return () => {
+      cancelled = true;
+      if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
+    };
   }, []);
 
   return (
-    <div dir="rtl" className="min-h-screen flex items-center justify-center bg-background text-foreground">
-      <div className="text-center space-y-3">
-        {!failed && (
+    <div dir="rtl" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
+      <div className="text-center space-y-4 max-w-md w-full">
+        {status === 'loading' && (
           <div className="mx-auto h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
         )}
-        <p className="text-sm text-muted-foreground">{message}</p>
-        <a href={CONNECTIONS_PATH} className="text-xs font-medium text-primary underline">
-          חזרה להגדרות החיבורים
-        </a>
+        {status === 'error' && (
+          <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
+        )}
+        {status === 'success' && (
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+            <span className="text-lg">✓</span>
+          </div>
+        )}
+        <h1 className="text-lg font-semibold">
+          {status === 'loading' && 'מסיים אימות...'}
+          {status === 'error' && 'החיבור נכשל'}
+          {status === 'success' && 'החיבור הושלם'}
+        </h1>
+        <p className="text-sm text-muted-foreground break-words">{message}</p>
+        {errorDetail && status === 'error' && (
+          <div
+            dir="ltr"
+            className="rounded-md bg-muted p-3 text-left text-xs font-mono break-all text-muted-foreground"
+          >
+            {errorDetail}
+          </div>
+        )}
+        {(status === 'error' || showReturnButton) && (
+          <Button onClick={returnToApp} className="mt-2">
+            חזור למערכת
+          </Button>
+        )}
+        {status === 'loading' && (
+          <a href={CONNECTIONS_PATH} className="block text-xs font-medium text-primary underline">
+            חזרה להגדרות החיבורים
+          </a>
+        )}
       </div>
     </div>
   );
