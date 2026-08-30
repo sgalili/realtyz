@@ -5,6 +5,7 @@ const corsHeaders = {
 };
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { sendSms019 } from "../_shared/sms019.ts";
 
 function escapeXml(str: string): string {
   return String(str)
@@ -62,8 +63,14 @@ async function sendSmsTwilio(admin: ReturnType<typeof createClient>, phone: stri
   return { ok: false, error: json?.message || text || `Twilio status ${res.status}` };
 }
 
-async function sendSms(admin: ReturnType<typeof createClient>, phone: string, body: string) {
-  const sms019 = await sendSms019(admin, phone, body);
+async function sendSms(
+  admin: ReturnType<typeof createClient>,
+  phone: string,
+  body: string,
+  workspaceOwnerId?: string | null,
+) {
+  // Workspace isolation: the 019 sender is resolved per workspace.
+  const sms019 = await sendSms019(admin as any, phone, body, workspaceOwnerId ?? null);
   if (sms019.ok) return sms019;
   const twilio = await sendSmsTwilio(admin, phone, body);
   if (twilio.ok) return twilio;
@@ -244,7 +251,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const sms = await sendSms(admin, destinationPhone, finalContent);
+      const sms = await sendSms(admin, destinationPhone, finalContent, workspaceOwnerId);
       if (!sms.ok) {
         return new Response(JSON.stringify({ error: "sms_invite_failed", details: sms.error }), {
           status: 502,
@@ -359,7 +366,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const sms = await sendSms(admin, destinationPhone, finalContent);
+      const sms = await sendSms(admin, destinationPhone, finalContent, workspaceOwnerId);
       if (!sms.ok) {
         return new Response(JSON.stringify({ error: "sms_send_failed", details: sms.error }), {
           status: 502,
