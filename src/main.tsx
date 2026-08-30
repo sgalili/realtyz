@@ -104,9 +104,27 @@ async function bootstrap() {
     // finish the exchange and offer the "חזרה למערכת" button.
   }
 
-  const { default: App } = await import("./App.tsx");
-  createRoot(rootEl).render(<App />);
+  let AppMod: { default: React.ComponentType };
+  try {
+    AppMod = await import("./App.tsx");
+  } catch (err) {
+    if (isChunkLoadError(err)) {
+      try {
+        AppMod = await import(/* @vite-ignore */ `./App.tsx?reload=${Date.now()}`);
+      } catch (retryErr) {
+        maybeReloadForStaleChunk(retryErr);
+        throw retryErr;
+      }
+    } else {
+      throw err;
+    }
+  }
+  createRoot(rootEl).render(<AppMod.default />);
 }
 
-void bootstrap();
+void bootstrap().catch((err) => {
+  maybeReloadForStaleChunk(err);
+  console.error(err);
+});
+
 
