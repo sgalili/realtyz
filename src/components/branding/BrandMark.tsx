@@ -13,12 +13,16 @@ interface BrandMarkProps {
  * otherwise falls back to the Realtyz AI wordmark unless the user explicitly hid it.
  */
 export function BrandMark({ className = '', to = '/', fallbackLabel = 'Realtyz AI' }: BrandMarkProps) {
-  const { settings } = useWhiteLabel();
+  const { settings, loading } = useWhiteLabel();
   const hasLogo = !!settings?.logo_url;
   const hasName = !!settings?.agency_name;
   const hideRealtyz = !!settings?.hide_kalpiz_branding;
 
-  const labelToShow = hasName ? settings!.agency_name! : (hideRealtyz ? '' : fallbackLabel);
+  // While branding is still resolving we render nothing rather than the Realtyz
+  // fallback, which used to flicker in before the workspace logo arrived.
+  const labelToShow = hasName
+    ? settings!.agency_name!
+    : (hideRealtyz || (loading && !settings) ? '' : fallbackLabel);
 
   return (
     <Link

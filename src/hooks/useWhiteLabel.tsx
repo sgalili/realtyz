@@ -78,13 +78,43 @@ function applyTheme(s: WhiteLabelSettings | null) {
   }
 }
 
+/**
+ * Branding is cached per workspace so the header logo paints on the FIRST frame
+ * (published site included) instead of flashing the Realtyz fallback while the
+ * white_label_settings row loads.
+ */
+const BRAND_CACHE_KEY = 'realtyz_brand_cache';
+
+function readBrandCache(ownerId: string | null): WhiteLabelSettings | null {
+  try {
+    const raw = localStorage.getItem(`${BRAND_CACHE_KEY}:${ownerId ?? 'last'}`)
+      ?? localStorage.getItem(`${BRAND_CACHE_KEY}:last`);
+    return raw ? (JSON.parse(raw) as WhiteLabelSettings) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeBrandCache(ownerId: string | null, row: WhiteLabelSettings | null) {
+  try {
+    if (!row) return;
+    const payload = JSON.stringify(row);
+    if (ownerId) localStorage.setItem(`${BRAND_CACHE_KEY}:${ownerId}`, payload);
+    localStorage.setItem(`${BRAND_CACHE_KEY}:last`, payload);
+  } catch { /* storage unavailable */ }
+}
+
 export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
-  const [settings, setSettings] = useState<WhiteLabelSettings | null>(null);
-  const [loading, setLoading] = useState(true);
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const initial = readBrandCache(activeWorkspaceId);
+  const [settings, setSettings] = useState<WhiteLabelSettings | null>(initial);
+  const [loading, setLoading] = useState(!initial);
+  if (initial) applyTheme(initial);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    const cached = readBrandCache(activeWorkspaceId);
+    if (cached) { setSettings(cached); applyTheme(cached); setLoading(false); }
+    else setLoading(true);
     try {
       // Workspace-first branding: tenants/managers should see the owner's
       // shared office details, not their personal empty branding row.
@@ -120,10 +150,11 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
       }
       setSettings(row);
       applyTheme(row);
+      writeBrandCache(activeWorkspaceId, row);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[white-label] load failed', e);
-      setSettings(null);
+      // Keep the cached brand on screen instead of flashing the default logo.
     } finally {
       setLoading(false);
     }

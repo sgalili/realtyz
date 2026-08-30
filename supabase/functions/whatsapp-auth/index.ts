@@ -87,6 +87,125 @@ const resolveOtpTemplate = async (admin: any, code: string) => {
 };
 
 
+
+const OTP_TEMPLATE_NAME = "realtyz_login_code";
+const OTP_TEMPLATE_LANGUAGE = "he";
+
+/** WABA credentials able to manage templates (waba_id + token). */
+const resolveWabaCreds = async (admin: any): Promise<{ wabaId: string; token: string; apiVersion: string } | null> => {
+  const envToken = Deno.env.get("META_WA_ACCESS_TOKEN") ?? Deno.env.get("META_WHATSAPP_TOKEN") ?? "";
+  const envWaba = Deno.env.get("META_WABA_ID") ?? "";
+  try {
+    const { data } = await admin
+      .from("wa_providers")
+      .select("config, updated_at")
+      .eq("provider_name", "WBA")
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false })
+      .limit(10);
+    for (const row of (data ?? []) as any[]) {
+      const cfg = (row?.config ?? {}) as Record<string, unknown>;
+      const wabaId = String(cfg.waba_id ?? envWaba ?? "").trim();
+      const token = String(cfg.access_token ?? envToken ?? "").trim();
+      if (wabaId && token) {
+        return { wabaId, token, apiVersion: String(cfg.api_version ?? "v21.0") };
+      }
+    }
+  } catch { /* fall through to env */ }
+  if (envWaba && envToken) return { wabaId: envWaba, token: envToken, apiVersion: "v21.0" };
+  return null;
+};
+
+/**
+ * Guarantees an APPROVED AUTHENTICATION template exists for login codes.
+ * Meta refuses free-text sends outside an open 24h window, so without this
+ * template every OTP silently degraded to the SMS fallback. Creates
+ * `realtyz_login_code` (copy-code button, 10-minute expiry) when missing and
+ * mirrors the result into `wa_message_templates`.
+ */
+const ensureOtpTemplate = async (
+  admin: any,
+): Promise<{ ok: boolean; status?: string; name?: string; language?: string; error?: string }> => {
+  const creds = await resolveWabaCreds(admin);
+  if (!creds) return { ok: false, error: "חסרים פרטי WABA (waba_id / access token) ליצירת תבנית אימות" };
+  const { wabaId, token, apiVersion } = creds;
+  const base = `https://graph.facebook.com/${apiVersion}`;
+
+  const cacheTemplate = async (name: string, language: string, status: string) => {
+    try {
+      const { data: owners } = await admin
+        .from("wa_providers")
+        .select("user_id")
+        .eq("provider_name", "WBA")
+        .eq("is_active", true)
+        .limit(10);
+      const rows = ((owners ?? []) as any[])
+        .map((o) => String(o?.user_id ?? "").trim())
+        .filter(Boolean)
+        .map((ownerId) => ({
+          owner_user_id: ownerId,
+          name,
+          language,
+          category: "AUTHENTICATION",
+          status: status.toUpperCase(),
+          body_text: "{{1}}",
+          variable_count: 1,
+          has_header_variable: false,
+          synced_at: new Date().toISOString(),
+        }));
+      if (rows.length > 0) {
+        await admin.from("wa_message_templates").upsert(rows, { onConflict: "owner_user_id,name,language" });
+      }
+    } catch { /* cache write is best-effort */ }
+  };
+
+  // 1. Already exists on the WABA?
+  try {
+    const listRes = await fetch(
+      `${base}/${wabaId}/message_templates?limit=200&fields=name,language,status,category`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const list = await listRes.json().catch(() => ({} as any));
+    const existing = (Array.isArray(list?.data) ? list.data : []).find(
+      (t: any) => String(t?.category ?? "").toUpperCase() === "AUTHENTICATION",
+    );
+    if (existing?.name) {
+      const status = String(existing.status ?? "").toUpperCase();
+      await cacheTemplate(String(existing.name), String(existing.language ?? OTP_TEMPLATE_LANGUAGE), status);
+      return { ok: status === "APPROVED", status, name: String(existing.name), language: String(existing.language ?? OTP_TEMPLATE_LANGUAGE) };
+    }
+  } catch (error) {
+    console.error("whatsapp-auth template list failed", safeErrorDetails(error));
+  }
+
+  // 2. Create it.
+  const createRes = await fetch(`${base}/${wabaId}/message_templates`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: OTP_TEMPLATE_NAME,
+      language: OTP_TEMPLATE_LANGUAGE,
+      category: "AUTHENTICATION",
+      message_send_ttl_seconds: 600,
+      components: [
+        { type: "BODY", add_security_recommendation: true },
+        { type: "FOOTER", code_expiration_minutes: OTP_TTL_MINUTES },
+        { type: "BUTTONS", buttons: [{ type: "OTP", otp_type: "COPY_CODE" }] },
+      ],
+    }),
+  });
+  const created = await createRes.json().catch(() => ({} as any));
+  if (!createRes.ok || created?.error) {
+    const message = String(created?.error?.message ?? "יצירת תבנית האימות ב-Meta נכשלה");
+    console.error("whatsapp-auth template create failed", { message, status: createRes.status });
+    return { ok: false, error: message };
+  }
+  const status = String(created?.status ?? "PENDING").toUpperCase();
+  await cacheTemplate(OTP_TEMPLATE_NAME, OTP_TEMPLATE_LANGUAGE, status);
+  console.info("whatsapp-auth OTP template provisioned", { name: OTP_TEMPLATE_NAME, status });
+  return { ok: status === "APPROVED", status, name: OTP_TEMPLATE_NAME, language: OTP_TEMPLATE_LANGUAGE };
+};
+
 /**
  * Which workspace owns this phone number, so the SMS fallback uses that
  * workspace's own 019 sender instead of another workspace's number.
@@ -144,7 +263,14 @@ Deno.serve(async (req) => {
       const codeHash = await hashCode(phone, code);
       const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
 
-      const template = await resolveOtpTemplate(admin, code);
+      let template = await resolveOtpTemplate(admin, code);
+      if (!template) {
+        // No approved AUTHENTICATION template cached — provision one on Meta so
+        // codes can reach users who have no open 24h conversation window.
+        const provisioned = await ensureOtpTemplate(admin);
+        console.info("whatsapp-auth OTP template provisioning", provisioned);
+        if (provisioned.ok) template = await resolveOtpTemplate(admin, code);
+      }
       const payload: Record<string, unknown> = template
         ? {
             phone_number: phone,
@@ -244,6 +370,11 @@ Deno.serve(async (req) => {
       });
 
       return json({ success: true });
+    }
+
+    if (action === "provision_template") {
+      const provisioned = await ensureOtpTemplate(admin);
+      return json({ ...provisioned }, provisioned.ok ? 200 : 200);
     }
 
     if (action === "verify") {

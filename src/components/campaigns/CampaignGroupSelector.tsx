@@ -61,6 +61,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       const { data } = await (supabase as any)
         .from("fb_user_groups")
         .select("group_id, group_name, group_icon, group_url, member_count, is_selected")
+        // Workspace-scoped: every member of this workspace sees the same groups.
+        .eq("workspace_owner_id", workspaceOwnerId)
         // Only groups the broker approved in the connections screen are targets.
         .neq("is_selected", false)
         .order("group_name", { ascending: true });
@@ -75,6 +77,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         .from("custom_user_groups")
         .select("group_name, group_url")
         .eq("platform", "facebook")
+        .eq("workspace_owner_id", workspaceOwnerId)
         .order("created_at", { ascending: false });
       for (const r of (data ?? []) as any[]) {
         const id = groupIdFromUrl(String(r?.group_url ?? ""));
@@ -94,6 +97,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   };
 
   const load = async () => {
+    if (!workspaceOwnerId) return;
     setLoading(true);
     try {
       setGroups(await fetchStoredGroups());
@@ -102,7 +106,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [workspaceOwnerId]);
 
   const addManualGroup = async () => {
     const name = manualName.trim();
