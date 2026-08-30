@@ -33,15 +33,9 @@ export default function CreditsSection() {
             <p className="flex items-start gap-2 text-sm">
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <span>
-                <b>{FREE_TC_PER_CONTACT} T.C. לכל איש קשר בחודש</b> כלולים במלואם — כל פעולה של ה-AI
-                בוואטסאפ, SMS, אימייל, שיחות קוליות ו-IVR.
-              </span>
-            </p>
-            <p className="mt-3 flex items-start gap-2 text-sm">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <span>
                 מגע נוסף: <PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} /> לאיש קשר
-                (ולא לפי נפח מצטבר). טעינת ארנק בתוך המערכת בכל רגע.
+                (ולא לפי נפח מצטבר). טעינת ארנק בתוך המערכת בכל רגע.{' '}
+                <TouchCreditsExplainerLink />
               </span>
             </p>
           </div>
