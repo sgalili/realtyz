@@ -6664,8 +6664,15 @@ const CampaignCenter = () => {
         const future = campaignHistoryRows
           .filter((r) => ['scheduled', 'pending'].includes(r.status) && new Date(r.sent_at).getTime() > Date.now())
           .sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
-        const seen = new Map<string, number>();
-        const visible = future.filter((r) => { const key = r.series_id || r.id; const n = seen.get(key) || 0; seen.set(key, n + 1); return n < 3; });
+        // ONLY the next upcoming run of each series is ever shown — recurring
+        // posts must never surface far-future slots (e.g. 10.12.2026).
+        const seen = new Set<string>();
+        const visible = future.filter((r) => {
+          const key = r.series_id || `${r.campaign_name}|${r.channel}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         if (!visible.length) return <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
         return visible.map((r) => {
           const media = Array.isArray(r.media_urls) ? r.media_urls : [];
