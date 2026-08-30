@@ -271,7 +271,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             });
             if (retry?.auth_url) {
               const url = String(retry.auth_url);
-              setPendingAuthUrl(url);
+              
               toast.message('מבקשים הרשאות בסיסיות מפייסבוק', {
                 description: 'אשרו שוב את החיבור כדי להשלים את ההתחברות.',
               });
