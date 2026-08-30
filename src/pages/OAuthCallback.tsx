@@ -25,7 +25,7 @@ const SAFETY_UI_TIMEOUT_MS = 4_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
 const HARD_TIMEOUT_MS = 25_000;
 /** Google states we can exchange right here in the callback. */
-const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar'] as const;
+const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive'] as const;
 
 type OAuthError = { title: string; detail: string | null } | null;
 
