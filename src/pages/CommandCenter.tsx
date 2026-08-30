@@ -196,6 +196,8 @@ export default function CommandCenter() {
 
   return (
     <div dir="rtl" className="space-y-6 p-4 md:p-6">
+      <FirstTimeSyncDialog />
+
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">משימות היום</h1>
         <p className="text-sm text-muted-foreground">
