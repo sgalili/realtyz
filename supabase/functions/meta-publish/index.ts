@@ -547,7 +547,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!page) {
+    // Groups are published with the PERSONAL profile token, not the Page token.
+    // A workspace with groups selected must never be blocked just because no
+    // Page token could be resolved — that used to leave every group post stuck
+    // in a red "failed" state without a single publish attempt.
+    if (!page && groupIds.length === 0) {
       // No Page token could be resolved from the workspace, workspace members,
       // the social connection, or the platform Meta credentials. Report the
       // real cause (missing/expired Meta token) instead of a generic
@@ -568,9 +572,13 @@ Deno.serve(async (req) => {
     const warnings: string[] = [];
 
     // Never publish with a User/system token: upgrade to the Page-scoped token.
-    page = await ensurePageToken(db, ownerId, page);
+    if (page) page = await ensurePageToken(db, ownerId, page);
 
     for (const ch of pendingChannels) {
+      if (!page) {
+        // Group-only publish: skip the Page/IG leg entirely instead of failing.
+        continue;
+      }
 
       if (ch === "facebook") {
         let activePage = page;
@@ -683,24 +691,28 @@ Deno.serve(async (req) => {
     // One history row per channel attempt. A retry of the same content REUSES
     // the previous failed row (updated in place) so the queue never fills with
     // ghost duplicates of the same post.
+    const groupOk = groupResults.filter((r: any) => r?.ok === true).length;
     for (const ch of pendingChannels) {
       const match = postIds.find((p) => p.platform === ch);
       const fail = failures.find((f) => f.platform === ch);
+      // A post that reached at least one Facebook group IS published, even when
+      // the Page leg was skipped or rejected.
+      const succeeded = !!match || (ch === "facebook" && groupOk > 0);
       const attemptRow = {
         user_id: ownerId,
         campaign_name: campaignName,
         channel: ch,
         message_body: text,
-        status: match ? "sent" : "failed",
-        sent_at: match ? new Date().toISOString() : null,
+        status: succeeded ? "sent" : "failed",
+        sent_at: succeeded ? new Date().toISOString() : null,
         media_urls: media,
         first_comment: firstComment || null,
-        failure_reason: fail?.message ?? null,
+        failure_reason: succeeded ? null : (fail?.message ?? groupResults.find((r: any) => r?.reason)?.reason ?? null),
         provider_message_id: match?.id ?? null,
         group_ids: groupIds,
         provider_response: {
           provider: "meta_graph",
-          page_id: page.pageId,
+          page_id: page?.pageId ?? null,
           media_urls: media,
           first_comment: firstComment || null,
           postIds,
@@ -726,12 +738,14 @@ Deno.serve(async (req) => {
     }
 
 
-    if (postIds.length === 0) {
+    if (postIds.length === 0 && groupOk === 0) {
       return json(
         {
           success: false,
           error: "provider_error",
-          message: failures[0]?.message ?? "הפרסום נכשל",
+          message: failures[0]?.message
+            ?? groupResults.find((r: any) => r?.reason)?.reason
+            ?? "הפרסום נכשל",
           failures,
         },
         200,
@@ -739,7 +753,8 @@ Deno.serve(async (req) => {
     }
 
     return json({
-      success: failures.length === 0,
+      success: failures.length === 0 || groupOk > 0,
+      group_published: groupOk,
       verified: true,
       published_channels: pendingChannels,
       duplicate_channels: alreadySent.map((p) => p.platform),
