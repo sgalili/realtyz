@@ -274,6 +274,9 @@ export default function Landing() {
               <span className="landing-title-gradient block">AI למתווכים וסוכנויות נדל״ן</span>
               <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים.</span>
             </h1>
+            <p className="mx-auto mt-5 max-w-3xl text-center text-base sm:text-xl leading-relaxed text-muted-foreground">
+              סוכני AI עובדים לך 24/7 את כל הלידים, נכסים, התאמות, שיווק, תשקורת ומעקבים בשלימות מלאה מהווטסאפ שלכם
+            </p>
           </Reveal>
 
           {/* Metric cards */}
