@@ -429,20 +429,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
   };
 
   const activeTutorialStep = tutorialStep === null ? null : TUTORIAL_STEPS[tutorialStep];
-  // Workspace-first header identity: the active workspace's white-label logo +
-  // name always win. We never show the signed-in person's own name/avatar here.
-  const personalName = (friendlyUserDisplayName(user as any, '') || '').trim();
-  const personalEmail = (user?.email ?? '').trim();
-  const isPersonalIdentity = (value: string) => {
-    const v = value.trim();
-    if (!v) return true;
-    return v === personalName || v === personalEmail || v === personalEmail.split('@')[0];
-  };
+  // Workspace-first header identity. Both `activeWorkspace` (workspace list cache)
+  // and `brand` (white-label cache) hydrate synchronously from localStorage, so the
+  // workspace logo + name paint on the FIRST frame with no personal-profile fallback.
+  // The active workspace always wins over the per-user white-label row.
   const workspaceLogo = activeWorkspace?.workspace_logo_url || '';
   const workspaceName = activeWorkspace?.workspace_name || '';
-  const headerLogo = brand?.landscape_logo_url || brand?.logo_url || workspaceLogo || '';
-  const brandedName = brand?.agency_name || workspaceName || '';
-  const headerName = brandedName && !isPersonalIdentity(brandedName) ? brandedName : 'Realtyz AI';
+  const headerLogo =
+    workspaceLogo || brand?.landscape_logo_url || brand?.logo_url || '';
+  const headerName = workspaceName || brand?.agency_name || 'Realtyz AI';
 
   const advanceTutorial = () => {
     if (tutorialStep === null) return;
