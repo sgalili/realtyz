@@ -4,7 +4,6 @@
 // browses broker-approved properties, sees exactly what they earn per closing,
 // and generates a personal tracking link to market with.
 import { useMemo, useState } from 'react';
-import { AppLayout } from '@/components/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -231,25 +230,25 @@ export default function AffiliatePortal() {
 
   if (roleLoading) {
     return (
-      <AppLayout>
+      <>
         <div className="space-y-4 p-4">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
-      </AppLayout>
+      </>
     );
   }
 
   if (!isAffiliate) {
     return (
-      <AppLayout>
+      <>
         <JoinAffiliateCard />
-      </AppLayout>
+      </>
     );
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-5 p-4" dir="rtl">
         <header>
           <h1 className="text-2xl font-bold text-slate-900">רשת השותפים</h1>
@@ -369,6 +368,6 @@ export default function AffiliatePortal() {
           </TabsContent>
         </Tabs>
       </div>
-    </AppLayout>
+    </>
   );
 }

@@ -5,7 +5,6 @@
 // Tab 2 "מתעניינים משותפים" — full tracking CRM of every affiliate-generated
 //   referral: status funnel, source affiliate, linked lead, and settlement.
 import { useMemo, useState } from 'react';
-import { AppLayout } from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -180,7 +179,7 @@ export default function AffiliateNetwork() {
   }, [listings, referrals]);
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-5 p-4" dir="rtl">
         <header>
           <h1 className="text-2xl font-bold text-slate-900">רשת השותפים</h1>
@@ -385,6 +384,6 @@ export default function AffiliateNetwork() {
 
         <RewardDialog listing={editing} open={!!editing} onOpenChange={(v) => !v && setEditing(null)} />
       </div>
-    </AppLayout>
+    </>
   );
 }
