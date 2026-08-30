@@ -53,6 +53,105 @@ export type Database = {
         }
         Relationships: []
       }
+      affiliate_profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          payout_details: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          payout_details?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          payout_details?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      affiliate_referrals: {
+        Row: {
+          affiliate_id: string
+          broker_id: string
+          channel: string | null
+          clicks: number
+          created_at: string
+          id: string
+          lead_id: string | null
+          listing_id: string | null
+          notes: string | null
+          reward_amount: number
+          reward_type: string
+          settled_at: string | null
+          settlement_status: string
+          status: string
+          tracking_code: string
+          updated_at: string
+        }
+        Insert: {
+          affiliate_id: string
+          broker_id: string
+          channel?: string | null
+          clicks?: number
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          listing_id?: string | null
+          notes?: string | null
+          reward_amount?: number
+          reward_type?: string
+          settled_at?: string | null
+          settlement_status?: string
+          status?: string
+          tracking_code: string
+          updated_at?: string
+        }
+        Update: {
+          affiliate_id?: string
+          broker_id?: string
+          channel?: string | null
+          clicks?: number
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          listing_id?: string | null
+          notes?: string | null
+          reward_amount?: number
+          reward_type?: string
+          settled_at?: string | null
+          settlement_status?: string
+          status?: string
+          tracking_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_referrals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_referrals_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_learning_lexicon: {
         Row: {
           context: string | null
@@ -2943,6 +3042,10 @@ export type Database = {
         Row: {
           additional_details: Json
           address: string | null
+          affiliate_approved_at: string | null
+          affiliate_enabled: boolean
+          affiliate_reward_amount: number
+          affiliate_reward_type: string
           apartment_number: string | null
           area_perks: Json | null
           asking_price: number
@@ -2996,6 +3099,10 @@ export type Database = {
         Insert: {
           additional_details?: Json
           address?: string | null
+          affiliate_approved_at?: string | null
+          affiliate_enabled?: boolean
+          affiliate_reward_amount?: number
+          affiliate_reward_type?: string
           apartment_number?: string | null
           area_perks?: Json | null
           asking_price?: number
@@ -3049,6 +3156,10 @@ export type Database = {
         Update: {
           additional_details?: Json
           address?: string | null
+          affiliate_approved_at?: string | null
+          affiliate_enabled?: boolean
+          affiliate_reward_amount?: number
+          affiliate_reward_type?: string
           apartment_number?: string | null
           area_perks?: Json | null
           asking_price?: number
@@ -5423,6 +5534,25 @@ export type Database = {
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
       get_account_integrations: { Args: never; Returns: Json }
+      get_affiliate_marketplace: {
+        Args: never
+        Returns: {
+          address: string
+          approved_at: string
+          asking_price: number
+          broker_id: string
+          city: string
+          deal_type: string
+          image_url: string
+          listing_id: string
+          media_photos: Json
+          property_title: string
+          reward_amount: number
+          reward_type: string
+          rooms: number
+          slug: string
+        }[]
+      }
       get_business_performance: {
         Args: { days_window?: number; user_uuid: string }
         Returns: Json
@@ -5521,6 +5651,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }
+      is_affiliate: { Args: { _user_id?: string }; Returns: boolean }
       is_ai_autopilot_enabled: { Args: { _user_id: string }; Returns: boolean }
       is_ai_paused: { Args: { _user_id: string }; Returns: boolean }
       is_broker_or_admin: { Args: { _user_id: string }; Returns: boolean }
@@ -5628,6 +5759,10 @@ export type Database = {
           _sender_type: string
         }
         Returns: string
+      }
+      register_as_affiliate: {
+        Args: { _display_name?: string; _phone?: string }
+        Returns: Json
       }
       release_fb_group_post_slot: {
         Args: { _group: string; _owner: string }

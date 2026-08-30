@@ -12,7 +12,8 @@ export type AppRole =
   | 'lead_agent'
   | 'agent'
   | 'assistant'
-  | 'junior_agent';
+  | 'junior_agent'
+  | 'affiliate';
 
 // Hardcoded super-admin override - bypasses any state delays.
 const SUPER_ADMIN_EMAILS = ['sgalili@gmail.com'];
@@ -55,13 +56,20 @@ export function useUserRole() {
   const isAgent = roles.includes('agent') || isLeadAgent;
   const isAssistant = roles.includes('assistant');
   const isJuniorAgent = roles.includes('junior_agent');
+  const isAffiliate = roles.includes('affiliate');
   const isTeamMember =
     isManagingBroker || isLeadAgent || isAgent || isAssistant || isJuniorAgent || isAdmin;
+
+  // True only when `affiliate` is the user's ONLY role. Affiliate-only accounts
+  // are external marketers: every broker tool, CRM screen and office setting is
+  // hidden from them and they are routed to the affiliate portal instead.
+  const isAffiliateOnly = isAffiliate && !isTeamMember && !isModerator;
 
   // True only when junior_agent is the user's *highest* role.
   // Used for Junior-Agent UI restrictions (own-leads-only view).
   const isJuniorOnly =
     isJuniorAgent && !isAssistant && !isAgent && !isLeadAgent && !isManagingBroker && !isAdmin;
+
 
   // --- Permissions (mirror DB helpers in supabase migrations) ---
   // Close deals: Managing Broker, Lead Agent, Agent, Admin, Super Admin.
@@ -90,7 +98,10 @@ export function useUserRole() {
     isAssistant,
     isJuniorAgent,
     isJuniorOnly,
+    isAffiliate,
+    isAffiliateOnly,
     isTeamMember,
+
     canCloseDeals,
     canUseClosingRoom,
     canDeleteLeads,

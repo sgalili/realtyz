@@ -8,6 +8,7 @@ import {
   Handshake,
   ClipboardList,
   HelpCircle,
+  Share2,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
@@ -105,7 +106,27 @@ const NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-purple-50 text-purple-700 ring-purple-200',
     aliases: ['/live-conversations', '/ai-content', '/sentiment', '/conversation-analytics', '/insights'],
   },
+  {
+    title: 'רשת שותפים',
+    url: '/affiliate-network',
+    icon: Share2,
+    iconColor: 'text-emerald-600',
+    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  },
 ];
+
+// Affiliate-only accounts get a single-purpose menu: no CRM, no properties,
+// no posts, no office settings.
+const AFFILIATE_NAV_ITEMS: NavItem[] = [
+  {
+    title: 'רשת השותפים',
+    url: '/affiliate',
+    icon: Share2,
+    iconColor: 'text-emerald-600',
+    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  },
+];
+
 
 export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: string | null }) {
   const { state, isMobile, setOpenMobile } = useSidebar();
@@ -113,9 +134,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin } = useUserRole();
+  const { isSuperAdmin, isAffiliateOnly } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
+
+  const navItems = isAffiliateOnly ? AFFILIATE_NAV_ITEMS : NAV_ITEMS;
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
@@ -206,7 +229,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         <SidebarGroup className="pt-3">
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const active = isActive(item);
                 const tutorialActive =
                   tutorialHighlightPath === item.url ||

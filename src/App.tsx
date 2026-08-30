@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -72,6 +72,8 @@ const AiDialer = lazy(() => import("./pages/AiDialer"));
 const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
 const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
+const AffiliatePortal = lazy(() => import("./pages/AffiliatePortal"));
+const AffiliateNetwork = lazy(() => import("./pages/AffiliateNetwork"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Terms = lazy(() => import("./pages/Terms"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -121,14 +123,32 @@ function PageLoader() {
   );
 }
 
+/**
+ * Routes an affiliate-only account is allowed to reach. Everything else in the
+ * app (CRM, properties, posts, office settings) belongs to brokers and is
+ * redirected away, so an affiliate never sees broker tooling.
+ */
+const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/profile'];
+
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
+  const { isAffiliateOnly, loading: roleLoading } = useUserRole();
+  const location = useLocation();
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" label="מאמת זהות..." />
     </div>
   );
   if (!user) return <Navigate to="/auth" replace />;
+
+  // Affiliate-only accounts are locked to the affiliate portal.
+  if (!roleLoading && isAffiliateOnly) {
+    const allowed = AFFILIATE_ALLOWED_PATHS.some(
+      (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
+    );
+    if (!allowed) return <Navigate to="/affiliate" replace />;
+  }
+
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
 }
 
@@ -149,6 +169,7 @@ function RootRoute() {
   if (!user) return <Suspense fallback={<PageLoader />}><Landing /></Suspense>;
   return <ProtectedRoute><CommandCenter /></ProtectedRoute>;
 }
+
 
 function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -218,6 +239,8 @@ const App = () => (
               <Route path="/automations" element={<ProtectedRoute allowGuestDemo><AutomationStudioPage /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
+              <Route path="/affiliate" element={<ProtectedRoute><AffiliatePortal /></ProtectedRoute>} />
+              <Route path="/affiliate-network" element={<ProtectedRoute><AffiliateNetwork /></ProtectedRoute>} />
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />
               <Route path="/ads" element={<Navigate to="/campaigns?tab=campaigns" replace />} />
               <Route path="/campaigns" element={<ProtectedRoute allowGuestDemo><CampaignCenter /></ProtectedRoute>} />
