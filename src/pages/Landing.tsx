@@ -280,14 +280,15 @@ export default function Landing() {
           <Reveal delay={80}>
             <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
               <span className="landing-title-gradient block">AI למתווכים וסוכנויות נדל״ן</span>
-              <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים</span>
+              <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים.</span>
             </h1>
           </Reveal>
 
           <Reveal delay={160}>
             <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              סוכני AI שמנהלים 24/7 את כל הלידים, נכסים, התאמות, שיווק, תקשורת ומעקבים בשליטה מלאה מהווטסאפ שלכם
+              כלי העבודה היחיד שכל מתווך חייב בעידן ה AI.
             </p>
+
           </Reveal>
 
           {/* Platforms — official brand logos, infinite scroll, no labels */}

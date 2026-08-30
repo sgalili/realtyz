@@ -180,19 +180,24 @@ export function ConnectionsTab() {
     queryFn: async () => {
       const { data } = await supabase
         .from('social_connections')
-        .select('platform, is_connected')
+        .select('platform, is_connected, credentials')
         .in('platform', ['gmail', 'google_calendar', 'youtube']);
-      return (data ?? []) as { platform: string; is_connected: boolean }[];
+      return (data ?? []) as { platform: string; is_connected: boolean; credentials: any }[];
     },
   });
-  const connectedGoogle = new Set((googleConns ?? []).filter((c) => c.is_connected).map((c) => c.platform));
-  const allGoogleConnected = connectedGoogle.has('gmail') && connectedGoogle.has('google_calendar') && connectedGoogle.has('youtube');
+  const liveGoogle = (googleConns ?? []).filter((c) => c.is_connected);
+  const connectedGoogle = new Set(liveGoogle.map((c) => c.platform));
+  
   const someGoogleConnected = connectedGoogle.size > 0;
-  const googleStatus: [string, Tone] = allGoogleConnected
-    ? ['מחובר', 'ok']
-    : someGoogleConnected
-      ? ['חלקי', 'ok']
-      : ['לא מחובר', 'idle'];
+  // Never show a vague "חלקי": the header shows the actual connected Google
+  // account (email / name) so the broker sees exactly which account is live.
+  const googleAccount = liveGoogle
+    .map((c) => String(c.credentials?.verified_identity?.email ?? c.credentials?.verified_identity?.name ?? '').trim())
+    .find((v) => !!v) ?? null;
+  const googleStatus: [string, Tone] = someGoogleConnected
+    ? [googleAccount ?? 'מחובר', 'ok']
+    : ['לא מחובר', 'idle'];
+
 
   // Collapsed header badge reads the exact same shared state as the expanded
   // card badge and the global banner. Facebook / Instagram are strictly

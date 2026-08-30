@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, User, Crown, Wallet, LogOut, Shield, ShieldCheck } from 'lucide-react';
+import { ChevronDown, User, Crown, Wallet, LogOut, Shield, ShieldCheck, ArrowLeftRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { useSidebar } from '@/components/ui/sidebar';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
@@ -40,11 +41,17 @@ export function ProfileCapsule() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isManagingBroker, isSuperAdmin } = useUserRole();
+  const { workspaces, activeWorkspace, openSelector } = useWorkspace();
+  const multiWorkspace = workspaces.length > 1;
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
 
-  const initial = (user?.email ?? 'U').slice(0, 1).toUpperCase();
-  const displayName = user?.email?.split('@')[0] ?? 'משתמש';
+  // The capsule represents the WORKSPACE, not the individual user: show the
+  // workspace logo and name, never the personal profile picture.
+  const workspaceName = activeWorkspace?.workspace_name?.trim() || user?.email?.split('@')[0] || 'משתמש';
+  const workspaceLogo = activeWorkspace?.workspace_logo_url || null;
+  const initial = (workspaceName || 'U').slice(0, 1).toUpperCase();
+  const displayName = workspaceName;
 
   const go = (path: string) => {
     setOpen(false);
@@ -73,8 +80,10 @@ export function ProfileCapsule() {
             )}
             aria-label="תפריט פרופיל"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-              {initial}
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-bold text-primary-foreground">
+              {workspaceLogo
+                ? <img src={workspaceLogo} alt={workspaceName} className="h-full w-full object-cover" loading="lazy" />
+                : initial}
             </div>
             {!collapsed && (
               <>
@@ -85,6 +94,21 @@ export function ProfileCapsule() {
                 {isSuperAdmin && (
                   <span className="shrink-0 rounded-full bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wider text-warning">
                     Admin
+                  </span>
+                )}
+                {multiWorkspace && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    title="החלף מרחב עבודה"
+                    aria-label="החלף מרחב עבודה"
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); openSelector(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); openSelector(); }
+                    }}
+                    className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                  >
+                    <ArrowLeftRight className="h-3.5 w-3.5" />
                   </span>
                 )}
                 <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
