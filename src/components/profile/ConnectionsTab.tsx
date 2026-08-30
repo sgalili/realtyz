@@ -175,8 +175,23 @@ export function ConnectionsTab() {
 
   // Collapsed header badge reads the exact same shared state as the expanded
   // card badge and the global banner. Status only — never the page name.
-  const fbConnected = !!(fbHealth?.pageConnected || meta?.connected);
+  const fbConnected = !!(fbHealth?.pageConnected || meta?.connected || account?.facebook?.hasToken);
   const metaStatus: [string, Tone] = fbConnected ? ['מחובר', 'ok'] : ['מנותק', 'idle'];
+
+  // Account-level values win: a number connected in any workspace of this user
+  // shows up here too.
+  const officialPhone = waPhone ?? account?.waPhone ?? null;
+  const personalPhone = greenPhone ?? account?.greenPhone ?? null;
+  const greenLive = greenReady || !!account?.greenConnected;
+
+  // Single WhatsApp parent card: the collapsed header shows the live number
+  // (official first, personal as fallback) instead of "לא הוגדר".
+  const waHeaderPhone = officialPhone ?? personalPhone;
+  const waStatus: [string, Tone] = waHeaderPhone
+    ? [formatPhoneDisplay(waHeaderPhone), 'ok']
+    : greenLive || waMode
+      ? ['מחובר', 'ok']
+      : ['לא הוגדר', 'idle'];
 
   const sections: Array<{ id: string; title: string; status: string; tone: Tone; node: ReactNode }> = [
     {
@@ -187,25 +202,40 @@ export function ConnectionsTab() {
       node: <MetaDirectConnectionCard onStatus={setMeta} />,
     },
     {
-      id: 'wa-meta',
-      title: 'WhatsApp רשמי (Meta Cloud API)',
-      status: waPhone ? formatPhoneDisplay(waPhone) : 'לא מחובר',
-      tone: waPhone ? 'ok' : 'idle',
-      node: <MetaWhatsAppAuthCard />,
-    },
-    {
-      id: 'wa-mode',
-      title: 'אופן חיבור WhatsApp',
-      status: waPhone ? formatPhoneDisplay(waPhone) : waMode ? 'מספר רשמי (Meta)' : 'לא הוגדר',
-      tone: waPhone || waMode ? 'ok' : 'idle',
-      node: <WhatsAppConnectionModeCard />,
-    },
-    {
-      id: 'wa-green',
-      title: 'WhatsApp · מספר אישי (Green API)',
-      status: greenPhone ? formatPhoneDisplay(greenPhone) : greenReady ? 'מחובר' : 'לא הוגדר',
-      tone: greenPhone || greenReady ? 'ok' : 'idle',
-      node: <WhatsAppGatewayCard />,
+      id: 'whatsapp',
+      title: 'חשבונות ווטסאפ',
+      status: waStatus[0],
+      tone: waStatus[1],
+      node: (
+        <div className="space-y-4">
+          <section className="space-y-2">
+            <h4 className="text-sm font-semibold">
+              WhatsApp רשמי (Meta Cloud API)
+              {officialPhone && (
+                <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
+                  {formatPhoneDisplay(officialPhone)}
+                </span>
+              )}
+            </h4>
+            <MetaWhatsAppAuthCard />
+          </section>
+          <section className="space-y-2 border-t pt-4">
+            <h4 className="text-sm font-semibold">אופן חיבור WhatsApp</h4>
+            <WhatsAppConnectionModeCard />
+          </section>
+          <section className="space-y-2 border-t pt-4">
+            <h4 className="text-sm font-semibold">
+              מספר אישי (Green API)
+              {personalPhone && (
+                <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
+                  {formatPhoneDisplay(personalPhone)}
+                </span>
+              )}
+            </h4>
+            <WhatsAppGatewayCard />
+          </section>
+        </div>
+      ),
     },
     {
       id: 'voice',
