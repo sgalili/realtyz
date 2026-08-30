@@ -231,8 +231,11 @@ export default function Landing() {
       {/* ───────── Nav ───────── */}
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
-          <Link to="/auth">
-            <Button size="sm" className="font-bold">התחברות</Button>
+          <Link
+            to="/auth"
+            className="text-sm font-extrabold text-primary underline-offset-4 transition-colors hover:underline"
+          >
+            הרשמה/התחברות
           </Link>
           <nav className="hidden items-center gap-7 text-sm font-semibold text-muted-foreground md:flex">
             <a href="#features" className="transition-colors hover:text-foreground">יכולות</a>
@@ -299,7 +302,7 @@ export default function Landing() {
           </div>
 
           {/* Infrastructure trust row */}
-          <div className="mt-5">
+          <div className="mt-5 pt-[10px]">
             <p className="text-sm font-extrabold tracking-widest text-muted-foreground">
               תשתית טכנולוגית
             </p>
