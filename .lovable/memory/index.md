@@ -54,3 +54,4 @@
 - [Tenant Isolation & Product Tour](mem://features/tenant-isolation-and-tour) — workspace-scoped RLS on listings/social_connections/campaign_settings, ProductTour dialog, graphic header logo.
 - [Global Meta App + Isolation (HARD)](mem://constraints/tenant-isolation-meta) — One system Meta app for all users; no FB_PAGE_* env token fallbacks; messenger_page_bindings unique on (owner_id,page_id).
 - [Package Pricing](mem://features/pricing-packages) — Fixed monthly packages ₪0/145/495/795; per-contact pricing retired; tour WA button removed.
+- [Workspace SMS 019 + OTP fallback](mem://features/workspace-sms-019) — per-workspace 019 credentials, WhatsApp OTP SMS fallback, first-time Google/Facebook approval popup, FB group publish scopes.
