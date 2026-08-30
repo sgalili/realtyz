@@ -71,7 +71,7 @@ export function StackTicker() {
                   <img
                     src={s.img}
                     alt={`${s.label} logo`}
-                    loading="lazy"
+                    loading="eager" decoding="async"
                     className="h-7 w-auto shrink-0 object-contain"
                   />
                 )}
