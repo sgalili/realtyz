@@ -1,5 +1,6 @@
 import { Check, Mail, MessageCircle, Phone, PhoneCall, Send } from 'lucide-react';
 import { PriceTag } from '@/components/PriceTag';
+import { TouchCreditsExplainerLink } from '@/components/billing/TouchCreditsExplainer';
 import {
   CHANNEL_RATES,
   EXTRA_TC_PRICE_PER_CONTACT,
