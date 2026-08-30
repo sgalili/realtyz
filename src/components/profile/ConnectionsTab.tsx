@@ -178,12 +178,12 @@ export function ConnectionsTab() {
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
   // Collapsed header badge reads the exact same shared state as the expanded
-  // card badge and the global banner. Status only — never the page name.
-  const fbConnected = !!(fbHealth?.pageConnected || meta?.connected || account?.facebook?.hasToken);
+  // card badge and the global banner. Facebook / Instagram are strictly
+  // workspace-scoped: never fall back to another workspace's binding.
+  const fbConnected = !!(fbHealth?.pageConnected || meta?.connected);
   const metaStatus: [string, Tone] = fbConnected ? ['מחובר', 'ok'] : ['מנותק', 'idle'];
 
-  // Account-level values win: a number connected in any workspace of this user
-  // shows up here too.
+  // WhatsApp / Yad2 stay account-level: connected once, live in every workspace.
   const officialPhone = waPhone ?? account?.waPhone ?? null;
   const personalPhone = greenPhone ?? account?.greenPhone ?? null;
   const greenLive = greenReady || !!account?.greenConnected;
@@ -212,17 +212,24 @@ export function ConnectionsTab() {
       tone: waStatus[1],
       node: (
         <div data-plain className="space-y-4">
-          <section className="space-y-2">
-            <h4 className="text-sm font-semibold">
-              WhatsApp רשמי (Meta Cloud API)
-              {officialPhone && (
+          {officialPhone ? (
+            // A Meta WBA number is live — the whole Cloud API setup block is
+            // irrelevant, so show a compact confirmation row instead.
+            <section className="space-y-1">
+              <h4 className="text-sm font-semibold">
+                WhatsApp רשמי (Meta Cloud API)
                 <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
                   {formatPhoneDisplay(officialPhone)}
                 </span>
-              )}
-            </h4>
-            <MetaWhatsAppAuthCard />
-          </section>
+              </h4>
+              <p className="text-xs text-muted-foreground">המספר הרשמי מחובר ומאושר מול Meta.</p>
+            </section>
+          ) : (
+            <section className="space-y-2">
+              <h4 className="text-sm font-semibold">WhatsApp רשמי (Meta Cloud API)</h4>
+              <MetaWhatsAppAuthCard />
+            </section>
+          )}
           <section className="space-y-2 border-t pt-4">
             <h4 className="text-sm font-semibold">אופן חיבור WhatsApp</h4>
             <WhatsAppConnectionModeCard />
@@ -242,52 +249,47 @@ export function ConnectionsTab() {
       ),
     },
     {
+      id: 'google',
+      title: 'חשבונות גוגל',
+      status: 'חיבור',
+      tone: 'idle',
+      node: (
+        <div data-plain className="space-y-4">
+          {isSuperAdmin && (
+            <section className="space-y-2">
+              <GoogleApiCredentialsCard />
+            </section>
+          )}
+          <section className="space-y-3">
+            <GoogleServiceConnectCard
+              platform="gmail"
+              title="Gmail (שליחה וקבלה)"
+              hint="חיבור תיבת Gmail לשליחה וקבלה של מיילים."
+            />
+            <GoogleServiceConnectCard
+              platform="google_calendar"
+              title="Google Calendar"
+              hint="סנכרון פגישות וסיורים ליומן Google."
+            />
+            <GoogleServiceConnectCard
+              platform="youtube"
+              title="YouTube"
+              hint="חיבור ערוץ YouTube להעלאת סרטוני נכסים."
+            />
+          </section>
+          <section className="space-y-2 border-t pt-4">
+            <CalendarSyncCard />
+          </section>
+        </div>
+      ),
+    },
+    {
       id: 'voice',
       title: 'שיחות טלפון (Vapi / Twilio)',
       status: voicePhone ? formatPhoneDisplay(voicePhone) : voiceReady ? 'מחובר' : 'לא הוגדר',
       tone: voicePhone || voiceReady ? 'ok' : 'idle',
       node: <VoiceGatewayCard />,
     },
-    {
-      id: 'email',
-      title: 'כתובת מייל מותגת',
-      status: emailAlias ? `${emailAlias}@realtyz.co.il` : 'לא הוגדר',
-      tone: emailAlias ? 'ok' : 'idle',
-      node: <EmailAliasCard />,
-    },
-    {
-      id: 'calendar',
-      title: 'יומן Google',
-      status: 'סנכרון',
-      tone: 'idle',
-      node: <CalendarSyncCard />,
-    },
-    ...(isSuperAdmin
-      ? [{
-          id: 'google-admin',
-          title: 'Google API גלובלי (Gmail + יומן) · סופר-אדמין',
-          status: 'ניהול',
-          tone: 'idle' as Tone,
-          node: (
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                חיבור חשבון Google הגלובלי של הפלטפורמה. משמש לשליחת מיילים וסנכרון יומן עבור כל חשבונות העבודה.
-              </p>
-              <GoogleApiCredentialsCard />
-              <GoogleServiceConnectCard
-                platform="gmail"
-                title="Gmail (שליחה וקבלה)"
-                hint="חיבור תיבת Gmail הגלובלית לשליחה וקבלה של מיילים."
-              />
-              <GoogleServiceConnectCard
-                platform="google_calendar"
-                title="Google Calendar"
-                hint="סנכרון פגישות וסיורים ליומן Google."
-              />
-            </div>
-          ),
-        }]
-      : []),
     {
       id: 'portals',
       title: 'פורטלי נדל"ן',
