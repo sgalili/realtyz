@@ -136,61 +136,6 @@ export default function CommandCenter() {
   // Every card starts COLLAPSED when entering the page.
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
 
-  // Auto-link Gmail/Calendar/YouTube after a fresh Google sign-in.
-  useEffect(() => {
-    const pending = (() => {
-      try { return window.sessionStorage.getItem('realtyz-google-services-pending'); }
-      catch { return null; }
-    })();
-    if (pending !== '1') return;
-
-    // Only redirect if at least one Google service is not yet connected.
-    const checkAndRedirect = async () => {
-      try {
-        const { data: rows } = await supabase
-          .from('social_connections')
-          .select('platform, is_connected')
-          .in('platform', ['gmail', 'google_calendar', 'youtube']);
-        const connected = new Set((rows ?? []).filter((r: any) => r.is_connected).map((r: any) => r.platform));
-        if (connected.has('gmail') && connected.has('google_calendar') && connected.has('youtube')) {
-          try { window.sessionStorage.removeItem('realtyz-google-services-pending'); } catch { /* */ }
-          return;
-        }
-        // Build the combined Google OAuth URL.
-        const { data: cfg, error } = await supabase.functions.invoke('google-oauth-config', { body: {} });
-        if (error || !(cfg as any)?.client_id) return;
-        const clientId = String((cfg as any).client_id);
-        const returnToken = btoa(encodeURIComponent(window.location.origin))
-          .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        const redirectUri = `${window.location.origin}/oauth/callback`;
-        const params = new URLSearchParams({
-          client_id: clientId,
-          redirect_uri: redirectUri,
-          response_type: 'code',
-          scope: [
-            'openid',
-            'https://www.googleapis.com/auth/userinfo.email',
-            'https://www.googleapis.com/auth/userinfo.profile',
-            'https://www.googleapis.com/auth/gmail.send',
-            'https://www.googleapis.com/auth/gmail.compose',
-            'https://www.googleapis.com/auth/gmail.readonly',
-            'https://www.googleapis.com/auth/calendar',
-            'https://www.googleapis.com/auth/calendar.events',
-            'https://www.googleapis.com/auth/youtube.force-ssl',
-            'https://www.googleapis.com/auth/youtube.readonly',
-          ].join(' '),
-          access_type: 'offline',
-          prompt: 'consent select_account',
-          include_granted_scopes: 'true',
-          state: `google_all:${returnToken}`,
-        });
-        window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
-      } catch {
-        /* silent: let the user connect manually from the profile page */
-      }
-    };
-    void checkAndRedirect();
-  }, []);
   const [editing, setEditing] = useState<CommandTask | null>(null);
   const toggleCard = (key: string) =>
     setOpenIds((prev) => {
