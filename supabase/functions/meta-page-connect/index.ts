@@ -587,23 +587,44 @@ Deno.serve(async (req) => {
           pages: selectable.map((p) => ({ id: String(p.id), name: p.name ?? null, picture: p?.picture?.data?.url ?? null })),
         });
       }
-      // One page per workspace: drop any previous binding, then upsert on page_id.
-      await admin.from("messenger_page_bindings").delete().eq("owner_id", ownerId);
-      const { error: upsertErr } = await admin.from("messenger_page_bindings").upsert(
-        {
+      // MULTI-ACCOUNT: keep every page the user manages bound to this workspace
+      // (never delete the previous bindings) so posts, comments and DMs can be
+      // handled across all of them. The chosen page becomes the default.
+      const rows = selectable.map((p) => ({
+        owner_id: ownerId,
+        page_id: String(p.id),
+        page_name: p.name ?? null,
+        page_avatar_url: p?.picture?.data?.url ?? pageAvatar(String(p.id)),
+        page_access_token: String(p.access_token),
+        is_selected: String(p.id) === String(chosen.id),
+        updated_at: new Date().toISOString(),
+      }));
+      if (!rows.some((r) => r.page_id === String(chosen.id))) {
+        rows.push({
           owner_id: ownerId,
           page_id: String(chosen.id),
           page_name: chosen.name ?? null,
           page_avatar_url: chosen?.picture?.data?.url ?? pageAvatar(String(chosen.id)),
           page_access_token: String(chosen.access_token),
+          is_selected: true,
           updated_at: new Date().toISOString(),
-        },
-        { onConflict: "owner_id,page_id" },
-      );
+        });
+      }
+      const { error: upsertErr } = await admin
+        .from("messenger_page_bindings")
+        .upsert(rows, { onConflict: "owner_id,page_id" });
+      if (!upsertErr) {
+        await admin
+          .from("messenger_page_bindings")
+          .update({ is_selected: false })
+          .eq("owner_id", ownerId)
+          .neq("page_id", String(chosen.id));
+      }
       if (upsertErr) {
         console.error("[meta-page-connect] upsert failed", upsertErr);
         return json({ error: upsertErr.message }, 500);
       }
+
 
       return json({
         ok: true,
