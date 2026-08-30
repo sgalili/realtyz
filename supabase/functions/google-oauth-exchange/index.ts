@@ -186,15 +186,9 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: isAdmin } = await admin.rpc('is_admin_or_above', {
-      _uid: userData.user.id,
-    });
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: 'Forbidden — admin only' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Every authenticated user may connect their OWN Google account: all
+    // reads/writes below are scoped to `created_by = caller`, so there is no
+    // cross-user exposure and no admin gate is needed.
 
     const body: ExchangeBody = await req.json().catch(() => ({}));
     const platform = String(body.platform || '').toLowerCase();

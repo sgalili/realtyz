@@ -32,7 +32,13 @@ window.addEventListener("unhandledrejection", (e) => maybeReloadForStaleChunk(e.
 
 const rootEl = document.getElementById("root")!;
 
-function renderOAuthBridge() {
+/**
+ * Popup-only fast path: hand the grant to the opener and close.
+ * Resolves `false` when the window could not be closed (or there is no
+ * opener at all) so the caller can boot the real app instead of leaving the
+ * user staring at a spinner forever.
+ */
+function renderOAuthBridge(): Promise<boolean> {
   const params = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const code = params.get("code") ?? hashParams.get("code");
@@ -46,7 +52,6 @@ function renderOAuthBridge() {
       <div style="text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center">
         <div style="height:32px;width:32px;border-radius:9999px;border:2px solid hsl(var(--primary));border-top-color:transparent;animation:spin 1s linear infinite"></div>
         <p style="margin:0;font-size:14px;color:hsl(var(--muted-foreground))">מסיים אימות מאובטח...</p>
-        <p style="margin:0;font-size:11px;color:hsl(var(--muted-foreground))">חלון זה ייסגר אוטומטית</p>
       </div>
     </div>
   `;
@@ -56,40 +61,47 @@ function renderOAuthBridge() {
   document.head.appendChild(style);
 
   try {
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage(
-        {
-          type: "realtyz-oauth-callback",
-          code,
-          state,
-          error,
-          errorDescription,
-        },
-        window.location.origin,
-      );
-    }
+    window.opener?.postMessage(
+      { type: "realtyz-oauth-callback", code, state, error, errorDescription },
+      window.location.origin,
+    );
   } catch {
     // noop
   }
 
-  window.setTimeout(() => {
-    try {
-      window.close();
-    } catch {
-      // noop
-    }
-  }, 250);
+  return new Promise<boolean>((resolve) => {
+    window.setTimeout(() => {
+      try {
+        window.close();
+      } catch {
+        // noop
+      }
+      // Give the browser a moment; if the window is still here, fall back.
+      window.setTimeout(() => resolve(window.closed === true), 600);
+    }, 200);
+  });
 }
 
 async function bootstrap() {
   const isOAuthCallback = /^\/oauth\/callback\/?$/.test(window.location.pathname);
+  // Only take the popup shortcut when there really IS an opener to hand the
+  // grant to. Full-page redirects (Google one-click) must reach the React
+  // callback route, which performs the exchange and can never hang.
+  let hasOpener = false;
+  try {
+    hasOpener = !!window.opener && !window.opener.closed && window.opener !== window;
+  } catch {
+    hasOpener = !!window.opener;
+  }
   const callbackParams = new URLSearchParams(window.location.search);
   const callbackHash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const callbackState = callbackParams.get("state") ?? callbackHash.get("state") ?? "";
   const isFacebookCallback = callbackState.startsWith("facebook");
-  if (isOAuthCallback && !isFacebookCallback) {
-    renderOAuthBridge();
-    return;
+  if (isOAuthCallback && hasOpener && !isFacebookCallback) {
+    const closed = await renderOAuthBridge();
+    if (closed) return;
+    // Closing was blocked — continue into the app so the callback page can
+    // finish the exchange and offer the "חזרה למערכת" button.
   }
 
   const { default: App } = await import("./App.tsx");

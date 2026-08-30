@@ -28,7 +28,7 @@ function normalizeE164(raw: string): string {
 
 // Canonical word:weight transcriber keyword format (Vapi/Deepgram requirement).
 const TRANSCRIBER_KEYWORDS = [
-  "ריאלטיז:1",
+  "רילטיז:1",
   "נכס:1",
   "דירה:1",
   "מתעניין:1",

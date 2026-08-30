@@ -1,6 +1,9 @@
 # Project Memory
 
 ## Core
+- **Brand name (HARD)**: Hebrew brand is **רילטיז** — never "ריאלטיז" anywhere (UI, workspace names, prompts).
+- **Facebook/Instagram (HARD)**: strictly per-workspace. `get_effective_meta_page()` reads only the active workspace binding — no account-level or platform-shared fallback. WhatsApp (WBA/Green) + Yad2 stay account-level.
+- **OAuth callback (HARD)**: `src/main.tsx` may only render the popup bridge when a real `window.opener` exists; full-page redirects must boot the app so `/oauth/callback` finishes the exchange (otherwise it hangs on "מסיים אימות מאובטח").
 - **Realtyz AI** (full rebrand from Kalpiz, completed). Real-estate CRM. The codebase contains zero `Kalpiz` references in source — only the legacy DB column `hide_kalpiz_branding` (in `white_label_settings`) and the original SQL migration files retain the old name; treat that column as read-only legacy.
 - **Component prefixes**: All prior `KalpizX` components are now `RealtyzX` (RealtyzWave, RealtyzLoader, RealtyzWordmarkSvg). All CSS classes that were `kalpiz-*` are now `realtyz-*`. All localStorage keys (`realtyz-authenticated-session`, `realtyz-demo-mode`, etc.) follow the same convention.
 - **Schema**: Use `leads` (was voters), `listings` (was candidate_pages), `contact_submissions` (was leads), `messages.lead_id`, `chat_history.lead_id`.

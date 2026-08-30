@@ -25,7 +25,7 @@ const SAFETY_UI_TIMEOUT_MS = 4_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
 const HARD_TIMEOUT_MS = 25_000;
 /** Google states we can exchange right here in the callback. */
-const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar'] as const;
+const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive'] as const;
 
 type OAuthError = { title: string; detail: string | null } | null;
 
@@ -134,7 +134,7 @@ export default function OAuthCallback() {
         state.startsWith(FACEBOOK_PAGE_STATE_PREFIX) ||
         (!state && !!(code || accessToken) && /facebook\.com/i.test(document.referrer || ''));
       const backPath =
-        state.startsWith('facebook') || state.startsWith('gmail') || state.startsWith('google_calendar')
+        state.startsWith('facebook') || GOOGLE_STATE_PREFIXES.some((p) => state.startsWith(p))
           ? CONNECTIONS_PATH
           : '/profile';
 

@@ -423,7 +423,7 @@ function WorkspaceTab() {
           .eq('user_id', ownerId)
           .maybeSingle();
         if (cancelled) return;
-        setAgencyName((data as any)?.agency_name || activeWorkspace?.workspace_name || 'ריאלטיז נדל"ן');
+        setAgencyName((data as any)?.agency_name || activeWorkspace?.workspace_name || 'רילטיז נדל"ן');
         setLogoUrl((data as any)?.logo_url || activeWorkspace?.workspace_logo_url || '');
         setLandscapeLogoUrl((data as any)?.landscape_logo_url || '');
 

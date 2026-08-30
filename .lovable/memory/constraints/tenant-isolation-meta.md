@@ -13,3 +13,8 @@ FORBIDDEN (tenant isolation):
 - No platform env token fallbacks anywhere: `FB_PAGE_ID`, `FB_PAGE_ACCESS_TOKEN`, `FACEBOOK_PAGE_ACCESS_TOKEN`, `META_ACCESS_TOKEN` must never be used as a token source (removed from `_shared/metaPage.ts`, `sync-all-facebook-post-images`, `fetch-missing-post-media`).
 - Never read page/social tokens unscoped; always filter by workspace owner.
 - `messenger_page_bindings` is unique on `(owner_id, page_id)` — never on `page_id` alone. All upserts use `onConflict: "owner_id,page_id"` so two workspaces can connect the same page without stealing it.
+
+STRICT PER-WORKSPACE (2026-08-30, supersedes the earlier platform-shared page rule):
+- `get_effective_meta_page()` resolves ONLY the active workspace owner's binding — no account-level fallback, no `is_platform_shared` fallback.
+- `get_account_integrations()` returns the workspace-scoped Facebook page; only WhatsApp (WBA/Green) and Yad2 stay account-level across workspaces.
+- Never re-add cross-workspace or platform-shared Facebook/Instagram fallbacks.

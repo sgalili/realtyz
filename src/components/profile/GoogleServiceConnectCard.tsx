@@ -11,7 +11,7 @@ import { onOAuthResult } from '@/lib/oauthPopupBridge';
 
 
 
-type GooglePlatform = 'gmail' | 'google_calendar';
+type GooglePlatform = 'gmail' | 'google_calendar' | 'youtube';
 
 /**
  * One-click Google connect row (Gmail / Google Calendar).
