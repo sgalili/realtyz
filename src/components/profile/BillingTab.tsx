@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,16 @@ import {
 import { CreditBalancePill } from '@/components/CreditBalancePill';
 import { PriceTag } from '@/components/PriceTag';
 import { fmtILS } from '@/lib/formatCurrency';
-import { PACKAGES, limitLabel, recommendedPackage, type PricingPackage } from '@/lib/pricing';
+import {
+  PACKAGES,
+  YEARLY_PAID_MONTHS,
+  limitLabel,
+  recommendedPackage,
+  yearlyPrice,
+  type PricingPackage,
+} from '@/lib/pricing';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TouchCreditsExplainerBody, TouchCreditsExplainerLink } from '@/components/billing/TouchCreditsExplainer';
 import {
   CHANNEL_RATES,
   EXTRA_TC_PRICE_PER_CONTACT,
@@ -87,6 +96,8 @@ export default function BillingTab() {
     [contactsUsed, propertiesUsed],
   );
 
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+
   const { data: usageRows = [] } = useQuery({
     queryKey: ['tc_usage_month', user?.id],
     enabled: !!user?.id,
@@ -139,7 +150,10 @@ export default function BillingTab() {
   const pct = included > 0 ? Math.min(100, (usedTc / included) * 100) : 0;
 
   const requestUpgrade = (pkg: PricingPackage) => {
-    const text = `היי, אני רוצה לשדרג את רילטיז לחבילת ${pkg.name} (${fmtILS(pkg.monthlyPrice)} לחודש).`;
+    const text =
+      billingCycle === 'yearly'
+        ? `היי, אני רוצה לשדרג את רילטיז לחבילת ${pkg.name} בתשלום שנתי (${fmtILS(yearlyPrice(pkg.monthlyPrice))} לשנה).`
+        : `היי, אני רוצה לשדרג את רילטיז לחבילת ${pkg.name} (${fmtILS(pkg.monthlyPrice)} לחודש).`;
     window.open(`https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 
@@ -233,8 +247,9 @@ export default function BillingTab() {
               חיוב נוסף חל רק על הפצה פרטית שאינה נדרשת על ידי ה-AI.
             </span>
           </p>
-          <div className="pt-1">
+          <div className="flex items-center gap-3 pt-1">
             <CreditBalancePill />
+            <TouchCreditsExplainerLink />
           </div>
         </CardContent>
       </Card>
@@ -270,7 +285,21 @@ export default function BillingTab() {
       {/* שדרוג חבילה */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">שדרוג חבילה</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-base">שדרוג חבילה</CardTitle>
+            <Tabs
+              dir="rtl"
+              value={billingCycle}
+              onValueChange={(v) => setBillingCycle(v as 'monthly' | 'yearly')}
+            >
+              <TabsList className="h-8">
+                <TabsTrigger value="monthly" className="text-xs">חודשי</TabsTrigger>
+                <TabsTrigger value="yearly" className="text-xs">
+                  שנתי · {12 - YEARLY_PAID_MONTHS} חודשים מתנה
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {PACKAGES.map((pkg) => (
@@ -288,9 +317,20 @@ export default function BillingTab() {
                 )}
               </div>
               <span className="text-2xl font-bold text-primary">
-                <bdi dir="ltr">{pkg.monthlyPrice === 0 ? '₪0' : fmtILS(pkg.monthlyPrice)}</bdi>
-                <span className="ms-1 text-xs font-normal text-muted-foreground">/ חודש</span>
+                <bdi dir="ltr">
+                  {pkg.monthlyPrice === 0
+                    ? '₪0'
+                    : fmtILS(billingCycle === 'yearly' ? yearlyPrice(pkg.monthlyPrice) : pkg.monthlyPrice)}
+                </bdi>
+                <span className="ms-1 text-xs font-normal text-muted-foreground">
+                  {billingCycle === 'yearly' ? '/ שנה' : '/ חודש'}
+                </span>
               </span>
+              {billingCycle === 'yearly' && pkg.monthlyPrice > 0 && (
+                <span className="text-[11px] font-semibold text-muted-foreground">
+                  שווה ערך ל-{fmtILS(Math.round((yearlyPrice(pkg.monthlyPrice) / 12) * 100) / 100)} לחודש
+                </span>
+              )}
               <span className="text-xs text-muted-foreground">
                 {limitLabel(pkg.contacts)} אנשי קשר
               </span>
@@ -305,6 +345,17 @@ export default function BillingTab() {
               </Button>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* הסבר מלא על מגעי קרדיט */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">איך עובדים מגעי קרדיט (T.C)?</CardTitle>
+          <CardDescription>הסבר מלא, דוגמאות ואופן חישוב חריגה</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TouchCreditsExplainerBody />
         </CardContent>
       </Card>
 
