@@ -173,7 +173,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         },
       });
     })().catch(() => {});
-  }, [user, loading]);
+  }, [user, loading, activeWorkspaceId]);
 
   const setActiveWorkspace = useCallback(async (ownerId: string) => {
     if (!user) return;
