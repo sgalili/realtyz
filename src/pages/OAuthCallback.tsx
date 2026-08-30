@@ -27,7 +27,14 @@ const HARD_TIMEOUT_MS = 25_000;
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive', 'google_all'] as const;
 
-type OAuthError = { title: string; detail: string | null } | null;
+type OAuthError = {
+  title: string;
+  detail: string | null;
+  /** Plain-Hebrew guidance shown above the technical line. */
+  hint?: string | null;
+  /** Google Cloud Console link that fixes a disabled API. */
+  enableUrl?: string | null;
+} | null;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
