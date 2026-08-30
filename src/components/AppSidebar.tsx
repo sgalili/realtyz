@@ -134,9 +134,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin } = useUserRole();
+  const { isSuperAdmin, isAffiliateOnly } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
+
+  const navItems = isAffiliateOnly ? AFFILIATE_NAV_ITEMS : NAV_ITEMS;
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
