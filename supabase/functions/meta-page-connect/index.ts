@@ -706,13 +706,7 @@ Deno.serve(async (req) => {
       }
 
       try {
-        // One page per workspace: clear the previous binding first.
-        const { error: delErr } = await admin
-          .from("messenger_page_bindings")
-          .delete()
-          .eq("owner_id", ownerId);
-        if (delErr) throw delErr;
-
+        // MULTI-ACCOUNT: keep other bindings, just move the default flag.
         const { data: saved, error: selectErr } = await admin
           .from("messenger_page_bindings")
           .upsert(
@@ -730,6 +724,12 @@ Deno.serve(async (req) => {
           .select("page_id, page_name, page_avatar_url")
           .maybeSingle();
         if (selectErr) throw selectErr;
+        await admin
+          .from("messenger_page_bindings")
+          .update({ is_selected: false })
+          .eq("owner_id", ownerId)
+          .neq("page_id", target.id);
+
 
         return json({
           ok: true,
