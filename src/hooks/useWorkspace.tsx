@@ -143,8 +143,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       return;
     }
     (async () => {
+      // Workspace-scoped: the sentinel must judge the ACTIVE workspace's
+      // Facebook connection, never the signed-in user's personal one.
+      const owner = activeWorkspaceId ?? user.id;
       const [pageRes, socialRes, personalRes] = await Promise.all([
-        supabase.from('messenger_page_bindings').select('id, page_id').limit(1),
+        supabase.from('messenger_page_bindings').select('id, page_id').eq('owner_id', owner).limit(1),
         supabase.from('social_connections').select('id').limit(1),
         supabase.from('fb_personal_connections').select('id, access_token, token_expires_at').limit(1),
       ]);
