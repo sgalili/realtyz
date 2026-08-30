@@ -276,23 +276,6 @@ export default function Landing() {
             </h1>
           </Reveal>
 
-          <Reveal delay={160}>
-            <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              כלי העבודה היחיד שכל מתווך חייב בעידן ה AI.
-            </p>
-
-          </Reveal>
-
-          {/* Platforms — official brand logos, infinite scroll, no labels */}
-          <Reveal delay={400}>
-            <div className="mt-6">
-              <p className="mb-1 text-sm font-extrabold tracking-widest text-muted-foreground">
-                כל הכלים במקום אחד
-              </p>
-              <PlatformTicker />
-            </div>
-          </Reveal>
-
           {/* Metric cards */}
           <div className="mx-auto mt-5 grid w-full max-w-4xl grid-cols-3 gap-2 sm:gap-3">
             {[
