@@ -130,6 +130,17 @@ export function ProfileCapsule() {
             <p className="truncate text-[10px] text-muted-foreground">{user?.email}</p>
           </div>
           <div className="flex flex-col">
+            {multiWorkspace && (
+              <button
+                type="button"
+                onClick={() => { setOpen(false); openSelector(); }}
+                className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-right text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+              >
+                <ArrowLeftRight className="h-4 w-4 shrink-0 text-primary" />
+                <span className="flex-1">החלף מרחב עבודה</span>
+              </button>
+            )}
+
             {visibleItems.map((item) => {
               const Icon = item.icon;
               return (
