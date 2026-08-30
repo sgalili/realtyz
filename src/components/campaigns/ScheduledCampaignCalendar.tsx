@@ -29,6 +29,13 @@ type ScheduledRow = {
   provider_message_id: string | null;
   provider_response: any;
   recurrence_rule?: any;
+  first_comment?: string | null;
+  group_ids?: any;
+  media_urls?: any;
+  like_count?: number | null;
+  comment_count?: number | null;
+  share_count?: number | null;
+  view_count?: number | null;
   /** True for posts that were already published (calendar history). */
   is_history?: boolean;
 };
@@ -120,7 +127,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
   // Max posts allowed per day for EACH selected group (0 = unlimited).
   const [groupDailyLimit, setGroupDailyLimit] = useState<number>(0);
   const groupsHydratedRef = useRef(false);
-  const [calView, setCalView] = useState<'calendar' | 'history'>('calendar');
+  /** Published post opened for full inspection from the calendar grid. */
+  const [detail, setDetail] = useState<ScheduledRow | null>(null);
 
 
   // Restore the broker's last dialog configuration (window, count, recurrence,
@@ -229,7 +237,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
 
   const load = async () => {
     setLoading(true);
-    const COLS = 'id, campaign_name, channel, message_body, created_at, sent_at, status, provider_message_id, provider_response, recurrence_rule';
+    const COLS = 'id, campaign_name, channel, message_body, created_at, sent_at, status, provider_message_id, provider_response, recurrence_rule, first_comment, group_ids, media_urls, like_count, comment_count, share_count, view_count';
     const nowIso = new Date().toISOString();
     // The calendar shows BOTH the future queue and the complete published
     // history, so a broker sees everything that ran and everything upcoming.
@@ -267,7 +275,19 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
         const key = `${r.campaign_name}|${r.channel}|${r.sent_at}`;
         if (!seen.has(key)) seen.set(key, r);
       }
-      const deduped = Array.from(seen.values());
+      // Recurring series: ONLY the next upcoming run is rendered, so the
+      // calendar never jumps to a distant future slot.
+      const nextRunOnly = new Map<string, ScheduledRow>();
+      const historyRows: ScheduledRow[] = [];
+      for (const r of Array.from(seen.values())) {
+        if (r.is_history) { historyRows.push(r); continue; }
+        const seriesKey = `${r.campaign_name}|${r.channel}`;
+        const prev = nextRunOnly.get(seriesKey);
+        if (!prev || new Date(r.sent_at || 0).getTime() < new Date(prev.sent_at || 0).getTime()) {
+          nextRunOnly.set(seriesKey, r);
+        }
+      }
+      const deduped = [...Array.from(nextRunOnly.values()), ...historyRows];
       setRows(deduped);
       // Auto-jump to the first month that actually contains scheduled
       // posts so future recurrences never appear "missing" just because
@@ -452,20 +472,6 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
   return (
     <div className="space-y-4" dir="rtl">
 
-      <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
-        {([['calendar', 'לוח שנה'], ['history', 'היסטוריית פרסומים']] as const).map(([v, label]) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setCalView(v)}
-            className={`flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition ${calView === v ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {calView === 'history' ? <CampaignHistoryList /> : (<>
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -572,7 +578,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
                       <button
                         key={r.id}
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); if (!r.is_history) openEditor(r); }}
+                        onClick={(e) => { e.stopPropagation(); if (r.is_history) setDetail(r); else openEditor(r); }}
                         className={cn(
                           'truncate text-right text-[11px] font-semibold rounded-md px-1.5 py-0.5 ring-1 hover:opacity-80 transition-opacity',
                           cls,
@@ -1075,7 +1081,6 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </>)}
     </div>
   );
 }
