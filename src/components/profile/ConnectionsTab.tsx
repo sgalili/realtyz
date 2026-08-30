@@ -107,7 +107,7 @@ export function ConnectionsTab() {
       const params = new URLSearchParams(window.location.search);
       const target = params.get('connect');
       if (params.has('fb') || target === 'facebook') return 'meta';
-      if (target === 'whatsapp-meta' || target === 'whatsapp') return 'wa-meta';
+      if (target === 'whatsapp-meta' || target === 'whatsapp') return 'whatsapp';
       return null;
     } catch {
       return null;
@@ -211,7 +211,7 @@ export function ConnectionsTab() {
       status: waStatus[0],
       tone: waStatus[1],
       node: (
-        <div className="space-y-4">
+        <div data-plain className="space-y-4">
           <section className="space-y-2">
             <h4 className="text-sm font-semibold">
               WhatsApp רשמי (Meta Cloud API)
