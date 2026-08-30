@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { shortenName } from '@/lib/shortenName';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean };
 
@@ -14,11 +15,12 @@ const TEXT_SM = 'text-[14px]';
 const TEXT_MD = 'text-[15px]';
 
 /** Local cache so groups render instantly on the next visit. */
-const CACHE_KEY = 'realtyz_fb_targets_cache';
+const CACHE_KEY_BASE = 'realtyz_fb_targets_cache';
+const cacheKeyFor = (owner: string | null) => `${CACHE_KEY_BASE}:${owner ?? 'anon'}`;
 
-function readCache(): { groups: GroupTarget[] } | null {
+function readCache(owner: string | null): { groups: GroupTarget[] } | null {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(cacheKeyFor(owner));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || !Array.isArray(parsed.groups)) return null;
@@ -33,15 +35,19 @@ function readCache(): { groups: GroupTarget[] } | null {
  * the system is allowed to publish to.
  */
 export function FacebookTargetsCard({ className, actions }: { className?: string; actions?: ReactNode }) {
-  const cached = readCache();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const cached = readCache(workspaceOwnerId);
   const [groups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
   const [loading, setLoading] = useState(!cached);
 
   const load = useCallback(async () => {
+    if (!workspaceOwnerId) return;
     try {
       const { data } = await (supabase as any)
         .from('fb_user_groups')
         .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected')
+        // Workspace-scoped so shared Facebook groups are identical for every member.
+        .eq('workspace_owner_id', workspaceOwnerId)
         .order('group_name', { ascending: true });
       const nextGroups: GroupTarget[] = ((data ?? []) as any[]).map((r) => ({
         id: String(r.id),
@@ -54,12 +60,12 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
       }));
       setGroups(nextGroups);
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ groups: nextGroups }));
+        localStorage.setItem(cacheKeyFor(workspaceOwnerId), JSON.stringify({ groups: nextGroups }));
       } catch { /* noop */ }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspaceOwnerId]);
 
   useEffect(() => { void load(); }, [load]);
 

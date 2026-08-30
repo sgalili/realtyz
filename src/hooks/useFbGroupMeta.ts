@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 export type FbGroupMeta = {
   name: string;
@@ -8,10 +9,13 @@ export type FbGroupMeta = {
   url?: string | null;
 };
 
+let cacheOwner: string | null = null;
 let cache: Record<string, FbGroupMeta> | null = null;
 let inflight: Promise<Record<string, FbGroupMeta>> | null = null;
 
-async function fetchGroupMeta(): Promise<Record<string, FbGroupMeta>> {
+async function fetchGroupMeta(owner: string): Promise<Record<string, FbGroupMeta>> {
+  if (cache && cacheOwner === owner) return cache;
+  if (cacheOwner !== owner) { cache = null; inflight = null; cacheOwner = owner; }
   if (cache) return cache;
   if (inflight) return inflight;
   inflight = (async () => {
@@ -20,6 +24,7 @@ async function fetchGroupMeta(): Promise<Record<string, FbGroupMeta>> {
       const { data } = await (supabase as any)
         .from('fb_user_groups')
         .select('group_id, group_name, group_icon, group_url, member_count')
+        .eq('workspace_owner_id', owner)
         .limit(1000);
       (data ?? []).forEach((g: any) => {
         const id = String(g?.group_id ?? '');
@@ -46,11 +51,13 @@ async function fetchGroupMeta(): Promise<Record<string, FbGroupMeta>> {
  * post cards can show their target groups without one query per card.
  */
 export function useFbGroupMeta() {
+  const owner = useActiveWorkspaceOwnerId();
   const [meta, setMeta] = useState<Record<string, FbGroupMeta>>(cache ?? {});
   useEffect(() => {
+    if (!owner) return;
     let alive = true;
-    void fetchGroupMeta().then((m) => { if (alive) setMeta(m); });
+    void fetchGroupMeta(owner).then((m) => { if (alive) setMeta(m); });
     return () => { alive = false; };
-  }, []);
+  }, [owner]);
   return meta;
 }

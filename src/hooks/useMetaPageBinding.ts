@@ -29,7 +29,7 @@ export function useMetaPageBinding() {
     enabled: !!user?.id,
     staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_effective_meta_page');
+      const { data, error } = await (supabase as any).rpc('get_effective_meta_page', { _owner: workspaceOwnerId });
       const row: any = Array.isArray(data) ? data[0] : data;
       if (error || !row?.page_id) return null;
       return {
