@@ -34,9 +34,11 @@
     --muted: 210 17% 96%;
     --muted-foreground: 213 60% 16%; /* near-navy for high-contrast icons/labels on light bg */
 
-    /* ACCENT — Navy (same family, used for highlights) */
-    --accent: 213 73% 16%;
-    --accent-foreground: 0 0% 100%;
+    /* ACCENT — light navy tint. NEVER solid navy: hover states across the app
+       keep navy text/icons, and a navy accent made them invisible. */
+    --accent: 213 60% 95%;
+    --accent-foreground: 213 73% 12%;
+
 
     /* Deal-type pills (להשכרה / למכירה) — vivid blue */
     --deal-blue: 214 90% 48%;
