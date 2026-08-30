@@ -145,6 +145,9 @@ Deno.serve(async (req) => {
             body: JSON.stringify({
               workspace_owner_id: ws,
               group_id: locked.target_ref,
+              group_url: (locked.payload ?? {}).group_url ?? null,
+              group_name: locked.target_label ?? null,
+
               message: compliant,
               link: (locked.payload ?? {}).link ?? null,
               image_url: (locked.payload ?? {}).image_url ?? null,
