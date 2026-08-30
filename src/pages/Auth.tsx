@@ -232,12 +232,21 @@ const Auth = () => {
   const handleGoogleLogin = async () => {
     setLoading(true);
     window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
+    // After the managed Google login completes, the app will auto-redirect
+    // to a combined Gmail/Calendar/YouTube OAuth consent so all three
+    // services are linked without extra manual clicks.
+    try {
+      window.sessionStorage.setItem('realtyz-google-services-pending', '1');
+    } catch {
+      /* storage disabled */
+    }
     const result = await lovable.auth.signInWithOAuth('google', {
       redirect_uri: window.location.origin,
       extraParams: { prompt: 'select_account' },
     });
     if (result.error) {
       window.localStorage.removeItem(DEMO_EXIT_PENDING_KEY);
+      try { window.sessionStorage.removeItem('realtyz-google-services-pending'); } catch { /* */ }
       toast.error(result.error.message);
     }
     if (!result.redirected && !result.error) window.location.assign('/');

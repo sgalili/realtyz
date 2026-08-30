@@ -195,7 +195,13 @@ Deno.serve(async (req) => {
     const code = body.code;
     const redirectUri = String(body.redirect_uri || 'https://realtyz.co.il/oauth/callback').trim();
 
-    if (platform !== 'gmail' && platform !== 'youtube' && platform !== 'google_drive' && platform !== 'google_calendar') {
+    if (
+      platform !== 'gmail' &&
+      platform !== 'youtube' &&
+      platform !== 'google_drive' &&
+      platform !== 'google_calendar' &&
+      platform !== 'google_all'
+    ) {
       return new Response(
         JSON.stringify({ ok: false, error: `פלטפורמת גוגל לא נתמכת: ${platform || '(ריק)'}`, code: 'bad_platform' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -288,7 +294,7 @@ Deno.serve(async (req) => {
 
     // Fetch real identity with the fresh access_token.
     const identity =
-      platform === 'gmail'
+      platform === 'gmail' || platform === 'google_all'
         ? await fetchGmailIdentity(tokens.access_token)
         : platform === 'youtube'
           ? await fetchYouTubeIdentity(tokens.access_token)
@@ -304,7 +310,7 @@ Deno.serve(async (req) => {
           last_test_status: identity.status === 403 ? 'scope_missing' : 'auth_failed',
           last_test_message: identity.error,
         })
-        .eq('platform', platform)
+        .eq('platform', platform === 'google_all' ? 'gmail' : platform)
         .eq('created_by', callerUserId);
       return new Response(
         JSON.stringify({ ok: false, error: identity.error, google_status: identity.status, code: 'identity_failed' }),
@@ -316,51 +322,83 @@ Deno.serve(async (req) => {
     }
 
     // Persist tokens + identity + mark LIVE.
-    const prevCreds = (row?.credentials as Record<string, unknown> | null) ?? {};
-    const prevManual = ((prevCreds as any).manual ?? {}) as Record<string, string>;
-
-    const newCreds = {
-      ...prevCreds,
-      account_name: identity.account_name,
-      verified_identity: identity,
-      connection_status: 'CONNECTED',
-      manual: {
-        ...prevManual,
-        access_token: tokens.access_token,
-        // only overwrite refresh_token if Google returned a new one
-        ...(tokens.refresh_token ? { refresh_token: tokens.refresh_token } : {}),
-        token_scope: tokens.scope ?? prevManual.token_scope ?? '',
-      },
-    };
-
-    // Use the access_token (truncated) as a session marker so isLive() flips on.
     const sessionMarker = `goog_${tokens.access_token.slice(0, 32)}_${Date.now()}`;
 
-    const upd = {
-      platform,
-      created_by: callerUserId,
-      display_name: row?.display_name ?? (platform === 'gmail' ? 'Gmail · Google Workspace' : platform === 'youtube' ? 'YouTube' : platform === 'google_calendar' ? 'Google Calendar' : 'Google Drive'),
-      credentials: newCreds,
-      encrypted_session: sessionMarker,
-      session_method: 'oauth' as const,
-      is_connected: true,
-      connected_at: new Date().toISOString(),
-      last_test_at: new Date().toISOString(),
-      last_test_status: 'ok',
-      last_test_message: 'OAuth completed and identity verified',
+    const platformsToSync = platform === 'google_all'
+      ? ['gmail', 'google_calendar', 'youtube'] as const
+      : [platform] as const;
+
+    const displayNameFor = (p: string) => {
+      if (p === 'gmail') return 'Gmail · Google Workspace';
+      if (p === 'youtube') return 'YouTube';
+      if (p === 'google_calendar') return 'Google Calendar';
+      return 'Google Drive';
     };
 
     let saveWarning: string | null = null;
-    if (row?.id) {
-      const { error } = await admin
+
+    for (const targetPlatform of platformsToSync) {
+      const { data: targetRow } = await admin
         .from('social_connections')
-        .update(upd)
-        .eq('id', row.id);
-      if (error) saveWarning = error.message;
-    } else {
-      const { error } = await admin.from('social_connections').insert(upd);
-      if (error) saveWarning = error.message;
+        .select('id, credentials, display_name')
+        .eq('platform', targetPlatform)
+        .eq('created_by', callerUserId)
+        .maybeSingle();
+
+      const prevCreds = (targetRow?.credentials as Record<string, unknown> | null) ?? {};
+      const prevManual = ((prevCreds as any).manual ?? {}) as Record<string, string>;
+
+      const targetIdentity =
+        targetPlatform === 'youtube'
+          ? await fetchYouTubeIdentity(tokens.access_token).catch(() => identity)
+          : targetPlatform === 'google_calendar'
+            ? await fetchCalendarIdentity(tokens.access_token).catch(() => identity)
+            : identity;
+
+      const newCreds = {
+        ...prevCreds,
+        account_name: ('account_name' in targetIdentity ? targetIdentity.account_name : identity.account_name),
+        verified_identity: targetIdentity,
+        connection_status: 'CONNECTED',
+        manual: {
+          ...prevManual,
+          access_token: tokens.access_token,
+          // only overwrite refresh_token if Google returned a new one
+          ...(tokens.refresh_token ? { refresh_token: tokens.refresh_token } : {}),
+          token_scope: tokens.scope ?? prevManual.token_scope ?? '',
+          // Remember which shared source supplied the tokens.
+          google_sync_source: platform === 'google_all' ? 'google_all' : undefined,
+        },
+      };
+
+      const upd = {
+        platform: targetPlatform,
+        created_by: callerUserId,
+        display_name: targetRow?.display_name ?? displayNameFor(targetPlatform),
+        credentials: newCreds,
+        encrypted_session: sessionMarker,
+        session_method: 'oauth' as const,
+        is_connected: true,
+        connected_at: new Date().toISOString(),
+        last_test_at: new Date().toISOString(),
+        last_test_status: 'ok',
+        last_test_message: platform === 'google_all'
+          ? 'Auto-linked via combined Google sign-in'
+          : 'OAuth completed and identity verified',
+      };
+
+      if (targetRow?.id) {
+        const { error } = await admin
+          .from('social_connections')
+          .update(upd)
+          .eq('id', targetRow.id);
+        if (error && !saveWarning) saveWarning = error.message;
+      } else {
+        const { error } = await admin.from('social_connections').insert(upd);
+        if (error && !saveWarning) saveWarning = error.message;
+      }
     }
+
     if (saveWarning) {
       return new Response(
         JSON.stringify({ ok: false, error: `שמירת החיבור נכשלה: ${saveWarning}`, code: 'db_save_failed' }),
@@ -431,6 +469,7 @@ Deno.serve(async (req) => {
         identity,
         credential_source: credentialSource,
         sibling_synced: !!(body.one_click && sibling),
+        platforms_synced: platform === 'google_all' ? ['gmail', 'google_calendar', 'youtube'] : [platform],
       }),
       {
         status: 200,

@@ -114,6 +114,19 @@ export const OAUTH_SCOPES: Record<string, string[]> = {
     'https://www.googleapis.com/auth/userinfo.email',
     'openid',
   ],
+  /** Combined Google services flow: Gmail + Calendar + YouTube in one consent. */
+  google_all: [
+    'openid',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/gmail.compose',
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/youtube.force-ssl',
+    'https://www.googleapis.com/auth/youtube.readonly',
+  ],
 };
 
 
@@ -126,6 +139,7 @@ export const OAUTH_AUTHORIZE_URLS: Record<string, string> = {
   youtube:      'https://accounts.google.com/o/oauth2/v2/auth',
   google_drive:    'https://accounts.google.com/o/oauth2/v2/auth',
   google_calendar: 'https://accounts.google.com/o/oauth2/v2/auth',
+  google_all:      'https://accounts.google.com/o/oauth2/v2/auth',
   facebook:     'https://www.facebook.com/v19.0/dialog/oauth',
   instagram:    'https://api.instagram.com/oauth/authorize',
   x:            'https://twitter.com/i/oauth2/authorize',
