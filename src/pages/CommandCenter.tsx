@@ -55,18 +55,17 @@ const PRIORITY_LABEL: Record<CommandTask['priority'], string> = {
   low: 'נמוך',
 };
 
-type SectionTab = 'tasks' | 'notes' | 'reminders' | 'calls' | 'posts';
+type SectionTab = 'tasks' | 'notes' | 'reminders' | 'calls';
 
 const TAB_LABEL: Record<SectionTab, string> = {
   tasks: 'משימות',
   notes: 'הערות',
   reminders: 'תזכורות',
   calls: 'שיחות',
-  posts: 'פוסטים',
 };
 
 /** Which section a card belongs to. */
-function sectionOf(task: CommandTask): Exclude<SectionTab, 'posts'> {
+function sectionOf(task: CommandTask): SectionTab {
   if (task.source === 'note') return task.actionType === 'interaction' ? 'calls' : 'notes';
   if (task.source === 'meeting') return 'tasks';
   if (task.actionType === 'call') return 'calls';
@@ -94,7 +93,6 @@ const ADD_LABEL: Record<SectionTab, string> = {
   notes: 'הערה חדשה',
   reminders: 'תזכורת חדשה',
   calls: 'סיכום שיחה',
-  posts: 'פוסט חדש',
 };
 
 
@@ -133,7 +131,6 @@ export default function CommandCenter() {
   const qc = useQueryClient();
   const { data: tasks = [], isLoading } = useCommandCenterTasks();
   
-  const { data: posts = [] } = useCommandCenterPosts();
   const [tab, setTab] = useState<SectionTab>('tasks');
   // Every card starts COLLAPSED when entering the page.
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
@@ -148,24 +145,20 @@ export default function CommandCenter() {
     });
 
   const counts = useMemo(() => {
-    const base: Record<SectionTab, number> = { tasks: 0, notes: 0, reminders: 0, calls: 0, posts: posts.length };
+    const base: Record<SectionTab, number> = { tasks: 0, notes: 0, reminders: 0, calls: 0 };
     for (const t of tasks) base[sectionOf(t)] += 1;
     return base;
-  }, [tasks, posts.length]);
+  }, [tasks]);
 
   /** Opens the quick-action drawer on the right form for the active tab. */
   const addNew = (section: SectionTab) => {
-    if (section === 'posts') {
-      navigate('/campaigns');
-      return;
-    }
     const quickTab = section === 'notes' ? 'note' : section === 'calls' ? 'interaction' : 'reminder';
     window.dispatchEvent(new CustomEvent('open-quick-actions', { detail: { tab: quickTab } }));
   };
 
 
   const visible = useMemo(
-    () => (tab === 'posts' ? [] : tasks.filter((t) => sectionOf(t) === tab)),
+    () => tasks.filter((t) => sectionOf(t) === tab),
     [tasks, tab],
   );
 
@@ -226,9 +219,7 @@ export default function CommandCenter() {
         </div>
 
 
-        {tab === 'posts' ? (
-          <PostsActivityCard />
-        ) : isLoading ? (
+        {isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-16 w-full" />
@@ -455,111 +446,3 @@ function EditTaskDialog({
     </Dialog>
   );
 }
-
-function PostsActivityCard() {
-  const { data: posts = [], isLoading } = useCommandCenterPosts();
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const removePost = async (post: (typeof posts)[number]) => {
-    try {
-      await deletePostActivity(post);
-      toast.success('הפוסט נמחק');
-      qc.invalidateQueries({ queryKey: ['command-center-posts'] });
-    } catch (e: any) {
-      toast.error(e?.message ?? 'מחיקת הפוסט נכשלה');
-    }
-  };
-
-  const scheduled = posts.filter((p) => p.scheduled);
-  const past = posts.filter((p) => !p.scheduled);
-
-  return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Megaphone className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">פעילות פוסטים ופרסומים</h2>
-        </div>
-        <Button size="sm" variant="outline" className="h-9 gap-1 text-sm" onClick={() => navigate('/campaigns')}>
-          מרכז הפוסטים
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-2">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-14 w-full" />
-          ))}
-        </div>
-      ) : posts.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">אין פוסטים מתוזמנים או פרסומים אחרונים.</p>
-      ) : (
-        <div className="space-y-5">
-          {scheduled.length > 0 && (
-            <PostsGroup title={`מתוזמנים (${scheduled.length})`} items={scheduled} onDelete={removePost} />
-          )}
-          {past.length > 0 && (
-            <PostsGroup title="פורסמו לאחרונה" items={past.slice(0, 10)} onDelete={removePost} />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-type PostItem = NonNullable<ReturnType<typeof useCommandCenterPosts>['data']>[number];
-
-function PostsGroup({
-  title,
-  items,
-  onDelete,
-}: {
-  title: string;
-  items: PostItem[];
-  onDelete: (post: PostItem) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <p className="text-sm font-bold text-muted-foreground">{title}</p>
-      <ul className="space-y-2">
-        {items.map((p) => {
-          const when = p.when ? new Date(p.when) : null;
-          const whenText = when
-            ? `${when.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' })} ${when.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
-            : 'ללא תאריך';
-          return (
-            <li key={p.id} className="rounded-lg border border-border bg-card p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="truncate text-base font-semibold">{p.title}</p>
-                  {p.content && (
-                    <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{p.content}</p>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {p.channel && (
-                    <Badge variant="secondary" className="text-[13px]">
-                      {CHANNEL_LABEL[p.channel] ?? p.channel}
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-[13px]">
-                    {POST_STATUS_LABEL[p.status.toLowerCase()] ?? p.status}
-                  </Badge>
-                  <span className="inline-flex items-center gap-1 text-[13px] text-muted-foreground">
-                    <CalendarClock className="h-3.5 w-3.5" />
-                    {whenText}
-                  </span>
-                  <IconAction label="מחיקת פוסט" destructive onClick={() => onDelete(p)}>
-                    <Trash2 className="h-4 w-4" />
-                  </IconAction>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
