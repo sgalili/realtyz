@@ -104,6 +104,8 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [page, setPage] = useState<PageStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [bindings, setBindings] = useState<Array<{ id: string; name: string | null; picture: string | null; isDefault: boolean }>>([]);
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
   const [igHelpOpen, setIgHelpOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
@@ -500,6 +502,36 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     : !!health?.pageConnected || !!page?.connected || !!(binding?.hasToken && binding?.pageId);
 
 
+  // MULTI-ACCOUNT: every Page bound to THIS workspace (strictly isolated).
+  const loadBindings = useCallback(async () => {
+    try {
+      const res = await callPageConnect<any>({ action: 'bindings' });
+      setBindings(Array.isArray(res?.bindings) ? res.bindings : []);
+    } catch { /* non-fatal */ }
+  }, []);
+
+  useEffect(() => {
+    if (isConnected) void loadBindings();
+    else setBindings([]);
+  }, [isConnected, connectionEpoch, loadBindings]);
+
+  const makeDefault = async (pageId: string) => {
+    setSettingDefaultId(pageId);
+    setBindings((prev) => prev.map((b) => ({ ...b, isDefault: b.id === pageId })));
+    try {
+      const res = await callPageConnect<any>({ action: 'set_default', page_id: pageId });
+      if (!res?.ok) throw new Error(res?.error || 'שמירת עמוד ברירת המחדל נכשלה');
+      refreshBinding();
+      refreshHealth();
+      toast.success('עמוד ברירת המחדל עודכן');
+    } catch (e: any) {
+      toast.error('עדכון נכשל', { description: e?.message });
+      void loadBindings();
+    } finally {
+      setSettingDefaultId(null);
+    }
+  };
+
   const actionButtons = (
     <>
       {isConnected && (
@@ -543,7 +575,55 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
               <CheckCircle2 className="h-4 w-4" strokeWidth={2.75} /> פעיל
             </Badge>
           </div>
-        ) : (
+        ) : null}
+
+        {isConnected && (
+          <div className="space-y-2 rounded-xl border p-3">
+            <p className="text-[13px] font-semibold">חשבונות ועמודים מחוברים בסביבת העבודה</p>
+            {bindings.length > 1 && (
+              <p className="text-[12px] text-muted-foreground">בחרו את עמוד ברירת המחדל לפרסום.</p>
+            )}
+            <div className="space-y-1.5">
+              {bindings.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => (b.isDefault ? undefined : void makeDefault(b.id))}
+                  className={`flex w-full items-center gap-2 rounded-lg border p-2 text-right transition ${
+                    b.isDefault ? 'border-emerald-300 bg-emerald-50/60' : 'hover:bg-muted/50'
+                  }`}
+                >
+                  {b.picture ? (
+                    <img src={b.picture} alt={b.name ?? b.id} className="h-8 w-8 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                      <Facebook className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{b.name || b.id}</span>
+                  {settingDefaultId === b.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : b.isDefault ? (
+                    <Badge className="border-0 bg-emerald-600 text-[11px] text-white">ברירת מחדל</Badge>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">הגדר כברירת מחדל</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2 text-[12px]"
+              onClick={() => (connecting ? setConnecting(false) : void connect())}
+            >
+              {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />}
+              {connecting ? 'בטל' : 'חבר חשבון או עמוד נוסף'}
+            </Button>
+          </div>
+        )}
+
+        {!isConnected && (
           <div className="rounded-xl border border-dashed p-3 space-y-2">
             {/* Clicking the spinning button cancels the pending attempt. */}
             <Button
