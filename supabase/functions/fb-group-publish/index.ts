@@ -42,20 +42,46 @@ Deno.serve(async (req) => {
     if (!workspaceOwnerId) return json({ ok: false, reason: "workspace_owner_id is required" }, 400);
 
     const rawGroupId = String(body?.group_id ?? "").trim();
-    const groupId = rawGroupId.replace(/^manual:/, "");
+    let groupId = rawGroupId.replace(/^(manual:|ext:)/, "");
     const message = String(body?.message ?? body?.text ?? "").trim();
-    if (!groupId) return json({ ok: false, reason: "group_id is required" }, 400);
-    if (!message) return json({ ok: false, reason: "message is required" }, 400);
-    if (!/^\d+$/.test(groupId)) {
-      return json(
-        {
-          ok: false,
-          code: "unresolved_group",
-          reason: "לקבוצה הזו אין מזהה מספרי מפייסבוק, ולכן היא דורשת פרסום ידני.",
-        },
-        200,
-      );
+    const groupUrl = String(body?.group_url ?? "").trim();
+    const groupName = String(body?.group_name ?? body?.target_label ?? "").trim();
+    if (!groupId && !groupUrl && !groupName) {
+      return json({ ok: false, reason: "group_id is required" }, 400);
     }
+    if (!message) return json({ ok: false, reason: "message is required" }, 400);
+
+    // Never block on a missing numeric id: resolve it from the request URL or
+    // from the stored group row (url / name), then let Graph decide.
+    const numericFromUrl = (u: string) => u.match(/facebook\.com\/groups\/(\d+)/i)?.[1] ?? null;
+    if (!/^\d+$/.test(groupId)) {
+      const resolved = numericFromUrl(groupUrl) ?? null;
+      if (resolved) groupId = resolved;
+    }
+    if (!/^\d+$/.test(groupId)) {
+      try {
+        const slug = groupId || groupName;
+        const { data: rows } = await admin
+          .from("fb_user_groups")
+          .select("group_id, group_url, group_name")
+          .eq("workspace_owner_id", workspaceOwnerId)
+          .limit(200);
+        const hit = (rows ?? []).find((r: any) =>
+          (slug && (String(r.group_id) === slug || String(r.group_name ?? "") === slug)) ||
+          (groupUrl && String(r.group_url ?? "") === groupUrl)
+        );
+        const candidate = String(hit?.group_id ?? "").replace(/^(manual:|ext:)/, "");
+        if (/^\d+$/.test(candidate)) groupId = candidate;
+        else {
+          const fromRowUrl = numericFromUrl(String(hit?.group_url ?? ""));
+          if (fromRowUrl) groupId = fromRowUrl;
+        }
+      } catch { /* best effort */ }
+    }
+    // Still no numeric id → attempt Graph with the vanity slug. If Graph
+    // refuses we report it softly below; we never pre-block the publish.
+    if (!groupId) groupId = String(numericFromUrl(groupUrl) ?? groupName);
+
 
     // Targeted publishing: a group the broker de-selected is never posted to,
     // and a group that already burned its daily quota is blocked until tomorrow.
