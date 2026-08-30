@@ -284,9 +284,9 @@ export default function Landing() {
           {/* Metric cards */}
           <div className="mx-auto mt-5 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
             {[
-              { value: '+320%', label: 'גידול ביכולת המענה האוטומטי ללידים חדשים' },
-              { value: '15 שעות', label: 'חיסכון שבועי בממוצע לסוכן נדל"ן' },
-              { value: '99.4%', label: 'שיעור מעורבות והמרת הודעות ווטסאפ' },
+              { value: '320% +', label: 'מענה ללידים חדשים' },
+              { value: '15 שעות', label: 'חיסכון שבועי למתווך' },
+              { value: '99.4%', label: 'מעורבות והמרה' },
             ].map((m) => (
               <div
                 key={m.value}
