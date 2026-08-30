@@ -156,8 +156,6 @@ export function ConnectionsTab() {
       } catch { /* silent */ }
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-        }
         const ownerId = activeWorkspaceId ?? user?.id;
         if (ownerId) {
           const { data: ws } = await supabase
