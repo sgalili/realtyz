@@ -13,6 +13,7 @@ import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelec
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { loadSchedulePrefs, saveSchedulePrefs, randomSlotMinutes, clampWindowTime, autoPostsPerDay, POSTING_WINDOW_START_MIN, POSTING_WINDOW_END_MIN } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
+import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
 
 import { saveGroupDailyLimit } from '@/lib/groupDailyLimits';
 
@@ -1081,6 +1082,131 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PublishedPostDetailDialog row={detail} onClose={() => setDetail(null)} />
     </div>
+  );
+}
+
+/**
+ * Full inspection of a post that already went live: the exact published text,
+ * the first comment that was sent with it, live engagement counters, the
+ * collapsed list of every target group and whether each group actually
+ * accepted the post (Facebook group admins can hold posts for approval).
+ */
+function PublishedPostDetailDialog({ row, onClose }: { row: ScheduledRow | null; onClose: () => void }) {
+  const groupMeta = useFbGroupMeta();
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  useEffect(() => { setGroupsOpen(false); }, [row?.id]);
+  if (!row) return null;
+
+  const pr = (row.provider_response ?? {}) as any;
+  const results: Array<{ group_id: string; ok?: boolean; code?: string | null; reason?: string | null; post_id?: string | null }> =
+    Array.isArray(pr?.group_results) ? pr.group_results : [];
+  const ids: string[] = (Array.isArray(row.group_ids) ? row.group_ids.map((g: any) => String(g)) : [])
+    .concat(results.map((r) => String(r.group_id)))
+    .filter((v, i, a) => v && a.indexOf(v) === i);
+  const approved = results.filter((r) => r.ok === true).length;
+  const rejected = results.filter((r) => r.ok === false).length;
+  const counters: Array<[string, number]> = [
+    ['לייקים', Number(row.like_count ?? 0) || 0],
+    ['תגובות', Number(row.comment_count ?? 0) || 0],
+    ['שיתופים', Number(row.share_count ?? 0) || 0],
+    ['צפיות', Number(row.view_count ?? 0) || 0],
+  ];
+  const when = row.sent_at ? new Date(row.sent_at).toLocaleString('he-IL') : '';
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent dir="rtl" className="max-w-lg max-h-[92vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-right text-base">פוסט שפורסם · {when}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 text-right">
+          <div>
+            <p className="mb-1 text-xs font-semibold text-muted-foreground">התוכן שפורסם</p>
+            <p className="whitespace-pre-wrap rounded-xl border border-border bg-muted/30 p-3 text-sm leading-relaxed">
+              {row.message_body || row.campaign_name}
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-1 text-xs font-semibold text-muted-foreground">התגובה הראשונה שנשלחה</p>
+            <p className="whitespace-pre-wrap rounded-xl border border-border bg-muted/20 p-3 text-sm leading-relaxed">
+              {row.first_comment || 'לא נשלחה תגובה ראשונה'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2">
+            {counters.map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-border bg-card p-2 text-center">
+                <div className="text-base font-bold tabular-nums text-foreground">{value}</div>
+                <div className="text-[11px] text-muted-foreground">{label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-border">
+            <button
+              type="button"
+              onClick={() => setGroupsOpen((v) => !v)}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-sm font-semibold"
+            >
+              <span className="inline-flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                קבוצות היעד ({ids.length})
+              </span>
+              <ChevronLeft className={cn('h-4 w-4 transition-transform', groupsOpen && '-rotate-90')} />
+            </button>
+            {groupsOpen && (
+              <ul className="max-h-56 space-y-1 overflow-y-auto border-t border-border p-2">
+                {ids.length === 0 && (
+                  <li className="py-2 text-center text-xs text-muted-foreground">הפוסט פורסם לעמוד בלבד</li>
+                )}
+                {ids.map((id) => {
+                  const res = results.find((r) => String(r.group_id) === id);
+                  const meta = groupMeta[id] ?? groupMeta[id.replace(/^ext:/, '')];
+                  const ok = res?.ok === true;
+                  return (
+                    <li key={id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/30 px-2 py-1.5 text-xs">
+                      <span className="flex min-w-0 items-center gap-2">
+                        {meta?.icon
+                          ? <img src={meta.icon} alt="" className="h-5 w-5 shrink-0 rounded-full object-cover" />
+                          : <span className="h-5 w-5 shrink-0 rounded-full bg-primary/15" />}
+                        <span className="truncate">{meta?.name || id}</span>
+                      </span>
+                      <span
+                        className={cn(
+                          'shrink-0 rounded-full px-2 py-0.5 font-semibold',
+                          res == null
+                            ? 'bg-slate-100 text-slate-700'
+                            : ok
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-destructive/10 text-destructive',
+                        )}
+                        title={res?.reason ?? undefined}
+                      >
+                        {res == null ? 'ללא דיווח' : ok ? 'אושר ונלכד' : 'לא אושר'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <p className="text-[11px] text-muted-foreground">
+            {ids.length === 0
+              ? 'פרסום לעמוד העסקי בלבד.'
+              : `אושר ונלכד על ידי מנהל הקבוצה ב-${approved} קבוצות${rejected ? ` · נדחה או ממתין ב-${rejected}` : ''}.`}
+          </p>
+        </div>
+
+        <DialogFooter className="sm:justify-start">
+          <Button variant="outline" onClick={onClose}>סגור</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
