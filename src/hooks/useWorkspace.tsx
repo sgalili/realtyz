@@ -88,7 +88,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    setLoading(workspaces.length === 0);
     try {
       const [{ data, error }, { data: profile }] = await Promise.all([
         supabase.rpc('get_my_workspaces'),
@@ -110,11 +110,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (nextActive) {
         window.localStorage.setItem(workspaceStorageKey(user.id), nextActive);
       }
+      writeWorkspaceCache(rows, nextActive);
       if (profileActive !== nextActive) {
         void supabase.rpc('set_active_workspace', { _owner: nextActive });
       }
     } catch (err) {
       // Fail open: fall back to self
+
       setWorkspaces([]);
       setActiveWorkspaceId(user.id);
     } finally {
