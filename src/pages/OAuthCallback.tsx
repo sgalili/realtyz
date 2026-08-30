@@ -229,8 +229,14 @@ export default function OAuthCallback() {
           // Clear the auto-link flag on failure so the user isn't trapped in a loop.
           try { window.sessionStorage.removeItem('realtyz-google-services-pending'); } catch { /* */ }
           const reason = String(e?.message ?? 'unknown');
+          const friendly = friendlyGoogleError(reason, googlePlatform);
           setIsLoading(false);
-          setError({ title: 'החיבור ל-Google נכשל', detail: reason });
+          setError({
+            title: friendly.title,
+            detail: friendly.raw,
+            hint: friendly.message,
+            enableUrl: friendly.enableUrl,
+          });
         }
         return;
       }
