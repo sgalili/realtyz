@@ -393,9 +393,15 @@ export default function Landing() {
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 lg:grid-cols-2">
           <Reveal>
             <div>
-              <h2 className="landing-title-gradient mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                מנהלים את כל העסק מהווטסאפ
-              </h2>
+              <div className="flex items-center justify-start gap-3">
+                <BrandLogo platform="whatsapp" size={40} className="shrink-0" />
+                <h2 className="landing-title-gradient mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                  מנהלים את כל העסק מהווטסאפ
+                </h2>
+              </div>
+              <p className="mt-2 text-base font-semibold text-muted-foreground">
+                מופעל באמצעות ווטסאפ רשמי של מטא.
+              </p>
               <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
                 שולחים הודעה קולית או טקסט, וה-AI מבצע: בודק סטטוס לקוח, שולף סטטיסטיקות,
                 פותח משימות ומתאם סיורים בזמן אמת.
