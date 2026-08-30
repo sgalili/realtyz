@@ -364,7 +364,13 @@ export function useUpdateReferral() {
       rewardAmount?: number;
       notes?: string;
     }) => {
-      const patch: Record<string, unknown> = {};
+      const patch: {
+        status?: ReferralStatus;
+        settlement_status?: SettlementStatus;
+        settled_at?: string | null;
+        reward_amount?: number;
+        notes?: string;
+      } = {};
       if (input.status) patch.status = input.status;
       if (input.settlementStatus) {
         patch.settlement_status = input.settlementStatus;
