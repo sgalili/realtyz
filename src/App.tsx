@@ -121,14 +121,32 @@ function PageLoader() {
   );
 }
 
+/**
+ * Routes an affiliate-only account is allowed to reach. Everything else in the
+ * app (CRM, properties, posts, office settings) belongs to brokers and is
+ * redirected away, so an affiliate never sees broker tooling.
+ */
+const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/profile'];
+
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
+  const { isAffiliateOnly, loading: roleLoading } = useUserRole();
+  const location = useLocation();
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" label="מאמת זהות..." />
     </div>
   );
   if (!user) return <Navigate to="/auth" replace />;
+
+  // Affiliate-only accounts are locked to the affiliate portal.
+  if (!roleLoading && isAffiliateOnly) {
+    const allowed = AFFILIATE_ALLOWED_PATHS.some(
+      (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
+    );
+    if (!allowed) return <Navigate to="/affiliate" replace />;
+  }
+
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
 }
 
@@ -149,6 +167,7 @@ function RootRoute() {
   if (!user) return <Suspense fallback={<PageLoader />}><Landing /></Suspense>;
   return <ProtectedRoute><CommandCenter /></ProtectedRoute>;
 }
+
 
 function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
