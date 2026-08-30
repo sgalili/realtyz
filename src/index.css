@@ -1386,11 +1386,12 @@
 }
 .landing-ticker-slow { animation-duration: 38s; }
 .landing-ticker-reverse { animation-direction: reverse; }
+.landing-ticker-track { gap: 2.75rem; }
 .landing-ticker-group {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 2.75rem;
-  padding-inline-end: 2.75rem;
 }
 @keyframes landing-ticker {
   from { transform: translate3d(-50%, 0, 0); }
