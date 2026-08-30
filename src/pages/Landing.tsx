@@ -319,6 +319,15 @@ export default function Landing() {
             </p>
           </Reveal>
 
+          <Reveal delay={140}>
+            <div className="mt-10">
+              <p className="mb-1 text-center text-sm font-extrabold tracking-widest text-muted-foreground">
+                כל הכלים במקום אחד
+              </p>
+              <PlatformTicker />
+            </div>
+          </Reveal>
+
           <Reveal delay={120}>
             <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[
