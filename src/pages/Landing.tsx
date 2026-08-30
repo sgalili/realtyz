@@ -344,13 +344,6 @@ export default function Landing() {
             </div>
           </Reveal>
 
-          <Reveal delay={220}>
-            <div className="mt-10 flex flex-col items-center gap-4">
-              <p className="text-center text-lg font-bold">
-                חבילות במחיר חודשי קבוע. בוחרים חבילה, בלי התחייבות ובלי עלויות נסתרות.
-              </p>
-            </div>
-          </Reveal>
         </div>
       </section>
 
@@ -360,11 +353,8 @@ export default function Landing() {
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
-              כל מה שמתווך צריך - במערכת אחת
+              כל מה שמתווך צריך
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
-              כל הכלים בחבילה אחת. בלי תוספות ובלי עלויות נסתרות.
-            </p>
           </Reveal>
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f, i) => (
@@ -381,8 +371,8 @@ export default function Landing() {
                   />
                   <div aria-hidden className="landing-card-veil absolute inset-0" />
                   <div className="relative flex h-full flex-col justify-end p-4">
-                    <h3 className="text-lg font-extrabold text-white drop-shadow">{f.title}</h3>
-                    <p className="mt-1.5 text-[14px] leading-snug text-white/90">{f.body}</p>
+                    <h3 className="text-lg font-extrabold text-white drop-shadow transition-all duration-300 group-hover:text-[21px]">{f.title}</h3>
+                    <p className="mt-1.5 text-[14px] leading-snug text-white/90 transition-all duration-300 group-hover:text-[17px]">{f.body}</p>
                   </div>
 
                 </article>
@@ -401,19 +391,13 @@ export default function Landing() {
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 lg:grid-cols-2">
           <Reveal>
             <div>
-              <p className="text-sm font-bold text-primary">העוזר האישי שלכם בווטסאפ</p>
               <h2 className="landing-title-gradient mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                מנהלים את כל העסק מהווטסאפ - גם בהקלטה קולית
+                מנהלים את כל העסק מהווטסאפ
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
                 שולחים הודעה קולית או טקסט, וה-AI מבצע: בודק סטטוס לקוח, שולף סטטיסטיקות,
-                מפעיל מבצע, פותח משימות ומתאם סיורים - בזמן אמת, בלי לפתוח את המערכת.
+                פותח משימות ומתאם סיורים בזמן אמת.
               </p>
-              <Link to="/auth" className="mt-7 inline-block">
-                <Button size="lg" className="h-14 px-8 text-base font-extrabold">
-                  נסו בחינם עכשיו
-                </Button>
-              </Link>
             </div>
           </Reveal>
           <Reveal delay={140}>
@@ -459,7 +443,7 @@ export default function Landing() {
 
 
       {/* ───────── FAQ ───────── */}
-      <section id="faq" className="border-t border-border/60 py-20">
+      <section id="faq" className="border-t border-border/60 pb-20 pt-[60px]">
         <div className="mx-auto w-full max-w-3xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
