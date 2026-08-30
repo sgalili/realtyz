@@ -104,7 +104,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [page, setPage] = useState<PageStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
-  const [pendingAuthUrl, setPendingAuthUrl] = useState<string | null>(null);
   const [igHelpOpen, setIgHelpOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
@@ -400,12 +399,11 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       // Open in a popup / new tab. Assigning window.top.location throws a
       // sandbox permission error inside the preview iframe.
       const authUrl = String(res.auth_url);
-      setPendingAuthUrl(authUrl);
       const opened = openOAuthWindow(authUrl);
       if (!opened) {
         setConnecting(false);
         toast.error('הדפדפן חסם את חלון ההתחברות', {
-          description: 'לחצו על "פתחו את דף האישור" כדי להמשיך בלשונית חדשה.',
+          description: 'אפשרו חלונות קופצים עבור האתר ונסו שוב.',
         });
       }
     } catch (e: any) {
@@ -504,10 +502,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
   const actionButtons = (
     <>
-      <Button variant="outline" size="sm" onClick={() => probe(true)} disabled={loading} className="h-8 gap-1.5 text-[12px]">
-        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />}
-        בדיקה
-      </Button>
       {isConnected && (
         <Button
           variant="ghost"
@@ -551,9 +545,13 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           </div>
         ) : (
           <div className="rounded-xl border border-dashed p-3 space-y-2">
-            <Button onClick={connect} disabled={connecting} className="w-full gap-2 bg-[#1877F2] text-white hover:bg-[#1877F2]/90">
+            {/* Clicking the spinning button cancels the pending attempt. */}
+            <Button
+              onClick={() => (connecting ? setConnecting(false) : void connect())}
+              className="w-full gap-2 bg-[#1877F2] text-white hover:bg-[#1877F2]/90"
+            >
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
-              חבר עמוד פייסבוק
+              {connecting ? 'בטל חיבור' : 'חבר עמוד פייסבוק'}
             </Button>
             {pageOptions.length > 0 && (
               <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2">
@@ -572,16 +570,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
                   </Button>
                 ))}
               </div>
-            )}
-            {pendingAuthUrl && (
-              <a
-                href={pendingAuthUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-center text-[15px] text-primary underline underline-offset-2"
-              >
-                פתחו את דף האישור של פייסבוק בלשונית חדשה
-              </a>
             )}
           </div>
         )}
@@ -619,7 +607,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             <ol className="list-inside list-decimal space-y-1.5 text-[15px] text-muted-foreground">
               <li>ודא שחשבון האינסטגרם הוא חשבון מקצועי (Business או Creator).</li>
               <li>באפליקציית אינסטגרם: הגדרות ← קישור חשבונות ← פייסבוק, ובחר את עמוד הפייסבוק המחובר כאן.</li>
-              <li>חזור לכאן ולחץ "בדיקה" — האינסטגרם יופיע מקושר אוטומטית.</li>
+              <li>חזור לכאן — האינסטגרם יופיע מקושר אוטומטית.</li>
             </ol>
             <Button
               type="button"
