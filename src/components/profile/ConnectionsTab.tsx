@@ -13,6 +13,7 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
 import { useFacebookHealth } from '@/hooks/useFacebookHealth';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
+import { WorkspaceSmsCard } from '@/components/profile/WorkspaceSmsCard';
 import { GoogleApiCredentialsCard } from '@/components/profile/GoogleApiCredentialsCard';
 import { GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -219,6 +220,8 @@ export function ConnectionsTab() {
       ? ['מחובר', 'ok']
       : ['לא הוגדר', 'idle'];
 
+  const [sms019Sender, setSms019Sender] = useState<string | null>(null);
+
   const sections: Array<{ id: string; title: string; status: string; tone: Tone; node: ReactNode }> = [
     {
       id: 'meta',
@@ -308,6 +311,13 @@ export function ConnectionsTab() {
         </div>
       ),
 
+    },
+    {
+      id: 'sms019',
+      title: 'SMS (019) של מרחב העבודה',
+      status: sms019Sender ? sms019Sender : 'לא הוגדר',
+      tone: sms019Sender ? 'ok' : 'idle',
+      node: <WorkspaceSmsCard onStatus={setSms019Sender} />,
     },
     {
       id: 'voice',
