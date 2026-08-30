@@ -117,22 +117,8 @@ export function isMetaPermissionError(payload: any): boolean {
     /pages_read_engagement|pages_show_list|permission/i.test(msg);
 }
 
-/** The platform-wide shared Page binding (used when a workspace has none). */
-export async function resolveSharedMetaPage(db: SupabaseClient): Promise<MetaPage | null> {
-  const { data } = await db
-    .from("messenger_page_bindings")
-    .select("page_id, page_name, page_access_token")
-    .eq("is_platform_shared", true)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const row: any = data;
-  if (!row?.page_id || !row?.page_access_token) return null;
-  return {
-    pageId: String(row.page_id),
-    pageName: row.page_name ?? null,
-    token: String(row.page_access_token),
-  };
+
+
 }
 
 
