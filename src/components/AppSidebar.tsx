@@ -8,6 +8,7 @@ import {
   Handshake,
   ClipboardList,
   HelpCircle,
+  Share2,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
