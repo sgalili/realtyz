@@ -12,7 +12,8 @@ export type AppRole =
   | 'lead_agent'
   | 'agent'
   | 'assistant'
-  | 'junior_agent';
+  | 'junior_agent'
+  | 'affiliate';
 
 // Hardcoded super-admin override - bypasses any state delays.
 const SUPER_ADMIN_EMAILS = ['sgalili@gmail.com'];
