@@ -119,8 +119,6 @@ export function isMetaPermissionError(payload: any): boolean {
 
 
 
-}
-
 
 /** Find the workspace owner that owns a given Meta Page id (webhook routing). */
 export async function ownerForPage(db: SupabaseClient, pageId: string): Promise<MetaPage & { ownerId: string } | null> {
