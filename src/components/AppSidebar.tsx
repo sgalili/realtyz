@@ -229,7 +229,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         <SidebarGroup className="pt-3">
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const active = isActive(item);
                 const tutorialActive =
                   tutorialHighlightPath === item.url ||
