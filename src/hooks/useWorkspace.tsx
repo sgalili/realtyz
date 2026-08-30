@@ -115,14 +115,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         void supabase.rpc('set_active_workspace', { _owner: nextActive });
       }
     } catch (err) {
-      // Fail open: fall back to self
-
-      setWorkspaces([]);
-      setActiveWorkspaceId(user.id);
+      // Fail open: keep whatever we already have on screen (cached list) and
+      // fall back to self so the UI never blanks out.
+      setActiveWorkspaceId((prev) => prev ?? user.id);
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
 
   useEffect(() => {
     refresh();
