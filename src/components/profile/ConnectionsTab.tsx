@@ -187,7 +187,7 @@ export function ConnectionsTab() {
   });
   const liveGoogle = (googleConns ?? []).filter((c) => c.is_connected);
   const connectedGoogle = new Set(liveGoogle.map((c) => c.platform));
-  const allGoogleConnected = connectedGoogle.has('gmail') && connectedGoogle.has('google_calendar') && connectedGoogle.has('youtube');
+  
   const someGoogleConnected = connectedGoogle.size > 0;
   // Never show a vague "חלקי": the header shows the actual connected Google
   // account (email / name) so the broker sees exactly which account is live.
