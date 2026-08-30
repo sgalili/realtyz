@@ -119,20 +119,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fail loud instead of silently: without publish_to_groups Graph returns a
-    // generic permission error that used to look like a random failure.
-    if (!canPublishToGroups(conn.scopes)) {
-      await releaseSlot();
-      return json(
-        {
-          ok: false,
-          code: "missing_group_scope",
-          reason:
-            "לחיבור הפייסבוק חסרה ההרשאה publish_to_groups. יש להתחבר מחדש לפייסבוק בעמוד החיבורים ולאשר את פרסום הקבוצות.",
-        },
-        200,
-      );
-    }
+    // The locally-cached scope list is frequently stale (Meta re-grants group
+    // permissions without us re-reading them), so we NEVER pre-block on it.
+    // We always attempt the real publish and let Graph decide — a genuine
+    // permission problem still surfaces below with Meta's own wording.
+    const scopeWarning = canPublishToGroups(conn.scopes)
+      ? null
+      : "ההרשאה publish_to_groups אינה מופיעה בחיבור המקומי — הפרסום נוסה מול פייסבוק בכל מקרה.";
+    if (scopeWarning) console.warn("[fb-group-publish]", scopeWarning, groupId);
 
     const form = new URLSearchParams({ message, access_token: conn.access_token });
     const link = String(body?.link ?? "").trim();

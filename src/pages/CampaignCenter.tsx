@@ -32,7 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
-import { loadSchedulePrefs, type SchedulePrefs } from '@/lib/schedulePrefs';
+import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
 import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
 
@@ -6543,8 +6543,33 @@ const CampaignCenter = () => {
   const initial = (searchParams.get('tab') as string) ?? 'published';
   const active: TabValue = initial === 'calendar' ? 'calendar' : initial === 'create' ? 'create' : 'published';
 
+  /**
+   * CLEAN SLATE: opening the composer for a brand-new post starts from
+   * scratch — no property pre-selected, no leftover recurrence, and above all
+   * NO leftover group selection. A post must target only and exactly the groups
+   * explicitly chosen for that specific instance.
+   */
+  const resetComposerForNewPost = () => {
+    try {
+      saveCampaignGroups(workspaceOwnerId, []);
+      setBulkGroupIds([]);
+      setBulkRecurrence('none');
+      saveSchedulePrefs(workspaceOwnerId, DEFAULT_SCHEDULE_PREFS);
+      saveSchedulePrefs(workspaceOwnerId, DEFAULT_SCHEDULE_PREFS, 'composer');
+      const prefix = 'rz-composer-draft:v2:';
+      Object.keys(localStorage).filter((k) => k.startsWith(prefix)).forEach((k) => localStorage.removeItem(k));
+      Object.keys(sessionStorage).filter((k) => k.startsWith(prefix)).forEach((k) => sessionStorage.removeItem(k));
+    } catch { /* storage unavailable */ }
+  };
+
   const handleChange = (value: string) => {
     const next = new URLSearchParams(searchParams);
+    const freshCompose = value === 'create'
+      && active !== 'create'
+      && !next.get('listing')
+      && !next.get('properties')
+      && !next.get('schedule');
+    if (freshCompose) resetComposerForNewPost();
     next.set('tab', value);
     next.delete('sub');
     setSearchParams(next, { replace: true });
@@ -6664,8 +6689,15 @@ const CampaignCenter = () => {
         const future = campaignHistoryRows
           .filter((r) => ['scheduled', 'pending'].includes(r.status) && new Date(r.sent_at).getTime() > Date.now())
           .sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
-        const seen = new Map<string, number>();
-        const visible = future.filter((r) => { const key = r.series_id || r.id; const n = seen.get(key) || 0; seen.set(key, n + 1); return n < 3; });
+        // ONLY the next upcoming run of each series is ever shown — recurring
+        // posts must never surface far-future slots (e.g. 10.12.2026).
+        const seen = new Set<string>();
+        const visible = future.filter((r) => {
+          const key = r.series_id || `${r.campaign_name}|${r.channel}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         if (!visible.length) return <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
         return visible.map((r) => {
           const media = Array.isArray(r.media_urls) ? r.media_urls : [];
