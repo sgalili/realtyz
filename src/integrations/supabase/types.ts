@@ -5245,6 +5245,42 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_sms_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          password: string | null
+          provider: string
+          sender_id: string | null
+          updated_at: string
+          username: string | null
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          password?: string | null
+          provider?: string
+          sender_id?: string | null
+          updated_at?: string
+          username?: string | null
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          password?: string | null
+          provider?: string
+          sender_id?: string | null
+          updated_at?: string
+          username?: string | null
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       workspace_whatsapp_settings: {
         Row: {
           connection_type: string
