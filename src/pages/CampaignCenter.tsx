@@ -2735,6 +2735,9 @@ const ConfirmDispatchDialog = ({
           const { data: binding } = await supabase
             .from('messenger_page_bindings')
             .select('page_id, page_name')
+            // Workspace-scoped: every member of the active workspace reads the
+            // same binding, never their personal one.
+            .eq('owner_id', workspaceOwnerId ?? '')
             .limit(1)
             .maybeSingle();
           workspaceFbId = String((binding as any)?.page_id || '').trim();
@@ -3744,6 +3747,7 @@ const PublishedFeed = ({
         const { data: binding } = await supabase
           .from('messenger_page_bindings')
           .select('page_id')
+          .eq('owner_id', workspaceOwnerId ?? '')
           .limit(1)
           .maybeSingle();
         let pageId = ((binding as any)?.page_id as string | null) ?? null;
@@ -6281,6 +6285,7 @@ const CampaignCenter = () => {
         const { data: wsp, error: wspErr } = await supabase
           .from('messenger_page_bindings')
           .select('page_id, page_name')
+          .eq('owner_id', workspaceOwnerId ?? '')
           .limit(1)
           .maybeSingle();
         let wspFbId = ((wsp as any)?.page_id as string | null) ?? null;
