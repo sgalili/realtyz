@@ -336,7 +336,7 @@ export default function Landing() {
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
-              מערכת אחת שמחליפה את כל הכלים החיצוניים
+              מערכת אחת שמחליפה את כולם!
             </h2>
             <p className="mx-auto mt-4 max-w-3xl text-center text-lg text-muted-foreground">
               אין יותר צורך במנויים נפרדים לכתיבת פוסטים, תזמון פוסטים, ניהול נכסים, ניהול לידים, שליחת הודעות, ניהול יומן, דוחות. Realtyz היא לוח בקרה אחד שכולל את כל הכלים שמתווך צריך בעידן ה AI.
