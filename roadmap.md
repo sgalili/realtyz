@@ -18,3 +18,6 @@
    - FAQ Touch Credits explanation
    - Monthly/annual toggle in profile packages tab
 5. [DONE] Landing header: plain navy "הרשמה/התחברות" link instead of filled button
+6. [DONE] Affiliate network foundation (marketplace, broker rewards, RBAC portal)
+7. [DONE] CRM master import (RealTies_AI_CRM_Master_Udi_Vitman_1.json) — UPSERT/MERGE, backup + report
+8. [TODO] Google OAuth: friendly Hebrew handling for "API disabled" errors + minimize requested scopes
