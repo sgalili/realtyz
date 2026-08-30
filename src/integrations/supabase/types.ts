@@ -5386,6 +5386,7 @@ export type Database = {
       }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
+      get_account_integrations: { Args: never; Returns: Json }
       get_business_performance: {
         Args: { days_window?: number; user_uuid: string }
         Returns: Json

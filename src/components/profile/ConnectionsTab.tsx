@@ -16,6 +16,7 @@ import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard
 import { GoogleApiCredentialsCard } from '@/components/profile/GoogleApiCredentialsCard';
 import { GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAccountIntegrations } from '@/hooks/useAccountIntegrations';
 
 type Tone = 'ok' | 'idle';
 
@@ -77,8 +78,12 @@ function ConnectionSection({
           className={cn(
             'border-t px-1 pb-1 pt-[10px] text-right',
             // neutralize the nested Card chrome + hide its duplicate header
-            '[&_[data-conn-body]>div]:border-0 [&_[data-conn-body]>div]:bg-transparent [&_[data-conn-body]>div]:shadow-none',
-            '[&_[data-conn-body]>div>:first-child]:hidden',
+            '[&_[data-conn-body]>div:not([data-plain])]:border-0 [&_[data-conn-body]>div:not([data-plain])]:bg-transparent [&_[data-conn-body]>div:not([data-plain])]:shadow-none',
+            '[&_[data-conn-body]>div:not([data-plain])>:first-child]:hidden',
+            // grouped sections (e.g. all WhatsApp accounts in one card):
+            // neutralize each nested card one level deeper instead
+            '[&_[data-plain]>section>div]:border-0 [&_[data-plain]>section>div]:bg-transparent [&_[data-plain]>section>div]:shadow-none',
+            '[&_[data-plain]>section>div>:first-child]:hidden',
             // RTL text + label alignment for every field inside
             '[&_label]:block [&_label]:text-right',
             '[&_input:not([dir])]:text-right [&_textarea:not([dir])]:text-right',
@@ -102,7 +107,7 @@ export function ConnectionsTab() {
       const params = new URLSearchParams(window.location.search);
       const target = params.get('connect');
       if (params.has('fb') || target === 'facebook') return 'meta';
-      if (target === 'whatsapp-meta' || target === 'whatsapp') return 'wa-meta';
+      if (target === 'whatsapp-meta' || target === 'whatsapp') return 'whatsapp';
       return null;
     } catch {
       return null;
@@ -118,6 +123,9 @@ export function ConnectionsTab() {
   const [greenPhone, setGreenPhone] = useState<string | null>(null);
   const [voicePhone, setVoicePhone] = useState<string | null>(null);
   const { data: fbHealth } = useFacebookHealth();
+  // Facebook / Instagram, WBA, Green API and Yad2 are account-level: connected
+  // once, active in every workspace of this user.
+  const { data: account } = useAccountIntegrations();
   const { isSuperAdmin } = useUserRole();
 
   useEffect(() => {
@@ -171,8 +179,23 @@ export function ConnectionsTab() {
 
   // Collapsed header badge reads the exact same shared state as the expanded
   // card badge and the global banner. Status only — never the page name.
-  const fbConnected = !!(fbHealth?.pageConnected || meta?.connected);
+  const fbConnected = !!(fbHealth?.pageConnected || meta?.connected || account?.facebook?.hasToken);
   const metaStatus: [string, Tone] = fbConnected ? ['מחובר', 'ok'] : ['מנותק', 'idle'];
+
+  // Account-level values win: a number connected in any workspace of this user
+  // shows up here too.
+  const officialPhone = waPhone ?? account?.waPhone ?? null;
+  const personalPhone = greenPhone ?? account?.greenPhone ?? null;
+  const greenLive = greenReady || !!account?.greenConnected;
+
+  // Single WhatsApp parent card: the collapsed header shows the live number
+  // (official first, personal as fallback) instead of "לא הוגדר".
+  const waHeaderPhone = officialPhone ?? personalPhone;
+  const waStatus: [string, Tone] = waHeaderPhone
+    ? [formatPhoneDisplay(waHeaderPhone), 'ok']
+    : greenLive || waMode
+      ? ['מחובר', 'ok']
+      : ['לא הוגדר', 'idle'];
 
   const sections: Array<{ id: string; title: string; status: string; tone: Tone; node: ReactNode }> = [
     {
@@ -183,25 +206,40 @@ export function ConnectionsTab() {
       node: <MetaDirectConnectionCard onStatus={setMeta} />,
     },
     {
-      id: 'wa-meta',
-      title: 'WhatsApp רשמי (Meta Cloud API)',
-      status: waPhone ? formatPhoneDisplay(waPhone) : 'לא מחובר',
-      tone: waPhone ? 'ok' : 'idle',
-      node: <MetaWhatsAppAuthCard />,
-    },
-    {
-      id: 'wa-mode',
-      title: 'אופן חיבור WhatsApp',
-      status: waPhone ? formatPhoneDisplay(waPhone) : waMode ? 'מספר רשמי (Meta)' : 'לא הוגדר',
-      tone: waPhone || waMode ? 'ok' : 'idle',
-      node: <WhatsAppConnectionModeCard />,
-    },
-    {
-      id: 'wa-green',
-      title: 'WhatsApp · מספר אישי (Green API)',
-      status: greenPhone ? formatPhoneDisplay(greenPhone) : greenReady ? 'מחובר' : 'לא הוגדר',
-      tone: greenPhone || greenReady ? 'ok' : 'idle',
-      node: <WhatsAppGatewayCard />,
+      id: 'whatsapp',
+      title: 'חשבונות ווטסאפ',
+      status: waStatus[0],
+      tone: waStatus[1],
+      node: (
+        <div data-plain className="space-y-4">
+          <section className="space-y-2">
+            <h4 className="text-sm font-semibold">
+              WhatsApp רשמי (Meta Cloud API)
+              {officialPhone && (
+                <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
+                  {formatPhoneDisplay(officialPhone)}
+                </span>
+              )}
+            </h4>
+            <MetaWhatsAppAuthCard />
+          </section>
+          <section className="space-y-2 border-t pt-4">
+            <h4 className="text-sm font-semibold">אופן חיבור WhatsApp</h4>
+            <WhatsAppConnectionModeCard />
+          </section>
+          <section className="space-y-2 border-t pt-4">
+            <h4 className="text-sm font-semibold">
+              מספר אישי (Green API)
+              {personalPhone && (
+                <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
+                  {formatPhoneDisplay(personalPhone)}
+                </span>
+              )}
+            </h4>
+            <WhatsAppGatewayCard />
+          </section>
+        </div>
+      ),
     },
     {
       id: 'voice',
