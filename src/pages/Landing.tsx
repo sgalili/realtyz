@@ -12,6 +12,7 @@ import { FREE_CONTACTS, FREE_PROPERTIES } from '@/lib/pricing';
 import PricingSection from '@/components/landing/PricingSection';
 import CreditsSection from '@/components/landing/CreditsSection';
 import { cn } from '@/lib/utils';
+import { BrandLogo } from '@/components/social/BrandLogo';
 
 
 import { PlatformTicker, StackTicker } from '@/components/landing/LogoTickers';
@@ -249,19 +250,10 @@ export default function Landing() {
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
           <Link
             to="/auth"
-            className="text-sm font-extrabold text-primary underline-offset-4 transition-colors hover:underline"
+            className="text-sm font-medium text-primary underline-offset-4 transition-colors hover:underline"
           >
             הרשמה/התחברות
           </Link>
-          <nav className="hidden items-center gap-7 text-sm font-semibold text-muted-foreground md:flex">
-            <a href="#features" className="transition-colors hover:text-foreground">יכולות</a>
-            <a href="#whatsapp" className="transition-colors hover:text-foreground">ווטסאפ AI</a>
-            <a href="#free" className="transition-colors hover:text-foreground">מסלול חינם</a>
-            <a href="#pricing" className="transition-colors hover:text-foreground">מחירים</a>
-            <a href="#faq" className="transition-colors hover:text-foreground">שאלות נפוצות</a>
-
-
-          </nav>
           <Link to="/" aria-label="Realtyz AI">
             <img src={realtyzLogo} alt="Realtyz AI" className="h-[3.12rem] w-auto object-contain" />
           </Link>
@@ -282,23 +274,6 @@ export default function Landing() {
               <span className="landing-title-gradient block">AI למתווכים וסוכנויות נדל״ן</span>
               <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים.</span>
             </h1>
-          </Reveal>
-
-          <Reveal delay={160}>
-            <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              כלי העבודה היחיד שכל מתווך חייב בעידן ה AI.
-            </p>
-
-          </Reveal>
-
-          {/* Platforms — official brand logos, infinite scroll, no labels */}
-          <Reveal delay={400}>
-            <div className="mt-6">
-              <p className="mb-1 text-sm font-extrabold tracking-widest text-muted-foreground">
-                כל הכלים במקום אחד
-              </p>
-              <PlatformTicker />
-            </div>
           </Reveal>
 
           {/* Metric cards */}
@@ -342,6 +317,15 @@ export default function Landing() {
             <p className="mx-auto mt-4 max-w-3xl text-center text-lg text-muted-foreground">
               אין יותר צורך במנויים נפרדים לכתיבת פוסטים, תזמון פוסטים, ניהול נכסים, ניהול לידים, שליחת הודעות, ניהול יומן, דוחות. Realtyz היא לוח בקרה אחד שכולל את כל הכלים שמתווך צריך בעידן ה AI.
             </p>
+          </Reveal>
+
+          <Reveal delay={140}>
+            <div className="mt-10">
+              <p className="mb-1 text-center text-sm font-extrabold tracking-widest text-muted-foreground">
+                כל הכלים במקום אחד
+              </p>
+              <PlatformTicker />
+            </div>
           </Reveal>
 
           <Reveal delay={120}>
@@ -409,9 +393,15 @@ export default function Landing() {
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 lg:grid-cols-2">
           <Reveal>
             <div>
-              <h2 className="landing-title-gradient mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                מנהלים את כל העסק מהווטסאפ
-              </h2>
+              <div className="flex items-center justify-start gap-3">
+                <BrandLogo platform="whatsapp" size={40} className="shrink-0" />
+                <h2 className="landing-title-gradient mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                  מנהלים את כל העסק מהווטסאפ
+                </h2>
+              </div>
+              <p className="mt-2 text-base font-semibold text-muted-foreground">
+                מופעל באמצעות ווטסאפ רשמי של מטא.
+              </p>
               <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
                 שולחים הודעה קולית או טקסט, וה-AI מבצע: בודק סטטוס לקוח, שולף סטטיסטיקות,
                 פותח משימות ומתאם סיורים בזמן אמת.
