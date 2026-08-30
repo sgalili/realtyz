@@ -31,6 +31,10 @@ const DEFAULT_PERSONAL_SCOPES = [
   "pages_show_list",
   "pages_manage_posts",
   "pages_read_engagement",
+  // Group publishing needs these two. Meta only grants them to reviewed apps,
+  // so the publisher degrades gracefully when they are withheld.
+  "publish_to_groups",
+  "groups_access_member_info",
 ];
 
 /** Minimal scope set used when Meta rejects the full dialog request. */
@@ -50,6 +54,18 @@ export const FB_PERSONAL_SCOPES = rawScopes.length > 0 ? rawScopes : FB_BASIC_SC
 
 /** Scopes that MUST be granted for the connection to be considered healthy. */
 export const FB_GROUP_REQUIRED_SCOPES = ["public_profile"];
+
+/** Scopes required for publishing into a Facebook group. */
+export const FB_GROUP_PUBLISH_SCOPES = ["publish_to_groups"];
+
+/** True when the stored connection is allowed to publish into groups. */
+export function canPublishToGroups(granted: string[] | null | undefined): boolean {
+  const set = new Set((granted ?? []).map((s) => String(s)));
+  // Older connections were stored before scopes were persisted: don't block
+  // them here — let Graph decide and surface the real error.
+  if (set.size === 0) return true;
+  return FB_GROUP_PUBLISH_SCOPES.every((s) => set.has(s));
+}
 
 /** Which required scopes Meta did NOT grant. */
 export function missingScopes(granted: string[] | null | undefined): string[] {

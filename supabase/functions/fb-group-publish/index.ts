@@ -10,6 +10,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { ensureMandatoryComment } from "../_shared/mandatoryComment.ts";
 import {
   adminClient,
+  canPublishToGroups,
   GRAPH,
   humanizeGraphError,
   loadConnection,
@@ -113,6 +114,21 @@ Deno.serve(async (req) => {
           ok: false,
           code: "not_connected",
           reason: "פרופיל הפייסבוק האישי לא מחובר עבור מרחב העבודה הזה.",
+        },
+        200,
+      );
+    }
+
+    // Fail loud instead of silently: without publish_to_groups Graph returns a
+    // generic permission error that used to look like a random failure.
+    if (!canPublishToGroups(conn.scopes)) {
+      await releaseSlot();
+      return json(
+        {
+          ok: false,
+          code: "missing_group_scope",
+          reason:
+            "לחיבור הפייסבוק חסרה ההרשאה publish_to_groups. יש להתחבר מחדש לפייסבוק בעמוד החיבורים ולאשר את פרסום הקבוצות.",
         },
         200,
       );
