@@ -9,6 +9,7 @@ import { BrandIcon } from '@/components/BrandIcon';
 import { OAUTH_AUTHORIZE_URLS, OAUTH_SCOPES } from '@/lib/socialAutomationService';
 import { clearPendingOAuth, currentOrigin, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
+import { friendlyGoogleError } from '@/lib/googleApiErrors';
 
 
 
@@ -90,7 +91,15 @@ export function GoogleServiceConnectCard({
         toast.success('החיבור הושלם', { id: tId, description: (resp as any).identity?.email });
         refetch();
       } catch (e: any) {
-        toast.error('החיבור נכשל', { id: tId, description: e?.message });
+        const friendly = friendlyGoogleError(e, platform);
+        toast.error(friendly.title, {
+          id: tId,
+          description: friendly.message,
+          duration: friendly.apiDisabled ? 15000 : 6000,
+          action: friendly.enableUrl
+            ? { label: 'הפעלת ה-API', onClick: () => window.open(friendly.enableUrl!, '_blank', 'noreferrer') }
+            : undefined,
+        });
       }
     },
     [platform, refetch],

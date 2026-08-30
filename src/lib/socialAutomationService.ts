@@ -80,16 +80,16 @@ const REAL_IDENTITY_ONLY = new Set(['gmail', 'youtube', 'google_drive', 'linkedi
  * Surfaced in the UI so the user knows what they're granting.
  */
 export const OAUTH_SCOPES: Record<string, string[]> = {
+  // Minimum set per feature actually used in the product: Gmail is only ever
+  // used to SEND (dispatch-campaign), Calendar to read primary + freeBusy and
+  // create events, YouTube only to read the channel. Requesting more triggers
+  // Google's "this app wants access to N services" warning for nothing.
   gmail:     [
     'https://www.googleapis.com/auth/gmail.send',
-    'https://www.googleapis.com/auth/gmail.compose',
-    'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile',
     'openid',
   ],
   youtube:   [
-    'https://www.googleapis.com/auth/youtube.force-ssl',
     'https://www.googleapis.com/auth/youtube.readonly',
   ],
   facebook:  [
@@ -105,12 +105,12 @@ export const OAUTH_SCOPES: Record<string, string[]> = {
   google_drive: [
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile',
     'openid',
   ],
   google_calendar: [
-    'https://www.googleapis.com/auth/calendar',
+    // calendar.events covers create/update; calendar.readonly covers freeBusy.
     'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/calendar.readonly',
     'https://www.googleapis.com/auth/userinfo.email',
     'openid',
   ],
@@ -120,11 +120,8 @@ export const OAUTH_SCOPES: Record<string, string[]> = {
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/gmail.send',
-    'https://www.googleapis.com/auth/gmail.compose',
-    'https://www.googleapis.com/auth/gmail.readonly',
-    'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/calendar.events',
-    'https://www.googleapis.com/auth/youtube.force-ssl',
+    'https://www.googleapis.com/auth/calendar.readonly',
     'https://www.googleapis.com/auth/youtube.readonly',
   ],
 };
