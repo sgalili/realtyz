@@ -246,18 +246,9 @@ const Auth = () => {
 
   return (
     <div
-      className="auth-gradient-shell min-h-screen relative overflow-hidden px-4 py-8"
+      className="auth-gradient-shell min-h-screen relative flex flex-col overflow-hidden bg-background px-4 py-8"
     >
-      {/* Futuristic backdrop — same aurora + grid language as the landing page */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <div className="landing-aurora landing-aurora-a" />
-        <div className="landing-aurora landing-aurora-b" />
-        <div className="landing-aurora landing-aurora-c" />
-        <div className="landing-grid absolute inset-0 opacity-[0.35]" />
-      </div>
-      {/* Gold halo */}
-      <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-gold/10 blur-[120px]" />
-      {/* Top header bar with auth-only rotating headline and Demo switch */}
+      {/* Top header bar with auth-only rotating headline */}
       <div className="absolute inset-x-0 top-0 z-20 h-7 bg-background" dir="rtl">
         <div className="absolute right-4 left-4 top-[calc(50%+5px)] -translate-y-1/2 overflow-hidden text-right">
           <div className="auth-header-ticker" aria-live="polite">
@@ -275,33 +266,30 @@ const Auth = () => {
           </div>
         </div>
       </div>
-      {/* Top hero wave - cloned exactly from dashboard HeroWaveMount: wave-soft, 24px, background fill, random seed */}
-      <RealtyzWave position="top" variant="wave-soft" fill="hsl(var(--background))" seed={heroWaveSeed} height={24} offset={28} />
-      <RealtyzWave position="bottom" variant="wave-soft" fill="hsl(var(--background))" seed={7} height={24} />
       {codeSent && !isGoogleFlow && (
-        <button type="button" aria-label="חזרה להתחברות" className="absolute right-4 top-16 z-20 border-0 bg-transparent p-0 text-primary-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
+        <button type="button" aria-label="חזרה להתחברות" className="absolute right-4 top-16 z-20 border-0 bg-transparent p-0 text-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
           <ArrowRight className="h-10 w-10" />
         </button>
       )}
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
-        <div className="mb-8 translate-y-5 text-center">
+        <div className="mb-6 text-center">
           <img
             src={realtyzLogo}
             alt="Realtyz AI"
-            className="auth-official-logo mx-auto mb-6 h-[3.6rem] w-auto object-contain"
+            className="auth-official-logo mx-auto mb-4 h-[3.6rem] w-auto object-contain"
           />
           <p className="auth-official-slogan">כלי העבודה היחיד שכל מתווך חייב בעידן ה AI.</p>
         </div>
 
         {!codeSent && <h1 className="auth-login-title">הרשמה/התחברות</h1>}
 
-        <Card variant="active" className={codeSent ? "auth-login-card border-0 bg-transparent shadow-none" : "auth-login-card border-0 bg-transparent shadow-none"} dir="rtl">
+        <Card variant="active" className="auth-login-card border border-border/60 bg-card shadow-sm" dir="rtl">
           <CardContent className={codeSent ? "p-0" : "space-y-5 p-6"}>
-            <form onSubmit={handleSendCode} className={codeSent ? "space-y-4 animate-fade-in" : "space-y-4 rounded-lg border border-border/80 bg-background p-4 animate-fade-in"}>
+            <form onSubmit={handleSendCode} className={codeSent ? "space-y-4 animate-fade-in" : "space-y-4 rounded-lg border border-border/60 bg-background p-4 animate-fade-in"}>
               {codeSent && !isGoogleFlow ? (
                 <div className="space-y-4 text-center animate-fade-in">
-                  <Label className="block text-xl font-bold text-primary-foreground">הזינו את הקוד שקיבלתם {activeMethod === 'whatsapp' ? 'בווטסאפ' : activeMethod === 'sms' ? 'ב-SMS' : 'באימייל'}</Label>
+                  <Label className="block text-xl font-bold text-foreground">הזינו את הקוד שקיבלתם {activeMethod === 'whatsapp' ? 'בווטסאפ' : activeMethod === 'sms' ? 'ב-SMS' : 'באימייל'}</Label>
                   <InputOTP maxLength={isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4)} value={otp} onChange={(value) => { const len = isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4); setOtp(value); if (value.length === len) void handleVerifyCode(value); }} containerClassName="justify-center" dir="ltr" disabled={otpAttempts >= 3}>
                     <InputOTPGroup className="flex-row-reverse gap-2">
                       {Array.from({ length: isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4) }).map((_, index) => (
@@ -315,7 +303,7 @@ const Auth = () => {
                   {resendSeconds > 0 ? (
                     <p className="text-sm font-bold text-muted-foreground">שלחו לי שוב בעוד {resendSeconds}</p>
                   ) : (
-                    <button type="button" className="text-sm font-normal text-primary-foreground underline-offset-4 hover:underline" onClick={() => handleSendCode()} disabled={loading}>
+                    <button type="button" className="text-sm font-normal text-primary underline-offset-4 hover:underline" onClick={() => handleSendCode()} disabled={loading}>
                       שלחו לי שוב
                     </button>
                   )}
@@ -357,7 +345,7 @@ const Auth = () => {
               )}
             </form>
 
-            {!codeSent && <div className="text-center text-sm font-bold text-primary-foreground">
+            {!codeSent && <div className="text-center text-sm font-bold text-muted-foreground">
               <div>או באמצעות:</div>
             </div>}
 
