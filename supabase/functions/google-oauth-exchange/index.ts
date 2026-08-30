@@ -178,8 +178,8 @@ Deno.serve(async (req) => {
     });
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
+      return new Response(JSON.stringify({ ok: false, error: 'הבקשה נשלחה ללא התחברות פעילה. התחבר למערכת ונסה שוב.', code: 'unauthorized' }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -193,18 +193,18 @@ Deno.serve(async (req) => {
     const body: ExchangeBody = await req.json().catch(() => ({}));
     const platform = String(body.platform || '').toLowerCase();
     const code = body.code;
-    const redirectUri = body.redirect_uri;
+    const redirectUri = String(body.redirect_uri || 'https://realtyz.co.il/oauth/callback').trim();
 
     if (platform !== 'gmail' && platform !== 'youtube' && platform !== 'google_drive' && platform !== 'google_calendar') {
       return new Response(
-        JSON.stringify({ error: 'platform must be "gmail", "youtube", "google_drive", or "google_calendar"' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ ok: false, error: `פלטפורמת גוגל לא נתמכת: ${platform || '(ריק)'}`, code: 'bad_platform' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
     if (!code || !redirectUri) {
       return new Response(
-        JSON.stringify({ error: 'Missing code or redirect_uri' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ ok: false, error: 'חסר קוד אישור מגוגל (code) או redirect_uri.', code: 'missing_code' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -257,8 +257,9 @@ Deno.serve(async (req) => {
           ok: false,
           error:
             'אין Client ID/Secret זמינים. הוסיפו אישורי Google תחת אישורי OAuth משותפים (סופר-אדמין) או הזינו ידנית בהגדרות מתקדמות.',
+          code: 'missing_client',
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -279,8 +280,8 @@ Deno.serve(async (req) => {
         })
         .eq('platform', platform)
         .eq('created_by', callerUserId);
-      return new Response(JSON.stringify({ ok: false, error: tokens.error }), {
-        status: 400,
+      return new Response(JSON.stringify({ ok: false, error: tokens.error, code: 'token_exchange_failed', redirect_uri_used: redirectUri }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -306,9 +307,9 @@ Deno.serve(async (req) => {
         .eq('platform', platform)
         .eq('created_by', callerUserId);
       return new Response(
-        JSON.stringify({ ok: false, error: identity.error, status: identity.status }),
+        JSON.stringify({ ok: false, error: identity.error, google_status: identity.status, code: 'identity_failed' }),
         {
-          status: identity.status === 403 ? 403 : 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         },
       );
@@ -349,15 +350,22 @@ Deno.serve(async (req) => {
       last_test_message: 'OAuth completed and identity verified',
     };
 
+    let saveWarning: string | null = null;
     if (row?.id) {
       const { error } = await admin
         .from('social_connections')
         .update(upd)
         .eq('id', row.id);
-      if (error) throw error;
+      if (error) saveWarning = error.message;
     } else {
       const { error } = await admin.from('social_connections').insert(upd);
-      if (error) throw error;
+      if (error) saveWarning = error.message;
+    }
+    if (saveWarning) {
+      return new Response(
+        JSON.stringify({ ok: false, error: `שמירת החיבור נכשלה: ${saveWarning}`, code: 'db_save_failed' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
     // ── One-Click sibling mirror ─────────────────────────────────────
@@ -431,8 +439,8 @@ Deno.serve(async (req) => {
     );
   } catch (err: any) {
     console.error('google-oauth-exchange error', err);
-    return new Response(JSON.stringify({ error: err?.message ?? 'Unknown error' }), {
-      status: 500,
+    return new Response(JSON.stringify({ ok: false, error: err?.message ?? 'Unknown error', code: 'unhandled' }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
