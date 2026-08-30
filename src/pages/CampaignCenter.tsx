@@ -32,7 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
-import { loadSchedulePrefs, type SchedulePrefs } from '@/lib/schedulePrefs';
+import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
 import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
 
@@ -6543,8 +6543,33 @@ const CampaignCenter = () => {
   const initial = (searchParams.get('tab') as string) ?? 'published';
   const active: TabValue = initial === 'calendar' ? 'calendar' : initial === 'create' ? 'create' : 'published';
 
+  /**
+   * CLEAN SLATE: opening the composer for a brand-new post starts from
+   * scratch — no property pre-selected, no leftover recurrence, and above all
+   * NO leftover group selection. A post must target only and exactly the groups
+   * explicitly chosen for that specific instance.
+   */
+  const resetComposerForNewPost = () => {
+    try {
+      saveCampaignGroups(workspaceOwnerId, []);
+      setBulkGroupIds([]);
+      setBulkRecurrence('none');
+      saveSchedulePrefs(workspaceOwnerId, DEFAULT_SCHEDULE_PREFS);
+      saveSchedulePrefs(workspaceOwnerId, DEFAULT_SCHEDULE_PREFS, 'composer');
+      const prefix = 'rz-composer-draft:v2:';
+      Object.keys(localStorage).filter((k) => k.startsWith(prefix)).forEach((k) => localStorage.removeItem(k));
+      Object.keys(sessionStorage).filter((k) => k.startsWith(prefix)).forEach((k) => sessionStorage.removeItem(k));
+    } catch { /* storage unavailable */ }
+  };
+
   const handleChange = (value: string) => {
     const next = new URLSearchParams(searchParams);
+    const freshCompose = value === 'create'
+      && active !== 'create'
+      && !next.get('listing')
+      && !next.get('properties')
+      && !next.get('schedule');
+    if (freshCompose) resetComposerForNewPost();
     next.set('tab', value);
     next.delete('sub');
     setSearchParams(next, { replace: true });
