@@ -171,8 +171,14 @@ export default function OAuthCallback() {
         }
         if (googlePlatform) {
           if (!cancelled) {
+            const friendly = friendlyGoogleError(reason, googlePlatform);
             setIsLoading(false);
-            setError({ title: 'החיבור ל-Google נכשל', detail: reason });
+            setError({
+              title: friendly.title,
+              detail: friendly.raw,
+              hint: friendly.message,
+              enableUrl: friendly.enableUrl,
+            });
           }
           return;
         }
