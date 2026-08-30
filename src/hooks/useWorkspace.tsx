@@ -176,6 +176,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     setActiveWorkspaceId(ownerId);
     window.localStorage.setItem(workspaceStorageKey(user.id), ownerId);
+    writeWorkspaceCache(workspaces, ownerId);
+
     try {
       await supabase.rpc('set_active_workspace', { _owner: ownerId });
     } catch {
