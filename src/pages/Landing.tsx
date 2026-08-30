@@ -325,7 +325,7 @@ export default function Landing() {
           <Reveal delay={140}>
             <div className="mt-10">
               <p className="mb-1 text-center text-sm font-extrabold tracking-widest text-muted-foreground">
-                כל הכלים במקום אחד
+                {"\n"}
               </p>
               <PlatformTicker />
             </div>
