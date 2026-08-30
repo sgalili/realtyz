@@ -257,7 +257,7 @@ export default function Landing() {
           <div className="landing-grid absolute inset-0" />
         </div>
 
-        <div className="mx-auto w-full max-w-6xl px-4 pb-20 pt-16 text-center sm:pt-24">
+        <div className="mx-auto w-full max-w-6xl px-4 pb-6 pt-8 text-center sm:pt-10">
           <Reveal delay={80}>
             <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
               <span className="landing-title-gradient block">AI למתווכים וסוכנויות נדל״ן</span>
@@ -266,37 +266,48 @@ export default function Landing() {
           </Reveal>
 
           <Reveal delay={160}>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+            <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
               סוכני AI שמנהלים 24/7 את כל הלידים, נכסים, התאמות, שיווק, תקשורת ומעקבים בשליטה מלאה מהווטסאפ שלכם
             </p>
           </Reveal>
 
-
-
-
-
           {/* Platforms — official brand logos, infinite scroll, no labels */}
           <Reveal delay={400}>
-            <div className="mt-14">
-              <p className="mb-3 text-sm font-extrabold tracking-widest text-muted-foreground">
+            <div className="mt-6">
+              <p className="mb-1 text-sm font-extrabold tracking-widest text-muted-foreground">
                 כל הכלים במקום אחד
               </p>
               <PlatformTicker />
             </div>
           </Reveal>
 
-          {/* Infrastructure trust row */}
-          <Reveal delay={470}>
-            <div className="mt-10">
-              <p className="text-sm font-extrabold tracking-widest text-muted-foreground">
-                תשתית טכנולוגית
-              </p>
-
-              <div className="mt-4">
-                <StackTicker />
+          {/* Metric cards */}
+          <div className="mx-auto mt-5 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              { value: '+320%', label: 'גידול ביכולת המענה האוטומטי ללידים חדשים' },
+              { value: '15 שעות', label: 'חיסכון שבועי בממוצע לסוכן נדל"ן' },
+              { value: '99.4%', label: 'שיעור מעורבות והמרת הודעות ווטסאפ' },
+            ].map((m) => (
+              <div
+                key={m.value}
+                className="rounded-2xl border border-border/60 bg-card p-4 text-center shadow-sm"
+              >
+                <div className="text-3xl font-extrabold tracking-tight text-primary">{m.value}</div>
+                <div className="mt-1.5 text-sm font-semibold leading-snug text-muted-foreground">{m.label}</div>
               </div>
+            ))}
+          </div>
+
+          {/* Infrastructure trust row */}
+          <div className="mt-5">
+            <p className="text-sm font-extrabold tracking-widest text-muted-foreground">
+              תשתית טכנולוגית
+            </p>
+
+            <div className="mt-2">
+              <StackTicker />
             </div>
-          </Reveal>
+          </div>
 
         </div>
       </section>

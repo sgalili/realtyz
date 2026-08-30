@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus, Trash2, Pencil, Mail, Phone, MessageCircle, MapPin, User as UserIcon,
-  Building2, ImageIcon, Share2, LogOut,
+  Building2, ImageIcon, LogOut,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -373,22 +373,13 @@ function PersonalTab() {
           />
         </div>
 
-        <div className="flex items-center justify-between pt-1">
-          <button type="button" className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-muted-foreground/30 px-3 py-1.5 text-xs font-medium hover:bg-muted/40">
-            <Plus className="h-3.5 w-3.5" />
-            הוסף פרופיל
-          </button>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Share2 className="h-3.5 w-3.5" />
-            רשתות חברתיות
-          </div>
+        <div className="flex items-center gap-3 pt-1">
+          <Button onClick={save} size="lg" className="flex-1">שמירת הפרופיל</Button>
+          <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10">
+            <LogOut className="h-4 w-4" />
+            התנתקות
+          </Button>
         </div>
-
-        <Button onClick={save} size="lg" className="w-full mt-2">שמירת הפרופיל</Button>
-        <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="w-full border-destructive/30 text-destructive hover:bg-destructive/10">
-          <LogOut className="h-4 w-4" />
-          התנתקות
-        </Button>
 
       </CardContent>
     </Card>
