@@ -5427,17 +5427,29 @@ export type Database = {
         Args: { days_window?: number; user_uuid: string }
         Returns: Json
       }
-      get_effective_meta_page: {
-        Args: never
-        Returns: {
-          has_token: boolean
-          is_shared: boolean
-          owner_id: string
-          page_avatar_url: string
-          page_id: string
-          page_name: string
-        }[]
-      }
+      get_effective_meta_page:
+        | {
+            Args: never
+            Returns: {
+              has_token: boolean
+              is_shared: boolean
+              owner_id: string
+              page_avatar_url: string
+              page_id: string
+              page_name: string
+            }[]
+          }
+        | {
+            Args: { _owner: string }
+            Returns: {
+              has_token: boolean
+              is_shared: boolean
+              owner_id: string
+              page_avatar_url: string
+              page_id: string
+              page_name: string
+            }[]
+          }
       get_followup_suggestions: { Args: { _user_id: string }; Returns: Json }
       get_homely_admin_overview: { Args: never; Returns: Json }
       get_homely_password: { Args: { _user_id: string }; Returns: string }
