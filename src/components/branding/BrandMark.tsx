@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 interface BrandMarkProps {
   className?: string;
@@ -11,17 +12,23 @@ interface BrandMarkProps {
 /**
  * Renders the agency logo + name when white-label branding is configured,
  * otherwise falls back to the Realtyz AI wordmark unless the user explicitly hid it.
+ *
+ * Both sources (white-label settings and the workspace list) hydrate
+ * synchronously from localStorage, so the workspace logo paints on the FIRST
+ * frame with no flicker or default-logo fallback.
  */
 export function BrandMark({ className = '', to = '/', fallbackLabel = 'Realtyz AI' }: BrandMarkProps) {
   const { settings, loading } = useWhiteLabel();
-  const hasLogo = !!settings?.logo_url;
-  const hasName = !!settings?.agency_name;
+  const { activeWorkspace } = useWorkspace();
+
+  const logoUrl = settings?.logo_url || activeWorkspace?.workspace_logo_url || null;
+  const agencyName = settings?.agency_name || activeWorkspace?.workspace_name || null;
   const hideRealtyz = !!settings?.hide_kalpiz_branding;
 
   // While branding is still resolving we render nothing rather than the Realtyz
   // fallback, which used to flicker in before the workspace logo arrived.
-  const labelToShow = hasName
-    ? settings!.agency_name!
+  const labelToShow = agencyName
+    ? agencyName
     : (hideRealtyz || (loading && !settings) ? '' : fallbackLabel);
 
   return (
@@ -30,10 +37,10 @@ export function BrandMark({ className = '', to = '/', fallbackLabel = 'Realtyz A
       aria-label={`${labelToShow || 'Home'} - דף הבית`}
       className={`realtyz-logo inline-flex items-center gap-2 ${className}`}
     >
-      {hasLogo && (
+      {logoUrl && (
         <img
-          src={settings!.logo_url!}
-          alt={settings?.agency_name ?? 'Agency logo'}
+          src={logoUrl}
+          alt={agencyName ?? 'Agency logo'}
           className="h-7 w-auto max-w-[140px] object-contain"
           loading="eager"
         />
