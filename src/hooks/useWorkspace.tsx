@@ -31,8 +31,33 @@ type WorkspaceContextType = {
 };
 
 const STORAGE_KEY = 'realtyz-active-workspace';
+const WS_LIST_CACHE_KEY = 'realtyz-workspaces-cache';
+const WS_LAST_ACTIVE_KEY = `${STORAGE_KEY}:last`;
 
 const workspaceStorageKey = (userId: string) => `${STORAGE_KEY}:${userId}`;
+
+/**
+ * Workspaces (name + logo) are cached locally so the sidebar/header brand
+ * paints on the FIRST frame after a refresh instead of flashing the default
+ * Realtyz logo for ~2s while get_my_workspaces() round-trips.
+ */
+function readWorkspaceCache(): { list: Workspace[]; activeId: string | null } {
+  try {
+    const list = JSON.parse(localStorage.getItem(WS_LIST_CACHE_KEY) ?? '[]') as Workspace[];
+    const activeId = localStorage.getItem(WS_LAST_ACTIVE_KEY);
+    return { list: Array.isArray(list) ? list : [], activeId: activeId || null };
+  } catch {
+    return { list: [], activeId: null };
+  }
+}
+
+function writeWorkspaceCache(list: Workspace[], activeId: string | null) {
+  try {
+    localStorage.setItem(WS_LIST_CACHE_KEY, JSON.stringify(list));
+    if (activeId) localStorage.setItem(WS_LAST_ACTIVE_KEY, activeId);
+  } catch { /* storage unavailable */ }
+}
+
 
 const WorkspaceContext = createContext<WorkspaceContextType>({
   workspaces: [],
