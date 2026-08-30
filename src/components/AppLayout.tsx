@@ -429,8 +429,21 @@ export function AppLayout({ children }: { children: ReactNode }) {
   };
 
   const activeTutorialStep = tutorialStep === null ? null : TUTORIAL_STEPS[tutorialStep];
-  const headerLogo = brand?.landscape_logo_url || brand?.logo_url || activeWorkspace?.workspace_logo_url || '';
-  const headerName = brand?.agency_name || activeWorkspace?.workspace_name || 'Realtyz AI';
+  // Workspace-first header identity: the active workspace's white-label logo +
+  // name always win. We never show the signed-in person's own name/avatar here.
+  const personalName = (friendlyUserDisplayName(user as any, '') || '').trim();
+  const personalEmail = (user?.email ?? '').trim();
+  const isPersonalIdentity = (value: string) => {
+    const v = value.trim();
+    if (!v) return true;
+    return v === personalName || v === personalEmail || v === personalEmail.split('@')[0];
+  };
+  const workspaceLogo = activeWorkspace?.workspace_logo_url || '';
+  const workspaceName = activeWorkspace?.workspace_name || '';
+  const headerLogo = brand?.landscape_logo_url || brand?.logo_url || workspaceLogo || '';
+  const brandedName = brand?.agency_name || workspaceName || '';
+  const headerName = brandedName && !isPersonalIdentity(brandedName) ? brandedName : 'Realtyz AI';
+
   const advanceTutorial = () => {
     if (tutorialStep === null) return;
     const nextStep = tutorialStep + 1;
