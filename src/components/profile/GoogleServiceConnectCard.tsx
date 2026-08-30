@@ -90,7 +90,15 @@ export function GoogleServiceConnectCard({
         toast.success('החיבור הושלם', { id: tId, description: (resp as any).identity?.email });
         refetch();
       } catch (e: any) {
-        toast.error('החיבור נכשל', { id: tId, description: e?.message });
+        const friendly = friendlyGoogleError(e, platform);
+        toast.error(friendly.title, {
+          id: tId,
+          description: friendly.message,
+          duration: friendly.apiDisabled ? 15000 : 6000,
+          action: friendly.enableUrl
+            ? { label: 'הפעלת ה-API', onClick: () => window.open(friendly.enableUrl!, '_blank', 'noreferrer') }
+            : undefined,
+        });
       }
     },
     [platform, refetch],
