@@ -75,7 +75,7 @@ export function StackTicker() {
                     className="h-7 w-auto shrink-0 object-contain"
                   />
                 )}
-                {s.label}
+                {!s.hideLabel && s.label}
 
               </span>
             ))}
