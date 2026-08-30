@@ -118,6 +118,9 @@ export function ConnectionsTab() {
   const [greenPhone, setGreenPhone] = useState<string | null>(null);
   const [voicePhone, setVoicePhone] = useState<string | null>(null);
   const { data: fbHealth } = useFacebookHealth();
+  // Facebook / Instagram, WBA, Green API and Yad2 are account-level: connected
+  // once, active in every workspace of this user.
+  const { data: account } = useAccountIntegrations();
   const { isSuperAdmin } = useUserRole();
 
   useEffect(() => {
