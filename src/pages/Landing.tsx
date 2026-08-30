@@ -250,19 +250,10 @@ export default function Landing() {
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
           <Link
             to="/auth"
-            className="text-sm font-extrabold text-primary underline-offset-4 transition-colors hover:underline"
+            className="text-sm font-medium text-primary underline-offset-4 transition-colors hover:underline"
           >
             הרשמה/התחברות
           </Link>
-          <nav className="hidden items-center gap-7 text-sm font-semibold text-muted-foreground md:flex">
-            <a href="#features" className="transition-colors hover:text-foreground">יכולות</a>
-            <a href="#whatsapp" className="transition-colors hover:text-foreground">ווטסאפ AI</a>
-            <a href="#free" className="transition-colors hover:text-foreground">מסלול חינם</a>
-            <a href="#pricing" className="transition-colors hover:text-foreground">מחירים</a>
-            <a href="#faq" className="transition-colors hover:text-foreground">שאלות נפוצות</a>
-
-
-          </nav>
           <Link to="/" aria-label="Realtyz AI">
             <img src={realtyzLogo} alt="Realtyz AI" className="h-[3.12rem] w-auto object-contain" />
           </Link>
