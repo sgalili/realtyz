@@ -5,16 +5,18 @@ export const GOOGLE_SERVICES_PENDING_KEY = 'realtyz-google-services-pending';
 /** Local flag so the first-time approval popup never appears twice. */
 export const FIRST_TIME_SYNC_KEY = 'realtyz-first-time-sync-done';
 
+/**
+ * Minimum scopes for the combined flow: send mail, manage calendar events,
+ * read the YouTube channel. Nothing broader — extra scopes only inflate
+ * Google's consent warning without unlocking a feature we actually call.
+ */
 const GOOGLE_ALL_SCOPES = [
   'openid',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
   'https://www.googleapis.com/auth/gmail.send',
-  'https://www.googleapis.com/auth/gmail.compose',
-  'https://www.googleapis.com/auth/gmail.readonly',
-  'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
-  'https://www.googleapis.com/auth/youtube.force-ssl',
+  'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/youtube.readonly',
 ].join(' ');
 
