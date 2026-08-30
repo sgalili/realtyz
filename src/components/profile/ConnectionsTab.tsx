@@ -6,7 +6,6 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
-import { EmailAliasCard } from '@/components/profile/EmailAliasCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { CalendarSyncCard } from '@/components/profile/CalendarSyncCard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
@@ -117,7 +116,6 @@ export function ConnectionsTab() {
   const [waMode, setWaMode] = useState<string | null>(null);
   const [greenReady, setGreenReady] = useState(false);
   const [voiceReady, setVoiceReady] = useState(false);
-  const [emailAlias, setEmailAlias] = useState<string | null>(null);
   // Live phone numbers so a collapsed row shows the actual connected number.
   const [waPhone, setWaPhone] = useState<string | null>(null);
   const [greenPhone, setGreenPhone] = useState<string | null>(null);
@@ -159,8 +157,6 @@ export function ConnectionsTab() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: p } = await supabase.from('profiles').select('email_alias').eq('id', user.id).maybeSingle();
-          setEmailAlias(((p as any)?.email_alias as string) || null);
         }
         const ownerId = activeWorkspaceId ?? user?.id;
         if (ownerId) {
