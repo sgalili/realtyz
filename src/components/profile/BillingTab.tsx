@@ -139,7 +139,7 @@ export default function BillingTab() {
   const pct = included > 0 ? Math.min(100, (usedTc / included) * 100) : 0;
 
   const requestUpgrade = (pkg: PricingPackage) => {
-    const text = `היי, אני רוצה לשדרג את ריאלטיז לחבילת ${pkg.name} (${fmtILS(pkg.monthlyPrice)} לחודש).`;
+    const text = `היי, אני רוצה לשדרג את רילטיז לחבילת ${pkg.name} (${fmtILS(pkg.monthlyPrice)} לחודש).`;
     window.open(`https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 

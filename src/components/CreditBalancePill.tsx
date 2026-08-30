@@ -64,7 +64,7 @@ export function CreditBalancePill() {
   const bonus = Math.max(0, Math.round(amount * 0.1));
 
   const sendWhatsApp = () => {
-    const text = `היי, אשמח להטעין את החשבון שלי בריאלטיז נדל"ן ב-${amount} ש"ח לטובת שירותי פרימיום.`;
+    const text = `היי, אשמח להטעין את החשבון שלי ברילטיז נדל"ן ב-${amount} ש"ח לטובת שירותי פרימיום.`;
     const url = `https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
