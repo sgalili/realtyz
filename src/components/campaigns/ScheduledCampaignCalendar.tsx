@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { CampaignHistoryList } from '@/components/campaigns/CampaignHistoryList';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
