@@ -29,6 +29,8 @@ type ScheduledRow = {
   provider_message_id: string | null;
   provider_response: any;
   recurrence_rule?: any;
+  /** True for posts that were already published (calendar history). */
+  is_history?: boolean;
 };
 
 const RECURRENCE_BUBBLE: Record<string, string> = {
@@ -227,14 +229,32 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('campaign_logs')
-      .select('id, campaign_name, channel, message_body, created_at, sent_at, status, provider_message_id, provider_response, recurrence_rule')
-      .eq('is_archived', false)
-      .in('status', ['scheduled', 'pending'])
-      .gt('sent_at', new Date().toISOString())
-      .order('sent_at', { ascending: true })
-      .limit(1000);
+    const COLS = 'id, campaign_name, channel, message_body, created_at, sent_at, status, provider_message_id, provider_response, recurrence_rule';
+    const nowIso = new Date().toISOString();
+    // The calendar shows BOTH the future queue and the complete published
+    // history, so a broker sees everything that ran and everything upcoming.
+    const [future, past] = await Promise.all([
+      supabase
+        .from('campaign_logs')
+        .select(COLS)
+        .eq('is_archived', false)
+        .in('status', ['scheduled', 'pending'])
+        .gt('sent_at', nowIso)
+        .order('sent_at', { ascending: true })
+        .limit(1000),
+      supabase
+        .from('campaign_logs')
+        .select(COLS)
+        .in('status', ['sent', 'published', 'completed', 'failed'])
+        .not('sent_at', 'is', null)
+        .order('sent_at', { ascending: false })
+        .limit(1000),
+    ]);
+    const error = future.error ?? past.error;
+    const data = [
+      ...((future.data ?? []) as ScheduledRow[]),
+      ...((past.data ?? []) as ScheduledRow[]).map((r) => ({ ...r, is_history: true })),
+    ];
     if (error) {
       toast.error('טעינת מתוזמנים נכשלה: ' + error.message);
       setRows([]);
@@ -552,12 +572,13 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
                       <button
                         key={r.id}
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); openEditor(r); }}
+                        onClick={(e) => { e.stopPropagation(); if (!r.is_history) openEditor(r); }}
                         className={cn(
                           'truncate text-right text-[11px] font-semibold rounded-md px-1.5 py-0.5 ring-1 hover:opacity-80 transition-opacity',
                           cls,
+                          r.is_history && 'opacity-70 line-through decoration-1',
                         )}
-                        title={`${r.campaign_name} · ${t.toLocaleString('he-IL')}`}
+                        title={`${r.campaign_name} · ${t.toLocaleString('he-IL')}${r.is_history ? ' · פורסם' : ''}`}
                       >
                         <span className="tabular-nums">{t.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                         <span className="mx-1">·</span>
