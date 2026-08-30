@@ -275,7 +275,7 @@ export default function Landing() {
               <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים.</span>
             </h1>
             <p className="mx-auto mt-5 max-w-3xl text-center text-base sm:text-xl leading-relaxed text-muted-foreground">
-              סוכני AI עובדים לך 24/7 את כל הלידים, נכסים, התאמות, שיווק, תשקורת ומעקבים בשלימות מלאה מהווטסאפ שלכם
+              צבא של סוכני AI שעובדים בשבילך 24/7 ומטפלים בכל הלקוחות, הנכסים, השיווק, הפוסטים, הרשתות, הפגישות, המיילים והיומן ומחממים כל ליד חדש שנכנס אוטומטית.
             </p>
           </Reveal>
 
