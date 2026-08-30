@@ -246,7 +246,7 @@ export default function NotificationCenter() {
           variant="ghost"
           size="icon"
           aria-label="מרכז התראות"
-          className={`relative h-9 w-9 p-0 ${badgeCount > 0 ? 'text-destructive hover:bg-destructive/10 hover:text-destructive' : 'text-muted-foreground hover:text-primary'}`}
+          className={`relative h-9 w-9 p-0 ${badgeCount > 0 ? 'text-destructive hover:bg-destructive/10 hover:text-destructive' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
         >
           <Bell className="h-4 w-4" />
           {badgeCount > 0 && (
