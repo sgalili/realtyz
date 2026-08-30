@@ -72,6 +72,8 @@ const AiDialer = lazy(() => import("./pages/AiDialer"));
 const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
 const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
+const AffiliatePortal = lazy(() => import("./pages/AffiliatePortal"));
+const AffiliateNetwork = lazy(() => import("./pages/AffiliateNetwork"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Terms = lazy(() => import("./pages/Terms"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
