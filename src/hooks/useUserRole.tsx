@@ -98,7 +98,10 @@ export function useUserRole() {
     isAssistant,
     isJuniorAgent,
     isJuniorOnly,
+    isAffiliate,
+    isAffiliateOnly,
     isTeamMember,
+
     canCloseDeals,
     canUseClosingRoom,
     canDeleteLeads,
