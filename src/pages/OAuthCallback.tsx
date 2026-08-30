@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from '@/lib/oauthRedirect';
 import { isOAuthPopup, notifyOAuthOpener } from '@/lib/oauthPopupBridge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ExternalLink } from 'lucide-react';
+import { friendlyGoogleError } from '@/lib/googleApiErrors';
 
 /**
  * Full-page OAuth landing page for Facebook / Google.
