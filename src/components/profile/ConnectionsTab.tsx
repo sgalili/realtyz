@@ -16,6 +16,7 @@ import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard
 import { GoogleApiCredentialsCard } from '@/components/profile/GoogleApiCredentialsCard';
 import { GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAccountIntegrations } from '@/hooks/useAccountIntegrations';
 
 type Tone = 'ok' | 'idle';
 
