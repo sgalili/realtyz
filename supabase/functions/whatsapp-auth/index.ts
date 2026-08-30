@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
+import { sendSms019 } from "../_shared/sms019.ts";
 
 const OTP_TTL_MINUTES = 10;
 const MAX_ATTEMPTS = 5;
@@ -85,6 +86,25 @@ const resolveOtpTemplate = async (admin: any, code: string) => {
   return { name, language: language || "he", components };
 };
 
+
+/**
+ * Which workspace owns this phone number, so the SMS fallback uses that
+ * workspace's own 019 sender instead of another workspace's number.
+ */
+const resolveWorkspaceOwnerForPhone = async (admin: any, phone: string): Promise<string | null> => {
+  try {
+    const { data } = await admin
+      .from("profiles")
+      .select("id, active_workspace_owner_id")
+      .eq("phone", phone)
+      .maybeSingle();
+    const row: any = data;
+    if (!row?.id) return null;
+    return String(row.active_workspace_owner_id || row.id);
+  } catch {
+    return null;
+  }
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -187,8 +207,27 @@ Deno.serve(async (req) => {
             env: envPresence(),
           },
         });
+        // Reliability guarantee: if WhatsApp cannot deliver the code, fall back
+        // to the workspace's own 019 SMS number (isolated per workspace, with
+        // the shared platform 019 account as a last resort).
+        const owner = await resolveWorkspaceOwnerForPhone(admin, phone);
+        const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-Realtyz: ${code}`, owner);
+        if (sms.ok) {
+          const { error: smsInsertError } = await admin.from("whatsapp_login_otps").insert({
+            phone_number: phone,
+            code_hash: codeHash,
+            expires_at: expiresAt,
+          });
+          if (smsInsertError) throw smsInsertError;
+          console.info("whatsapp-auth OTP delivered via 019 SMS fallback", {
+            phone_last4: phone.slice(-4),
+            scope: sms.scope ?? null,
+          });
+          return json({ success: true, channel: "sms" });
+        }
+
         const templateHint = template ? "תבנית קוד האימות ב-Meta נכשלה" : "נדרשת תבנית אימות מאושרת ב-Meta לשליחת קוד כניסה";
-        return json({ error: sendPayload?.error ?? templateHint }, 502);
+        return json({ error: sendPayload?.error ?? templateHint, sms_error: sms.error ?? null }, 502);
       }
 
       const { error: insertError } = await admin.from("whatsapp_login_otps").insert({

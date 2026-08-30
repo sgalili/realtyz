@@ -5,6 +5,7 @@ const corsHeaders = {
 };
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { sendSms019 } from "../_shared/sms019.ts";
 
 function escapeXml(str: string): string {
   return String(str)
@@ -26,39 +27,6 @@ function toLocalIL(raw: string | null | undefined): string | null {
 function toIntlIL(raw: string | null | undefined): string | null {
   const local = toLocalIL(raw);
   return local ? `972${local.slice(1)}` : null;
-}
-
-async function sendSms019(admin: ReturnType<typeof createClient>, phone: string, body: string) {
-  const local = toLocalIL(phone);
-  if (!local) return { ok: false, error: "מספר טלפון לא תקין" };
-  const { data } = await admin
-    .from("api_configs")
-    .select("api_key")
-    .eq("service_name", "019 SMS")
-    .eq("is_active", true)
-    .maybeSingle();
-  const parts = String((data as any)?.api_key || "").split(":");
-  const user = parts[0] || "";
-  const password = parts[1] || "";
-  const sender = (parts.slice(2).join(":") || "").trim();
-  if (!user || !password) return { ok: false, error: "019 SMS לא מוגדר" };
-  if (!sender) return { ok: false, error: "019 SMS: חסר שולח (Sender ID) מאושר. הזן בהגדרות API את השולח שרשום כ-SMS-capable בחשבון 019 שלך." };
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<sms>
-  <user><username>${escapeXml(user)}</username><password>${escapeXml(password)}</password></user>
-  <source>${escapeXml(sender)}</source>
-  <destinations><phone>${escapeXml(local)}</phone></destinations>
-  <message>${escapeXml(body)}</message>
-</sms>`;
-  const res = await fetch("https://www.019sms.co.il:8090/api", {
-    method: "POST",
-    headers: { "Content-Type": "application/xml; charset=UTF-8" },
-    body: xml,
-  });
-  const text = await res.text();
-  const status = parseInt(text.match(/<status>(-?\d+)<\/status>/)?.[1] ?? "-1", 10);
-  if (status === 0) return { ok: true, provider: "019 SMS", message_id: text.match(/<message_id>(.*?)<\/message_id>/)?.[1] ?? null };
-  return { ok: false, error: text.match(/<message>(.*?)<\/message>/)?.[1] || `019 status ${status}` };
 }
 
 async function sendSmsTwilio(admin: ReturnType<typeof createClient>, phone: string, body: string) {
@@ -95,8 +63,14 @@ async function sendSmsTwilio(admin: ReturnType<typeof createClient>, phone: stri
   return { ok: false, error: json?.message || text || `Twilio status ${res.status}` };
 }
 
-async function sendSms(admin: ReturnType<typeof createClient>, phone: string, body: string) {
-  const sms019 = await sendSms019(admin, phone, body);
+async function sendSms(
+  admin: ReturnType<typeof createClient>,
+  phone: string,
+  body: string,
+  workspaceOwnerId?: string | null,
+) {
+  // Workspace isolation: the 019 sender is resolved per workspace.
+  const sms019 = await sendSms019(admin as any, phone, body, workspaceOwnerId ?? null);
   if (sms019.ok) return sms019;
   const twilio = await sendSmsTwilio(admin, phone, body);
   if (twilio.ok) return twilio;
@@ -277,7 +251,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const sms = await sendSms(admin, destinationPhone, finalContent);
+      const sms = await sendSms(admin, destinationPhone, finalContent, workspaceOwnerId);
       if (!sms.ok) {
         return new Response(JSON.stringify({ error: "sms_invite_failed", details: sms.error }), {
           status: 502,
@@ -392,7 +366,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const sms = await sendSms(admin, destinationPhone, finalContent);
+      const sms = await sendSms(admin, destinationPhone, finalContent, workspaceOwnerId);
       if (!sms.ok) {
         return new Response(JSON.stringify({ error: "sms_send_failed", details: sms.error }), {
           status: 502,
