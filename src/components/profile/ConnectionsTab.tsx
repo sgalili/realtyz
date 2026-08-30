@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -107,6 +108,7 @@ export function ConnectionsTab() {
       const target = params.get('connect');
       if (params.has('fb') || target === 'facebook') return 'meta';
       if (target === 'whatsapp-meta' || target === 'whatsapp') return 'whatsapp';
+      if (params.has('google') || target === 'google') return 'google';
       return null;
     } catch {
       return null;
@@ -170,6 +172,27 @@ export function ConnectionsTab() {
   }, [activeWorkspaceId]);
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
+
+  // Live Google service statuses so the collapsed "חשבונות גוגל" header matches
+  // the individual cards and reflects the combined auto-link result instantly.
+  const { data: googleConns } = useQuery({
+    queryKey: ['google-services-status'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('social_connections')
+        .select('platform, is_connected')
+        .in('platform', ['gmail', 'google_calendar', 'youtube']);
+      return (data ?? []) as { platform: string; is_connected: boolean }[];
+    },
+  });
+  const connectedGoogle = new Set((googleConns ?? []).filter((c) => c.is_connected).map((c) => c.platform));
+  const allGoogleConnected = connectedGoogle.has('gmail') && connectedGoogle.has('google_calendar') && connectedGoogle.has('youtube');
+  const someGoogleConnected = connectedGoogle.size > 0;
+  const googleStatus: [string, Tone] = allGoogleConnected
+    ? ['מחובר', 'ok']
+    : someGoogleConnected
+      ? ['חלקי', 'ok']
+      : ['לא מחובר', 'idle'];
 
   // Collapsed header badge reads the exact same shared state as the expanded
   // card badge and the global banner. Facebook / Instagram are strictly
@@ -245,8 +268,8 @@ export function ConnectionsTab() {
     {
       id: 'google',
       title: 'חשבונות גוגל',
-      status: 'חיבור',
-      tone: 'idle',
+      status: googleStatus[0],
+      tone: googleStatus[1],
       node: (
         <div data-plain className="space-y-3">
           {/* Three official Google service connections, all using the shared

@@ -25,7 +25,7 @@ const SAFETY_UI_TIMEOUT_MS = 4_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
 const HARD_TIMEOUT_MS = 25_000;
 /** Google states we can exchange right here in the callback. */
-const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive'] as const;
+const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive', 'google_all'] as const;
 
 type OAuthError = { title: string; detail: string | null } | null;
 
@@ -198,6 +198,8 @@ export default function OAuthCallback() {
           if (cancelled || exchangeDoneRef.current) return;
           exchangeDoneRef.current = true;
           const email = String(payload?.identity?.email ?? '');
+          // Clear the post-sign-in auto-link flag so we don't loop.
+          try { window.sessionStorage.removeItem('realtyz-google-services-pending'); } catch { /* */ }
           finish(
             `${CONNECTIONS_PATH}&google=connected${email ? `&google_account=${encodeURIComponent(email)}` : ''}`,
             { ok: true, name: email || null, provider: googlePlatform },
@@ -210,6 +212,8 @@ export default function OAuthCallback() {
           );
         } catch (e: any) {
           if (cancelled) return;
+          // Clear the auto-link flag on failure so the user isn't trapped in a loop.
+          try { window.sessionStorage.removeItem('realtyz-google-services-pending'); } catch { /* */ }
           const reason = String(e?.message ?? 'unknown');
           setIsLoading(false);
           setError({ title: 'החיבור ל-Google נכשל', detail: reason });

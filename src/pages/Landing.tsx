@@ -282,7 +282,7 @@ export default function Landing() {
           </Reveal>
 
           {/* Metric cards */}
-          <div className="mx-auto mt-5 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mx-auto mt-5 grid w-full max-w-4xl grid-cols-3 gap-2 sm:gap-3">
             {[
               { value: '320% +', label: 'מענה ללידים חדשים' },
               { value: '15 שעות', label: 'חיסכון שבועי למתווך' },
@@ -290,10 +290,10 @@ export default function Landing() {
             ].map((m) => (
               <div
                 key={m.value}
-                className="rounded-2xl border border-border/60 bg-card p-4 text-center shadow-sm"
+                className="rounded-2xl border border-border/60 bg-card p-2 sm:p-4 text-center shadow-sm"
               >
-                <div className="text-3xl font-extrabold tracking-tight text-primary">{m.value}</div>
-                <div className="mt-1.5 text-sm font-semibold leading-snug text-muted-foreground">{m.label}</div>
+                <div className="text-xl sm:text-3xl font-extrabold tracking-tight text-primary">{m.value}</div>
+                <div className="mt-1 text-xs sm:text-sm font-semibold leading-snug text-muted-foreground">{m.label}</div>
               </div>
             ))}
           </div>
@@ -313,7 +313,7 @@ export default function Landing() {
       </section>
 
       {/* ───────── All-in-One: מחליף את כל הכלים החיצוניים ───────── */}
-      <section id="all-in-one" className="border-t border-border/60 py-20">
+      <section id="all-in-one" className="border-t border-border/60 pt-[15px] pb-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
