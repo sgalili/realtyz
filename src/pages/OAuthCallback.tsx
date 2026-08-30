@@ -134,7 +134,7 @@ export default function OAuthCallback() {
         state.startsWith(FACEBOOK_PAGE_STATE_PREFIX) ||
         (!state && !!(code || accessToken) && /facebook\.com/i.test(document.referrer || ''));
       const backPath =
-        state.startsWith('facebook') || state.startsWith('gmail') || state.startsWith('google_calendar')
+        state.startsWith('facebook') || GOOGLE_STATE_PREFIXES.some((p) => state.startsWith(p))
           ? CONNECTIONS_PATH
           : '/profile';
 
