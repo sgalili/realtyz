@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
+import { BrandIcon } from '@/components/BrandIcon';
 import { OAUTH_AUTHORIZE_URLS, OAUTH_SCOPES } from '@/lib/socialAutomationService';
 import { clearPendingOAuth, currentOrigin, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
@@ -12,6 +13,30 @@ import { onOAuthResult } from '@/lib/oauthPopupBridge';
 
 
 type GooglePlatform = 'gmail' | 'google_calendar' | 'youtube';
+
+/** Official Google service marks, rendered in their brand colors. */
+function GoogleBrandGlyph({ brand }: { brand?: 'gmail' | 'calendar' | 'youtube' }) {
+  if (brand === 'youtube') {
+    return <BrandIcon name="youtube" className="h-4 w-4 shrink-0 text-[#FF0000]" />;
+  }
+  if (brand === 'gmail') {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden="true">
+        <path fill="#EA4335" d="M2 6.5A2.5 2.5 0 0 1 6.02 4.5L12 9l5.98-4.5A2.5 2.5 0 0 1 22 6.5V19a1 1 0 0 1-1 1h-2.5v-8.2L12 16.4 5.5 11.8V20H3a1 1 0 0 1-1-1z" />
+      </svg>
+    );
+  }
+  if (brand === 'calendar') {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="17" rx="2.5" fill="#4285F4" />
+        <rect x="6" y="7" width="12" height="11" rx="1.5" fill="#fff" />
+        <path fill="#4285F4" d="M9.6 15.6v-1.1c.5.3 1 .5 1.6.5.7 0 1.1-.3 1.1-.8s-.4-.8-1.2-.8h-.6v-1h.5c.7 0 1.1-.3 1.1-.7 0-.4-.3-.7-.9-.7-.5 0-1 .2-1.4.5v-1.1c.5-.3 1-.4 1.6-.4 1.2 0 2 .6 2 1.5 0 .6-.3 1-.9 1.2.7.2 1.1.7 1.1 1.4 0 1-.9 1.7-2.2 1.7-.7 0-1.3-.1-1.8-.2z" />
+      </svg>
+    );
+  }
+  return null;
+}
 
 /**
  * One-click Google connect row (Gmail / Google Calendar).
@@ -25,10 +50,16 @@ export function GoogleServiceConnectCard({
   platform,
   title,
   hint,
+  ctaLabel,
+  brand,
 }: {
   platform: GooglePlatform;
   title: string;
   hint: string;
+  /** Button label, e.g. "חיבור Gmail". */
+  ctaLabel?: string;
+  /** Which official logo to render next to the title. */
+  brand?: 'gmail' | 'calendar' | 'youtube';
 }) {
   const [configError, setConfigError] = useState(false);
 
@@ -150,6 +181,7 @@ export function GoogleServiceConnectCard({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold">
+            <GoogleBrandGlyph brand={brand} />
             <span>{title}</span>
             {connected && (
               <Badge className="gap-1 border-transparent bg-emerald-600 text-[11px] font-semibold text-white">
@@ -163,7 +195,7 @@ export function GoogleServiceConnectCard({
         </div>
         <Button size="sm" variant={connected ? 'outline' : 'default'} className="h-8 gap-1 text-xs" onClick={connect}>
           {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          {connected ? 'חבר מחדש' : 'חיבור מהיר בקליק'}
+          {connected ? 'חבר מחדש' : (ctaLabel ?? 'חיבור מהיר בקליק')}
         </Button>
       </div>
 

@@ -28,26 +28,16 @@ export async function graphCall(path: string, init?: RequestInit) {
 /**
  * Resolve the Page identity + token for a workspace owner.
  *
- * Order: the workspace's own binding first, then the platform-shared binding
- * (`is_platform_shared = true`) so every workspace gets a working Facebook
- * connection out of the box. Env-based FB_PAGE_* fallbacks stay removed.
+ * STRICT WORKSPACE ISOLATION: only bindings owned by this workspace are used.
+ * A page connected in one workspace never leaks into another one, so there is
+ * no platform-shared fallback and no env-based FB_PAGE_* fallback.
  */
 export async function resolveMetaPage(
   db: SupabaseClient,
   ownerId: string | null,
 ): Promise<MetaPage | null> {
-  if (ownerId) {
-    const own = await resolveOwnMetaPage(db, ownerId);
-    // A workspace token minted by an unreviewed Meta app fails with
-    // `#10 pages_read_engagement`. Probe it once (cached per isolate) and fall
-    // back to the SuperAdmin's central approved app when it is rejected.
-    if (own && await tokenUsable(own)) return own;
-    const shared = await resolveSharedMetaPage(db);
-    if (shared) return shared;
-    if (own) return own;
-    return null;
-  }
-  return await resolveSharedMetaPage(db);
+  if (!ownerId) return null;
+  return await resolveOwnMetaPage(db, ownerId);
 }
 
 const tokenProbeCache = new Map<string, boolean>();
@@ -72,36 +62,43 @@ export async function tokenUsable(page: MetaPage): Promise<boolean> {
 }
 
 /**
- * Every Page credential we may use, ordered by how likely Meta is to accept it.
+ * Every Page credential of THIS workspace, default page first.
  *
- * The platform-shared binding belongs to the SuperAdmin's central, App-Review
- * approved Meta application, so it is always tried as a fallback when the
- * workspace's own (possibly unreviewed) app token is rejected with a
- * permission error such as `#10 pages_read_engagement`.
+ * Multiple Facebook accounts / Pages can be connected to one workspace, so
+ * callers that publish or read comments can iterate over all of them. Nothing
+ * from other workspaces is ever included.
  */
 export async function resolveMetaPageCandidates(
   db: SupabaseClient,
   ownerId: string | null,
-): Promise<Array<MetaPage & { scope: "workspace" | "platform_shared" }>> {
-  const out: Array<MetaPage & { scope: "workspace" | "platform_shared" }> = [];
-  const own = ownerId ? await resolveOwnMetaPage(db, ownerId) : null;
-  if (own) out.push({ ...own, scope: "workspace" });
-  const shared = await resolveSharedMetaPage(db);
-  if (shared && !out.some((c) => c.token === shared.token)) {
-    out.push({ ...shared, scope: "platform_shared" });
-  }
-  return out;
+): Promise<Array<MetaPage & { scope: "workspace" }>> {
+  if (!ownerId) return [];
+  const { data } = await db
+    .from("messenger_page_bindings")
+    .select("page_id, page_name, page_access_token, is_selected, updated_at")
+    .eq("owner_id", ownerId)
+    .order("is_selected", { ascending: false })
+    .order("updated_at", { ascending: false });
+  return (data ?? [])
+    .filter((r: any) => r?.page_id && r?.page_access_token)
+    .map((r: any) => ({
+      pageId: String(r.page_id),
+      pageName: r.page_name ?? null,
+      token: String(r.page_access_token),
+      scope: "workspace" as const,
+    }));
 }
 
-/** The workspace's own binding only (no shared fallback). */
+/** The workspace's own default binding. */
 export async function resolveOwnMetaPage(
   db: SupabaseClient,
   ownerId: string,
 ): Promise<MetaPage | null> {
   const { data } = await db
     .from("messenger_page_bindings")
-    .select("page_id, page_name, page_access_token")
+    .select("page_id, page_name, page_access_token, is_selected, updated_at")
     .eq("owner_id", ownerId)
+    .order("is_selected", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -109,6 +106,7 @@ export async function resolveOwnMetaPage(
   if (!row?.page_id || !row?.page_access_token) return null;
   return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
 }
+
 
 /** True when Meta rejected the call for missing/unapproved permissions. */
 export function isMetaPermissionError(payload: any): boolean {
@@ -119,23 +117,7 @@ export function isMetaPermissionError(payload: any): boolean {
     /pages_read_engagement|pages_show_list|permission/i.test(msg);
 }
 
-/** The platform-wide shared Page binding (used when a workspace has none). */
-export async function resolveSharedMetaPage(db: SupabaseClient): Promise<MetaPage | null> {
-  const { data } = await db
-    .from("messenger_page_bindings")
-    .select("page_id, page_name, page_access_token")
-    .eq("is_platform_shared", true)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const row: any = data;
-  if (!row?.page_id || !row?.page_access_token) return null;
-  return {
-    pageId: String(row.page_id),
-    pageName: row.page_name ?? null,
-    token: String(row.page_access_token),
-  };
-}
+
 
 
 /** Find the workspace owner that owns a given Meta Page id (webhook routing). */

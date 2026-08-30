@@ -81,41 +81,25 @@ async function cachePage(db: SupabaseClient, ownerId: string | null, page: Resol
   } catch { /* caching is best-effort */ }
 }
 
-async function sharedPage(db: SupabaseClient): Promise<ResolvedPage | null> {
+async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<ResolvedPage | null> {
+  // STRICT WORKSPACE ISOLATION: only this workspace's own bindings, default first.
+  if (!ownerId) return null;
   const { data } = await db
     .from("messenger_page_bindings")
-    .select("page_id, page_name, page_access_token")
-    .eq("is_platform_shared", true)
+    .select("page_id, page_name, page_access_token, is_selected")
+    .eq("owner_id", ownerId)
+    .order("is_selected", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   const row: any = data;
-  if (!row?.page_id || !row?.page_access_token || isBlockedPage({ id: row.page_id })) return null;
-  return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
-}
-
-async function resolvePage(db: SupabaseClient, ownerId: string | null): Promise<ResolvedPage | null> {
-  // 1) Explicit binding for this workspace owner.
-  if (ownerId) {
-    const { data } = await db
-      .from("messenger_page_bindings")
-      .select("page_id, page_name, page_access_token, is_selected")
-      .eq("owner_id", ownerId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const row: any = data;
-    // A page the broker de-selected in the connections screen is never a target.
-    if (row?.is_selected === false) return null;
-    if (row?.page_id && row?.page_access_token && !isBlockedPage({ id: row.page_id })) {
-      return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
-    }
+  if (row?.page_id && row?.page_access_token && !isBlockedPage({ id: row.page_id })) {
+    return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
   }
-  // 2) Platform-shared Page: every workspace keeps a working FB connection.
-  return await sharedPage(db);
+  return null;
 }
 
-/** Every Meta token we can try, most workspace-specific first. */
+/** Every Meta token of this workspace, default page first. */
 async function candidateTokens(db: SupabaseClient, ownerId: string | null): Promise<string[]> {
   const out: string[] = [];
   const push = (t: unknown) => {
@@ -124,15 +108,18 @@ async function candidateTokens(db: SupabaseClient, ownerId: string | null): Prom
   };
   try {
     if (ownerId) {
-      const q = db.from("messenger_page_bindings").select("page_access_token").eq("owner_id", ownerId).order("updated_at", { ascending: false }).limit(1);
-      const { data } = await q;
+      const { data } = await db
+        .from("messenger_page_bindings")
+        .select("page_access_token, is_selected, updated_at")
+        .eq("owner_id", ownerId)
+        .order("is_selected", { ascending: false })
+        .order("updated_at", { ascending: false });
       for (const r of (data ?? []) as any[]) push(r?.page_access_token);
     }
-    const shared = await sharedPage(db);
-    push(shared?.token);
   } catch { /* ignore */ }
   return out;
 }
+
 
 
 /**

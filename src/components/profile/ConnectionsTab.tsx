@@ -248,34 +248,38 @@ export function ConnectionsTab() {
       status: 'חיבור',
       tone: 'idle',
       node: (
-        <div data-plain className="space-y-4">
+        <div data-plain className="space-y-3">
+          {/* Three official Google service connections, all using the shared
+              Google Cloud app credentials configured in the system. */}
+          <GoogleServiceConnectCard
+            platform="gmail"
+            title="Gmail"
+            hint="שליחה וקבלה של מיילים מהמערכת."
+            ctaLabel="חיבור Gmail"
+            brand="gmail"
+          />
+          <GoogleServiceConnectCard
+            platform="google_calendar"
+            title="Google Calendar"
+            hint="סנכרון פגישות וסיורים ליומן."
+            ctaLabel="חיבור יומן"
+            brand="calendar"
+          />
+          <GoogleServiceConnectCard
+            platform="youtube"
+            title="YouTube"
+            hint="העלאת סרטוני נכסים לערוץ."
+            ctaLabel="חיבור יוטיוב"
+            brand="youtube"
+          />
           {isSuperAdmin && (
-            <section className="space-y-2">
+            <section className="border-t pt-3">
               <GoogleApiCredentialsCard />
             </section>
           )}
-          <section className="space-y-3">
-            <GoogleServiceConnectCard
-              platform="gmail"
-              title="Gmail (שליחה וקבלה)"
-              hint="חיבור תיבת Gmail לשליחה וקבלה של מיילים."
-            />
-            <GoogleServiceConnectCard
-              platform="google_calendar"
-              title="Google Calendar"
-              hint="סנכרון פגישות וסיורים ליומן Google."
-            />
-            <GoogleServiceConnectCard
-              platform="youtube"
-              title="YouTube"
-              hint="חיבור ערוץ YouTube להעלאת סרטוני נכסים."
-            />
-          </section>
-          <section className="space-y-2 border-t pt-4">
-            <CalendarSyncCard />
-          </section>
         </div>
       ),
+
     },
     {
       id: 'voice',
