@@ -106,11 +106,13 @@ export function ProfileCapsule() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); openSelector(); }
                     }}
-                    className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                    className="shrink-0 inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/5 px-1.5 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/15"
                   >
                     <ArrowLeftRight className="h-3.5 w-3.5" />
+                    החלפה
                   </span>
                 )}
+
                 <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </>
             )}
