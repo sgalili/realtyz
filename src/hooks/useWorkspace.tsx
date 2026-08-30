@@ -183,7 +183,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     } catch {
       // non-fatal
     }
-  }, [user]);
+  }, [user, workspaces]);
+
 
   const activeWorkspace = useMemo(
     () => workspaces.find((w) => w.workspace_owner_id === activeWorkspaceId) ?? null,
