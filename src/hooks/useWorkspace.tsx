@@ -31,8 +31,33 @@ type WorkspaceContextType = {
 };
 
 const STORAGE_KEY = 'realtyz-active-workspace';
+const WS_LIST_CACHE_KEY = 'realtyz-workspaces-cache';
+const WS_LAST_ACTIVE_KEY = `${STORAGE_KEY}:last`;
 
 const workspaceStorageKey = (userId: string) => `${STORAGE_KEY}:${userId}`;
+
+/**
+ * Workspaces (name + logo) are cached locally so the sidebar/header brand
+ * paints on the FIRST frame after a refresh instead of flashing the default
+ * Realtyz logo for ~2s while get_my_workspaces() round-trips.
+ */
+function readWorkspaceCache(): { list: Workspace[]; activeId: string | null } {
+  try {
+    const list = JSON.parse(localStorage.getItem(WS_LIST_CACHE_KEY) ?? '[]') as Workspace[];
+    const activeId = localStorage.getItem(WS_LAST_ACTIVE_KEY);
+    return { list: Array.isArray(list) ? list : [], activeId: activeId || null };
+  } catch {
+    return { list: [], activeId: null };
+  }
+}
+
+function writeWorkspaceCache(list: Workspace[], activeId: string | null) {
+  try {
+    localStorage.setItem(WS_LIST_CACHE_KEY, JSON.stringify(list));
+    if (activeId) localStorage.setItem(WS_LAST_ACTIVE_KEY, activeId);
+  } catch { /* storage unavailable */ }
+}
+
 
 const WorkspaceContext = createContext<WorkspaceContextType>({
   workspaces: [],
@@ -49,10 +74,12 @@ const WorkspaceContext = createContext<WorkspaceContextType>({
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cachedInit = readWorkspaceCache();
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(cachedInit.list);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(cachedInit.activeId);
+  const [loading, setLoading] = useState(cachedInit.list.length === 0);
   const [selectorOpen, setSelectorOpen] = useState(false);
+
 
   const refresh = useCallback(async () => {
     if (!user) {
@@ -61,7 +88,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    setLoading(workspaces.length === 0);
     try {
       const [{ data, error }, { data: profile }] = await Promise.all([
         supabase.rpc('get_my_workspaces'),
@@ -83,17 +110,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (nextActive) {
         window.localStorage.setItem(workspaceStorageKey(user.id), nextActive);
       }
+      writeWorkspaceCache(rows, nextActive);
       if (profileActive !== nextActive) {
         void supabase.rpc('set_active_workspace', { _owner: nextActive });
       }
     } catch (err) {
-      // Fail open: fall back to self
-      setWorkspaces([]);
-      setActiveWorkspaceId(user.id);
+      // Fail open: keep whatever we already have on screen (cached list) and
+      // fall back to self so the UI never blanks out.
+      setActiveWorkspaceId((prev) => prev ?? user.id);
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
 
   useEffect(() => {
     refresh();
@@ -146,12 +176,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     setActiveWorkspaceId(ownerId);
     window.localStorage.setItem(workspaceStorageKey(user.id), ownerId);
+    writeWorkspaceCache(workspaces, ownerId);
+
     try {
       await supabase.rpc('set_active_workspace', { _owner: ownerId });
     } catch {
       // non-fatal
     }
-  }, [user]);
+  }, [user, workspaces]);
+
 
   const activeWorkspace = useMemo(
     () => workspaces.find((w) => w.workspace_owner_id === activeWorkspaceId) ?? null,

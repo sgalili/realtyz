@@ -312,13 +312,18 @@ export function ConnectionsTab() {
       ),
 
     },
-    {
+    // The 019 SMS gateway is a PLATFORM service: every workspace sends OTP/SMS
+    // through the global Realtyz 019 number automatically. Only Super Admin may
+    // see or override the credentials.
+    ...(isSuperAdmin ? [{
       id: 'sms019',
       title: 'SMS (019) של מרחב העבודה',
       status: sms019Sender ? sms019Sender : 'לא הוגדר',
-      tone: sms019Sender ? 'ok' : 'idle',
+      tone: (sms019Sender ? 'ok' : 'idle') as Tone,
       node: <WorkspaceSmsCard onStatus={setSms019Sender} />,
-    },
+    }] : []),
+
+
     {
       id: 'voice',
       title: 'שיחות טלפון (Vapi / Twilio)',

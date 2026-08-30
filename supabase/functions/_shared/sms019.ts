@@ -30,6 +30,9 @@ export async function resolveSms019Config(
   admin: SupabaseClient,
   workspaceOwnerId: string | null | undefined,
 ): Promise<Sms019Config | null> {
+  // A workspace override only wins when it is COMPLETE (user + password +
+  // approved sender). Otherwise every workspace falls back to the global
+  // Realtyz 019 gateway so OTP/SMS always ships.
   if (workspaceOwnerId) {
     const { data } = await admin
       .from("workspace_sms_settings")
@@ -37,11 +40,14 @@ export async function resolveSms019Config(
       .eq("workspace_owner_id", workspaceOwnerId)
       .maybeSingle();
     const row: any = data;
-    if (row?.is_active !== false && row?.username && row?.password) {
+    if (
+      row?.is_active !== false && row?.username && row?.password &&
+      String(row?.sender_id ?? "").trim()
+    ) {
       return {
         username: String(row.username),
         password: String(row.password),
-        sender: String(row.sender_id ?? "").trim(),
+        sender: String(row.sender_id).trim(),
         scope: "workspace",
       };
     }
@@ -54,14 +60,30 @@ export async function resolveSms019Config(
     .eq("is_active", true)
     .maybeSingle();
   const parts = String((shared as any)?.api_key || "").split(":");
-  if (!parts[0] || !parts[1]) return null;
-  return {
-    username: parts[0],
-    password: parts[1],
-    sender: (parts.slice(2).join(":") || "").trim(),
-    scope: "platform",
-  };
+  if (parts[0] && parts[1]) {
+    return {
+      username: parts[0],
+      password: parts[1],
+      sender: (parts.slice(2).join(":") || "").trim(),
+      scope: "platform",
+    };
+  }
+
+  // Last resort: the platform-wide Realtyz 019 credentials from env secrets.
+  const envUser = Deno.env.get("SMS019_USERNAME")?.trim();
+  const envPass = Deno.env.get("SMS019_PASSWORD")?.trim();
+  const envSender = Deno.env.get("SMS019_SENDER")?.trim();
+  if (envUser && envPass) {
+    return {
+      username: envUser,
+      password: envPass,
+      sender: envSender ?? "",
+      scope: "platform",
+    };
+  }
+  return null;
 }
+
 
 export async function sendSms019(
   admin: SupabaseClient,

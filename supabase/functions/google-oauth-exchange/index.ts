@@ -340,10 +340,19 @@ Deno.serve(async (req) => {
     for (const targetPlatform of platformsToSync) {
       const { data: targetRow } = await admin
         .from('social_connections')
-        .select('id, credentials, display_name')
+        .select('id, credentials, display_name, is_connected')
         .eq('platform', targetPlatform)
         .eq('created_by', callerUserId)
         .maybeSingle();
+
+      // Smart persistence: an automatic bundle sign-in (google_all) must NEVER
+      // clobber a Google service the user already connected deliberately.
+      // Only fill in the services that have no live connection yet.
+      const alreadyLive = !!(targetRow as any)?.is_connected
+        && !!((targetRow?.credentials as any)?.manual?.refresh_token
+          || (targetRow?.credentials as any)?.manual?.access_token);
+      if (platform === 'google_all' && alreadyLive) continue;
+
 
       const prevCreds = (targetRow?.credentials as Record<string, unknown> | null) ?? {};
       const prevManual = ((prevCreds as any).manual ?? {}) as Record<string, string>;
