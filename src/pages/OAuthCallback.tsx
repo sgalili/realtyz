@@ -332,10 +332,32 @@ export default function OAuthCallback() {
         </h1>
         <p className="text-sm text-muted-foreground break-words">
           {showFallback
-            ? error?.detail || 'הבקשה לא הושלמה תוך 4 שניות. ניתן לחזור למערכת ולנסות שוב.'
+            ? error?.hint || error?.detail || 'הבקשה לא הושלמה תוך 4 שניות. ניתן לחזור למערכת ולנסות שוב.'
             : message}
         </p>
-        {error?.detail && (
+        {error?.enableUrl && (
+          <a
+            href={error.enableUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center gap-2 text-sm font-medium text-primary underline underline-offset-4"
+          >
+            <ExternalLink className="h-4 w-4" />
+            פתיחת הקונסולה של Google להפעלת ה-API
+          </a>
+        )}
+        {error?.hint && error?.detail && (
+          <details className="text-right">
+            <summary className="cursor-pointer text-xs text-muted-foreground">פרטים טכניים</summary>
+            <div
+              dir="ltr"
+              className="mt-2 rounded-md bg-muted p-3 text-left text-xs font-mono break-all text-muted-foreground"
+            >
+              {error.detail}
+            </div>
+          </details>
+        )}
+        {!error?.hint && error?.detail && (
           <div
             dir="ltr"
             className="rounded-md bg-muted p-3 text-left text-xs font-mono break-all text-muted-foreground"
@@ -344,9 +366,14 @@ export default function OAuthCallback() {
           </div>
         )}
         {showFallback && (
-          <Button onClick={returnToApp} className="mt-2">
-            חזרה למערכת
-          </Button>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+            <Button onClick={() => window.location.reload()} variant="default">
+              נסה שוב
+            </Button>
+            <Button onClick={returnToApp} variant="outline">
+              חזרה למערכת
+            </Button>
+          </div>
         )}
       </div>
     </div>
