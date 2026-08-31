@@ -1,6 +1,8 @@
 // Background worker: claims due autopilot queue jobs, dispatches via send-whatsapp,
 // records messages, and updates queue status. Triggered by pg_cron every minute.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { buildTemplateComponents, isTemplateOrWindowError } from "../_shared/waTemplates.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
