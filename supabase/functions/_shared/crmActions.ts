@@ -140,6 +140,50 @@ export async function executeCrmActions(
     return patch;
   };
 
+  /** Address matching that survives punctuation and spelling variants ("ש״י עגנון 72" ≡ "שי עגנון 72"). */
+  const addrKey = (v: unknown) =>
+    String(v ?? "")
+      .replace(/[״"'`׳,.\-]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+
+  const findListing = async (a: CrmAction): Promise<any | null> => {
+    if (a.listing_id) {
+      const { data } = await supabase.from("listings").select("id, address, city").eq("id", a.listing_id).maybeSingle();
+      if (data) return data;
+    }
+    const wanted = addrKey(a.address ?? a.property_title);
+    if (!wanted) return null;
+    const { data } = await supabase
+      .from("listings")
+      .select("id, address, city, property_title")
+      .eq("user_id", ownerId)
+      .limit(500);
+    const city = addrKey(a.city);
+    return (
+      (data ?? []).find((r: any) => {
+        const hit = addrKey(r.address) === wanted || addrKey(r.property_title) === wanted;
+        if (!hit) return false;
+        return !city || !r.city || addrKey(r.city) === city;
+      }) ?? null
+    );
+  };
+
+  const listingFields = (a: CrmAction) => {
+    const patch: Record<string, unknown> = {};
+    const text = ["property_title", "address", "city", "neighborhood", "description", "long_description", "short_description", "office_notes", "project_name", "house_number", "apartment_number", "source_url", "external_id"];
+    for (const k of text) if (a[k] !== undefined && a[k] !== null && a[k] !== "") patch[k] = String(a[k]).trim();
+    for (const k of ["rooms", "asking_price"]) if (a[k] !== undefined && a[k] !== null && a[k] !== "") patch[k] = Number(a[k]);
+    for (const k of ["sqm", "floor"]) if (a[k] !== undefined && a[k] !== null && a[k] !== "") patch[k] = parseInt(String(a[k]), 10);
+    for (const k of ["elevator", "parking", "is_published", "is_featured"]) if (typeof a[k] === "boolean") patch[k] = a[k];
+    if (a.deal_type === "sale" || a.deal_type === "rent") patch.deal_type = a.deal_type;
+    if (["live", "pending", "discarded"].includes(String(a.status))) patch.status = String(a.status);
+    if (a.features && typeof a.features === "object") patch.features = a.features;
+    return patch;
+  };
+
+
   const logActivity = async (a: CrmAction, actionType: string, platform: string, content: string) => {
     const { data, error } = await supabase
       .from("interaction_activity_log")
