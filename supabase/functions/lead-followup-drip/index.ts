@@ -104,15 +104,49 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    const text = STAGE_TEXT[next](firstName(lead.full_name as string | null), lead.city as string | null);
+    const name = firstName(lead.full_name as string | null);
+    const text = STAGE_TEXT[next](name, lead.city as string | null);
+
+    // Meta compliance: stage 1 stays inside the open 24h customer-service
+    // window, so free-form AI text is allowed. Stage 2 (72h+ silence) is
+    // OUTSIDE the window — it must ride an APPROVED template or Meta rejects
+    // the send. When no template is approved yet we skip the lead rather than
+    // burn a guaranteed failure through the queue.
+    let templateId: string | null = null;
+    let templateLanguage: string | null = null;
+    let templateVariables: string[] = [];
+
+    if (next === 2) {
+      const tpl = await resolveApprovedTemplate(sb, owner, ["UTILITY", "MARKETING"]);
+      if (!tpl) {
+        await logIntegrationError({
+          integration: "whatsapp",
+          functionName: "lead-followup-drip",
+          errorCode: "no_approved_template",
+          errorMessage: "אין תבנית מאושרת (UTILITY/MARKETING) לשליחת מעקב מעבר לחלון 24 השעות",
+          context: { lead_id: lead.id, owner, stage: next },
+        });
+        continue;
+      }
+      templateId = tpl.name;
+      templateLanguage = tpl.language;
+      templateVariables = buildTemplateComponents(
+        [name || "שלום", (lead.city as string | null) || "האזור שלך"],
+        tpl.variable_count,
+      ).length
+        ? [name || "שלום", (lead.city as string | null) || "האזור שלך"].slice(0, tpl.variable_count)
+        : [];
+    }
 
     const { error: qErr } = await sb.from("autopilot_queue").insert({
       user_id: owner,
       lead_id: lead.id,
       message_content: text,
-      // template_id is passed straight to Meta as an approved-template name by
-      // the drain worker, so it MUST stay null for free-form drip text.
-      // Dedupe lives on leads.drip_stage / drip_last_sent_at instead.
+      // Stage 1 -> free text (template_id null). Stage 2 -> approved template.
+      // Dedupe lives on leads.drip_stage / drip_last_sent_at.
+      template_id: templateId,
+      template_language: templateLanguage,
+      template_variables: templateVariables,
       status: "pending",
       scheduled_at: new Date().toISOString(),
     });
