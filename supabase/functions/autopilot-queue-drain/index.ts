@@ -118,6 +118,13 @@ Deno.serve(async (req) => {
           message: job.message_content,
           lead_id: job.lead_id,
           template_id: job.template_id ?? undefined,
+          template_language: job.template_id ? (job.template_language ?? "he") : undefined,
+          template_components: job.template_id
+            ? buildTemplateComponents(
+                Array.isArray(job.template_variables) ? job.template_variables.map(String) : [],
+                Array.isArray(job.template_variables) ? job.template_variables.length : 0,
+              )
+            : undefined,
           tenant_id: job.user_id,
         }),
       });
