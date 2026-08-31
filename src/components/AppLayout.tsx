@@ -36,6 +36,8 @@ import { DEMO_CANDIDATES, getDemoCandidateCrisisAlerts, type DemoCandidateId } f
 import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
+import { resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
+
 
 // DemoModeToggle removed from app
 import { PageHero } from '@/components/PageHero';
