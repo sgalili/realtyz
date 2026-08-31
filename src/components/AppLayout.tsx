@@ -53,30 +53,25 @@ const TUTORIAL_STEPS = [
 
 function HeaderProfileLink() {
   const { user } = useAuth();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user?.id) { setAvatarUrl(null); return; }
-    supabase
-      .from('profiles')
-      .select('avatar_url')
-      .eq('id', user.id)
-      .maybeSingle()
-      .then(({ data }) => setAvatarUrl((data as any)?.avatar_url ?? null));
-  }, [user?.id]);
+  const { activeWorkspace } = useWorkspace();
+  const { settings } = useWhiteLabel();
 
   if (!user) return null;
-  const displayName = friendlyUserDisplayName(user, 'ללא שם');
-  const initial = displayName.slice(0, 1);
+
+  // Shell identity is the ACTIVE WORKSPACE, never the personal avatar/name.
+  const identity = resolveWorkspaceIdentity(activeWorkspace, settings as any);
 
   return (
-    <Link to="/profile" aria-label="מעבר לפרופיל" className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90">
+    <Link to="/profile" aria-label={`${identity.name} - הגדרות מרחב העבודה`} title={identity.name} className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90">
       <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full">
-        {avatarUrl ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" /> : initial}
+        {identity.logo
+          ? <img src={identity.logo} alt={identity.name} className="h-full w-full object-cover" />
+          : workspaceInitial(identity.name)}
       </span>
     </Link>
   );
 }
+
 
 function HeaderCrisisAlert() {
   const { user } = useAuth();
