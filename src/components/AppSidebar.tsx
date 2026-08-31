@@ -164,26 +164,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     location.pathname === item.url ||
     item.aliases?.some((a) => location.pathname === a || location.pathname.startsWith(a + '/'));
 
-  const meta = (user?.user_metadata ?? {}) as Record<string, any>;
-  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+  // NOTE: personal profile name/avatar are intentionally NOT read here — the
+  // sidebar identity is the active workspace (see WorkspaceSwitcher).
 
-  useEffect(() => {
-    if (!user?.id) { setUserAvatarUrl(null); return; }
-    supabase
-      .from('profiles')
-      .select('avatar_url')
-      .eq('id', user.id)
-      .maybeSingle()
-      .then(({ data }) => setUserAvatarUrl((data as any)?.avatar_url ?? meta.avatar_url ?? meta.picture ?? null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
-  const userDisplayName = friendlyUserDisplayName(user, 'ללא שם');
-  const userInitial = userDisplayName.slice(0, 1);
-
-  const officeLogoUrl: string | null = settings?.logo_url || null;
-  const officeName = settings?.agency_name || 'Realtyz AI';
-  const officeInitial = officeName.slice(0, 1);
 
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
