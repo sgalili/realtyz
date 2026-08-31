@@ -36,6 +36,8 @@ import { DEMO_CANDIDATES, getDemoCandidateCrisisAlerts, type DemoCandidateId } f
 import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
+import { resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
+
 
 // DemoModeToggle removed from app
 import { PageHero } from '@/components/PageHero';
@@ -51,30 +53,25 @@ const TUTORIAL_STEPS = [
 
 function HeaderProfileLink() {
   const { user } = useAuth();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user?.id) { setAvatarUrl(null); return; }
-    supabase
-      .from('profiles')
-      .select('avatar_url')
-      .eq('id', user.id)
-      .maybeSingle()
-      .then(({ data }) => setAvatarUrl((data as any)?.avatar_url ?? null));
-  }, [user?.id]);
+  const { activeWorkspace } = useWorkspace();
+  const { settings } = useWhiteLabel();
 
   if (!user) return null;
-  const displayName = friendlyUserDisplayName(user, 'ללא שם');
-  const initial = displayName.slice(0, 1);
+
+  // Shell identity is the ACTIVE WORKSPACE, never the personal avatar/name.
+  const identity = resolveWorkspaceIdentity(activeWorkspace, settings as any);
 
   return (
-    <Link to="/profile" aria-label="מעבר לפרופיל" className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90">
+    <Link to="/profile" aria-label={`${identity.name} - הגדרות מרחב העבודה`} title={identity.name} className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90">
       <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full">
-        {avatarUrl ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" /> : initial}
+        {identity.logo
+          ? <img src={identity.logo} alt={identity.name} className="h-full w-full object-cover" />
+          : workspaceInitial(identity.name)}
       </span>
     </Link>
   );
 }
+
 
 function HeaderCrisisAlert() {
   const { user } = useAuth();
@@ -431,13 +428,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const activeTutorialStep = tutorialStep === null ? null : TUTORIAL_STEPS[tutorialStep];
   // Workspace-first header identity. Both `activeWorkspace` (workspace list cache)
   // and `brand` (white-label cache) hydrate synchronously from localStorage, so the
-  // workspace logo + name paint on the FIRST frame with no personal-profile fallback.
-  // The active workspace always wins over the per-user white-label row.
-  const workspaceLogo = activeWorkspace?.workspace_logo_url || '';
-  const workspaceName = activeWorkspace?.workspace_name || '';
-  const headerLogo =
-    workspaceLogo || brand?.landscape_logo_url || brand?.logo_url || '';
-  const headerName = workspaceName || brand?.agency_name || 'Realtyz AI';
+  // workspace logo + name paint on the FIRST frame. The personal profile name and
+  // avatar are NEVER used as shell branding.
+  const headerIdentity = resolveWorkspaceIdentity(activeWorkspace, brand as any);
+  const headerLogo = headerIdentity.logo || '';
+  const headerName = headerIdentity.name;
+
 
   const advanceTutorial = () => {
     if (tutorialStep === null) return;

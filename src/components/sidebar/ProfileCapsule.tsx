@@ -18,6 +18,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { useSidebar } from '@/components/ui/sidebar';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
+import { resolveWorkspaceIdentity } from '@/lib/workspaceIdentity';
 
 type CapsuleItem = {
   label: string;
@@ -48,8 +49,9 @@ export function ProfileCapsule() {
 
   // The capsule represents the WORKSPACE, not the individual user: show the
   // workspace logo and name, never the personal profile picture.
-  const workspaceName = activeWorkspace?.workspace_name?.trim() || user?.email?.split('@')[0] || 'משתמש';
-  const workspaceLogo = activeWorkspace?.workspace_logo_url || null;
+  const wsIdentity = resolveWorkspaceIdentity(activeWorkspace);
+  const workspaceName = wsIdentity.name;
+  const workspaceLogo = wsIdentity.logo;
   const initial = (workspaceName || 'U').slice(0, 1).toUpperCase();
   const displayName = workspaceName;
 

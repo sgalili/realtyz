@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -74,6 +75,7 @@ const WorkspaceContext = createContext<WorkspaceContextType>({
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const cachedInit = readWorkspaceCache();
   const [workspaces, setWorkspaces] = useState<Workspace[]>(cachedInit.list);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(cachedInit.activeId);
@@ -177,16 +179,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const setActiveWorkspace = useCallback(async (ownerId: string) => {
     if (!user) return;
+    // 1. Flip context + persist immediately so the shell (header/sidebar logo
+    //    and name) repaints on the very next frame.
     setActiveWorkspaceId(ownerId);
     window.localStorage.setItem(workspaceStorageKey(user.id), ownerId);
     writeWorkspaceCache(workspaces, ownerId);
+
+    // 2. Drop every cached query: all app data is workspace-scoped, so stale
+    //    rows from the previous tenant must never be shown.
+    try {
+      queryClient.removeQueries();
+      await queryClient.invalidateQueries();
+    } catch { /* non-fatal */ }
 
     try {
       await supabase.rpc('set_active_workspace', { _owner: ownerId });
     } catch {
       // non-fatal
     }
-  }, [user, workspaces]);
+  }, [user, workspaces, queryClient]);
 
 
   const activeWorkspace = useMemo(
