@@ -399,11 +399,42 @@ Deno.serve(async (req) => {
             env: envPresence(),
           },
         });
+
+        // Template parameter/category mismatch: retry once as free text (works
+        // inside an open 24h window) before dropping to SMS. Never throws.
+        if (template) {
+          try {
+            const retryRes = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${serviceRoleKey}`,
+                apikey: serviceRoleKey,
+              },
+              body: JSON.stringify({ phone_number: phone, message: `קוד האימות שלך ל-Realtyz: ${code}` }),
+            });
+            const retryPayload: any = await retryRes.json().catch(() => ({}));
+            if (retryRes.ok && retryPayload?.message_id) {
+              const { error: retryInsertError } = await admin.from("whatsapp_login_otps").insert({
+                phone_number: phone,
+                code_hash: codeHash,
+                expires_at: expiresAt,
+              });
+              if (retryInsertError) throw retryInsertError;
+              console.info("whatsapp-auth OTP delivered via free-text retry", { phone_last4: phone.slice(-4) });
+              return json({ success: true, channel: "whatsapp" });
+            }
+          } catch (retryError) {
+            console.warn("whatsapp-auth free-text retry failed", safeErrorDetails(retryError));
+          }
+        }
+
         // Reliability guarantee: if WhatsApp cannot deliver the code, fall back
         // to the workspace's own 019 SMS number (isolated per workspace, with
         // the shared platform 019 account as a last resort).
         const owner = await resolveWorkspaceOwnerForPhone(admin, phone);
         const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-Realtyz: ${code}`, owner);
+
         if (sms.ok) {
           const { error: smsInsertError } = await admin.from("whatsapp_login_otps").insert({
             phone_number: phone,
