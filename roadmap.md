@@ -23,3 +23,4 @@
 8. [TODO] Google OAuth: friendly Hebrew handling for "API disabled" errors + minimize requested scopes
 
 - [DONE] תיקון טאב "עתידיים" בעמוד פוסטים: לא מציג את כל הפוסטים המתוזמנים (מופיע ריק)
+- [DONE] ביקורת מערכת מקיפה: תור אוטופילוט מחובר (טריגר מיידי + גיבוי שעתי), פונקציית drip חדשה (2 שעות / 3 ימים) עם חלון 09:00-21:00 ותקרות בטיחות
