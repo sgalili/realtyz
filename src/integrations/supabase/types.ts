@@ -2896,6 +2896,8 @@ export type Database = {
           commission_currency: string | null
           created_at: string | null
           deal_type: string
+          drip_last_sent_at: string | null
+          drip_stage: number
           email: string | null
           engagement_score: number | null
           expected_close_date: string | null
@@ -2943,6 +2945,8 @@ export type Database = {
           commission_currency?: string | null
           created_at?: string | null
           deal_type?: string
+          drip_last_sent_at?: string | null
+          drip_stage?: number
           email?: string | null
           engagement_score?: number | null
           expected_close_date?: string | null
@@ -2990,6 +2994,8 @@ export type Database = {
           commission_currency?: string | null
           created_at?: string | null
           deal_type?: string
+          drip_last_sent_at?: string | null
+          drip_stage?: number
           email?: string | null
           engagement_score?: number | null
           expected_close_date?: string | null
