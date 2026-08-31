@@ -583,6 +583,8 @@ export type Database = {
           sent_at: string | null
           status: string
           template_id: string | null
+          template_language: string | null
+          template_variables: Json
           updated_at: string
           user_id: string
         }
@@ -602,6 +604,8 @@ export type Database = {
           sent_at?: string | null
           status?: string
           template_id?: string | null
+          template_language?: string | null
+          template_variables?: Json
           updated_at?: string
           user_id: string
         }
@@ -621,6 +625,8 @@ export type Database = {
           sent_at?: string | null
           status?: string
           template_id?: string | null
+          template_language?: string | null
+          template_variables?: Json
           updated_at?: string
           user_id?: string
         }
@@ -5492,6 +5498,8 @@ export type Database = {
           sent_at: string | null
           status: string
           template_id: string | null
+          template_language: string | null
+          template_variables: Json
           updated_at: string
           user_id: string
         }[]
