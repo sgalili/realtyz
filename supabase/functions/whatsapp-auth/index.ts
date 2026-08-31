@@ -144,10 +144,12 @@ const resolveOtpTemplate = async (admin: any, code: string) => {
 
   // 3. Any approved service template with a variable slot for the code.
   for (const cat of ["UTILITY", "MARKETING"]) {
-    const row = rows.find((r) => String(r.category ?? "").toUpperCase() === cat);
-    const hit = row ? pick(row) : null;
-    if (hit) return hit;
+    for (const row of rows.filter((r) => String(r.category ?? "").toUpperCase() === cat)) {
+      const hit = pick(row);
+      if (hit) return hit;
+    }
   }
+
   return null;
 };
 
