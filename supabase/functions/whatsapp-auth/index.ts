@@ -43,48 +43,114 @@ const hashCode = async (phone: string, code: string) => {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 };
 
+/** Ordered, unique placeholder keys in a template body ({{1}} or {{name}}). */
+const templateVariableKeys = (body: string): string[] => {
+  const keys: string[] = [];
+  for (const m of String(body ?? "").matchAll(/\{\{\s*([^{}\s][^{}]*?)\s*\}\}/g)) {
+    const key = m[1].trim();
+    if (key && !keys.includes(key)) keys.push(key);
+  }
+  return keys;
+};
+
+/**
+ * Builds body components where the OTP code is ALWAYS the first variable
+ * ({{1}} / first named placeholder) and any remaining variables are padded so
+ * Meta never rejects the send for a parameter-count mismatch.
+ */
+const buildOtpComponents = (bodyText: string, code: string, varCount: number): unknown[] => {
+  const keys = templateVariableKeys(bodyText);
+  const count = Math.max(keys.length, varCount || 0);
+  if (count === 0) return [];
+  const parameters = Array.from({ length: count }, (_, i) => {
+    const text = i === 0 ? code : "Realtyz";
+    const key = keys[i];
+    return key && !/^\d+$/.test(key)
+      ? { type: "text", parameter_name: key, text }
+      : { type: "text", text };
+  });
+  return [{ type: "body", parameters }];
+};
+
+/** Configurable preferred template names (comma separated), highest priority first. */
+const preferredOtpTemplateNames = (): string[] =>
+  [
+    Deno.env.get("META_WA_OTP_TEMPLATE_NAME") ?? "",
+    Deno.env.get("WHATSAPP_OTP_TEMPLATE_NAME") ?? "",
+    Deno.env.get("META_WA_OTP_TEMPLATE_FALLBACKS") ?? "sit_property,st_template",
+  ]
+    .join(",")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
 /**
  * Resolves the Meta template used to deliver the login code.
- * Order: explicit env override -> synced APPROVED AUTHENTICATION template ->
- * null (free-text fallback, only valid inside an open 24h window).
+ * Order: configured/approved template name -> approved AUTHENTICATION ->
+ * any approved UTILITY/MARKETING template that has at least one variable
+ * (the code rides in {{1}}) -> null (free-text, 24h window only).
  */
 const resolveOtpTemplate = async (admin: any, code: string) => {
-  let name = Deno.env.get("META_WA_OTP_TEMPLATE_NAME") ?? Deno.env.get("WHATSAPP_OTP_TEMPLATE_NAME") ?? "";
-  let language = Deno.env.get("META_WA_OTP_TEMPLATE_LANGUAGE") ?? Deno.env.get("WHATSAPP_OTP_TEMPLATE_LANGUAGE") ?? "";
-  let copyCode = (Deno.env.get("META_WA_OTP_COPY_CODE_BUTTON") ?? "").toLowerCase() === "true";
+  const { data } = await admin
+    .from("wa_message_templates")
+    .select("name, language, category, status, body_text, variable_count, synced_at")
+    .eq("status", "APPROVED")
+    .order("synced_at", { ascending: false })
+    .limit(200);
+  const rows = ((data ?? []) as any[]).filter((r) => r?.name);
 
-  if (!name) {
-    const { data } = await admin
-      .from("wa_message_templates")
-      .select("name, language, category, status")
-      .eq("category", "AUTHENTICATION")
-      .eq("status", "APPROVED")
-      .order("synced_at", { ascending: false })
-      .limit(1);
-    const row = (data ?? [])[0] as { name?: string; language?: string } | undefined;
-    if (row?.name) {
-      name = row.name;
-      language = language || String(row.language ?? "he");
-      // Meta AUTHENTICATION templates always carry a copy-code button.
-      copyCode = true;
-    }
+  const pick = (row: any) => {
+    const bodyText = String(row.body_text ?? "");
+    const varCount = Number(row.variable_count ?? 0);
+    const components = buildOtpComponents(bodyText, code, varCount);
+    if (components.length === 0) return null; // no slot for the code
+    return {
+      name: String(row.name),
+      language: String(row.language ?? "he"),
+      category: String(row.category ?? "").toUpperCase(),
+      components,
+    };
+  };
+
+  // 1. Explicitly configured template names (already approved on the WABA).
+  for (const wanted of preferredOtpTemplateNames()) {
+    const row = rows.find((r) => String(r.name).toLowerCase() === wanted.toLowerCase());
+    const hit = row ? pick(row) : null;
+    if (hit) return hit;
   }
 
-  if (!name) return null;
-
-  const components: unknown[] = [
-    { type: "body", parameters: [{ type: "text", text: code }] },
-  ];
-  if (copyCode) {
-    components.push({
-      type: "button",
-      sub_type: "copy_code",
-      index: "0",
-      parameters: [{ type: "coupon_code", coupon_code: code }],
-    });
+  // 2. Dedicated AUTHENTICATION template (carries the copy-code button).
+  const auth = rows.find((r) => String(r.category ?? "").toUpperCase() === "AUTHENTICATION");
+  if (auth) {
+    const hit = pick(auth) ?? {
+      name: String(auth.name),
+      language: String(auth.language ?? "he"),
+      category: "AUTHENTICATION",
+      components: [{ type: "body", parameters: [{ type: "text", text: code }] }],
+    };
+    return {
+      ...hit,
+      components: [
+        ...(hit.components as unknown[]),
+        {
+          type: "button",
+          sub_type: "copy_code",
+          index: "0",
+          parameters: [{ type: "coupon_code", coupon_code: code }],
+        },
+      ],
+    };
   }
-  return { name, language: language || "he", components };
+
+  // 3. Any approved service template with a variable slot for the code.
+  for (const cat of ["UTILITY", "MARKETING"]) {
+    const row = rows.find((r) => String(r.category ?? "").toUpperCase() === cat);
+    const hit = row ? pick(row) : null;
+    if (hit) return hit;
+  }
+  return null;
 };
+
 
 
 
