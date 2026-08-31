@@ -3257,16 +3257,16 @@ type CampaignRow = {
   listing_id?: string | null;
 };
 
-// A scheduled row is one whose status is "scheduled" AND whose execution time
-// (sent_at) is still in the future. This is the single source of truth for the
-// "מתוזמן" badge and the calendar view — never infer scheduling purely from
-// the presence of sent_at, because real sent posts also stamp sent_at.
+// A scheduled row is one still waiting in the queue: status "scheduled"/"pending"
+// and not yet dispatched. The slot time (sent_at) may already have passed — an
+// overdue post is still pending, so it MUST stay visible in "עתידיים" instead of
+// silently disappearing. Never infer scheduling purely from the presence of
+// sent_at, because real sent posts also stamp sent_at.
 export const isScheduledRow = (r: Pick<CampaignRow, 'status' | 'sent_at'>): boolean => {
   const status = String(r.status || '').toLowerCase();
-  if (status !== 'scheduled') return false;
-  if (!r.sent_at) return false;
-  return new Date(r.sent_at).getTime() > Date.now();
+  return status === 'scheduled' || status === 'pending' || status === 'queued';
 };
+
 
 const extractFunctionError = async (error: any, fallback = 'שגיאת API חיצונית') => {
   const status = error?.context?.status ?? error?.status;
