@@ -22,4 +22,4 @@
 7. [DONE] CRM master import (RealTies_AI_CRM_Master_Udi_Vitman_1.json) — UPSERT/MERGE, backup + report
 8. [TODO] Google OAuth: friendly Hebrew handling for "API disabled" errors + minimize requested scopes
 
-- [ ] תיקון טאב "עתידיים" בעמוד פוסטים: לא מציג את כל הפוסטים המתוזמנים (מופיע ריק)
+- [DONE] תיקון טאב "עתידיים" בעמוד פוסטים: לא מציג את כל הפוסטים המתוזמנים (מופיע ריק)
