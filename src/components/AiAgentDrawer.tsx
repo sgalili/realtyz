@@ -930,7 +930,7 @@ ${shareUrl}
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*,application/pdf"
+            accept="image/*,application/pdf,application/json,.json"
             className="hidden"
             onChange={(e) => onFilePick(e.target.files)}
           />
