@@ -6116,7 +6116,6 @@ const CampaignCenter = () => {
     void (async () => {
       const scope = workspaceOwnerId ?? user.id;
       const cols = 'id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration,group_ids,recurrence_rule';
-      const nowIso = new Date().toISOString();
       // Two dedicated queries: future scheduled slots (hundreds of them, some
       // years out) must never crowd the published history out of the payload.
       const [{ data: sentLogs }, { data: futureLogs }, { data: drafts }, { data: groups }] = await Promise.all([
