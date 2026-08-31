@@ -3257,16 +3257,16 @@ type CampaignRow = {
   listing_id?: string | null;
 };
 
-// A scheduled row is one whose status is "scheduled" AND whose execution time
-// (sent_at) is still in the future. This is the single source of truth for the
-// "מתוזמן" badge and the calendar view — never infer scheduling purely from
-// the presence of sent_at, because real sent posts also stamp sent_at.
+// A scheduled row is one still waiting in the queue: status "scheduled"/"pending"
+// and not yet dispatched. The slot time (sent_at) may already have passed — an
+// overdue post is still pending, so it MUST stay visible in "עתידיים" instead of
+// silently disappearing. Never infer scheduling purely from the presence of
+// sent_at, because real sent posts also stamp sent_at.
 export const isScheduledRow = (r: Pick<CampaignRow, 'status' | 'sent_at'>): boolean => {
   const status = String(r.status || '').toLowerCase();
-  if (status !== 'scheduled') return false;
-  if (!r.sent_at) return false;
-  return new Date(r.sent_at).getTime() > Date.now();
+  return status === 'scheduled' || status === 'pending' || status === 'queued';
 };
+
 
 const extractFunctionError = async (error: any, fallback = 'שגיאת API חיצונית') => {
   const status = error?.context?.status ?? error?.status;
@@ -6116,7 +6116,6 @@ const CampaignCenter = () => {
     void (async () => {
       const scope = workspaceOwnerId ?? user.id;
       const cols = 'id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration,group_ids,recurrence_rule';
-      const nowIso = new Date().toISOString();
       // Two dedicated queries: future scheduled slots (hundreds of them, some
       // years out) must never crowd the published history out of the payload.
       const [{ data: sentLogs }, { data: futureLogs }, { data: drafts }, { data: groups }] = await Promise.all([
@@ -6127,14 +6126,16 @@ const CampaignCenter = () => {
           .in('status', ['sent', 'published', 'completed'])
           .order('sent_at', { ascending: false, nullsFirst: false })
           .limit(250),
+        // Every queued row, including slots whose time already passed but that
+        // were never dispatched — those must still be listed under "עתידיים".
         supabase.from('campaign_logs')
           .select(cols)
           .or(`workspace_owner_id.eq.${scope},user_id.eq.${scope}`)
           .eq('is_archived', false)
-          .in('status', ['scheduled', 'pending'])
-          .gt('sent_at', nowIso)
-          .order('sent_at', { ascending: true })
-          .limit(300),
+          .in('status', ['scheduled', 'pending', 'queued'])
+          .order('sent_at', { ascending: true, nullsFirst: true })
+          .limit(500),
+
         supabase.from('ai_content_logs')
           .select('id,topic,generated_text,platform,created_at,updated_at,media_urls,listing_id')
           .eq('created_by', user.id)

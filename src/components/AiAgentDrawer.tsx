@@ -470,18 +470,53 @@ ${shareUrl}
     setIsLoading(true);
 
     try {
+      // JSON attachments are imported straight into the CRM (UPSERT/MERGE) before
+      // the model answers, so the assistant reports real numbers, never a refusal.
+      const jsonFiles = sentAttachments.filter(
+        (a) => /json/i.test(a.mime) || /\.json$/i.test(a.name),
+      );
+      let importNote = '';
+      for (const f of jsonFiles) {
+        try {
+          const { data: imp, error: impErr } = await supabase.functions.invoke('crm-json-import', {
+            body: { data_url: f.data_url },
+          });
+          if (impErr) throw impErr;
+          if (imp?.summary) {
+            importNote += `\n\n[דוח ייבוא ${f.name}]\n${imp.summary}`;
+            invalidateLiveData(queryClient);
+          } else if (imp?.message) {
+            importNote += `\n\n[ייבוא ${f.name} נכשל] ${imp.message}`;
+          }
+        } catch (e: any) {
+          importNote += `\n\n[ייבוא ${f.name} נכשל] ${e?.message ?? 'שגיאה'}`;
+        }
+      }
+
       const chatMessages = [...messages, userMsg].map(m => ({
         role: m.role,
         content: m.content,
       }));
+      if (importNote) {
+        chatMessages[chatMessages.length - 1] = {
+          ...chatMessages[chatMessages.length - 1],
+          content:
+            (chatMessages[chatMessages.length - 1].content || '') +
+            importNote +
+            '\n\n(הייבוא בוצע בהצלחה בפועל במסד הנתונים. סכם לבעל העסק את הדוח בעברית ואל תטען שהייבוא אינו נתמך.)',
+        };
+      }
 
       const { data, error } = await supabase.functions.invoke('ai-agent', {
         body: {
           messages: chatMessages,
-          attachments: sentAttachments.map((a) => ({ name: a.name, mime: a.mime, data_url: a.data_url })),
+          attachments: sentAttachments
+            .filter((a) => !jsonFiles.includes(a))
+            .map((a) => ({ name: a.name, mime: a.mime, data_url: a.data_url })),
           enable_research: researchMode ? true : undefined,
         },
       });
+
 
       if (error) {
         throw new Error(error.message || 'שגיאה בקריאה ל-AI');
@@ -895,7 +930,7 @@ ${shareUrl}
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*,application/pdf"
+            accept="image/*,application/pdf,application/json,.json"
             className="hidden"
             onChange={(e) => onFilePick(e.target.files)}
           />
