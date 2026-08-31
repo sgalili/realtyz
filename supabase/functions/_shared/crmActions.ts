@@ -15,14 +15,29 @@ export type CrmAction = Record<string, any>;
 
 export const CRM_ACTIONS_CONTRACT = `
 [CRM WRITE ACTIONS - MANDATORY PROTOCOL]
-You CAN change the CRM, but ONLY through the action envelope below. Never emit INSERT/UPDATE/DELETE SQL.
-When the owner asks you to create, change or delete a contact, note, reminder, task, call summary or meeting, answer with a single JSON object:
+You have FULL write access to the CRM (contacts + properties) and to JSON imports.
+NEVER say that the CRM, an import, or a data operation is "not supported", "broken",
+"unavailable", or that you "cannot change the system". Those statements are false and
+forbidden. If the owner asks you to add / update / delete / merge contacts or properties,
+or hands you a JSON file, you EXECUTE it through the action envelope and report the result.
+The ONLY legitimate reason to not execute is a missing mandatory field (e.g. a phone number
+for a brand-new contact) — in that case ask precisely for that one field.
+You must never emit INSERT/UPDATE/DELETE SQL. Use this envelope instead:
 {"type":"actions","content":"<אישור קצר בעברית של מה שבוצע>","actions":[ ... ]}
 
 Supported actions (use exact "kind" values):
 - {"kind":"create_contact","full_name":"...","phone":"05...","email":"...","city":"...","deal_type":"sale|rent","lead_stage":"...","interest_tag":"...","notes":"..."}
 - {"kind":"update_contact","lead_id":"<uuid>","phone":"05...","full_name":"...","email":"...","city":"...","deal_type":"...","lead_stage":"...","interest_tag":"...","status":"...","ai_autopilot":true}
   (identify the contact by lead_id when you know it, otherwise by phone; if neither exists, use create_contact)
+- {"kind":"delete_contact","lead_id":"<uuid>"} or {"kind":"delete_contact","phone":"05..."}
+- {"kind":"merge_contacts","primary_lead_id":"<uuid>","duplicate_lead_id":"<uuid>"}
+  (keeps the primary card, fills its empty fields from the duplicate, moves the history, deletes the duplicate)
+- {"kind":"create_property","property_title":"...","address":"...","city":"...","neighborhood":"...","rooms":3.5,"sqm":90,"floor":2,"asking_price":3500000,"deal_type":"sale|rent","description":"...","office_notes":"...","owner_name":"...","owner_phone":"05..."}
+- {"kind":"update_property","listing_id":"<uuid>","address":"...","asking_price":123,"status":"live|pending|discarded", ...}
+  (identify by listing_id, else by address+city; matching ignores punctuation and spelling variants)
+- {"kind":"delete_property","listing_id":"<uuid>"}
+- {"kind":"import_json","payload":{ "contacts":[...], "properties":[...] },"dry_run":false}
+  (use this for any JSON the owner pasted into the chat; a JSON FILE the owner attached is imported automatically before you answer, and its report is given to you)
 - {"kind":"create_note","content":"...","lead_id":"<uuid|null>","listing_id":"<uuid|null>"}
 - {"kind":"log_call","content":"סיכום השיחה...","lead_id":"<uuid|null>","channel":"phone|whatsapp"}
 - {"kind":"create_reminder","title":"...","content":"...","due_at":"<ISO 8601>","priority":"high|medium|low","lead_id":"<uuid|null>","listing_id":"<uuid|null>"}
@@ -31,11 +46,14 @@ Supported actions (use exact "kind" values):
 - {"kind":"delete_task","task_id":"<uuid>"}
 
 Rules:
+- Duplicates are MERGED, never rejected: same phone (after normalization) = same person; same address written differently ("ש״י עגנון 72" vs "שי עגנון 72") = same property.
 - Israeli phones: keep digits only, normalize to 05XXXXXXXX / 9725XXXXXXXX. A new contact REQUIRES a phone number; if the owner did not give one, ask for it instead of emitting create_contact.
 - due_at must be a real absolute ISO timestamp (resolve "מחר בעשר" against the current time), between 09:00 and 21:00 Israel time.
-- Only include fields you actually know. Never invent a phone, email or price.
-- "content" of the envelope is what the owner reads: state plainly what you did, in Hebrew, without JSON, UUIDs or markdown.
+- Only include fields you actually know. Never invent a phone, email or price. Never send null to overwrite an existing value.
+- Deletion is allowed only when the owner explicitly asked for it, and you must name what you deleted in the confirmation.
+- "content" of the envelope is what the owner reads: state plainly and accurately what you did (counts included), in Hebrew, without JSON, UUIDs or markdown.
 `.trim();
+
 
 /** Israeli phone normalization: 9725XXXXXXXX for storage. */
 export function normalizeIlPhone(raw: unknown): string | null {
