@@ -431,13 +431,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const activeTutorialStep = tutorialStep === null ? null : TUTORIAL_STEPS[tutorialStep];
   // Workspace-first header identity. Both `activeWorkspace` (workspace list cache)
   // and `brand` (white-label cache) hydrate synchronously from localStorage, so the
-  // workspace logo + name paint on the FIRST frame with no personal-profile fallback.
-  // The active workspace always wins over the per-user white-label row.
-  const workspaceLogo = activeWorkspace?.workspace_logo_url || '';
-  const workspaceName = activeWorkspace?.workspace_name || '';
-  const headerLogo =
-    workspaceLogo || brand?.landscape_logo_url || brand?.logo_url || '';
-  const headerName = workspaceName || brand?.agency_name || 'Realtyz AI';
+  // workspace logo + name paint on the FIRST frame. The personal profile name and
+  // avatar are NEVER used as shell branding.
+  const headerIdentity = resolveWorkspaceIdentity(activeWorkspace, brand as any);
+  const headerLogo = headerIdentity.logo || '';
+  const headerName = headerIdentity.name;
+
 
   const advanceTutorial = () => {
     if (tutorialStep === null) return;
