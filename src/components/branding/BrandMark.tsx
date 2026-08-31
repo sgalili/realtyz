@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { resolveWorkspaceIdentity } from '@/lib/workspaceIdentity';
 
 interface BrandMarkProps {
   className?: string;
@@ -21,8 +22,11 @@ export function BrandMark({ className = '', to = '/', fallbackLabel = 'Realtyz A
   const { settings, loading } = useWhiteLabel();
   const { activeWorkspace } = useWorkspace();
 
-  const logoUrl = settings?.logo_url || activeWorkspace?.workspace_logo_url || null;
-  const agencyName = settings?.agency_name || activeWorkspace?.workspace_name || null;
+  // Active workspace ALWAYS wins over the per-user white-label row, and the
+  // personal profile name/avatar is never used as branding.
+  const identity = resolveWorkspaceIdentity(activeWorkspace, settings as any);
+  const logoUrl = identity.logo;
+  const agencyName = identity.name || null;
   const hideRealtyz = !!settings?.hide_kalpiz_branding;
 
   // While branding is still resolving we render nothing rather than the Realtyz
