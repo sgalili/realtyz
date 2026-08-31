@@ -204,7 +204,8 @@ export function mapProperty(rec: Record<string, any>) {
   const street = str(pick(rec, ["street", "רחוב"]));
   const houseNumber = str(pick(rec, ["house_number", "מספר בית", "מס בית"]));
   const address = str(pick(rec, ["address", "כתובת", "כתובת מלאה"])) ??
-    [street, houseNumber].filter(Boolean).join(" ") || undefined;
+    ([street, houseNumber].filter(Boolean).join(" ") || undefined);
+
   const out: Record<string, any> = {
     property_title: str(pick(rec, ["property_title", "title", "כותרת", "שם הנכס", "נכס"])),
     address,
