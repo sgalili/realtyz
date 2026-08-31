@@ -28,12 +28,14 @@ export function BrandMark({ className = '', to = '/', fallbackLabel = 'Realtyz A
   const logoUrl = identity.logo;
   const agencyName = identity.name || null;
   const hideRealtyz = !!settings?.hide_kalpiz_branding;
+  const isDefaultBrand = !identity.isTenant && agencyName === 'Realtyz AI';
 
   // While branding is still resolving we render nothing rather than the Realtyz
   // fallback, which used to flicker in before the workspace logo arrived.
-  const labelToShow = agencyName
+  const labelToShow = agencyName && !isDefaultBrand
     ? agencyName
     : (hideRealtyz || (loading && !settings) ? '' : fallbackLabel);
+
 
   return (
     <Link
