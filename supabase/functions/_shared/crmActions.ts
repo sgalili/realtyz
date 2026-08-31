@@ -78,6 +78,7 @@ export type CrmActionResult = {
   ok: boolean;
   id?: string;
   error?: string;
+  report?: unknown;
 };
 
 /**
