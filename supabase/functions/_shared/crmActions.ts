@@ -228,6 +228,101 @@ export async function executeCrmActions(
           out.push({ kind, ok: true, id: existing.id });
           break;
         }
+        case "delete_contact": {
+          const existing = await findLead(a);
+          if (!existing) throw new Error("contact_not_found");
+          const { error } = await supabase.from("leads").delete().eq("id", existing.id);
+          if (error) throw error;
+          out.push({ kind, ok: true, id: existing.id });
+          break;
+        }
+        case "merge_contacts": {
+          const primaryId = String(a.primary_lead_id ?? a.lead_id ?? "");
+          const dupId = String(a.duplicate_lead_id ?? "");
+          if (!primaryId || !dupId || primaryId === dupId) throw new Error("missing_merge_ids");
+          const { data: rows } = await supabase
+            .from("leads").select("*").in("id", [primaryId, dupId]);
+          const primary = (rows ?? []).find((r: any) => r.id === primaryId);
+          const dup = (rows ?? []).find((r: any) => r.id === dupId);
+          if (!primary || !dup) throw new Error("contact_not_found");
+          const patch: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(dup)) {
+            if (["id", "created_at", "fts", "assigned_to"].includes(k)) continue;
+            if (v === null || v === "" || v === undefined) continue;
+            const cur = (primary as any)[k];
+            if (cur === null || cur === "" || cur === undefined) patch[k] = v;
+          }
+          if (Object.keys(patch).length) {
+            const { error } = await supabase.from("leads").update(patch).eq("id", primaryId);
+            if (error) throw error;
+          }
+          // Move history over, then drop the duplicate card.
+          await supabase.from("messages").update({ lead_id: primaryId }).eq("lead_id", dupId);
+          await supabase.from("interaction_activity_log")
+            .update({ thread_key: `lead:${primaryId}` }).eq("thread_key", `lead:${dupId}`);
+          const { error: delErr } = await supabase.from("leads").delete().eq("id", dupId);
+          if (delErr) throw delErr;
+          out.push({ kind, ok: true, id: primaryId });
+          break;
+        }
+        case "create_property": {
+          const existing = await findListing(a);
+          const fields = listingFields(a);
+          if (existing) {
+            const { error } = await supabase.from("listings").update(fields).eq("id", existing.id);
+            if (error) throw error;
+            out.push({ kind, ok: true, id: existing.id });
+            break;
+          }
+          const title = String(fields.property_title ?? fields.address ?? "").trim();
+          if (!title) throw new Error("missing_property_title");
+          const slug = `${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60).toLowerCase() || "listing"}-${Math.random().toString(36).slice(2, 7)}`;
+          const { data, error } = await supabase
+            .from("listings")
+            .insert({
+              user_id: ownerId,
+              property_title: title,
+              description: fields.description ?? "",
+              asking_price: fields.asking_price ?? 0,
+              status: fields.status ?? "live",
+              source: "manual",
+              slug,
+              ...fields,
+            })
+            .select("id")
+            .maybeSingle();
+          if (error) throw error;
+          out.push({ kind, ok: true, id: data?.id });
+          break;
+        }
+        case "update_property": {
+          const existing = await findListing(a);
+          if (!existing) throw new Error("property_not_found");
+          const fields = listingFields(a);
+          if (Object.keys(fields).length === 0) throw new Error("nothing_to_update");
+          const { error } = await supabase.from("listings").update(fields).eq("id", existing.id);
+          if (error) throw error;
+          out.push({ kind, ok: true, id: existing.id });
+          break;
+        }
+        case "delete_property": {
+          const existing = await findListing(a);
+          if (!existing) throw new Error("property_not_found");
+          const { error } = await supabase.from("listings").delete().eq("id", existing.id);
+          if (error) throw error;
+          out.push({ kind, ok: true, id: existing.id });
+          break;
+        }
+        case "import_json": {
+          const { importCrmJson } = await import("./crmJsonImport.ts");
+          const report = await importCrmJson(supabase, ownerId, a.payload ?? a.data ?? a.json, {
+            dry_run: !!a.dry_run,
+          });
+          if (!report.ok) throw new Error(report.errors.join(", ") || "import_failed");
+          out.push({ kind, ok: true, report } as CrmActionResult);
+          break;
+        }
+
         case "create_note": {
           const content = String(a.content ?? "").trim();
           if (!content) throw new Error("empty_note");
