@@ -17,6 +17,11 @@ const HOUR = 3_600_000;
 const STAGE1_MIN_H = 2;
 const STAGE1_MAX_H = 23; // stay inside the 24h free-form window
 const STAGE2_MIN_H = 72;
+// Never chase a lead who has been cold for longer than this — prevents a
+// historical backlog from turning into a mass blast on first run.
+const MAX_IDLE_H = 24 * 14;
+// Hard cap on outbound nudges per run.
+const MAX_PER_RUN = 25;
 
 /** Local Israel hour — never nudge outside 09:00-21:00. */
 function israelHour(d = new Date()): number {
@@ -87,6 +92,7 @@ Deno.serve(async (req) => {
     if (stage === 0 && idleH >= STAGE1_MIN_H && idleH <= STAGE1_MAX_H) next = 1;
     else if (stage <= 1 && idleH >= STAGE2_MIN_H) next = 2;
     if (!next) continue;
+    if (idleH > MAX_IDLE_H) continue;
 
     // Never two drips within 24h of each other.
     if (lead.drip_last_sent_at && now - new Date(lead.drip_last_sent_at as string).getTime() < 24 * HOUR) {
@@ -113,6 +119,7 @@ Deno.serve(async (req) => {
       .update({ drip_stage: next, drip_last_sent_at: new Date().toISOString() })
       .eq("id", lead.id);
     enqueued += 1;
+    if (enqueued >= MAX_PER_RUN) break;
   }
 
   return new Response(JSON.stringify({ ok: true, scanned: leads?.length ?? 0, enqueued }), {
