@@ -6127,14 +6127,16 @@ const CampaignCenter = () => {
           .in('status', ['sent', 'published', 'completed'])
           .order('sent_at', { ascending: false, nullsFirst: false })
           .limit(250),
+        // Every queued row, including slots whose time already passed but that
+        // were never dispatched — those must still be listed under "עתידיים".
         supabase.from('campaign_logs')
           .select(cols)
           .or(`workspace_owner_id.eq.${scope},user_id.eq.${scope}`)
           .eq('is_archived', false)
-          .in('status', ['scheduled', 'pending'])
-          .gt('sent_at', nowIso)
-          .order('sent_at', { ascending: true })
-          .limit(300),
+          .in('status', ['scheduled', 'pending', 'queued'])
+          .order('sent_at', { ascending: true, nullsFirst: true })
+          .limit(500),
+
         supabase.from('ai_content_logs')
           .select('id,topic,generated_text,platform,created_at,updated_at,media_urls,listing_id')
           .eq('created_by', user.id)
