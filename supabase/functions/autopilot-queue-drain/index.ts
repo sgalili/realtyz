@@ -161,7 +161,10 @@ Deno.serve(async (req) => {
       sent++;
     } catch (e: any) {
       const errMsg = String(e?.message || e);
-      const willRetry = job.attempts < job.max_attempts;
+      // Template validation / 24h-window rejections never succeed on retry —
+      // fail them once, log them clearly, and keep the queue draining.
+      const permanent = isTemplateOrWindowError(errMsg);
+      const willRetry = !permanent && job.attempts < job.max_attempts;
       const nextAt = new Date(Date.now() + 60_000 * Math.pow(2, job.attempts)).toISOString();
 
       await sb.from("autopilot_queue").update({
@@ -169,8 +172,24 @@ Deno.serve(async (req) => {
         scheduled_at: willRetry ? nextAt : job.scheduled_at,
         locked_at: null,
         locked_by: null,
-        last_error: errMsg.slice(0, 500),
+        last_error: (permanent ? `template_rejected: ${errMsg}` : errMsg).slice(0, 500),
       }).eq("id", job.id);
+
+      if (permanent) {
+        await logIntegrationError({
+          integration: "whatsapp",
+          functionName: "autopilot-queue-drain",
+          errorCode: "template_rejected",
+          errorMessage: errMsg,
+          context: {
+            queue_id: job.id,
+            lead_id: job.lead_id,
+            user_id: job.user_id,
+            template: job.template_id ?? null,
+            template_language: job.template_language ?? null,
+          },
+        });
+      }
 
       if (willRetry) retried++; else failed++;
       console.error(`job ${job.id} failed (attempt ${job.attempts}): ${errMsg}`);
