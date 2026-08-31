@@ -31,6 +31,8 @@ import {
 import { SidebarIntelInput } from '@/components/SidebarIntelInput';
 import { useSidebarCounts } from '@/hooks/useSidebarCounts';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
+import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
+
 
 type NavItem = {
   title: string;
