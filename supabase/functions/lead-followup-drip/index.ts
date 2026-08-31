@@ -105,7 +105,9 @@ Deno.serve(async (req) => {
       user_id: owner,
       lead_id: lead.id,
       message_content: text,
-      template_id: `drip_stage_${next}`,
+      // template_id is passed straight to Meta as an approved-template name by
+      // the drain worker, so it MUST stay null for free-form drip text.
+      // Dedupe lives on leads.drip_stage / drip_last_sent_at instead.
       status: "pending",
       scheduled_at: new Date().toISOString(),
     });
