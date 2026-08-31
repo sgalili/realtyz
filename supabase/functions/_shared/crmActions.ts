@@ -108,7 +108,7 @@ export async function executeCrmActions(
       const { data } = await supabase
         .from("leads")
         .select("id, full_name, phone_number")
-        .eq("user_id", ownerId)
+        .eq("assigned_to", ownerId)
         .eq("phone_number", phone)
         .maybeSingle();
       if (data) return data;
@@ -117,7 +117,7 @@ export async function executeCrmActions(
       const { data } = await supabase
         .from("leads")
         .select("id, full_name, phone_number")
-        .eq("user_id", ownerId)
+        .eq("assigned_to", ownerId)
         .ilike("full_name", String(a.full_name).trim())
         .limit(1);
       if (Array.isArray(data) && data[0]) return data[0];
@@ -210,7 +210,7 @@ export async function executeCrmActions(
           if (!fields.phone_number) throw new Error("missing_phone");
           const { data, error } = await supabase
             .from("leads")
-            .insert({ user_id: ownerId, ...fields, last_interaction_at: new Date().toISOString() })
+            .insert({ assigned_to: ownerId, ...fields, last_interaction_at: new Date().toISOString() })
             .select("id")
             .maybeSingle();
           if (error) throw error;
