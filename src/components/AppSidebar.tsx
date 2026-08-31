@@ -186,29 +186,12 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
       <SidebarContent className="realtyz-sidebar-menu pt-3">
-        {/* TOP: user profile picture + full name */}
+        {/* TOP: ACTIVE WORKSPACE identity + switcher (never the personal profile) */}
         {!collapsed && user && (
           <SidebarGroup className="p-0 border-b border-slate-200">
             <SidebarGroupContent className="px-3 py-3">
-              <button
-                type="button"
-                onClick={() => { if (isMobile) setOpenMobile(false); navigate('/profile'); }}
-                className="flex w-full items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-slate-50 min-w-0"
-              >
-                <div className="w-10 h-10 min-w-[40px] rounded-full overflow-hidden shrink-0 ring-1 ring-slate-200">
-                  {userAvatarUrl ? (
-                    <img src={userAvatarUrl} alt={userDisplayName} className="w-10 h-10 rounded-full object-cover block" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-slate-900 text-xs font-bold text-white">
-                      {userInitial}
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1 text-right">
-                  <div className="truncate text-sm font-bold text-slate-900">{userDisplayName}</div>
-                  <div className="truncate text-[11px] text-slate-500">{officeName}</div>
-                </div>
-              </button>
+              <WorkspaceSwitcher />
+
               <button
                 type="button"
                 onClick={() => {
