@@ -158,7 +158,7 @@ function RewardDialog({
                   rewardType,
                   rewardAmount: Number(amount) || 0,
                   tier1Amount: num(tier1),
-                  tier2Amount: num(tier2) || num(tier1) * 2,
+                  tier2Amount: num(tier2),
                   tier3Type,
                   tier3Amount: num(tier3),
                 },
