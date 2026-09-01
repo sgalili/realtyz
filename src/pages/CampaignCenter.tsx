@@ -2205,9 +2205,15 @@ const InlineComposer = ({
           rows={6}
           value={body}
           onChange={(e) => {
-            const raw = e.target.value.replace(/^[\s\u200f\u200e]+/g, '');
-            setBody(cleanBody(raw));
+            // Store the raw keystrokes verbatim. Normalizing here (trim/clean)
+            // rewrites the value mid-typing, which forces the caret to the end
+            // of the textarea on every character in Hebrew and English alike.
+            setBody(e.target.value);
             setBodyManuallyEdited(true);
+          }}
+          onBlur={(e) => {
+            const cleaned = cleanBody(e.target.value.replace(/^[\s\u200f\u200e]+/g, ''));
+            if (cleaned !== e.target.value) setBody(cleaned);
           }}
           placeholder="תוכן הפוסט"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pl-12"
