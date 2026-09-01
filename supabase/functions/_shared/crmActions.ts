@@ -32,7 +32,8 @@ Supported actions (use exact "kind" values):
 - {"kind":"delete_contact","lead_id":"<uuid>"} or {"kind":"delete_contact","phone":"05..."}
 - {"kind":"merge_contacts","primary_lead_id":"<uuid>","duplicate_lead_id":"<uuid>"}
   (keeps the primary card, fills its empty fields from the duplicate, moves the history, deletes the duplicate)
-- {"kind":"create_property","property_title":"...","address":"...","city":"...","neighborhood":"...","rooms":3.5,"sqm":90,"floor":2,"asking_price":3500000,"deal_type":"sale|rent","description":"...","office_notes":"...","owner_name":"...","owner_phone":"05..."}
+- {"kind":"create_property","property_title":"...","address":"...","city":"...","neighborhood":"...","rooms":3.5,"sqm":90,"floor":2,"asking_price":3500000,"deal_type":"sale|rent","available_from":"YYYY-MM-DD","description":"...","office_notes":"...","extra_details":["מצב הדירה: משופצת","מרחב מוגן: ממ\"ק בקומה","כניסה: מיידית","מיקום: סמוך לסוקולוב"],"owner_name":"...","owner_phone":"05..."}
+  (extra_details = כל פרט שאין לו שדה מובנה; הוא נשמר אוטומטית בהערות הנכס. owner_name/owner_phone יוצרים או מאתרים כרטיס איש קשר ומקשרים אותו לנכס. לעולם אין לעצור יצירת נכס בגלל פרט חסר שכבר קיים בטקסט)
 - {"kind":"update_property","listing_id":"<uuid>","address":"...","asking_price":123,"status":"live|pending|discarded", ...}
   (identify by listing_id, else by address+city; matching ignores punctuation and spelling variants)
 - {"kind":"delete_property","listing_id":"<uuid>"}
@@ -73,7 +74,103 @@ function isoOrNull(v: unknown): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+/**
+ * Property attributes that have a real column on `listings`. Anything else the
+ * model extracted from the free text is not dropped — it overflows into the
+ * Hebrew notes block (`office_notes`).
+ */
+const LISTING_STRUCTURED_KEYS = new Set([
+  "kind", "listing_id", "property_title", "address", "city", "neighborhood",
+  "description", "long_description", "short_description", "office_notes",
+  "project_name", "house_number", "apartment_number", "source_url", "external_id",
+  "rooms", "asking_price", "sqm", "floor", "elevator", "parking",
+  "is_published", "is_featured", "deal_type", "status", "features",
+  "available_from", "entry_date", "owner_name", "owner_phone", "owner_email",
+  "extra_details", "notes",
+]);
+
+/** Hebrew labels for the common free-text attributes brokers dictate. */
+const NOTE_LABELS: Record<string, string> = {
+  property_state: "מצב הדירה",
+  apartment_state: "מצב הדירה",
+  condition: "מצב הדירה",
+  building_condition: "מצב הבניין",
+  mamad: "מרחב מוגן",
+  safe_room: "מרחב מוגן",
+  entry: "כניסה",
+  entry_date_text: "כניסה",
+  location: "מיקום",
+  location_context: "מיקום",
+  accessibility: "נגישות",
+  orientation: "כיווני אוויר",
+  air_directions: "כיווני אוויר",
+  balcony: "מרפסת",
+  storage: "מחסן",
+  renovation: "שיפוץ",
+  heating: "חימום",
+  ac: "מיזוג",
+  furniture: "ריהוט",
+  taxes: "ארנונה",
+  hoa: "ועד בית",
+  view: "נוף",
+  schools: "מוסדות חינוך",
+  transport: "תחבורה",
+  parking_details: "חניה",
+  owner_notes: "הערות בעל הנכס",
+  extra: "נוסף",
+};
+
+const noteLine = (label: string, value: unknown) => {
+  const v = String(value ?? "").trim();
+  if (!v) return "";
+  const name = String(label || "").trim();
+  return name ? `${name}: ${v}` : v;
+};
+
+/**
+ * Collect every detail without a dedicated column into clean Hebrew note lines.
+ * Accepts `extra_details` (object / array / string), `notes`, and any unknown
+ * primitive key the model added to the action.
+ */
+export function collectOverflowNotes(a: CrmAction): string[] {
+  const lines: string[] = [];
+  const push = (s: string) => { const t = s.trim(); if (t) lines.push(t); };
+
+  const fromValue = (value: unknown, label = "") => {
+    if (value === null || value === undefined || value === "") return;
+    if (Array.isArray(value)) { for (const v of value) fromValue(v, label); return; }
+    if (typeof value === "object") {
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        fromValue(v, NOTE_LABELS[k] ?? k.replace(/_/g, " "));
+      }
+      return;
+    }
+    push(noteLine(label, value));
+  };
+
+  fromValue(a.extra_details);
+  fromValue(a.notes);
+  for (const [k, v] of Object.entries(a ?? {})) {
+    if (LISTING_STRUCTURED_KEYS.has(k)) continue;
+    if (v === null || v === undefined || v === "") continue;
+    if (typeof v === "object") { fromValue(v, NOTE_LABELS[k] ?? k.replace(/_/g, " ")); continue; }
+    push(noteLine(NOTE_LABELS[k] ?? k.replace(/_/g, " "), v));
+  }
+  // Dedupe while keeping dictation order.
+  return Array.from(new Set(lines));
+}
+
+/** Append new note lines to an existing notes block without duplicating them. */
+export function mergeNotes(existing: unknown, lines: string[]): string {
+  const current = String(existing ?? "").trim();
+  const have = new Set(current.split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
+  const added = lines.filter((l) => !have.has(l.trim()));
+  if (!added.length) return current;
+  return [current, ...added].filter(Boolean).join("\n");
+}
+
 const PRIORITIES = new Set(["high", "medium", "low"]);
+
 
 export type CrmActionResult = {
   kind: string;
@@ -183,7 +280,94 @@ export async function executeCrmActions(
     if (a.deal_type === "sale" || a.deal_type === "rent") patch.deal_type = a.deal_type;
     if (["live", "pending", "discarded"].includes(String(a.status))) patch.status = String(a.status);
     if (a.features && typeof a.features === "object") patch.features = a.features;
+    // Entry date ("כניסה: 01/09") maps to the real column when it parses.
+    const entry = a.available_from ?? a.entry_date;
+    if (entry) {
+      const d = new Date(String(entry));
+      if (!Number.isNaN(d.getTime())) patch.available_from = d.toISOString().slice(0, 10);
+    }
     return patch;
+  };
+
+  /**
+   * Owner linking with zero friction: the name / phone mentioned in the free
+   * text becomes (a) a contact card in the CRM (`leads`) and (b) a property
+   * owner profile (`crm_profiles`) linked through `listings.owner_id`.
+   * Never blocks the property write — a failure only skips the link.
+   */
+  const resolveOwner = async (a: CrmAction): Promise<{ owner_id: string | null; lead_id: string | null; name: string | null; phone: string | null }> => {
+    const name = String(a.owner_name ?? "").trim() || null;
+    const phone = normalizeIlPhone(a.owner_phone);
+    const email = String(a.owner_email ?? "").trim() || null;
+    if (!name && !phone) return { owner_id: null, lead_id: null, name: null, phone: null };
+
+    let leadId: string | null = null;
+    try {
+      const existingLead = await findLead({ phone, full_name: name });
+      if (existingLead) {
+        leadId = existingLead.id;
+        const patch: Record<string, unknown> = {};
+        if (phone && !existingLead.phone_number) patch.phone_number = phone;
+        if (name && !existingLead.full_name) patch.full_name = name;
+        if (Object.keys(patch).length) await supabase.from("leads").update(patch).eq("id", leadId);
+      } else if (phone) {
+        const { data } = await supabase
+          .from("leads")
+          .insert({
+            assigned_to: ownerId,
+            full_name: name ?? phone,
+            phone_number: phone,
+            email,
+            interest_tag: "בעל נכס",
+            last_interaction_at: new Date().toISOString(),
+          })
+          .select("id")
+          .maybeSingle();
+        leadId = data?.id ?? null;
+      }
+    } catch (e) {
+      console.error("[crmActions] owner lead link failed:", (e as Error).message);
+    }
+
+    let profileId: string | null = null;
+    try {
+      if (phone) {
+        const { data } = await supabase
+          .from("crm_profiles").select("id, full_name, phone")
+          .eq("workspace_owner_id", ownerId).eq("phone", phone).maybeSingle();
+        profileId = data?.id ?? null;
+      }
+      if (!profileId && name) {
+        const { data } = await supabase
+          .from("crm_profiles").select("id, full_name, phone")
+          .eq("workspace_owner_id", ownerId).eq("full_name", name).maybeSingle();
+        profileId = data?.id ?? null;
+      }
+      if (!profileId) {
+        const { data } = await supabase
+          .from("crm_profiles")
+          .insert({
+            workspace_owner_id: ownerId,
+            full_name: name ?? phone,
+            phone,
+            email,
+            profile_type: "property_owner",
+            source: "ai_agent",
+            professional_info: { role: "property_owner", lead_id: leadId },
+          })
+          .select("id")
+          .maybeSingle();
+        profileId = data?.id ?? null;
+      } else if (phone || name) {
+        await supabase.from("crm_profiles")
+          .update({ phone: phone ?? undefined, full_name: name ?? undefined })
+          .eq("id", profileId);
+      }
+    } catch (e) {
+      console.error("[crmActions] owner profile link failed:", (e as Error).message);
+    }
+
+    return { owner_id: profileId, lead_id: leadId, name, phone };
   };
 
 
@@ -312,18 +496,46 @@ export async function executeCrmActions(
           out.push({ kind, ok: true, id: primaryId });
           break;
         }
-        case "create_property": {
+        case "create_property":
+        case "update_property": {
           const existing = await findListing(a);
+          if (kind === "update_property" && !existing) throw new Error("property_not_found");
           const fields = listingFields(a);
+
+          // Every detail without a column overflows into the Hebrew notes block.
+          const overflow = collectOverflowNotes(a);
+          const owner = await resolveOwner(a);
+          if (owner.name || owner.phone) {
+            overflow.push(noteLine("בעל הנכס", [owner.name, owner.phone].filter(Boolean).join(" · ")));
+          }
+          if (owner.owner_id) fields.owner_id = owner.owner_id;
+
           if (existing) {
+            if (overflow.length) {
+              const { data: cur } = await supabase
+                .from("listings").select("office_notes, source_metadata").eq("id", existing.id).maybeSingle();
+              const merged = mergeNotes(
+                fields.office_notes ?? cur?.office_notes,
+                overflow,
+              );
+              if (merged) fields.office_notes = merged;
+              fields.source_metadata = {
+                ...((cur?.source_metadata ?? {}) as Record<string, unknown>),
+                ...(owner.name ? { owner_name: owner.name } : {}),
+                ...(owner.phone ? { owner_phone: owner.phone } : {}),
+              };
+            }
+            if (Object.keys(fields).length === 0) throw new Error("nothing_to_update");
             const { error } = await supabase.from("listings").update(fields).eq("id", existing.id);
             if (error) throw error;
             out.push({ kind, ok: true, id: existing.id });
             break;
           }
+
           const title = String(fields.property_title ?? fields.address ?? "").trim();
           if (!title) throw new Error("missing_property_title");
           const slug = `${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60).toLowerCase() || "listing"}-${Math.random().toString(36).slice(2, 7)}`;
+          const notes = mergeNotes(fields.office_notes, overflow);
           const { data, error } = await supabase
             .from("listings")
             .insert({
@@ -335,21 +547,18 @@ export async function executeCrmActions(
               source: "manual",
               slug,
               ...fields,
+              office_notes: notes || null,
+              source_metadata: {
+                created_by: "ai_agent",
+                ...(owner.name ? { owner_name: owner.name } : {}),
+                ...(owner.phone ? { owner_phone: owner.phone } : {}),
+              },
             })
             .select("id")
             .maybeSingle();
           if (error) throw error;
           out.push({ kind, ok: true, id: data?.id });
-          break;
-        }
-        case "update_property": {
-          const existing = await findListing(a);
-          if (!existing) throw new Error("property_not_found");
-          const fields = listingFields(a);
-          if (Object.keys(fields).length === 0) throw new Error("nothing_to_update");
-          const { error } = await supabase.from("listings").update(fields).eq("id", existing.id);
-          if (error) throw error;
-          out.push({ kind, ok: true, id: existing.id });
+
           break;
         }
         case "delete_property": {
