@@ -196,21 +196,35 @@ Deno.serve(async (req) => {
     // official contact tracking link. Failure here never fails the post.
     const firstComment = ensureMandatoryComment(body?.first_comment);
     let commentId: string | null = null;
-    try {
-      const cForm = new URLSearchParams({ message: firstComment, access_token: conn.access_token });
-      const cRes = await fetch(`${GRAPH}/${postId}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
-        body: cForm.toString(),
-      });
-      const cBody = await cRes.json().catch(() => ({}));
-      if (cRes.ok && cBody?.id) commentId = String(cBody.id);
-      else console.error("[fb-group-publish] first comment failed", groupId, cBody);
-    } catch (cErr) {
-      console.error("[fb-group-publish] first comment error", groupId, cErr);
+    let commentError: string | null = null;
+    // Both id shapes are tried ({group_id}_{object_id} and the bare id), each
+    // with one retry, so a transient Graph hiccup never drops the comment.
+    const targets = postId.includes("_") ? [postId] : [`${groupId}_${postId}`, postId];
+    for (const target of targets) {
+      for (let attempt = 0; attempt < 2 && !commentId; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 1200));
+        try {
+          const cForm = new URLSearchParams({ message: firstComment, access_token: conn.access_token });
+          const cRes = await fetch(`${GRAPH}/${target}/comments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+            body: cForm.toString(),
+          });
+          const cBody = await cRes.json().catch(() => ({}));
+          if (cRes.ok && cBody?.id) commentId = String(cBody.id);
+          else {
+            commentError = cBody?.error?.message ?? "first comment failed";
+            console.error("[fb-group-publish] first comment failed", groupId, target, cBody);
+          }
+        } catch (cErr) {
+          commentError = String(cErr);
+          console.error("[fb-group-publish] first comment error", groupId, target, cErr);
+        }
+      }
+      if (commentId) break;
     }
 
-    return json({ ok: true, post_id: postId, comment_id: commentId });
+    return json({ ok: true, post_id: postId, comment_id: commentId, comment_error: commentId ? null : commentError });
   } catch (e) {
     console.error("[fb-group-publish] fatal", e);
     return json({ ok: false, reason: String((e as any)?.message ?? e) }, 500);

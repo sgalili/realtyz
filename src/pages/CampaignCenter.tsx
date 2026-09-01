@@ -2205,9 +2205,15 @@ const InlineComposer = ({
           rows={6}
           value={body}
           onChange={(e) => {
-            const raw = e.target.value.replace(/^[\s\u200f\u200e]+/g, '');
-            setBody(cleanBody(raw));
+            // Store the raw keystrokes verbatim. Normalizing here (trim/clean)
+            // rewrites the value mid-typing, which forces the caret to the end
+            // of the textarea on every character in Hebrew and English alike.
+            setBody(e.target.value);
             setBodyManuallyEdited(true);
+          }}
+          onBlur={(e) => {
+            const cleaned = cleanBody(e.target.value.replace(/^[\s\u200f\u200e]+/g, ''));
+            if (cleaned !== e.target.value) setBody(cleaned);
           }}
           placeholder="תוכן הפוסט"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pl-12"
@@ -2900,7 +2906,13 @@ const ConfirmDispatchDialog = ({
       // checked, the composer has ALREADY inlined a rotating first-person opener
       // ("דברו איתי…") + a real WA link (branded shortlink or wa.me fallback)
       // into `body`, so we ship it as-is. When unchecked we transmit clean text.
-      const bodyToPublish = body;
+      // Normalization happens at dispatch time (never on keystroke) so the
+      // caret is never moved while the user types.
+      const bodyToPublish = body
+        .replace(/^[\s\u200f\u200e]+/g, '')
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       const campaignName = `${brandName} · ${channel.label}`;
 
       if (SOCIAL_CHANNELS.has(channel.id)) {

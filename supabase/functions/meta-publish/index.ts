@@ -251,8 +251,8 @@ async function publishFacebook(
       headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
       body: form.toString(),
     });
-    if (!r.ok || !r.payload?.id) return { error: humanize(r.payload) };
-    return { id: String(r.payload.id) };
+    if (!r.ok || !(r.payload?.post_id ?? r.payload?.id)) return { error: humanize(r.payload) };
+    return { id: String(r.payload.post_id ?? r.payload.id) };
   };
 
   if (media.length === 0) return await textOnly();
@@ -291,11 +291,11 @@ async function publishFacebook(
     headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
     body: form.toString(),
   });
-  if (!r.ok || !r.payload?.id) return { error: humanize(r.payload) };
+  if (!r.ok || !(r.payload?.post_id ?? r.payload?.id)) return { error: humanize(r.payload) };
   const warning = uploadErrors.length
     ? `${attached.length} מתוך ${media.length} תמונות הועלו (${uploadErrors[0]})`
     : undefined;
-  return { id: String(r.payload.id), warning };
+  return { id: String(r.payload.post_id ?? r.payload.id), warning };
 }
 
 
@@ -589,6 +589,7 @@ Deno.serve(async (req) => {
     const postIds: Array<{ platform: string; id: string }> = [];
     const failures: Array<{ platform: string; message: string }> = [];
     const warnings: string[] = [];
+    const firstCommentIds: Array<{ target: string; comment_id: string }> = [];
 
     // Never publish with a User/system token: upgrade to the Page-scoped token.
     if (page) page = await ensurePageToken(db, ownerId, page);
@@ -631,18 +632,37 @@ Deno.serve(async (req) => {
           // First auto-comment: always executed right after a successful page
           // publish. A failure is surfaced as a warning (never fails the post).
           if (firstComment) {
-            const form = new URLSearchParams({ message: firstComment, access_token: activePage.token });
-            const cRes = await graph(`/${res.id}/comments`, {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
-              body: form.toString(),
-            });
-            if (!cRes.ok || !cRes.payload?.id) {
-              const cMsg = humanize(cRes.payload, "פרסום התגובה הראשונה בעמוד נכשל");
-              console.error("[meta-publish] first comment failed", res.id, cRes.payload);
-              warnings.push(cMsg);
+            // Posted synchronously with the real post id returned by Graph.
+            // Bare object ids are qualified as {page_id}_{object_id}; both
+            // forms are attempted (with one retry) before giving up.
+            const candidates = res.id.includes("_")
+              ? [res.id]
+              : [`${activePage.pageId}_${res.id}`, res.id];
+            let commentId: string | null = null;
+            let lastPayload: unknown = null;
+
+            for (const target of candidates) {
+              for (let attempt = 0; attempt < 2 && !commentId; attempt++) {
+                if (attempt > 0) await new Promise((r) => setTimeout(r, 1200));
+                const form = new URLSearchParams({ message: firstComment, access_token: activePage.token });
+                const cRes = await graph(`/${target}/comments`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+                  body: form.toString(),
+                });
+                lastPayload = cRes.payload;
+                if (cRes.ok && cRes.payload?.id) commentId = String(cRes.payload.id);
+              }
+              if (commentId) break;
+            }
+
+            if (commentId) {
+              console.log("[meta-publish] first comment published", res.id, commentId);
+              firstCommentIds.push({ target: res.id, comment_id: commentId });
             } else {
-              console.log("[meta-publish] first comment published", res.id, cRes.payload.id);
+              const cMsg = humanize(lastPayload, "פרסום התגובה הראשונה בעמוד נכשל");
+              console.error("[meta-publish] first comment failed", res.id, lastPayload);
+              warnings.push(cMsg);
             }
           }
         }
@@ -746,6 +766,7 @@ Deno.serve(async (req) => {
           page_id: page?.pageId ?? null,
           media_urls: media,
           first_comment: firstComment || null,
+          first_comment_ids: firstCommentIds,
           postIds,
           content_hash: hashes[ch],
           error: fail?.message ?? null,
