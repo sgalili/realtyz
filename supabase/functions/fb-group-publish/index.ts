@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
       if (commentId) break;
     }
 
-    return json({ ok: true, post_id: postId, comment_id: commentId });
+    return json({ ok: true, post_id: postId, comment_id: commentId, comment_error: commentId ? null : commentError });
   } catch (e) {
     console.error("[fb-group-publish] fatal", e);
     return json({ ok: false, reason: String((e as any)?.message ?? e) }, 500);
