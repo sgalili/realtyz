@@ -255,6 +255,10 @@ export type BrokerAffiliateListing = {
   affiliate_reward_type: RewardType;
   affiliate_reward_amount: number;
   affiliate_approved_at: string | null;
+  affiliate_tier1_amount: number;
+  affiliate_tier2_amount: number;
+  affiliate_tier3_type: RewardType;
+  affiliate_tier3_amount: number;
 };
 
 /** Workspace properties with their affiliate marketing configuration. */
@@ -267,7 +271,7 @@ export function useBrokerAffiliateListings() {
       const { data, error } = await supabase
         .from('listings')
         .select(
-          'id, property_title, address, city, deal_type, asking_price, image_url, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at',
+          'id, property_title, address, city, deal_type, asking_price, image_url, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount',
         )
         .eq('user_id', ownerId!)
         .order('affiliate_enabled', { ascending: false })
@@ -278,7 +282,7 @@ export function useBrokerAffiliateListings() {
   });
 }
 
-/** Broker sets / clears the reward offered per property. */
+/** Broker sets / clears the reward + 3-tier payouts offered per property. */
 export function useSetAffiliateReward() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -287,16 +291,23 @@ export function useSetAffiliateReward() {
       enabled: boolean;
       rewardType: RewardType;
       rewardAmount: number;
+      tier1Amount?: number;
+      tier2Amount?: number;
+      tier3Type?: RewardType;
+      tier3Amount?: number;
     }) => {
-      const { error } = await supabase
-        .from('listings')
-        .update({
-          affiliate_enabled: input.enabled,
-          affiliate_reward_type: input.rewardType,
-          affiliate_reward_amount: input.rewardAmount,
-          affiliate_approved_at: input.enabled ? new Date().toISOString() : null,
-        })
-        .eq('id', input.listingId);
+      const patch: Record<string, unknown> = {
+        affiliate_enabled: input.enabled,
+        affiliate_reward_type: input.rewardType,
+        affiliate_reward_amount: input.rewardAmount,
+        affiliate_approved_at: input.enabled ? new Date().toISOString() : null,
+      };
+      if (input.tier1Amount !== undefined) patch.affiliate_tier1_amount = input.tier1Amount;
+      if (input.tier2Amount !== undefined) patch.affiliate_tier2_amount = input.tier2Amount;
+      if (input.tier3Type !== undefined) patch.affiliate_tier3_type = input.tier3Type;
+      if (input.tier3Amount !== undefined) patch.affiliate_tier3_amount = input.tier3Amount;
+
+      const { error } = await supabase.from('listings').update(patch).eq('id', input.listingId);
       if (error) throw error;
     },
     onSuccess: () => {
