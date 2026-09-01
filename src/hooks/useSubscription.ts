@@ -86,9 +86,11 @@ export function useCreditWallet() {
   return useQuery({
     queryKey: ['credit-wallet', user?.id],
     enabled: !!user?.id,
-    staleTime: 15_000,
+    staleTime: 10_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
-      const [{ data: wallet }, { data: txns }] = await Promise.all([
+      // Surface backend errors instead of silently rendering ₪0.
+      const [walletRes, txnRes] = await Promise.all([
         db.rpc('get_my_wallet'),
         db
           .from('credit_transactions')
@@ -96,10 +98,13 @@ export function useCreditWallet() {
           .order('created_at', { ascending: false })
           .limit(30),
       ]);
+      if (walletRes.error) throw walletRes.error;
+      if (txnRes.error) throw txnRes.error;
       return {
-        balance: Number(wallet?.balance_ils ?? 0),
-        transactions: (txns ?? []) as WalletTransaction[],
+        balance: Number(walletRes.data?.balance_ils ?? 0),
+        transactions: (txnRes.data ?? []) as WalletTransaction[],
       };
     },
   });
 }
+

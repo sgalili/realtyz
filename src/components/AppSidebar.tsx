@@ -9,6 +9,7 @@ import {
   ClipboardList,
   HelpCircle,
   Share2,
+  Gift,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
@@ -114,6 +115,13 @@ const NAV_ITEMS: NavItem[] = [
     icon: Share2,
     iconColor: 'text-emerald-600',
     badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  },
+  {
+    title: 'הזמן חברים',
+    url: '/referral',
+    icon: Gift,
+    iconColor: 'text-amber-600',
+    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
   },
 ];
 

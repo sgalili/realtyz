@@ -45,7 +45,6 @@ import {
   type SettlementStatus,
 } from '@/hooks/useAffiliate';
 import { fmtILS } from '@/lib/formatCurrency';
-import { AffiliateInviteCard } from '@/components/affiliate/AffiliateInviteCard';
 
 function RewardDialog({
   listing,
@@ -209,8 +208,6 @@ export default function AffiliateNetwork() {
             </Card>
           ))}
         </div>
-
-        <AffiliateInviteCard />
 
         <Tabs defaultValue="rewards">
           <TabsList>

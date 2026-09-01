@@ -48,8 +48,8 @@ export function AffiliateInviteCard() {
   const metrics = [
     { label: 'הזמנות', value: String(invites) },
     { label: 'נרשמים', value: String(signups) },
-    { label: 'מנויים פעילים', value: String(activeSubs) },
-    { label: 'הכנסות מהשותפים', value: fmtILS(earnings) },
+    { label: 'לקוחות משלמים', value: String(activeSubs) },
+    { label: 'קרדיט שנצבר', value: fmtILS(earnings) },
   ];
 
   return (
@@ -84,20 +84,28 @@ export function AffiliateInviteCard() {
           <div className="mb-2 flex items-center gap-2 text-sm font-bold text-primary">
             <Gift className="h-4 w-4" /> מה מקבלים
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl bg-card p-3 text-center shadow-sm">
-              <div className="text-lg font-extrabold tabular-nums text-foreground">₪0</div>
-              <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">הרשמה חינם</div>
+          <div className="space-y-2">
+            <div className="rounded-xl bg-card p-3 shadow-sm">
+              <div className="text-base font-extrabold text-foreground">50% הנחה לחודש הראשון</div>
+              <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
+                המתווך שמצטרף דרך הקישור שלכם מקבל חצי מחיר בחודש הראשון.
+              </div>
             </div>
-            <div className="rounded-xl bg-card p-3 text-center shadow-sm ring-1 ring-primary/30">
-              <div className="text-lg font-extrabold tabular-nums text-primary">₪50</div>
-              <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">על כל מנוי בתשלום</div>
+            <div className="rounded-xl bg-card p-3 shadow-sm ring-1 ring-primary/30">
+              <div className="text-base font-extrabold tabular-nums text-primary">₪15 קרדיט</div>
+              <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
+                נכנס לארנק הקרדיטים שלכם על כל חבר שהזמנתם והופך ללקוח משלם.
+              </div>
+            </div>
+            <div className="rounded-xl bg-card p-3 shadow-sm">
+              <div className="text-base font-extrabold text-foreground">חודש חינם בחבילת Pro</div>
+              <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
+                בונוס יעד: אחרי 3 חברים שהזמנתם שהפכו ללקוחות משלמים.
+              </div>
             </div>
           </div>
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">
-            הקרדיט נכנס אוטומטית לארנק שלכם ברגע שהמתווך משדרג לחבילה בתשלום.
-          </p>
         </div>
+
 
         {/* Metrics */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
