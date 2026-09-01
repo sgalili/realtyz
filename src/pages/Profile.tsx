@@ -631,7 +631,9 @@ export default function Profile() {
           <ConnectionsTab />
         </TabsContent>
         <TabsContent value="billing" className="mt-[20px] space-y-4" dir="rtl">
+          <LaunchPromoBanner />
           <BillingTab />
+          <ReferralProgramCard />
         </TabsContent>
 
       </Tabs>
