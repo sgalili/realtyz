@@ -1238,7 +1238,9 @@ const LeadCRM = () => {
           if (!name) { invalid++; continue; }
           const phone = normalizeIsraeliPhone(rawPhone);
           if (!phone) { invalid++; continue; }
-          if (seenPhones.has(phone) || existingPhones.has(phone)) { duplicates++; continue; }
+          // JSON imports intentionally allow existing contacts through so their
+          // phone numbers get updated (upsert) instead of being skipped.
+          if (seenPhones.has(phone) || (!isJson && existingPhones.has(phone))) { duplicates++; continue; }
           seenPhones.add(phone);
 
           // Capture EVERY original column from the source file (mapped + unmapped),
