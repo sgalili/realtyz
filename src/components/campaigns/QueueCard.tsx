@@ -81,7 +81,7 @@ export function QueueCard({
   details?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const countdown = status === 'scheduled' ? countdownLabel(countdownIso) : null;
+  const countdown = useCountdown(status === 'scheduled' ? countdownIso : null);
 
   return (
     <article className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden" dir="rtl">
