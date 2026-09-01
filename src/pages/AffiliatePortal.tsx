@@ -164,9 +164,12 @@ function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
           ) : null}
         </div>
 
-        <div className="rounded-md bg-emerald-50 px-2.5 py-2 text-[12px] font-semibold text-emerald-800 ring-1 ring-emerald-100">
-          תגמול לשותף: {formatReward(listing.reward_type, listing.reward_amount)}
+        <div className="space-y-1.5">
+          <div className="text-[11px] font-semibold text-slate-500">פירוט העמלה ב-3 שלבים</div>
+          <CommissionTierBadges tiers={listingTiers(listing)} />
         </div>
+
+        <SubmitLeadDialog listing={listing} />
 
         {link ? (
           <div className="space-y-2">
