@@ -277,6 +277,11 @@ const Dashboard = () => {
         </p>
       </div>
 
+      {/* Global search */}
+      <div className="space-y-3">
+        <GlobalSearchTrigger />
+      </div>
+
       {/* Scheduled tours (top of page) */}
       <CollapsibleSection
         id="scheduled-tours"
@@ -286,11 +291,6 @@ const Dashboard = () => {
       >
         <ScheduledToursCard />
       </CollapsibleSection>
-
-      {/* Global search */}
-      <div className="space-y-3">
-        <GlobalSearchTrigger />
-      </div>
 
       {/* 4 KPI widgets */}
       <CollapsibleSection

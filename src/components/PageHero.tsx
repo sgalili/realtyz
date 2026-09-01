@@ -317,8 +317,8 @@ export function PageHero() {
           >
             <Menu className="h-6 w-6" />
           </SidebarTrigger>
-          {/* Live Bright Data wallet balance — sits right next to the burger. */}
-          <BrightDataHeroPill />
+          {/* Live Bright Data wallet balance — owners / super admins only. */}
+          {canSeeBalance && <BrightDataHeroPill />}
         </div>
 
         {/* Absolute-centered page title — locked to screen center */}
