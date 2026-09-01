@@ -559,23 +559,8 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       </CardHeader>
       <CardContent className="space-y-4">
 
-        {isConnected ? (
-          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
-            {pagePicture ? (
-              <img src={pagePicture} alt={pageName ?? 'עמוד פייסבוק'} className="h-11 w-11 rounded-full object-cover" />
-            ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
-                <Facebook className="h-5 w-5 text-primary" />
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold">{pageName ?? 'עמוד פייסבוק'}</div>
-            </div>
-            <Badge className="gap-1 rounded-full border-0 bg-emerald-600 px-3 py-1 text-[12px] font-bold text-white hover:bg-emerald-700">
-              <CheckCircle2 className="h-4 w-4" strokeWidth={2.75} /> פעיל
-            </Badge>
-          </div>
-        ) : null}
+
+
 
         {isConnected && (
           <div className="space-y-2 rounded-xl border p-3">
