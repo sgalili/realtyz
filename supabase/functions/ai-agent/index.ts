@@ -2,6 +2,7 @@ import { safeTool, logToolFailure, GRACEFUL_TOOL_FALLBACK_HE, GRACEFUL_ACTION_FA
 import { cleanSqm } from "../_shared/measures.ts";
 import { CRM_ACTIONS_CONTRACT, executeCrmActions } from "../_shared/crmActions.ts";
 import { extractActionEnvelopes, stripRawJson, summarizeCrmResults } from "../_shared/agentOutput.ts";
+import { CRM_TOOL_DEFS, NATIVE_TOOLS_CONTRACT, toolCallsToActions } from "../_shared/crmTools.ts";
 
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -1802,8 +1803,12 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         max_tokens: attachments.length > 0 || researchBlock ? 2400 : 1200,
+        // NATIVE FUNCTION CALLING: CRM writes travel through tool_calls, never
+        // as JSON text inside the assistant message.
+        tools: CRM_TOOL_DEFS,
+        tool_choice: "auto",
         messages: [
-          { role: "system", content: systemPrompt + richResponseHint },
+          { role: "system", content: `${systemPrompt}\n\n${NATIVE_TOOLS_CONTRACT}${richResponseHint}` },
           // PII MASKING (Compliance Layer): scrub IDs / cards / IBANs /
           // emails / phones from the chat history before it leaves our
           // backend. The originals stay in Supabase for the human Agent.
@@ -1828,7 +1833,47 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     }
 
     const aiData = await aiResponse.json();
-    const rawContent = aiData.choices?.[0]?.message?.content?.trim() || "";
+    const aiMessage = aiData.choices?.[0]?.message ?? {};
+    const rawContent = String(aiMessage.content ?? "").trim();
+
+    // ─── NATIVE TOOL CALLS: execute server-side, report only real results ──
+    // The model asked for CRM writes through function calling. We run them
+    // here, swallow any DB failure (logged, never leaked), and answer with a
+    // clean Hebrew report derived from what actually succeeded.
+    const nativeActions = toolCallsToActions(aiMessage.tool_calls);
+    if (nativeActions.length > 0) {
+      let results: Awaited<ReturnType<typeof executeCrmActions>> = [];
+      try {
+        results = await executeCrmActions(supabase, currentOwnerId, nativeActions as any);
+      } catch (e) {
+        console.error("[ai-agent] native tool execution crashed", (e as Error).message);
+        results = nativeActions.map((a) => ({ kind: String(a.kind), ok: false, error: "execution_failed" }));
+      }
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length) {
+        console.error("[ai-agent] tool failures", failed.map((f) => `${f.kind}:${f.error}`).join(", "));
+      }
+      let content = stripRawJson(stripBrokerLicense(rawContent)).trim();
+      const report = summarizeCrmResults(results);
+      if (report) content = content ? `${content}\n\n${report}` : report;
+      if (failed.length) {
+        const reasons = failed.map((f) => f.error ?? "").join(", ");
+        content = (content ? content + "\n\n" : "")
+          + (reasons.includes("missing_phone")
+            ? "כדי לפתוח כרטיס לקוח חדש אני צריך מספר טלפון. שלח לי אותו ואשמור מיד."
+            : reasons.includes("contact_not_found")
+              ? "לא מצאתי את הלקוח הזה במערכת. תגיד לי שם ומספר טלפון ואפתח כרטיס."
+              : GRACEFUL_ACTION_FALLBACK_HE);
+      }
+      return new Response(JSON.stringify({
+        type: "text",
+        content: content || GRACEFUL_ACTION_FALLBACK_HE,
+        actions_executed: results,
+        sources: kbSources,
+        escalation,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
 
     // ─── Persist Market Intel findings for long-term agent memory ────────
     // Any turn that surfaced Firecrawl-backed market research is logged so
