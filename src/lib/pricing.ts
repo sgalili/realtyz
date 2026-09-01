@@ -55,7 +55,7 @@ export const PACKAGES: PricingPackage[] = [
   },
   {
     id: 'basic',
-    name: 'בסיס',
+    name: 'Agent',
     monthlyPrice: 145,
     tagline: 'למתווך שמתחיל בגדול',
     contacts: 250,
@@ -64,7 +64,7 @@ export const PACKAGES: PricingPackage[] = [
   },
   {
     id: 'pro',
-    name: 'מקצועי',
+    name: 'Pro',
     monthlyPrice: 495,
     tagline: 'המסלול הפופולרי',
     contacts: 1_000,
@@ -74,7 +74,7 @@ export const PACKAGES: PricingPackage[] = [
   },
   {
     id: 'agency',
-    name: 'סוכנות',
+    name: 'Max',
     monthlyPrice: 795,
     tagline: 'לנפח פעילות גבוה',
     contacts: 5_000,

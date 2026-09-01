@@ -84,54 +84,112 @@ const preferredOtpTemplateNames = (): string[] =>
     .map((s) => s.trim())
     .filter(Boolean);
 
+type LiveTemplate = {
+  name: string;
+  language: string;
+  category: string;
+  status: string;
+  bodyText: string;
+  parameterFormat: string;
+};
+
 /**
- * Resolves the Meta template used to deliver the login code.
- * Order: configured/approved template name -> approved AUTHENTICATION ->
- * any approved UTILITY/MARKETING template that has at least one variable
- * (the code rides in {{1}}) -> null (free-text, 24h window only).
+ * Reads the templates that ACTUALLY exist on the connected WABA.
+ *
+ * The local `wa_message_templates` cache went stale (it held templates from a
+ * previous WABA), and Meta answers a send for an unknown template/language pair
+ * with a bare `(#100) Invalid parameter`, which is exactly why every OTP silently
+ * degraded to SMS. Always trust the live list.
+ */
+const fetchLiveTemplates = async (admin: any): Promise<LiveTemplate[]> => {
+  const creds = await resolveWabaCreds(admin);
+  if (!creds) return [];
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${creds.apiVersion}/${creds.wabaId}/message_templates?limit=200&fields=name,language,status,category,parameter_format,components`,
+      { headers: { Authorization: `Bearer ${creds.token}` } },
+    );
+    const payload = await res.json().catch(() => ({} as any));
+    if (!res.ok || payload?.error) {
+      console.error("whatsapp-auth live template list failed", {
+        status: res.status,
+        message: payload?.error?.message ?? null,
+      });
+      return [];
+    }
+    return (Array.isArray(payload?.data) ? payload.data : [])
+      .filter((t: any) => t?.name && String(t?.status ?? "").toUpperCase() === "APPROVED")
+      .map((t: any) => {
+        const body = (Array.isArray(t.components) ? t.components : []).find(
+          (c: any) => String(c?.type ?? "").toUpperCase() === "BODY",
+        );
+        return {
+          name: String(t.name),
+          language: String(t.language ?? "he"),
+          category: String(t.category ?? "").toUpperCase(),
+          status: "APPROVED",
+          bodyText: String(body?.text ?? ""),
+          parameterFormat: String(t.parameter_format ?? "").toUpperCase(),
+        } as LiveTemplate;
+      });
+  } catch (error) {
+    console.error("whatsapp-auth live template list threw", safeErrorDetails(error));
+    return [];
+  }
+};
+
+/** hello_world can only be sent from Meta test numbers — never usable for OTP. */
+const isUsableForOtp = (t: LiveTemplate) =>
+  t.name.toLowerCase() !== "hello_world" && templateVariableKeys(t.bodyText).length > 0;
+
+/**
+ * Resolves the Meta template used to deliver the login code, verified against
+ * the live WABA. Order: configured names -> AUTHENTICATION (copy-code button)
+ * -> UTILITY -> MARKETING -> null (free text, 24h window only).
  */
 const resolveOtpTemplate = async (admin: any, code: string) => {
-  const { data } = await admin
-    .from("wa_message_templates")
-    .select("name, language, category, status, body_text, variable_count, synced_at")
-    .eq("status", "APPROVED")
-    .order("synced_at", { ascending: false })
-    .limit(200);
-  const rows = ((data ?? []) as any[]).filter((r) => r?.name);
+  const live = await fetchLiveTemplates(admin);
+  if (live.length === 0) return null;
 
-  const pick = (row: any) => {
-    const bodyText = String(row.body_text ?? "");
-    const varCount = Number(row.variable_count ?? 0);
-    const components = buildOtpComponents(bodyText, code, varCount);
-    if (components.length === 0) return null; // no slot for the code
+  const pick = (row: LiveTemplate) => {
+    const keys = templateVariableKeys(row.bodyText);
+    // Positional templates must NOT carry `parameter_name`; named ones must.
+    const named = row.parameterFormat === "NAMED" || keys.some((k) => !/^\d+$/.test(k));
+    const parameters = keys.map((key, i) => {
+      const text = i === 0 ? code : "Realtyz";
+      return named ? { type: "text", parameter_name: key, text } : { type: "text", text };
+    });
+    if (parameters.length === 0) return null;
     return {
-      name: String(row.name),
-      language: String(row.language ?? "he"),
-      category: String(row.category ?? "").toUpperCase(),
-      components,
+      name: row.name,
+      language: row.language,
+      category: row.category,
+      components: [{ type: "body", parameters }] as unknown[],
     };
   };
 
-  // 1. Explicitly configured template names (already approved on the WABA).
+  const candidates = live.filter(isUsableForOtp);
+
+  // 1. Explicitly configured template names.
   for (const wanted of preferredOtpTemplateNames()) {
-    const row = rows.find((r) => String(r.name).toLowerCase() === wanted.toLowerCase());
+    const row = candidates.find((r) => r.name.toLowerCase() === wanted.toLowerCase());
     const hit = row ? pick(row) : null;
     if (hit) return hit;
   }
 
   // 2. Dedicated AUTHENTICATION template (carries the copy-code button).
-  const auth = rows.find((r) => String(r.category ?? "").toUpperCase() === "AUTHENTICATION");
+  const auth = live.find((r) => r.category === "AUTHENTICATION");
   if (auth) {
-    const hit = pick(auth) ?? {
-      name: String(auth.name),
-      language: String(auth.language ?? "he"),
+    const base = pick(auth) ?? {
+      name: auth.name,
+      language: auth.language,
       category: "AUTHENTICATION",
-      components: [{ type: "body", parameters: [{ type: "text", text: code }] }],
+      components: [{ type: "body", parameters: [{ type: "text", text: code }] }] as unknown[],
     };
     return {
-      ...hit,
+      ...base,
       components: [
-        ...(hit.components as unknown[]),
+        ...base.components,
         {
           type: "button",
           sub_type: "copy_code",
@@ -144,7 +202,7 @@ const resolveOtpTemplate = async (admin: any, code: string) => {
 
   // 3. Any approved service template with a variable slot for the code.
   for (const cat of ["UTILITY", "MARKETING"]) {
-    for (const row of rows.filter((r) => String(r.category ?? "").toUpperCase() === cat)) {
+    for (const row of candidates.filter((r) => r.category === cat)) {
       const hit = pick(row);
       if (hit) return hit;
     }
@@ -152,6 +210,7 @@ const resolveOtpTemplate = async (admin: any, code: string) => {
 
   return null;
 };
+
 
 
 

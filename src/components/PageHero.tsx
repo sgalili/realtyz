@@ -13,6 +13,8 @@ import * as React from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, DownloadCloud, Loader2, Bot } from 'lucide-react';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { toast } from 'sonner';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
@@ -267,10 +269,17 @@ function resolvePageTitle(pathname: string): string {
   return ROUTE_TITLES.find((r) => r.match.test(pathname))?.title ?? '';
 }
 
+/** Only super admins and the official platform owners see the wallet balance. */
+const BALANCE_OWNER_EMAILS = ['sgalili@gmail.com', 'udi@udiman.com', 'udi.vitman@gmail.com'];
+
 export function PageHero() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const { isSuperAdmin } = useUserRole();
+  const canSeeBalance =
+    isSuperAdmin || BALANCE_OWNER_EMAILS.includes((user?.email ?? '').toLowerCase());
   const title = resolvePageTitle(location.pathname);
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
   const propertySuffix = usePropertyHeroSuffix(location.pathname);
@@ -317,8 +326,8 @@ export function PageHero() {
           >
             <Menu className="h-6 w-6" />
           </SidebarTrigger>
-          {/* Live Bright Data wallet balance — sits right next to the burger. */}
-          <BrightDataHeroPill />
+          {/* Live Bright Data wallet balance — owners / super admins only. */}
+          {canSeeBalance && <BrightDataHeroPill />}
         </div>
 
         {/* Absolute-centered page title — locked to screen center */}
