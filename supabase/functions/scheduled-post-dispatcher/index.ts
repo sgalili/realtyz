@@ -99,6 +99,7 @@ async function invokeMetaPublish(row: any, body: string): Promise<{ ok: boolean;
         target_profile_key: row.target_profile_key ?? null,
         target_account_ref: row.target_account_ref ?? null,
         first_comment: ensureMandatoryComment(row.first_comment),
+        publish_to_page: (row?.provider_response ?? {})?.publish_to_page !== false,
 
         listing_id: row.listing_id ?? null,
         series_id: row.series_id ?? null,
@@ -230,6 +231,7 @@ async function enqueueNextVersion(admin: any, row: any): Promise<void> {
       group_ids: Array.isArray(row.group_ids) ? row.group_ids : [],
       target_profile_key: row.target_profile_key ?? null,
       target_account_ref: row.target_account_ref ?? null,
+      provider_response: { publish_to_page: (row?.provider_response ?? {})?.publish_to_page !== false },
       series_id: row.series_id,
       series_index: nextIndex,
       series_total: nextIndex + 1,
@@ -259,7 +261,7 @@ Deno.serve(async (req) => {
   const { data: candidates, error: selErr } = await admin
     .from("campaign_logs")
     .select(
-      "id, user_id, workspace_owner_id, campaign_name, channel, message_body, media_urls, group_ids, target_profile_key, target_account_ref, first_comment, listing_id, series_id, series_index, series_total, regen_prompt, sent_at, recurrence_rule",
+      "id, user_id, workspace_owner_id, campaign_name, channel, message_body, media_urls, group_ids, target_profile_key, target_account_ref, first_comment, listing_id, series_id, series_index, series_total, regen_prompt, sent_at, recurrence_rule, provider_response",
     )
     .eq("status", "scheduled")
     .eq("needs_regeneration", true)

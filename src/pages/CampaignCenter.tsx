@@ -126,6 +126,8 @@ type ConfirmPayload = {
   media_urls: string[];
   scheduled_at: string | null;
   group_ids: string[];
+  /** "פרסם גם בעמוד הפייסבוק העסקי" — default true. */
+  publish_to_page?: boolean;
   selected_profile_ids: string[];
   attach_wa_link: boolean;
   first_comment: string;
@@ -856,6 +858,9 @@ const InlineComposer = ({
   // First-comment auto-post: when enabled, the branded first-comment text is
   // posted as the first comment on the published post via the Meta API.
   const [firstCommentEnabled, setFirstCommentEnabled] = useState<boolean>(initial.firstCommentEnabled ?? true);
+  // "פרסם גם בעמוד הפייסבוק העסקי" — on by default. When off, the post is
+  // published only to the selected Facebook groups.
+  const [publishToPage, setPublishToPage] = useState<boolean>(initial.publishToPage ?? true);
   const [firstComment, setFirstComment] = useState<string>(initial.firstComment || '');
   const [firstCommentGenerating, setFirstCommentGenerating] = useState<boolean>(false);
   // Preview shortlinks generated the moment the WA / Messenger link options are
@@ -1144,6 +1149,7 @@ const InlineComposer = ({
         firstCommentEnabled,
         attachWaLink,
         attachMsngrLink,
+        publishToPage,
         groupIds,
         mode,
         scheduledLocal,
@@ -1164,7 +1170,7 @@ const InlineComposer = ({
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, groupIds, mode, scheduledLocal, hydrated]);
+  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, publishToPage, groupIds, mode, scheduledLocal, hydrated]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -1983,6 +1989,11 @@ const InlineComposer = ({
     const valid = mode === 'now' || (!!sd && sd.getTime() > Date.now());
     const pagesOk = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
     if (!body.trim() || !valid || !pagesOk) return false;
+    // Never lose the picked groups: fall back to the shared per-workspace store
+    // so a scheduled/instant post can never be saved as "לא נבחרו קבוצות".
+    const effectiveGroupIds = groupIds.length > 0
+      ? groupIds
+      : loadCampaignGroups(workspaceOwnerId);
     onConfirm({
       body,
       original_ai_body: originalAiBody,
@@ -1992,7 +2003,8 @@ const InlineComposer = ({
         .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
         .map((a) => a.url as string),
       scheduled_at: mode === 'scheduled' && sd ? sd.toISOString() : null,
-      group_ids: channel.id === 'facebook' ? groupIds : [],
+      group_ids: channel.id === 'facebook' ? effectiveGroupIds : [],
+      publish_to_page: channel.id === 'facebook' ? publishToPage : true,
       selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
       attach_wa_link: attachWaLink,
       first_comment: firstCommentEnabled ? firstComment : '',
@@ -2001,7 +2013,7 @@ const InlineComposer = ({
     });
     return true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [body, originalAiBody, selectedListingId, mode, attachments, scheduledLocal, groupIds, selectedProfileIds, attachWaLink, firstComment, firstCommentEnabled, attachMsngrLink, channel.id, platformProfiles.length]);
+  }, [body, originalAiBody, selectedListingId, mode, attachments, scheduledLocal, groupIds, publishToPage, workspaceOwnerId, selectedProfileIds, attachWaLink, firstComment, firstCommentEnabled, attachMsngrLink, channel.id, platformProfiles.length]);
 
   useEffect(() => {
     onRegisterPublish?.(submitDraft);
@@ -2314,6 +2326,21 @@ const InlineComposer = ({
         </div>
 
       </div>
+
+      {/* Publish targets: the business Page is checked by default; groups are
+          picked from the group button in the bottom bar. */}
+      {channel.id === 'facebook' && (
+        <div className="rounded-xl border border-border bg-muted/20 px-3 py-2" dir="rtl">
+          <label className="flex items-center gap-2 text-sm font-semibold text-foreground select-none cursor-pointer">
+            <Checkbox
+              checked={publishToPage}
+              onCheckedChange={(v) => setPublishToPage(v === true)}
+              aria-label="פרסם גם בעמוד הפייסבוק העסקי"
+            />
+            <span>פרסם גם בעמוד הפייסבוק העסקי</span>
+          </label>
+        </div>
+      )}
 
       {/* First-comment composer — always visible below the main textarea.
           When enabled (checkbox on), the Meta API posts this text as the first
@@ -2652,6 +2679,7 @@ const InlineComposer = ({
           .map((a) => a.url as string)}
         listingId={selectedListingId || null}
         defaultGroupIds={channel.id === 'facebook' ? groupIds : []}
+        publishToPage={channel.id !== 'facebook' || publishToPage}
         targets={
           channel.id === 'facebook'
             ? platformProfiles
@@ -2668,7 +2696,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, selectedProfileIds, attachWaLink, firstComment, onConfirmed, autoConfirm = false,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, publishToPage = true, selectedProfileIds, attachWaLink, firstComment, onConfirmed, autoConfirm = false,
 
 }: {
   open: boolean;
@@ -2681,6 +2709,7 @@ const ConfirmDispatchDialog = ({
   mediaUrls: string[];
   scheduledAt: string | null;
   groupIds: string[];
+  publishToPage?: boolean;
   selectedProfileIds: string[];
   attachWaLink: boolean;
   firstComment: string;
@@ -2927,6 +2956,7 @@ const ConfirmDispatchDialog = ({
               scheduled_at: scheduledAt,
               workspace_owner_id: ownerScope,
               group_ids: apiGroupIds,
+              publish_to_page: publishToPage !== false,
               group_texts: groupTexts,
 
               target_profile_id: target?.id ?? null,
@@ -7309,6 +7339,7 @@ const CampaignCenter = () => {
         mediaUrls={confirmPayload?.media_urls ?? []}
         scheduledAt={confirmPayload?.scheduled_at ?? null}
         groupIds={confirmPayload?.group_ids ?? []}
+        publishToPage={(confirmPayload as any)?.publish_to_page !== false}
         selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
         attachWaLink={confirmPayload?.attach_wa_link ?? false}
         firstComment={confirmPayload?.first_comment ?? ''}

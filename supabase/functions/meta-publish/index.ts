@@ -456,7 +456,14 @@ Deno.serve(async (req) => {
     const scheduledIso = body?.scheduled_at ? String(body.scheduled_at) : null;
     // HARD RULE: every published post carries the mandatory contact comment.
     const firstComment = ensureMandatoryComment(body?.first_comment);
-    const requestedGroupIds: string[] = (Array.isArray(body?.group_ids) ? body.group_ids : []).map((g: unknown) => String(g));
+    // "פרסם גם בעמוד הפייסבוק העסקי" — checked by default. When the caller
+    // explicitly sends false, only the selected groups are published to.
+    const publishToPage = body?.publish_to_page === undefined || body?.publish_to_page === null
+      ? true
+      : body.publish_to_page !== false;
+    const requestedGroupIds: string[] = (Array.isArray(body?.group_ids) ? body.group_ids : [])
+      .map((g: unknown) => String(g ?? "").replace(/^(ext:|manual:)/, "").trim())
+      .filter((g: string) => g.length > 0);
     // Targeted publishing: imported groups the broker de-selected are dropped.
     const groupIds: string[] = await (async () => {
       if (requestedGroupIds.length === 0 || !ownerId) return requestedGroupIds;
@@ -516,6 +523,7 @@ Deno.serve(async (req) => {
             scheduled_at: scheduledIso,
             content_hash: hashes[ch],
             group_ids: groupIds,
+            publish_to_page: publishToPage,
           },
         });
         if (queueError) {
@@ -566,6 +574,17 @@ Deno.serve(async (req) => {
         200,
       );
     }
+    // Page publishing was turned off and no group was picked → nothing to do.
+    if (!publishToPage && groupIds.length === 0) {
+      return json(
+        {
+          success: false,
+          error: "no_targets",
+          message: "לא נבחרו קבוצות ופרסום בעמוד העסקי כבוי — בחר יעד אחד לפחות.",
+        },
+        200,
+      );
+    }
 
     const postIds: Array<{ platform: string; id: string }> = [];
     const failures: Array<{ platform: string; message: string }> = [];
@@ -575,10 +594,11 @@ Deno.serve(async (req) => {
     if (page) page = await ensurePageToken(db, ownerId, page);
 
     for (const ch of pendingChannels) {
-      if (!page) {
+      if (!page || !publishToPage) {
         // Group-only publish: skip the Page/IG leg entirely instead of failing.
         continue;
       }
+
 
       if (ch === "facebook") {
         let activePage = page;
@@ -608,13 +628,22 @@ Deno.serve(async (req) => {
           postIds.push({ platform: ch, id: res.id });
           if (res.warning) warnings.push(res.warning);
 
+          // First auto-comment: always executed right after a successful page
+          // publish. A failure is surfaced as a warning (never fails the post).
           if (firstComment) {
             const form = new URLSearchParams({ message: firstComment, access_token: activePage.token });
-            await graph(`/${res.id}/comments`, {
+            const cRes = await graph(`/${res.id}/comments`, {
               method: "POST",
               headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
               body: form.toString(),
             });
+            if (!cRes.ok || !cRes.payload?.id) {
+              const cMsg = humanize(cRes.payload, "פרסום התגובה הראשונה בעמוד נכשל");
+              console.error("[meta-publish] first comment failed", res.id, cRes.payload);
+              warnings.push(cMsg);
+            } else {
+              console.log("[meta-publish] first comment published", res.id, cRes.payload.id);
+            }
           }
         }
 
@@ -680,6 +709,8 @@ Deno.serve(async (req) => {
           image_url: groupImage,
           media_urls: groupMedia,
           workspace_owner_id: ownerId,
+          // First auto-comment must land on every group post as well.
+          first_comment: firstComment || null,
         }),
       })
         .then((r) => r.json())
