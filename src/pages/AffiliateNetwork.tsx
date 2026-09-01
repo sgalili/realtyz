@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, Building2, Handshake, MapPin, Percent, Search, Users } from 'lucide-react';
+import { Banknote, Building2, Handshake, MapPin, Search, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import {
@@ -91,7 +91,7 @@ function RewardDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="sm:max-w-md">
+      <DialogContent dir="rtl" className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-right">
             תגמול שותפים · {listing.property_title || 'נכס'}
