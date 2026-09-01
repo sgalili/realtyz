@@ -223,6 +223,8 @@ function RewardDialog({
 export default function AffiliateNetwork() {
   const { data: listings = [], isLoading: listingsLoading } = useBrokerAffiliateListings();
   const { data: referrals = [], isLoading: refsLoading } = useBrokerReferrals();
+  const { data: submissions = [], isLoading: subsLoading } = useBrokerSubmissions();
+  const updateSubmission = useUpdateSubmission();
   const updateReferral = useUpdateReferral();
 
   const [search, setSearch] = useState('');
@@ -284,6 +286,7 @@ export default function AffiliateNetwork() {
           <TabsList>
             <TabsTrigger value="rewards">נכסים ותגמולים</TabsTrigger>
             <TabsTrigger value="tracking">מתעניינים משותפים</TabsTrigger>
+            <TabsTrigger value="submissions">הגשות שותפים</TabsTrigger>
           </TabsList>
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
@@ -351,6 +354,99 @@ export default function AffiliateNetwork() {
                   </Card>
                 ))}
               </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="submissions" className="space-y-2.5 pt-4">
+            {subsLoading ? (
+              <Skeleton className="h-48 w-full" />
+            ) : submissions.length === 0 ? (
+              <Card className="border-dashed border-slate-200">
+                <CardContent className="p-10 text-center text-sm text-slate-500">
+                  שותפים עוד לא הגישו מתעניינים לנכסים שלכם.
+                </CardContent>
+              </Card>
+            ) : (
+              submissions.map((s) => (
+                <Card key={s.id} className="border-slate-200">
+                  <CardContent className="space-y-3 p-3.5">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-bold text-slate-900">
+                          {s.lead_name}
+                          {s.lead_phone ? <> · <bdi dir="ltr" className="font-normal text-slate-500">{s.lead_phone}</bdi></> : null}
+                        </div>
+                        <div className="truncate text-[11px] text-slate-500">
+                          {s.listing?.property_title || 'נכס'} · שותף: {s.affiliate?.display_name || 'שותף ללא שם'}
+                          {' · '}
+                          {new Date(s.created_at).toLocaleDateString('he-IL')}
+                        </div>
+                      </div>
+                      <div className="text-sm font-bold text-emerald-700">
+                        <bdi dir="ltr">{fmtILS(accruedEarnings(s))}</bdi>
+                      </div>
+                    </div>
+
+                    {s.notes ? (
+                      <div className="rounded-md bg-slate-50 px-2.5 py-2 text-[12px] text-slate-600 ring-1 ring-slate-200">
+                        {s.notes}
+                      </div>
+                    ) : null}
+
+                    <CommissionTierBadges
+                      tiers={{
+                        tier1: Number(s.tier1_amount),
+                        tier2: Number(s.tier2_amount),
+                        tier3Type: s.tier3_type,
+                        tier3: Number(s.tier3_amount),
+                      }}
+                      compact
+                    />
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Select
+                        value={s.status}
+                        onValueChange={(v) =>
+                          updateSubmission.mutate(
+                            { row: s, status: v as SubmissionStatus },
+                            {
+                              onSuccess: () => toast.success('הסטטוס עודכן'),
+                              onError: () => toast.error('העדכון נכשל'),
+                            },
+                          )
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-[160px] text-[12px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {SUBMISSION_STATUS_ORDER.map((st) => (
+                            <SelectItem key={st} value={st}>{SUBMISSION_STATUS_LABELS[st]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select
+                        value={s.settlement_status}
+                        onValueChange={(v) =>
+                          updateSubmission.mutate(
+                            { row: s, settlementStatus: v as SettlementStatus },
+                            {
+                              onSuccess: () => toast.success('ההסדרה עודכנה'),
+                              onError: () => toast.error('העדכון נכשל'),
+                            },
+                          )
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-[150px] text-[12px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(SETTLEMENT_LABELS) as SettlementStatus[]).map((st) => (
+                            <SelectItem key={st} value={st}>{SETTLEMENT_LABELS[st]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </TabsContent>
 
