@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Wallet, Plus, Minus } from 'lucide-react';
 import { toast } from 'sonner';
+import { GrowthPromoCard } from '@/components/admin/GrowthPromoCard';
 
 export function FinanceTab() {
   const qc = useQueryClient();
