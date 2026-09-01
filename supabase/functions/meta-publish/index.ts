@@ -628,13 +628,22 @@ Deno.serve(async (req) => {
           postIds.push({ platform: ch, id: res.id });
           if (res.warning) warnings.push(res.warning);
 
+          // First auto-comment: always executed right after a successful page
+          // publish. A failure is surfaced as a warning (never fails the post).
           if (firstComment) {
             const form = new URLSearchParams({ message: firstComment, access_token: activePage.token });
-            await graph(`/${res.id}/comments`, {
+            const cRes = await graph(`/${res.id}/comments`, {
               method: "POST",
               headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
               body: form.toString(),
             });
+            if (!cRes.ok || !cRes.payload?.id) {
+              const cMsg = humanize(cRes.payload, "פרסום התגובה הראשונה בעמוד נכשל");
+              console.error("[meta-publish] first comment failed", res.id, cRes.payload);
+              warnings.push(cMsg);
+            } else {
+              console.log("[meta-publish] first comment published", res.id, cRes.payload.id);
+            }
           }
         }
 
