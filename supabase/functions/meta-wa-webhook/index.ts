@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
               const profileName = contact?.profile?.name ?? null;
 
               const type = String(m?.type ?? "text");
-              const content =
+              const baseContent =
                 m?.text?.body ??
                 m?.button?.text ??
                 m?.interactive?.button_reply?.title ??
@@ -196,6 +196,23 @@ Deno.serve(async (req) => {
                   : type === "location"
                   ? "[מיקום]"
                   : "[הודעת WhatsApp]");
+
+              // ── Inbound voice note → Hebrew text ────────────────────────
+              // Audio/voice messages carry no text, so the AI leg would skip
+              // them. Transcribe them first (Lovable AI STT) and treat the
+              // transcript as a normal inbound text message.
+              let transcript: string | null = null;
+              if (type === "audio" || type === "voice") {
+                const mediaId = String(m?.audio?.id ?? m?.voice?.id ?? "");
+                transcript = await transcribeWaVoiceNote(admin, {
+                  mediaId,
+                  phoneNumberId,
+                  ownerId,
+                  language: "he",
+                });
+              }
+              const content = transcript ?? baseContent;
+
 
               // 1. Ensure a CRM lead exists for this sender.
               const { data: leadId, error: leadErr } = await admin.rpc(
