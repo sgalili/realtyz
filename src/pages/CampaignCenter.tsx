@@ -6680,7 +6680,42 @@ const CampaignCenter = () => {
     <div className="flex h-52 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
   ) : historyTab === 'drafts' ? (
     <div className="space-y-2" dir="rtl">
+      {campaignDraftRows.length > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
+          <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-semibold text-foreground">
+            <Checkbox
+              checked={selectedDraftIds.length === campaignDraftRows.length && campaignDraftRows.length > 0}
+              onCheckedChange={(v) => setSelectedDraftIds(v === true ? campaignDraftRows.map((x) => x.id) : [])}
+              aria-label="בחר את כל הטיוטות"
+            />
+            בחר הכל ({selectedDraftIds.length}/{campaignDraftRows.length})
+          </label>
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={selectedDraftIds.length === 0}
+            onClick={() => setBulkDeleteDraftsOpen(true)}
+          >
+            <Trash2 className="me-1 h-4 w-4" /> מחיקת הנבחרות
+          </Button>
+        </div>
+      )}
+      <Dialog open={bulkDeleteDraftsOpen} onOpenChange={(v) => { if (!bulkDeletingDrafts) setBulkDeleteDraftsOpen(v); }}>
+        <DialogContent dir="rtl" className="max-w-sm text-right">
+          <DialogHeader>
+            <DialogTitle className="text-right">מחיקת {selectedDraftIds.length} טיוטות</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">הפעולה סופית ולא ניתן לשחזר את הטיוטות. להמשיך?</p>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button variant="destructive" disabled={bulkDeletingDrafts} onClick={() => { void bulkDeleteSelectedDrafts(); }}>
+              {bulkDeletingDrafts ? <Loader2 className="h-4 w-4 animate-spin" /> : 'מחק לצמיתות'}
+            </Button>
+            <Button variant="outline" disabled={bulkDeletingDrafts} onClick={() => setBulkDeleteDraftsOpen(false)}>ביטול</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {campaignDraftRows.map((r) => {
+
         const media = Array.isArray(r.media_urls) ? r.media_urls : [];
         const first = media[0];
         const firstUrl = typeof first === 'string' ? first : (first as any)?.url ?? null;
