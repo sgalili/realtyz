@@ -1524,7 +1524,7 @@ const LeadCRM = () => {
       {/* Header + add menu live in the global PageHero (top bar) */}
 
 
-      <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
+      <input type="file" ref={fileInputRef} accept=".csv,.xlsx,.xls,.json,.pdf,application/json,text/csv" className="hidden" onChange={handleFileSelect} />
       {freemium.isTrial && (
         <div className="hidden sm:flex items-center gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground w-fit ms-auto">
           <span>נותרו <span className="font-semibold text-foreground tabular-nums">{freemium.daysLeft}</span> ימי התנסות</span>
