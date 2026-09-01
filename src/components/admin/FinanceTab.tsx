@@ -59,6 +59,7 @@ export function FinanceTab() {
 
   return (
     <div className="space-y-4">
+      <GrowthPromoCard />
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
