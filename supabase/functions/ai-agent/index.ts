@@ -107,12 +107,12 @@ TABLE campaigns (Listing Outreach): id (uuid PK), name (text), description (text
 TABLE contact_submissions: id (uuid PK), full_name (text), phone_number (text), email (text), message (text), tag (text), status (text), wa_sent (bool), created_at (timestamptz)
 
 EXACT COLUMN / TABLE NAME MAP (authoritative — using anything else raises "column does not exist"):
-- There is NO "contacts" table. Contacts / leads / מתעניינים all live in the table `leads`.
-- The phone column is `phone_number` (NEVER `phone`, `phone_no`, `mobile`, `tel`).
-- The name column is `full_name` (NEVER `name`, `first_name`, `last_name`).
-- The email column is `email`; the city column is `city`; the owner column is `assigned_to` (uuid).
-- Missing-phone checks: `WHERE phone_number IS NULL OR phone_number = ''`.
-- `contact_submissions` (web form leads) also uses `full_name`, `phone_number`, `email`.
+- There is NO "contacts" table. Contacts / leads / מתעניינים all live in the table "leads".
+- The phone column is "phone_number" (NEVER "phone", "phone_no", "mobile", "tel").
+- The name column is "full_name" (NEVER "name", "first_name", "last_name").
+- The email column is "email"; the city column is "city"; the owner column is "assigned_to" (uuid).
+- Missing-phone checks: "WHERE phone_number IS NULL OR phone_number = ''".
+- "contact_submissions" (web form leads) also uses "full_name", "phone_number", "email".
 - Never reference a column that is not listed in the table definitions above.
 
 CRITICAL QUERY RULES:
