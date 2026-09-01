@@ -1291,6 +1291,48 @@ const LeadCRM = () => {
       return;
     }
 
+    if (isJson) {
+      const jsonReader = new FileReader();
+      jsonReader.onload = (evt) => {
+        try {
+          const parsed = JSON.parse(String(evt.target?.result ?? ''));
+          const pickArray = (val: any): any[] => {
+            if (Array.isArray(val)) return val;
+            if (val && typeof val === 'object') {
+              const preferredKeys = ['contacts', 'leads', 'records', 'data', 'rows', 'items', 'results'];
+              for (const k of preferredKeys) if (Array.isArray(val[k])) return val[k];
+              for (const v of Object.values(val)) if (Array.isArray(v) && v.some((x) => x && typeof x === 'object')) return v as any[];
+              return [val];
+            }
+            return [];
+          };
+          // Flatten one level of nested objects so keys like contact.phone are mappable
+          const flatten = (obj: any, prefix = ''): Record<string, any> => {
+            const out: Record<string, any> = {};
+            for (const [k, v] of Object.entries(obj ?? {})) {
+              const key = prefix ? `${prefix}.${k}` : k;
+              if (v && typeof v === 'object' && !Array.isArray(v)) Object.assign(out, flatten(v, key));
+              else if (Array.isArray(v)) out[key] = v.filter((x) => typeof x !== 'object').join(', ');
+              else out[key] = v;
+            }
+            return out;
+          };
+          const rows = pickArray(parsed)
+            .filter((r) => r && typeof r === 'object')
+            .map((r) => flatten(r));
+          if (!rows.length) { toast.error('לא נמצאו רשומות בקובץ ה-JSON'); return; }
+          processRows(rows);
+        } catch (err: any) {
+          console.error('JSON parse error:', err);
+          toast.error('שגיאה בקריאת JSON: ' + (err?.message || 'מבנה לא תקין'));
+        }
+      };
+      jsonReader.readAsText(file, 'UTF-8');
+      e.target.value = '';
+      return;
+    }
+
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
