@@ -1948,19 +1948,28 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
         query = query.replace(/\bLIMIT\s+(\d+)/i, (_match: string, n: string) => `LIMIT ${Math.min(parseInt(n), 50)}`);
       }
 
-      const { data, error } = await supabase.rpc("execute_readonly_query", {
-        query_text: query,
-      });
+      const exec = await safeTool(
+        { functionName: "ai-agent", tool: "execute_readonly_query", context: { query } },
+        async () => {
+          const { data, error } = await supabase.rpc("execute_readonly_query", { query_text: query });
+          if (error) throw new Error(error.message);
+          return data;
+        },
+      );
 
-      if (error) {
+      if (!exec.ok) {
+        // Raw SQL/schema errors stay in the logs, the user gets a clean reply.
         return new Response(JSON.stringify({
-          type: "error",
-          content: `שגיאה בביצוע השאילתה: ${error.message}`,
-          query,
+          type: "text",
+          content: exec.fallback,
+          sources: kbSources,
+          escalation,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const data = exec.data;
+
 
       return new Response(JSON.stringify({
         type: "data",
