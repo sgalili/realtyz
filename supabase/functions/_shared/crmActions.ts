@@ -495,18 +495,46 @@ export async function executeCrmActions(
           out.push({ kind, ok: true, id: primaryId });
           break;
         }
-        case "create_property": {
+        case "create_property":
+        case "update_property": {
           const existing = await findListing(a);
+          if (kind === "update_property" && !existing) throw new Error("property_not_found");
           const fields = listingFields(a);
+
+          // Every detail without a column overflows into the Hebrew notes block.
+          const overflow = collectOverflowNotes(a);
+          const owner = await resolveOwner(a);
+          if (owner.name || owner.phone) {
+            overflow.push(noteLine("בעל הנכס", [owner.name, owner.phone].filter(Boolean).join(" · ")));
+          }
+          if (owner.owner_id) fields.owner_id = owner.owner_id;
+
           if (existing) {
+            if (overflow.length) {
+              const { data: cur } = await supabase
+                .from("listings").select("office_notes, source_metadata").eq("id", existing.id).maybeSingle();
+              const merged = mergeNotes(
+                fields.office_notes ?? cur?.office_notes,
+                overflow,
+              );
+              if (merged) fields.office_notes = merged;
+              fields.source_metadata = {
+                ...((cur?.source_metadata ?? {}) as Record<string, unknown>),
+                ...(owner.name ? { owner_name: owner.name } : {}),
+                ...(owner.phone ? { owner_phone: owner.phone } : {}),
+              };
+            }
+            if (Object.keys(fields).length === 0) throw new Error("nothing_to_update");
             const { error } = await supabase.from("listings").update(fields).eq("id", existing.id);
             if (error) throw error;
             out.push({ kind, ok: true, id: existing.id });
             break;
           }
+
           const title = String(fields.property_title ?? fields.address ?? "").trim();
           if (!title) throw new Error("missing_property_title");
           const slug = `${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60).toLowerCase() || "listing"}-${Math.random().toString(36).slice(2, 7)}`;
+          const notes = mergeNotes(fields.office_notes, overflow);
           const { data, error } = await supabase
             .from("listings")
             .insert({
@@ -518,21 +546,18 @@ export async function executeCrmActions(
               source: "manual",
               slug,
               ...fields,
+              office_notes: notes || null,
+              source_metadata: {
+                created_by: "ai_agent",
+                ...(owner.name ? { owner_name: owner.name } : {}),
+                ...(owner.phone ? { owner_phone: owner.phone } : {}),
+              },
             })
             .select("id")
             .maybeSingle();
           if (error) throw error;
           out.push({ kind, ok: true, id: data?.id });
-          break;
-        }
-        case "update_property": {
-          const existing = await findListing(a);
-          if (!existing) throw new Error("property_not_found");
-          const fields = listingFields(a);
-          if (Object.keys(fields).length === 0) throw new Error("nothing_to_update");
-          const { error } = await supabase.from("listings").update(fields).eq("id", existing.id);
-          if (error) throw error;
-          out.push({ kind, ok: true, id: existing.id });
+
           break;
         }
         case "delete_property": {
