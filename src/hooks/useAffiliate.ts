@@ -296,16 +296,16 @@ export function useSetAffiliateReward() {
       tier3Type?: RewardType;
       tier3Amount?: number;
     }) => {
-      const patch: Record<string, unknown> = {
+      const patch = {
         affiliate_enabled: input.enabled,
         affiliate_reward_type: input.rewardType,
         affiliate_reward_amount: input.rewardAmount,
         affiliate_approved_at: input.enabled ? new Date().toISOString() : null,
+        affiliate_tier1_amount: input.tier1Amount ?? 0,
+        affiliate_tier2_amount: input.tier2Amount ?? 0,
+        affiliate_tier3_type: input.tier3Type ?? 'fixed',
+        affiliate_tier3_amount: input.tier3Amount ?? 0,
       };
-      if (input.tier1Amount !== undefined) patch.affiliate_tier1_amount = input.tier1Amount;
-      if (input.tier2Amount !== undefined) patch.affiliate_tier2_amount = input.tier2Amount;
-      if (input.tier3Type !== undefined) patch.affiliate_tier3_type = input.tier3Type;
-      if (input.tier3Amount !== undefined) patch.affiliate_tier3_amount = input.tier3Amount;
 
       const { error } = await supabase.from('listings').update(patch).eq('id', input.listingId);
       if (error) throw error;
