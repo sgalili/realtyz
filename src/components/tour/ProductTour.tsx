@@ -35,7 +35,7 @@ const STEPS: TourStep[] = [
     bullets: [
       'כל פנייה נכנסת מקבלת מענה תוך שניות.',
       'הכל במקום אחד: שיחות, נכסים, משימות ופרסום.',
-      'הסיור לוקח דקה. אפשר לצאת בכל רגע.',
+      'ההדרכה לוקחת דקה. אפשר לצאת בכל רגע.',
     ],
   },
   {
@@ -73,22 +73,8 @@ const STEPS: TourStep[] = [
     bullets: [
       'הנכסים נטענים ונשמרים אצלך עם כל הפרטים והתמונות.',
       'ה-AI כותב את הפוסט ומפרסם לקבוצות פייסבוק ולאינסטגרם.',
-      'תזמון מראש, וריאציות טקסט ותמונות כדי להישאר בטוח.',
     ],
     cta: { label: 'פתח נכסים', to: '/properties' },
-  },
-  {
-    eyebrow: 'תמחור',
-    title: 'חבילות במחיר חודשי קבוע',
-    bullets: [
-      `חינם: עד ${FREE_CONTACTS} אנשי קשר ו-${FREE_PROPERTIES} נכסים, בלי כרטיס אשראי.`,
-      ...PACKAGES.filter((p) => p.monthlyPrice > 0).map(
-        (p) => `${p.name}: ₪${p.monthlyPrice} לחודש · ${limitLabel(p.contacts)} אנשי קשר · ${limitLabel(p.properties)} נכסים.`,
-      ),
-      'שיטת החישוב: מחיר החבילה החודשי + ארנק קרדיטים לשירותים בצריכה בפועל (SMS, הודעות WhatsApp בתשלום, IVR ושיחות AI קוליות).',
-      'מעבר בין חבילות בכל רגע, בלי התחייבות ובלי עלויות נסתרות.',
-    ],
-    cta: { label: 'צפה בתמחור ובחשבון', to: '/billing' },
   },
   {
     eyebrow: 'חיבורים',
@@ -323,7 +309,7 @@ export function ProductTour() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 px-8 py-5">
           <Button variant="ghost" className="text-base" onClick={() => void finish()}>
-            דלג על הסיור
+            דלג על ההדרכה
           </Button>
           <div className="flex items-center gap-2">
             {index > 0 && (
