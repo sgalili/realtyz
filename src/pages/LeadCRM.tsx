@@ -1176,12 +1176,14 @@ const LeadCRM = () => {
     }));
   };
 
-  // Import logic - bilingual header mapping (Hebrew + English), CSV + XLSX support
+  // Import logic - bilingual header mapping (Hebrew + English), CSV + XLSX + JSON support
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const isCsv = /\.csv$/i.test(file.name);
     const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+    const isJson = /\.json$/i.test(file.name) || file.type === 'application/json';
+    setImportIsJson(isJson);
 
     const processRows = (rows: Record<string, any>[]) => {
       try {
