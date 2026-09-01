@@ -16,12 +16,13 @@ import { toast } from 'sonner';
 import { openOfficialWhatsApp, sendViaOfficialWaba } from '@/lib/officialWa';
 import { publicUrl } from '@/lib/publicUrl';
 import {
-
-/** Professional Hebrew fallback shown instead of any raw internal error. */
-const GRACEFUL_FALLBACK_HE = 'אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודק את זה ומעדכן אותך.';
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip,
   PieChart, Pie, Cell, CartesianGrid,
 } from 'recharts';
+
+/** Professional Hebrew fallback shown instead of any raw internal error. */
+const GRACEFUL_FALLBACK_HE = 'אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודק את זה ומעדכן אותך.';
+
 
 const CHART_COLORS = [
   'hsl(var(--primary))',
