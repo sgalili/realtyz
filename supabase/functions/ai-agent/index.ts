@@ -1,3 +1,4 @@
+import { safeTool, logToolFailure, GRACEFUL_TOOL_FALLBACK_HE, GRACEFUL_ACTION_FALLBACK_HE } from "../_shared/safeToolError.ts";
 import { cleanSqm } from "../_shared/measures.ts";
 import { CRM_ACTIONS_CONTRACT, executeCrmActions } from "../_shared/crmActions.ts";
 
@@ -1064,17 +1065,27 @@ serve(async (req) => {
       liveDataBlock = (liveDataBlock ? liveDataBlock + "\n\n" : "") + researchBlock;
     }
 
-    const MASTER_AGENT_PROMPT = `אתה "קצין המודיעין" של Realtyz AI, סייען נדל"ן עילית עבור בעל סביבת העבודה.
+    const MASTER_AGENT_PROMPT = `אתה הסייען המקצועי לנדל"ן של Realtyz AI, עובד עבור בעל סביבת העבודה.
 אתה מדבר עם המנהל/בעלים עצמו (לא עם לקוח קצה). פנה אליו בכבוד, חד וברור.
 אסור לך בשום אופן להציג את עצמך בשמו של בעל סביבת העבודה (למשל "היי, אני אודי ויטמן"). אינך מתחזה אליו, אתה הנכס התפעולי שלו.
 
 עקרונות ביצוע:
-1. הבן כל ניסוח טבעי כפקודה או בקשת מודיעין. אין לענות בתבנית "לא הבנתי" ואין להחזיר תפריט יכולות קשיח.
+1. הבן כל ניסוח טבעי כפקודה או בקשת מידע. אין לענות בתבנית "לא הבנתי" ואין להחזיר תפריט יכולות קשיח.
 2. עיגון בנתונים חיים: קרא קודם את ה-LIVE WORKSPACE SNAPSHOT, היסטוריית השיחה הרב-ערוצית ובלוקי המחקר המצורפים. אם חסר עומק, החזר שאילתת SELECT עם LIMIT 50.
 3. CRUD בטוח: יצירה ועדכון של מתעניינים מתבצעים דרך הלוגיקה הדטרמיניסטית של הפונקציה, לא דרך SQL חופשי. אחרי פעולה שבוצעה, אשר בסוף בדיוק מה השתנה ובאילו פרמטרים.
 4. אם חסר נתון חיצוני, סנתז תשובה מקצועית מתוך הנתונים הזמינים והפעל מחקר כאשר יש טריגר מתאים. אל תכתוב "אני לא יודע".
 5. סגנון: תכליתי, ישיר, עברית עסקית. ללא פתיחות AI גנריות, ללא התנצלויות, ללא בולטים מיותרים, ללא מקפים ארוכים.
 6. אסור להמציא נכסים, מתעניינים, מחירים או עסקאות שלא מופיעים ב-snapshot, בתוצאות ה-SQL או במקורות מחקר חיים. מותר להסיק המלצות מקצועיות ולסמן אותן כהמלצה.
+
+שפה אסורה (איסור מוחלט):
+- אסור להזכיר שמות מערכת פנימיים, כלים, טבלאות, שאילתות, קודי שגיאה או מונחים כמו "קצין המודיעין", "המערכת קלטה את הבקשה", "מבצע כלי", "SQL", "snapshot".
+- אסור מטא-פרשנות על מה שאתה עושה או עומד לעשות ("אני מריץ שאילתה", "התהליך הושלם בהצלחה"), ואסור עדכוני סטטוס טכניים.
+- אסור אישורים רובוטיים. אתה מדבר כמו איש מקצוע בנדל"ן, לא כמו מערכת.
+
+ביצוע שקט של פעולות:
+- הרץ כלים ושליפות נתונים בשקט ברקע והצג רק את התוצאה הסופית, מסודרת ונקייה.
+- פתח בניסוח אנושי טבעי, לדוגמה: "בשמחה, הנה רשימת אנשי הקשר שחסרים להם מספרי טלפון במערכת:" ואחריו הרשימה.
+- אם כלי או שליפה נכשלו, אל תחשוף שגיאה גולמית. השב בנימה מקצועית: "אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודק את זה ומעדכן אותך."
 
 RESPONSE FORMAT (JSON בלבד, ללא markdown):
 - אם נדרשת שאילתת קריאה: {"type":"sql","query":"SELECT ... LIMIT 50","explanation":"הסבר קצר למנהל"}
@@ -1895,7 +1906,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
             ? "כדי לפתוח כרטיס לקוח חדש אני צריך מספר טלפון. שלח לי אותו ואשמור מיד."
             : reasons.includes("contact_not_found")
               ? "לא מצאתי את הלקוח הזה במערכת. תגיד לי שם ומספר טלפון ואפתח כרטיס."
-              : "חלק מהפעולות לא בוצעו. תבדוק ותנסה שוב.");
+              : GRACEFUL_ACTION_FALLBACK_HE);
       }
       return new Response(JSON.stringify({
         type: "text",
@@ -1948,19 +1959,28 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
         query = query.replace(/\bLIMIT\s+(\d+)/i, (_match: string, n: string) => `LIMIT ${Math.min(parseInt(n), 50)}`);
       }
 
-      const { data, error } = await supabase.rpc("execute_readonly_query", {
-        query_text: query,
-      });
+      const exec = await safeTool(
+        { functionName: "ai-agent", tool: "execute_readonly_query", context: { query } },
+        async () => {
+          const { data, error } = await supabase.rpc("execute_readonly_query", { query_text: query });
+          if (error) throw new Error(error.message);
+          return data;
+        },
+      );
 
-      if (error) {
+      if (!exec.ok) {
+        // Raw SQL/schema errors stay in the logs, the user gets a clean reply.
         return new Response(JSON.stringify({
-          type: "error",
-          content: `שגיאה בביצוע השאילתה: ${error.message}`,
-          query,
+          type: "text",
+          content: exec.fallback,
+          sources: kbSources,
+          escalation,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const data = exec.data;
+
 
       return new Response(JSON.stringify({
         type: "data",
@@ -1984,11 +2004,13 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("ai-agent error:", e);
+    // Internal detail goes to the logs only. The user gets a professional reply.
+    logToolFailure({ functionName: "ai-agent", tool: "request", error: e });
     return new Response(JSON.stringify({
-      error: e instanceof Error ? e.message : "Unknown error",
+      type: "text",
+      content: GRACEFUL_TOOL_FALLBACK_HE,
     }), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

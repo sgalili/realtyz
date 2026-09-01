@@ -20,6 +20,10 @@ import {
   PieChart, Pie, Cell, CartesianGrid,
 } from 'recharts';
 
+/** Professional Hebrew fallback shown instead of any raw internal error. */
+const GRACEFUL_FALLBACK_HE = 'אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודק את זה ומעדכן אותך.';
+
+
 const CHART_COLORS = [
   'hsl(var(--primary))',
   'hsl(var(--chart-2, 160 60% 45%))',
@@ -530,8 +534,9 @@ ${shareUrl}
 
       let assistantMsg: Message;
       if (data?.error) {
-        toast.error(data.error);
-        assistantMsg = { role: 'assistant', content: data.error, type: 'error' };
+        // Raw backend errors stay in the console for debugging only.
+        console.error('[ai-agent] tool failure:', data.error);
+        assistantMsg = { role: 'assistant', content: GRACEFUL_FALLBACK_HE, type: 'text' };
       } else if (data?.type === 'data') {
         assistantMsg = {
           role: 'assistant',
@@ -561,8 +566,8 @@ ${shareUrl}
       console.error('AI Agent error:', e);
       const errMsg: Message = {
         role: 'assistant',
-        content: `שגיאה: ${e instanceof Error ? e.message : 'Unknown error'}`,
-        type: 'error',
+        content: GRACEFUL_FALLBACK_HE,
+        type: 'text',
       };
       setMessages(prev => [...prev, errMsg]);
       persistMessage(errMsg);

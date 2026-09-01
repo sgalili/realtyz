@@ -223,7 +223,8 @@ export function SidebarIntelInput() {
       });
       if (error) throw new Error(error.message);
       if (data?.error) {
-        setReply({ role: 'assistant', content: data.error, isError: true });
+        console.error('[ai-agent] tool failure:', data.error);
+        setReply({ role: 'assistant', content: 'אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודק את זה ומעדכן אותך.', isError: false });
       } else {
         const content = data?.content || data?.explanation || 'בוצע.';
         setReply({ role: 'assistant', content });
