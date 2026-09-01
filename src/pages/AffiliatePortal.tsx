@@ -322,6 +322,63 @@ export default function AffiliatePortal() {
             )}
           </TabsContent>
 
+          <TabsContent value="leads" className="space-y-3 pt-4">
+            {subsLoading ? (
+              <Skeleton className="h-48 w-full" />
+            ) : submissions.length === 0 ? (
+              <Card className="border-dashed border-slate-200">
+                <CardContent className="p-10 text-center text-sm text-slate-500">
+                  עוד לא הגשתם מתעניינים. בחרו נכס ולחצו "הגשת מתעניין לנכס".
+                </CardContent>
+              </Card>
+            ) : (
+              submissions.map((s) => {
+                const stage = s.status === 'closed' ? 3 : s.status === 'verified' ? 2 : s.status === 'rejected' ? 0 : 1;
+                return (
+                  <Card key={s.id} className="border-slate-200">
+                    <CardContent className="space-y-2.5 p-3.5">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-bold text-slate-900">{s.lead_name}</div>
+                          <div className="truncate text-[11px] text-slate-500">
+                            {s.listing?.property_title || 'נכס'}
+                            {s.lead_phone ? <> · <bdi dir="ltr">{s.lead_phone}</bdi></> : null}
+                            {' · '}
+                            {new Date(s.created_at).toLocaleDateString('he-IL')}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-[11px]">
+                          {SUBMISSION_STATUS_LABELS[s.status] ?? s.status}
+                        </Badge>
+                        <Badge variant="outline" className="text-[11px]">
+                          {SETTLEMENT_LABELS[s.settlement_status] ?? s.settlement_status}
+                        </Badge>
+                        <div className="text-sm font-bold text-emerald-700">
+                          <bdi dir="ltr">{fmtILS(accruedEarnings(s))}</bdi>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 3].map((n) => (
+                          <div
+                            key={n}
+                            className={`h-1.5 flex-1 rounded-full ${stage >= n ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-500">
+                        <span>הוגש</span>
+                        <span>אומת</span>
+                        <span>נסגר</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </TabsContent>
+
+
           <TabsContent value="mine" className="pt-4">
             {refLoading ? (
               <Skeleton className="h-48 w-full" />
