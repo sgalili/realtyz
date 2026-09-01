@@ -1883,9 +1883,36 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
       const cleaned = rawContent.replace(/^```(?:json)?\n?/gm, "").replace(/\n?```$/gm, "").trim();
       parsed = JSON.parse(cleaned);
     } catch {
+      // The model wrapped its envelope in prose (or leaked a raw JSON block).
+      // Intercept it: execute any action envelope server-side and NEVER return
+      // raw JSON / code to the chat or WhatsApp.
+      const extracted = extractActionEnvelopes(rawContent);
+      if (extracted.actions.length > 0) {
+        const results = await executeCrmActions(supabase, currentOwnerId, extracted.actions as any);
+        const failed = results.filter((r) => !r.ok);
+        let content = stripRawJson(stripBrokerLicense(extracted.content || "")).trim();
+        const report = summarizeCrmResults(results);
+        if (report) content = content ? `${content}\n\n${report}` : report;
+        if (failed.length) {
+          const reasons = failed.map((f) => f.error).join(", ");
+          content = (content ? content + "\n\n" : "")
+            + (reasons.includes("missing_phone")
+              ? "כדי לפתוח כרטיס לקוח חדש אני צריך מספר טלפון. שלח לי אותו ואשמור מיד."
+              : reasons.includes("contact_not_found")
+                ? "לא מצאתי את הלקוח הזה במערכת. תגיד לי שם ומספר טלפון ואפתח כרטיס."
+                : GRACEFUL_ACTION_FALLBACK_HE);
+        }
+        return new Response(JSON.stringify({
+          type: "text",
+          content: content || "הפעולות בוצעו בהצלחה.",
+          actions_executed: results,
+          sources: kbSources,
+          escalation,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify({
         type: "text",
-        content: stripBrokerLicense(rawContent),
+        content: stripRawJson(stripBrokerLicense(rawContent)) || GRACEFUL_ACTION_FALLBACK_HE,
         sources: kbSources,
         escalation,
         research_sources: researchSources,
@@ -1901,7 +1928,9 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     if (Array.isArray(parsed?.actions) && parsed.actions.length > 0) {
       const results = await executeCrmActions(supabase, currentOwnerId, parsed.actions);
       const failed = results.filter((r) => !r.ok);
-      let content = stripBrokerLicense(String(parsed.content || "")).trim();
+      let content = stripRawJson(stripBrokerLicense(String(parsed.content || ""))).trim();
+      const report = summarizeCrmResults(results);
+      if (report) content = content ? `${content}\n\n${report}` : report;
       if (failed.length) {
         const reasons = failed.map((f) => f.error).join(", ");
         content = (content ? content + "\n\n" : "")
@@ -1913,7 +1942,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
       }
       return new Response(JSON.stringify({
         type: "text",
-        content: content || "בוצע.",
+        content: content || "הפעולות בוצעו בהצלחה.",
         actions_executed: results,
         sources: kbSources,
         escalation,
@@ -1922,12 +1951,13 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
 
     if (parsed.type === "text") {
 
-      const cleanContent = stripBrokerLicense(String(parsed.content || ""));
+      const cleanContent = stripRawJson(stripBrokerLicense(String(parsed.content || "")));
       const fact_violations = factCheckDraft(cleanContent, listingFacts);
       return new Response(JSON.stringify({ ...parsed, content: cleanContent, sources: kbSources, research_sources: researchSources, escalation, fact_violations, webtiv_results: webtivResults, market_intel: marketIntelResults }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     // Step 2: Execute the SQL query with safety checks
     if (parsed.type === "sql" && parsed.query) {
