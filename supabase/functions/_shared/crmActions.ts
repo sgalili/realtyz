@@ -288,6 +288,86 @@ export async function executeCrmActions(
     return patch;
   };
 
+  /**
+   * Owner linking with zero friction: the name / phone mentioned in the free
+   * text becomes (a) a contact card in the CRM (`leads`) and (b) a property
+   * owner profile (`crm_profiles`) linked through `listings.owner_id`.
+   * Never blocks the property write — a failure only skips the link.
+   */
+  const resolveOwner = async (a: CrmAction): Promise<{ owner_id: string | null; lead_id: string | null; name: string | null; phone: string | null }> => {
+    const name = String(a.owner_name ?? "").trim() || null;
+    const phone = normalizeIlPhone(a.owner_phone);
+    const email = String(a.owner_email ?? "").trim() || null;
+    if (!name && !phone) return { owner_id: null, lead_id: null, name: null, phone: null };
+
+    let leadId: string | null = null;
+    try {
+      const existingLead = await findLead({ phone, full_name: name });
+      if (existingLead) {
+        leadId = existingLead.id;
+        const patch: Record<string, unknown> = {};
+        if (phone && !existingLead.phone_number) patch.phone_number = phone;
+        if (name && !existingLead.full_name) patch.full_name = name;
+        if (Object.keys(patch).length) await supabase.from("leads").update(patch).eq("id", leadId);
+      } else if (phone) {
+        const { data } = await supabase
+          .from("leads")
+          .insert({
+            assigned_to: ownerId,
+            full_name: name ?? phone,
+            phone_number: phone,
+            email,
+            interest_tag: "בעל נכס",
+            last_interaction_at: new Date().toISOString(),
+          })
+          .select("id")
+          .maybeSingle();
+        leadId = data?.id ?? null;
+      }
+    } catch (e) {
+      console.error("[crmActions] owner lead link failed:", (e as Error).message);
+    }
+
+    let profileId: string | null = null;
+    try {
+      if (phone) {
+        const { data } = await supabase
+          .from("crm_profiles").select("id, full_name, phone")
+          .eq("workspace_owner_id", ownerId).eq("phone", phone).maybeSingle();
+        profileId = data?.id ?? null;
+      }
+      if (!profileId && name) {
+        const { data } = await supabase
+          .from("crm_profiles").select("id, full_name, phone")
+          .eq("workspace_owner_id", ownerId).eq("full_name", name).maybeSingle();
+        profileId = data?.id ?? null;
+      }
+      if (!profileId) {
+        const { data } = await supabase
+          .from("crm_profiles")
+          .insert({
+            workspace_owner_id: ownerId,
+            full_name: name ?? phone,
+            phone,
+            email,
+            profile_type: "property_owner",
+            source: "ai_agent",
+            professional_info: { role: "property_owner", lead_id: leadId },
+          })
+          .select("id")
+          .maybeSingle();
+        profileId = data?.id ?? null;
+      } else if (phone || name) {
+        await supabase.from("crm_profiles")
+          .update({ phone: phone ?? undefined, full_name: name ?? undefined })
+          .eq("id", profileId);
+      }
+    } catch (e) {
+      console.error("[crmActions] owner profile link failed:", (e as Error).message);
+    }
+
+    return { owner_id: profileId, lead_id: leadId, name, phone };
+  };
 
 
   const logActivity = async (a: CrmAction, actionType: string, platform: string, content: string) => {
