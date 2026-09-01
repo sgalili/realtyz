@@ -218,6 +218,7 @@ export default function AffiliatePortal() {
   const { isAffiliate, loading: roleLoading } = useUserRole();
   const { data: marketplace = [], isLoading: marketLoading } = useAffiliateMarketplace();
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
+  const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -234,8 +235,15 @@ export default function AffiliatePortal() {
     const earned = signed
       .filter((r) => r.reward_type === 'fixed')
       .reduce((sum, r) => sum + Number(r.reward_amount ?? 0), 0);
-    return { promoting: referrals.length, clicks, signed: signed.length, earned };
-  }, [referrals]);
+    const submissionEarned = submissions.reduce((sum, s) => sum + accruedEarnings(s), 0);
+    return {
+      promoting: referrals.length,
+      clicks,
+      signed: signed.length + submissions.filter((s) => s.status === 'closed').length,
+      earned: earned + submissionEarned,
+      leads: submissions.length,
+    };
+  }, [referrals, submissions]);
 
   if (roleLoading) {
     return (
@@ -269,7 +277,7 @@ export default function AffiliatePortal() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
             { label: 'נכסים בשיווק', value: String(stats.promoting), icon: Megaphone, color: 'text-sky-600' },
-            { label: 'כניסות לקישורים', value: String(stats.clicks), icon: MousePointerClick, color: 'text-indigo-600' },
+            { label: 'מתעניינים שהוגשו', value: String(stats.leads), icon: MousePointerClick, color: 'text-indigo-600' },
             { label: 'עסקאות שנחתמו', value: String(stats.signed), icon: TrendingUp, color: 'text-emerald-600' },
             { label: 'תגמול מצטבר', value: fmtILS(stats.earned), icon: Banknote, color: 'text-amber-600' },
           ].map((s) => (
