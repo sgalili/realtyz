@@ -2258,21 +2258,47 @@ const InlineComposer = ({
               {attachments.map((att, i) => {
                 const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
                 const isImage = att.kind === 'image' && !!att.url && !isVideo;
+                // The FIRST thumbnail is always the main cover image of the post
+                // and is rendered 15% larger so it is visually unmistakable.
+                const isCover = i === 0;
+                const box = isCover ? 'h-[36px] w-[36px]' : 'h-[31px] w-[31px]';
+                const reorder = (from: number, to: number) => {
+                  if (from === to || Number.isNaN(from)) return;
+                  setAttachments((curr) => {
+                    const next = [...curr];
+                    const [moved] = next.splice(from, 1);
+                    if (!moved) return curr;
+                    next.splice(to, 0, moved);
+                    return next;
+                  });
+                };
                 return (
-                  <div key={i} className="shrink-0">
+                  <div
+                    key={i}
+                    className={cn('relative shrink-0 cursor-grab active:cursor-grabbing', isCover && 'z-10')}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; }}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                    onDrop={(e) => { e.preventDefault(); reorder(Number(e.dataTransfer.getData('text/plain')), i); }}
+                    title={isCover ? 'תמונה ראשית — גרור תמונה לכאן כדי להחליף' : 'גרור לשינוי סדר'}
+                  >
                     {isImage ? (
                       <button
                         type="button"
                         onClick={() => setPreviewImageUrl(att.url!)}
-                        className="block h-[31px] w-[31px] overflow-hidden rounded-none border border-border bg-muted focus:outline-none focus:ring-1 focus:ring-primary"
-                        aria-label="פתח תמונה"
+                        className={cn(
+                          'block overflow-hidden rounded-none bg-muted focus:outline-none focus:ring-1 focus:ring-primary',
+                          box,
+                          isCover ? 'border-2 border-primary' : 'border border-border',
+                        )}
+                        aria-label={isCover ? 'תמונה ראשית' : 'פתח תמונה'}
                       >
                         <img src={att.url} alt="" className="h-full w-full object-cover" />
                       </button>
                     ) : isVideo ? (
-                      <video src={att.url} className="h-[31px] w-[31px] rounded-none object-cover bg-black" muted playsInline />
+                      <video src={att.url} className={cn('rounded-none object-cover bg-black', box)} muted playsInline />
                     ) : (
-                      <div className="flex h-[31px] w-[31px] items-center justify-center rounded-none border border-border bg-muted">
+                      <div className={cn('flex items-center justify-center rounded-none border border-border bg-muted', box)}>
                         {att.kind === 'audio'
                           ? <Mic className="h-4 w-4 text-primary" />
                           : <Paperclip className="h-4 w-4 text-muted-foreground" />}
@@ -2284,6 +2310,7 @@ const InlineComposer = ({
               <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-background to-transparent" aria-hidden="true" />
             </div>
           )}
+
         </div>
 
       </div>
