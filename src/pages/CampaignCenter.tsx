@@ -2906,7 +2906,9 @@ const ConfirmDispatchDialog = ({
       // checked, the composer has ALREADY inlined a rotating first-person opener
       // ("דברו איתי…") + a real WA link (branded shortlink or wa.me fallback)
       // into `body`, so we ship it as-is. When unchecked we transmit clean text.
-      const bodyToPublish = body;
+      // Normalization happens at dispatch time (never on keystroke) so the
+      // caret is never moved while the user types.
+      const bodyToPublish = cleanBody(body.replace(/^[\s\u200f\u200e]+/g, ''));
       const campaignName = `${brandName} · ${channel.label}`;
 
       if (SOCIAL_CHANNELS.has(channel.id)) {
