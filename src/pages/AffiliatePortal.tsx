@@ -290,6 +290,7 @@ export default function AffiliatePortal() {
         <Tabs defaultValue="marketplace">
           <TabsList>
             <TabsTrigger value="marketplace">נכסים לשיווק</TabsTrigger>
+            <TabsTrigger value="leads">המתעניינים שהגשתי</TabsTrigger>
             <TabsTrigger value="mine">השיווקים שלי</TabsTrigger>
           </TabsList>
 
