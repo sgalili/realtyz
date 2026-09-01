@@ -1,10 +1,14 @@
 /**
- * Strips model envelope artefacts (```json fences, JSON wrappers, literal \n)
- * from an AI reply before it is sent to WhatsApp or stored in `messages`.
+ * Strips model envelope artefacts (```json fences, JSON wrappers, literal \n,
+ * leaked CRM action schemas) from an AI reply before it is sent to WhatsApp or
+ * stored in `messages`. Raw JSON must never reach a human.
  */
+import { stripRawJson } from "./agentOutput.ts";
+
 export function sanitizeReplyText(raw: string | null | undefined): string {
   if (!raw) return "";
   let text = String(raw).trim();
+
 
   text = text.replace(/```[a-zA-Z]*\s*([\s\S]*?)```/g, "$1").trim();
   text = text.replace(/^```[a-zA-Z]*\s*/i, "").replace(/```$/, "").trim();
