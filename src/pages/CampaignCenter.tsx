@@ -1645,6 +1645,23 @@ const InlineComposer = ({
     });
   };
 
+  // ---- Per-property generated content cache -------------------------------
+  // Content generated for a property is remembered so revisiting it loads
+  // instantly without spending tokens. Regeneration is always allowed.
+  const listingCacheKey = (id: string) => `rz_post_cache:${channel.id}:${id}`;
+  const readListingCache = (id: string): { body: string; firstComment: string } | null => {
+    try {
+      const raw = localStorage.getItem(listingCacheKey(id));
+      if (!raw) return null;
+      const v = JSON.parse(raw);
+      return v && typeof v.body === 'string' ? { body: v.body, firstComment: String(v.firstComment || '') } : null;
+    } catch { return null; }
+  };
+  const writeListingCache = (id: string, v: { body: string; firstComment: string }) => {
+    try { localStorage.setItem(listingCacheKey(id), JSON.stringify(v)); } catch {}
+  };
+  const listingAutoGenRef = useRef<string | null>(null);
+
   const handleGenerate = async (opts?: { rotateTemplate?: boolean }) => {
     if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
     // Registered so the emergency stop can abort this request mid-flight.
@@ -1782,6 +1799,46 @@ const InlineComposer = ({
       setFirstCommentGenerating(false);
     }
   };
+
+  // Selecting a property: restore its cached post + first comment instantly,
+  // otherwise generate both right away (only when nothing exists yet).
+  useEffect(() => {
+    if (!hydrated) return;
+    const id = selectedListingId;
+    if (!id) return;
+    if (listingAutoGenRef.current === id) return;
+    listingAutoGenRef.current = id;
+    const cached = readListingCache(id);
+    if (cached && cached.body.trim()) {
+      if (!body.trim()) {
+        setBody(cached.body);
+        setOriginalAiBody(cached.body);
+        setBodyManuallyEdited(false);
+        if (cached.firstComment.trim() && !firstComment.trim()) setFirstComment(cached.firstComment);
+      }
+      return;
+    }
+    if (body.trim() || generating) return;
+    const t = setTimeout(() => {
+      if (isGenerationStopped()) return;
+      if (body.trim() || generating) return;
+      autoGenTriggeredRef.current = true;
+      handleGenerate().catch(() => {});
+    }, 120);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedListingId, hydrated]);
+
+  // Keep the per-property cache fresh (debounced) so the next visit is instant.
+  useEffect(() => {
+    if (!selectedListingId) return;
+    if (!body.trim()) return;
+    const t = setTimeout(() => writeListingCache(selectedListingId, { body, firstComment }), 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedListingId, body, firstComment]);
+
+
 
 
   // Random CTA intro phrases used before the WA / Messenger shortlink so
@@ -2037,7 +2094,7 @@ const InlineComposer = ({
 
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-16 shadow-sm space-y-4" dir="rtl">
+    <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-44 shadow-sm space-y-4" dir="rtl">
       {/* Header row removed — title lives in the page hero; history is in the hero icon */}
 
 
