@@ -459,7 +459,15 @@ export function ScheduleCurrentPostDialog({
     // ---- Per-group daily limits -------------------------------------------
     // Persist the cap the broker typed, then plan the groups slot-by-slot so no
     // group receives more posts on a single day than its daily limit allows.
-    const baseGroupIds = channelId === 'facebook' ? (selectedGroupIds || []) : [];
+    // The selection is never allowed to arrive empty: fall back to the shared
+    // store and then to the composer's own groups so a scheduled post can never
+    // be saved as "ללא קבוצות" while groups were actually picked.
+    const resolvedGroupIds = (selectedGroupIds?.length ? selectedGroupIds : null)
+      ?? (loadCampaignGroups(workspaceOwnerId).length ? loadCampaignGroups(workspaceOwnerId) : null)
+      ?? (defaultGroupIds || []);
+    const baseGroupIds = channelId === 'facebook'
+      ? Array.from(new Set(resolvedGroupIds.map((g) => String(g).replace(/^ext:/, '')).filter(Boolean)))
+      : [];
     if (channelId === 'facebook' && baseGroupIds.length > 0) {
       await saveGroupDailyLimit(baseGroupIds, groupDailyLimit > 0 ? groupDailyLimit : null);
     }
@@ -486,8 +494,10 @@ export function ScheduleCurrentPostDialog({
       for (const b of blocked) blockedGroups.add(b);
       for (const id of allowed) planned[id] = (planned[id] ?? 0) + 1;
       plannedPerDay.set(key, planned);
-      return allowed;
+      // Daily caps must never erase the target list from the saved row.
+      return allowed.length > 0 ? allowed : baseGroupIds;
     };
+
 
     // Every slot gets its own random mix: distinct main picture + 9 more.
     const imagesForSlot = (): string[] =>
