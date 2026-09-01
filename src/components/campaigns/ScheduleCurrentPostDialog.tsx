@@ -246,19 +246,24 @@ export function ScheduleCurrentPostDialog({
 
     const buildDaySlots = (dayBase: Date): Date[] => {
       const out: Date[] = [];
+      // A narrow window (or a single post) is honoured EXACTLY as the broker
+      // typed it — no randomisation, no forward drift.
+      const exact = n === 1 || span <= 5;
       for (let i = 0; i < n; i++) {
-        // Random minute inside the window — never on the start/end boundary.
-        const offset = randomSlotMinutes(startMin, endMin, i, n);
-        const total = Math.floor(offset);
+        const total = exact
+          ? startMin + Math.min(i, span)
+          : Math.floor(randomSlotMinutes(startMin, endMin, i, n));
         const d = new Date(dayBase);
-        d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);
-        if (d.getTime() <= Date.now() + 60_000) {
-          d.setTime(Date.now() + (i + 1) * 5 * 60_000);
+        d.setHours(Math.floor(total / 60), total % 60, exact ? 0 : Math.floor(Math.random() * 60), 0);
+        // Only past slots are nudged, and only to the closest valid moment.
+        if (d.getTime() <= Date.now() + 30_000) {
+          d.setTime(Date.now() + 60_000 + i * 30_000);
         }
         out.push(d);
       }
       return out;
     };
+
 
     const recDates: Date[] = [];
     if (recurrence === 'none') {
