@@ -3,11 +3,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, Home, Search, Download } from 'lucide-react';
+import { Loader2, Home, Search, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 
 export type ScheduledSeriesRow = {
   id: string;
