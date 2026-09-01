@@ -32,3 +32,7 @@
 - [ ] Affiliate marketplace & 3-tier commissions (portal /affiliates, tier setup, lead submissions) — in progress
 - [ ] Fix first auto-comment execution: capture post_id from Graph API and immediately POST /{post_id}/comments
 - [ ] Fix textarea cursor jumping in post composer/editor (stable local state / uncontrolled + debounce)
+
+## Sep 1 (evening)
+- [x] Background STT for inbound WhatsApp voice notes → transcript stored as inbound text + AI autopilot reply
+- [x] Fix AI agent CRM schema mapping: contacts→leads, phone→phone_number (prompt + runtime SQL guard)
