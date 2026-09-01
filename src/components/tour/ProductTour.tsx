@@ -77,12 +77,12 @@ const STEPS: TourStep[] = [
     cta: { label: 'פתח נכסים', to: '/properties' },
   },
   {
-    eyebrow: 'חיבורים',
-    title: 'מחברים רק את החשבונות שלך',
+    eyebrow: '',
+    title: 'חיבור חשבון Facebook',
     bullets: [
-      'שום חשבון Facebook לא מתחבר אוטומטית - רק בלחיצה שלך.',
-      'WhatsApp כבר מחובר לכולם דרך המספר הרשמי של Realtyz ב-Meta Cloud API.',
-      'כל החיבורים והמידע נשמרים בסביבת העבודה שלך בלבד.',
+      'כתיבה ופרסום פוסטים AI בקבוצות ',
+      'מענה אוטומטי AI לתגובות בפייסבוק',
+      'צ׳אטים עם סוכני ה- AI ב-Messenger',
     ],
     connections: true,
   },
