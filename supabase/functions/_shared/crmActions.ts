@@ -32,7 +32,8 @@ Supported actions (use exact "kind" values):
 - {"kind":"delete_contact","lead_id":"<uuid>"} or {"kind":"delete_contact","phone":"05..."}
 - {"kind":"merge_contacts","primary_lead_id":"<uuid>","duplicate_lead_id":"<uuid>"}
   (keeps the primary card, fills its empty fields from the duplicate, moves the history, deletes the duplicate)
-- {"kind":"create_property","property_title":"...","address":"...","city":"...","neighborhood":"...","rooms":3.5,"sqm":90,"floor":2,"asking_price":3500000,"deal_type":"sale|rent","description":"...","office_notes":"...","owner_name":"...","owner_phone":"05..."}
+- {"kind":"create_property","property_title":"...","address":"...","city":"...","neighborhood":"...","rooms":3.5,"sqm":90,"floor":2,"asking_price":3500000,"deal_type":"sale|rent","available_from":"YYYY-MM-DD","description":"...","office_notes":"...","extra_details":["מצב הדירה: משופצת","מרחב מוגן: ממ\"ק בקומה","כניסה: מיידית","מיקום: סמוך לסוקולוב"],"owner_name":"...","owner_phone":"05..."}
+  (extra_details = כל פרט שאין לו שדה מובנה; הוא נשמר אוטומטית בהערות הנכס. owner_name/owner_phone יוצרים או מאתרים כרטיס איש קשר ומקשרים אותו לנכס. לעולם אין לעצור יצירת נכס בגלל פרט חסר שכבר קיים בטקסט)
 - {"kind":"update_property","listing_id":"<uuid>","address":"...","asking_price":123,"status":"live|pending|discarded", ...}
   (identify by listing_id, else by address+city; matching ignores punctuation and spelling variants)
 - {"kind":"delete_property","listing_id":"<uuid>"}
