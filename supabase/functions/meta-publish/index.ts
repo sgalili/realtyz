@@ -523,6 +523,7 @@ Deno.serve(async (req) => {
             scheduled_at: scheduledIso,
             content_hash: hashes[ch],
             group_ids: groupIds,
+            publish_to_page: publishToPage,
           },
         });
         if (queueError) {
