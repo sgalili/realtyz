@@ -1368,7 +1368,102 @@ const LeadCRM = () => {
     setImporting(true);
     setImportProgress(0);
     let totalInserted = 0;
+
+    // ---- JSON mode: match existing contacts and update their phone numbers ----
+    if (importIsJson) {
+      try {
+        const norm = (s?: string | null) => (s ?? '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+        const { data: existing, error: exErr } = await supabase
+          .from('leads')
+          .select('id, full_name, email, phone_number, identity_number');
+        if (exErr) throw exErr;
+
+        const byEmail = new Map<string, string>();
+        const byId = new Map<string, string>();
+        const byName = new Map<string, string>();
+        const byPhone = new Map<string, string>();
+        for (const l of existing ?? []) {
+          if (l.email) byEmail.set(norm(l.email), l.id);
+          if ((l as any).identity_number) byId.set(norm((l as any).identity_number), l.id);
+          if (l.full_name) byName.set(norm(l.full_name), l.id);
+          if (l.phone_number) byPhone.set(String(l.phone_number), l.id);
+        }
+
+        const dealType = importLeadKind === 'renter' || importLeadKind === 'landlord' ? 'rent' : 'sale';
+        const toInsert: any[] = [];
+        let updated = 0;
+        let processed = 0;
+
+        for (const r of rows) {
+          const matchId =
+            (r.email && byEmail.get(norm(r.email))) ||
+            (r.identity_number && byId.get(norm(r.identity_number))) ||
+            byPhone.get(r.phone_number) ||
+            byName.get(norm(r.full_name));
+
+          if (matchId) {
+            const patch: any = { phone_number: r.phone_number };
+            if (r.email) patch.email = r.email;
+            if (r.city) patch.city = r.city;
+            if (r.interest_tag) patch.interest_tag = r.interest_tag;
+            if (r.identity_number) patch.identity_number = r.identity_number;
+            const { error } = await supabase.from('leads').update(patch).eq('id', matchId);
+            if (!error) updated++;
+          } else {
+            toInsert.push({
+              full_name: r.full_name,
+              phone_number: r.phone_number,
+              email: r.email || null,
+              city: r.city || null,
+              interest_tag: r.interest_tag || null,
+              identity_number: r.identity_number || null,
+              status: 'uploaded',
+              deal_type: dealType,
+              preferences: {
+                lead_kind: importLeadKind,
+                ...(r.extra && Object.keys(r.extra).length ? { extra_fields: r.extra } : {}),
+              },
+            });
+          }
+          processed++;
+          setImportProgress(Math.round((processed / rows.length) * 90));
+        }
+
+        let inserted = 0;
+        for (let i = 0; i < toInsert.length; i += 500) {
+          const { data, error } = await supabase
+            .from('leads')
+            .upsert(toInsert.slice(i, i + 500), { onConflict: 'phone_number' })
+            .select('id');
+          if (error) throw error;
+          inserted += data?.length ?? 0;
+        }
+        setImportProgress(100);
+
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
+          queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
+          queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
+        ]);
+
+        toast.success(
+          `ייבוא JSON הושלם: ${updated.toLocaleString('he-IL')} מספרי טלפון עודכנו, ${inserted.toLocaleString('he-IL')} אנשי קשר חדשים נוספו`,
+          { duration: 7000 },
+        );
+
+        setImportDialogOpen(false);
+        setImportPreview([]);
+        setImportStats(null);
+        setImportIsJson(false);
+        delete (window as any).__importRows;
+      } catch (err: any) {
+        toast.error('שגיאה בייבוא JSON: ' + (err?.message || 'שגיאה לא ידועה'));
+      } finally { setImporting(false); }
+      return;
+    }
+
     try {
+
       const batchSize = 500;
       const totalRows = rows.length;
       for (let i = 0; i < rows.length; i += batchSize) {
