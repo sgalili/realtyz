@@ -244,6 +244,8 @@ const App = () => (
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
               <Route path="/affiliate" element={<ProtectedRoute><AffiliatePortal /></ProtectedRoute>} />
               <Route path="/affiliate-network" element={<ProtectedRoute><AffiliateNetwork /></ProtectedRoute>} />
+              <Route path="/referral" element={<ProtectedRoute><PartnerNetwork /></ProtectedRoute>} />
+
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />
               <Route path="/ads" element={<Navigate to="/campaigns?tab=campaigns" replace />} />
               <Route path="/campaigns" element={<ProtectedRoute allowGuestDemo><CampaignCenter /></ProtectedRoute>} />
