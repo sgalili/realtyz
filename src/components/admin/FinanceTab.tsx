@@ -49,6 +49,13 @@ export function FinanceTab() {
         reason: adjReason || null,
       });
       if (error) throw error;
+      // mirror into the credit wallet ledger (audited)
+      const { error: ledgerErr } = await (supabase as any).rpc('admin_adjust_credit', {
+        _user_id: targetUser.id,
+        _amount: amt,
+        _reason: adjReason || null,
+      });
+      if (ledgerErr) throw ledgerErr;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-users-finance'] });
