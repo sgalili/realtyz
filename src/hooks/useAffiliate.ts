@@ -403,3 +403,222 @@ export function useUpdateReferral() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// 3-tier commissions + affiliate lead submissions
+// ---------------------------------------------------------------------------
+
+export type SubmissionStatus = 'submitted' | 'verified' | 'closed' | 'rejected';
+
+export const SUBMISSION_STATUS_LABELS: Record<SubmissionStatus, string> = {
+  submitted: 'הוגש',
+  verified: 'אומת',
+  closed: 'עסקה נסגרה',
+  rejected: 'נדחה',
+};
+
+export const SUBMISSION_STATUS_ORDER: SubmissionStatus[] = ['submitted', 'verified', 'closed', 'rejected'];
+
+export type CommissionTiers = {
+  tier1: number;
+  tier2: number;
+  tier3Type: RewardType;
+  tier3: number;
+};
+
+/** Tier labels shown on every marketplace card. */
+export const TIER_LABELS = {
+  tier1: 'שלב 1 · ליד חם שהוגש',
+  tier2: 'שלב 2 · ליד שאומת אנושית',
+  tier3: 'שלב 3 · בונוס סגירת עסקה',
+} as const;
+
+/** Reads the tiers off a marketplace row, defaulting tier 2 to double tier 1. */
+export function listingTiers(listing: MarketplaceListing): CommissionTiers {
+  const tier1 = Number(listing.tier1_amount ?? 0);
+  const tier2Raw = Number(listing.tier2_amount ?? 0);
+  return {
+    tier1,
+    tier2: tier2Raw || tier1 * 2,
+    tier3Type: (listing.tier3_type ?? 'fixed') as RewardType,
+    tier3: Number(listing.tier3_amount ?? 0),
+  };
+}
+
+export type AffiliateLeadSubmission = {
+  id: string;
+  affiliate_id: string;
+  broker_id: string;
+  listing_id: string | null;
+  referral_id: string | null;
+  lead_id: string | null;
+  lead_name: string;
+  lead_phone: string | null;
+  lead_email: string | null;
+  notes: string | null;
+  status: SubmissionStatus;
+  tier1_amount: number;
+  tier2_amount: number;
+  tier3_type: RewardType;
+  tier3_amount: number;
+  earned_amount: number;
+  settlement_status: SettlementStatus;
+  verified_at: string | null;
+  closed_at: string | null;
+  created_at: string;
+};
+
+/**
+ * Accumulated payout for a submission at its current stage.
+ * submitted → tier1, verified → tier1 + tier2, closed → + tier3 (fixed only).
+ */
+export function accruedEarnings(row: {
+  status: SubmissionStatus;
+  tier1_amount: number;
+  tier2_amount: number;
+  tier3_type: RewardType;
+  tier3_amount: number;
+}): number {
+  if (row.status === 'rejected') return 0;
+  let total = Number(row.tier1_amount ?? 0);
+  if (row.status === 'verified' || row.status === 'closed') total += Number(row.tier2_amount ?? 0);
+  if (row.status === 'closed' && row.tier3_type === 'fixed') total += Number(row.tier3_amount ?? 0);
+  return total;
+}
+
+export type AffiliateSubmissionRow = AffiliateLeadSubmission & {
+  listing?: { property_title: string | null; address: string | null; city: string | null } | null;
+  affiliate?: { display_name: string | null; phone: string | null } | null;
+};
+
+async function hydrateSubmissions(rows: AffiliateLeadSubmission[]): Promise<AffiliateSubmissionRow[]> {
+  if (rows.length === 0) return [];
+  const listingIds = [...new Set(rows.map((r) => r.listing_id).filter(Boolean))] as string[];
+  const affiliateIds = [...new Set(rows.map((r) => r.affiliate_id))];
+  const [listingsRes, affRes] = await Promise.all([
+    listingIds.length
+      ? supabase.from('listings').select('id, property_title, address, city').in('id', listingIds)
+      : Promise.resolve({ data: [] as { id: string }[] }),
+    supabase.from('affiliate_profiles').select('user_id, display_name, phone').in('user_id', affiliateIds),
+  ]);
+  const listingMap = new Map(((listingsRes.data ?? []) as Record<string, never>[]).map((l) => [l['id'], l]));
+  const affMap = new Map(((affRes.data ?? []) as Record<string, never>[]).map((a) => [a['user_id'], a]));
+  return rows.map((r) => ({
+    ...r,
+    listing: r.listing_id ? (listingMap.get(r.listing_id) as AffiliateSubmissionRow['listing']) ?? null : null,
+    affiliate: (affMap.get(r.affiliate_id) as AffiliateSubmissionRow['affiliate']) ?? null,
+  }));
+}
+
+/** Submissions created by the signed-in affiliate. */
+export function useMySubmissions() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['affiliate-my-submissions', user?.id],
+    enabled: !!user?.id,
+    queryFn: async (): Promise<AffiliateSubmissionRow[]> => {
+      const { data, error } = await supabase
+        .from('affiliate_lead_submissions')
+        .select('*')
+        .eq('affiliate_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return hydrateSubmissions((data ?? []) as AffiliateLeadSubmission[]);
+    },
+  });
+}
+
+/** Submissions received by the active broker workspace. */
+export function useBrokerSubmissions() {
+  const ownerId = useActiveWorkspaceOwnerId();
+  return useQuery({
+    queryKey: ['broker-affiliate-submissions', ownerId],
+    enabled: !!ownerId,
+    queryFn: async (): Promise<AffiliateSubmissionRow[]> => {
+      const { data, error } = await supabase
+        .from('affiliate_lead_submissions')
+        .select('*')
+        .eq('broker_id', ownerId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return hydrateSubmissions((data ?? []) as AffiliateLeadSubmission[]);
+    },
+  });
+}
+
+/** Affiliate submits a warm lead against a marketplace property. */
+export function useSubmitAffiliateLead() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (input: {
+      listing: MarketplaceListing;
+      leadName: string;
+      leadPhone?: string;
+      leadEmail?: string;
+      notes?: string;
+      referralId?: string | null;
+    }) => {
+      if (!user?.id) throw new Error('not_authenticated');
+      const tiers = listingTiers(input.listing);
+      const { data, error } = await supabase
+        .from('affiliate_lead_submissions')
+        .insert({
+          affiliate_id: user.id,
+          broker_id: input.listing.broker_id,
+          listing_id: input.listing.listing_id,
+          referral_id: input.referralId ?? null,
+          lead_name: input.leadName,
+          lead_phone: input.leadPhone || null,
+          lead_email: input.leadEmail || null,
+          notes: input.notes || null,
+          status: 'submitted',
+          tier1_amount: tiers.tier1,
+          tier2_amount: tiers.tier2,
+          tier3_type: tiers.tier3Type,
+          tier3_amount: tiers.tier3,
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+      return data as AffiliateLeadSubmission;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['affiliate-my-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['broker-affiliate-submissions'] });
+    },
+  });
+}
+
+/** Broker advances a submission through the stages and settles the payout. */
+export function useUpdateSubmission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      row: AffiliateSubmissionRow;
+      status?: SubmissionStatus;
+      settlementStatus?: SettlementStatus;
+    }) => {
+      const next: SubmissionStatus = input.status ?? input.row.status;
+      const patch = {
+        status: next,
+        settlement_status: input.settlementStatus ?? input.row.settlement_status,
+        earned_amount: accruedEarnings({ ...input.row, status: next }),
+        verified_at:
+          next === 'verified' || next === 'closed'
+            ? input.row.verified_at ?? new Date().toISOString()
+            : null,
+        closed_at: next === 'closed' ? input.row.closed_at ?? new Date().toISOString() : null,
+      };
+      const { error } = await supabase
+        .from('affiliate_lead_submissions')
+        .update(patch)
+        .eq('id', input.row.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['broker-affiliate-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['affiliate-my-submissions'] });
+    },
+  });
+}
