@@ -27,3 +27,8 @@
 
 - [DONE] פוסטים: גרירת תמונות בקומפוזר + תמונה ראשית מוגדלת, מחיקה מרובה של טיוטות, הסרת בחירת קבוצות מדיאלוג העריכה, שמירת קבוצות ותזמון מדויק, ספירה לאחור עם שניות
 - [DONE] עיצוב מחדש של מסך רשת השותפים (/referral) — 3 שלבים, מדרגות תגמול, 4 מדדים, כפתורי העתקה/שיתוף
+
+## Sep 1 — new tasks
+- [ ] Affiliate marketplace & 3-tier commissions (portal /affiliates, tier setup, lead submissions) — in progress
+- [ ] Fix first auto-comment execution: capture post_id from Graph API and immediately POST /{post_id}/comments
+- [ ] Fix textarea cursor jumping in post composer/editor (stable local state / uncontrolled + debounce)
