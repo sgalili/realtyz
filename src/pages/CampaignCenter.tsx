@@ -2908,7 +2908,11 @@ const ConfirmDispatchDialog = ({
       // into `body`, so we ship it as-is. When unchecked we transmit clean text.
       // Normalization happens at dispatch time (never on keystroke) so the
       // caret is never moved while the user types.
-      const bodyToPublish = cleanBody(body.replace(/^[\s\u200f\u200e]+/g, ''));
+      const bodyToPublish = body
+        .replace(/^[\s\u200f\u200e]+/g, '')
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       const campaignName = `${brandName} · ${channel.label}`;
 
       if (SOCIAL_CHANNELS.has(channel.id)) {
