@@ -73,7 +73,103 @@ function isoOrNull(v: unknown): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+/**
+ * Property attributes that have a real column on `listings`. Anything else the
+ * model extracted from the free text is not dropped — it overflows into the
+ * Hebrew notes block (`office_notes`).
+ */
+const LISTING_STRUCTURED_KEYS = new Set([
+  "kind", "listing_id", "property_title", "address", "city", "neighborhood",
+  "description", "long_description", "short_description", "office_notes",
+  "project_name", "house_number", "apartment_number", "source_url", "external_id",
+  "rooms", "asking_price", "sqm", "floor", "elevator", "parking",
+  "is_published", "is_featured", "deal_type", "status", "features",
+  "available_from", "entry_date", "owner_name", "owner_phone", "owner_email",
+  "extra_details", "notes",
+]);
+
+/** Hebrew labels for the common free-text attributes brokers dictate. */
+const NOTE_LABELS: Record<string, string> = {
+  property_state: "מצב הדירה",
+  apartment_state: "מצב הדירה",
+  condition: "מצב הדירה",
+  building_condition: "מצב הבניין",
+  mamad: "מרחב מוגן",
+  safe_room: "מרחב מוגן",
+  entry: "כניסה",
+  entry_date_text: "כניסה",
+  location: "מיקום",
+  location_context: "מיקום",
+  accessibility: "נגישות",
+  orientation: "כיווני אוויר",
+  air_directions: "כיווני אוויר",
+  balcony: "מרפסת",
+  storage: "מחסן",
+  renovation: "שיפוץ",
+  heating: "חימום",
+  ac: "מיזוג",
+  furniture: "ריהוט",
+  taxes: "ארנונה",
+  hoa: "ועד בית",
+  view: "נוף",
+  schools: "מוסדות חינוך",
+  transport: "תחבורה",
+  parking_details: "חניה",
+  owner_notes: "הערות בעל הנכס",
+  extra: "נוסף",
+};
+
+const noteLine = (label: string, value: unknown) => {
+  const v = String(value ?? "").trim();
+  if (!v) return "";
+  const name = String(label || "").trim();
+  return name ? `${name}: ${v}` : v;
+};
+
+/**
+ * Collect every detail without a dedicated column into clean Hebrew note lines.
+ * Accepts `extra_details` (object / array / string), `notes`, and any unknown
+ * primitive key the model added to the action.
+ */
+export function collectOverflowNotes(a: CrmAction): string[] {
+  const lines: string[] = [];
+  const push = (s: string) => { const t = s.trim(); if (t) lines.push(t); };
+
+  const fromValue = (value: unknown, label = "") => {
+    if (value === null || value === undefined || value === "") return;
+    if (Array.isArray(value)) { for (const v of value) fromValue(v, label); return; }
+    if (typeof value === "object") {
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        fromValue(v, NOTE_LABELS[k] ?? k.replace(/_/g, " "));
+      }
+      return;
+    }
+    push(noteLine(label, value));
+  };
+
+  fromValue(a.extra_details);
+  fromValue(a.notes);
+  for (const [k, v] of Object.entries(a ?? {})) {
+    if (LISTING_STRUCTURED_KEYS.has(k)) continue;
+    if (v === null || v === undefined || v === "") continue;
+    if (typeof v === "object") { fromValue(v, NOTE_LABELS[k] ?? k.replace(/_/g, " ")); continue; }
+    push(noteLine(NOTE_LABELS[k] ?? k.replace(/_/g, " "), v));
+  }
+  // Dedupe while keeping dictation order.
+  return Array.from(new Set(lines));
+}
+
+/** Append new note lines to an existing notes block without duplicating them. */
+export function mergeNotes(existing: unknown, lines: string[]): string {
+  const current = String(existing ?? "").trim();
+  const have = new Set(current.split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
+  const added = lines.filter((l) => !have.has(l.trim()));
+  if (!added.length) return current;
+  return [current, ...added].filter(Boolean).join("\n");
+}
+
 const PRIORITIES = new Set(["high", "medium", "low"]);
+
 
 export type CrmActionResult = {
   kind: string;
