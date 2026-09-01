@@ -456,7 +456,14 @@ Deno.serve(async (req) => {
     const scheduledIso = body?.scheduled_at ? String(body.scheduled_at) : null;
     // HARD RULE: every published post carries the mandatory contact comment.
     const firstComment = ensureMandatoryComment(body?.first_comment);
-    const requestedGroupIds: string[] = (Array.isArray(body?.group_ids) ? body.group_ids : []).map((g: unknown) => String(g));
+    // "פרסם גם בעמוד הפייסבוק העסקי" — checked by default. When the caller
+    // explicitly sends false, only the selected groups are published to.
+    const publishToPage = body?.publish_to_page === undefined || body?.publish_to_page === null
+      ? true
+      : body.publish_to_page !== false;
+    const requestedGroupIds: string[] = (Array.isArray(body?.group_ids) ? body.group_ids : [])
+      .map((g: unknown) => String(g ?? "").replace(/^(ext:|manual:)/, "").trim())
+      .filter((g: string) => g.length > 0);
     // Targeted publishing: imported groups the broker de-selected are dropped.
     const groupIds: string[] = await (async () => {
       if (requestedGroupIds.length === 0 || !ownerId) return requestedGroupIds;
