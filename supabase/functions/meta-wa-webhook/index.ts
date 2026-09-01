@@ -274,6 +274,11 @@ Deno.serve(async (req) => {
                   message_id: String(m?.id ?? ""),
                   profile_name: profileName,
                   message_type: type,
+                  // Voice notes are stored as their Hebrew transcript so the
+                  // thread (and the AI) reads them like any other message.
+                  transcribed_audio: Boolean(transcript),
+                  transcript_source: transcript ? "lovable_ai_stt" : null,
+                  original_content: transcript ? baseContent : null,
                   // Inbound rows carry an explicit status so the chat window can
                   // render delivery state consistently with outbound bubbles.
                   status: "received",
