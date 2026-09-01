@@ -275,7 +275,11 @@ export default function Landing() {
               <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים.</span>
             </h1>
             <p className="mx-auto mt-5 max-w-3xl text-center text-base sm:text-xl leading-relaxed text-muted-foreground">
-              צבא של סוכני AI שעובדים בשבילך 24/7 ומטפלים בכל הלקוחות, הנכסים, השיווק, הפוסטים, הרשתות, הפגישות, המיילים והיומן ומחממים כל ליד חדש שנכנס אוטומטית.
+              מפספסים לידים חמים רק כי לא מספיקים לענות בזמן?
+              RealtyZ עונה לכל ליד תוך שניות, 24/7, יוצרת ומפרסמת תוכן בכל הרשתות החברתיות ומרכזת את כל ערוצי התקשורת במקום אחד, ישירות מהוואטסאפ שלך.
+
+
+              90% פחות עבודה ידנית. 100% פוקוס על עסקאות.
             </p>
           </Reveal>
 
