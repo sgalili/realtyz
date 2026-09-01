@@ -709,6 +709,8 @@ Deno.serve(async (req) => {
           image_url: groupImage,
           media_urls: groupMedia,
           workspace_owner_id: ownerId,
+          // First auto-comment must land on every group post as well.
+          first_comment: firstComment || null,
         }),
       })
         .then((r) => r.json())
