@@ -13,6 +13,8 @@ import * as React from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, DownloadCloud, Loader2, Bot } from 'lucide-react';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { toast } from 'sonner';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
