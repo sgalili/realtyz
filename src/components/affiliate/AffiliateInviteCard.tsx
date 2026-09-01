@@ -48,8 +48,8 @@ export function AffiliateInviteCard() {
   const metrics = [
     { label: 'הזמנות', value: String(invites) },
     { label: 'נרשמים', value: String(signups) },
-    { label: 'מנויים פעילים', value: String(activeSubs) },
-    { label: 'הכנסות מהשותפים', value: fmtILS(earnings) },
+    { label: 'לקוחות משלמים', value: String(activeSubs) },
+    { label: 'קרדיט שנצבר', value: fmtILS(earnings) },
   ];
 
   return (

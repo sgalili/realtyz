@@ -1245,6 +1245,12 @@ function ResultCard({
 
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow cursor-pointer relative" onClick={onSelect}>
+      {/* Dedicated full-width title row — always the first element of the card. */}
+      <div className="w-full px-4 pt-3 pb-2 border-b">
+        <h3 className="w-full font-semibold text-base leading-tight truncate" title={result.title}>
+          {result.title}
+        </h3>
+      </div>
       <div className="aspect-[16/10] bg-muted relative overflow-hidden">
 
         {activePhoto ? (
@@ -1370,7 +1376,6 @@ function ResultCard({
       )}
 
       <div className="p-4 flex flex-col gap-3 flex-1">
-        <h3 className="font-semibold text-base leading-tight line-clamp-2">{result.title}</h3>
         {/* Property notes — full text, directly under the property name. */}
         <PropertyNotesBlock notes={cardNotes} />
         {result.description && <p className="text-xs text-muted-foreground line-clamp-2">{result.description}</p>}
@@ -1383,7 +1388,6 @@ function ResultCard({
 
         <div className="flex items-center justify-between mt-auto pt-2 border-t gap-2 flex-wrap">
           <div className="text-lg font-bold text-success inline-flex items-center gap-1">
-            <Building2 className="h-4 w-4 opacity-60" />
             {result.price
               ? (<>{formatPrice(result.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground">/חודש</span> : null}</>)
               : (<span className="text-sm font-semibold text-amber-600">פרטים חסרים</span>)}

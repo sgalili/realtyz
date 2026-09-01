@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Wallet } from 'lucide-react';
 import {
   Dialog,
@@ -10,8 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { useCreditWallet } from '@/hooks/useSubscription';
 
 const SALES_PHONE = '972546811841';
 
@@ -30,36 +29,13 @@ function formatIls(n: number): string {
 }
 
 export function CreditBalancePill() {
-  const { user } = useAuth();
-  const [balance, setBalance] = useState<number>(0);
+  // Single source of truth: the credit wallet in the database (get_my_wallet).
+  // No localStorage placeholder — a stale cached number desynced the pill from
+  // the wallet shown in Billing.
+  const { data: wallet, isLoading } = useCreditWallet();
+  const balance = Number(wallet?.balance ?? 0);
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState<number>(2500);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    try {
-      const cached = window.localStorage.getItem(`realtyz-credit-balance-${user.id}`);
-      const val = Number(cached ?? '0');
-      setBalance(Number.isFinite(val) ? val : 0);
-    } catch {
-      setBalance(0);
-    }
-
-    supabase.rpc('get_user_balance', { _user_id: user.id }).then(({ data, error }) => {
-      if (cancelled || error) return;
-      const liveBalance = Number(data?.[0]?.balance ?? 0);
-      if (!Number.isFinite(liveBalance)) return;
-      setBalance(liveBalance);
-      try {
-        window.localStorage.setItem(`realtyz-credit-balance-${user.id}`, String(liveBalance));
-      } catch {
-        // Cache is best-effort only.
-      }
-    });
-
-    return () => { cancelled = true; };
-  }, [user?.id]);
 
   const bonus = Math.max(0, Math.round(amount * 0.1));
 
@@ -80,7 +56,7 @@ export function CreditBalancePill() {
         aria-label="יתרת קרדיטים"
       >
         <Wallet className="h-3.5 w-3.5" />
-        <span className="font-bold tabular-nums text-[15px]">{formatIls(balance)}</span>
+        <span className="font-bold tabular-nums text-[15px]">{isLoading ? '…' : formatIls(balance)}</span>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
