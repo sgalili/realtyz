@@ -1800,6 +1800,46 @@ const InlineComposer = ({
     }
   };
 
+  // Selecting a property: restore its cached post + first comment instantly,
+  // otherwise generate both right away (only when nothing exists yet).
+  useEffect(() => {
+    if (!hydrated) return;
+    const id = selectedListingId;
+    if (!id) return;
+    if (listingAutoGenRef.current === id) return;
+    listingAutoGenRef.current = id;
+    const cached = readListingCache(id);
+    if (cached && cached.body.trim()) {
+      if (!body.trim()) {
+        setBody(cached.body);
+        setOriginalAiBody(cached.body);
+        setBodyManuallyEdited(false);
+        if (cached.firstComment.trim() && !firstComment.trim()) setFirstComment(cached.firstComment);
+      }
+      return;
+    }
+    if (body.trim() || generating) return;
+    const t = setTimeout(() => {
+      if (isGenerationStopped()) return;
+      if (body.trim() || generating) return;
+      autoGenTriggeredRef.current = true;
+      handleGenerate().catch(() => {});
+    }, 120);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedListingId, hydrated]);
+
+  // Keep the per-property cache fresh (debounced) so the next visit is instant.
+  useEffect(() => {
+    if (!selectedListingId) return;
+    if (!body.trim()) return;
+    const t = setTimeout(() => writeListingCache(selectedListingId, { body, firstComment }), 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedListingId, body, firstComment]);
+
+
+
 
   // Random CTA intro phrases used before the WA / Messenger shortlink so
   // every post reads a little differently.
