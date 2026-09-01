@@ -1803,8 +1803,12 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         max_tokens: attachments.length > 0 || researchBlock ? 2400 : 1200,
+        // NATIVE FUNCTION CALLING: CRM writes travel through tool_calls, never
+        // as JSON text inside the assistant message.
+        tools: CRM_TOOL_DEFS,
+        tool_choice: "auto",
         messages: [
-          { role: "system", content: systemPrompt + richResponseHint },
+          { role: "system", content: `${systemPrompt}\n\n${NATIVE_TOOLS_CONTRACT}${richResponseHint}` },
           // PII MASKING (Compliance Layer): scrub IDs / cards / IBANs /
           // emails / phones from the chat history before it leaves our
           // backend. The originals stay in Supabase for the human Agent.
