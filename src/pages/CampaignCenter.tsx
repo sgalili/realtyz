@@ -6733,7 +6733,14 @@ const CampaignCenter = () => {
             dateLabel={new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}
             actions={
               <>
+                <Checkbox
+                  checked={selectedDraftIds.includes(r.id)}
+                  onCheckedChange={() => toggleDraftSelected(r.id)}
+                  aria-label="בחירת טיוטה למחיקה"
+                  className="shrink-0"
+                />
                 <Button
+
                   size="icon"
                   variant="outline"
                   title="עריכת הטיוטה"
