@@ -17,6 +17,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
+import { transcribeWaVoiceNote } from "../_shared/waMediaTranscribe.ts";
 
 
 const json = (body: Record<string, unknown>, status = 200) =>
@@ -289,7 +290,9 @@ Deno.serve(async (req) => {
               // assistant. whatsapp-webhook owns that pipeline (autopilot gates,
               // agent commands, owner router) and sends the reply back through
               // send-whatsapp → official Meta Cloud API number.
-              const isTextLike = ["text", "button", "interactive"].includes(type);
+              // A transcribed voice note behaves exactly like an inbound text message.
+              const isTextLike =
+                ["text", "button", "interactive"].includes(type) || Boolean(transcript);
               if (!isTextLike || !String(content).trim() || String(content).startsWith("[")) {
                 console.log("[autopilot] skipped non-text inbound", {
                   type,
