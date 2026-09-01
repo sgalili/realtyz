@@ -2258,21 +2258,47 @@ const InlineComposer = ({
               {attachments.map((att, i) => {
                 const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
                 const isImage = att.kind === 'image' && !!att.url && !isVideo;
+                // The FIRST thumbnail is always the main cover image of the post
+                // and is rendered 15% larger so it is visually unmistakable.
+                const isCover = i === 0;
+                const box = isCover ? 'h-[36px] w-[36px]' : 'h-[31px] w-[31px]';
+                const reorder = (from: number, to: number) => {
+                  if (from === to || Number.isNaN(from)) return;
+                  setAttachments((curr) => {
+                    const next = [...curr];
+                    const [moved] = next.splice(from, 1);
+                    if (!moved) return curr;
+                    next.splice(to, 0, moved);
+                    return next;
+                  });
+                };
                 return (
-                  <div key={i} className="shrink-0">
+                  <div
+                    key={i}
+                    className={cn('relative shrink-0 cursor-grab active:cursor-grabbing', isCover && 'z-10')}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; }}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                    onDrop={(e) => { e.preventDefault(); reorder(Number(e.dataTransfer.getData('text/plain')), i); }}
+                    title={isCover ? 'תמונה ראשית — גרור תמונה לכאן כדי להחליף' : 'גרור לשינוי סדר'}
+                  >
                     {isImage ? (
                       <button
                         type="button"
                         onClick={() => setPreviewImageUrl(att.url!)}
-                        className="block h-[31px] w-[31px] overflow-hidden rounded-none border border-border bg-muted focus:outline-none focus:ring-1 focus:ring-primary"
-                        aria-label="פתח תמונה"
+                        className={cn(
+                          'block overflow-hidden rounded-none bg-muted focus:outline-none focus:ring-1 focus:ring-primary',
+                          box,
+                          isCover ? 'border-2 border-primary' : 'border border-border',
+                        )}
+                        aria-label={isCover ? 'תמונה ראשית' : 'פתח תמונה'}
                       >
                         <img src={att.url} alt="" className="h-full w-full object-cover" />
                       </button>
                     ) : isVideo ? (
-                      <video src={att.url} className="h-[31px] w-[31px] rounded-none object-cover bg-black" muted playsInline />
+                      <video src={att.url} className={cn('rounded-none object-cover bg-black', box)} muted playsInline />
                     ) : (
-                      <div className="flex h-[31px] w-[31px] items-center justify-center rounded-none border border-border bg-muted">
+                      <div className={cn('flex items-center justify-center rounded-none border border-border bg-muted', box)}>
                         {att.kind === 'audio'
                           ? <Mic className="h-4 w-4 text-primary" />
                           : <Paperclip className="h-4 w-4 text-muted-foreground" />}
@@ -2284,6 +2310,7 @@ const InlineComposer = ({
               <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-background to-transparent" aria-hidden="true" />
             </div>
           )}
+
         </div>
 
       </div>
@@ -6066,6 +6093,25 @@ const CampaignCenter = () => {
   const [campaignDraftRows, setCampaignDraftRows] = useState<any[]>([]);
   const [campaignHistoryLoading, setCampaignHistoryLoading] = useState(false);
   const [alsoEmail, setAlsoEmail] = useState(false);
+  // Bulk selection + confirmation for permanently deleting saved drafts.
+  const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([]);
+  const [bulkDeleteDraftsOpen, setBulkDeleteDraftsOpen] = useState(false);
+  const [bulkDeletingDrafts, setBulkDeletingDrafts] = useState(false);
+  const toggleDraftSelected = (id: string) =>
+    setSelectedDraftIds((curr) => (curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]));
+  const bulkDeleteSelectedDrafts = async () => {
+    const ids = [...selectedDraftIds];
+    if (ids.length === 0) return;
+    setBulkDeletingDrafts(true);
+    const { error } = await supabase.from('ai_content_logs').delete().in('id', ids);
+    setBulkDeletingDrafts(false);
+    setBulkDeleteDraftsOpen(false);
+    if (error) { toast.error('מחיקת הטיוטות נכשלה'); setHistoryRefreshTick((t) => t + 1); return; }
+    setCampaignDraftRows((prev) => prev.filter((x) => !ids.includes(x.id)));
+    setSelectedDraftIds([]);
+    toast.success(`${ids.length} טיוטות נמחקו`);
+  };
+
 
   // Restore the last unpublished draft session (local first, cloud second) and
   // keep it saved whenever the composer is opened with a fan-out.
@@ -6634,7 +6680,42 @@ const CampaignCenter = () => {
     <div className="flex h-52 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
   ) : historyTab === 'drafts' ? (
     <div className="space-y-2" dir="rtl">
+      {campaignDraftRows.length > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
+          <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-semibold text-foreground">
+            <Checkbox
+              checked={selectedDraftIds.length === campaignDraftRows.length && campaignDraftRows.length > 0}
+              onCheckedChange={(v) => setSelectedDraftIds(v === true ? campaignDraftRows.map((x) => x.id) : [])}
+              aria-label="בחר את כל הטיוטות"
+            />
+            בחר הכל ({selectedDraftIds.length}/{campaignDraftRows.length})
+          </label>
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={selectedDraftIds.length === 0}
+            onClick={() => setBulkDeleteDraftsOpen(true)}
+          >
+            <Trash2 className="me-1 h-4 w-4" /> מחיקת הנבחרות
+          </Button>
+        </div>
+      )}
+      <Dialog open={bulkDeleteDraftsOpen} onOpenChange={(v) => { if (!bulkDeletingDrafts) setBulkDeleteDraftsOpen(v); }}>
+        <DialogContent dir="rtl" className="max-w-sm text-right">
+          <DialogHeader>
+            <DialogTitle className="text-right">מחיקת {selectedDraftIds.length} טיוטות</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">הפעולה סופית ולא ניתן לשחזר את הטיוטות. להמשיך?</p>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button variant="destructive" disabled={bulkDeletingDrafts} onClick={() => { void bulkDeleteSelectedDrafts(); }}>
+              {bulkDeletingDrafts ? <Loader2 className="h-4 w-4 animate-spin" /> : 'מחק לצמיתות'}
+            </Button>
+            <Button variant="outline" disabled={bulkDeletingDrafts} onClick={() => setBulkDeleteDraftsOpen(false)}>ביטול</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {campaignDraftRows.map((r) => {
+
         const media = Array.isArray(r.media_urls) ? r.media_urls : [];
         const first = media[0];
         const firstUrl = typeof first === 'string' ? first : (first as any)?.url ?? null;
@@ -6652,7 +6733,14 @@ const CampaignCenter = () => {
             dateLabel={new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}
             actions={
               <>
+                <Checkbox
+                  checked={selectedDraftIds.includes(r.id)}
+                  onCheckedChange={() => toggleDraftSelected(r.id)}
+                  aria-label="בחירת טיוטה למחיקה"
+                  className="shrink-0"
+                />
                 <Button
+
                   size="icon"
                   variant="outline"
                   title="עריכת הטיוטה"

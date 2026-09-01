@@ -246,19 +246,24 @@ export function ScheduleCurrentPostDialog({
 
     const buildDaySlots = (dayBase: Date): Date[] => {
       const out: Date[] = [];
+      // A narrow window (or a single post) is honoured EXACTLY as the broker
+      // typed it — no randomisation, no forward drift.
+      const exact = n === 1 || span <= 5;
       for (let i = 0; i < n; i++) {
-        // Random minute inside the window — never on the start/end boundary.
-        const offset = randomSlotMinutes(startMin, endMin, i, n);
-        const total = Math.floor(offset);
+        const total = exact
+          ? startMin + Math.min(i, span)
+          : Math.floor(randomSlotMinutes(startMin, endMin, i, n));
         const d = new Date(dayBase);
-        d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);
-        if (d.getTime() <= Date.now() + 60_000) {
-          d.setTime(Date.now() + (i + 1) * 5 * 60_000);
+        d.setHours(Math.floor(total / 60), total % 60, exact ? 0 : Math.floor(Math.random() * 60), 0);
+        // Only past slots are nudged, and only to the closest valid moment.
+        if (d.getTime() <= Date.now() + 30_000) {
+          d.setTime(Date.now() + 60_000 + i * 30_000);
         }
         out.push(d);
       }
       return out;
     };
+
 
     const recDates: Date[] = [];
     if (recurrence === 'none') {
@@ -454,7 +459,15 @@ export function ScheduleCurrentPostDialog({
     // ---- Per-group daily limits -------------------------------------------
     // Persist the cap the broker typed, then plan the groups slot-by-slot so no
     // group receives more posts on a single day than its daily limit allows.
-    const baseGroupIds = channelId === 'facebook' ? (selectedGroupIds || []) : [];
+    // The selection is never allowed to arrive empty: fall back to the shared
+    // store and then to the composer's own groups so a scheduled post can never
+    // be saved as "ללא קבוצות" while groups were actually picked.
+    const resolvedGroupIds = (selectedGroupIds?.length ? selectedGroupIds : null)
+      ?? (loadCampaignGroups(workspaceOwnerId).length ? loadCampaignGroups(workspaceOwnerId) : null)
+      ?? (defaultGroupIds || []);
+    const baseGroupIds = channelId === 'facebook'
+      ? Array.from(new Set(resolvedGroupIds.map((g) => String(g).replace(/^ext:/, '')).filter(Boolean)))
+      : [];
     if (channelId === 'facebook' && baseGroupIds.length > 0) {
       await saveGroupDailyLimit(baseGroupIds, groupDailyLimit > 0 ? groupDailyLimit : null);
     }
@@ -481,8 +494,10 @@ export function ScheduleCurrentPostDialog({
       for (const b of blocked) blockedGroups.add(b);
       for (const id of allowed) planned[id] = (planned[id] ?? 0) + 1;
       plannedPerDay.set(key, planned);
-      return allowed;
+      // Daily caps must never erase the target list from the saved row.
+      return allowed.length > 0 ? allowed : baseGroupIds;
     };
+
 
     // Every slot gets its own random mix: distinct main picture + 9 more.
     const imagesForSlot = (): string[] =>

@@ -3,11 +3,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, Home, Search, Download } from 'lucide-react';
+import { Loader2, Home, Search, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 
 export type ScheduledSeriesRow = {
   id: string;
@@ -213,17 +212,7 @@ export function EditScheduledSeriesDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="rounded-xl border border-border bg-muted/30 p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Users className="h-4 w-4" /> קבוצות יעד
-              </span>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">{groupIds.length}</span>
-            </div>
-            <div className="max-h-[38vh] overflow-y-auto overscroll-contain">
-              <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
-            </div>
-          </div>
+
 
           <div className="rounded-xl border border-border bg-muted/30 p-3">
             <div className="mb-2 flex items-center justify-between">

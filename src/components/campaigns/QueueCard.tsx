@@ -4,7 +4,7 @@
 // metadata row with the channel logo, date, live status and actions.
 //
 // No preview body text, excerpts or sub-text is ever rendered here.
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AlertTriangle, Calendar as CalendarIcon, CheckCircle2, ChevronDown, ChevronUp, Facebook, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GroupStatusChips, type GroupChipState, type GroupResult } from '@/components/campaigns/GroupStatusChips';
@@ -28,15 +28,27 @@ const STATUS_LABEL: Record<QueueCardStatus, string> = {
   publishing: 'מפרסם',
 };
 
-/** dd/hh/mm remaining, matching the published-tab countdown format. */
-function countdownLabel(iso?: string | null) {
+/** Live dd/hh/mm/ss remaining, ticking every second. */
+function useCountdown(iso?: string | null) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!iso) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(t);
+  }, [iso]);
   if (!iso) return null;
   const target = new Date(iso).getTime();
   if (!Number.isFinite(target)) return null;
-  const s = Math.max(0, Math.floor((target - Date.now()) / 1000));
+  const s = Math.max(0, Math.floor((target - now) / 1000));
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(s / 86400))}/${pad(Math.floor((s % 86400) / 3600))}/${pad(Math.floor((s % 3600) / 60))}`;
+  return [
+    Math.floor(s / 86400),
+    Math.floor((s % 86400) / 3600),
+    Math.floor((s % 3600) / 60),
+    s % 60,
+  ].map(pad).join('/');
 }
+
 
 export function QueueCard({
   title,
@@ -69,7 +81,7 @@ export function QueueCard({
   details?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const countdown = status === 'scheduled' ? countdownLabel(countdownIso) : null;
+  const countdown = useCountdown(status === 'scheduled' ? countdownIso : null);
 
   return (
     <article className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden" dir="rtl">
