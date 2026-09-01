@@ -6093,6 +6093,25 @@ const CampaignCenter = () => {
   const [campaignDraftRows, setCampaignDraftRows] = useState<any[]>([]);
   const [campaignHistoryLoading, setCampaignHistoryLoading] = useState(false);
   const [alsoEmail, setAlsoEmail] = useState(false);
+  // Bulk selection + confirmation for permanently deleting saved drafts.
+  const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([]);
+  const [bulkDeleteDraftsOpen, setBulkDeleteDraftsOpen] = useState(false);
+  const [bulkDeletingDrafts, setBulkDeletingDrafts] = useState(false);
+  const toggleDraftSelected = (id: string) =>
+    setSelectedDraftIds((curr) => (curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]));
+  const bulkDeleteSelectedDrafts = async () => {
+    const ids = [...selectedDraftIds];
+    if (ids.length === 0) return;
+    setBulkDeletingDrafts(true);
+    const { error } = await supabase.from('ai_content_logs').delete().in('id', ids);
+    setBulkDeletingDrafts(false);
+    setBulkDeleteDraftsOpen(false);
+    if (error) { toast.error('מחיקת הטיוטות נכשלה'); setHistoryRefreshTick((t) => t + 1); return; }
+    setCampaignDraftRows((prev) => prev.filter((x) => !ids.includes(x.id)));
+    setSelectedDraftIds([]);
+    toast.success(`${ids.length} טיוטות נמחקו`);
+  };
+
 
   // Restore the last unpublished draft session (local first, cloud second) and
   // keep it saved whenever the composer is opened with a fan-out.
