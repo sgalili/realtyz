@@ -479,6 +479,7 @@ const LeadCRM = () => {
   const [newVoter, setNewVoter] = useState({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
   const [addingVoter, setAddingVoter] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importIsJson, setImportIsJson] = useState(false);
   const queryClient = useQueryClient();
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
