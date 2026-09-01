@@ -36,3 +36,7 @@
 ## Sep 1 (evening)
 - [x] Background STT for inbound WhatsApp voice notes → transcript stored as inbound text + AI autopilot reply
 - [x] Fix AI agent CRM schema mapping: contacts→leads, phone→phone_number (prompt + runtime SQL guard)
+
+## Sep 1 (late) — AI agent hardening
+- [x] Safe error handling: all AI tool/SQL failures logged internally (_shared/safeToolError.ts) and answered with a graceful Hebrew fallback; no raw errors in chat/WhatsApp
+- [x] Persona cleanup: banned internal jargon/meta-commentary ("קצין המודיעין" etc.), silent tool execution + natural Hebrew lead-in before results
