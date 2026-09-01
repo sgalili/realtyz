@@ -574,6 +574,17 @@ Deno.serve(async (req) => {
         200,
       );
     }
+    // Page publishing was turned off and no group was picked → nothing to do.
+    if (!publishToPage && groupIds.length === 0) {
+      return json(
+        {
+          success: false,
+          error: "no_targets",
+          message: "לא נבחרו קבוצות ופרסום בעמוד העסקי כבוי — בחר יעד אחד לפחות.",
+        },
+        200,
+      );
+    }
 
     const postIds: Array<{ platform: string; id: string }> = [];
     const failures: Array<{ platform: string; message: string }> = [];
@@ -583,10 +594,11 @@ Deno.serve(async (req) => {
     if (page) page = await ensurePageToken(db, ownerId, page);
 
     for (const ch of pendingChannels) {
-      if (!page) {
+      if (!page || !publishToPage) {
         // Group-only publish: skip the Page/IG leg entirely instead of failing.
         continue;
       }
+
 
       if (ch === "facebook") {
         let activePage = page;
