@@ -1464,6 +1464,71 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_transactions: {
+        Row: {
+          amount_ils: number
+          created_at: string
+          id: string
+          note: string | null
+          reference_id: string | null
+          type: string
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          amount_ils: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          reference_id?: string | null
+          type: string
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          amount_ils?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          reference_id?: string | null
+          type?: string
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "credit_wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_wallets: {
+        Row: {
+          balance_ils: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance_ils?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance_ils?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       crisis_alerts: {
         Row: {
           affected_segment: string | null
@@ -2892,6 +2957,27 @@ export type Database = {
         }
         Relationships: []
       }
+      launch_promo_counter: {
+        Row: {
+          claimed_count: number
+          id: number
+          max_slots: number
+          updated_at: string
+        }
+        Insert: {
+          claimed_count?: number
+          id?: number
+          max_slots?: number
+          updated_at?: string
+        }
+        Update: {
+          claimed_count?: number
+          id?: number
+          max_slots?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           address: string | null
@@ -3816,6 +3902,36 @@ export type Database = {
         }
         Relationships: []
       }
+      plans: {
+        Row: {
+          contact_limit: number
+          created_at: string
+          display_name: string
+          id: string
+          monthly_price_ils: number
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          contact_limit?: number
+          created_at?: string
+          display_name: string
+          id?: string
+          monthly_price_ils?: number
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          contact_limit?: number
+          created_at?: string
+          display_name?: string
+          id?: string
+          monthly_price_ils?: number
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       platform_oauth_apps: {
         Row: {
           client_id: string | null
@@ -3982,6 +4098,7 @@ export type Database = {
           last_sign_in_at: string | null
           phone: string | null
           plan_status: string
+          referral_code: string | null
           service_areas: string[]
           trial_end_date: string | null
           trial_start_date: string
@@ -4011,6 +4128,7 @@ export type Database = {
           last_sign_in_at?: string | null
           phone?: string | null
           plan_status?: string
+          referral_code?: string | null
           service_areas?: string[]
           trial_end_date?: string | null
           trial_start_date?: string
@@ -4040,6 +4158,7 @@ export type Database = {
           last_sign_in_at?: string | null
           phone?: string | null
           plan_status?: string
+          referral_code?: string | null
           service_areas?: string[]
           trial_end_date?: string | null
           trial_start_date?: string
@@ -4199,6 +4318,42 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          converted_at: string | null
+          created_at: string
+          fraud_flag: boolean
+          id: string
+          referral_code: string | null
+          referred_user_id: string
+          referrer_id: string
+          reward_granted: boolean
+          status: string
+        }
+        Insert: {
+          converted_at?: string | null
+          created_at?: string
+          fraud_flag?: boolean
+          id?: string
+          referral_code?: string | null
+          referred_user_id: string
+          referrer_id: string
+          reward_granted?: boolean
+          status?: string
+        }
+        Update: {
+          converted_at?: string | null
+          created_at?: string
+          fraud_flag?: boolean
+          id?: string
+          referral_code?: string | null
+          referred_user_id?: string
+          referrer_id?: string
+          reward_granted?: boolean
+          status?: string
         }
         Relationships: []
       }
@@ -4954,13 +5109,17 @@ export type Database = {
           cold_conversion_rate: number
           cold_list_count: number | null
           created_at: string
+          current_period_end: string
+          current_period_start: string
           election_type: string
           hot_conversion_rate: number
           hot_list_count: number | null
           id: string
+          is_launch_promo: boolean
           mandate_target: number | null
           months_to_election: number | null
           plan_id: string | null
+          plan_name: string | null
           started_at: string
           status: string
           updated_at: string
@@ -4970,13 +5129,17 @@ export type Database = {
           cold_conversion_rate?: number
           cold_list_count?: number | null
           created_at?: string
+          current_period_end?: string
+          current_period_start?: string
           election_type?: string
           hot_conversion_rate?: number
           hot_list_count?: number | null
           id?: string
+          is_launch_promo?: boolean
           mandate_target?: number | null
           months_to_election?: number | null
           plan_id?: string | null
+          plan_name?: string | null
           started_at?: string
           status?: string
           updated_at?: string
@@ -4986,13 +5149,17 @@ export type Database = {
           cold_conversion_rate?: number
           cold_list_count?: number | null
           created_at?: string
+          current_period_end?: string
+          current_period_start?: string
           election_type?: string
           hot_conversion_rate?: number
           hot_list_count?: number | null
           id?: string
+          is_launch_promo?: boolean
           mandate_target?: number | null
           months_to_election?: number | null
           plan_id?: string | null
+          plan_name?: string | null
           started_at?: string
           status?: string
           updated_at?: string
@@ -5459,6 +5626,25 @@ export type Database = {
       }
     }
     Functions: {
+      add_credit: {
+        Args: {
+          _amount: number
+          _note?: string
+          _reference_id?: string
+          _type: string
+          _user_id: string
+        }
+        Returns: number
+      }
+      admin_adjust_credit: {
+        Args: { _amount: number; _reason?: string; _user_id: string }
+        Returns: number
+      }
+      admin_link_referral: {
+        Args: { _referred: string; _referrer: string }
+        Returns: Json
+      }
+      admin_unlink_referral: { Args: { _referred: string }; Returns: Json }
       bulk_update_leads: {
         Args: {
           lead_ids: string[]
@@ -5480,6 +5666,7 @@ export type Database = {
         Args: { _listing_id: string }
         Returns: number
       }
+      cancel_my_subscription: { Args: never; Returns: Json }
       claim_autopilot_jobs: {
         Args: { p_limit?: number; p_worker?: string }
         Returns: {
@@ -5545,8 +5732,10 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      ensure_credit_wallet: { Args: { _user_id: string }; Returns: string }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
+      gen_referral_code: { Args: never; Returns: string }
       get_account_integrations: { Args: never; Returns: Json }
       get_affiliate_marketplace: {
         Args: never
@@ -5595,9 +5784,14 @@ export type Database = {
             }[]
           }
       get_followup_suggestions: { Args: { _user_id: string }; Returns: Json }
+      get_growth_analytics: { Args: never; Returns: Json }
       get_homely_admin_overview: { Args: never; Returns: Json }
       get_homely_password: { Args: { _user_id: string }; Returns: string }
       get_match_stats: { Args: { p_user_id: string }; Returns: Json }
+      get_my_referral_code: { Args: never; Returns: string }
+      get_my_referral_stats: { Args: never; Returns: Json }
+      get_my_subscription_status: { Args: never; Returns: Json }
+      get_my_wallet: { Args: never; Returns: Json }
       get_my_workspaces: {
         Args: never
         Returns: {
@@ -5778,6 +5972,7 @@ export type Database = {
         Args: { _display_name?: string; _phone?: string }
         Returns: Json
       }
+      register_referral: { Args: { _code: string }; Returns: Json }
       release_fb_group_post_slot: {
         Args: { _group: string; _owner: string }
         Returns: undefined
@@ -5797,6 +5992,7 @@ export type Database = {
         Args: { _row_user: string; _viewer: string }
         Returns: boolean
       }
+      subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
       trigger_match_for_lead: {
         Args: { p_lead_id: string }

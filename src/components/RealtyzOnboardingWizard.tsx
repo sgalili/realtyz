@@ -139,6 +139,7 @@ export function RealtyzOnboardingWizard() {
       await persist(TOTAL_STEPS, nextCompleted, { closed_deal_goal: Number(goal) || 0 }, true);
       toast.success("ברוכים הבאים ל־Realtyz AI!");
       setOpen(false);
+      navigate("/profile");
     } catch (e: any) {
       toast.error(e?.message || "שגיאה בסיום");
     } finally {

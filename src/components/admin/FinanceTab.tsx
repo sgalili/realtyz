@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Wallet, Plus, Minus } from 'lucide-react';
 import { toast } from 'sonner';
+import { GrowthPromoCard } from '@/components/admin/GrowthPromoCard';
 
 export function FinanceTab() {
   const qc = useQueryClient();
@@ -48,6 +49,13 @@ export function FinanceTab() {
         reason: adjReason || null,
       });
       if (error) throw error;
+      // mirror into the credit wallet ledger (audited)
+      const { error: ledgerErr } = await (supabase as any).rpc('admin_adjust_credit', {
+        _user_id: targetUser.id,
+        _amount: amt,
+        _reason: adjReason || null,
+      });
+      if (ledgerErr) throw ledgerErr;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-users-finance'] });
@@ -59,6 +67,7 @@ export function FinanceTab() {
 
   return (
     <div className="space-y-4">
+      <GrowthPromoCard />
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">

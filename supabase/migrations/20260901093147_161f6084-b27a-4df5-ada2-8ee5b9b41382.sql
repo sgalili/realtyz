@@ -1,0 +1,27 @@
+REVOKE EXECUTE ON FUNCTION public.get_my_referral_code() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.get_my_wallet() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.register_referral(TEXT) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.subscribe_to_plan(TEXT) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.cancel_my_subscription() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.get_my_subscription_status() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.get_my_referral_stats() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.admin_adjust_credit(UUID, NUMERIC, TEXT) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.get_growth_analytics() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.admin_link_referral(UUID, UUID) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.admin_unlink_referral(UUID) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.gen_referral_code() FROM anon, public, authenticated;
+REVOKE EXECUTE ON FUNCTION public.ensure_credit_wallet(UUID) FROM anon, public, authenticated;
+REVOKE EXECUTE ON FUNCTION public.add_credit(UUID, NUMERIC, TEXT, UUID, TEXT) FROM anon, public, authenticated;
+REVOKE EXECUTE ON FUNCTION public.enforce_plan_contact_limit() FROM anon, public, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.get_my_referral_code() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_wallet() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.register_referral(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.subscribe_to_plan(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.cancel_my_subscription() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_subscription_status() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_referral_stats() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_adjust_credit(UUID, NUMERIC, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_growth_analytics() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_link_referral(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_unlink_referral(UUID) TO authenticated;

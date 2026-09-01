@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BillingTab from '@/components/profile/BillingTab';
+import { LaunchPromoBanner } from '@/components/billing/LaunchPromoBanner';
+import { ReferralProgramCard } from '@/components/referrals/ReferralProgramCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -631,7 +633,9 @@ export default function Profile() {
           <ConnectionsTab />
         </TabsContent>
         <TabsContent value="billing" className="mt-[20px] space-y-4" dir="rtl">
+          <LaunchPromoBanner />
           <BillingTab />
+          <ReferralProgramCard />
         </TabsContent>
 
       </Tabs>
