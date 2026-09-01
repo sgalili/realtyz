@@ -57,6 +57,7 @@ export function ScheduleCurrentPostDialog({
   mediaUrls,
   listingId,
   defaultGroupIds,
+  publishToPage = true,
   targets,
   isSocialChannel,
 }: {
@@ -71,6 +72,8 @@ export function ScheduleCurrentPostDialog({
   mediaUrls: string[];
   listingId: string | null;
   defaultGroupIds: string[];
+  /** "פרסם גם בעמוד הפייסבוק העסקי" — default true. */
+  publishToPage?: boolean;
   targets: ScheduleTarget[];
   isSocialChannel: boolean;
 }) {
@@ -539,6 +542,7 @@ export function ScheduleCurrentPostDialog({
           scheduled_at: firstSlot.toISOString(),
           workspace_owner_id: ownerScope,
           group_ids: firstSlotGroups,
+          publish_to_page: publishToPage !== false,
           target_profile_id: target?.id ?? null,
           target_account_ref: target?.accountRef ?? null,
           target_profile_key: target?.profileKey ?? null,
@@ -598,6 +602,7 @@ export function ScheduleCurrentPostDialog({
             first_comment: firstComment || null,
             media_urls: slotImages,
             group_ids: slotGroups,
+            provider_response: { publish_to_page: publishToPage !== false },
             target_profile_key: target?.profileKey ?? null,
             target_account_ref: target?.accountRef ?? null,
             series_id: seriesId,
