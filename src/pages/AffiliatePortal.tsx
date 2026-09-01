@@ -23,6 +23,8 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
+import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
+import SubmitLeadDialog from '@/components/affiliate/SubmitLeadDialog';
 import {
   REFERRAL_STATUS_LABELS,
   SETTLEMENT_LABELS,
@@ -30,6 +32,10 @@ import {
   formatReward,
   useAffiliateMarketplace,
   useMyReferrals,
+  listingTiers,
+  useMySubmissions,
+  accruedEarnings,
+  SUBMISSION_STATUS_LABELS,
   useRegisterAffiliate,
   useStartPromoting,
   type MarketplaceListing,
