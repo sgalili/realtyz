@@ -183,8 +183,15 @@ export async function executeCrmActions(
     if (a.deal_type === "sale" || a.deal_type === "rent") patch.deal_type = a.deal_type;
     if (["live", "pending", "discarded"].includes(String(a.status))) patch.status = String(a.status);
     if (a.features && typeof a.features === "object") patch.features = a.features;
+    // Entry date ("כניסה: 01/09") maps to the real column when it parses.
+    const entry = a.available_from ?? a.entry_date;
+    if (entry) {
+      const d = new Date(String(entry));
+      if (!Number.isNaN(d.getTime())) patch.available_from = d.toISOString().slice(0, 10);
+    }
     return patch;
   };
+
 
 
   const logActivity = async (a: CrmAction, actionType: string, platform: string, content: string) => {
