@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
-import { PACKAGES, FREE_CONTACTS, FREE_PROPERTIES, limitLabel } from '@/lib/pricing';
+
 import { META_APP_ID } from '@/lib/metaApp';
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
