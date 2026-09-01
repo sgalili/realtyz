@@ -1190,8 +1190,8 @@ const LeadCRM = () => {
         if (rows.length === 0) { toast.error('הקובץ ריק'); return; }
 
 
-        // Build canonical->actualHeader map from the first row's keys
-        const headers = Object.keys(rows[0] ?? {});
+        // Build canonical->actualHeader map from the union of row keys (JSON rows can vary)
+        const headers = Array.from(new Set(rows.slice(0, 200).flatMap((r) => Object.keys(r ?? {}))));
         const headerMap = buildHeaderMap(headers);
 
         const get = (row: Record<string, any>, field: string): string => {
