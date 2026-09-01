@@ -46,6 +46,9 @@ export function sanitizeReplyText(raw: string | null | undefined): string {
   text = text.replace(/\[[0-9a-f]{6,8}\]\s*/gi, "");
   text = text.replace(/\*\*\s*\*\*/g, "").replace(/__\s*__/g, "");
 
+  // Final hard guard: no code fences, JSON blobs or action schemas survive.
+  text = stripRawJson(text);
+
   return text
     .split("\n")
     .map((l) => l.replace(/[ \t]+$/g, ""))
@@ -53,3 +56,4 @@ export function sanitizeReplyText(raw: string | null | undefined): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
