@@ -479,6 +479,7 @@ const LeadCRM = () => {
   const [newVoter, setNewVoter] = useState({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
   const [addingVoter, setAddingVoter] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importIsJson, setImportIsJson] = useState(false);
   const queryClient = useQueryClient();
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -1175,20 +1176,22 @@ const LeadCRM = () => {
     }));
   };
 
-  // Import logic - bilingual header mapping (Hebrew + English), CSV + XLSX support
+  // Import logic - bilingual header mapping (Hebrew + English), CSV + XLSX + JSON support
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const isCsv = /\.csv$/i.test(file.name);
     const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+    const isJson = /\.json$/i.test(file.name) || file.type === 'application/json';
+    setImportIsJson(isJson);
 
     const processRows = (rows: Record<string, any>[]) => {
       try {
         if (rows.length === 0) { toast.error('הקובץ ריק'); return; }
 
 
-        // Build canonical->actualHeader map from the first row's keys
-        const headers = Object.keys(rows[0] ?? {});
+        // Build canonical->actualHeader map from the union of row keys (JSON rows can vary)
+        const headers = Array.from(new Set(rows.slice(0, 200).flatMap((r) => Object.keys(r ?? {}))));
         const headerMap = buildHeaderMap(headers);
 
         const get = (row: Record<string, any>, field: string): string => {
@@ -1235,7 +1238,9 @@ const LeadCRM = () => {
           if (!name) { invalid++; continue; }
           const phone = normalizeIsraeliPhone(rawPhone);
           if (!phone) { invalid++; continue; }
-          if (seenPhones.has(phone) || existingPhones.has(phone)) { duplicates++; continue; }
+          // JSON imports intentionally allow existing contacts through so their
+          // phone numbers get updated (upsert) instead of being skipped.
+          if (seenPhones.has(phone) || (!isJson && existingPhones.has(phone))) { duplicates++; continue; }
           seenPhones.add(phone);
 
           // Capture EVERY original column from the source file (mapped + unmapped),
@@ -1286,6 +1291,48 @@ const LeadCRM = () => {
       return;
     }
 
+    if (isJson) {
+      const jsonReader = new FileReader();
+      jsonReader.onload = (evt) => {
+        try {
+          const parsed = JSON.parse(String(evt.target?.result ?? ''));
+          const pickArray = (val: any): any[] => {
+            if (Array.isArray(val)) return val;
+            if (val && typeof val === 'object') {
+              const preferredKeys = ['contacts', 'leads', 'records', 'data', 'rows', 'items', 'results'];
+              for (const k of preferredKeys) if (Array.isArray(val[k])) return val[k];
+              for (const v of Object.values(val)) if (Array.isArray(v) && v.some((x) => x && typeof x === 'object')) return v as any[];
+              return [val];
+            }
+            return [];
+          };
+          // Flatten one level of nested objects so keys like contact.phone are mappable
+          const flatten = (obj: any, prefix = ''): Record<string, any> => {
+            const out: Record<string, any> = {};
+            for (const [k, v] of Object.entries(obj ?? {})) {
+              const key = prefix ? `${prefix}.${k}` : k;
+              if (v && typeof v === 'object' && !Array.isArray(v)) Object.assign(out, flatten(v, key));
+              else if (Array.isArray(v)) out[key] = v.filter((x) => typeof x !== 'object').join(', ');
+              else out[key] = v;
+            }
+            return out;
+          };
+          const rows = pickArray(parsed)
+            .filter((r) => r && typeof r === 'object')
+            .map((r) => flatten(r));
+          if (!rows.length) { toast.error('לא נמצאו רשומות בקובץ ה-JSON'); return; }
+          processRows(rows);
+        } catch (err: any) {
+          console.error('JSON parse error:', err);
+          toast.error('שגיאה בקריאת JSON: ' + (err?.message || 'מבנה לא תקין'));
+        }
+      };
+      jsonReader.readAsText(file, 'UTF-8');
+      e.target.value = '';
+      return;
+    }
+
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -1321,7 +1368,102 @@ const LeadCRM = () => {
     setImporting(true);
     setImportProgress(0);
     let totalInserted = 0;
+
+    // ---- JSON mode: match existing contacts and update their phone numbers ----
+    if (importIsJson) {
+      try {
+        const norm = (s?: string | null) => (s ?? '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+        const { data: existing, error: exErr } = await supabase
+          .from('leads')
+          .select('id, full_name, email, phone_number, identity_number');
+        if (exErr) throw exErr;
+
+        const byEmail: Record<string, string> = {};
+        const byId: Record<string, string> = {};
+        const byName: Record<string, string> = {};
+        const byPhone: Record<string, string> = {};
+        for (const l of existing ?? []) {
+          if (l.email) byEmail[norm(l.email)] = l.id;
+          if ((l as any).identity_number) byId[norm((l as any).identity_number)] = l.id;
+          if (l.full_name) byName[norm(l.full_name)] = l.id;
+          if (l.phone_number) byPhone[String(l.phone_number)] = l.id;
+        }
+
+        const dealType = importLeadKind === 'renter' || importLeadKind === 'landlord' ? 'rent' : 'sale';
+        const toInsert: any[] = [];
+        let updated = 0;
+        let processed = 0;
+
+        for (const r of rows) {
+          const matchId =
+            (r.email ? byEmail[norm(r.email)] : undefined) ||
+            (r.identity_number ? byId[norm(r.identity_number)] : undefined) ||
+            byPhone[r.phone_number] ||
+            byName[norm(r.full_name)];
+
+          if (matchId) {
+            const patch: any = { phone_number: r.phone_number };
+            if (r.email) patch.email = r.email;
+            if (r.city) patch.city = r.city;
+            if (r.interest_tag) patch.interest_tag = r.interest_tag;
+            if (r.identity_number) patch.identity_number = r.identity_number;
+            const { error } = await supabase.from('leads').update(patch).eq('id', matchId);
+            if (!error) updated++;
+          } else {
+            toInsert.push({
+              full_name: r.full_name,
+              phone_number: r.phone_number,
+              email: r.email || null,
+              city: r.city || null,
+              interest_tag: r.interest_tag || null,
+              identity_number: r.identity_number || null,
+              status: 'uploaded',
+              deal_type: dealType,
+              preferences: {
+                lead_kind: importLeadKind,
+                ...(r.extra && Object.keys(r.extra).length ? { extra_fields: r.extra } : {}),
+              },
+            });
+          }
+          processed++;
+          setImportProgress(Math.round((processed / rows.length) * 90));
+        }
+
+        let inserted = 0;
+        for (let i = 0; i < toInsert.length; i += 500) {
+          const { data, error } = await supabase
+            .from('leads')
+            .upsert(toInsert.slice(i, i + 500), { onConflict: 'phone_number' })
+            .select('id');
+          if (error) throw error;
+          inserted += data?.length ?? 0;
+        }
+        setImportProgress(100);
+
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
+          queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
+          queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
+        ]);
+
+        toast.success(
+          `ייבוא JSON הושלם: ${updated.toLocaleString('he-IL')} מספרי טלפון עודכנו, ${inserted.toLocaleString('he-IL')} אנשי קשר חדשים נוספו`,
+          { duration: 7000 },
+        );
+
+        setImportDialogOpen(false);
+        setImportPreview([]);
+        setImportStats(null);
+        setImportIsJson(false);
+        delete (window as any).__importRows;
+      } catch (err: any) {
+        toast.error('שגיאה בייבוא JSON: ' + (err?.message || 'שגיאה לא ידועה'));
+      } finally { setImporting(false); }
+      return;
+    }
+
     try {
+
       const batchSize = 500;
       const totalRows = rows.length;
       for (let i = 0; i < rows.length; i += batchSize) {
@@ -1382,7 +1524,7 @@ const LeadCRM = () => {
       {/* Header + add menu live in the global PageHero (top bar) */}
 
 
-      <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
+      <input type="file" ref={fileInputRef} accept=".csv,.xlsx,.xls,.json,.pdf,application/json,text/csv" className="hidden" onChange={handleFileSelect} />
       {freemium.isTrial && (
         <div className="hidden sm:flex items-center gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground w-fit ms-auto">
           <span>נותרו <span className="font-semibold text-foreground tabular-nums">{freemium.daysLeft}</span> ימי התנסות</span>
