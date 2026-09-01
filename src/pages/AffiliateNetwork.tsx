@@ -107,83 +107,43 @@ function RewardDialog({
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
 
-          <div className="space-y-2">
-            <Label>סוג התגמול</Label>
-            <Select value={rewardType} onValueChange={(v) => setRewardType(v as RewardType)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fixed">סכום קבוע (₪)</SelectItem>
-                <SelectItem value="percent">אחוז מהעמלה (%)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>{rewardType === 'fixed' ? 'סכום התגמול בשקלים' : 'אחוז מהעמלה'}</Label>
-            <div className="relative">
-              <Input
-                value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
-                inputMode="decimal"
-                className="pe-9"
-              />
-              <span className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400">
-                {rewardType === 'fixed' ? '₪' : <Percent className="h-4 w-4" />}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500">
-              התגמול משולם על עסקה שנחתמת דרך השותף. שינוי התגמול לא משפיע על שיווקים קיימים.
-            </p>
-          </div>
-
           <div className="space-y-3 rounded-lg border border-slate-200 p-3">
-            <div>
-              <div className="text-sm font-semibold text-slate-900">מודל עמלה ב-3 שלבים</div>
-              <div className="text-[11px] text-slate-500">
-                השותף צובר תגמול בכל שלב בנפרד. שלב 2 מוגדר כברירת מחדל ככפול משלב 1.
+            <div className="text-sm font-semibold text-slate-900">מודל עמלה ב-3 שלבים</div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <div className="text-[12px] font-semibold text-slate-900">שלב 1</div>
+                <Label className="text-[11px] font-normal text-slate-500">
+                  ליד דיגיטלי לנכס הספציפי (₪)
+                </Label>
+                <Input value={tier1} inputMode="decimal" onChange={(e) => setTier1(clean(e.target.value))} />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="text-[12px] font-semibold text-slate-900">שלב 2</div>
+                <Label className="text-[11px] font-normal text-slate-500">
+                  ליד שאומת אנושית בשיחת טלפון (₪)
+                </Label>
+                <Input value={tier2} inputMode="decimal" onChange={(e) => setTier2(clean(e.target.value))} />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="text-[12px] font-semibold text-slate-900">שלב 3</div>
+                <Label className="text-[11px] font-normal text-slate-500">בונוס סגירת עסקה</Label>
+                <div className="flex items-center gap-2">
+                  <Select value={tier3Type} onValueChange={(v) => setTier3Type(v as RewardType)}>
+                    <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">סכום קבוע (₪)</SelectItem>
+                      <SelectItem value="percent">אחוז מהעמלה (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input value={tier3} inputMode="decimal" onChange={(e) => setTier3(clean(e.target.value))} />
+                </div>
               </div>
             </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-[12px]">שלב 1 · ליד חם שהוגש (₪)</Label>
-              <Input
-                value={tier1}
-                inputMode="decimal"
-                onChange={(e) => {
-                  const v = clean(e.target.value);
-                  setTier1(v);
-                  if (!num(tier2) || num(tier2) === num(tier1) * 2) setTier2(String(num(v) * 2));
-                }}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-[12px]">שלב 2 · ליד שאומת אנושית (₪)</Label>
-              <Input value={tier2} inputMode="decimal" onChange={(e) => setTier2(clean(e.target.value))} />
-              <p className="text-[11px] text-slate-500">מוצע: {num(tier1) * 2} ₪ (כפול משלב 1)</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-[12px]">שלב 3 · בונוס סגירת עסקה</Label>
-              <Select value={tier3Type} onValueChange={(v) => setTier3Type(v as RewardType)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fixed">סכום קבוע (₪)</SelectItem>
-                  <SelectItem value="percent">אחוז מהעמלה (%)</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input value={tier3} inputMode="decimal" onChange={(e) => setTier3(clean(e.target.value))} />
-            </div>
-
-            <CommissionTierBadges
-              tiers={{
-                tier1: num(tier1),
-                tier2: num(tier2) || num(tier1) * 2,
-                tier3Type,
-                tier3: num(tier3),
-              }}
-            />
           </div>
+
         </div>
 
         <DialogFooter>
