@@ -17,6 +17,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
+import { transcribeWaVoiceNote } from "../_shared/waMediaTranscribe.ts";
 
 
 const json = (body: Record<string, unknown>, status = 200) =>
@@ -177,7 +178,7 @@ Deno.serve(async (req) => {
               const profileName = contact?.profile?.name ?? null;
 
               const type = String(m?.type ?? "text");
-              const content =
+              const baseContent =
                 m?.text?.body ??
                 m?.button?.text ??
                 m?.interactive?.button_reply?.title ??
@@ -196,6 +197,23 @@ Deno.serve(async (req) => {
                   : type === "location"
                   ? "[מיקום]"
                   : "[הודעת WhatsApp]");
+
+              // ── Inbound voice note → Hebrew text ────────────────────────
+              // Audio/voice messages carry no text, so the AI leg would skip
+              // them. Transcribe them first (Lovable AI STT) and treat the
+              // transcript as a normal inbound text message.
+              let transcript: string | null = null;
+              if (type === "audio" || type === "voice") {
+                const mediaId = String(m?.audio?.id ?? m?.voice?.id ?? "");
+                transcript = await transcribeWaVoiceNote(admin, {
+                  mediaId,
+                  phoneNumberId,
+                  ownerId,
+                  language: "he",
+                });
+              }
+              const content = transcript ?? baseContent;
+
 
               // 1. Ensure a CRM lead exists for this sender.
               const { data: leadId, error: leadErr } = await admin.rpc(
@@ -256,6 +274,11 @@ Deno.serve(async (req) => {
                   message_id: String(m?.id ?? ""),
                   profile_name: profileName,
                   message_type: type,
+                  // Voice notes are stored as their Hebrew transcript so the
+                  // thread (and the AI) reads them like any other message.
+                  transcribed_audio: Boolean(transcript),
+                  transcript_source: transcript ? "lovable_ai_stt" : null,
+                  original_content: transcript ? baseContent : null,
                   // Inbound rows carry an explicit status so the chat window can
                   // render delivery state consistently with outbound bubbles.
                   status: "received",
@@ -272,7 +295,9 @@ Deno.serve(async (req) => {
               // assistant. whatsapp-webhook owns that pipeline (autopilot gates,
               // agent commands, owner router) and sends the reply back through
               // send-whatsapp → official Meta Cloud API number.
-              const isTextLike = ["text", "button", "interactive"].includes(type);
+              // A transcribed voice note behaves exactly like an inbound text message.
+              const isTextLike =
+                ["text", "button", "interactive"].includes(type) || Boolean(transcript);
               if (!isTextLike || !String(content).trim() || String(content).startsWith("[")) {
                 console.log("[autopilot] skipped non-text inbound", {
                   type,
