@@ -1936,7 +1936,8 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
         .replace(/\bpublic\.contacts\b/gi, "public.leads")
         .replace(/(\b(?:from|join|into|update)\s+)contacts\b/gi, "$1leads")
         .replace(/\bphone_numberr?\b/gi, "phone_number")
-        .replace(/\b(?!phone_number\b)([a-z_]+\.)?phone\b/gi, (m: string, pre: string | undefined) => `${pre ?? ""}phone_number`)
+        // identifier-only (skip 'phone' inside string literals like channel = 'phone')
+        .replace(/(^|[\s(,=])([a-z_]+\.)?phone\b(?!_)/gi, (_m: string, lead: string, pre: string | undefined) => `${lead}${pre ?? ""}phone_number`)
         .replace(/\bmobile_phone_number\b/gi, "phone_number");
 
       // Force LIMIT if missing
