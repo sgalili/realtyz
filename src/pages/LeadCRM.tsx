@@ -1396,10 +1396,10 @@ const LeadCRM = () => {
 
         for (const r of rows) {
           const matchId =
-            (r.email && byEmail.get(norm(r.email))) ||
-            (r.identity_number && byId.get(norm(r.identity_number))) ||
-            byPhone.get(r.phone_number) ||
-            byName.get(norm(r.full_name));
+            (r.email ? byEmail[norm(r.email)] : undefined) ||
+            (r.identity_number ? byId[norm(r.identity_number)] : undefined) ||
+            byPhone[r.phone_number] ||
+            byName[norm(r.full_name)];
 
           if (matchId) {
             const patch: any = { phone_number: r.phone_number };
