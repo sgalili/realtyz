@@ -106,6 +106,15 @@ TABLE campaigns (Listing Outreach): id (uuid PK), name (text), description (text
 
 TABLE contact_submissions: id (uuid PK), full_name (text), phone_number (text), email (text), message (text), tag (text), status (text), wa_sent (bool), created_at (timestamptz)
 
+EXACT COLUMN / TABLE NAME MAP (authoritative — using anything else raises "column does not exist"):
+- There is NO "contacts" table. Contacts / leads / מתעניינים all live in the table `leads`.
+- The phone column is `phone_number` (NEVER `phone`, `phone_no`, `mobile`, `tel`).
+- The name column is `full_name` (NEVER `name`, `first_name`, `last_name`).
+- The email column is `email`; the city column is `city`; the owner column is `assigned_to` (uuid).
+- Missing-phone checks: `WHERE phone_number IS NULL OR phone_number = ''`.
+- `contact_submissions` (web form leads) also uses `full_name`, `phone_number`, `email`.
+- Never reference a column that is not listed in the table definitions above.
+
 CRITICAL QUERY RULES:
 - ONLY generate SELECT queries. Never INSERT, UPDATE, DELETE, DROP, ALTER, or any DDL/DML.
 - ALWAYS add "LIMIT 50" to every query. Never return more than 50 rows.
@@ -1919,6 +1928,16 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      // Schema safety net: the model occasionally emits legacy/hallucinated
+      // identifiers ("contacts", "phone"). Rewrite them to the real columns
+      // instead of failing with "column does not exist".
+      query = query
+        .replace(/\bpublic\.contacts\b/gi, "public.leads")
+        .replace(/(\b(?:from|join|into|update)\s+)contacts\b/gi, "$1leads")
+        .replace(/\bphone_numberr?\b/gi, "phone_number")
+        .replace(/\b(?!phone_number\b)([a-z_]+\.)?phone\b/gi, (m: string, pre: string | undefined) => `${pre ?? ""}phone_number`)
+        .replace(/\bmobile_phone_number\b/gi, "phone_number");
 
       // Force LIMIT if missing
       if (!/\bLIMIT\s+\d+/i.test(query)) {
