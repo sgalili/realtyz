@@ -112,7 +112,9 @@ EXACT COLUMN / TABLE NAME MAP (authoritative — using anything else raises "col
 - The phone column is "phone_number" (NEVER "phone", "phone_no", "mobile", "tel").
 - The name column is "full_name" (NEVER "name", "first_name", "last_name").
 - The email column is "email"; the city column is "city"; the owner column is "assigned_to" (uuid).
-- Missing-phone checks: "WHERE phone_number IS NULL OR phone_number = ''".
+- Missing-phone checks (canonical form, copy it as-is):
+  SELECT full_name, phone_number, city FROM leads WHERE phone_number IS NULL OR trim(phone_number) = '' OR phone_number ILIKE 'crm-%' ORDER BY full_name LIMIT 50
+  (placeholder numbers imported from the old CRM start with "crm-" and count as missing).
 - "contact_submissions" (web form leads) also uses "full_name", "phone_number", "email".
 - Never reference a column that is not listed in the table definitions above.
 
