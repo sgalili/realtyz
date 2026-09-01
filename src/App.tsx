@@ -11,6 +11,7 @@ import { DemoModeProvider } from "@/hooks/useDemoMode";
 import { ElectionTypeProvider } from "@/hooks/useElectionType";
 import { MandateProvider } from "@/hooks/useMandate";
 import { WorkspaceProvider } from "@/hooks/useWorkspace";
+import { ReferralCapture } from '@/components/referrals/ReferralCapture';
 import { WorkspaceSelectorModal } from "@/components/workspace/WorkspaceSelectorModal";
 import { toast } from "sonner";
 import { lazy, Suspense } from "react";
@@ -206,6 +207,7 @@ const App = () => (
             <DemoModeProvider>
             <ElectionTypeProvider>
             <MandateProvider>
+            <ReferralCapture />
             <WorkspaceSelectorModal />
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
@@ -215,6 +217,7 @@ const App = () => (
               <Route path="/r/:slug" element={<Suspense fallback={<PageLoader />}><ShortLinkRedirect /></Suspense>} />
               <Route path="/portal/:token" element={<Suspense fallback={<PageLoader />}><ClientPortal /></Suspense>} />
               <Route path="/share/property/:token" element={<Suspense fallback={<PageLoader />}><SharedProperty /></Suspense>} />
+              <Route path="/ref/:code" element={<Navigate to="/auth" replace />} />
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
               <Route path="/" element={<RootRoute />} />
               <Route path="/landing" element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
