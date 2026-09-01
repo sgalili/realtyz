@@ -501,12 +501,14 @@ async function hydrateSubmissions(rows: AffiliateLeadSubmission[]): Promise<Affi
       : Promise.resolve({ data: [] as { id: string }[] }),
     supabase.from('affiliate_profiles').select('user_id, display_name, phone').in('user_id', affiliateIds),
   ]);
-  const listingMap = new Map(((listingsRes.data ?? []) as Record<string, never>[]).map((l) => [l['id'], l]));
-  const affMap = new Map(((affRes.data ?? []) as Record<string, never>[]).map((a) => [a['user_id'], a]));
+  const listingRows = (listingsRes.data ?? []) as unknown as Array<{ id: string; property_title: string | null; address: string | null; city: string | null }>;
+  const affRows = (affRes.data ?? []) as unknown as Array<{ user_id: string; display_name: string | null; phone: string | null }>;
+  const listingMap = new Map(listingRows.map((l) => [l.id, l]));
+  const affMap = new Map(affRows.map((a) => [a.user_id, a]));
   return rows.map((r) => ({
     ...r,
-    listing: r.listing_id ? (listingMap.get(r.listing_id) as AffiliateSubmissionRow['listing']) ?? null : null,
-    affiliate: (affMap.get(r.affiliate_id) as AffiliateSubmissionRow['affiliate']) ?? null,
+    listing: r.listing_id ? listingMap.get(r.listing_id) ?? null : null,
+    affiliate: affMap.get(r.affiliate_id) ?? null,
   }));
 }
 
