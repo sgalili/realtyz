@@ -3,10 +3,13 @@ import "./index.css";
 import { enableGlobalSilentMode } from "./lib/silentMode";
 import { installDemoToastFilter } from "./lib/demoToastFilter";
 import { installRealtimeAuthSync } from "./lib/realtimeAuth";
+import { captureRefFromLocation } from "./lib/referralAttribution";
 
 enableGlobalSilentMode();
 installDemoToastFilter();
 installRealtimeAuthSync();
+// Lock in referral attribution before any router navigation rewrites the URL.
+captureRefFromLocation();
 
 // Stale-chunk recovery: after a redeploy, the cached index.html may reference
 // hashed JS chunks that no longer exist on the CDN. Force one reload so the
