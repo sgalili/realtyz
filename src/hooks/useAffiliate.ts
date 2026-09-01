@@ -70,6 +70,10 @@ export type MarketplaceListing = {
   reward_type: RewardType;
   reward_amount: number;
   approved_at: string | null;
+  tier1_amount: number;
+  tier2_amount: number;
+  tier3_type: RewardType;
+  tier3_amount: number;
 };
 
 export type AffiliateReferral = {
