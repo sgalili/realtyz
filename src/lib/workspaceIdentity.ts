@@ -50,9 +50,12 @@ export function resolveWorkspaceIdentity(
     };
   }
 
-  // Own workspace: never surface the personal profile name as branding.
+  // Own workspace: never surface the personal profile name as branding, even
+  // when the workspace name merely CONTAINS it (e.g. "Shay Galili's workspace").
   const personal = norm(workspace?.owner_full_name);
-  const nameIsPersonal = !!wsName && !!personal && wsName === personal;
+  const lc = (v: string) => v.toLowerCase();
+  const nameIsPersonal =
+    !!wsName && !!personal && (lc(wsName) === lc(personal) || lc(wsName).includes(lc(personal)));
   const name = (nameIsPersonal ? '' : wsName) || brandName || DEFAULT_NAME;
   const logo = (nameIsPersonal ? null : wsLogo) || brandLogo;
 
