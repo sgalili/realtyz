@@ -1645,6 +1645,23 @@ const InlineComposer = ({
     });
   };
 
+  // ---- Per-property generated content cache -------------------------------
+  // Content generated for a property is remembered so revisiting it loads
+  // instantly without spending tokens. Regeneration is always allowed.
+  const listingCacheKey = (id: string) => `rz_post_cache:${channel.id}:${id}`;
+  const readListingCache = (id: string): { body: string; firstComment: string } | null => {
+    try {
+      const raw = localStorage.getItem(listingCacheKey(id));
+      if (!raw) return null;
+      const v = JSON.parse(raw);
+      return v && typeof v.body === 'string' ? { body: v.body, firstComment: String(v.firstComment || '') } : null;
+    } catch { return null; }
+  };
+  const writeListingCache = (id: string, v: { body: string; firstComment: string }) => {
+    try { localStorage.setItem(listingCacheKey(id), JSON.stringify(v)); } catch {}
+  };
+  const listingAutoGenRef = useRef<string | null>(null);
+
   const handleGenerate = async (opts?: { rotateTemplate?: boolean }) => {
     if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
     // Registered so the emergency stop can abort this request mid-flight.
