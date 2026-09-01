@@ -126,6 +126,8 @@ type ConfirmPayload = {
   media_urls: string[];
   scheduled_at: string | null;
   group_ids: string[];
+  /** "פרסם גם בעמוד הפייסבוק העסקי" — default true. */
+  publish_to_page?: boolean;
   selected_profile_ids: string[];
   attach_wa_link: boolean;
   first_comment: string;
