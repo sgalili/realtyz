@@ -52,10 +52,19 @@ const PROPERTY_FIELDS = {
   deal_type: str("sale או rent"),
   description: str("תיאור"),
   office_notes: str("הערות משרד"),
-  owner_name: str("שם בעל הנכס"),
-  owner_phone: str("טלפון בעל הנכס"),
+  available_from: str("תאריך כניסה בפורמט YYYY-MM-DD אם ידוע"),
+  extra_details: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "כל פרט שאין לו שדה מובנה, כשורה מעוצבת בעברית: \"מצב הדירה: משופצת\", \"מרחב מוגן: ממ\"ק בקומה\", \"כניסה: מיידית\", \"מיקום: סמוך לסוקולוב\", \"נגישות: מעלית ורמפה\". חובה למלא כאן כל פרט שלא נכנס לשדה אחר, לא להשמיט שום מידע.",
+  },
+  owner_name: str("שם בעל הנכס כפי שהוזכר בטקסט"),
+  owner_phone: str("טלפון בעל הנכס; המערכת תיצור או תאתר לו כרטיס איש קשר ותקשר אותו לנכס אוטומטית"),
+  owner_email: str("אימייל בעל הנכס"),
   status: str("live, pending או discarded"),
 };
+
 
 /** OpenAI-compatible tool list sent to the Lovable AI Gateway. */
 export const CRM_TOOL_DEFS: ToolDef[] = [
