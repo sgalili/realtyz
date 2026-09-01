@@ -53,6 +53,100 @@ export type Database = {
         }
         Relationships: []
       }
+      affiliate_lead_submissions: {
+        Row: {
+          affiliate_id: string
+          broker_id: string
+          closed_at: string | null
+          created_at: string
+          earned_amount: number
+          id: string
+          lead_email: string | null
+          lead_id: string | null
+          lead_name: string
+          lead_phone: string | null
+          listing_id: string | null
+          notes: string | null
+          referral_id: string | null
+          settlement_status: string
+          status: string
+          tier1_amount: number
+          tier2_amount: number
+          tier3_amount: number
+          tier3_type: string
+          updated_at: string
+          verified_at: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          broker_id: string
+          closed_at?: string | null
+          created_at?: string
+          earned_amount?: number
+          id?: string
+          lead_email?: string | null
+          lead_id?: string | null
+          lead_name: string
+          lead_phone?: string | null
+          listing_id?: string | null
+          notes?: string | null
+          referral_id?: string | null
+          settlement_status?: string
+          status?: string
+          tier1_amount?: number
+          tier2_amount?: number
+          tier3_amount?: number
+          tier3_type?: string
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          broker_id?: string
+          closed_at?: string | null
+          created_at?: string
+          earned_amount?: number
+          id?: string
+          lead_email?: string | null
+          lead_id?: string | null
+          lead_name?: string
+          lead_phone?: string | null
+          listing_id?: string | null
+          notes?: string | null
+          referral_id?: string | null
+          settlement_status?: string
+          status?: string
+          tier1_amount?: number
+          tier2_amount?: number
+          tier3_amount?: number
+          tier3_type?: string
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_lead_submissions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_lead_submissions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_lead_submissions_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       affiliate_profiles: {
         Row: {
           created_at: string
@@ -3144,6 +3238,10 @@ export type Database = {
           affiliate_enabled: boolean
           affiliate_reward_amount: number
           affiliate_reward_type: string
+          affiliate_tier1_amount: number
+          affiliate_tier2_amount: number
+          affiliate_tier3_amount: number
+          affiliate_tier3_type: string
           apartment_number: string | null
           area_perks: Json | null
           asking_price: number
@@ -3201,6 +3299,10 @@ export type Database = {
           affiliate_enabled?: boolean
           affiliate_reward_amount?: number
           affiliate_reward_type?: string
+          affiliate_tier1_amount?: number
+          affiliate_tier2_amount?: number
+          affiliate_tier3_amount?: number
+          affiliate_tier3_type?: string
           apartment_number?: string | null
           area_perks?: Json | null
           asking_price?: number
@@ -3258,6 +3360,10 @@ export type Database = {
           affiliate_enabled?: boolean
           affiliate_reward_amount?: number
           affiliate_reward_type?: string
+          affiliate_tier1_amount?: number
+          affiliate_tier2_amount?: number
+          affiliate_tier3_amount?: number
+          affiliate_tier3_type?: string
           apartment_number?: string | null
           area_perks?: Json | null
           asking_price?: number
@@ -5754,6 +5860,10 @@ export type Database = {
           reward_type: string
           rooms: number
           slug: string
+          tier1_amount: number
+          tier2_amount: number
+          tier3_amount: number
+          tier3_type: string
         }[]
       }
       get_business_performance: {

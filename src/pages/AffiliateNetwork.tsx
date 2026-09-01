@@ -30,7 +30,14 @@ import {
 import { toast } from 'sonner';
 import { Banknote, Building2, Handshake, MapPin, Percent, Search, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import {
+  SUBMISSION_STATUS_LABELS,
+  SUBMISSION_STATUS_ORDER,
+  accruedEarnings,
+  useBrokerSubmissions,
+  useUpdateSubmission,
+  type SubmissionStatus,
   REFERRAL_STATUS_LABELS,
   REFERRAL_STATUS_ORDER,
   SETTLEMENT_LABELS,
@@ -59,6 +66,10 @@ function RewardDialog({
   const [enabled, setEnabled] = useState(false);
   const [rewardType, setRewardType] = useState<RewardType>('fixed');
   const [amount, setAmount] = useState('0');
+  const [tier1, setTier1] = useState('0');
+  const [tier2, setTier2] = useState('0');
+  const [tier3Type, setTier3Type] = useState<RewardType>('fixed');
+  const [tier3, setTier3] = useState('0');
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
   // Sync form state to the listing being edited (render-time, no effect needed).
@@ -67,7 +78,14 @@ function RewardDialog({
     setEnabled(listing.affiliate_enabled);
     setRewardType(listing.affiliate_reward_type ?? 'fixed');
     setAmount(String(listing.affiliate_reward_amount ?? 0));
+    setTier1(String(listing.affiliate_tier1_amount ?? 0));
+    setTier2(String(listing.affiliate_tier2_amount ?? 0));
+    setTier3Type((listing.affiliate_tier3_type ?? 'fixed') as RewardType);
+    setTier3(String(listing.affiliate_tier3_amount ?? 0));
   }
+
+  const num = (v: string) => Number(v) || 0;
+  const clean = (v: string) => v.replace(/[^\d.]/g, '');
 
   if (!listing) return null;
 
@@ -117,6 +135,55 @@ function RewardDialog({
               התגמול משולם על עסקה שנחתמת דרך השותף. שינוי התגמול לא משפיע על שיווקים קיימים.
             </p>
           </div>
+
+          <div className="space-y-3 rounded-lg border border-slate-200 p-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">מודל עמלה ב-3 שלבים</div>
+              <div className="text-[11px] text-slate-500">
+                השותף צובר תגמול בכל שלב בנפרד. שלב 2 מוגדר כברירת מחדל ככפול משלב 1.
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[12px]">שלב 1 · ליד חם שהוגש (₪)</Label>
+              <Input
+                value={tier1}
+                inputMode="decimal"
+                onChange={(e) => {
+                  const v = clean(e.target.value);
+                  setTier1(v);
+                  if (!num(tier2) || num(tier2) === num(tier1) * 2) setTier2(String(num(v) * 2));
+                }}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[12px]">שלב 2 · ליד שאומת אנושית (₪)</Label>
+              <Input value={tier2} inputMode="decimal" onChange={(e) => setTier2(clean(e.target.value))} />
+              <p className="text-[11px] text-slate-500">מוצע: {num(tier1) * 2} ₪ (כפול משלב 1)</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[12px]">שלב 3 · בונוס סגירת עסקה</Label>
+              <Select value={tier3Type} onValueChange={(v) => setTier3Type(v as RewardType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixed">סכום קבוע (₪)</SelectItem>
+                  <SelectItem value="percent">אחוז מהעמלה (%)</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input value={tier3} inputMode="decimal" onChange={(e) => setTier3(clean(e.target.value))} />
+            </div>
+
+            <CommissionTierBadges
+              tiers={{
+                tier1: num(tier1),
+                tier2: num(tier2) || num(tier1) * 2,
+                tier3Type,
+                tier3: num(tier3),
+              }}
+            />
+          </div>
         </div>
 
         <DialogFooter>
@@ -130,6 +197,10 @@ function RewardDialog({
                   enabled,
                   rewardType,
                   rewardAmount: Number(amount) || 0,
+                  tier1Amount: num(tier1),
+                  tier2Amount: num(tier2) || num(tier1) * 2,
+                  tier3Type,
+                  tier3Amount: num(tier3),
                 },
                 {
                   onSuccess: () => {

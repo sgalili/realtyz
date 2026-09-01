@@ -74,6 +74,7 @@ const AiDialer = lazy(() => import("./pages/AiDialer"));
 const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
 const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
+const AffiliateSignup = lazy(() => import("./pages/AffiliateSignup"));
 const AffiliatePortal = lazy(() => import("./pages/AffiliatePortal"));
 const AffiliateNetwork = lazy(() => import("./pages/AffiliateNetwork"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
@@ -132,7 +133,7 @@ function PageLoader() {
  * app (CRM, properties, posts, office settings) belongs to brokers and is
  * redirected away, so an affiliate never sees broker tooling.
  */
-const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/profile'];
+const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/profile'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
@@ -214,6 +215,7 @@ const App = () => (
             <WorkspaceSelectorModal />
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
+              <Route path="/affiliates" element={<Suspense fallback={<PageLoader />}><AffiliateSignup /></Suspense>} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/oauth/callback" element={<Suspense fallback={<PageLoader />}><OAuthCallback /></Suspense>} />
               <Route path="/p/:slug" element={<Suspense fallback={<PageLoader />}><PublicListingPage /></Suspense>} />

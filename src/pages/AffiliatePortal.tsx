@@ -23,6 +23,8 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
+import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
+import SubmitLeadDialog from '@/components/affiliate/SubmitLeadDialog';
 import {
   REFERRAL_STATUS_LABELS,
   SETTLEMENT_LABELS,
@@ -30,6 +32,10 @@ import {
   formatReward,
   useAffiliateMarketplace,
   useMyReferrals,
+  listingTiers,
+  useMySubmissions,
+  accruedEarnings,
+  SUBMISSION_STATUS_LABELS,
   useRegisterAffiliate,
   useStartPromoting,
   type MarketplaceListing,
@@ -164,9 +170,12 @@ function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
           ) : null}
         </div>
 
-        <div className="rounded-md bg-emerald-50 px-2.5 py-2 text-[12px] font-semibold text-emerald-800 ring-1 ring-emerald-100">
-          תגמול לשותף: {formatReward(listing.reward_type, listing.reward_amount)}
+        <div className="space-y-1.5">
+          <div className="text-[11px] font-semibold text-slate-500">פירוט העמלה ב-3 שלבים</div>
+          <CommissionTierBadges tiers={listingTiers(listing)} />
         </div>
+
+        <SubmitLeadDialog listing={listing} />
 
         {link ? (
           <div className="space-y-2">
@@ -209,6 +218,7 @@ export default function AffiliatePortal() {
   const { isAffiliate, loading: roleLoading } = useUserRole();
   const { data: marketplace = [], isLoading: marketLoading } = useAffiliateMarketplace();
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
+  const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -225,8 +235,15 @@ export default function AffiliatePortal() {
     const earned = signed
       .filter((r) => r.reward_type === 'fixed')
       .reduce((sum, r) => sum + Number(r.reward_amount ?? 0), 0);
-    return { promoting: referrals.length, clicks, signed: signed.length, earned };
-  }, [referrals]);
+    const submissionEarned = submissions.reduce((sum, s) => sum + accruedEarnings(s), 0);
+    return {
+      promoting: referrals.length,
+      clicks,
+      signed: signed.length + submissions.filter((s) => s.status === 'closed').length,
+      earned: earned + submissionEarned,
+      leads: submissions.length,
+    };
+  }, [referrals, submissions]);
 
   if (roleLoading) {
     return (
@@ -260,7 +277,7 @@ export default function AffiliatePortal() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
             { label: 'נכסים בשיווק', value: String(stats.promoting), icon: Megaphone, color: 'text-sky-600' },
-            { label: 'כניסות לקישורים', value: String(stats.clicks), icon: MousePointerClick, color: 'text-indigo-600' },
+            { label: 'מתעניינים שהוגשו', value: String(stats.leads), icon: MousePointerClick, color: 'text-indigo-600' },
             { label: 'עסקאות שנחתמו', value: String(stats.signed), icon: TrendingUp, color: 'text-emerald-600' },
             { label: 'תגמול מצטבר', value: fmtILS(stats.earned), icon: Banknote, color: 'text-amber-600' },
           ].map((s) => (
@@ -281,6 +298,7 @@ export default function AffiliatePortal() {
         <Tabs defaultValue="marketplace">
           <TabsList>
             <TabsTrigger value="marketplace">נכסים לשיווק</TabsTrigger>
+            <TabsTrigger value="leads">המתעניינים שהגשתי</TabsTrigger>
             <TabsTrigger value="mine">השיווקים שלי</TabsTrigger>
           </TabsList>
 
@@ -311,6 +329,63 @@ export default function AffiliatePortal() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="leads" className="space-y-3 pt-4">
+            {subsLoading ? (
+              <Skeleton className="h-48 w-full" />
+            ) : submissions.length === 0 ? (
+              <Card className="border-dashed border-slate-200">
+                <CardContent className="p-10 text-center text-sm text-slate-500">
+                  עוד לא הגשתם מתעניינים. בחרו נכס ולחצו "הגשת מתעניין לנכס".
+                </CardContent>
+              </Card>
+            ) : (
+              submissions.map((s) => {
+                const stage = s.status === 'closed' ? 3 : s.status === 'verified' ? 2 : s.status === 'rejected' ? 0 : 1;
+                return (
+                  <Card key={s.id} className="border-slate-200">
+                    <CardContent className="space-y-2.5 p-3.5">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-bold text-slate-900">{s.lead_name}</div>
+                          <div className="truncate text-[11px] text-slate-500">
+                            {s.listing?.property_title || 'נכס'}
+                            {s.lead_phone ? <> · <bdi dir="ltr">{s.lead_phone}</bdi></> : null}
+                            {' · '}
+                            {new Date(s.created_at).toLocaleDateString('he-IL')}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-[11px]">
+                          {SUBMISSION_STATUS_LABELS[s.status] ?? s.status}
+                        </Badge>
+                        <Badge variant="outline" className="text-[11px]">
+                          {SETTLEMENT_LABELS[s.settlement_status] ?? s.settlement_status}
+                        </Badge>
+                        <div className="text-sm font-bold text-emerald-700">
+                          <bdi dir="ltr">{fmtILS(accruedEarnings(s))}</bdi>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 3].map((n) => (
+                          <div
+                            key={n}
+                            className={`h-1.5 flex-1 rounded-full ${stage >= n ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-500">
+                        <span>הוגש</span>
+                        <span>אומת</span>
+                        <span>נסגר</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </TabsContent>
+
 
           <TabsContent value="mine" className="pt-4">
             {refLoading ? (
