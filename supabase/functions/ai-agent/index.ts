@@ -1,6 +1,7 @@
 import { safeTool, logToolFailure, GRACEFUL_TOOL_FALLBACK_HE, GRACEFUL_ACTION_FALLBACK_HE } from "../_shared/safeToolError.ts";
 import { cleanSqm } from "../_shared/measures.ts";
 import { CRM_ACTIONS_CONTRACT, executeCrmActions } from "../_shared/crmActions.ts";
+import { extractActionEnvelopes, stripRawJson, summarizeCrmResults } from "../_shared/agentOutput.ts";
 
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
