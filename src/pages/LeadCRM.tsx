@@ -1378,15 +1378,15 @@ const LeadCRM = () => {
           .select('id, full_name, email, phone_number, identity_number');
         if (exErr) throw exErr;
 
-        const byEmail = new Map<string, string>();
-        const byId = new Map<string, string>();
-        const byName = new Map<string, string>();
-        const byPhone = new Map<string, string>();
+        const byEmail: Record<string, string> = {};
+        const byId: Record<string, string> = {};
+        const byName: Record<string, string> = {};
+        const byPhone: Record<string, string> = {};
         for (const l of existing ?? []) {
-          if (l.email) byEmail.set(norm(l.email), l.id);
-          if ((l as any).identity_number) byId.set(norm((l as any).identity_number), l.id);
-          if (l.full_name) byName.set(norm(l.full_name), l.id);
-          if (l.phone_number) byPhone.set(String(l.phone_number), l.id);
+          if (l.email) byEmail[norm(l.email)] = l.id;
+          if ((l as any).identity_number) byId[norm((l as any).identity_number)] = l.id;
+          if (l.full_name) byName[norm(l.full_name)] = l.id;
+          if (l.phone_number) byPhone[String(l.phone_number)] = l.id;
         }
 
         const dealType = importLeadKind === 'renter' || importLeadKind === 'landlord' ? 'rent' : 'sale';
