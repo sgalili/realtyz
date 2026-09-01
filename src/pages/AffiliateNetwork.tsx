@@ -210,6 +210,8 @@ export default function AffiliateNetwork() {
           ))}
         </div>
 
+        <AffiliateInviteCard />
+
         <Tabs defaultValue="rewards">
           <TabsList>
             <TabsTrigger value="rewards">נכסים ותגמולים</TabsTrigger>
