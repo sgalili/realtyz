@@ -432,8 +432,18 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg.type === 'RZ_QUEUE_UPDATE') {
-    mergeQueue(msg.queue).then(() => drainQueue());
-    sendResponse({ ok: true });
+    // Merge, answer immediately, then start the run without waiting.
+    mergeQueue(msg.queue).then((merged) => {
+      try { sendResponse({ ok: true, queue: merged }); } catch (e) { /* noop */ }
+      drainQueue();
+    });
+    return true;
+  }
+
+  if (msg.type === 'RZ_QUEUE_STATE_REQUEST') {
+    loadQueue().then((queue) => {
+      try { sendResponse({ ok: true, queue }); } catch (e) { /* noop */ }
+    });
     return true;
   }
 
