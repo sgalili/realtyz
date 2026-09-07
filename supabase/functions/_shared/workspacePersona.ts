@@ -75,11 +75,11 @@ export async function fetchWorkspacePersona(
   try {
     const { data: prof } = await admin
       .from("profiles")
-      .select("full_name, agency_name, company_name")
+      .select("full_name, broker_byline")
       .eq("id", ownerId)
       .maybeSingle();
     name = String(prof?.full_name ?? "").trim();
-    agency = String(prof?.agency_name ?? prof?.company_name ?? "").trim();
+    agency = String(prof?.broker_byline ?? "").trim();
   } catch { /* empty persona is the safe default */ }
 
   try {
