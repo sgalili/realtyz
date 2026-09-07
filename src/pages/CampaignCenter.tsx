@@ -3011,6 +3011,9 @@ const ConfirmDispatchDialog = ({
         // Facebook session.
         let queuedGroups = 0;
         if (channel.id === 'facebook' && apiGroupIds.length > 0) {
+          // Retry / re-publish: clear stale completed+failed entries (and legacy
+          // Meta errors) for this text so the card reflects the fresh queue run.
+          resetQueueEntriesForText(bodyToPublish);
           queuedGroups = enqueueExtensionPosts({
             text: bodyToPublish,
             texts: groupTexts,
@@ -5012,7 +5015,20 @@ const PublishedFeed = ({
                       {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
                     </span>
                   );
-                })() : isPaused ? null : failed ? (
+                })() : isPaused ? null : (extQueueStatus === 'completed' && hasGroupTargets) ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-200">
+                    <CheckCircle2 className="h-3 w-3" />
+                    פורסם בקבוצות
+                  </span>
+                ) : ((extQueueStatus === 'pending' || extQueueStatus === 'posting' || legacyMetaError) && hasGroupTargets) ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800 ring-1 ring-blue-200"
+                    title="הפוסט מנוהל בתור הפרסום של תוסף הדפדפן"
+                  >
+                    <Loader2 className={cn('h-3 w-3', extQueueStatus === 'posting' && 'animate-spin')} />
+                    {extQueueStatus === 'posting' ? 'מפרסם דרך התוסף' : 'בתור התוסף'}
+                  </span>
+                ) : failed ? (
                   <span
                     className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive ring-1 ring-destructive/30 max-w-[60%]"
                     title={failureReason ?? undefined}
