@@ -20,11 +20,11 @@ import { friendlyGoogleError } from '@/lib/googleApiErrors';
 const FACEBOOK_PAGE_STATE_PREFIX = 'facebook_page';
 const CONNECTIONS_PATH = '/profile?tab=connections';
 /** Ceiling for the server-side exchange so the page never spins forever. */
-const EXCHANGE_TIMEOUT_MS = 20_000;
+const EXCHANGE_TIMEOUT_MS = 15_000;
 /** UI safety timeout: show a manual return button if the exchange is not done. */
 const SAFETY_UI_TIMEOUT_MS = 4_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
-const HARD_TIMEOUT_MS = 25_000;
+const HARD_TIMEOUT_MS = 18_000;
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive', 'google_all'] as const;
 
@@ -230,13 +230,22 @@ export default function OAuthCallback() {
           try { window.sessionStorage.removeItem('realtyz-google-services-pending'); } catch { /* */ }
           const reason = String(e?.message ?? 'unknown');
           const friendly = friendlyGoogleError(reason, googlePlatform);
-          setIsLoading(false);
-          setError({
-            title: friendly.title,
-            detail: friendly.raw,
-            hint: friendly.message,
-            enableUrl: friendly.enableUrl,
-          });
+          console.error('[oauth] google exchange failed', reason);
+          // Never leave the user on a spinner: hand them straight back to the
+          // connections screen, which shows the failure as a toast.
+          finish(
+            `${CONNECTIONS_PATH}&google=error&google_reason=${encodeURIComponent(friendly.message || reason)}`,
+            { ok: false, reason, provider: googlePlatform },
+            () => {
+              setIsLoading(false);
+              setError({
+                title: friendly.title,
+                detail: friendly.raw,
+                hint: friendly.message,
+                enableUrl: friendly.enableUrl,
+              });
+            },
+          );
         }
         return;
       }
