@@ -118,9 +118,12 @@ export async function clearComposerSession(channel: string): Promise<void> {
 
 // ---------- per-draft body/attachment mirror ----------
 
-const draftSlot = (channel: string, instanceId: string) => `draft:${channel}:${instanceId}`;
+// Workspace-scoped slot: a draft saved while working inside one office must
+// never be restored inside another one.
+const draftSlot = (channel: string, instanceId: string, ws?: string | null) =>
+  `draft:${channel}:${ws ? `${ws}:` : ''}${instanceId}`;
 
-export async function saveComposerDraftCloud(channel: string, instanceId: string, payload: unknown) {
+export async function saveComposerDraftCloud(channel: string, instanceId: string, payload: unknown, ws?: string | null) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -128,7 +131,7 @@ export async function saveComposerDraftCloud(channel: string, instanceId: string
       {
         user_id: user.id,
         workspace_owner_id: user.id,
-        channel: draftSlot(channel, instanceId),
+        channel: draftSlot(channel, instanceId, ws),
         payload: payload as any,
         updated_at: new Date().toISOString(),
       },
@@ -137,12 +140,12 @@ export async function saveComposerDraftCloud(channel: string, instanceId: string
   } catch { /* local copy still covers refreshes */ }
 }
 
-export async function fetchComposerDraftCloud(channel: string, instanceId: string): Promise<any | null> {
+export async function fetchComposerDraftCloud(channel: string, instanceId: string, ws?: string | null): Promise<any | null> {
   try {
     const { data } = await (supabase as any)
       .from('campaign_composer_sessions')
       .select('payload')
-      .eq('channel', draftSlot(channel, instanceId))
+      .eq('channel', draftSlot(channel, instanceId, ws))
       .maybeSingle();
     return (data as any)?.payload ?? null;
   } catch {

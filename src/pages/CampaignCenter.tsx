@@ -45,7 +45,7 @@ import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from 
 import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
 
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
-import { nativeWaLink } from '@/lib/officialWa';
+import { nativeWaLink, getOfficialWaNumber } from '@/lib/officialWa';
 import { cn } from '@/lib/utils';
 
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
@@ -96,6 +96,42 @@ import {
 } from '@/lib/propertyMeasures';
 
 
+
+/**
+ * Removes saved composer drafts for a channel from both stores.
+ * Called after a successful submit so the text area starts empty again.
+ */
+const sweepComposerDraftKeys = (channelId: string, suffix?: string) => {
+  for (const store of [localStorage, sessionStorage]) {
+    const keys: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const k = store.key(i);
+      if (!k || !k.startsWith('rz-composer-draft:')) continue;
+      if (!k.includes(`:${channelId}`)) continue;
+      if (suffix && !k.endsWith(`:${suffix}`)) continue;
+      keys.push(k);
+    }
+    keys.forEach((k) => store.removeItem(k));
+  }
+};
+
+// One-time purge of pre-workspace-scoped drafts (v1/v2). Those keys were shared
+// across every workspace in this browser, which is how a post from another
+// office could reappear here after a refresh.
+try {
+  if (typeof window !== 'undefined' && !localStorage.getItem('rz-composer-draft-purge:v3')) {
+    for (const store of [localStorage, sessionStorage]) {
+      const stale: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (k && k.startsWith('rz-composer-draft:') && !k.startsWith('rz-composer-draft:v3:')) stale.push(k);
+        if (k && k.startsWith('rz_post_cache:') && !k.startsWith('rz_post_cache:v2:')) stale.push(k);
+      }
+      stale.forEach((k) => store.removeItem(k));
+    }
+    localStorage.setItem('rz-composer-draft-purge:v3', '1');
+  }
+} catch { /* storage unavailable */ }
 
 type TabValue = 'create' | 'published' | 'calendar';
 
@@ -787,20 +823,22 @@ const InlineComposer = ({
   /** When rendered inside a collapsed draft card the page-level bar handles dispatch. */
   hideBottomBar?: boolean;
 }) => {
-  // Persistent draft key — namespaced per replicated instance so multiple
-  // composers on the same page don't clobber each other's drafts. Persisted
-  // to localStorage so dialog closes, route changes, and hard refreshes
-  // never lose unfinished work. Cleared only on successful publish.
-  const draftKey = `rz-composer-draft:v2:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
+  // Persistent draft key — namespaced per replicated instance AND per active
+  // workspace, so a draft written in one office can never resurface inside
+  // another one. Persisted to localStorage so dialog closes, route changes,
+  // and hard refreshes never lose unfinished work.
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const wsScope = workspaceOwnerId ?? 'anon';
+  const draftKey = `rz-composer-draft:v3:${wsScope}:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
     if (typeof window === 'undefined') return null;
     try {
       const direct = JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null');
       if (direct && String(direct.body || '').trim()) return direct;
-      // Legacy rescue: drafts saved under the old index-based key
-      // (`...:<idx>-<listingId>`) are recovered by matching the listing.
+      // Rescue only inside the SAME workspace scope: a draft written in another
+      // office must never be restored here.
       if (presetListingId) {
-        const prefix = `rz-composer-draft:v2:${channel.id}:`;
+        const prefix = `rz-composer-draft:v3:${wsScope}:${channel.id}:`;
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
           if (!k || !k.startsWith(prefix) || k === draftKey) continue;
@@ -962,7 +1000,7 @@ const InlineComposer = ({
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
   // Persisted to localStorage (per workspace) so a reload / background refresh
   // doesn't wipe the selection, and the bulk picker stays in sync with drafts.
-  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  // (workspaceOwnerId is declared at the top of this component, next to draftKey)
   const groupStorageKey = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
   const [groupIds, setGroupIds] = useState<string[]>(() => {
     const savedWithDraft = Array.isArray(initial.groupIds)
@@ -1173,7 +1211,7 @@ const InlineComposer = ({
       // cache, another tab, or another device.
       if (snapshot.body.trim() || snapshot.attachments.length > 0 || snapshot.firstComment.trim()) {
         const handle = window.setTimeout(() => {
-          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot);
+          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot, wsScope);
         }, 900);
         return () => window.clearTimeout(handle);
       }
@@ -1246,7 +1284,7 @@ const InlineComposer = ({
     setSaveState('idle');
     if (savedHasWork) setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel.id, deepLinkListingId]);
+  }, [channel.id, deepLinkListingId, wsScope]);
 
   // Cloud fallback: if this browser has no local copy of the draft (cleared
   // cache, new tab, other device, new auth session), pull the durable mirror
@@ -1259,7 +1297,7 @@ const InlineComposer = ({
     }
     let cancelled = false;
     (async () => {
-      const cloud = await fetchComposerDraftCloud(channel.id, instanceId ?? 'single');
+      const cloud = await fetchComposerDraftCloud(channel.id, instanceId ?? 'single', wsScope);
       if (cancelled) return;
       if (cloud) {
         if (String(cloud.body || '').trim()) setBody(cleanBody(cloud.body));
@@ -1280,7 +1318,7 @@ const InlineComposer = ({
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel.id, instanceId, deepLinkListingId]);
+  }, [channel.id, instanceId, deepLinkListingId, wsScope]);
 
 
 
@@ -1649,7 +1687,7 @@ const InlineComposer = ({
   // ---- Per-property generated content cache -------------------------------
   // Content generated for a property is remembered so revisiting it loads
   // instantly without spending tokens. Regeneration is always allowed.
-  const listingCacheKey = (id: string) => `rz_post_cache:${channel.id}:${id}`;
+  const listingCacheKey = (id: string) => `rz_post_cache:v2:${wsScope}:${channel.id}:${id}`;
   const readListingCache = (id: string): { body: string; firstComment: string } | null => {
     try {
       const raw = localStorage.getItem(listingCacheKey(id));
@@ -1699,7 +1737,7 @@ const InlineComposer = ({
           const prev = readDraft() || {};
           const snapshot = { ...prev, body: text, customInstructions, selectedListingId, attachments, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink };
           localStorage.setItem(draftKey, JSON.stringify(snapshot));
-          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot);
+          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot, wsScope);
         } catch {}
 
         // No DB draft row is created here — drafts are saved only when the
@@ -1721,12 +1759,56 @@ const InlineComposer = ({
   // Generate a Hebrew "first comment" in the workspace owner's warm, first-person tone.
   // Called automatically right after the main post is generated, and manually
   // via the refresh button on the first-comment textarea.
+  /**
+   * Mints a branded realtyz.co.il/r/<slug> link that opens a chat with the
+   * OFFICIAL Meta WhatsApp Business number (never a personal number).
+   */
+  const mintOfficialWaShortLink = async (): Promise<string> => {
+    const phone = await getOfficialWaNumber();
+    const intro = 'היי, ראיתי את הפוסט של Realtyz ואשמח לשמוע איך זה עובד.';
+    const longUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(intro)}`;
+    try {
+      const { data } = await supabase.functions.invoke('shortlink-create', { body: { long_url: longUrl } });
+      const slug = (data as any)?.slug;
+      if (slug) return `https://realtyz.co.il/r/${slug}`;
+    } catch { /* fall back to the native deep link */ }
+    return nativeWaLink(phone, intro);
+  };
+
   const handleGenerateFirstComment = async (postBody?: string) => {
     if (isGenerationStopped()) return;
     const ctrl = registerGeneration();
     setFirstCommentGenerating(true);
     try {
       const listing = selectedListing;
+      // No property attached: this is a platform (SaaS) sales post, so the
+      // first comment invites the reader to continue on our official WhatsApp
+      // via a branded short link.
+      if (!listing) {
+        const waUrl = waShortUrl || (await mintOfficialWaShortLink());
+        const { data, error } = await supabase.functions.invoke('generate-content', {
+          body: {
+            topic: 'תגובה ראשונה לפוסט שיווקי של פלטפורמת Realtyz — שתי שורות בלבד',
+            platform: channel.id,
+            customInstructions: [
+              'כתוב תגובה ראשונה (First Comment) בשתי שורות בלבד, בעברית, פונה ישירות לסוכן נדל"ן.',
+              'שורה 1: משפט אחד קצר שממשיך את הכאב מהפוסט ומזמין לשיחת זום של 15 דקות. מקסימום 14 מילים.',
+              'שורה 2: הזמנה להמשיך בוואטסאפ עם הצוות (בלי לכתוב קישור — המערכת מוסיפה אותו).',
+              'אסור: אמוג\'י יותר מאחד בשורה, האשטגים, סוגריים מרובעים, מחירים שלא במאגר הידע, רישיון תיווך, חתימת מתווך.',
+              postBody ? `גוף הפוסט להקשר בלבד, אל תחזור עליו: """${postBody.slice(0, 600)}"""` : '',
+            ].filter(Boolean).join('\n\n'),
+            skipLicenseFooter: true,
+          },
+          signal: ctrl.signal,
+        });
+        if (ctrl.signal.aborted) return;
+        if (error) throw error;
+        const raw = cleanFirstComment(String((data as any)?.content || (data as any)?.text || ''));
+        const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 2);
+        const base = lines.length ? lines.join('\n') : 'רוצה לראות איך זה עובד אצלך? זום של 15 דקות ואתה בפנים.';
+        setFirstComment(waUrl ? `${base}\n\n${pickRandom(WA_INTRO_PHRASES)}: ${waUrl}` : base);
+        return;
+      }
       const keywordLine = buildFirstCommentKeywordLine(listing as CampaignListing | null);
       const listingFacts = listing
         ? [
@@ -1916,6 +1998,9 @@ const InlineComposer = ({
           });
           const slug = (slugRes as any)?.slug;
           if (slug) url = `https://realtyz.co.il/r/${slug}`;
+        } else {
+          // Platform (SaaS) post: brand the official WABA chat link too.
+          url = await mintOfficialWaShortLink();
         }
       } catch { /* keep fallback */ }
       if (cancelled) return;
@@ -7631,8 +7716,7 @@ const CampaignCenter = () => {
             setHistoryRefreshTick((t) => t + 1);
             if (publishedChannelId) {
               try {
-                localStorage.removeItem(`rz-composer-draft:v2:${publishedChannelId}:${draftKey}`);
-                sessionStorage.removeItem(`rz-composer-draft:v2:${publishedChannelId}:${draftKey}`);
+                sweepComposerDraftKeys(publishedChannelId, draftKey);
               } catch {}
             }
             toast.success('הטיוטה פורסמה');
@@ -7648,21 +7732,10 @@ const CampaignCenter = () => {
           setComposerResetTick((t) => t + 1);
           handleChange('published');
           if (publishedChannelId) {
-            const prefixes = [`rz-composer-draft:v2:${publishedChannelId}`, `rz-composer-draft:${publishedChannelId}`];
             try {
-              for (const prefix of prefixes) {
-                sessionStorage.removeItem(prefix);
-                localStorage.removeItem(prefix);
-                // Sweep namespaced draft entries (replicated composers)
-                for (const store of [localStorage, sessionStorage]) {
-                  const keys: string[] = [];
-                  for (let i = 0; i < store.length; i++) {
-                    const k = store.key(i);
-                    if (k && k.startsWith(`${prefix}:`)) keys.push(k);
-                  }
-                  keys.forEach((k) => store.removeItem(k));
-                }
-              }
+              // After a submit the composer text area starts empty again: every
+              // saved draft entry for this channel is swept from both stores.
+              sweepComposerDraftKeys(publishedChannelId);
               sessionStorage.removeItem('rz-schedule-assignments');
             } catch {}
             // Only a published post retires the durable session mirror.
