@@ -212,34 +212,43 @@ Deno.serve(async (req) => {
         return json({ connected: false, needs_reconnect: false, never_connected: true, page: null, error: null });
       }
 
+      // Hard-expiry / revoked-token codes ONLY. Anything else (rate limits,
+      // transient Graph errors, missing field permissions, network blips) must
+      // never flip the workspace into "reconnect required".
       const AUTH_FAILURE_CODES = [190, 458, 459, 463, 464, 467, 492];
 
       // Lightweight token check: can this page token read its own page ID?
       const checkToken = async (pageId: string, token: string) => {
-        const r = await graph(`/${pageId}?fields=id&access_token=${encodeURIComponent(token)}`);
-        const errCode = Number(r.payload?.error?.code ?? 0);
-        const ok = r.ok && r.payload?.id;
-        return {
-          ok,
-          authFailure: !ok && AUTH_FAILURE_CODES.includes(errCode),
-          errorPayload: r.payload,
+        const attempt = async () => {
+          const r = await graph(`/${pageId}?fields=id&access_token=${encodeURIComponent(token)}`);
+          const errCode = Number(r.payload?.error?.code ?? 0);
+          const ok = !!(r.ok && r.payload?.id);
+          return { ok, authFailure: !ok && AUTH_FAILURE_CODES.includes(errCode), errorPayload: r.payload };
         };
+        let res = await attempt();
+        // Retry once on a non-auth failure so a transient Graph hiccup can never
+        // be mistaken for an expired token.
+        if (!res.ok && !res.authFailure) {
+          await new Promise((r) => setTimeout(r, 400));
+          res = await attempt();
+        }
+        return res;
       };
 
       let firstWorking: { row: any; tokenCheck: Awaited<ReturnType<typeof checkToken>> } | null = null;
       let lastAuthFailure: any = null;
+      let sawUncheckableToken = false;
 
       for (const row of bindings) {
         const token = String(row.page_access_token ?? "").trim();
-        if (token.length <= 30) continue;
+        if (token.length <= 30) { sawUncheckableToken = true; continue; }
         const tokenCheck = await checkToken(String(row.page_id), token);
         if (tokenCheck.ok) {
           firstWorking = { row, tokenCheck };
           break;
         }
-        if (tokenCheck.authFailure) {
-          lastAuthFailure = tokenCheck.errorPayload;
-        }
+        if (tokenCheck.authFailure) lastAuthFailure = tokenCheck.errorPayload;
+        else sawUncheckableToken = true;
       }
 
       // At least one bound page has a working token → healthy, no banner.
@@ -271,11 +280,14 @@ Deno.serve(async (req) => {
         });
       }
 
-      // No working page token found. Only warn when we confirmed an auth failure.
-      const authFailure = !!lastAuthFailure;
+      // No proven-working token. Warn ONLY when Meta definitively rejected a
+      // token (hard expiry / revoked) and nothing else could be verified.
+      const authFailure = !!lastAuthFailure && !sawUncheckableToken;
       const primaryRow = bindings[0];
       return json({
-        connected: false,
+        // A stored page binding that was not definitively rejected still counts
+        // as a live workspace connection.
+        connected: !authFailure,
         stale: !authFailure,
         needs_reconnect: authFailure,
         never_connected: false,
