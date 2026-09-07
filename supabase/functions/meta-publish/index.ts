@@ -664,41 +664,20 @@ Deno.serve(async (req) => {
           if (res.warning) warnings.push(res.warning);
 
           // First auto-comment: always executed right after a successful page
-          // publish. A failure is surfaced as a warning (never fails the post).
+          // publish. A failure is surfaced as a warning (never fails the post)
+          // and its real Graph reason is persisted for diagnostics.
           if (firstComment) {
-            // Posted synchronously with the real post id returned by Graph.
-            // Bare object ids are qualified as {page_id}_{object_id}; both
-            // forms are attempted (with one retry) before giving up.
-            const candidates = res.id.includes("_")
-              ? [res.id]
-              : [`${activePage.pageId}_${res.id}`, res.id];
-            let commentId: string | null = null;
-            let lastPayload: unknown = null;
-
-            for (const target of candidates) {
-              for (let attempt = 0; attempt < 2 && !commentId; attempt++) {
-                if (attempt > 0) await new Promise((r) => setTimeout(r, 1200));
-                const form = new URLSearchParams({ message: firstComment, access_token: activePage.token });
-                const cRes = await graph(`/${target}/comments`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
-                  body: form.toString(),
-                });
-                lastPayload = cRes.payload;
-                if (cRes.ok && cRes.payload?.id) commentId = String(cRes.payload.id);
-              }
-              if (commentId) break;
-            }
-
-            if (commentId) {
-              console.log("[meta-publish] first comment published", res.id, commentId);
-              firstCommentIds.push({ target: res.id, comment_id: commentId });
+            const c = await postFirstComment(activePage.pageId, activePage.token, res.id, firstComment);
+            if ("comment_id" in c) {
+              console.log("[meta-publish] first comment published", res.id, c.comment_id);
+              firstCommentIds.push({ target: res.id, comment_id: c.comment_id });
             } else {
-              const cMsg = humanize(lastPayload, "פרסום התגובה הראשונה בעמוד נכשל");
-              console.error("[meta-publish] first comment failed", res.id, lastPayload);
-              warnings.push(cMsg);
+              console.error("[meta-publish] first comment failed", res.id, JSON.stringify(c.raw));
+              firstCommentError = c.error;
+              warnings.push(c.error);
             }
           }
+
         }
 
       } else if (ch === "instagram") {
