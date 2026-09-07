@@ -25,6 +25,7 @@
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
@@ -991,6 +992,10 @@ async function handleLeadInboxInbound(
   // Owner identity is resolved from the assigned workspace owner ONLY, so a
   // shared WhatsApp number never signs a reply with another office's name.
   let ownerIdentity: { name?: string | null; agency?: string | null } = {};
+  let ownerDomain: "real_estate" | "software" | "generic" = "real_estate";
+  try {
+    ownerDomain = (await fetchWorkspacePersona(admin as any, aiOwnerId)).domain;
+  } catch (_) { /* keep default */ }
   try {
     const { data: ownerProfile } = await admin
       .from("profiles")
@@ -1029,6 +1034,7 @@ async function handleLeadInboxInbound(
 
     const fast = await generateFastReply({
       owner: ownerIdentity,
+      domain: ownerDomain,
       lead: {
         id: lead.id,
         full_name: lead.full_name,
@@ -1116,6 +1122,7 @@ async function handleLeadInboxInbound(
     console.warn("[autopilot] ai-agent produced no text — using fast lane as fallback", { lead_id: lead.id });
     const rescue = await generateFastReply({
       owner: ownerIdentity,
+      domain: ownerDomain,
       lead: { id: lead.id, full_name: lead.full_name, deal_type: lead.deal_type },
       inboundText,
       history: aiMessages,
