@@ -175,14 +175,28 @@ const Auth = () => {
 
   // Try the master-OTP bypass. Returns true if it succeeded and the session is set.
   const tryMasterOtp = async (code: string, normalizedPhone: string): Promise<boolean> => {
-    const { data, error: fnErr } = await supabase.functions.invoke('preview-master-auth', {
-      body: {
-        identifier: isPhoneFlow ? normalizedPhone : email,
-        kind: isPhoneFlow ? 'phone' : 'email',
-        code,
-      },
-    });
-    if (fnErr || !data?.token_hash) return false;
+    // Plain fetch (not functions.invoke) so a non-master code never bubbles up as
+    // a thrown FunctionsHttpError / reported runtime error.
+    let data: { token_hash?: string } | null = null;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/preview-master-auth`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string}`,
+        },
+        body: JSON.stringify({
+          identifier: isPhoneFlow ? normalizedPhone : email,
+          kind: isPhoneFlow ? 'phone' : 'email',
+          code,
+        }),
+      });
+      data = res.ok ? await res.json().catch(() => null) : null;
+    } catch {
+      return false;
+    }
+    if (!data?.token_hash) return false;
     const { error: vErr } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
     return !vErr;
   };
