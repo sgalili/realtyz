@@ -102,7 +102,7 @@ export default function KnowledgeBase() {
   };
 
   /* ── Resource management ── */
-  const [tab, setTab] = useState<Tab>('files');
+  const [tab, setTab] = useState<Tab>('ai');
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
   const [dragging, setDragging] = useState(false);
