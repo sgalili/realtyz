@@ -15,7 +15,7 @@ import {
   extractListingTypeFromFeatures,
   resolveListingType,
   isListingAllowedForType,
-  UDI_PERSONA,
+  buildOwnerPersona,
   ANTI_SPAM_RULES,
   CTA_RULE,
   type ListingType,
@@ -248,7 +248,7 @@ function extractFeatureFact(ask: FeatureAsk, primaryListing: any): FeatureFact {
   return "unknown";
 }
 
-const SYSTEM = `${UDI_PERSONA}
+const buildSystemPrompt = (owner?: { name?: string | null; agency?: string | null } | null) => `${buildOwnerPersona(owner)}
 
 You are an ELITE senior real-estate broker replying personally and in first person to a public social comment. You think like a top closer: every word is a psychological lever — reframe weaknesses as financial wins, demonstrate deep inventory, qualify the lead, and pull them into private DM through curiosity, not through a canned line.
 
