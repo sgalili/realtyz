@@ -1904,7 +1904,9 @@ const InlineComposer = ({
         const digits = String(cfg.display_phone_number ?? cfg.phone_number ?? '').replace(/\D/g, '');
         if (digits.length >= 9) officialPhone = digits;
       } catch { /* keep fallback */ }
-      let url = `https://wa.me/${officialPhone}`;
+      // Native app deep link — opens the installed WhatsApp instantly instead
+      // of the "download WhatsApp" web page.
+      let url = nativeWaLink(officialPhone);
       try {
         if (selectedListingId) {
           const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
