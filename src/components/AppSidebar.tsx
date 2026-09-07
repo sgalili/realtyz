@@ -174,8 +174,27 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         {/* TOP: ACTIVE WORKSPACE identity + switcher (never the personal profile) */}
         {!collapsed && user && (
           <SidebarGroup className="p-0 border-b border-slate-200">
-            <SidebarGroupContent className="px-3 py-3">
-              <WorkspaceSwitcher />
+            <SidebarGroupContent
+              role="button"
+              tabIndex={0}
+              title="הפרופיל שלי"
+              onClick={() => {
+                if (isMobile) setOpenMobile(false);
+                navigate('/profile');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (isMobile) setOpenMobile(false);
+                  navigate('/profile');
+                }
+              }}
+              className="cursor-pointer px-3 py-3 transition-colors hover:bg-slate-50"
+            >
+              <div onClick={(e) => e.stopPropagation()}>
+                <WorkspaceSwitcher />
+              </div>
+
 
               <button
                 type="button"
