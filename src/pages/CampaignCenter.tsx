@@ -3056,7 +3056,9 @@ const ConfirmDispatchDialog = ({
               media_urls: mediaUrls,
               group_ids: apiGroupIds,
               first_comment: firstComment || null,
-              status: scheduledAt ? 'scheduled' : 'queued',
+              // Immediate group posts belong in "פורסמו" straight away with the
+              // extension-queue badge; only real future slots are "scheduled".
+              status: scheduledAt ? 'scheduled' : 'publishing',
               sent_at: scheduledAt ?? null,
             } as any);
           } catch (err) {
