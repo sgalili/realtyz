@@ -91,9 +91,15 @@ Deno.serve(async (req) => {
         | { audio_data_url?: string; mime_type?: string; language?: string }
         | null;
       if (!body?.audio_data_url) return json({ error: "missing `audio_data_url`" }, 400);
-      audio = dataUrlToBlob(body.audio_data_url, body.mime_type);
+      try {
+        audio = dataUrlToBlob(body.audio_data_url, body.mime_type);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "audio_data_url is not a valid data URL";
+        return json({ error: msg === "empty_recording" ? "empty_recording" : msg }, 400);
+      }
       language = body.language;
     }
+
 
     if (audio.size < 1024) return json({ error: "empty_recording" }, 400);
     if (audio.size > MAX_BYTES) return json({ error: "audio too large (max 24MB)" }, 400);
