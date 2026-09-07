@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
           byline: branding.byline,
           name: branding.name,
           phone: branding.phone,
-          withLicense: true,
+          withLicense: isRealEstate,
         });
       } else {
         finalText = stripStreetNumbers(scrubForbiddenBylines(finalText, branding.name));
