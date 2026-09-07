@@ -433,6 +433,8 @@ GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
       content = enforceOwnerLaws(content, {
         license: branding.license,
         byline: branding.byline,
+        name: branding.name,
+        phone: branding.phone,
         withLicense: !!promotedListing && !skipLicenseFooter,
       });
     } catch (_e) { /* never block on enforcement failure */ }

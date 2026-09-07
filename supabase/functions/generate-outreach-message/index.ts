@@ -306,7 +306,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
         draft.highlights = draft.highlights.map((h: unknown) => typeof h === "string" ? stripStreetNumbers(h) : h);
       }
       if (typeof draft.message === "string") {
-        draft.message = enforceOwnerLaws(draft.message, { license: branding.license, byline: branding.byline, withLicense: true });
+        draft.message = enforceOwnerLaws(draft.message, { license: branding.license, byline: branding.byline, name: branding.name, phone: branding.phone, withLicense: true });
       }
     } catch (_e) { /* never block on enforcement failure */ }
 

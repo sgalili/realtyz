@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
     // Resolve owner branding so we can hard-pin the byline + license footer
     // for the model AND deterministically re-apply them after generation.
-    const branding = admin ? await fetchOwnerBranding(admin as any, userId) : { license: "", byline: "" };
+    const branding = admin ? await fetchOwnerBranding(admin as any, userId) : { license: "", byline: "", name: "", phone: "" };
     const HARD_LAWS_BLOCK = [
       "#HARD COMPLIANCE LAWS — HIGHEST PRIORITY, NON-NEGOTIABLE:",
       "- NEVER include a building / house / apartment number in any street address. \"ארלוזורוב 26\" must become \"ברחוב ארלוזורוב\". Strip ALL numeric suffixes from street addresses.",
@@ -174,12 +174,16 @@ Deno.serve(async (req) => {
         finalText = enforceOwnerLaws(finalText, {
           license: branding.license,
           byline: branding.byline,
+          name: branding.name,
+          phone: branding.phone,
           withLicense: !!listingId,
         });
       } else if (purpose === "private_dm" || purpose === "generic") {
         finalText = enforceOwnerLaws(finalText, {
           license: branding.license,
           byline: branding.byline,
+          name: branding.name,
+          phone: branding.phone,
           withLicense: true,
         });
       } else {
