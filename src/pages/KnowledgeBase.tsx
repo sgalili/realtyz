@@ -12,14 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
-  Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type, Trash2, Image as ImageIcon, Video as VideoIcon, Pencil, X, Check,
+  Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Sparkles, Type, Trash2, Image as ImageIcon, Video as VideoIcon, Pencil, X, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { GeminiIcon } from '@/components/GeminiIcon';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
-type Tab = 'ai' | 'files' | 'text' | 'link' | 'voice';
+type Tab = 'ai' | 'files' | 'text' | 'link';
 type Filter = 'all' | 'images' | 'videos' | 'docs';
 
 export default function KnowledgeBase() {
