@@ -346,7 +346,7 @@ export default function FbEngagement() {
       {/* Historical simulation */}
       {historical.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">אימון סימולציה: מה מוח ה-AI היה עונה כשאודי ויטמן מנהל את השיחה</h2>
+          <h2 className="text-lg font-semibold">אימון סימולציה: מה מוח ה-AI היה עונה בשיחה הזו</h2>
           <p className="text-sm text-muted-foreground">קלפי אימון בלבד. לא מבוצעת כתיבה חזרה ל-Facebook.</p>
           {historical.map((c) => (
             <HistoricalSimCard
@@ -451,7 +451,7 @@ function HistoricalSimCard({
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="secondary" className="text-[10px]">מקורי · Facebook</Badge>
-              <span className="text-xs text-muted-foreground">התשובה המקורית של אודי בפייסבוק:</span>
+              <span className="text-xs text-muted-foreground">התשובה המקורית בפייסבוק:</span>
             </div>
             <p className="bg-primary/5 rounded-md p-3 whitespace-pre-wrap border border-primary/10">{comment.historical_reply_text}</p>
           </div>
