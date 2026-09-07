@@ -941,8 +941,10 @@ Deno.serve(async (req) => {
       failures,
       warnings,
       group_results: groupResults,
+      first_comment_extension_payload: firstCommentExtensionPayload,
       message: failures.length ? failures[0].message : (warnings[0] ?? null),
     });
+
 
   } catch (e) {
     console.error("[meta-publish] fatal", e);
