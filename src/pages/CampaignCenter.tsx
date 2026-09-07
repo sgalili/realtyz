@@ -45,7 +45,7 @@ import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from 
 import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
 
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
-import { nativeWaLink } from '@/lib/officialWa';
+import { nativeWaLink, getOfficialWaNumber } from '@/lib/officialWa';
 import { cn } from '@/lib/utils';
 
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
@@ -1998,6 +1998,9 @@ const InlineComposer = ({
           });
           const slug = (slugRes as any)?.slug;
           if (slug) url = `https://realtyz.co.il/r/${slug}`;
+        } else {
+          // Platform (SaaS) post: brand the official WABA chat link too.
+          url = await mintOfficialWaShortLink();
         }
       } catch { /* keep fallback */ }
       if (cancelled) return;
