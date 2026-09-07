@@ -55,7 +55,6 @@ export const UniversalKnowledgeInput = () => {
   const [mode, setMode] = useState<InputMode>('text');
 
   // Text
-  const [textTitle, setTextTitle] = useState('');
   const [textBody, setTextBody] = useState('');
 
   // Files
@@ -145,7 +144,7 @@ export const UniversalKnowledgeInput = () => {
   const handleSaveText = async () => {
     if (blockDemoAction('add-knowledge-text')) return;
     if (!textBody.trim()) { toast.error('יש להזין תוכן'); return; }
-    const title = textTitle.trim() || `הערה מהירה · ${new Date().toLocaleString('he-IL')}`;
+    const title = `הערה מהירה · ${new Date().toLocaleString('he-IL')}`;
     try {
       await ingest.mutateAsync({
         title,
@@ -154,7 +153,7 @@ export const UniversalKnowledgeInput = () => {
         tag: TAG_BY_MODE.text,
       });
       toast.success('הטקסט נוסף למאגר הידע');
-      setTextTitle(''); setTextBody('');
+      setTextBody('');
     } catch (e) {
       toast.error(`שמירה נכשלה: ${(e as Error).message}`);
     }
@@ -337,15 +336,6 @@ export const UniversalKnowledgeInput = () => {
           {/* TEXT */}
           <TabsContent value="text" className="mt-4 space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="text-title" className="text-xs">כותרת</Label>
-              <Input
-                id="text-title"
-                value={textTitle}
-                onChange={(e) => setTextTitle(e.target.value)}
-                placeholder="לדוגמה: סיכום פגישה עם בעל הנכס"
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="text-body" className="text-xs">תוכן</Label>
               <Textarea
                 id="text-body"
@@ -504,7 +494,7 @@ export const UniversalKnowledgeInput = () => {
                 dir="ltr"
               />
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                המערכת תזקק את התוכן לעקרונות, טכניקות וניסוחים עבור פרסונת Udi —
+                המערכת תזקק את התוכן לעקרונות, טכניקות וניסוחים עבור הפרסונה שלך —
                 ותשמור את הקישור בספריית המדיה. המקור לעולם לא ייחשף ללקוחות.
               </p>
             </div>
