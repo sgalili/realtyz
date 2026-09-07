@@ -198,7 +198,14 @@ async function handle(req: Request): Promise<Response> {
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    let userData: any = { user: null };
+    let userErr: any = null;
+    try {
+      const res = await withTimeout(userClient.auth.getUser(), 6000, 'auth.getUser');
+      userData = res.data; userErr = res.error;
+    } catch (e: any) {
+      userErr = e;
+    }
     if (userErr || !userData.user) {
       return new Response(JSON.stringify({ ok: false, error: 'הבקשה נשלחה ללא התחברות פעילה. התחבר למערכת ונסה שוב.', code: 'unauthorized' }), {
         status: 200,
@@ -419,14 +426,25 @@ async function handle(req: Request): Promise<Response> {
       };
 
       if (targetRow?.id) {
-        const { error } = await admin
-          .from('social_connections')
-          .update(upd)
-          .eq('id', targetRow.id);
-        if (error && !saveWarning) saveWarning = error.message;
+        try {
+          const { error } = await withTimeout(
+            admin.from('social_connections').update(upd).eq('id', targetRow.id) as unknown as Promise<any>,
+            8000, 'social_connections update',
+          );
+          if (error && !saveWarning) saveWarning = error.message;
+        } catch (e: any) {
+          if (!saveWarning) saveWarning = e?.message ?? 'db update failed';
+        }
       } else {
-        const { error } = await admin.from('social_connections').upsert(upd, { onConflict: 'created_by,platform' });
-        if (error && !saveWarning) saveWarning = error.message;
+        try {
+          const { error } = await withTimeout(
+            admin.from('social_connections').upsert(upd, { onConflict: 'created_by,platform' }) as unknown as Promise<any>,
+            8000, 'social_connections upsert',
+          );
+          if (error && !saveWarning) saveWarning = error.message;
+        } catch (e: any) {
+          if (!saveWarning) saveWarning = e?.message ?? 'db upsert failed';
+        }
       }
     }
 
