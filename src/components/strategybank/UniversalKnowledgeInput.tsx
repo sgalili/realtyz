@@ -494,7 +494,7 @@ export const UniversalKnowledgeInput = () => {
                 dir="ltr"
               />
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                המערכת תזקק את התוכן לעקרונות, טכניקות וניסוחים עבור פרסונת Udi —
+                המערכת תזקק את התוכן לעקרונות, טכניקות וניסוחים עבור הפרסונה שלך —
                 ותשמור את הקישור בספריית המדיה. המקור לעולם לא ייחשף ללקוחות.
               </p>
             </div>
