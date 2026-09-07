@@ -787,11 +787,13 @@ const InlineComposer = ({
   /** When rendered inside a collapsed draft card the page-level bar handles dispatch. */
   hideBottomBar?: boolean;
 }) => {
-  // Persistent draft key — namespaced per replicated instance so multiple
-  // composers on the same page don't clobber each other's drafts. Persisted
-  // to localStorage so dialog closes, route changes, and hard refreshes
-  // never lose unfinished work. Cleared only on successful publish.
-  const draftKey = `rz-composer-draft:v2:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
+  // Persistent draft key — namespaced per replicated instance AND per active
+  // workspace, so a draft written in one office can never resurface inside
+  // another one. Persisted to localStorage so dialog closes, route changes,
+  // and hard refreshes never lose unfinished work.
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const wsScope = workspaceOwnerId ?? 'anon';
+  const draftKey = `rz-composer-draft:v3:${wsScope}:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
     if (typeof window === 'undefined') return null;
     try {
