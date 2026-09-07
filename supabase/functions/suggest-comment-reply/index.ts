@@ -21,6 +21,7 @@ import {
   type ListingType,
 } from "../_shared/grounding.ts";
 import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
+import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
