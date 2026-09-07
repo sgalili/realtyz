@@ -436,6 +436,14 @@ async function findReusableRow(
   return row ? String(row.id) : null;
 }
 
+    // ---- Token permission diagnostics ----------------------------------------
+    if (body?.action === "permissions") {
+      if (!page) return json({ connected: false, permissions: [] });
+      const r = await graph(`/me/permissions?access_token=${encodeURIComponent(page.token)}`);
+      return json({ connected: true, permissions: r.payload?.data ?? [], raw: r.payload });
+    }
+
+
 Deno.serve(async (req) => {
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
