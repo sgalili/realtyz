@@ -208,38 +208,47 @@ export function enforceOwnerLaws(
 /** Alias retained for callers that still reference the older name. */
 export const sanitizeOutboundText = enforceOwnerLaws;
 
-// ── Owner branding lookup (license + byline). 60s cache per process. ──
-type Branding = { license: string; byline: string };
+// ── Owner branding lookup. Scoped to the caller's ACTIVE workspace owner.
+//    60s cache per process, keyed by user id.
+type Branding = { license: string; byline: string; name: string; phone: string };
 const brandingCache = new Map<string, { at: number; v: Branding }>();
 const TTL = 60_000;
+
+const SELECT_COLS =
+  "full_name, phone, broker_license_number, broker_byline, active_workspace_owner_id";
 
 export async function fetchOwnerBranding(
   admin: ReturnType<typeof createClient>,
   userId: string | null | undefined,
 ): Promise<Branding> {
-  const empty: Branding = { license: "", byline: "" };
+  const empty: Branding = { license: "", byline: "", name: "", phone: "" };
   if (!userId) return empty;
   const hit = brandingCache.get(userId);
   if (hit && Date.now() - hit.at < TTL) return hit.v;
   try {
     const { data: me } = await admin
       .from("profiles")
-      .select("active_workspace_owner_id, broker_license_number, broker_byline")
+      .select(SELECT_COLS)
       .eq("id", userId)
       .maybeSingle();
-    let lic = String((me as any)?.broker_license_number ?? "").trim();
-    let bln = String((me as any)?.broker_byline ?? "").trim();
-    const ownerId = (me as any)?.active_workspace_owner_id ?? null;
-    if ((!lic || !bln) && ownerId && ownerId !== userId) {
+    // The signature always belongs to the ACTIVE workspace owner, so a member
+    // of another broker's workspace never signs with their own details.
+    const ownerId = (me as any)?.active_workspace_owner_id ?? userId;
+    let row: any = me;
+    if (ownerId && ownerId !== userId) {
       const { data: owner } = await admin
         .from("profiles")
-        .select("broker_license_number, broker_byline")
+        .select(SELECT_COLS)
         .eq("id", ownerId)
         .maybeSingle();
-      if (!lic) lic = String((owner as any)?.broker_license_number ?? "").trim();
-      if (!bln) bln = String((owner as any)?.broker_byline ?? "").trim();
+      row = owner ?? me;
     }
-    const v = { license: lic, byline: bln };
+    const v: Branding = {
+      license: String(row?.broker_license_number ?? "").trim(),
+      byline: String(row?.broker_byline ?? "").trim(),
+      name: String(row?.full_name ?? "").trim(),
+      phone: String(row?.phone ?? "").trim(),
+    };
     brandingCache.set(userId, { at: Date.now(), v });
     return v;
   } catch {
