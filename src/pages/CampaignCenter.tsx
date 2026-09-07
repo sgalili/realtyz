@@ -4786,7 +4786,59 @@ const PublishedFeed = ({
 
   const filteredRows = useMemo(() => {
     const base = rows ?? [];
-    const merged: CampaignRow[] = [...optimisticRows, ...base];
+    // Group posts live in the browser-extension queue (localStorage), not only
+    // in the DB. Synthesize a card per queued post so it shows up immediately
+    // in "פורסמו"/"עתידיים" with its status badge and group pills, and updates
+    // live as the extension drains the queue.
+    const bodyKey = (t: unknown) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    const knownBodies = new Set(
+      [...optimisticRows, ...base].map((r) => bodyKey(r.message_body)).filter(Boolean),
+    );
+    const extGroups = new Map<string, {
+      text: string;
+      images: string[];
+      groupIds: string[];
+      scheduledTime: number;
+      createdAt: number;
+      statuses: string[];
+    }>();
+    for (const e of extensionQueue) {
+      const key = `${bodyKey(e.text)}|${Math.floor(Number(e.scheduledTime || 0) / 60000)}`;
+      if (!bodyKey(e.text)) continue;
+      const gid = String(e.groupUrl || '').match(/groups\/([^/?#]+)/)?.[1] || '';
+      const cur = extGroups.get(key) || {
+        text: e.text,
+        images: Array.isArray(e.images) ? e.images : [],
+        groupIds: [] as string[],
+        scheduledTime: Number(e.scheduledTime) || Date.now(),
+        createdAt: Number(e.createdAt) || Date.now(),
+        statuses: [] as string[],
+      };
+      if (gid && !cur.groupIds.includes(gid)) cur.groupIds.push(gid);
+      cur.statuses.push(String(e.status || 'pending'));
+      extGroups.set(key, cur);
+    }
+    const extRows: CampaignRow[] = [];
+    for (const [key, g] of extGroups.entries()) {
+      if (knownBodies.has(bodyKey(g.text))) continue; // already rendered from the DB
+      const future = g.scheduledTime > Date.now() + 60_000;
+      const allDone = g.statuses.length > 0 && g.statuses.every((s) => s === 'completed');
+      const anyLive = g.statuses.some((s) => s === 'pending' || s === 'posting');
+      const status = allDone ? 'sent' : (future && anyLive ? 'scheduled' : (anyLive ? 'publishing' : 'sent'));
+      extRows.push({
+        id: `ext-queue-${key}`,
+        campaign_name: (g.text || '').trim().split('\n')[0].slice(0, 60) || 'פוסט קבוצות',
+        channel: 'facebook',
+        message_body: g.text,
+        created_at: new Date(g.createdAt).toISOString(),
+        provider_message_id: null,
+        media_urls: g.images,
+        group_ids: g.groupIds,
+        status,
+        sent_at: status === 'scheduled' ? new Date(g.scheduledTime).toISOString() : null,
+      });
+    }
+    const merged: CampaignRow[] = [...optimisticRows, ...extRows, ...base];
     const channelFiltered = activeChannel === 'all'
       ? merged
       : merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
@@ -4830,7 +4882,7 @@ const PublishedFeed = ({
       if (aSched && bSched) return aTime - bTime;
       return bTime - aTime;
     });
-  }, [rows, activeChannel, optimisticRows]);
+  }, [rows, activeChannel, optimisticRows, extensionQueue]);
 
   // Blocking loader ONLY on a true cold start: no cached rows in memory AND
   // the initial background load is still in-flight. As soon as we have any
