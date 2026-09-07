@@ -82,6 +82,37 @@
     if (d.type === 'RZ_EXT_UNPAIR') chrome.runtime.sendMessage({ type: 'RZ_EXT_UNPAIR' });
   });
 
+  /* ── Instant local posting handed over by the app ─────────────────────── */
+  const startPosting = (post) => {
+    if (!post) return;
+    chrome.runtime.sendMessage({ type: 'RZ_START_POSTING', post }, (res) => {
+      const result = res || { ok: false, reason: 'התוסף לא החזיר תשובה' };
+      try {
+        window.postMessage({ source: 'realtyz-extension', type: 'RZ_POSTING_RESULT', result }, window.location.origin);
+      } catch (err) { /* noop */ }
+      try { document.dispatchEvent(new CustomEvent('rz:ext-posting-result', { detail: result })); } catch (err) { /* noop */ }
+    });
+  };
+
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d || typeof d !== 'object') return;
+    if (d.type !== 'RZ_START_POSTING') return;
+    let post = d.post || d.payload || null;
+    if (!post) {
+      try { post = JSON.parse(localStorage.getItem('rz-pending-post') || 'null'); } catch (err) { post = null; }
+    }
+    startPosting(post);
+  });
+
+  document.addEventListener('rz:ext-start-posting', (e) => {
+    let post = e && e.detail;
+    if (!post) {
+      try { post = JSON.parse(localStorage.getItem('rz-pending-post') || 'null'); } catch (err) { post = null; }
+    }
+    startPosting(post);
+  });
+
   document.addEventListener('rz:ext-fb-groups:request', deliver);
   document.addEventListener('rz:ext-fb-posts:request', deliverPosts);
   document.addEventListener('rz:ext-fb-comments:request', (e) => deliverComments(e?.detail?.postIds));
