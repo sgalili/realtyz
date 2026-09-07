@@ -139,8 +139,7 @@ function buildFooterBlock(sig?: OwnerSignature | null): string {
  */
 export function appendLicenseFooter(
   text: string,
-  _license?: string | null,
-  _byline?: string | null,
+  signature?: OwnerSignature | null,
 ): string {
   const body = String(text ?? "").replace(/\s+$/g, "");
   if (!body) return body;
