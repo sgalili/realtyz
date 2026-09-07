@@ -1,16 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Realtyz Group Sync",
-  "version": "1.0.0",
-  "description": "מסנכרן את קבוצות הפייסבוק שלך אל Realtyz ומאפשר פרסום ממוקד.",
-  "permissions": ["storage"],
+  "version": "1.1.0",
+  "description": "מסנכרן את קבוצות הפייסבוק שלך אל Realtyz ומפרסם את התור המתוזמן ישירות מהדפדפן שלך.",
+  "permissions": ["storage", "alarms", "tabs", "scripting"],
   "host_permissions": [
     "https://*.facebook.com/*",
+    "https://gvylyghwfysvydygqdtf.supabase.co/*",
     "https://realtyz.co.il/*",
     "https://*.realtyz.co.il/*",
     "https://*.lovable.app/*",
     "http://localhost/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["https://*.facebook.com/*"],
