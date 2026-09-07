@@ -6111,7 +6111,7 @@ const CampaignCenter = () => {
   // directly on the "פוסטים עתידיים" tab with fresh rows.
   const [historyTab, setHistoryTab] = useState<FeedSubTab>('published');
   const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
-  const [historyGroupMeta, setHistoryGroupMeta] = useState<Record<string, { name: string; icon: string | null }>>({});
+  const [historyGroupMeta, setHistoryGroupMeta] = useState<Record<string, { name: string; icon: string | null; memberCount?: number | null; url?: string | null }>>({});
   const [editSeriesRow, setEditSeriesRow] = useState<any | null>(null);
 
 
