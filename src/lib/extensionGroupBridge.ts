@@ -246,7 +246,7 @@ export const enqueueExtensionPosts = (input: {
   const when = input.scheduledAt ? new Date(input.scheduledAt).getTime() : Date.now();
   const scheduledTime = Number.isFinite(when) ? when : Date.now();
   const entries: QueuedExtensionPost[] = input.groups
-    .map((g) => {
+    .map<QueuedExtensionPost | null>((g) => {
       const bare = String(g.group_id || "").replace(/^ext:/, "");
       const url = g.group_url || (bare ? `https://www.facebook.com/groups/${bare}` : "");
       if (!url) return null;
