@@ -115,6 +115,9 @@ type Props = {
   refreshSignal?: number;
   /** Hide the internal header (button + title) — used when parent renders its own controls. */
   hideHeader?: boolean;
+  /** Rendered at the trailing edge of the counters row (e.g. refresh buttons). */
+  headerActions?: React.ReactNode;
+
   /** Notified once a manual refresh cycle settles, with the live tree count. */
   onRefreshComplete?: (campaignId: string, result: { ok: boolean; count: number; error?: string }) => void;
 };
@@ -279,7 +282,7 @@ const writeDraftCache = (campaignId: string, map: DraftMap) => {
   try { sessionStorage.setItem(draftKey(campaignId), JSON.stringify(map)); } catch { /* quota */ }
 };
 
-function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved, refreshSignal, hideHeader, onRefreshComplete }: Props) {
+function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved, refreshSignal, hideHeader, headerActions, onRefreshComplete }: Props) {
   const commentOwnerId = campaign.user_id || userId;
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
@@ -1259,7 +1262,13 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
             <CornerDownLeft className="h-3.5 w-3.5 text-primary" />
             תגובות המשך ({repliesCount})
           </p>
+          {headerActions && (
+            <div className="ms-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              {headerActions}
+            </div>
+          )}
         </div>
+
       )}
 
 
@@ -1496,7 +1505,8 @@ export const CampaignCommentsStream = memo(CampaignCommentsStreamInner, (prev, n
     prev.campaign.id === next.campaign.id &&
     prev.commentCount === next.commentCount &&
     prev.refreshSignal === next.refreshSignal &&
-    prev.hideHeader === next.hideHeader
+    prev.hideHeader === next.hideHeader &&
+    prev.headerActions === next.headerActions
   );
 });
 

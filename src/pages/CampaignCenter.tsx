@@ -5134,34 +5134,46 @@ const PublishedFeed = ({
                     </ul>
                   </div>
                 )}
-                {uniqueMedia.length > 0 && (
-                  <div className={cn(
-                    'mx-4 mb-3 grid gap-2',
-                    uniqueMedia.length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3',
-                  )}>
-                    {uniqueMedia.map((src, i) => (
-                      <div key={src} className="relative group aspect-square min-w-0">
-                        <PostImage src={src} campaignLogId={r.id} index={i} alt=""
-                             candidates={uniqueMedia}
-                             className="h-full w-full rounded-lg object-cover border border-border"
-                             fallbackClassName="h-full w-full" />
-                        <button
-                          type="button"
-                          title="הסר תמונה"
-                          aria-label="הסר תמונה"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm('להסיר את התמונה מהפוסט?')) removeMediaUrl(r.id, src);
-                          }}
-                          className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
+                {uniqueMedia.length > 0 && (() => {
+                  // One large hero image on top, the rest in a horizontal
+                  // scrolling thumbnail strip right below it.
+                  const [hero, ...rest] = uniqueMedia;
+                  const tile = (src: string, i: number, cls: string) => (
+                    <div key={src} className={cn('relative group', cls)}>
+                      <PostImage src={src} campaignLogId={r.id} index={i} alt=""
+                           candidates={uniqueMedia}
+                           className="h-full w-full rounded-lg object-cover border border-border"
+                           fallbackClassName="h-full w-full" />
+                      <button
+                        type="button"
+                        title="הסר תמונה"
+                        aria-label="הסר תמונה"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm('להסיר את התמונה מהפוסט?')) removeMediaUrl(r.id, src);
+                        }}
+                        className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                  return (
+                    <div className="mx-4 mb-3 space-y-2">
+                      {tile(hero, 0, 'aspect-[4/3] w-full')}
+                      {rest.length > 0 && (
+                        <div className="flex gap-2 overflow-x-auto pb-1" dir="rtl">
+                          {rest.map((src, i) => (
+                            <div key={src} className="h-20 w-20 shrink-0">
+                              {tile(src, i + 1, 'h-20 w-20')}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
                 <div className={cn('mx-4 mb-3 rounded-xl border border-border bg-background p-4 text-sm text-foreground whitespace-pre-wrap', alignClass)} dir={dirAttr}>
                   {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
@@ -5172,34 +5184,9 @@ const PublishedFeed = ({
                             onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
                       <ExternalLink className="h-4 w-4" />
                     </Button>
-                    {(() => {
-                      const isRefreshing = !!refreshingIds[r.id];
-                      const cooldownSecs = getCooldownSeconds(r.id);
-                      const onCooldown = !isRefreshing && cooldownSecs > 0;
-                      const label = isRefreshing
-                        ? 'מרענן…'
-                        : onCooldown
-                          ? `ממתין: ${formatCooldown(cooldownSecs)}`
-                          : 'רענן תגובות';
-                      return (
-                        <Button
-                          variant="outline"
-                          size={onCooldown ? 'sm' : 'icon'}
-                          title={label}
-                          aria-label={label}
-                          disabled={isRefreshing || onCooldown}
-                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}
-                          className={cn(onCooldown && 'opacity-50 cursor-not-allowed gap-1 tabular-nums text-xs')}
-                        >
-                          {onCooldown ? (
-                            <span className="tabular-nums text-xs font-medium">{formatCooldown(cooldownSecs)}</span>
-                          ) : (
-                            <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-                          )}
-                        </Button>
+                    {/* Comment refresh lives at the trailing edge of the
+                        "תגובות לקמפיין / תגובות המשך" row below. */}
 
-                      );
-                    })()}
                     <Button variant="outline" size="icon" disabled className="opacity-90"
                             title={`מדיה מצורפת: ${Array.isArray(r.media_urls) ? r.media_urls.length : 0}`}
                             aria-label="מדיה מצורפת">
@@ -5233,6 +5220,33 @@ const PublishedFeed = ({
                     commentCount={typeof liveCount === 'number' ? liveCount : dbComments}
                     onLiveCountResolved={updateLiveCount}
                     refreshSignal={refreshSignals[r.id] ?? 0}
+                    headerActions={(() => {
+                      const isRefreshing = !!refreshingIds[r.id];
+                      const cooldownSecs = getCooldownSeconds(r.id);
+                      const onCooldown = !isRefreshing && cooldownSecs > 0;
+                      const label = isRefreshing
+                        ? 'מרענן…'
+                        : onCooldown
+                          ? `ממתין: ${formatCooldown(cooldownSecs)}`
+                          : 'רענן תגובות';
+                      return (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          title={label}
+                          aria-label={label}
+                          disabled={isRefreshing || onCooldown}
+                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}
+                          className={cn('h-7 w-7', onCooldown && 'opacity-50 cursor-not-allowed')}
+                        >
+                          {onCooldown ? (
+                            <span className="tabular-nums text-[10px] font-medium">{formatCooldown(cooldownSecs)}</span>
+                          ) : (
+                            <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
+                          )}
+                        </Button>
+                      );
+                    })()}
                     onCountersResolved={(campaignId, counters) => {
                       const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
                       const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
