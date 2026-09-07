@@ -145,17 +145,12 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
           hide_kalpiz_branding: false,
         };
       }
-      if (!row) {
-        const { data: any } = await supabase
-          .from('white_label_settings')
-          .select('*')
-          .order('updated_at', { ascending: false })
-          .limit(1);
-        row = any?.[0] ?? null;
-      }
+      // NO global fallback: a workspace without branding keeps the default
+      // Realtyz identity rather than borrowing another workspace's logo.
       setSettings(row);
       applyTheme(row);
-      writeBrandCache(activeWorkspaceId, row);
+      writeBrandCache(activeWorkspaceId ?? row?.user_id ?? null, row);
+
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[white-label] load failed', e);
