@@ -10,6 +10,7 @@ import {
   buildGoogleAllAuthUrl,
   clearFlag,
   connectedGoogleServices,
+  isFacebookConnected,
   FIRST_TIME_SYNC_KEY,
   GOOGLE_SERVICES_PENDING_KEY,
   readFlag,
@@ -26,6 +27,7 @@ const FIRST_SESSION_WINDOW_MS = 30 * 60 * 1000;
 export function FirstTimeSyncDialog() {
   const [open, setOpen] = useState(false);
   const [googleDone, setGoogleDone] = useState(false);
+  const [facebookDone, setFacebookDone] = useState(false);
   const [busy, setBusy] = useState<'google' | 'facebook' | null>(null);
 
   useEffect(() => {
@@ -49,10 +51,17 @@ export function FirstTimeSyncDialog() {
       const brandNew = Number.isFinite(createdAt) && Date.now() - createdAt < FIRST_SESSION_WINDOW_MS;
       if (!pending && !brandNew) return;
 
-      const google = await connectedGoogleServices();
+      const [google, fbLive] = await Promise.all([connectedGoogleServices(), isFacebookConnected()]);
       const allGoogle = google.has('gmail') && google.has('google_calendar') && google.has('youtube');
       if (cancelled) return;
       setGoogleDone(allGoogle);
+      setFacebookDone(fbLive);
+      // Everything is already linked: never interrupt with a pointless popup.
+      if (allGoogle && fbLive) {
+        try { window.localStorage.setItem(FIRST_TIME_SYNC_KEY, '1'); } catch { /* storage disabled */ }
+        clearFlag(window.sessionStorage, GOOGLE_SERVICES_PENDING_KEY);
+        return;
+      }
       setOpen(true);
     })();
     return () => { cancelled = true; };
@@ -103,27 +112,39 @@ export function FirstTimeSyncDialog() {
         </DialogHeader>
 
         <div className="space-y-3">
-          <Button
-            className="w-full justify-between"
-            variant="outline"
-            disabled={busy !== null || googleDone}
-            onClick={connectGoogle}
-          >
-            <span>{googleDone ? 'גוגל מחובר' : 'חיבור חשבון גוגל'}</span>
-            {googleDone
-              ? <Check className="h-4 w-4 text-emerald-600" />
-              : busy === 'google' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          </Button>
-
+          {!googleDone && (
           <Button
             className="w-full justify-between"
             variant="outline"
             disabled={busy !== null}
-            onClick={connectFacebook}
+            onClick={connectGoogle}
           >
-            <span>חיבור חשבון פייסבוק</span>
-            {busy === 'facebook' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            <span>{googleDone ? 'גוגל מחובר' : 'חיבור חשבון גוגל'}</span>
+            {busy === 'google' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           </Button>
+          )}
+          {googleDone && (
+            <p className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+              גוגל מחובר <Check className="h-4 w-4 text-emerald-600" />
+            </p>
+          )}
+          {facebookDone && (
+            <p className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+              פייסבוק מחובר <Check className="h-4 w-4 text-emerald-600" />
+            </p>
+          )}
+
+          {!facebookDone && (
+            <Button
+              className="w-full justify-between"
+              variant="outline"
+              disabled={busy !== null}
+              onClick={connectFacebook}
+            >
+              <span>חיבור חשבון פייסבוק</span>
+              {busy === 'facebook' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            </Button>
+          )}
         </div>
 
         <Button variant="ghost" className="w-full" onClick={finish}>
