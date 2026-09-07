@@ -31,7 +31,7 @@ function isSelfAuthoredComment(args: {
   ) return true;
   const t = String(args.text ?? "").toLowerCase();
   const signatures = [
-    "אני מודה לך אודי ויטמן",
+    "[realtyz]",
     "תודה רבה על העדכון",
     "[ai realtyz]",
   ];

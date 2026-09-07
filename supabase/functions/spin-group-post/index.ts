@@ -27,8 +27,8 @@ function json(body: unknown, status = 200) {
 // rewrite only the marketing copy and reattach the footer on the client.
 function stripCanonicalFooter(text: string): string {
   return String(text ?? "")
-    .replace(/\n*\s*לפרטים\s+נוספים[^]*?052[\s\-]?297[\s\-]?3500[^\n]*/gu, "")
-    .replace(/\n*\s*אודי\s+ויטמן\s*-\s*אנגלו[^\n]*/gu, "")
+    .replace(/\n*\s*לפרטים\s+(?:נוספים|ולתיאום)[^\n]*/gu, "")
+    .replace(/\n*\s*(?:📞|☎️|📱)\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, "")
     .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, "")
     .replace(/\n*\s*רישיון\s*תיווך\s*מספר\s*[:：][^\n]*/gu, "")
     .replace(/\s+$/g, "");
