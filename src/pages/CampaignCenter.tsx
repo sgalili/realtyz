@@ -5187,11 +5187,7 @@ const PublishedFeed = ({
                     {/* Comment refresh lives at the trailing edge of the
                         "תגובות לקמפיין / תגובות המשך" row below. */}
 
-                    <Button variant="outline" size="icon" disabled className="opacity-90"
-                            title={`מדיה מצורפת: ${Array.isArray(r.media_urls) ? r.media_urls.length : 0}`}
-                            aria-label="מדיה מצורפת">
-                      <Paperclip className="h-4 w-4" />
-                    </Button>
+                    {/* Attachment indicator removed from published cards. */}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" title="ערוך ופרסם מחדש" aria-label="ערוך ופרסם מחדש"
