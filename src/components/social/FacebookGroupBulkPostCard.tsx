@@ -28,7 +28,7 @@ type Result = { ok: boolean; reason?: string };
 /**
  * FacebookGroupBulkPostCard — write one property post (text + image + link)
  * and broadcast it to every selected Facebook group through the official
- * Graph API (fb-group-publish edge function), optionally generating a unique
+ * Realtyz browser extension (local rzPostQueue, never Meta Graph), optionally generating a unique
  * AI variation per group so Facebook's duplicate filters stay quiet.
  */
 export const FacebookGroupBulkPostCard = () => {
