@@ -128,8 +128,10 @@ async function runJob(token, job) {
     );
 
     await report(token, job, result.ok === true, result.reason || null, result.post_url || null);
+    return result.ok === true;
   } catch (e) {
     await report(token, job, false, String((e && e.message) || e));
+    return false;
   } finally {
     if (tabId != null) {
       try { await chrome.tabs.remove(tabId); } catch (e) { /* noop */ }
@@ -138,18 +140,65 @@ async function runJob(token, job) {
 }
 
 async function report(token, job, ok, reason, postUrl) {
-  await api('ext-queue-report', {
-    token,
-    job_id: job.id,
-    ok: !!ok,
-    reason: ok ? null : (reason || 'פרסום בדפדפן נכשל'),
-    post_url: postUrl || null,
-  });
+  // Local (app-triggered) jobs have no backend queue row — skip the report call.
+  if (token && !job.local) {
+    await api('ext-queue-report', {
+      token,
+      job_id: job.id,
+      ok: !!ok,
+      reason: ok ? null : (reason || 'פרסום בדפדפן נכשל'),
+      post_url: postUrl || null,
+    });
+  }
   await setState(
     ok
       ? { last_success_at: Date.now(), last_error: null }
       : { last_error: reason || 'פרסום בדפדפן נכשל', last_error_at: Date.now() },
   );
+}
+
+/* ── local instant posting (handed over by the app) ──────────────────────── */
+
+let localRunning = false;
+
+async function runLocalPost(post) {
+  if (localRunning) return { ok: false, reason: 'פרסום מקומי אחר עדיין רץ' };
+  localRunning = true;
+  const token = await getToken();
+  const groups = Array.isArray(post && post.groups) ? post.groups : [];
+  const text = String((post && (post.text || post.message)) || '').trim();
+  const image =
+    (post && post.image_url) ||
+    (Array.isArray(post && post.images) && post.images[0]) ||
+    (Array.isArray(post && post.imageUrls) && post.imageUrls[0]) ||
+    null;
+
+  let done = 0;
+  const failures = [];
+  try {
+    await setState({ local_total: groups.length, local_done: 0, local_started_at: Date.now(), last_error: null });
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i] || {};
+      const ok = await runJob(token, {
+        id: `local-${Date.now()}-${i}`,
+        local: true,
+        group_id: String(g.group_id || g.id || '').replace(/^ext:/, ''),
+        group_url: g.group_url || g.url || null,
+        message: text,
+        image_url: image,
+        first_comment: post.firstComment || post.first_comment || null,
+        link: post.link || null,
+      });
+      if (ok) done += 1;
+      else failures.push(g.group_name || g.group_id || '');
+      await setState({ local_done: done });
+      if (i < groups.length - 1) await sleep(8000); // gentle pacing
+    }
+  } finally {
+    localRunning = false;
+    try { chrome.storage.local.remove(['rzPendingPost']); } catch (e) { /* noop */ }
+  }
+  return { ok: failures.length === 0, posted: done, total: groups.length, failures };
 }
 
 /* ── poll loop ──────────────────────────────────────────────────────────── */
