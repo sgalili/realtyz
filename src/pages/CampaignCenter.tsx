@@ -2202,6 +2202,11 @@ const InlineComposer = ({
               {selectedListingId && (
                 <button type="button" onClick={() => {
                   setSelectedListingId(null);
+                  // General post = clean image state. Every auto-attached
+                  // property photo is dropped; the operator attaches manually.
+                  autoPhotoListingRef.current = null;
+                  setAttachments((curr) => curr.filter((a) => a.kind !== 'image'));
+                  setPhotosLoading(false);
                   setBody((current) => cleanBody(current.replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')));
                   setListingPickerOpen(false);
                 }}
