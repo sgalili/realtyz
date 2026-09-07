@@ -3682,6 +3682,8 @@ const PublishedFeed = ({
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const fbGroupMeta = useFbGroupMeta();
+  // Live local extension queue — cards flip failed → pending → completed on their own.
+  const extensionQueue = useExtensionQueue();
   const initialScopedRows = workspaceOwnerId ? FEED_ROWS_CACHE.get(workspaceOwnerId) ?? null : null;
   const [rows, setRows] = useState<CampaignRow[] | null>(initialScopedRows);
   // True only during the very first cold load (no cache anywhere, in-memory or
