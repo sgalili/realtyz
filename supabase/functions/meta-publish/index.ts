@@ -471,6 +471,13 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---- Token permission diagnostics ----------------------------------------
+    if (body?.action === "permissions") {
+      if (!page) return json({ connected: false, permissions: [] });
+      const r = await graph(`/me/permissions?access_token=${encodeURIComponent(page.token)}`);
+      return json({ connected: true, permissions: r.payload?.data ?? [], raw: r.payload });
+    }
+
     // ---- Delete a live post ------------------------------------------------
     if (req.method === "DELETE" || body?.action === "delete") {
       const postId = String(body?.external_post_id ?? "").trim();
