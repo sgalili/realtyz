@@ -624,6 +624,8 @@ Deno.serve(async (req) => {
     const failures: Array<{ platform: string; message: string }> = [];
     const warnings: string[] = [];
     const firstCommentIds: Array<{ target: string; comment_id: string }> = [];
+    let firstCommentError: string | null = null;
+
 
     // Never publish with a User/system token: upgrade to the Page-scoped token.
     if (page) page = await ensurePageToken(db, ownerId, page);
