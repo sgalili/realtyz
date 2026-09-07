@@ -371,6 +371,16 @@ SAAS MARKETING POST MODE (HARD OVERRIDE — highest priority):
 - Every regeneration must use a different hook, structure and CTA wording than any previous post.
 ` : "";
 
+    // Universal readability + compliance layout law (all workspaces).
+    const LAYOUT_RULE = `
+LAYOUT LAW (mandatory):
+- No long dense paragraphs. Short, punchy sentences, one idea per line.
+- Every line is separated from the next by a FULL BLANK LINE (double line break). Lines must never bunch up.
+- Short punch lines start with a single emoji as a bullet. Never more than one emoji per line.
+- NEVER put a WhatsApp link, wa.me URL, api.whatsapp.com link, phone number CTA or any URL inside the post body. The contact link lives ONLY in the automatic first comment.
+- NEVER write a real-estate licence field or placeholder ("רישיון תיווך מספר:", "מספר רישיון", licence footer). Omit it completely.
+`;
+
     const userPrompt = [
       kbTemplatesBlock || null,
       promotedBlock,
