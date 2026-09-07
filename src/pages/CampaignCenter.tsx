@@ -5134,34 +5134,46 @@ const PublishedFeed = ({
                     </ul>
                   </div>
                 )}
-                {uniqueMedia.length > 0 && (
-                  <div className={cn(
-                    'mx-4 mb-3 grid gap-2',
-                    uniqueMedia.length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3',
-                  )}>
-                    {uniqueMedia.map((src, i) => (
-                      <div key={src} className="relative group aspect-square min-w-0">
-                        <PostImage src={src} campaignLogId={r.id} index={i} alt=""
-                             candidates={uniqueMedia}
-                             className="h-full w-full rounded-lg object-cover border border-border"
-                             fallbackClassName="h-full w-full" />
-                        <button
-                          type="button"
-                          title="הסר תמונה"
-                          aria-label="הסר תמונה"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm('להסיר את התמונה מהפוסט?')) removeMediaUrl(r.id, src);
-                          }}
-                          className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
+                {uniqueMedia.length > 0 && (() => {
+                  // One large hero image on top, the rest in a horizontal
+                  // scrolling thumbnail strip right below it.
+                  const [hero, ...rest] = uniqueMedia;
+                  const tile = (src: string, i: number, cls: string) => (
+                    <div key={src} className={cn('relative group', cls)}>
+                      <PostImage src={src} campaignLogId={r.id} index={i} alt=""
+                           candidates={uniqueMedia}
+                           className="h-full w-full rounded-lg object-cover border border-border"
+                           fallbackClassName="h-full w-full" />
+                      <button
+                        type="button"
+                        title="הסר תמונה"
+                        aria-label="הסר תמונה"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm('להסיר את התמונה מהפוסט?')) removeMediaUrl(r.id, src);
+                        }}
+                        className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                  return (
+                    <div className="mx-4 mb-3 space-y-2">
+                      {tile(hero, 0, 'aspect-[4/3] w-full')}
+                      {rest.length > 0 && (
+                        <div className="flex gap-2 overflow-x-auto pb-1" dir="rtl">
+                          {rest.map((src, i) => (
+                            <div key={src} className="h-20 w-20 shrink-0">
+                              {tile(src, i + 1, 'h-20 w-20')}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
                 <div className={cn('mx-4 mb-3 rounded-xl border border-border bg-background p-4 text-sm text-foreground whitespace-pre-wrap', alignClass)} dir={dirAttr}>
                   {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
