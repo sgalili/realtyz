@@ -481,35 +481,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ---- Token permission diagnostics ----------------------------------------
-    if (body?.action === "permissions") {
-      if (!page) return json({ connected: false, permissions: [] });
-      const r = await graph(`/me/permissions?access_token=${encodeURIComponent(page.token)}`);
-      return json({ connected: true, permissions: r.payload?.data ?? [], raw: r.payload });
-    }
-
-    // ---- Debug: inspect a post object --------------------------------------
-    if (body?.action === "debug_post") {
-      const postId = String(body?.post_id ?? "").trim();
-      if (!postId || !page) return json({ error: "missing post_id or page" }, 400);
-      const pageRead = await graph(`/${postId}?fields=id,object_id,created_time,from,message&access_token=${encodeURIComponent(page.token)}`);
-      const { data: pc } = await db.from("fb_personal_connections").select("access_token, scopes").eq("workspace_owner_id", ownerId).maybeSingle();
-      let userRead: any = null;
-      let userComment: any = null;
-      if (pc?.access_token) {
-        userRead = await graph(`/${postId}?fields=id,object_id,created_time,from,message&access_token=${encodeURIComponent(pc.access_token)}`);
-        const form = new URLSearchParams({ message: "בדיקת תגובה מטוקן משתמש", access_token: pc.access_token });
-        userComment = await graph(`/${postId}/comments`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
-          body: form.toString(),
-        });
-      }
-      return json({ ok: pageRead.ok, pageRead: pageRead.payload, userRead: userRead?.payload, userComment: userComment?.payload, userTokenExists: !!pc?.access_token, scopes: pc?.scopes });
-    }
-
-
     // ---- Delete a live post ------------------------------------------------
+
     if (req.method === "DELETE" || body?.action === "delete") {
       const postId = String(body?.external_post_id ?? "").trim();
       if (!postId) return json({ success: false, error: "external_post_id is required" }, 400);
