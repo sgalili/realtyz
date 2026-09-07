@@ -275,6 +275,86 @@ export const enqueueExtensionPosts = (input: {
   return entries.length;
 };
 
+/** Legacy Meta Graph / App Review errors that no longer apply to group posts. */
+export const isLegacyMetaGroupError = (reason?: string | null): boolean => {
+  const t = String(reason || '');
+  if (!t) return false;
+  return /App Review|Permissions and Features|Meta Developer Console|אין הרשאה לפרסם בקבוצה|publish_to_groups|#200|OAuth/i.test(t);
+};
+
+/**
+ * Live view of the local extension post queue (localStorage['rzPostQueue']).
+ * Updates on same-tab writes, cross-tab storage events and extension messages.
+ */
+export const useExtensionQueue = (): QueuedExtensionPost[] => {
+  const [queue, setQueue] = useState<QueuedExtensionPost[]>(() => readPostQueue());
+
+  useEffect(() => {
+    const commit = (next: unknown) => {
+      if (Array.isArray(next)) setQueue(next as QueuedExtensionPost[]);
+      else setQueue(readPostQueue());
+    };
+    const onCustom = (e: Event) => commit((e as CustomEvent).detail);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key && e.key !== EXT_POST_QUEUE_KEY) return;
+      commit(undefined);
+    };
+    const onMessage = (e: MessageEvent) => {
+      const d: any = e.data;
+      if (!d || typeof d !== 'object') return;
+      if (d.type !== EXT_QUEUE_MESSAGE) return;
+      commit(d.queue);
+    };
+
+    document.addEventListener(EXT_QUEUE_EVENT, onCustom as EventListener);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('message', onMessage);
+    // The extension writes the queue from its own context — poll as a safety net.
+    let lastRaw = (() => { try { return localStorage.getItem(EXT_POST_QUEUE_KEY); } catch { return null; } })();
+    const poll = window.setInterval(() => {
+      let raw: string | null = null;
+      try { raw = localStorage.getItem(EXT_POST_QUEUE_KEY); } catch { raw = null; }
+      if (raw !== lastRaw) { lastRaw = raw; commit(undefined); }
+    }, 4000);
+
+    return () => {
+      document.removeEventListener(EXT_QUEUE_EVENT, onCustom as EventListener);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('message', onMessage);
+      window.clearInterval(poll);
+    };
+  }, []);
+
+  return queue;
+};
+
+/** Drop failed/completed queue entries for a post before it is retried. */
+export const resetQueueEntriesForText = (text: string) => {
+  const key = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  if (!key) return;
+  const next = readPostQueue().filter(
+    (e) => !(String(e.text || '').replace(/\s+/g, ' ').includes(key) && e.status !== 'posting'),
+  );
+  writePostQueue(next);
+};
+
+/** Aggregate extension queue status for a post body. */
+export const queueStatusForText = (
+  queue: QueuedExtensionPost[],
+  text: string,
+): 'pending' | 'posting' | 'completed' | 'failed' | null => {
+  const key = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  if (!key) return null;
+  const hits = queue.filter((e) => String(e.text || '').replace(/\s+/g, ' ').includes(key));
+  if (hits.length === 0) return null;
+  if (hits.some((e) => e.status === 'posting')) return 'posting';
+  if (hits.some((e) => e.status === 'pending')) return 'pending';
+  if (hits.some((e) => e.status === 'completed')) return 'completed';
+  return 'failed';
+};
+
+
+
 
 export type LocalPostingResult = {
   ok: boolean;
