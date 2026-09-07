@@ -7633,8 +7633,7 @@ const CampaignCenter = () => {
             setHistoryRefreshTick((t) => t + 1);
             if (publishedChannelId) {
               try {
-                localStorage.removeItem(`rz-composer-draft:v2:${publishedChannelId}:${draftKey}`);
-                sessionStorage.removeItem(`rz-composer-draft:v2:${publishedChannelId}:${draftKey}`);
+                sweepComposerDraftKeys(publishedChannelId, draftKey);
               } catch {}
             }
             toast.success('הטיוטה פורסמה');
@@ -7650,21 +7649,10 @@ const CampaignCenter = () => {
           setComposerResetTick((t) => t + 1);
           handleChange('published');
           if (publishedChannelId) {
-            const prefixes = [`rz-composer-draft:v2:${publishedChannelId}`, `rz-composer-draft:${publishedChannelId}`];
             try {
-              for (const prefix of prefixes) {
-                sessionStorage.removeItem(prefix);
-                localStorage.removeItem(prefix);
-                // Sweep namespaced draft entries (replicated composers)
-                for (const store of [localStorage, sessionStorage]) {
-                  const keys: string[] = [];
-                  for (let i = 0; i < store.length; i++) {
-                    const k = store.key(i);
-                    if (k && k.startsWith(`${prefix}:`)) keys.push(k);
-                  }
-                  keys.forEach((k) => store.removeItem(k));
-                }
-              }
+              // After a submit the composer text area starts empty again: every
+              // saved draft entry for this channel is swept from both stores.
+              sweepComposerDraftKeys(publishedChannelId);
               sessionStorage.removeItem('rz-schedule-assignments');
             } catch {}
             // Only a published post retires the durable session mirror.
