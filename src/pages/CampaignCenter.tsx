@@ -6284,6 +6284,7 @@ const CampaignCenter = () => {
     if (error) { toast.error('מחיקת הטיוטות נכשלה'); setHistoryRefreshTick((t) => t + 1); return; }
     setCampaignDraftRows((prev) => prev.filter((x) => !ids.includes(x.id)));
     setSelectedDraftIds([]);
+    setDraftSelectMode(false);
     toast.success(`${ids.length} טיוטות נמחקו`);
   };
 
