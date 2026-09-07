@@ -269,6 +269,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 
+  if (msg.type === 'RZ_START_POSTING' && msg.post) {
+    chrome.storage.local.set({ rzPendingPost: msg.post }, () => {
+      runLocalPost(msg.post).then((res) => {
+        try { sendResponse(res); } catch (e) { /* noop */ }
+      });
+    });
+    return true;
+  }
+
   if (msg.type === 'RZ_EXT_POLL_NOW') {
     poll();
     sendResponse({ ok: true });
