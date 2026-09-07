@@ -1700,22 +1700,8 @@ const InlineComposer = ({
           void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot);
         } catch {}
 
-        // so subsequent manual edits + media updates flow into the same record.
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          const { data: inserted } = await supabase.from('ai_content_logs').insert({
-            topic: topic.slice(0, 500),
-            generated_text: text,
-            platform: channel.id,
-            created_by: user?.id ?? null,
-            media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
-            listing_id: selectedListingId,
-          }).select('id').single();
-          if (inserted?.id) setLogId(inserted.id);
-          setHistoryRefresh((n) => n + 1);
-        } catch (logErr) {
-          console.warn('[CampaignCenter] history log failed', logErr);
-        }
+        // No DB draft row is created here — drafts are saved only when the
+        // operator presses "שמור טיוטה".
       } else toast.info('לא התקבל טקסט');
       // Auto-generate a first comment in Udi's signature style.
       if (text && !ctrl.signal.aborted && !isGenerationStopped()) {
