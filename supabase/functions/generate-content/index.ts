@@ -444,23 +444,35 @@ SAAS MARKETING POST MODE (HARD OVERRIDE — highest priority):
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
-    // HARD SCRUB: forbidden vendor/tech vocabulary must never reach the public.
-    const FORBIDDEN_PATTERNS: { re: RegExp; replacement: string }[] = [
-      { re: /\brealtyz(?:\s*ai)?\b/gi, replacement: "" },
-      { re: /רילטיז(?:\s*AI)?/gi, replacement: "" },
-      { re: /\bA\.?I\.?\b/g, replacement: "" },
-      { re: /בינה\s+מלאכותית/gi, replacement: "מומחיות" },
-      { re: /אלגוריתם[ים]*/gi, replacement: "ניסיון" },
-      { re: /\b(platform|algorithm)\b/gi, replacement: "" },
-      { re: /פלטפורמ[הת]/gi, replacement: "משרד" },
-      { re: /\bבוט\b/gi, replacement: "" },
-      { re: /צ['׳]?אטבוט/gi, replacement: "" },
-      { re: /אוטומצי[הת]/gi, replacement: "" },
-    ];
-    for (const { re, replacement } of FORBIDDEN_PATTERNS) {
-      content = content.replace(re, replacement);
+    // HARD SCRUB: for a brokerage workspace, vendor/tech vocabulary must never
+    // reach the public. A SaaS workspace SELLS the software, so these words are
+    // legitimate there and must never be stripped.
+    if (!isSaas) {
+      const FORBIDDEN_PATTERNS: { re: RegExp; replacement: string }[] = [
+        { re: /\brealtyz(?:\s*ai)?\b/gi, replacement: "" },
+        { re: /רילטיז(?:\s*AI)?/gi, replacement: "" },
+        { re: /\bA\.?I\.?\b/g, replacement: "" },
+        { re: /בינה\s+מלאכותית/gi, replacement: "מומחיות" },
+        { re: /אלגוריתם[ים]*/gi, replacement: "ניסיון" },
+        { re: /\b(platform|algorithm)\b/gi, replacement: "" },
+        { re: /פלטפורמ[הת]/gi, replacement: "משרד" },
+        { re: /\bבוט\b/gi, replacement: "" },
+        { re: /צ['׳]?אטבוט/gi, replacement: "" },
+        { re: /אוטומצי[הת]/gi, replacement: "" },
+      ];
+      for (const { re, replacement } of FORBIDDEN_PATTERNS) {
+        content = content.replace(re, replacement);
+      }
+    }
+    // SaaS safety net: strip any brokerage-licence footer the model slipped in.
+    if (isSaas) {
+      content = content
+        .split("\n")
+        .filter((line) => !/רישיון\s*תיווך/.test(line))
+        .join("\n");
     }
     content = content.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+
 
     // NO-HASHTAGS scrub: remove any hashtag tokens and any trailing
     // "tags / keywords / האשטגים / תגיות" lines, regardless of what the
