@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BillingTab from '@/components/profile/BillingTab';
 import KnowledgeBase from '@/pages/KnowledgeBase';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LaunchPromoBanner } from '@/components/billing/LaunchPromoBanner';
 import { ReferralProgramCard } from '@/components/referrals/ReferralProgramCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
