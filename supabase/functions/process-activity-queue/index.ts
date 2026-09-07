@@ -15,7 +15,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { enforceOwnerLaws } from "../_shared/owner-laws.ts";
+import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -138,7 +138,15 @@ Deno.serve(async (req) => {
     try {
       const { title, body } = applyVariation(locked);
       const merged = [title, body].filter(Boolean).join("\n\n");
-      const compliant = enforceOwnerLaws(merged, { withLicense: true });
+      // Signature must belong to THIS row's workspace owner only.
+      const branding = await fetchOwnerBranding(admin as any, ws);
+      const compliant = enforceOwnerLaws(merged, {
+        license: branding.license,
+        byline: branding.byline,
+        name: branding.name,
+        phone: branding.phone,
+        withLicense: true,
+      });
 
       const newPayload = {
         ...(locked.payload ?? {}),

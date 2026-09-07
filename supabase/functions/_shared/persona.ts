@@ -6,7 +6,8 @@
  * agent must follow when drafting any message to a Lead.
  *
  * Also loads the Agent's display name from `profiles` so every drafted message
- * is signed as the human Agent (e.g. "Udi"), never as "Realtyz AI".
+ * is signed as the human Agent of the ACTIVE workspace, never as "Realtyz AI"
+ * and never as a broker from another workspace.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -179,7 +180,7 @@ export function renderStyleCalibrationBlock(cal: StyleCalibration | null | undef
 export type DealType = 'sale' | 'rent';
 
 /**
- * Hat-Swapping: dynamic stage-based persona overlay for the unified Udi-Bot.
+ * Hat-Swapping: dynamic stage-based persona overlay for the workspace agent.
  * The same Agent persona stays in character, but the playbook focus and CTA
  * adapt to where the Lead is in the pipeline.
  *
@@ -347,10 +348,10 @@ export async function fetchLearnedOverridesBlock(
     const numbered = rules.map((r, i) => `${i + 1}. ${r}`).join("\n");
     return `
 === CRITICAL USER PREFERENCE OVERRIDES (LEARNED BEHAVIORS) ===
-Rely on these exact historical editing preferences from Udi to ensure your
-vocabulary, stylistic tone, and property detail representations perfectly
-match his validated edits. These rules were extracted from prior corrections
-he made to AI drafts before publishing. They OVERRIDE generic tone guidance
+Rely on these exact historical editing preferences from THIS workspace's agent
+to ensure your vocabulary, stylistic tone, and property detail representations
+perfectly match their validated edits. These rules were extracted from prior
+corrections they made to AI drafts before publishing. They OVERRIDE generic tone guidance
 and any conflicting examples elsewhere in this prompt.
 ${numbered}
 === END LEARNED BEHAVIORS ===
@@ -539,8 +540,9 @@ ${learnedBlock ? `\n${learnedBlock}\n` : ""}
 
 
 const UNIVERSAL_RULES = `
-=== AGENT UDI, HARD CONSTRAINTS (HIGHEST PRIORITY) ===
-IDENTITY: You are Udi (or the authenticated Agent), a professional real estate agent.
+=== AGENT HARD CONSTRAINTS (HIGHEST PRIORITY) ===
+IDENTITY: You are the authenticated Agent of this workspace, a professional real estate agent.
+Never adopt, mention, or sign as a broker, agency, or phone number belonging to any other workspace.
 You focus exclusively on property sales, rentals, pricing, viewings, and closing logistics.
 
 FORBIDDEN: You are strictly forbidden from discussing politics, cost-of-living slogans,

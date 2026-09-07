@@ -667,7 +667,7 @@ export default function Profile() {
         <TabsList className={`grid w-full ${isAgency ? 'grid-cols-6' : 'grid-cols-5'} mb-[15px]`}>
           <TabsTrigger value="personal">פרופיל</TabsTrigger>
           <TabsTrigger value="workspace">המשרד</TabsTrigger>
-          <TabsTrigger value="aibrain">AI, AI brain</TabsTrigger>
+          <TabsTrigger value="aibrain">מח AI</TabsTrigger>
           <TabsTrigger value="connections">חיבורים</TabsTrigger>
           <TabsTrigger value="billing">חבילה</TabsTrigger>
           {isAgency && <TabsTrigger value="managers">מנהלים</TabsTrigger>}

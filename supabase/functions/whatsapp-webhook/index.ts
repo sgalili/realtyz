@@ -498,7 +498,8 @@ function isKnowledgeCommand(text: string): boolean {
 //   Refactor:  "...לגבי הדירה שפרסמת ברחוב דיזנגוף, תל אביב. דירת 3 חדרים במחיר 6,500 ₪..."
 // We anchor only on the stable phrase "לגבי הדירה שפרסמת" and parse the rest
 // loosely so future copy tweaks don't break the parser.
-const SHORTLINK_ANCHOR_RE = /היי\s+אודי|לגבי\s+הדירה\s+שפרסמת/;
+// Name-agnostic: the prefilled inquiry greeting differs per workspace broker.
+const SHORTLINK_ANCHOR_RE = /אני\s+פונה\s+אליך\s+לגבי\s+הדירה|לגבי\s+הדירה\s+שפרסמת/;
 const SHORTLINK_LOCATION_RE = /לגבי\s+הדירה\s+שפרסמת\s+ב(?:רחוב\s+|שכונת\s+)?([^,.\n]+?)(?:\s*,\s*([^,.\n]+?))?\s*(?:\.|במחיר|דירת|אשמח|$)/;
 const SHORTLINK_PRICE_RE = /במחיר\s+([\d.,]+)/;
 const SHORTLINK_ROOMS_RE = /דירת\s+(\d+(?:\.\d+)?)\s+חדרים/;
@@ -987,6 +988,21 @@ async function handleLeadInboxInbound(
   // seconds instead of the multi-minute ai-agent pipeline. Only explicit agent
   // commands (property search, CRM actions, market intel) fall through to
   // ai-agent below.
+  // Owner identity is resolved from the assigned workspace owner ONLY, so a
+  // shared WhatsApp number never signs a reply with another office's name.
+  let ownerIdentity: { name?: string | null; agency?: string | null } = {};
+  try {
+    const { data: ownerProfile } = await admin
+      .from("profiles")
+      .select("full_name, broker_byline")
+      .eq("id", aiOwnerId)
+      .maybeSingle();
+    ownerIdentity = {
+      name: (ownerProfile as any)?.full_name ?? null,
+      agency: (ownerProfile as any)?.broker_byline ?? null,
+    };
+  } catch (_) { /* generic office wording is an acceptable fallback */ }
+
   let reply = "";
   const aiStartedAt = Date.now();
   if (!agentCommand) {
@@ -1012,6 +1028,7 @@ async function handleLeadInboxInbound(
     }
 
     const fast = await generateFastReply({
+      owner: ownerIdentity,
       lead: {
         id: lead.id,
         full_name: lead.full_name,
@@ -1098,6 +1115,7 @@ async function handleLeadInboxInbound(
   if (!reply) {
     console.warn("[autopilot] ai-agent produced no text — using fast lane as fallback", { lead_id: lead.id });
     const rescue = await generateFastReply({
+      owner: ownerIdentity,
       lead: { id: lead.id, full_name: lead.full_name, deal_type: lead.deal_type },
       inboundText,
       history: aiMessages,
@@ -1534,7 +1552,7 @@ Deno.serve(async (req) => {
     // bypass the owner command router entirely (even if the sender's
     // phone is whitelisted — common during broker self-tests).
     // ============================================================
-    const LEAD_INQUIRY_ANCHOR = "היי אודי, אני פונה אליך לגבי הדירה";
+    const LEAD_INQUIRY_ANCHOR = "אני פונה אליך לגבי הדירה";
     const normalizedInbound = (msg.text || "").trim();
     if (normalizedInbound.includes(LEAD_INQUIRY_ANCHOR)) {
       console.log(`[LEAD ANCHOR] Customer inquiry detected from ${senderPhone} → lead pipeline`);

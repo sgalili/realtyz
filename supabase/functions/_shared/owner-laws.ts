@@ -107,25 +107,29 @@ export function scrubForbiddenBylines(input: string): string {
   return out.replace(/[ \t]{2,}/g, " ");
 }
 
-// HARD compliance constants. Udi's real signature block — never replace,
-// never read from env, never fall back to anything else.
-const DEFAULT_OWNER_LICENSE = "3251767";
-const OWNER_PHONE = "0522973500";
-const FOOTER_RE = /רישיון\s*תיווך\s*[:：]\s*3251767/;
-const PHONE_RE = /0522973500/;
+/**
+ * Per-workspace signature. Built ONLY from the active workspace owner's own
+ * profile — never from another workspace, never from a hardcoded broker.
+ */
+export type OwnerSignature = {
+  name?: string | null;
+  byline?: string | null;
+  phone?: string | null;
+  license?: string | null;
+};
 
-// STRICT canonical signature block — exactly as the owner specified.
-export const OWNER_SIGNATURE_BLOCK = [
-  "לפרטים ולתיאום ביקור:",
-  "אודי ויטמן",
-  'יועץ נדל״ן | אנגלו סכסון הרצליה | רמת השרון',
-  `📞 ${OWNER_PHONE}`,
-  `רישיון תיווך: ${DEFAULT_OWNER_LICENSE}`,
-].join("\n");
-
-function buildFooterBlock(_license?: string | null): string {
-  // Signature block is HARDCODED — ignore any caller value.
-  return OWNER_SIGNATURE_BLOCK;
+function buildFooterBlock(sig?: OwnerSignature | null): string {
+  const name = String(sig?.name ?? "").trim();
+  const byline = String(sig?.byline ?? "").trim();
+  const phone = String(sig?.phone ?? "").trim();
+  const license = String(sig?.license ?? "").trim();
+  if (!name && !byline && !phone && !license) return "";
+  const lines = ["לפרטים ולתיאום ביקור:"];
+  if (name) lines.push(name);
+  if (byline) lines.push(byline);
+  if (phone) lines.push(`📞 ${phone}`);
+  if (license) lines.push(`רישיון תיווך: ${license}`);
+  return lines.join("\n");
 }
 
 /**
@@ -135,8 +139,7 @@ function buildFooterBlock(_license?: string | null): string {
  */
 export function appendLicenseFooter(
   text: string,
-  _license?: string | null,
-  _byline?: string | null,
+  signature?: OwnerSignature | null,
 ): string {
   const body = String(text ?? "").replace(/\s+$/g, "");
   if (!body) return body;
@@ -147,9 +150,6 @@ export function appendLicenseFooter(
     .replace(/\n*\s*רישיון\s*תיווך\s*מספר\s*[:：][^\n]*/gu, "")
     .replace(/\n*\s*רישיון\s*תיווך\s*\d[^\n]*/gu, "")
     .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, "")
-    // any prior byline line (Udi Witman + agency)
-    .replace(/\n*\s*אודי\s+ויטמן[^\n]*אנגלו[^\n]*/gu, "")
-    .replace(/\n*\s*אודי\s+ויטמן[^\n]*/gu, "")
     // old contact/CTA lines the AI sometimes generates
     .replace(/\n*[^\n]*לקבלת\s+פרטים\s+נוספים[^\n]*/gu, "")
     .replace(/\n*[^\n]*לפרטים\s+נוספים[^\n]*/gu, "")
@@ -171,7 +171,8 @@ export function appendLicenseFooter(
     .replace(/\n{3,}/g, "\n\n")
     .replace(/\s+$/g, "");
 
-  return `${cleaned}\n\n${OWNER_SIGNATURE_BLOCK}`;
+  const block = buildFooterBlock(signature);
+  return block ? `${cleaned}\n\n${block}` : cleaned;
 }
 
 export function enforceOwnerLaws(
@@ -179,10 +180,12 @@ export function enforceOwnerLaws(
   opts: {
     license?: string | null;
     byline?: string | null;
+    name?: string | null;
+    phone?: string | null;
     withLicense?: boolean;
   } = {},
 ): string {
-  const { license, byline, withLicense = true } = opts;
+  const { license, byline, name, phone, withLicense = true } = opts;
   // Step 0: strip placeholder brackets (e.g. "[Insert license number]",
   // "[מספר טלפון]", "[Real Phone Number]", "[TBD]") — never let bracketed
   // instruction tokens ship to the public.
@@ -194,13 +197,9 @@ export function enforceOwnerLaws(
   out = stripStreetNumbers(scrubForbiddenBylines(out));
   // Step 3 (ABSOLUTE LAST): inject contact + license footer if missing.
   if (withLicense) {
-    out = appendLicenseFooter(out, license, byline);
-    // Final deterministic guarantee — if for any reason the license line is
-    // still absent (e.g. caller passed withLicense=true but the body was
-    // pre-sanitized upstream), force-append the canonical 2-line footer.
-    if (!FOOTER_RE.test(out) || !PHONE_RE.test(out)) {
-      out = `${out.replace(/\s+$/g, "")}\n\n${buildFooterBlock(license)}`;
-    }
+    // Signature comes from THIS workspace owner only. When the workspace has
+    // no branding yet we append nothing — never another broker's block.
+    out = appendLicenseFooter(out, { license, byline, name, phone });
   }
   return out;
 }
@@ -209,38 +208,47 @@ export function enforceOwnerLaws(
 /** Alias retained for callers that still reference the older name. */
 export const sanitizeOutboundText = enforceOwnerLaws;
 
-// ── Owner branding lookup (license + byline). 60s cache per process. ──
-type Branding = { license: string; byline: string };
+// ── Owner branding lookup. Scoped to the caller's ACTIVE workspace owner.
+//    60s cache per process, keyed by user id.
+type Branding = { license: string; byline: string; name: string; phone: string };
 const brandingCache = new Map<string, { at: number; v: Branding }>();
 const TTL = 60_000;
+
+const SELECT_COLS =
+  "full_name, phone, broker_license_number, broker_byline, active_workspace_owner_id";
 
 export async function fetchOwnerBranding(
   admin: ReturnType<typeof createClient>,
   userId: string | null | undefined,
 ): Promise<Branding> {
-  const empty: Branding = { license: "", byline: "" };
+  const empty: Branding = { license: "", byline: "", name: "", phone: "" };
   if (!userId) return empty;
   const hit = brandingCache.get(userId);
   if (hit && Date.now() - hit.at < TTL) return hit.v;
   try {
     const { data: me } = await admin
       .from("profiles")
-      .select("active_workspace_owner_id, broker_license_number, broker_byline")
+      .select(SELECT_COLS)
       .eq("id", userId)
       .maybeSingle();
-    let lic = String((me as any)?.broker_license_number ?? "").trim();
-    let bln = String((me as any)?.broker_byline ?? "").trim();
-    const ownerId = (me as any)?.active_workspace_owner_id ?? null;
-    if ((!lic || !bln) && ownerId && ownerId !== userId) {
+    // The signature always belongs to the ACTIVE workspace owner, so a member
+    // of another broker's workspace never signs with their own details.
+    const ownerId = (me as any)?.active_workspace_owner_id ?? userId;
+    let row: any = me;
+    if (ownerId && ownerId !== userId) {
       const { data: owner } = await admin
         .from("profiles")
-        .select("broker_license_number, broker_byline")
+        .select(SELECT_COLS)
         .eq("id", ownerId)
         .maybeSingle();
-      if (!lic) lic = String((owner as any)?.broker_license_number ?? "").trim();
-      if (!bln) bln = String((owner as any)?.broker_byline ?? "").trim();
+      row = owner ?? me;
     }
-    const v = { license: lic, byline: bln };
+    const v: Branding = {
+      license: String(row?.broker_license_number ?? "").trim(),
+      byline: String(row?.broker_byline ?? "").trim(),
+      name: String(row?.full_name ?? "").trim(),
+      phone: String(row?.phone ?? "").trim(),
+    };
     brandingCache.set(userId, { at: Date.now(), v });
     return v;
   } catch {

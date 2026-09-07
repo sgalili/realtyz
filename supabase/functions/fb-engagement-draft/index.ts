@@ -1,6 +1,6 @@
-// Generate 3 distinct Hebrew reply drafts for a FB comment, in Udi Vitman's
-// voice. Strict persona: signature "אודי" / "אודי ויטמן" — NO titles, NO emojis
-// of professional roles, no political/Realtyz-internal jargon.
+// Generate 3 distinct Hebrew reply drafts for a FB comment, in the voice of the
+// workspace owner that owns the Facebook Page. The broker name is resolved from
+// that owner's profile — never hardcoded. NO titles, no role emojis.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { fetchSystemRulesBlock } from '../_shared/system-rules.ts';
 
@@ -10,10 +10,10 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const SYSTEM = `אתה כותב בשמו של אודי ויטמן בפייסבוק. כללים נוקשים:
+const buildSystem = (broker: string, brokerFirst: string) => `אתה כותב בשמו של ${broker} בפייסבוק. כללים נוקשים:
 - לכתוב אך ורק בעברית, גוף ראשון, קצר וישיר (1-3 משפטים).
-- חתימה רק "אודי" או "אודי ויטמן". אסור בתכלית האיסור להוסיף תארים: לא "מנכ"ל", לא "סוכן נדלן", לא "יועץ", לא "ברוקר", לא "מומחה".
-- אין אימוג'ים מקצועיים, אין סלוגנים פוליטיים, אין מילים כמו "קלפיז" "בוחרים" "שרן".
+- חתימה רק "${brokerFirst}" או "${broker}". אסור בתכלית האיסור להוסיף תארים: לא "מנכ"ל", לא "סוכן נדלן", לא "יועץ", לא "ברוקר", לא "מומחה".
+- אין אימוג'ים מקצועיים, אין סלוגנים פוליטיים, אין ז'רגון פנימי.
 - אסור em-dash או "--".
 - טון אנושי, חם, ישר, לא מכירתי.
 - כשמופיע מחיר בשקלים יש לכתוב סימן ₪ משמאל למספר (לדוגמה ₪350).
@@ -40,14 +40,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (error || !comment) throw new Error('comment not found');
 
-    const userMsg = is_simulation && comment.historical_reply_text
-      ? `תגובה של ${comment.author_name || 'גולש'}: "${comment.comment_text}"\n\nהתשובה של אודי בפועל היתה: "${comment.historical_reply_text}".\nהפק 3 גרסאות חלופיות בסגנון של אודי.`
-      : `תגובה של ${comment.author_name || 'גולש'}: "${comment.comment_text}"\n\nהפק 3 גרסאות תשובה שונות בסגנון של אודי.`;
-
-    // Pull the workspace owner's standing orders. fb-engagement is a workspace-
-    // singleton surface (one Facebook Page), so resolve owner via the engagement
-    // settings table.
-    let systemRulesBlock = '';
+    // Resolve the Page's workspace owner, then their display name. The reply
+    // voice always belongs to that owner — never to a hardcoded broker.
+    let ownerId: string | null = null;
     try {
       const { data: ownerRow } = await admin
         .from('fb_engagement_settings')
@@ -55,13 +50,39 @@ Deno.serve(async (req) => {
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (ownerRow?.user_id) {
-        systemRulesBlock = await fetchSystemRulesBlock(ownerRow.user_id, comment.comment_text || 'facebook comment reply');
-      }
+      ownerId = (ownerRow as any)?.user_id ?? null;
     } catch (e) {
-      console.warn('[fb-engagement-draft] fetchSystemRulesBlock failed:', e instanceof Error ? e.message : e);
+      console.warn('[fb-engagement-draft] owner lookup failed:', e instanceof Error ? e.message : e);
     }
 
+    let broker = 'המתווך';
+    if (ownerId) {
+      try {
+        const { data: prof } = await admin
+          .from('profiles')
+          .select('full_name')
+          .eq('id', ownerId)
+          .maybeSingle();
+        const nm = String((prof as any)?.full_name ?? '').trim();
+        if (nm) broker = nm;
+      } catch (_) { /* generic fallback */ }
+    }
+    const brokerFirst = broker.split(/\s+/)[0];
+
+    const userMsg = is_simulation && comment.historical_reply_text
+      ? `תגובה של ${comment.author_name || 'גולש'}: "${comment.comment_text}"\n\nהתשובה של ${brokerFirst} בפועל היתה: "${comment.historical_reply_text}".\nהפק 3 גרסאות חלופיות בסגנונו.`
+      : `תגובה של ${comment.author_name || 'גולש'}: "${comment.comment_text}"\n\nהפק 3 גרסאות תשובה שונות בסגנונו של ${brokerFirst}.`;
+
+    let systemRulesBlock = '';
+    if (ownerId) {
+      try {
+        systemRulesBlock = await fetchSystemRulesBlock(ownerId, comment.comment_text || 'facebook comment reply');
+      } catch (e) {
+        console.warn('[fb-engagement-draft] fetchSystemRulesBlock failed:', e instanceof Error ? e.message : e);
+      }
+    }
+
+    const SYSTEM = buildSystem(broker, brokerFirst);
     const finalSystem = systemRulesBlock ? `${systemRulesBlock}\n\n${SYSTEM}` : SYSTEM;
     const finalUser = systemRulesBlock
       ? `${userMsg}\n\nכל גרסה חייבת לציית במלואה לכל הכללים תחת #CRITICAL_SYSTEM_PREFERENCES — אל תפר אף כלל.`

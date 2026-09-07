@@ -1,6 +1,6 @@
 // kb-ingest-link: Ingest a media URL (YouTube, article, etc.) into the
 // Knowledge Base + Media Library, distilling sales methodologies for the
-// "Udi" AI persona WITHOUT exposing the source URL to the model output.
+// workspace AI persona WITHOUT exposing the source URL to the model output.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -109,7 +109,7 @@ async function fetchGenericPage(url: string): Promise<{ title: string; text: str
   return { title, text };
 }
 
-async function distillForUdi(
+async function distillForPersona(
   rawContent: string,
   contextTitle: string,
   intent: string,
@@ -130,11 +130,11 @@ async function distillForUdi(
         {
           role: "system",
           content: [
-            "You are training the 'Udi' real-estate sales AI persona.",
+            "You are training this workspace's real-estate sales AI persona.",
             "From the supplied content, distill PRINCIPLES, FRAMEWORKS, OBJECTION HANDLERS, SCRIPTS, and ACTIONABLE SALES METHODOLOGIES that improve closing rate and prosperity.",
             intentLine,
             "Output in Hebrew. Use clear sections: עקרונות מנחים / טכניקות מכירה / ניסוחים מומלצים / טיפול בהתנגדויות / צעדים אופרטיביים.",
-            "CRITICAL PRIVACY RULE: NEVER mention or hint at the original source — no URLs, no author names, no platform names (YouTube, podcast, book, course), no 'according to'. Present the wisdom as Udi's internal playbook.",
+            "CRITICAL PRIVACY RULE: NEVER mention or hint at the original source — no URLs, no author names, no platform names (YouTube, podcast, book, course), no 'according to'. Present the wisdom as the workspace's internal playbook.",
             "Do NOT use em-dash, en-dash, or '--'. Plain prose only.",
           ].filter(Boolean).join(" "),
         },
@@ -212,8 +212,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Distill into Udi-persona-ready knowledge (no source leakage).
-    const distilled = await distillForUdi(rawContent, title, intent);
+    // Distill into persona-ready knowledge (no source leakage).
+    const distilled = await distillForPersona(rawContent, title, intent);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 

@@ -1,6 +1,6 @@
 // Realtyz suggest-comment-reply — generates a single AI draft reply to a
 // public social comment in the SAME language as the inbound text. Grounded in
-// workspace KB + live CRM/listings snapshot, locked to the Udi Vitman persona,
+// workspace KB + live CRM/listings snapshot, locked to the workspace owner persona,
 // with anti-spam high-entropy phrasing. Pure compose-and-return.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
@@ -256,8 +256,8 @@ LANGUAGE MIRROR (hard rule):
 - Detect dominant language of the inbound text and reply ONLY in that language. Hebrew in -> Hebrew out. English in -> English out. Never mix.
 
 ABSOLUTE PROHIBITIONS (zero tolerance):
-- DO NOT mention Udi's biography, past careers, sports, family, or any third-person facts about him.
-- DO NOT write the name "אודי ויטמן" / "Udi Vitman" / "Udi" in the body. Write in first person.
+- DO NOT mention the broker's biography, past careers, sports, family, or any third-person facts about them.
+- DO NOT write the broker's own name in the body. Write in first person.
 - DO NOT use the third person about yourself. Never.
 - DO NOT use emojis (max 1, default 0). No em-dash, en-dash, double-dash, markdown, hashtags.
 - DO NOT pad with niceties, slogans, mission statements, fluff, or repeated name greetings. Zero name-spamming. Zero biographical fluff.
