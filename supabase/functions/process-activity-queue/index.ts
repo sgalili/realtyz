@@ -147,72 +147,13 @@ Deno.serve(async (req) => {
         chosen_body: body,
       };
 
-      // Facebook group posts are published automatically through the
-      // workspace's connected PERSONAL Facebook profile (official Graph API).
-      // If no profile is connected, or Facebook rejects the post, the row
-      // falls back to the manual "ready" flow instead of failing outright.
-      let nextStatus: string = locked.activity_type === "manual_share" ? "ready" : "completed";
-      let nextPublication: string = nextStatus === "ready"
+      // fb_group_post rows never reach this point (they are deferred above for
+      // the browser extension); everything else completes or moves to "ready".
+      const nextStatus: string = locked.activity_type === "manual_share" ? "ready" : "completed";
+      const nextPublication: string = nextStatus === "ready"
         ? "ready_awaiting_whatsapp_auth"
         : "published";
-      let publishError: string | null = null;
-
-      if (locked.activity_type === "fb_group_post") {
-        nextStatus = "ready";
-        nextPublication = "ready_awaiting_whatsapp_auth";
-        try {
-          const pubRes = await fetch(`${SUPABASE_URL}/functions/v1/fb-group-publish`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${SERVICE_KEY}`,
-              apikey: SERVICE_KEY,
-            },
-            body: JSON.stringify({
-              workspace_owner_id: ws,
-              group_id: locked.target_ref,
-              group_url: (locked.payload ?? {}).group_url ?? null,
-              group_name: locked.target_label ?? null,
-
-              message: compliant,
-              link: (locked.payload ?? {}).link ?? null,
-              image_url: (locked.payload ?? {}).image_url ?? null,
-              first_comment: (locked.payload ?? {}).first_comment ?? null,
-              queue_id: locked.id,
-            }),
-          });
-          const pub = await pubRes.json().catch(() => ({}));
-          if (pub?.ok && pub?.post_id) {
-            nextStatus = "completed";
-            nextPublication = "published";
-            (newPayload as any).fb_post_id = pub.post_id;
-            (newPayload as any).published_via = "fb_personal_profile";
-            // Performance counters: one campaign_logs row per group post so
-            // the metric sync jobs and the UI counters can aggregate it.
-            try {
-              await admin.from("campaign_logs").insert({
-                user_id: locked.created_by ?? ws,
-                workspace_owner_id: ws,
-                campaign_name: `קבוצת פייסבוק · ${locked.target_label ?? locked.target_ref}`,
-                channel: "facebook",
-                status: "sent",
-                message_body: compliant,
-                group_ids: [locked.target_ref],
-                provider_message_id: String(pub.post_id),
-                sent_at: now,
-              });
-            } catch (logErr) {
-              console.error("[process-activity-queue] campaign_logs insert failed", logErr);
-            }
-          } else {
-            publishError = String(pub?.reason ?? "פרסום אוטומטי לקבוצה נכשל");
-            (newPayload as any).publish_error = publishError;
-          }
-        } catch (pubErr: any) {
-          publishError = String(pubErr?.message ?? pubErr);
-          (newPayload as any).publish_error = publishError;
-        }
-      }
+      const publishError: string | null = null;
 
       await admin
         .from("campaign_activity_queue")
