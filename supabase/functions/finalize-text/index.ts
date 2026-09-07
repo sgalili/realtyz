@@ -9,6 +9,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
 import { enforceOwnerLaws, fetchOwnerBranding, scrubForbiddenBylines, stripStreetNumbers } from "../_shared/owner-laws.ts";
+import { fetchWorkspacePersona, EMPTY_PERSONA } from "../_shared/workspacePersona.ts";
+
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
