@@ -162,9 +162,14 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     load();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => { load(); });
-    return () => { sub.subscription.unsubscribe(); };
+    // Never await Supabase inside the auth callback — it runs while the client
+    // holds its recovery lock and would deadlock/crash `_notifyAllSubscribers`.
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      setTimeout(() => { void Promise.resolve(load()).catch(() => {}); }, 0);
+    });
+    return () => { try { sub.subscription.unsubscribe(); } catch { /* noop */ } };
   }, [load]);
+
 
   const value = useMemo(() => ({ settings, loading, refresh: load }), [settings, loading, load]);
   return <WhiteLabelContext.Provider value={value}>{children}</WhiteLabelContext.Provider>;
