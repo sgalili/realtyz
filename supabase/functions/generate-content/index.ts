@@ -430,7 +430,7 @@ GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
       .trim();
 
     // HARD COMPLIANCE LAWS — deterministic safety net (street numbers, license footer).
-    // The broker license footer ("אודי ויטמן - אנגלו סכסון... / ר.מ: 3251676") is
+    // The broker license footer (the workspace owner's own byline + license) is
     // appended ONLY when a real property is attached (promotedListing). General /
     // brand / knowledge posts publish without the listing-grade signature block.
     try {
@@ -551,7 +551,7 @@ function buildListingDealTypeToken(listing: any): string {
     raw.includes("rent") || raw.includes("להשכרה");
   return isRental ? "להשכרה" : "למכירה";
 }
-function buildListingShortlinkLongUrl(listing: any): { text: string; long_url: string } {
+function buildListingShortlinkLongUrl(listing: any, brokerFirst?: string): { text: string; long_url: string } {
   const city = String(listing.city ?? "").trim();
   const neighborhood = String(listing.neighborhood ?? "").trim();
   const street = stripListingStreet(String(listing.address ?? ""), city, neighborhood);
@@ -559,7 +559,8 @@ function buildListingShortlinkLongUrl(listing: any): { text: string; long_url: s
   const dealToken = buildListingDealTypeToken(listing);
   const rooms = listing.rooms ? String(listing.rooms).trim() : "";
   const price = formatListingPrice(listing.asking_price as number | null);
-  const text = `היי אודי, אני פונה אליך לגבי הדירה ${dealToken} שפרסמת ${locationPhrase}. דירת ${rooms} חדרים במחיר ${price}. אשמח לקבל פרטים נוספים.`;
+  const greeting = String(brokerFirst ?? "").trim() ? `היי ${String(brokerFirst).trim()}` : "היי";
+  const text = `${greeting}, אני פונה אליך לגבי הדירה ${dealToken} שפרסמת ${locationPhrase}. דירת ${rooms} חדרים במחיר ${price}. אשמח לקבל פרטים נוספים.`;
   return {
     text,
     long_url: `https://api.whatsapp.com/send?phone=972537339533&text=${encodeURIComponent(text)}`,
