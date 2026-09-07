@@ -2,7 +2,6 @@ import {
   Activity,
   Users,
   Megaphone,
-  Brain,
   MessageCircle,
   Building2,
   Handshake,
@@ -62,6 +61,14 @@ const NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
   },
   {
+    title: 'פוסטים',
+    url: '/campaigns',
+    icon: Megaphone,
+    iconColor: 'text-orange-500',
+    badgeClass: 'bg-orange-50 text-orange-700 ring-orange-200',
+    aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
+  },
+  {
     title: 'לקוחות',
     url: '/lead-crm',
     icon: Users,
@@ -92,22 +99,6 @@ const NAV_ITEMS: NavItem[] = [
     iconColor: 'text-rose-600',
     badgeClass: 'bg-rose-50 text-rose-700 ring-rose-200',
     aliases: ['/deals'],
-  },
-  {
-    title: 'פוסטים',
-    url: '/campaigns',
-    icon: Megaphone,
-    iconColor: 'text-orange-500',
-    badgeClass: 'bg-orange-50 text-orange-700 ring-orange-200',
-    aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
-  },
-  {
-    title: 'מוח AI',
-    url: '/knowledge',
-    icon: Brain,
-    iconColor: 'text-purple-600',
-    badgeClass: 'bg-purple-50 text-purple-700 ring-purple-200',
-    aliases: ['/live-conversations', '/ai-content', '/sentiment', '/conversation-analytics', '/insights'],
   },
   {
     title: 'רשת שותפים',
@@ -182,12 +173,32 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         {/* TOP: ACTIVE WORKSPACE identity + switcher (never the personal profile) */}
         {!collapsed && user && (
           <SidebarGroup className="p-0 border-b border-slate-200">
-            <SidebarGroupContent className="px-3 py-3">
-              <WorkspaceSwitcher />
+            <SidebarGroupContent
+              role="button"
+              tabIndex={0}
+              title="הפרופיל שלי"
+              onClick={() => {
+                if (isMobile) setOpenMobile(false);
+                navigate('/profile');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (isMobile) setOpenMobile(false);
+                  navigate('/profile');
+                }
+              }}
+              className="cursor-pointer px-3 py-3 transition-colors hover:bg-slate-50"
+            >
+              <div onClick={(e) => e.stopPropagation()}>
+                <WorkspaceSwitcher />
+              </div>
+
 
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (isMobile) setOpenMobile(false);
                   window.dispatchEvent(new Event('realtyz:start-tour'));
                 }}

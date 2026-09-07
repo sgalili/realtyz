@@ -12,14 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
-  Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type, Trash2, Image as ImageIcon, Video as VideoIcon, Pencil, X, Check,
+  Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Sparkles, Type, Trash2, Image as ImageIcon, Video as VideoIcon, Pencil, X, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { GeminiIcon } from '@/components/GeminiIcon';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
-type Tab = 'ai' | 'files' | 'text' | 'link' | 'voice';
+type Tab = 'ai' | 'files' | 'text' | 'link';
 type Filter = 'all' | 'images' | 'videos' | 'docs';
 
 export default function KnowledgeBase() {
@@ -112,103 +112,6 @@ export default function KnowledgeBase() {
   const [textBody, setTextBody] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [linkIntent, setLinkIntent] = useState('');
-
-  /* ── Voice recorder ── */
-  const [recording, setRecording] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
-  const [voiceText, setVoiceText] = useState('');
-  const [voiceTitle, setVoiceTitle] = useState('');
-  const [voiceIntent, setVoiceIntent] = useState('');
-  const [recElapsed, setRecElapsed] = useState(0);
-  const mediaRecRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const recTimerRef = useRef<number | null>(null);
-
-  const stopTimer = () => {
-    if (recTimerRef.current) { window.clearInterval(recTimerRef.current); recTimerRef.current = null; }
-  };
-
-  const startRecording = async () => {
-    if (blockDemoAction('record-knowledge-audio')) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
-      const mr = new MediaRecorder(stream, { mimeType: mime });
-      audioChunksRef.current = [];
-      mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      mr.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(audioChunksRef.current, { type: mime });
-        await transcribeBlob(blob);
-      };
-      mr.start();
-      mediaRecRef.current = mr;
-      setRecording(true);
-      setRecElapsed(0);
-      recTimerRef.current = window.setInterval(() => setRecElapsed((s) => s + 1), 1000);
-    } catch (e: any) {
-      toast.error(`לא ניתן לגשת למיקרופון: ${e?.message ?? ''}`);
-    }
-  };
-
-  const stopRecording = () => {
-    stopTimer();
-    setRecording(false);
-    mediaRecRef.current?.stop();
-  };
-
-  const transcribeBlob = async (blob: Blob) => {
-    setTranscribing(true);
-    try {
-      const dataUrl: string = await new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = () => reject(r.error);
-        r.readAsDataURL(blob);
-      });
-      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: { audio_data_url: dataUrl, mime_type: blob.type, language: 'he' },
-      });
-      if (error) throw error;
-      const txt = (data as any)?.text?.trim?.() ?? '';
-      if (!txt) throw new Error('לא זוהה דיבור בהקלטה');
-      setVoiceText(txt);
-      toast.success('התמלול הושלם — ניתן לערוך ולשמור');
-    } catch (e: any) {
-      toast.error(`כשל בתמלול: ${e?.message ?? 'שגיאה'}`);
-    } finally {
-      setTranscribing(false);
-    }
-  };
-
-  const saveVoice = useMutation({
-    mutationFn: async () => {
-      if (blockDemoAction('save-knowledge-audio')) throw new Error('demo-blocked');
-      const body = voiceText.trim();
-      if (!body) throw new Error('אין טקסט לשמירה');
-      const { error } = await supabase.functions.invoke('kb-ingest', {
-        body: {
-          title: voiceTitle.trim() || `הקלטה · ${new Date().toLocaleString('he-IL')}`,
-          raw_text: body,
-          source_type: 'audio',
-          source_metadata: { learning_intent: voiceIntent.trim() || null, captured_via: 'voice-record' },
-        },
-      });
-      if (error) throw error;
-      // Also try to capture as a system rule (fire-and-forget)
-      supabase.functions.invoke('ingest-system-rule', {
-        body: { text: body, source: 'whatsapp_voice', role: 'owner' },
-      }).catch(() => {});
-    },
-    onSuccess: () => {
-      toast.success('נשמר למאגר');
-      setVoiceText(''); setVoiceTitle(''); setVoiceIntent(''); setRecElapsed(0);
-      qc.invalidateQueries({ queryKey: ['kb-documents'] });
-    },
-    onError: (e: Error) => { if (e.message !== 'demo-blocked') toast.error(e.message); },
-  });
-
-  useEffect(() => () => { stopTimer(); mediaRecRef.current?.stream?.getTracks().forEach((t) => t.stop()); }, []);
 
   /* ── Documents list ── */
   const { data: documents = [], isLoading: docsLoading } = useQuery({
@@ -379,11 +282,10 @@ export default function KnowledgeBase() {
   };
 
   const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'ai', label: 'AI', icon: GeminiIcon },
+    { id: 'ai', label: 'AI', icon: Sparkles },
     { id: 'files', label: 'קבצים', icon: FileText },
     { id: 'text', label: 'טקסט', icon: Type },
     { id: 'link', label: 'קישור', icon: LinkIcon },
-    { id: 'voice', label: 'הקלטה', icon: Mic },
   ];
 
   const filters: { id: Filter; label: string }[] = [
@@ -426,16 +328,21 @@ export default function KnowledgeBase() {
 
             {tab === 'ai' && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <GeminiIcon className="h-4 w-4" />
-                  <p className="text-sm font-medium">Gemini · שאילתה על מאגר הידע</p>
+                <div className="relative">
+                  <Textarea
+                    value={geminiPrompt}
+                    onChange={(e) => setGeminiPrompt(e.target.value)}
+                    placeholder="שאל כל דבר על מאגר הידע: פרסונת הסוכן, תבניות פוסטים, הנחיות כתיבה ומענה וכללי תקשורת. לדוגמה: 'נתח את כללי המענה שלי וכתוב מדריך תגובות לפניות מחיר'"
+                    className="min-h-[120px] pt-10"
+                  />
+                  <div className="absolute top-1 start-1">
+                    <VoiceInputButton
+                      size="sm"
+                      onTranscript={(t) => setGeminiPrompt((p) => (p ? `${p} ${t}` : t))}
+                    />
+                  </div>
                 </div>
-                <Textarea
-                  value={geminiPrompt}
-                  onChange={(e) => setGeminiPrompt(e.target.value)}
-                  placeholder="שאל את Gemini כל דבר על מאגר הידע: פרסונת הסוכן, תבניות פוסטים, הנחיות כתיבה ומענה וכללי תקשורת. לדוגמה: 'נתח את כללי המענה שלי וכתוב מדריך תגובות לפניות מחיר'"
-                  className="min-h-[120px]"
-                />
+
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex gap-1 p-1 rounded-lg bg-muted">
                     {([
@@ -524,12 +431,20 @@ export default function KnowledgeBase() {
                   onChange={(e) => setTextTitle(e.target.value)}
                   placeholder="כותרת"
                 />
-                <Textarea
-                  value={textBody}
-                  onChange={(e) => setTextBody(e.target.value)}
-                  placeholder="הקלד חוקי התנהגות, הנחיות לסוכן או מידע על נכסים עבור מאגר הידע (לדוגמה: 'מעכשיו תתמקד תמיד בדירות להשקעה ברעננה ותדגיש שיש חניה...')"
-                  className="min-h-[140px]"
-                />
+                <div className="relative">
+                  <Textarea
+                    value={textBody}
+                    onChange={(e) => setTextBody(e.target.value)}
+                    placeholder="הקלד חוקי התנהגות, הנחיות לסוכן או מידע על נכסים עבור מאגר הידע (לדוגמה: 'מעכשיו תתמקד תמיד בדירות להשקעה ברעננה ותדגיש שיש חניה...')"
+                    className="min-h-[140px] pt-10"
+                  />
+                  <div className="absolute top-1 start-1">
+                    <VoiceInputButton
+                      size="sm"
+                      onTranscript={(t) => setTextBody((p) => (p ? `${p} ${t}` : t))}
+                    />
+                  </div>
+                </div>
                 <div className="flex justify-end">
                   <Button onClick={() => saveText.mutate()} disabled={saveText.isPending}>
                     {saveText.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמור למאגר'}
@@ -557,65 +472,6 @@ export default function KnowledgeBase() {
                     {saveLink.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'הוסף קישור'}
                   </Button>
                 </div>
-              </div>
-            )}
-
-            {tab === 'voice' && (
-              <div className="space-y-3">
-                <div className="border rounded-lg p-5 text-center bg-muted/30 space-y-3">
-                  <div className="flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={recording ? stopRecording : startRecording}
-                      disabled={transcribing}
-                      className={`h-16 w-16 rounded-full flex items-center justify-center transition-all ${
-                        recording
-                          ? 'bg-destructive text-destructive-foreground animate-pulse'
-                          : 'bg-primary text-primary-foreground hover:opacity-90'
-                      } disabled:opacity-50`}
-                      aria-label={recording ? 'עצור הקלטה' : 'התחל הקלטה'}
-                    >
-                      {transcribing ? <Loader2 className="h-7 w-7 animate-spin" /> : <Mic className="h-7 w-7" />}
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {transcribing
-                      ? 'מתמלל...'
-                      : recording
-                        ? `מקליט · ${Math.floor(recElapsed / 60)}:${String(recElapsed % 60).padStart(2, '0')} — לחץ לעצירה`
-                        : 'לחץ כדי להתחיל הקלטה קולית'}
-                  </p>
-                </div>
-
-                {voiceText && (
-                  <div className="space-y-2">
-                    <Input
-                      value={voiceTitle}
-                      onChange={(e) => setVoiceTitle(e.target.value)}
-                      placeholder="כותרת"
-                    />
-                    <Textarea
-                      value={voiceText}
-                      onChange={(e) => setVoiceText(e.target.value)}
-                      placeholder="התמלול יופיע כאן — ניתן לערוך"
-                      className="min-h-[140px]"
-                    />
-                    <Textarea
-                      value={voiceIntent}
-                      onChange={(e) => setVoiceIntent(e.target.value)}
-                      placeholder="מה ללמוד מההקלטה הזו?"
-                      className="min-h-[60px]"
-                    />
-                    <div className="flex justify-between gap-2">
-                      <Button variant="ghost" onClick={() => { setVoiceText(''); setVoiceTitle(''); setVoiceIntent(''); }}>
-                        ביטול
-                      </Button>
-                      <Button onClick={() => saveVoice.mutate()} disabled={saveVoice.isPending}>
-                        {saveVoice.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמור למאגר'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -768,17 +624,8 @@ export default function KnowledgeBase() {
               </p>
             </div>
 
-            <div ref={chatScrollRef} className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 space-y-2 min-h-[240px]">
-              {chatMessages.length === 0 && !chatLoading ? (
-                <div className="h-full flex flex-col items-center justify-center text-center py-8">
-                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                    <Brain className="h-8 w-8 text-primary/60" />
-                  </div>
-                  <p className="text-sm text-muted-foreground max-w-[240px]">
-                    שאל שאלה כדי לבדוק מה ה-AI יודע מהמאגר
-                  </p>
-                </div>
-              ) : (
+            {(chatMessages.length > 0 || chatLoading) && (
+              <div ref={chatScrollRef} className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 space-y-2 min-h-[240px]">
                 <>
                   {chatMessages.map((m, i) => (
                     <div
@@ -809,22 +656,31 @@ export default function KnowledgeBase() {
                     </div>
                   )}
                 </>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="flex items-end gap-2 mt-3">
-              <Textarea
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-                }}
-                placeholder="שאל שאלה על המאגר..."
-                rows={1}
-                dir="rtl"
-                disabled={chatLoading}
-                className="flex-1 min-h-[44px] max-h-32 resize-none"
-              />
+              <div className="relative flex-1">
+                <Textarea
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+                  }}
+                  placeholder="שאל שאלה על המאגר..."
+                  rows={1}
+                  dir="rtl"
+                  disabled={chatLoading}
+                  className="w-full min-h-[64px] max-h-32 resize-none pt-10"
+                />
+                <div className="absolute top-1 start-1">
+                  <VoiceInputButton
+                    size="sm"
+                    disabled={chatLoading}
+                    onTranscript={(t) => setChatInput((p) => (p ? `${p} ${t}` : t))}
+                  />
+                </div>
+              </div>
               <Button
                 onClick={sendChat}
                 disabled={chatLoading || !chatInput.trim()}
