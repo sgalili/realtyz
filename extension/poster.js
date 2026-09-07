@@ -237,24 +237,65 @@
   async function postFirstCommentToPage(job) {
     if (isLoggedOut()) return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' };
 
-    const snippet = String(job.message || '').replace(/\s+/g, ' ').trim().slice(0, 60);
-    const article = await waitFor(() => {
-      const hit = [...document.querySelectorAll('div[role="article"]')].find((a) =>
-        (a.innerText || '').replace(/\s+/g, ' ').includes(snippet),
-      );
-      return hit || null;
+    const postUrl = String(job.post_url || '').trim();
+    const postId = String(job.post_id || '').trim();
+    const message = String(job.message || '').trim();
+    if (!message) return { ok: false, reason: 'תוכן התגובה הראשונה ריק' };
+
+    // Try to locate the post article by permalink or post id.
+    let article = await waitFor(() => {
+      const articles = [...document.querySelectorAll('div[role="article"]')];
+      if (postUrl) {
+        const byHref = articles.find((a) =>
+          [...a.querySelectorAll('a[href]')].some((x) => {
+            const h = x.getAttribute('href') || '';
+            return h === postUrl || h.includes(postUrl.replace(/^https:\/\/www\.facebook\.com\//, ''));
+          }),
+        );
+        if (byHref) return byHref;
+      }
+      if (postId) {
+        const byId = articles.find((a) =>
+          [...a.querySelectorAll('a[href]')].some((x) => {
+            const h = x.getAttribute('href') || '';
+            return h.includes(postId);
+          }),
+        );
+        if (byId) return byId;
+      }
+      return null;
     }, 25000, 800);
 
     if (!article) {
-      // Fallback: the post may not be in the top of the feed yet; try scrolling once.
-      window.scrollBy({ top: 600, behavior: 'smooth' });
+      // Fallback: scroll once to load more feed items.
+      window.scrollBy({ top: 800, behavior: 'smooth' });
       await sleep(1500);
+      article = await waitFor(() => {
+        const articles = [...document.querySelectorAll('div[role="article"]')];
+        if (postUrl) {
+          return articles.find((a) =>
+            [...a.querySelectorAll('a[href]')].some((x) => {
+              const h = x.getAttribute('href') || '';
+              return h === postUrl || h.includes(postUrl.replace(/^https:\/\/www\.facebook\.com\//, ''));
+            }),
+          ) || null;
+        }
+        if (postId) {
+          return articles.find((a) =>
+            [...a.querySelectorAll('a[href]')].some((x) => (x.getAttribute('href') || '').includes(postId)),
+          ) || null;
+        }
+        return null;
+      }, 15000, 800);
     }
 
-    const err = await addFirstComment(article, snippet, String(job.message || ''));
+    if (!article) return { ok: false, reason: 'הפוסט לא נמצא בעמוד — נסו לרענן את העמוד' };
+
+    const err = await addFirstComment(article, '', message);
     if (err) return { ok: false, reason: err };
-    return { ok: true, post_url: job.post_url };
+    return { ok: true, post_url: postUrl };
   }
+
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || msg.source !== 'realtyz-extension') return;
