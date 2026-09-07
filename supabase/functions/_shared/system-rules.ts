@@ -103,17 +103,22 @@ export async function fetchSystemRulesBlock(
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.block;
 
-  // Always fetch the workspace owner's broker license so the HARD LAWS block
-  // can hardcode the exact footer string into the prompt.
+  // The brokerage licence footer applies ONLY to real-estate workspaces.
+  // Software / SaaS / undefined workspaces must never be given a
+  // "רישיון תיווך" instruction or placeholder.
   let license = "";
   try {
-    const { data: prof } = await admin
-      .from("profiles")
-      .select("broker_license_number")
-      .eq("id", workspace)
-      .maybeSingle();
-    license = String((prof?.broker_license_number ?? "")).trim();
+    const persona = await fetchWorkspacePersona(admin as any, workspace);
+    if (persona.domain === "real_estate") {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("broker_license_number")
+        .eq("id", workspace)
+        .maybeSingle();
+      license = String((prof?.broker_license_number ?? "")).trim();
+    }
   } catch { /* ignore */ }
+
 
   // Fast path: when no owner-defined rules exist we STILL emit the hard-laws
   // block — street-number redaction + license footer are non-negotiable.
