@@ -237,16 +237,23 @@ async function drainQueue() {
 
       entry.status = 'posting';
       await saveQueue(queue);
-      const ok = await runJob(token, {
-        id: `queue-${entry.id}`,
-        local: true,
-        group_id: '',
-        group_url: entry.groupUrl,
-        message: String(entry.text || ''),
-        image_url: (Array.isArray(entry.images) && entry.images[0]) || null,
-        first_comment: entry.firstComment || null,
-        link: entry.link || null,
-      });
+
+      let ok = false;
+      let reason = null;
+      if (entry.type === 'page_first_comment' || entry.postId || entry.postUrl) {
+        ok = await runPageFirstComment(token, entry);
+      } else {
+        ok = await runJob(token, {
+          id: `queue-${entry.id}`,
+          local: true,
+          group_id: '',
+          group_url: entry.groupUrl,
+          message: String(entry.text || ''),
+          image_url: (Array.isArray(entry.images) && entry.images[0]) || null,
+          first_comment: entry.firstComment || null,
+          link: entry.link || null,
+        });
+      }
       entry.status = ok ? 'completed' : 'failed';
       queue = await loadQueue().then((fresh) => {
         const hit = fresh.find((e) => String(e.id) === String(entry.id));
@@ -254,7 +261,7 @@ async function drainQueue() {
         return fresh;
       });
       await saveQueue(queue);
-      await sleep(8000); // gentle pacing between group posts
+      await sleep(8000); // gentle pacing between jobs
     }
     // Drop finished entries older than a day so storage stays small.
     const kept = (await loadQueue()).filter(
@@ -267,6 +274,7 @@ async function drainQueue() {
     queueRunning = false;
   }
 }
+
 
 /* ── poll loop ──────────────────────────────────────────────────────────── */
 
