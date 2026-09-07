@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useExtensionGroups, readExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
 import { ExtensionDownloadButton } from '@/components/social/ExtensionDownloadButton';
+import { ExtensionPairingButton } from '@/components/social/ExtensionPairingButton';
 
 const FB_GROUPS_URL = 'https://www.facebook.com/groups/joins/?nav_source=tab';
 
@@ -124,6 +125,7 @@ export function ExtensionGroupSyncCard({
         {checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} רענון
       </Button>
       <ExtensionDownloadButton />
+      <ExtensionPairingButton />
       {actions}
 
       <Dialog open={open} onOpenChange={setOpen}>
