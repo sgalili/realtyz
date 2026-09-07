@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { resolveWorkspaceIdentity } from '@/lib/workspaceIdentity';
+import realtyzLogo from '@/assets/realtyz-logo.png';
+
 
 interface BrandMarkProps {
   className?: string;
