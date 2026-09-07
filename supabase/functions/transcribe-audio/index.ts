@@ -35,19 +35,38 @@ function extFor(mime: string): string {
   } as Record<string, string>)[m] ?? "wav";
 }
 
+/**
+ * Parses a data URL. Tolerant of extra media-type parameters, which browsers
+ * DO emit: `data:audio/webm;codecs=opus;base64,...` is perfectly valid, so the
+ * `;base64` marker may sit after other parameters, not directly after the MIME.
+ */
 function dataUrlToBlob(dataUrl: string, fallbackMime?: string): Blob {
-  const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(dataUrl);
-  if (!match) throw new Error("audio_data_url is not a valid data URL");
-  const mime = match[1] || fallbackMime || "audio/wav";
-  const raw = match[3];
-  if (match[2]) {
-    const bin = atob(raw);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type: mime });
+  const url = String(dataUrl ?? "").trim();
+  const comma = url.indexOf(",");
+  if (!url.startsWith("data:") || comma < 0) {
+    throw new Error("audio_data_url is not a valid data URL");
   }
-  return new Blob([decodeURIComponent(raw)], { type: mime });
+  const header = url.slice(5, comma);
+  const raw = url.slice(comma + 1);
+  if (!raw) throw new Error("empty_recording");
+
+  const params = header.split(";").map((p) => p.trim());
+  const isBase64 = params.some((p) => p.toLowerCase() === "base64");
+  const mime = (params[0] && params[0].includes("/") ? params[0] : "") || fallbackMime || "audio/wav";
+
+  if (!isBase64) return new Blob([decodeURIComponent(raw)], { type: mime });
+
+  let bin: string;
+  try {
+    bin = atob(raw.replace(/\s/g, ""));
+  } catch {
+    throw new Error("audio_data_url base64 payload could not be decoded");
+  }
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
