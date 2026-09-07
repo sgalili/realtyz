@@ -50,8 +50,7 @@ export function SuperAdminLeadAlert({ collapsed }: { collapsed?: boolean }) {
   // Realtime subscription: toast + invalidate count on new insert.
   useEffect(() => {
     if (!isSuperAdmin) return;
-    const channel = supabase
-      .channel('admin-leads-watch')
+    const channel = safeChannel('admin-leads-watch')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'admin_leads' },
@@ -70,7 +69,7 @@ export function SuperAdminLeadAlert({ collapsed }: { collapsed?: boolean }) {
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      removeChannelSafe(channel);
     };
   }, [isSuperAdmin, queryClient]);
 

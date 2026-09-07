@@ -698,8 +698,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
         try { (supabase as any).realtime.setAuth(token); } catch { /* noop */ }
       }
     });
-    const channel = supabase
-      .channel(`engagement_events:${commentOwnerId}:${campaign.id}`)
+    const channel = safeChannel(`engagement_events:${commentOwnerId}:${campaign.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "engagement_events", filter: `user_id=eq.${commentOwnerId}` },
@@ -727,7 +726,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       )
       .subscribe();
 
-    return () => { cancelled = true; supabase.removeChannel(channel); };
+    return () => { cancelled = true; removeChannelSafe(channel); };
   }, [commentOwnerId, campaign.id, postIdsKey, campaign.channel]);
 
   const comments = useMemo<CommentRow[]>(() => {

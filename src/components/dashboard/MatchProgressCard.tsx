@@ -60,7 +60,7 @@ export function MatchProgressCard() {
   const seenIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!user?.id) return;
-    const ch = supabase.channel(`match-alerts-${user.id}`)
+    const ch = safeChannel(`match-alerts-${user.id}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'deal_room_matches',
         filter: `broker_id=eq.${user.id}`,
@@ -77,7 +77,7 @@ export function MatchProgressCard() {
         }
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { removeChannelSafe(ch); };
   }, [user?.id, refetch]);
 
   const today = data?.today ?? 0;

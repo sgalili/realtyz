@@ -18,8 +18,7 @@ export function useRealtimeSubscription(
       ? `${table}-${filter.column}-${filter.value}`
       : `${table}-changes`;
 
-    let channel = supabase
-      .channel(channelName)
+    let channel = safeChannel(channelName)
       .on(
         'postgres_changes' as any,
         {
@@ -38,7 +37,7 @@ export function useRealtimeSubscription(
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      removeChannelSafe(channel);
     };
   }, [table, JSON.stringify(queryKeys), filter?.column, filter?.value, queryClient]);
 }

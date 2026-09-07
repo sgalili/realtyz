@@ -178,8 +178,7 @@ export function SocialConnectionsTab() {
 
   // Realtime subscription: any new activity row instantly bumps counters.
   useEffect(() => {
-    const channel = supabase
-      .channel('social-activity-feed')
+    const channel = safeChannel('social-activity-feed')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'interaction_activity_log' },
@@ -197,7 +196,7 @@ export function SocialConnectionsTab() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      removeChannelSafe(channel);
     };
   }, [queryClient]);
 

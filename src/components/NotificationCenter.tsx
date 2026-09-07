@@ -144,13 +144,12 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     if (!user?.id) return;
-    const channel = supabase
-      .channel('notif-tours-live')
+    const channel = safeChannel('notif-tours-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'property_tours' }, () => {
         queryClient.invalidateQueries({ queryKey: ['notif-tours', user.id] });
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { removeChannelSafe(channel); };
   }, [user?.id, queryClient]);
 
   // Toast policy: only a brand-new notification that arrives while the app is

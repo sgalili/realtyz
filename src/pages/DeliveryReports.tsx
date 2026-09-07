@@ -135,14 +135,13 @@ const DeliveryReports = () => {
   // Realtime updates
   useEffect(() => {
     if (!ownerScope || campaignUserIds.length === 0) return;
-    const channel = supabase
-      .channel('delivery-reports-rt')
+    const channel = safeChannel('delivery-reports-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'campaign_logs' }, (payload) => {
         const changed: any = payload.new || payload.old;
         if (campaignUserIds.includes(changed?.user_id)) qc.invalidateQueries({ queryKey: ['delivery-reports'] });
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { removeChannelSafe(channel); };
   }, [ownerScope, campaignUserIds.join('|'), qc]);
 
   const filtered = useMemo(() => {
