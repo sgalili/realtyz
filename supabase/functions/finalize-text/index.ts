@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
           byline: branding.byline,
           name: branding.name,
           phone: branding.phone,
-          withLicense: !!listingId,
+          withLicense: isRealEstate && !!listingId,
         });
       } else if (purpose === "private_dm" || purpose === "generic") {
         finalText = enforceOwnerLaws(finalText, {
