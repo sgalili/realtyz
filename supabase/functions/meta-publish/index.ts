@@ -819,6 +819,8 @@ Deno.serve(async (req) => {
           media_urls: media,
           first_comment: firstComment || null,
           first_comment_ids: firstCommentIds,
+          first_comment_error: firstCommentError,
+
           postIds,
           content_hash: hashes[ch],
           error: fail?.message ?? null,
