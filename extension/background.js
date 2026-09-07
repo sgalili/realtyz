@@ -201,7 +201,76 @@ async function runLocalPost(post) {
   return { ok: failures.length === 0, posted: done, total: groups.length, failures };
 }
 
+/* ── local rzPostQueue drain (one entry per group) ───────────────────────── */
+
+const QUEUE_KEY = 'rzPostQueue';
+let queueRunning = false;
+
+function saveQueue(queue) {
+  return new Promise((res) => chrome.storage.local.set({ [QUEUE_KEY]: queue }, res));
+}
+function loadQueue() {
+  return new Promise((res) => chrome.storage.local.get([QUEUE_KEY], (r) => res(((r || {})[QUEUE_KEY]) || [])));
+}
+
+async function mergeQueue(incoming) {
+  const current = await loadQueue();
+  const byId = new Map(current.map((e) => [String(e.id), e]));
+  for (const e of incoming || []) {
+    if (!e || !e.id) continue;
+    if (!byId.has(String(e.id))) byId.set(String(e.id), e);
+  }
+  const merged = Array.from(byId.values());
+  await saveQueue(merged);
+  return merged;
+}
+
+async function drainQueue() {
+  if (queueRunning) return;
+  queueRunning = true;
+  try {
+    const token = await getToken();
+    let queue = await loadQueue();
+    for (const entry of queue) {
+      if (!entry || entry.status !== 'pending') continue;
+      if (Number(entry.scheduledTime || 0) > Date.now()) continue;
+
+      entry.status = 'posting';
+      await saveQueue(queue);
+      const ok = await runJob(token, {
+        id: `queue-${entry.id}`,
+        local: true,
+        group_id: '',
+        group_url: entry.groupUrl,
+        message: String(entry.text || ''),
+        image_url: (Array.isArray(entry.images) && entry.images[0]) || null,
+        first_comment: entry.firstComment || null,
+        link: entry.link || null,
+      });
+      entry.status = ok ? 'completed' : 'failed';
+      queue = await loadQueue().then((fresh) => {
+        const hit = fresh.find((e) => String(e.id) === String(entry.id));
+        if (hit) hit.status = entry.status;
+        return fresh;
+      });
+      await saveQueue(queue);
+      await sleep(8000); // gentle pacing between group posts
+    }
+    // Drop finished entries older than a day so storage stays small.
+    const kept = (await loadQueue()).filter(
+      (e) => e && (e.status === 'pending' || e.status === 'posting' || Date.now() - Number(e.createdAt || 0) < 86400000),
+    );
+    await saveQueue(kept);
+  } catch (e) {
+    await setState({ last_error: String((e && e.message) || e) });
+  } finally {
+    queueRunning = false;
+  }
+}
+
 /* ── poll loop ──────────────────────────────────────────────────────────── */
+
+
 
 async function poll() {
   if (running) return;
