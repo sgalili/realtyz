@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 
-import { Switch } from '@/components/ui/switch';
+
 import { Label } from '@/components/ui/label';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import { BrandIcon } from '@/components/BrandIcon';
@@ -39,7 +39,7 @@ import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
 
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { cn } from '@/lib/utils';
-import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
+
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
@@ -7013,7 +7013,6 @@ const CampaignCenter = () => {
         </div>
       )}
 
-      <SentimentAutomationToggles className="mt-[15px] mb-4" />
 
       <Tabs value={active} onValueChange={handleChange} className="w-full">
         {/* Sub-tabs intentionally hidden — primary view is the published feed,
