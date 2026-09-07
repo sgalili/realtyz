@@ -64,11 +64,13 @@ export function ProfileAvatarUploader() {
       });
       if (metaErr) throw metaErr;
 
-      await supabase
+      // Upsert: a new account may not have a profile row yet, and a plain
+      // update would silently match zero rows and lose the picture.
+      const { error: profErr } = await supabase
         .from('profiles')
-        .update({ avatar_url: signed.signedUrl })
-        .eq('id', user.id)
-        .then(() => undefined, () => undefined);
+        .upsert({ id: user.id, avatar_url: signed.signedUrl } as any, { onConflict: 'id' });
+      if (profErr) throw profErr;
+
 
       setAvatarPath(path);
       setAvatarUrl(signed.signedUrl);
