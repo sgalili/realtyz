@@ -1437,7 +1437,8 @@ const InlineComposer = ({
   // smart vision filter purges logos / photos of people for good.
   const autoPhotoListingRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!selectedListingId) return;
+    // No property selected = general/SaaS post: never inject any default image.
+    if (!selectedListingId) { autoPhotoListingRef.current = null; setPhotosLoading(false); return; }
     if (autoPhotoListingRef.current === selectedListingId) return;
     let cancelled = false;
     setPhotosLoading(true);
