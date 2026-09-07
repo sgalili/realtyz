@@ -532,6 +532,27 @@ LAYOUT LAW (mandatory):
     }
     content = content.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 
+    // HARD BODY LAWS: no WhatsApp/contact links and no licence fields in the body.
+    content = content
+      .split("\n")
+      .filter((line) => !/(wa\.me|api\.whatsapp\.com|whatsapp:\/\/|whatsapp\s*[:：]\s*https?)/i.test(line))
+      .filter((line) => !/רישיון\s*תיווך|מספר\s*רישיון/.test(line))
+      .join("\n")
+      .replace(/https?:\/\/(?:www\.)?(?:wa\.me|api\.whatsapp\.com)\/\S*/gi, "")
+      .replace(/whatsapp:\/\/\S*/gi, "")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    // READABILITY LAW: a full blank line between every content line so bullets
+    // and punch lines never bunch up.
+    content = content
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .join("\n\n")
+      .trim();
+
 
     // NO-HASHTAGS scrub: remove any hashtag tokens and any trailing
     // "tags / keywords / האשטגים / תגיות" lines, regardless of what the
