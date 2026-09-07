@@ -881,9 +881,13 @@ serve(async (req) => {
       workspaceOwnerId: currentOwnerId,
     });
     const isInternalDashboard = !lead_id && identity.mode === "internal";
+    const wsPersona = await fetchWorkspacePersona(supabase as any, currentOwnerId);
     const masterDirective = buildMasterAgentPrompt(identity.mode, {
       surface: lead_id ? "lead_conversation" : "internal_dashboard",
       roles: identity.roles,
+      owner: { name: wsPersona.name, agency: wsPersona.agency },
+      personaBrief: wsPersona.brief,
+      domain: wsPersona.domain,
     });
     console.log("agent identity:", identity.mode, "-", identity.reason);
 
