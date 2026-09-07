@@ -202,16 +202,22 @@ export const EXT_QUEUE_MESSAGE = "RZ_QUEUE_UPDATE";
 
 export type QueuedExtensionPost = {
   id: string;
-  text: string;
-  groupUrl: string;
+  type?: "group_post" | "page_first_comment";
+  text?: string;
+  /** Group post target (legacy field). */
+  groupUrl?: string;
   groupName?: string;
+  /** Page first-comment target. */
+  postId?: string;
+  postUrl?: string;
+  firstComment?: string | null;
   images?: string[];
   link?: string | null;
-  firstComment?: string | null;
   status: "pending" | "posting" | "completed" | "failed";
   scheduledTime: number;
   createdAt: number;
 };
+
 
 export const readPostQueue = (): QueuedExtensionPost[] => {
   try {
