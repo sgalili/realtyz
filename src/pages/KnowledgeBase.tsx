@@ -624,17 +624,8 @@ export default function KnowledgeBase() {
               </p>
             </div>
 
-            <div ref={chatScrollRef} className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 space-y-2 min-h-[240px]">
-              {chatMessages.length === 0 && !chatLoading ? (
-                <div className="h-full flex flex-col items-center justify-center text-center py-8">
-                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                    <Brain className="h-8 w-8 text-primary/60" />
-                  </div>
-                  <p className="text-sm text-muted-foreground max-w-[240px]">
-                    שאל שאלה כדי לבדוק מה ה-AI יודע מהמאגר
-                  </p>
-                </div>
-              ) : (
+            {(chatMessages.length > 0 || chatLoading) && (
+              <div ref={chatScrollRef} className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 space-y-2 min-h-[240px]">
                 <>
                   {chatMessages.map((m, i) => (
                     <div
