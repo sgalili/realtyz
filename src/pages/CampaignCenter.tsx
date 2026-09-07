@@ -30,6 +30,7 @@ import { nextBlockedKeys } from '@/lib/mediaBlocklist';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { enqueueExtensionPosts } from '@/lib/extensionGroupBridge';
 import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
@@ -3139,12 +3140,12 @@ const ConfirmDispatchDialog = ({
         const reachNote = groupStats.members > 0 ? ` · חשיפה פוטנציאלית ${groupStats.members.toLocaleString('he-IL')} חברים` : '';
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
-          toast.success(`הפוסט תוזמן ל-${when} · ${targets.length} יעד(ים) · ${groupIds.length} קבוצות${reachNote}`);
+          toast.success(`הפוסט תוזמן ל-${when} · ${targets.length} יעד(ים) · ${Math.max(0, groupIds.length - queuedGroups)} קבוצות${reachNote}`);
         } else if (duplicateOnly) {
           toast.info((results[0]?.data as any)?.message || 'הפוסט הזה כבר פורסם — לא נשלח שוב.');
-        } else if (groupIds.length > 0 && groupFailures.length === 0) {
+        } else if (groupIds.length > 0 && queuedGroups === 0 && groupFailures.length === 0) {
           toast.success(`הפוסט שותף בהצלחה ב-${groupIds.length} קבוצות${reachNote}`);
-        } else if (groupIds.length > 0 && groupFailures.length > 0) {
+        } else if (groupIds.length > 0 && queuedGroups === 0 && groupFailures.length > 0) {
           toast.error(`פורסם ב-${groupIds.length - groupFailures.length} קבוצות · נכשל ב-${groupFailures.length}`);
         } else {
           toast.success(`הקמפיין פורסם בהצלחה ב-${targets.length} יעד(ים)!`);
