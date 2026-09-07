@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Loader2, RefreshCw, Users } from 'lucide-react';
+import { Loader2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -82,6 +82,7 @@ export function ExtensionGroupSyncCard({
   const checkNow = async () => {
     if (checking) return;
     setChecking(true);
+    setOpen(false);
     try {
       refresh();
       let found: ExtensionGroup[] = [];
@@ -113,16 +114,6 @@ export function ExtensionGroupSyncCard({
     >
       <Button type="button" size="sm" className="h-8 gap-1 text-[12px]" onClick={() => setOpen(true)} disabled={saving}>
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />} סנכרון
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className="h-8 gap-1 text-[12px]"
-        disabled={checking}
-        onClick={() => void checkNow()}
-      >
-        {checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} רענון
       </Button>
       <ExtensionDownloadButton />
       <ExtensionPairingButton />

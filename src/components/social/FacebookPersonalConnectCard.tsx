@@ -234,15 +234,16 @@ export const FacebookPersonalConnectCard = () => {
         )}
 
         <div className="flex items-center justify-end gap-2 pt-1">
-          {connected && (
+          {connected ? (
             <Button variant="ghost" size="sm" onClick={disconnect} disabled={disconnecting} className="gap-1 text-red-600 hover:text-red-700">
               {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />} ניתוק
             </Button>
+          ) : (
+            <Button size="sm" onClick={() => connect(false)} disabled={connecting} className="gap-1">
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
+              חיבור פרופיל פייסבוק
+            </Button>
           )}
-          <Button size="sm" onClick={() => connect(false)} disabled={connecting} className="gap-1">
-            {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
-            {connected ? 'חיבור מחדש' : 'חיבור פרופיל פייסבוק'}
-          </Button>
         </div>
         {pendingAuthUrl && (
           <a
