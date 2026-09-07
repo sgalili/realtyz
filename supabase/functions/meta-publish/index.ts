@@ -478,6 +478,14 @@ Deno.serve(async (req) => {
       return json({ connected: true, permissions: r.payload?.data ?? [], raw: r.payload });
     }
 
+    // ---- Debug: inspect a post object --------------------------------------
+    if (body?.action === "debug_post") {
+      const postId = String(body?.post_id ?? "").trim();
+      if (!postId || !page) return json({ error: "missing post_id or page" }, 400);
+      const r = await graph(`/${postId}?fields=id,object_id,created_time,from,message&access_token=${encodeURIComponent(page.token)}`);
+      return json({ ok: r.ok, status: r.status, payload: r.payload });
+    }
+
     // ---- Delete a live post ------------------------------------------------
     if (req.method === "DELETE" || body?.action === "delete") {
       const postId = String(body?.external_post_id ?? "").trim();
