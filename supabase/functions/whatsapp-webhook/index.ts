@@ -987,6 +987,21 @@ async function handleLeadInboxInbound(
   // seconds instead of the multi-minute ai-agent pipeline. Only explicit agent
   // commands (property search, CRM actions, market intel) fall through to
   // ai-agent below.
+  // Owner identity is resolved from the assigned workspace owner ONLY, so a
+  // shared WhatsApp number never signs a reply with another office's name.
+  let ownerIdentity: { name?: string | null; agency?: string | null } = {};
+  try {
+    const { data: ownerProfile } = await admin
+      .from("profiles")
+      .select("full_name, broker_byline")
+      .eq("id", aiOwnerId)
+      .maybeSingle();
+    ownerIdentity = {
+      name: (ownerProfile as any)?.full_name ?? null,
+      agency: (ownerProfile as any)?.broker_byline ?? null,
+    };
+  } catch (_) { /* generic office wording is an acceptable fallback */ }
+
   let reply = "";
   const aiStartedAt = Date.now();
   if (!agentCommand) {
@@ -1010,20 +1025,6 @@ async function handleLeadInboxInbound(
     } catch (e) {
       console.warn("[autopilot] fast-lane listing context soft-fail:", e instanceof Error ? e.message : e);
     }
-
-    // Owner identity is resolved from the assigned workspace owner ONLY.
-    let ownerIdentity: { name?: string | null; agency?: string | null } = {};
-    try {
-      const { data: ownerProfile } = await admin
-        .from("profiles")
-        .select("full_name, broker_byline")
-        .eq("id", aiOwnerId)
-        .maybeSingle();
-      ownerIdentity = {
-        name: (ownerProfile as any)?.full_name ?? null,
-        agency: (ownerProfile as any)?.broker_byline ?? null,
-      };
-    } catch (_) { /* generic office wording is an acceptable fallback */ }
 
     const fast = await generateFastReply({
       owner: ownerIdentity,
