@@ -5135,9 +5135,12 @@ const PublishedFeed = ({
                   </div>
                 )}
                 {uniqueMedia.length > 0 && (() => {
-                  // One large hero image on top, the rest in a horizontal
-                  // scrolling thumbnail strip right below it.
-                  const [hero, ...rest] = uniqueMedia;
+                  // Mobile: one large hero image on top. Desktop: two large
+                  // images side by side. The rest always sit underneath in a
+                  // horizontal scrolling thumbnail strip.
+                  const heroCount = uniqueMedia.length > 1 ? 2 : 1;
+                  const heroes = uniqueMedia.slice(0, heroCount);
+                  const rest = uniqueMedia.slice(heroCount);
                   const tile = (src: string, i: number, cls: string) => (
                     <div key={src} className={cn('relative group', cls)}>
                       <PostImage src={src} campaignLogId={r.id} index={i} alt=""
@@ -5160,12 +5163,25 @@ const PublishedFeed = ({
                   );
                   return (
                     <div className="mx-4 mb-3 space-y-2">
-                      {tile(hero, 0, 'aspect-[4/3] w-full')}
-                      {rest.length > 0 && (
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2" dir="rtl">
+                        {heroes.map((src, i) => (
+                          <div key={src} className={cn('aspect-[4/3] w-full', i > 0 && 'hidden md:block')}>
+                            {tile(src, i, 'h-full w-full')}
+                          </div>
+                        ))}
+                      </div>
+                      {(rest.length > 0 || heroCount > 1) && (
                         <div className="flex gap-2 overflow-x-auto pb-1" dir="rtl">
+                          {/* On mobile the 2nd hero is not shown above, so it
+                              joins the thumbnail strip instead. */}
+                          {heroCount > 1 && (
+                            <div className="h-20 w-20 shrink-0 md:hidden">
+                              {tile(uniqueMedia[1], 1, 'h-20 w-20')}
+                            </div>
+                          )}
                           {rest.map((src, i) => (
                             <div key={src} className="h-20 w-20 shrink-0">
-                              {tile(src, i + 1, 'h-20 w-20')}
+                              {tile(src, i + heroCount, 'h-20 w-20')}
                             </div>
                           ))}
                         </div>
