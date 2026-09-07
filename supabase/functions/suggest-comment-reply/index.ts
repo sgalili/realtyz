@@ -599,7 +599,13 @@ Deno.serve(async (req) => {
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: [
-              externalMasterPrompt({ surface: "social_comment", compact: true }),
+              externalMasterPrompt({
+                surface: "social_comment",
+                compact: true,
+                owner: { name: wsPersona.name, agency: wsPersona.agency },
+                personaBrief: wsPersona.brief,
+                domain: wsPersona.domain,
+              }),
               // Owner-curated behavior rules (highest priority).
               await (await import("../_shared/system-rules.ts")).fetchSystemRulesBlock(userId, userPrompt),
               // Live web research + uploaded-document intel tied to THIS listing's location.
