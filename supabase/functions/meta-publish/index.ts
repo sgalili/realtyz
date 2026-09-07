@@ -681,7 +681,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Facebook Groups fan-out stays on the personal-profile publisher.
+    // Facebook Groups are NEVER published through Meta's Graph API (group
+    // publishing requires App Review). Every group target is staged as an
+    // `fb_group_post` job in campaign_activity_queue and executed locally by
+    // the Realtyz browser extension from the broker's own Facebook session.
     const groupResults: any[] = [];
     // Optional per-group text variations (anti-duplicate filter): { [group_id]: text }
     const groupTexts: Record<string, string> =
@@ -706,36 +709,70 @@ Deno.serve(async (req) => {
       "\n\nניתן לקבל עוד תמונות ומידע בהודעה.",
     ];
 
-    for (let gi = 0; gi < groupIds.length; gi++) {
-      const gid = groupIds[gi];
-      // Per-group media set: >10 photos means a fresh random mix of 10 each time.
-      const groupMedia = media.length > 10 ? shuffle(media).slice(0, 10) : media;
-      const groupImage = groupMedia.length
-        ? groupMedia[gi % groupMedia.length]
-        : null;
-      const baseText = typeof groupTexts[gid] === "string" && groupTexts[gid].trim()
-        ? String(groupTexts[gid])
-        : `${text}${groupVariants[gi % groupVariants.length]}`;
-      const groupText = baseText;
-      const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fb-group-publish`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          group_id: gid,
-          message: groupText,
-          image_url: groupImage,
-          media_urls: groupMedia,
+    if (groupIds.length > 0) {
+      let groupUrls: Record<string, string | null> = {};
+      try {
+        const { data: grows } = await db
+          .from("fb_user_groups")
+          .select("group_id, group_url")
+          .eq("workspace_owner_id", ownerId)
+          .in("group_id", groupIds);
+        groupUrls = Object.fromEntries(((grows ?? []) as any[]).map((r) => [String(r.group_id), r.group_url ?? null]));
+      } catch { /* best effort */ }
+
+      const nowIso = new Date().toISOString();
+      const jobs = groupIds.map((gid, gi) => {
+        const groupMedia = media.length > 10 ? shuffle(media).slice(0, 10) : media;
+        const groupImage = groupMedia.length ? groupMedia[gi % groupMedia.length] : null;
+        const groupText = typeof groupTexts[gid] === "string" && groupTexts[gid].trim()
+          ? String(groupTexts[gid])
+          : `${text}${groupVariants[gi % groupVariants.length]}`;
+        return {
           workspace_owner_id: ownerId,
-          // First auto-comment must land on every group post as well.
-          first_comment: firstComment || null,
-        }),
-      })
-        .then((r) => r.json())
-        .catch((e) => ({ ok: false, reason: String(e) }));
-      groupResults.push({ group_id: gid, ...r });
+          created_by: ownerId,
+          activity_type: "fb_group_post",
+          target_ref: gid,
+          target_label: gid,
+          scheduled_for: nowIso,
+          status: "pending",
+          publication_status: "scheduled",
+          variation_index: 0,
+          variations: [{ body: groupText }],
+          payload: {
+            body: groupText,
+            outbound_text: groupText,
+            image_url: groupImage,
+            media_urls: groupMedia,
+            link: null,
+            group_url: groupUrls[gid] ?? `https://www.facebook.com/groups/${gid}`,
+            first_comment: firstComment || null,
+            campaign_name: campaignName,
+            listing_id: body?.listing_id ?? null,
+            published_via: "browser_extension",
+          },
+        };
+      });
+      const { data: inserted, error: qErr } = await db
+        .from("campaign_activity_queue")
+        .insert(jobs)
+        .select("id, target_ref");
+      if (qErr) {
+        console.error("[meta-publish] extension queue insert failed", qErr.message);
+        for (const gid of groupIds) {
+          groupResults.push({ group_id: gid, ok: false, code: "queue_failed", reason: `שמירת הפוסט לתור התוסף נכשלה: ${qErr.message}` });
+        }
+      } else {
+        for (const row of (inserted ?? []) as any[]) {
+          groupResults.push({
+            group_id: String(row.target_ref),
+            ok: true,
+            code: "queued_for_extension",
+            reason: "ממתין לפרסום דרך תוסף הדפדפן של Realtyz",
+            queue_id: row.id,
+            post_id: null,
+          });
+        }
+      }
     }
 
 
