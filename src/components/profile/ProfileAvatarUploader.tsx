@@ -92,9 +92,9 @@ export function ProfileAvatarUploader() {
       await supabase.auth.updateUser({ data: { avatar_path: null, avatar_url: null } });
       await supabase
         .from('profiles')
-        .update({ avatar_url: null })
-        .eq('id', user.id)
+        .upsert({ id: user.id, avatar_url: null } as any, { onConflict: 'id' })
         .then(() => undefined, () => undefined);
+
       setAvatarPath(null);
       setAvatarUrl(null);
       toast.success('התמונה הוסרה');
