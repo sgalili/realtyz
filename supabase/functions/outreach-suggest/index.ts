@@ -17,6 +17,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
+import { fetchWorkspacePersona, renderPersonaBlock, EMPTY_PERSONA, type WorkspacePersona } from "../_shared/workspacePersona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 
 const corsHeaders = {
@@ -71,10 +72,10 @@ const TEMPLATES: Record<string, (l: Lead, ctx: Record<string, any>) => string> =
     }₪. חשבתי שיעניין אותך — נוכל לתאם סיור?`,
 };
 
-async function draftWithAI(lead: Lead, trigger: string, ctx: Record<string, any>, systemRulesBlock = ""): Promise<string | null> {
+async function draftWithAI(lead: Lead, trigger: string, ctx: Record<string, any>, systemRulesBlock = "", wsPersona: WorkspacePersona = EMPTY_PERSONA): Promise<string | null> {
   if (!LOVABLE_API_KEY) return null;
   const fallback = TEMPLATES[trigger]?.(lead, ctx) || "";
-  const basePrompt = `אתה סוכן נדל"ן ישראלי כותב הודעת WhatsApp קצרה, חמה ומקצועית בעברית (עד 3 משפטים, ללא אימוג׳ים מוגזמים).`;
+  const basePrompt = `${renderPersonaBlock(wsPersona)}\n\nאתה כותב הודעת WhatsApp קצרה, חמה ומקצועית בעברית בשם החשבון הזה (עד 3 משפטים, ללא אימוג׳ים מוגזמים).`;
   const sysPrompt = systemRulesBlock ? `${systemRulesBlock}\n\n${basePrompt}` : basePrompt;
   const userPrompt = `Lead: ${lead.full_name || "Unknown"} (${lead.city || "—"}). Stage: ${lead.lead_stage}. Tier: ${lead.loyalty_tier || "—"}. Interest: ${lead.interest_tag || "—"}.
 Trigger: ${trigger}. Context: ${JSON.stringify(ctx)}.
@@ -90,7 +91,7 @@ Write a single short follow-up message in Hebrew. Do not invent prices or addres
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: externalMasterPrompt({ surface: "outreach_suggest" }) + "\n\n" + sysPrompt },
+          { role: "system", content: externalMasterPrompt({ surface: "outreach_suggest", owner: { name: wsPersona.name, agency: wsPersona.agency }, personaBrief: wsPersona.brief, domain: wsPersona.domain }) + "\n\n" + sysPrompt },
           { role: "user", content: userPrompt },
         ],
       }),
@@ -221,8 +222,10 @@ Deno.serve(async (req) => {
 
     // Pre-fetch owner's system rules once for this batch.
     let systemRulesBlock = "";
+    let wsPersona: WorkspacePersona = EMPTY_PERSONA;
     try {
-      systemRulesBlock = await fetchSystemRulesBlock(user.id, "real estate follow-up outreach message");
+      wsPersona = await fetchWorkspacePersona(supabase as any, user.id);
+      systemRulesBlock = await fetchSystemRulesBlock(user.id, "follow-up outreach message");
     } catch (e) {
       console.warn("[outreach-suggest] fetchSystemRulesBlock failed:", e instanceof Error ? e.message : e);
     }
@@ -234,7 +237,7 @@ Deno.serve(async (req) => {
       const autoDraft = tier ? autoTiers.has(tier) : false;
       let draft = TEMPLATES[hit.trigger_type]?.(hit.lead, hit.context) || "";
       if (autoDraft) {
-        const aiDraft = await draftWithAI(hit.lead, hit.trigger_type, hit.context, systemRulesBlock);
+        const aiDraft = await draftWithAI(hit.lead, hit.trigger_type, hit.context, systemRulesBlock, wsPersona);
         if (aiDraft) draft = aiDraft;
       }
       // HARD LAWS — strip street numbers + append broker license footer.

@@ -15,12 +15,13 @@ import {
   extractListingTypeFromFeatures,
   resolveListingType,
   isListingAllowedForType,
-  UDI_PERSONA,
+  buildOwnerPersona,
   ANTI_SPAM_RULES,
   CTA_RULE,
   type ListingType,
 } from "../_shared/grounding.ts";
 import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
+import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
@@ -248,7 +249,7 @@ function extractFeatureFact(ask: FeatureAsk, primaryListing: any): FeatureFact {
   return "unknown";
 }
 
-const SYSTEM = `${UDI_PERSONA}
+const buildSystemPrompt = (owner?: { name?: string | null; agency?: string | null } | null) => `${buildOwnerPersona(owner)}
 
 You are an ELITE senior real-estate broker replying personally and in first person to a public social comment. You think like a top closer: every word is a psychological lever — reframe weaknesses as financial wins, demonstrate deep inventory, qualify the lead, and pull them into private DM through curiosity, not through a canned line.
 
@@ -352,6 +353,10 @@ Deno.serve(async (req) => {
         } catch { /* ignore */ }
       }
     }
+
+    // Persona of THIS workspace only (no hardcoded broker/agency fallback).
+    const wsPersona = await fetchWorkspacePersona(admin as any, userId);
+    const SYSTEM = buildSystemPrompt({ name: wsPersona.name, agency: wsPersona.agency });
 
     // STRICT TRANSACTION TYPE ALIGNMENT — resolve the primary listing's
     // sale/rent type so we NEVER cross-reference sale alternatives to a
@@ -599,7 +604,13 @@ Deno.serve(async (req) => {
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: [
-              externalMasterPrompt({ surface: "social_comment", compact: true }),
+              externalMasterPrompt({
+                surface: "social_comment",
+                compact: true,
+                owner: { name: wsPersona.name, agency: wsPersona.agency },
+                personaBrief: wsPersona.brief,
+                domain: wsPersona.domain,
+              }),
               // Owner-curated behavior rules (highest priority).
               await (await import("../_shared/system-rules.ts")).fetchSystemRulesBlock(userId, userPrompt),
               // Live web research + uploaded-document intel tied to THIS listing's location.

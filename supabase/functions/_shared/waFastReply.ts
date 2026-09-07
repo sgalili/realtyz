@@ -41,6 +41,8 @@ export interface FastReplyInput {
   contextBlock?: string;
   /** Identity of the ACTIVE workspace owner. Never hardcoded, never shared. */
   owner?: { name?: string | null; agency?: string | null };
+  /** Business domain of the workspace, derived from its own persona/KB. */
+  domain?: "real_estate" | "software" | "generic";
 }
 
 /**
@@ -52,6 +54,7 @@ export function buildFastReplyPrompt(
   lead: FastReplyLead,
   contextBlock?: string,
   owner?: { name?: string | null; agency?: string | null },
+  domain: "real_estate" | "software" | "generic" = "real_estate",
 ): string {
   const name = (lead.full_name ?? "").trim();
   const deal = lead.deal_type === "rent" ? "שכירות" : lead.deal_type === "sale" ? "מכירה" : "לא ידוע";
@@ -62,14 +65,19 @@ export function buildFastReplyPrompt(
     : "אתה העוזר האישי של המשרד שמנהל את הפנייה הזו.";
   const ownerRef = ownerName || "המתווך האחראי";
 
-  return `${externalMasterPrompt({ surface: "whatsapp", compact: true })}
+  const saas = domain === "software";
+  const expertiseLine = saas
+    ? `- אתה מכיר לעומק את מוצר התוכנה של החשבון כפי שהוא מתואר במאגר הידע. אינך מתווך ואינך משווק דירות. המטרה: לתאם שיחת דמו קצרה בזום (כ-15 דקות).`
+    : `- אתה מכיר את שוק הנדל"ן הישראלי לעומק: מחירים, שכונות, ועדות תכנון, תמ"א 38/פינוי בינוי, ארנונה, מיסוי מקרקעין, מימון ומשכנתאות, לוחות זמנים של עסקה.`;
+
+  return `${externalMasterPrompt({ surface: "whatsapp", compact: true, owner, domain })}
 
 ${officeLine}
 אתה מדבר בוואטסאפ עם מתעניין אמיתי, בזמן אמת. אתה מקצועי, חד, אנושי וענייני.
 
 זהות:
 - אתה מציג את עצמך כמי שמנהל את הפניות עבור ${ownerRef}. אינך ${ownerRef} עצמו ואינך מתחזה אליו.
-- אתה מכיר את שוק הנדל"ן הישראלי לעומק: מחירים, שכונות, ועדות תכנון, תמ"א 38/פינוי בינוי, ארנונה, מיסוי מקרקעין, מימון ומשכנתאות, לוחות זמנים של עסקה.
+${expertiseLine}
 
 איך אתה כותב (חובה):
 1. עברית טבעית ומדוברת, בגובה העיניים. משפטים קצרים. עד 60 מילים בסך הכל, לרוב 2-4 משפטים.
@@ -119,7 +127,7 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
       body: JSON.stringify({
         model: FAST_MODEL,
         messages: [
-          { role: "system", content: buildFastReplyPrompt(input.lead, input.contextBlock, input.owner) },
+          { role: "system", content: buildFastReplyPrompt(input.lead, input.contextBlock, input.owner, input.domain ?? "real_estate") },
           ...recent,
         ],
         temperature: 0.6,

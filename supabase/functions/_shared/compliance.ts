@@ -1,7 +1,7 @@
 /**
  * Compliance helpers shared by all outbound functions.
  *
- * STRICT POLICY (Udi): the AI-assisted watermark is FORBIDDEN on every
+ * STRICT POLICY: the AI-assisted watermark is FORBIDDEN on every
  * outbound message. The footer constants are kept as empty strings so any
  * legacy caller of appendDisclosure() becomes a no-op (and any previously
  * appended watermark is actively stripped by stripDisclosure()).

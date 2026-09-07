@@ -331,7 +331,7 @@ export function ScheduleCurrentPostDialog({
   // slot in a scheduled recurrence. All variants MUST retain the full property
   // information and highlight the benefits — we just rotate tone/structure.
   const REPEAT_TEMPLATES = [
-    'תבנית מאסטר קלאסית של אודי — הוק כותרת חד, ואז בלוקים 2-5 כרגיל.',
+    'תבנית מאסטר קלאסית — הוק כותרת חד, ואז בלוקים 2-5 כרגיל.',
     'פתח בשאלה סקרנית ("מחפשים דירה שמרגישה כמו בית?") ואז שמור על מבנה 5 הבלוקים.',
     'פתח באמירה חדה של יתרון מרכזי אחד (נוף/מיקום/שדרוג) ואז המשך במבנה הרגיל.',
     'סגנון "סיפור קצר" — משפט פתיחה חוויתי בגוף ראשון, ואז מעבר למבנה הרגיל.',

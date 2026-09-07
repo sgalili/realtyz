@@ -2,6 +2,7 @@
 // and answers strictly using that context (no outside knowledge).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { internalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
+import { fetchWorkspacePersona, renderPersonaBlock } from "../_shared/workspacePersona.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,6 +65,7 @@ Deno.serve(async (req) => {
     // Persona + identity are resolved from the CALLER'S ACTIVE WORKSPACE only.
     // Nothing about any other broker may ever leak into this prompt.
     let ownerName = "";
+    let wsOwnerId: string | null = null;
     let personaBlock = "";
     try {
       const { data: me } = await admin
@@ -72,6 +74,7 @@ Deno.serve(async (req) => {
         .eq("id", user.id)
         .maybeSingle();
       const ownerId = (me as any)?.active_workspace_owner_id ?? user.id;
+      wsOwnerId = ownerId;
       let ownerRow: any = me;
       if (ownerId && ownerId !== user.id) {
         const { data: owner } = await admin
@@ -98,18 +101,25 @@ Deno.serve(async (req) => {
       }
     } catch (_) { /* generic persona is an acceptable fallback */ }
 
+    const wsPersona = await fetchWorkspacePersona(admin as any, wsOwnerId);
+
     const systemPrompt = [
+      renderPersonaBlock(wsPersona),
       ownerName
-        ? `אתה ה-AI Agent של ${ownerName}, מתווך נדל"ן ב-Realtyz. ברירת מחדל: ברוקר חד, יעיל, החלטי. אתה מנהל פתרונות - לא 'עונה על שאלות'.`
-        : "אתה ה-AI Agent של המשרד ב-Realtyz. ברירת מחדל: ברוקר חד, יעיל, החלטי. אתה מנהל פתרונות - לא 'עונה על שאלות'.",
-      "מיקוד 100%: הנכס, העסקה, וצרכי הלקוח. בלי סיפורי רקע אישיים.",
+        ? `אתה ה-AI Agent של ${ownerName}. ברירת מחדל: חד, יעיל, החלטי. אתה מנהל פתרונות - לא 'עונה על שאלות'.`
+        : "אתה ה-AI Agent של החשבון הזה. ברירת מחדל: חד, יעיל, החלטי. אתה מנהל פתרונות - לא 'עונה על שאלות'.",
+      wsPersona.domain === "real_estate"
+        ? "מיקוד 100%: הנכס, העסקה, וצרכי הלקוח. בלי סיפורי רקע אישיים."
+        : "מיקוד 100%: הצורך של הלקוח והצעד הבא. בלי סיפורי רקע אישיים.",
       "טון: ישיר, ישראלי, תכליתי. בלי פתיחות AI ('אשמח לעזור', 'כמודל שפה'), בלי התנצלויות.",
       "מבנה: 1-2 משפטים חדים. בלי פסקאות, בלי בולטים, בלי כותרות, בלי מקפים ארוכים. עובדה ראשונה, ואז קריאה לפעולה.",
       leadName ? `פנה ללקוח בשמו הפרטי (${leadName}).` : "אם ידוע שם פרטי של הלקוח - פתח בו.",
       "כל תשובה חייבת להסתיים בקריאה לפעולה: פגישה, סיור בנכס, חתימה, או החלטה ספציפית.",
-      "בלעדיות: נכס צריך מתווך אחד מפוקס - אחרת אין תוצאות. משפט אחד, בלי דרשות.",
-      "אסור להמציא נכסים, לקוחות, כתובות, מחירים או עסקאות שלא במאגר הידע של המשרד הזה.",
-      "אסור לומר 'אני לא יודע על נדל\"ן'. תמיד מציע צעד הבא.",
+      wsPersona.domain === "real_estate"
+        ? "בלעדיות: נכס צריך מתווך אחד מפוקס - אחרת אין תוצאות. משפט אחד, בלי דרשות."
+        : "",
+      "אסור להמציא נתונים, לקוחות, מחירים או עסקאות שלא במאגר הידע של החשבון הזה.",
+      "תמיד מציע צעד הבא.",
       personaBlock ? `\nהפרסונה של המשרד:\n${personaBlock}` : "",
       "",
       context ? `הקשר ממאגר הידע:\n${context}` : "אין הקשר ספציפי במאגר - ענה קצר וחד, ובקש פרט אחד שיקדם את העסקה.",
@@ -124,7 +134,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: internalMasterPrompt({ surface: "knowledge_base" }) + "\n\n" + systemPrompt },
+          { role: "system", content: internalMasterPrompt({ surface: "knowledge_base", owner: { name: wsPersona.name, agency: wsPersona.agency }, personaBrief: wsPersona.brief, domain: wsPersona.domain }) + "\n\n" + systemPrompt },
           ...messages,
         ],
       }),

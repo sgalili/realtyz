@@ -607,8 +607,8 @@ const cleanFirstComment = (value: string) => String(value || '')
   .replace(/[#*_`]+/g, '')
   .replace(/[—–]/g, ',')
   .replace(/--+/g, ',')
-  // Strip any broker signature / phone / license lines that the model may have produced.
-  .replace(/\n*\s*אודי\s+ויטמן[^\n]*/gu, '')
+  // Strip any signature / phone / license lines that the model may have produced.
+  // Never keyed to a specific person — only to signature-shaped patterns.
   .replace(/\n*\s*(?:📞|☎️|📱)?\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, '')
   .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, '')
   .replace(/\n*\s*רישיון\s*תיווך[^\n]*/gu, '')
@@ -1671,9 +1671,9 @@ const InlineComposer = ({
     try {
       const topic = body.trim()
         || customInstructions.trim()
-        || (listingHeadline(selectedListing) ? `פוסט קידום: ${listingHeadline(selectedListing)}` : `פוסט שיווקי מאת אודי ויטמן`);
+        || (listingHeadline(selectedListing) ? `פוסט קידום: ${listingHeadline(selectedListing)}` : 'פוסט שיווקי');
       const rotateNote = opts?.rotateTemplate
-        ? 'בחר תבנית שונה לחלוטין מהפעם הקודמת מתוך מאגר הידע (KB) של תבניות הפוסטים. גוון בין תבניות גלובליות לבין תבניות מקוריות של אודי. שמור על דיוק עובדתי מלא לפי נתוני הנכס, טון מקצועי בכיר וקריאה לפעולה חדה לוואטסאפ/טלפון. אל תחזור על אותו פתיח, אותה מבנה או אותו ניסוח CTA כמו בגרסה הקודמת.'
+        ? 'בחר תבנית שונה לחלוטין מהפעם הקודמת מתוך מאגר הידע (KB) של תבניות הפוסטים. גוון בין התבניות הקיימות במאגר הידע של החשבון. שמור על דיוק עובדתי מלא לפי נתוני הנכס, טון מקצועי בכיר וקריאה לפעולה חדה לוואטסאפ/טלפון. אל תחזור על אותו פתיח, אותה מבנה או אותו ניסוח CTA כמו בגרסה הקודמת.'
         : '';
       const mergedInstructions = [customInstructions.trim(), rotateNote].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
@@ -1705,7 +1705,7 @@ const InlineComposer = ({
         // No DB draft row is created here — drafts are saved only when the
         // operator presses "שמור טיוטה".
       } else toast.info('לא התקבל טקסט');
-      // Auto-generate a first comment in Udi's signature style.
+      // Auto-generate a first comment in the workspace owner's style.
       if (text && !ctrl.signal.aborted && !isGenerationStopped()) {
         void handleGenerateFirstComment(text);
       }
@@ -1718,7 +1718,7 @@ const InlineComposer = ({
     }
   };
 
-  // Generate a Hebrew "first comment" in Udi Wittman's warm, first-person tone.
+  // Generate a Hebrew "first comment" in the workspace owner's warm, first-person tone.
   // Called automatically right after the main post is generated, and manually
   // via the refresh button on the first-comment textarea.
   const handleGenerateFirstComment = async (postBody?: string) => {
@@ -2100,7 +2100,7 @@ const InlineComposer = ({
                 <span className={cn('truncate', selectedListing ? 'text-foreground font-medium' : 'text-muted-foreground')}>
                   {selectedListing
                     ? listingOptionLabel(selectedListing as CampaignListing)
-                    : 'ללא קידום נכס ספציפי (פוסט כללי של אודי)'}
+                    : 'ללא קידום נכס ספציפי (פוסט כללי)'}
                 </span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>

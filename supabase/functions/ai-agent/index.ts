@@ -25,6 +25,7 @@ import {
 } from "../_shared/persona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 import { resolveAgentIdentity, buildMasterAgentPrompt } from "../_shared/masterAgentPrompt.ts";
+import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { maskMessages } from "../_shared/pii.ts";
 import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
 
@@ -881,9 +882,13 @@ serve(async (req) => {
       workspaceOwnerId: currentOwnerId,
     });
     const isInternalDashboard = !lead_id && identity.mode === "internal";
+    const wsPersona = await fetchWorkspacePersona(supabase as any, currentOwnerId);
     const masterDirective = buildMasterAgentPrompt(identity.mode, {
       surface: lead_id ? "lead_conversation" : "internal_dashboard",
       roles: identity.roles,
+      owner: { name: wsPersona.name, agency: wsPersona.agency },
+      personaBrief: wsPersona.brief,
+      domain: wsPersona.domain,
     });
     console.log("agent identity:", identity.mode, "-", identity.reason);
 

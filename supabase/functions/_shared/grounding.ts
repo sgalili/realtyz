@@ -75,7 +75,7 @@ export function renderKbInstructionsBlock(items: { title: string; intent: string
   const lines = items
     .map((it, i) => `${i + 1}. "${it.title}" → ${it.intent}`)
     .join("\n");
-  return `[OWNER INSTRUCTIONS FROM KNOWLEDGE BASE] (HARD — these are the broker's own notes on what to LEARN and APPLY from each source. Treat as direct orders from Udi. Internalize the techniques, framings, and rules they describe when writing this post):\n${lines}`;
+  return `[OWNER INSTRUCTIONS FROM KNOWLEDGE BASE] (HARD — these are the broker's own notes on what to LEARN and APPLY from each source. Treat as direct orders from the workspace owner. Internalize the techniques, framings, and rules they describe when writing this post):\n${lines}`;
 }
 
 /**
@@ -128,7 +128,7 @@ export function renderKbTemplatesBlock(items: { title: string; body: string }[])
   const blocks = items
     .map((it, i) => `--- תבנית ${i + 1}: "${it.title}" ---\n${it.body}`)
     .join("\n\n");
-  return `[OWNER-AUTHORED POST TEMPLATES FROM KNOWLEDGE BASE] (ABSOLUTE HIGHEST PRIORITY — these are templates/example posts Udi himself saved. The new post MUST follow the structure, rhythm, line breaks, emoji placement, sectioning, and tone of these templates. If a built-in reference template conflicts with these, THESE WIN. Adapt the wording to the specific listing — never copy verbatim, never invent fields.):\n${blocks}`;
+  return `[OWNER-AUTHORED POST TEMPLATES FROM KNOWLEDGE BASE] (ABSOLUTE HIGHEST PRIORITY — these are templates/example posts the workspace owner saved. The new post MUST follow the structure, rhythm, line breaks, emoji placement, sectioning, and tone of these templates. If a built-in reference template conflicts with these, THESE WIN. Adapt the wording to the specific listing — never copy verbatim, never invent fields.):\n${blocks}`;
 }
 
 
@@ -391,7 +391,18 @@ export function renderKbBlock(kb: string): string {
   return `[WORKSPACE KNOWLEDGE BASE] (highest priority — every assertion must be grounded strictly in these excerpts):\n"""${kb}"""`;
 }
 
-export const UDI_PERSONA = `PERSONA (LOCKED): You are Udi Vitman — a high-end, elite Israeli real-estate broker writing personally. Authoritative, polished, deeply local to the Israeli market, no fluff, no AI tells. You speak as a senior advisor who closes deals, not as a chatbot. Every output sounds like a busy expert typed it himself.`;
+/**
+ * Persona for the ACTIVE workspace. No hardcoded broker: pass the workspace
+ * owner's own name/business, or nothing at all for a fresh workspace, in which
+ * case the model must derive its identity from that workspace's knowledge base.
+ */
+export function buildOwnerPersona(owner?: { name?: string | null; agency?: string | null } | null): string {
+  const who = [owner?.name, owner?.agency].map((v) => String(v ?? "").trim()).filter(Boolean).join(", ");
+  if (!who) {
+    return "PERSONA (LOCKED): This workspace has not defined an identity yet. Derive who you are, what you sell, and how you write ONLY from the workspace knowledge base. Never assume a real-estate brokerage, never invent a person, company, phone number or licence. Never borrow another workspace's identity.";
+  }
+  return `PERSONA (LOCKED): You write personally as ${who}, using only this workspace's own knowledge base and data. Authoritative, polished, no fluff, no AI tells. You speak as a senior professional, not as a chatbot. Never mention any other business or broker.`;
+}
 
 export const ANTI_SPAM_RULES = `ANTI-SPAM HIGH-ENTROPY RULES (Meta-safety; prevents template detection):
 - Treat each output as a fingerprint that must be unique vs all prior outputs. Never reuse the same opener, sentence skeleton, or closing line.
