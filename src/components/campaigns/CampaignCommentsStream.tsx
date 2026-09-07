@@ -282,7 +282,7 @@ const writeDraftCache = (campaignId: string, map: DraftMap) => {
   try { sessionStorage.setItem(draftKey(campaignId), JSON.stringify(map)); } catch { /* quota */ }
 };
 
-function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved, refreshSignal, hideHeader, onRefreshComplete }: Props) {
+function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved, refreshSignal, hideHeader, headerActions, onRefreshComplete }: Props) {
   const commentOwnerId = campaign.user_id || userId;
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
