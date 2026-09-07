@@ -260,23 +260,27 @@ function PersonalTab() {
       const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload } });
       if (error) throw error;
       // Also mirror city/gender/phone to profiles for cross-device + workspace use.
+      // Upsert (not update): a brand-new account may not have a profile row yet,
+      // and a plain update silently matches zero rows so nothing gets saved.
       const primaryPhone = whatsapps[0]?.value || phones[0]?.value || null;
-      await supabase
+      const { error: profErr } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: user!.id,
           city: city || null,
           gender: gender || null,
           phone: primaryPhone,
-          full_name: fullName,
+          full_name: fullName || null,
           email: realEmail(emails[0]?.value) || null,
           broker_license_number: brokerLicense.trim() || null,
-        })
-        .eq('id', user!.id);
+        } as any, { onConflict: 'id' });
+      if (profErr) throw profErr;
       toast.success('הפרופיל נשמר');
       window.dispatchEvent(new Event('realtyz:profile-saved'));
     } catch (err: any) {
       toast.error('שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
     }
+
   };
 
   const handleSignOut = async () => {
