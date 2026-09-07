@@ -6370,7 +6370,7 @@ const CampaignCenter = () => {
         // No workspace filter: group rows may be imported under a different
         // workspace stamp, and a missing name would show as "קבוצה 1234".
         (supabase as any).from('fb_user_groups')
-          .select('group_id,group_name,group_icon')
+          .select('group_id,group_name,group_icon,group_url,member_count')
           .limit(2000),
       ]);
       if (!cancelled) {
