@@ -106,21 +106,19 @@ export function QueueCard({
           <h3 className="flex-1 text-right font-semibold text-foreground line-clamp-2">{title}</h3>
         </div>
 
-        {/* Target groups + live status — revealed on expand only */}
-        {open && (
-          <div onClick={(e) => e.stopPropagation()}>
-            <GroupStatusChips
-              groupIds={groupIds}
-              meta={groupMeta}
-              results={groupResults}
-              defaultState={groupChipState}
-              countdownIso={status === 'scheduled' ? countdownIso : null}
-              emptyLabel={groupEmptyLabel}
-              defaultOpen
-            />
-            {details}
-          </div>
-        )}
+        {/* Target groups — always visible (collapsed pill), expands to names */}
+        <div onClick={(e) => e.stopPropagation()}>
+          <GroupStatusChips
+            groupIds={groupIds}
+            meta={groupMeta}
+            results={groupResults}
+            defaultState={groupChipState}
+            countdownIso={status === 'scheduled' ? countdownIso : null}
+            emptyLabel={groupEmptyLabel}
+            defaultOpen={open}
+          />
+          {open && details}
+        </div>
 
         {/* Row 2: logo · date .... status · actions */}
         <div className="flex items-center gap-2">
