@@ -9,11 +9,11 @@
 //     Append the workspace owner's byline + license on a clean new line at
 //     the very bottom of the output. Example:
 //
-//       אודי ויטמן, אנגלו-סכסון, הרצליה/רמה״ש
+//       the active workspace owner only (name/byline/phone/licence from their profile)
 //       רישיון תיווך מספר: 123456
 //
 //   BYLINE SCRUB:
-//     Strip "Udi Vitman Real Estate" / "אודי ויטמן נדל"ן" / "אודי ויטמן | תיווך"
+//     Strip invented agency suffixes attached to the owner's own name
 //     and any other invented agency-title styling — only the canonical byline
 //     above is allowed in the body. (Then the footer block re-appends the
 //     canonical byline at the bottom for posts/outreach.)
@@ -88,22 +88,33 @@ export function stripStreetNumbers(input: string): string {
 }
 
 // Forbidden invented-title patterns. We never let the model attach a fake
-// agency suffix to the broker's name. Cases handled:
-//   "אודי ויטמן נדל"ן"   →  "אודי ויטמן"
-//   "אודי ויטמן | תיווך"  →  "אודי ויטמן"
-//   "אודי ויטמן - יועץ נדל"ן" → "אודי ויטמן"
-//   "Udi Vitman Real Estate" / "Udi Vitman Realty" → "Udi Vitman"
-const FORBIDDEN_TITLE_PATTERNS: RegExp[] = [
-  /(אודי\s+ויטמן)\s*(?:\||,|-|–|—)\s*(?:נדל["׳]?\s*ן|נדלן|תיווך|יועץ\s+נדל["׳]?\s*ן|סוכן|מתווך|משרד|real\s*estate|realty)[^\n]*/gi,
-  /(אודי\s+ויטמן)\s+(?:נדל["׳]?\s*ן|נדלן|תיווך|מתווך|סוכן|משרד)[^\n]*/g,
-  /(Udi\s+Vitman)\s+(?:Real\s*Estate|Realty|Realtor|Brokerage|Properties)[^\n]*/gi,
-];
+// agency suffix to the workspace owner's name. The owner's own name is passed
+// in at call time — nothing here is hardcoded to a specific person.
+//   "<name> נדל\"ן"      →  "<name>"
+//   "<name> | תיווך"     →  "<name>"
+//   "<name> Real Estate" →  "<name>"
+const HE_TITLE = '(?:נדל["\u05f3]?\\s*\u05df|\u05e0\u05d3\u05dc\u05df|\u05ea\u05d9\u05d5\u05d5\u05da|\u05d9\u05d5\u05e2\u05e5\\s+\u05e0\u05d3\u05dc["\u05f3]?\\s*\u05df|\u05e1\u05d5\u05db\u05df|\u05de\u05ea\u05d5\u05d5\u05da|\u05de\u05e9\u05e8\u05d3|real\\s*estate|realty|realtor|brokerage|properties)';
 
-export function scrubForbiddenBylines(input: string): string {
+function escapeRe(v: string): string {
+  return v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+}
+
+/**
+ * Strips invented agency titles that follow the workspace owner's own name.
+ * With no owner name supplied the text is returned untouched — we never guess
+ * a name, and never carry another workspace's identity.
+ */
+export function scrubForbiddenBylines(input: string, ownerName?: string | null): string {
   let out = String(input ?? "");
-  for (const re of FORBIDDEN_TITLE_PATTERNS) out = out.replace(re, "$1");
-  // Collapse trailing punctuation like "אודי ויטמן ," → "אודי ויטמן"
-  out = out.replace(/(אודי\s+ויטמן)\s*[\|,\-–—]+\s*$/gm, "$1");
+  const name = String(ownerName ?? "").trim();
+  if (!name) return out.replace(/[ \t]{2,}/g, " ");
+  const n = escapeRe(name);
+  const patterns = [
+    new RegExp(`(${n})\\s*(?:\\||,|-|–|—)\\s*${HE_TITLE}[^\\n]*`, "gi"),
+    new RegExp(`(${n})\\s+${HE_TITLE}[^\\n]*`, "gi"),
+  ];
+  for (const re of patterns) out = out.replace(re, "$1");
+  out = out.replace(new RegExp(`(${n})\\s*[\\|,\\-–—]+\\s*$`, "gm"), "$1");
   return out.replace(/[ \t]{2,}/g, " ");
 }
 

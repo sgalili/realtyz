@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     const HARD_LAWS_BLOCK = [
       "#HARD COMPLIANCE LAWS — HIGHEST PRIORITY, NON-NEGOTIABLE:",
       "- NEVER include a building / house / apartment number in any street address. \"ארלוזורוב 26\" must become \"ברחוב ארלוזורוב\". Strip ALL numeric suffixes from street addresses.",
-      "- NEVER invent or attach an agency title to the broker's name. Forbidden: \"אודי ויטמן נדל\"ן\", \"אודי ויטמן | תיווך\", \"Udi Vitman Real Estate\", \"Udi Vitman Realty\", or anything similar.",
+      "- NEVER invent or attach an agency title, company name or slogan to the owner's name (for example \"<name> נדל\"ן\", \"<name> | תיווך\", \"<name> Real Estate\"). Only the exact byline configured in the profile may appear.",
       branding.byline
         ? `- The ONLY allowed broker byline is exactly: "${branding.byline}". Use it only inside the bottom footer block, never inside the body copy.`
         : `- Do NOT invent any broker title; only the broker's plain name may appear.`,
