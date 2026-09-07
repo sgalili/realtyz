@@ -1211,7 +1211,7 @@ const InlineComposer = ({
       // cache, another tab, or another device.
       if (snapshot.body.trim() || snapshot.attachments.length > 0 || snapshot.firstComment.trim()) {
         const handle = window.setTimeout(() => {
-          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot);
+          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot, wsScope);
         }, 900);
         return () => window.clearTimeout(handle);
       }
@@ -1297,7 +1297,7 @@ const InlineComposer = ({
     }
     let cancelled = false;
     (async () => {
-      const cloud = await fetchComposerDraftCloud(channel.id, instanceId ?? 'single');
+      const cloud = await fetchComposerDraftCloud(channel.id, instanceId ?? 'single', wsScope);
       if (cancelled) return;
       if (cloud) {
         if (String(cloud.body || '').trim()) setBody(cleanBody(cloud.body));
@@ -1737,7 +1737,7 @@ const InlineComposer = ({
           const prev = readDraft() || {};
           const snapshot = { ...prev, body: text, customInstructions, selectedListingId, attachments, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink };
           localStorage.setItem(draftKey, JSON.stringify(snapshot));
-          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot);
+          void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot, wsScope);
         } catch {}
 
         // No DB draft row is created here — drafts are saved only when the
