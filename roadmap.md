@@ -40,3 +40,4 @@
 ## Sep 1 (late) — AI agent hardening
 - [x] Safe error handling: all AI tool/SQL failures logged internally (_shared/safeToolError.ts) and answered with a graceful Hebrew fallback; no raw errors in chat/WhatsApp
 - [x] Persona cleanup: banned internal jargon/meta-commentary ("קצין המודיעין" etc.), silent tool execution + natural Hebrew lead-in before results
+- [ ] Fix mobile "Open Facebook Groups Page" button in group sync modal
