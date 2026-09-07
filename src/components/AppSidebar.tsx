@@ -62,6 +62,14 @@ const NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
   },
   {
+    title: 'פוסטים',
+    url: '/campaigns',
+    icon: Megaphone,
+    iconColor: 'text-orange-500',
+    badgeClass: 'bg-orange-50 text-orange-700 ring-orange-200',
+    aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
+  },
+  {
     title: 'לקוחות',
     url: '/lead-crm',
     icon: Users,
