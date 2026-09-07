@@ -140,7 +140,11 @@ async function runJob(token, job) {
 }
 
 async function runPageFirstComment(token, entry) {
-  const postUrl = String(entry.postUrl || entry.post_url || '').trim();
+  const postId = String(entry.postId || entry.post_id || '').trim();
+  // Prefer the permalink; fall back to a permalink built from the post id.
+  const postUrl =
+    String(entry.postUrl || entry.post_url || '').trim() ||
+    (postId ? `https://www.facebook.com/${postId.replace('_', '/posts/')}` : '');
   const message = String(entry.firstComment || entry.first_comment || '').trim();
   if (!postUrl) {
     await report(token, { id: entry.id, local: true }, false, 'כתובת הפוסט חסרה');
@@ -170,6 +174,7 @@ async function runPageFirstComment(token, entry) {
         job: {
           id: entry.id,
           post_url: postUrl,
+          post_id: postId || null,
           message,
         },
       },
@@ -275,17 +280,35 @@ async function mergeQueue(incoming) {
   return merged;
 }
 
+const STALE_POSTING_MS = 6 * 60 * 1000;
+
 async function drainQueue() {
   if (queueRunning) return;
   queueRunning = true;
   try {
     const token = await getToken();
     let queue = await loadQueue();
-    for (const entry of queue) {
+    // Recover jobs left "posting" by a killed service worker so nothing hangs.
+    let recovered = false;
+    for (const e of queue) {
+      if (e && e.status === 'posting' && Date.now() - Number(e.startedAt || e.createdAt || 0) > STALE_POSTING_MS) {
+        e.status = 'pending';
+        e.startedAt = null;
+        recovered = true;
+      }
+    }
+    if (recovered) await saveQueue(queue);
+
+    // Comments first: a first comment must land right under the fresh post.
+    const ordered = queue
+      .slice()
+      .sort((a, b) => (b && (b.type === 'page_first_comment') ? 1 : 0) - (a && (a.type === 'page_first_comment') ? 1 : 0));
+    for (const entry of ordered) {
       if (!entry || entry.status !== 'pending') continue;
       if (Number(entry.scheduledTime || 0) > Date.now()) continue;
 
       entry.status = 'posting';
+      entry.startedAt = Date.now();
       await saveQueue(queue);
 
       let ok = false;
@@ -307,15 +330,16 @@ async function drainQueue() {
       entry.status = ok ? 'completed' : 'failed';
       queue = await loadQueue().then((fresh) => {
         const hit = fresh.find((e) => String(e.id) === String(entry.id));
-        if (hit) hit.status = entry.status;
+        if (hit) { hit.status = entry.status; hit.startedAt = null; hit.finishedAt = Date.now(); }
         return fresh;
       });
       await saveQueue(queue);
-      await sleep(8000); // gentle pacing between jobs
+      // Comments are quick and time-sensitive; only pace real group posts.
+      await sleep(entry.type === 'page_first_comment' ? 1500 : 8000);
     }
     // Drop finished entries older than a day so storage stays small.
     const kept = (await loadQueue()).filter(
-      (e) => e && (e.status === 'pending' || e.status === 'posting' || Date.now() - Number(e.createdAt || 0) < 86400000),
+      (e) => e && (e.status === 'pending' || Date.now() - Number(e.createdAt || 0) < 86400000),
     );
     await saveQueue(kept);
   } catch (e) {
@@ -408,8 +432,18 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg.type === 'RZ_QUEUE_UPDATE') {
-    mergeQueue(msg.queue).then(() => drainQueue());
-    sendResponse({ ok: true });
+    // Merge, answer immediately, then start the run without waiting.
+    mergeQueue(msg.queue).then((merged) => {
+      try { sendResponse({ ok: true, queue: merged }); } catch (e) { /* noop */ }
+      drainQueue();
+    });
+    return true;
+  }
+
+  if (msg.type === 'RZ_QUEUE_STATE_REQUEST') {
+    loadQueue().then((queue) => {
+      try { sendResponse({ ok: true, queue }); } catch (e) { /* noop */ }
+    });
     return true;
   }
 

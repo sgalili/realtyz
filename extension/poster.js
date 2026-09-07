@@ -241,6 +241,8 @@
     const postId = String(job.post_id || '').trim();
     const message = String(job.message || '').trim();
     if (!message) return { ok: false, reason: 'תוכן התגובה הראשונה ריק' };
+    // Graph ids look like "<pageId>_<postId>" while links carry only one part.
+    const idParts = postId.split('_').filter((x) => x && x.length > 5);
 
     // Try to locate the post article by permalink or post id.
     let article = await waitFor(() => {
@@ -258,7 +260,7 @@
         const byId = articles.find((a) =>
           [...a.querySelectorAll('a[href]')].some((x) => {
             const h = x.getAttribute('href') || '';
-            return h.includes(postId);
+            return idParts.some((part) => h.includes(part));
           }),
         );
         if (byId) return byId;
@@ -282,11 +284,22 @@
         }
         if (postId) {
           return articles.find((a) =>
-            [...a.querySelectorAll('a[href]')].some((x) => (x.getAttribute('href') || '').includes(postId)),
+            [...a.querySelectorAll('a[href]')].some((x) => idParts.some((part) => (x.getAttribute('href') || '').includes(part))),
           ) || null;
         }
         return null;
       }, 15000, 800);
+    }
+
+    if (!article) {
+      // Permalink pages render exactly one post — take the largest visible
+      // article that already carries a comment affordance.
+      const candidates = [...document.querySelectorAll('div[role="article"]')].filter(visible);
+      article =
+        candidates.find((a) =>
+          a.querySelector('div[role="textbox"][contenteditable="true"]') ||
+          findByText(/^(הגב|תגובה|כתוב תגובה|Comment|Write a comment)/i, a),
+        ) || candidates[0] || null;
     }
 
     if (!article) return { ok: false, reason: 'הפוסט לא נמצא בעמוד — נסו לרענן את העמוד' };

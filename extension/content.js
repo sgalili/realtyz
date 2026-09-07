@@ -116,13 +116,28 @@
   });
 
   /* ── Local post queue handed over by the app ─────────────────────────── */
-  const pushQueue = (queue) => {
-    if (!Array.isArray(queue)) return;
-    chrome.runtime.sendMessage({ type: 'RZ_QUEUE_UPDATE', queue });
-  };
-
   const readQueue = () => {
     try { return JSON.parse(localStorage.getItem('rzPostQueue') || '[]'); } catch (err) { return []; }
+  };
+
+  const writeQueue = (queue) => {
+    if (!Array.isArray(queue)) return;
+    try {
+      const next = JSON.stringify(queue);
+      if (localStorage.getItem('rzPostQueue') === next) return;
+      localStorage.setItem('rzPostQueue', next);
+    } catch (err) { return; }
+    emit('RZ_QUEUE_UPDATE', 'queue', queue, 'rz:update-queue');
+  };
+
+  const pushQueue = (queue) => {
+    if (!Array.isArray(queue)) return;
+    try {
+      chrome.runtime.sendMessage({ type: 'RZ_QUEUE_UPDATE', queue }, (res) => {
+        if (chrome.runtime.lastError) return;
+        if (res && Array.isArray(res.queue)) writeQueue(res.queue);
+      });
+    } catch (err) { /* noop */ }
   };
 
   document.addEventListener('rz:update-queue', (e) => {
@@ -132,11 +147,31 @@
   window.addEventListener('message', (e) => {
     const d = e.data;
     if (!d || typeof d !== 'object' || d.type !== 'RZ_QUEUE_UPDATE') return;
+    if (d.source === 'realtyz-extension') return; // our own echo
     pushQueue(d.queue || readQueue());
   });
 
   // Pick up anything queued before the extension loaded.
   setTimeout(() => { const q = readQueue(); if (q.length) pushQueue(q); }, 1500);
+
+  // Keep the app in sync with the extension's own queue state (status badges).
+  const syncQueue = () => {
+    try {
+      chrome.runtime.sendMessage({ type: 'RZ_QUEUE_STATE_REQUEST' }, (res) => {
+        if (chrome.runtime.lastError) return;
+        const extQueue = res && Array.isArray(res.queue) ? res.queue : null;
+        if (!extQueue) return;
+        const local = readQueue();
+        const byId = new Map(extQueue.map((e) => [String(e.id), e]));
+        // Any local entry the extension has not seen yet gets handed over.
+        const unseen = local.filter((e) => e && e.id && !byId.has(String(e.id)) && e.status === 'pending');
+        if (unseen.length) pushQueue(local);
+        writeQueue(local.map((e) => (e && byId.has(String(e.id)) ? byId.get(String(e.id)) : e)));
+      });
+    } catch (err) { /* noop */ }
+  };
+  setInterval(syncQueue, 3000);
+  setTimeout(syncQueue, 2000);
 
   document.addEventListener('rz:ext-fb-groups:request', deliver);
   document.addEventListener('rz:ext-fb-posts:request', deliverPosts);
