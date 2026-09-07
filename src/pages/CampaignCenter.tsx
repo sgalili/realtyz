@@ -4865,10 +4865,22 @@ const PublishedFeed = ({
         const scheduled = isScheduledRow(r);
         // A publish that Meta rejected: shown explicitly as "נכשל" with the exact
         // provider reason, never as a normal published post.
-        const failed = String(r.status || '').toLowerCase() === 'failed';
-        const failureReason = failed
-          ? (r.failure_reason || (r.provider_response as any)?.error || 'הפרסום לפייסבוק נכשל')
+        const rawFailureReason = r.failure_reason || (r.provider_response as any)?.error || null;
+        const hasGroupTargets = Array.isArray((r as any).group_ids) && (r as any).group_ids.length > 0;
+        // Legacy Meta App Review errors are obsolete: group posts now run through
+        // the browser-extension queue, so the old banner is suppressed and the
+        // card reflects the live extension queue state instead.
+        const legacyMetaError = hasGroupTargets && isLegacyMetaGroupError(rawFailureReason);
+        const extQueueStatus = hasGroupTargets
+          ? queueStatusForText(extensionQueue, r.message_body || '')
           : null;
+        const failed =
+          String(r.status || '').toLowerCase() === 'failed' &&
+          !legacyMetaError &&
+          extQueueStatus !== 'completed' &&
+          extQueueStatus !== 'pending' &&
+          extQueueStatus !== 'posting';
+        const failureReason = failed ? (rawFailureReason || 'הפרסום לפייסבוק נכשל') : null;
 
         const seriesSlots = (r as any)._seriesSlots as Array<{ id: string; sent_at: string | null }> | undefined;
         const isSeries = Array.isArray(seriesSlots) && seriesSlots.length > 1;
