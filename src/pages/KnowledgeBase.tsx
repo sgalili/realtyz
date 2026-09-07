@@ -656,22 +656,31 @@ export default function KnowledgeBase() {
                     </div>
                   )}
                 </>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="flex items-end gap-2 mt-3">
-              <Textarea
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-                }}
-                placeholder="שאל שאלה על המאגר..."
-                rows={1}
-                dir="rtl"
-                disabled={chatLoading}
-                className="flex-1 min-h-[44px] max-h-32 resize-none"
-              />
+              <div className="relative flex-1">
+                <Textarea
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+                  }}
+                  placeholder="שאל שאלה על המאגר..."
+                  rows={1}
+                  dir="rtl"
+                  disabled={chatLoading}
+                  className="w-full min-h-[64px] max-h-32 resize-none pt-10"
+                />
+                <div className="absolute top-1 start-1">
+                  <VoiceInputButton
+                    size="sm"
+                    disabled={chatLoading}
+                    onTranscript={(t) => setChatInput((p) => (p ? `${p} ${t}` : t))}
+                  />
+                </div>
+              </div>
               <Button
                 onClick={sendChat}
                 disabled={chatLoading || !chatInput.trim()}
