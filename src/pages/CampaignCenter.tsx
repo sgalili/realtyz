@@ -33,11 +33,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import {
   enqueueExtensionPosts,
+  enqueuePageFirstComment,
   useExtensionQueue,
   queueStatusForText,
   isLegacyMetaGroupError,
   resetQueueEntriesForText,
 } from '@/lib/extensionGroupBridge';
+
 import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
@@ -3265,8 +3267,21 @@ const ConfirmDispatchDialog = ({
         const duplicateOnly = !scheduledAt && results.length > 0 &&
           results.every((r) => (r.data as any)?.duplicate === true);
 
+        // If Meta blocked the first-comment Graph endpoint, hand the comment off
+        // to the browser extension queue so it is still posted automatically.
+        results.forEach((r) => {
+          const payload: any = r.data;
+          if (payload?.first_comment_extension_payload) {
+            const { post_id, post_url, first_comment } = payload.first_comment_extension_payload;
+            if (enqueuePageFirstComment({ postId: post_id, postUrl: post_url, firstComment: first_comment })) {
+              toast.info('התגובה הראשונה הועברה לתוסף הדפדפן לפרסום אוטומטי.');
+            }
+          }
+        });
+
         const reachNote = groupStats.members > 0 ? ` · חשיפה פוטנציאלית ${groupStats.members.toLocaleString('he-IL')} חברים` : '';
         if (scheduledAt) {
+
           const when = new Date(scheduledAt).toLocaleString('he-IL');
           toast.success(`הפוסט תוזמן ל-${when} · ${targets.length} יעד(ים) · ${Math.max(0, groupIds.length - queuedGroups)} קבוצות${reachNote}`);
         } else if (duplicateOnly) {

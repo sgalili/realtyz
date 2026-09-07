@@ -201,17 +201,22 @@ async function igAccountId(pageId: string, token: string): Promise<string | null
  * forms are attempted (2 tries each, small backoff because the post object is
  * sometimes not yet queryable) and the raw Graph payload is returned so the
  * real reason is logged/persisted instead of being swallowed.
+ *
+ * When Meta blocks the comment endpoint because the app lacks Page Public
+ * Content Access / App Review, the function returns `{ blocked: true }` so
+ * the caller can hand the comment off to the browser-extension automation
+ * instead of failing the whole publish.
  */
 async function postFirstComment(
   pageId: string,
   token: string,
   postId: string,
   message: string,
-): Promise<{ comment_id: string; target: string } | { error: string; raw: unknown }> {
+): Promise<{ comment_id: string; target: string } | { error: string; raw: unknown; blocked?: boolean }> {
   const text = String(message ?? "").trim();
   if (!text) return { error: "אין תוכן לתגובה הראשונה", raw: null };
   const candidates = postId.includes("_") ? [postId, postId.split("_").pop()!] : [`${pageId}_${postId}`, postId];
-  let lastPayload: unknown = null;
+  let lastPayload: any = null;
   for (const target of candidates) {
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
@@ -225,8 +230,13 @@ async function postFirstComment(
       if (res.ok && res.payload?.id) return { comment_id: String(res.payload.id), target };
     }
   }
-  return { error: humanize(lastPayload, "פרסום התגובה הראשונה בעמוד נכשל"), raw: lastPayload };
+  const code = Number(lastPayload?.error?.code ?? 0);
+  const sub = Number(lastPayload?.error?.error_subcode ?? 0);
+  const msg = String(lastPayload?.error?.message ?? "").toLowerCase();
+  const blocked = code === 10 || code === 12 || sub === 33 || /page public content access|pages_read_engagement|singular statuses|deprecated/i.test(msg);
+  return { error: humanize(lastPayload, "פרסום התגובה הראשונה בעמוד נכשל"), raw: lastPayload, blocked };
 }
+
 
 
 /**
@@ -436,6 +446,10 @@ async function findReusableRow(
   return row ? String(row.id) : null;
 }
 
+
+
+
+
 Deno.serve(async (req) => {
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -468,6 +482,7 @@ Deno.serve(async (req) => {
     }
 
     // ---- Delete a live post ------------------------------------------------
+
     if (req.method === "DELETE" || body?.action === "delete") {
       const postId = String(body?.external_post_id ?? "").trim();
       if (!postId) return json({ success: false, error: "external_post_id is required" }, 400);
@@ -486,8 +501,21 @@ Deno.serve(async (req) => {
       page = await ensurePageToken(db, ownerId, page);
       const c = await postFirstComment(page.pageId, page.token, postId, message);
       if ("comment_id" in c) return json({ success: true, comment_id: c.comment_id, target: c.target });
-      return json({ success: false, error: "comment_failed", message: c.error, raw: c.raw }, 200);
+      return json(
+        {
+          success: false,
+          error: "comment_failed",
+          message: c.error,
+          raw: c.raw,
+          blocked: c.blocked === true,
+          first_comment_extension_payload: c.blocked
+            ? { post_id: postId, post_url: `https://www.facebook.com/${postId}`, first_comment: message }
+            : null,
+        },
+        200,
+      );
     }
+
 
 
     // ---- Publish -----------------------------------------------------------
@@ -638,6 +666,8 @@ Deno.serve(async (req) => {
     const warnings: string[] = [];
     const firstCommentIds: Array<{ target: string; comment_id: string }> = [];
     let firstCommentError: string | null = null;
+    let firstCommentExtensionPayload: { post_id: string; post_url: string; first_comment: string } | null = null;
+
 
 
     // Never publish with a User/system token: upgrade to the Page-scoped token.
@@ -686,12 +716,26 @@ Deno.serve(async (req) => {
             if ("comment_id" in c) {
               console.log("[meta-publish] first comment published", res.id, c.comment_id);
               firstCommentIds.push({ target: res.id, comment_id: c.comment_id });
+            } else if (c.blocked) {
+              // Meta blocks comment creation until the app passes App Review for
+              // Page Public Content Access. Hand the comment off to the Realtyz
+              // browser extension, which runs from the broker's own Facebook
+              // session and is not subject to this Graph restriction.
+              console.warn("[meta-publish] first comment blocked by Meta; deferring to extension", res.id);
+              firstCommentExtensionPayload = {
+                post_id: res.id,
+                post_url: `https://www.facebook.com/${res.id}`,
+                first_comment: firstComment,
+              };
+              firstCommentError = `${c.error} — התגובה הראשונה הועברה לתוסף הדפדפן לפרסום אוטומטי.`;
+              warnings.push(firstCommentError);
             } else {
               console.error("[meta-publish] first comment failed", res.id, JSON.stringify(c.raw));
               firstCommentError = c.error;
               warnings.push(c.error);
             }
           }
+
 
         }
 
@@ -833,6 +877,8 @@ Deno.serve(async (req) => {
           first_comment: firstComment || null,
           first_comment_ids: firstCommentIds,
           first_comment_error: firstCommentError,
+          first_comment_extension_payload: firstCommentExtensionPayload,
+
 
           postIds,
           content_hash: hashes[ch],
@@ -881,8 +927,10 @@ Deno.serve(async (req) => {
       failures,
       warnings,
       group_results: groupResults,
+      first_comment_extension_payload: firstCommentExtensionPayload,
       message: failures.length ? failures[0].message : (warnings[0] ?? null),
     });
+
 
   } catch (e) {
     console.error("[meta-publish] fatal", e);
