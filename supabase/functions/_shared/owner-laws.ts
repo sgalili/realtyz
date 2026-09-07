@@ -171,7 +171,8 @@ export function appendLicenseFooter(
     .replace(/\n{3,}/g, "\n\n")
     .replace(/\s+$/g, "");
 
-  return `${cleaned}\n\n${OWNER_SIGNATURE_BLOCK}`;
+  const block = buildFooterBlock(signature);
+  return block ? `${cleaned}\n\n${block}` : cleaned;
 }
 
 export function enforceOwnerLaws(
@@ -179,10 +180,12 @@ export function enforceOwnerLaws(
   opts: {
     license?: string | null;
     byline?: string | null;
+    name?: string | null;
+    phone?: string | null;
     withLicense?: boolean;
   } = {},
 ): string {
-  const { license, byline, withLicense = true } = opts;
+  const { license, byline, name, phone, withLicense = true } = opts;
   // Step 0: strip placeholder brackets (e.g. "[Insert license number]",
   // "[מספר טלפון]", "[Real Phone Number]", "[TBD]") — never let bracketed
   // instruction tokens ship to the public.
