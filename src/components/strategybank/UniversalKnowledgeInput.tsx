@@ -55,7 +55,6 @@ export const UniversalKnowledgeInput = () => {
   const [mode, setMode] = useState<InputMode>('text');
 
   // Text
-  const [textTitle, setTextTitle] = useState('');
   const [textBody, setTextBody] = useState('');
 
   // Files
