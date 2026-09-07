@@ -272,6 +272,7 @@ function PersonalTab() {
         })
         .eq('id', user!.id);
       toast.success('הפרופיל נשמר');
+      window.dispatchEvent(new Event('realtyz:profile-saved'));
     } catch (err: any) {
       toast.error('שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
     }
