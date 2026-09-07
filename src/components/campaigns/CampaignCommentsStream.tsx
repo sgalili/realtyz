@@ -1262,7 +1262,13 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
             <CornerDownLeft className="h-3.5 w-3.5 text-primary" />
             תגובות המשך ({repliesCount})
           </p>
+          {headerActions && (
+            <div className="ms-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              {headerActions}
+            </div>
+          )}
         </div>
+
       )}
 
 
