@@ -330,15 +330,16 @@ async function drainQueue() {
       entry.status = ok ? 'completed' : 'failed';
       queue = await loadQueue().then((fresh) => {
         const hit = fresh.find((e) => String(e.id) === String(entry.id));
-        if (hit) hit.status = entry.status;
+        if (hit) { hit.status = entry.status; hit.startedAt = null; hit.finishedAt = Date.now(); }
         return fresh;
       });
       await saveQueue(queue);
-      await sleep(8000); // gentle pacing between jobs
+      // Comments are quick and time-sensitive; only pace real group posts.
+      await sleep(entry.type === 'page_first_comment' ? 1500 : 8000);
     }
     // Drop finished entries older than a day so storage stays small.
     const kept = (await loadQueue()).filter(
-      (e) => e && (e.status === 'pending' || e.status === 'posting' || Date.now() - Number(e.createdAt || 0) < 86400000),
+      (e) => e && (e.status === 'pending' || Date.now() - Number(e.createdAt || 0) < 86400000),
     );
     await saveQueue(kept);
   } catch (e) {
