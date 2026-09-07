@@ -501,8 +501,21 @@ Deno.serve(async (req) => {
       page = await ensurePageToken(db, ownerId, page);
       const c = await postFirstComment(page.pageId, page.token, postId, message);
       if ("comment_id" in c) return json({ success: true, comment_id: c.comment_id, target: c.target });
-      return json({ success: false, error: "comment_failed", message: c.error, raw: c.raw }, 200);
+      return json(
+        {
+          success: false,
+          error: "comment_failed",
+          message: c.error,
+          raw: c.raw,
+          blocked: c.blocked === true,
+          first_comment_extension_payload: c.blocked
+            ? { post_id: postId, post_url: `https://www.facebook.com/${postId}`, first_comment: message }
+            : null,
+        },
+        200,
+      );
     }
+
 
 
     // ---- Publish -----------------------------------------------------------
