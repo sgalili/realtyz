@@ -15,10 +15,11 @@ import {
   Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type, Trash2, Image as ImageIcon, Video as VideoIcon, Pencil, X, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { GeminiIcon } from '@/components/GeminiIcon';
 
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
-type Tab = 'files' | 'text' | 'link' | 'voice';
+type Tab = 'ai' | 'files' | 'text' | 'link' | 'voice';
 type Filter = 'all' | 'images' | 'videos' | 'docs';
 
 export default function KnowledgeBase() {
@@ -101,7 +102,7 @@ export default function KnowledgeBase() {
   };
 
   /* ── Resource management ── */
-  const [tab, setTab] = useState<Tab>('files');
+  const [tab, setTab] = useState<Tab>('ai');
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -323,7 +324,62 @@ export default function KnowledgeBase() {
     onError: (e: Error) => { if (e.message !== 'demo-blocked') toast.error(e.message); },
   });
 
-  const tabs: { id: Tab; label: string; icon: typeof FileText }[] = [
+  /* ── Gemini workspace ── */
+  const [geminiPrompt, setGeminiPrompt] = useState('');
+  const [geminiOutput, setGeminiOutput] = useState('');
+  const [geminiSources, setGeminiSources] = useState<string[]>([]);
+  const [geminiTitle, setGeminiTitle] = useState('');
+  const [geminiMode, setGeminiMode] = useState<'answer' | 'document'>('answer');
+  const [geminiLoading, setGeminiLoading] = useState(false);
+  const [savingGemini, setSavingGemini] = useState(false);
+
+  const runGemini = async () => {
+    const prompt = geminiPrompt.trim();
+    if (!prompt || geminiLoading) return;
+    setGeminiLoading(true);
+    setGeminiOutput('');
+    setGeminiSources([]);
+    try {
+      const { data, error } = await supabase.functions.invoke('kb-gemini-studio', {
+        body: { prompt, mode: geminiMode },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setGeminiOutput((data as any)?.content ?? '');
+      setGeminiSources(((data as any)?.sources ?? []).slice(0, 12));
+      setGeminiTitle((data as any)?.title || prompt.slice(0, 60));
+    } catch (e: any) {
+      toast.error(e?.message ?? 'שגיאה בהרצת Gemini');
+    } finally {
+      setGeminiLoading(false);
+    }
+  };
+
+  const saveGeminiToKb = async () => {
+    if (!geminiOutput.trim()) return;
+    if (blockDemoAction('add-knowledge-text')) return;
+    setSavingGemini(true);
+    try {
+      const { error } = await supabase.functions.invoke('kb-ingest', {
+        body: {
+          title: (geminiTitle.trim() || `Gemini · ${new Date().toLocaleString('he-IL')}`).slice(0, 120),
+          raw_text: geminiOutput.trim(),
+          source_type: 'text',
+          source_metadata: { generated_by: 'gemini', prompt: geminiPrompt.trim().slice(0, 500) },
+        },
+      });
+      if (error) throw error;
+      toast.success('הקובץ נשמר במאגר הידע');
+      qc.invalidateQueries({ queryKey: ['kb-documents'] });
+    } catch (e: any) {
+      toast.error(e?.message ?? 'שגיאה בשמירה');
+    } finally {
+      setSavingGemini(false);
+    }
+  };
+
+  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'ai', label: 'AI', icon: GeminiIcon },
     { id: 'files', label: 'קבצים', icon: FileText },
     { id: 'text', label: 'טקסט', icon: Type },
     { id: 'link', label: 'קישור', icon: LinkIcon },
@@ -367,6 +423,70 @@ export default function KnowledgeBase() {
                 );
               })}
             </div>
+
+            {tab === 'ai' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <GeminiIcon className="h-4 w-4" />
+                  <p className="text-sm font-medium">Gemini · שאילתה על מאגר הידע</p>
+                </div>
+                <Textarea
+                  value={geminiPrompt}
+                  onChange={(e) => setGeminiPrompt(e.target.value)}
+                  placeholder="שאל את Gemini כל דבר על מאגר הידע: פרסונת הסוכן, תבניות פוסטים, הנחיות כתיבה ומענה וכללי תקשורת. לדוגמה: 'נתח את כללי המענה שלי וכתוב מדריך תגובות לפניות מחיר'"
+                  className="min-h-[120px]"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex gap-1 p-1 rounded-lg bg-muted">
+                    {([
+                      { id: 'answer' as const, label: 'תשובה' },
+                      { id: 'document' as const, label: 'מסמך למאגר' },
+                    ]).map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setGeminiMode(m.id)}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
+                          geminiMode === m.id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                  <Button onClick={runGemini} disabled={geminiLoading || !geminiPrompt.trim()} className="ms-auto">
+                    {geminiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 me-1.5" />הרץ</>}
+                  </Button>
+                </div>
+
+                {geminiOutput && (
+                  <div className="space-y-2 border rounded-lg p-3 bg-muted/30">
+                    <Input
+                      value={geminiTitle}
+                      onChange={(e) => setGeminiTitle(e.target.value)}
+                      placeholder="כותרת הקובץ שיישמר"
+                    />
+                    <Textarea
+                      value={geminiOutput}
+                      onChange={(e) => setGeminiOutput(e.target.value)}
+                      className="min-h-[200px] text-sm"
+                    />
+                    {geminiSources.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {geminiSources.map((s) => (
+                          <Badge key={s} variant="secondary" className="text-[10px]">{s}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex justify-end">
+                      <Button onClick={saveGeminiToKb} disabled={savingGemini}>
+                        {savingGemini ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמור כקובץ במאגר'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {tab === 'files' && (
               <div
