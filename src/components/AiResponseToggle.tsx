@@ -32,7 +32,7 @@ export function AiResponseToggle() {
             'h-9 w-9 rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-white/40',
             active
               ? 'border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 hover:text-white'
-              : 'border-white/20 bg-white/10 text-white/50 grayscale hover:bg-white/20 hover:text-white/80'
+              : 'border-muted-foreground/30 bg-muted/40 text-muted-foreground opacity-60 grayscale hover:bg-muted/60 hover:text-muted-foreground'
           )}
         >
           <Bot className="h-5 w-5" strokeWidth={2} />
