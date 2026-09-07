@@ -799,10 +799,10 @@ const InlineComposer = ({
     try {
       const direct = JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null');
       if (direct && String(direct.body || '').trim()) return direct;
-      // Legacy rescue: drafts saved under the old index-based key
-      // (`...:<idx>-<listingId>`) are recovered by matching the listing.
+      // Rescue only inside the SAME workspace scope: a draft written in another
+      // office must never be restored here.
       if (presetListingId) {
-        const prefix = `rz-composer-draft:v2:${channel.id}:`;
+        const prefix = `rz-composer-draft:v3:${wsScope}:${channel.id}:`;
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
           if (!k || !k.startsWith(prefix) || k === draftKey) continue;
@@ -964,7 +964,7 @@ const InlineComposer = ({
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
   // Persisted to localStorage (per workspace) so a reload / background refresh
   // doesn't wipe the selection, and the bulk picker stays in sync with drafts.
-  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  // (workspaceOwnerId is declared at the top of this component, next to draftKey)
   const groupStorageKey = workspaceOwnerId ? `campaign:selectedGroups:${workspaceOwnerId}` : 'campaign:selectedGroups';
   const [groupIds, setGroupIds] = useState<string[]>(() => {
     const savedWithDraft = Array.isArray(initial.groupIds)
