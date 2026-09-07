@@ -601,6 +601,7 @@ function LogoBox({ title, url, disabled, aspect, onUpload, onRemove }: {
 export default function Profile() {
   const [params, setParams] = useSearchParams();
   const { activeWorkspace } = useWorkspace();
+  const { user } = useAuth();
   // Managers are only relevant for agencies with multiple brokers.
   const isAgency = (activeWorkspace?.account_type ?? '').toLowerCase() === 'agency';
   const tab = params.get('tab') ?? 'personal';
@@ -610,8 +611,57 @@ export default function Profile() {
     setParams(next, { replace: true });
   };
 
+  /* One-time nudge to train the AI brain, after the profile is saved
+     or when the new user moves off the personal tab for the first time. */
+  const brainKey = user?.id ? `rz-ai-brain-prompt:${user.id}` : null;
+  const [brainPrompt, setBrainPrompt] = useState(false);
+  const brainSeen = () => !brainKey || window.localStorage.getItem(brainKey) === '1';
+  const openBrainPrompt = () => {
+    if (brainSeen()) return;
+    if (brainKey) window.localStorage.setItem(brainKey, '1');
+    setBrainPrompt(true);
+  };
+
+  useEffect(() => {
+    const onSaved = () => openBrainPrompt();
+    window.addEventListener('realtyz:profile-saved', onSaved);
+    return () => window.removeEventListener('realtyz:profile-saved', onSaved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brainKey]);
+
+  const handleTabChange = (v: string) => {
+    setTab(v);
+    if (v !== 'personal' && v !== 'aibrain' && params.get('welcome') === '1') openBrainPrompt();
+  };
+
   return (
     <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4">
+      <Dialog open={brainPrompt} onOpenChange={setBrainPrompt}>
+        <DialogContent dir="rtl" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>נאמן את מוח ה-AI שלך</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              כדי שה-AI יעבוד בדיוק בסטייל שלך, הזינו מידע על הפרסונה, המטרות,
+              האסטרטגיה, סטייל הכתיבה וכללי התקשורת שלכם.
+            </p>
+            <p>
+              אפשר גם להיעזר ב-AI עצמו: הוא יבצע מחקר ויבנה את הפרסונות
+              המושלמות עבור סביבת העבודה, הנישה ומאגר הידע שלכם.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={() => setBrainPrompt(false)}>אחר כך</Button>
+            <Button
+              onClick={() => { setBrainPrompt(false); setTab('aibrain'); }}
+            >
+              לאימון מוח ה-AI
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
         <TabsList className={`grid w-full ${isAgency ? 'grid-cols-6' : 'grid-cols-5'} mb-[15px]`}>
           <TabsTrigger value="personal">פרופיל</TabsTrigger>
