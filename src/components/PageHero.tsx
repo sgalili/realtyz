@@ -11,14 +11,13 @@
  */
 import * as React from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, DownloadCloud, Loader2, Bot } from 'lucide-react';
-import { usePlatformSettings } from '@/hooks/usePlatformSettings';
+import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, DownloadCloud, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
-import { toast } from 'sonner';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import { BrightDataHeroPill } from '@/components/BrightDataHeroPill';
+import { AiResponseToggle } from '@/components/AiResponseToggle';
 // CreditBalancePill moved to /billing (Packages & Payments page).
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -188,41 +187,6 @@ function CampaignsHeroAddButton() {
 
 
 
-function InboxAutopilotToggle() {
-  const { settings, update } = usePlatformSettings();
-  const on = settings.enable_ai_autopilot === true;
-  const toggle = () => {
-    update({ enable_ai_autopilot: !on }).catch(() => {
-      toast.error('שמירת מצב המענה האוטומטי נכשלה');
-    });
-  };
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={toggle}
-      dir="ltr"
-      title={on ? 'AI Autopilot פועל' : 'AI Autopilot כבוי'}
-      aria-label="AI Autopilot"
-      className={cn(
-        'relative inline-flex h-7 w-14 shrink-0 items-center rounded-full border border-white/30 transition-colors',
-      )}
-      style={{ backgroundColor: on ? '#10b981' : 'rgba(255,255,255,0.15)' }}
-    >
-      <span
-        className={cn(
-          'inline-flex h-6 w-6 items-center justify-center rounded-full shadow transition-transform',
-          on ? 'translate-x-[30px]' : 'translate-x-[2px]'
-        )}
-        style={{ backgroundColor: on ? '#059669' : '#ffffff', color: on ? '#ffffff' : '#64748b' }}
-      >
-        <Bot className="h-4 w-4" strokeWidth={2.5} />
-      </span>
-
-    </button>
-  );
-}
 
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
@@ -318,7 +282,7 @@ export function PageHero() {
         className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6"
         style={{ minHeight: '65px', paddingTop: '10px', paddingBottom: '10px' }}
       >
-        {/* Visual right (RTL flex start): Burger / nav toggle + optional history */}
+        {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
         <div className="flex items-center gap-1" style={{ marginRight: '-15px' }}>
           <SidebarTrigger
             className="h-10 w-10 text-white hover:bg-white/10 hover:text-white [&_svg]:!h-6 [&_svg]:!w-6"
@@ -326,6 +290,8 @@ export function PageHero() {
           >
             <Menu className="h-6 w-6" />
           </SidebarTrigger>
+          {(location.pathname.startsWith('/campaigns') ||
+            location.pathname.startsWith('/inbox')) && <AiResponseToggle />}
           {/* Live Bright Data wallet balance — owners / super admins only. */}
           {canSeeBalance && <BrightDataHeroPill />}
         </div>
@@ -339,7 +305,6 @@ export function PageHero() {
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
-          {location.pathname.startsWith('/inbox') && <InboxAutopilotToggle />}
           {location.pathname.startsWith('/campaigns') && <CampaignsHeroAddButton />}
           {isPropertyDetail && (
             <Button
