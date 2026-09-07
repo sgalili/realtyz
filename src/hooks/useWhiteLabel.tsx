@@ -85,10 +85,15 @@ function applyTheme(s: WhiteLabelSettings | null) {
  */
 const BRAND_CACHE_KEY = 'realtyz_brand_cache';
 
+/**
+ * Branding cache is STRICTLY per workspace. We never fall back to the last
+ * workspace's cache, so a workspace can never briefly flash another
+ * workspace's logo while its own row loads.
+ */
 function readBrandCache(ownerId: string | null): WhiteLabelSettings | null {
+  if (!ownerId) return null;
   try {
-    const raw = localStorage.getItem(`${BRAND_CACHE_KEY}:${ownerId ?? 'last'}`)
-      ?? localStorage.getItem(`${BRAND_CACHE_KEY}:last`);
+    const raw = localStorage.getItem(`${BRAND_CACHE_KEY}:${ownerId}`);
     return raw ? (JSON.parse(raw) as WhiteLabelSettings) : null;
   } catch {
     return null;
@@ -97,10 +102,9 @@ function readBrandCache(ownerId: string | null): WhiteLabelSettings | null {
 
 function writeBrandCache(ownerId: string | null, row: WhiteLabelSettings | null) {
   try {
-    if (!row) return;
-    const payload = JSON.stringify(row);
-    if (ownerId) localStorage.setItem(`${BRAND_CACHE_KEY}:${ownerId}`, payload);
-    localStorage.setItem(`${BRAND_CACHE_KEY}:last`, payload);
+    if (!ownerId) return;
+    if (!row) { localStorage.removeItem(`${BRAND_CACHE_KEY}:${ownerId}`); return; }
+    localStorage.setItem(`${BRAND_CACHE_KEY}:${ownerId}`, JSON.stringify(row));
   } catch { /* storage unavailable */ }
 }
 
@@ -110,6 +114,7 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<WhiteLabelSettings | null>(initial);
   const [loading, setLoading] = useState(!initial);
   if (initial) applyTheme(initial);
+
 
   const load = useCallback(async () => {
     const cached = readBrandCache(activeWorkspaceId);
@@ -140,17 +145,12 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
           hide_kalpiz_branding: false,
         };
       }
-      if (!row) {
-        const { data: any } = await supabase
-          .from('white_label_settings')
-          .select('*')
-          .order('updated_at', { ascending: false })
-          .limit(1);
-        row = any?.[0] ?? null;
-      }
+      // NO global fallback: a workspace without branding keeps the default
+      // Realtyz identity rather than borrowing another workspace's logo.
       setSettings(row);
       applyTheme(row);
-      writeBrandCache(activeWorkspaceId, row);
+      writeBrandCache(activeWorkspaceId ?? row?.user_id ?? null, row);
+
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[white-label] load failed', e);

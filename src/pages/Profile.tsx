@@ -439,53 +439,79 @@ function WorkspaceTab() {
 
   const onLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, kind: 'square' | 'landscape') => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file || !user?.id) return;
     if (!isOwner) { toast.error('רק בעל החשבון יכול לעדכן את לוגו המשרד'); return; }
+    if (!file.type.startsWith('image/')) { toast.error('יש לבחור קובץ תמונה (PNG, JPG, SVG או WEBP)'); return; }
+    if (file.size === 0) { toast.error('הקובץ ריק – נסו לבחור תמונה אחרת'); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error('הקובץ גדול מדי (מקסימום 5MB)'); return; }
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const extFromName = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+      const extFromType = (file.type.split('/')[1] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const ext = extFromName || extFromType || 'png';
       const path = `${user.id}/${kind}-logo-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('agency-logos').upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw upErr;
+
+      const { error: upErr } = await supabase.storage
+        .from('agency-logos')
+        .upload(path, file, { upsert: true, contentType: file.type || undefined, cacheControl: '3600' });
+      if (upErr) throw new Error(`העלאת הקובץ נכשלה: ${upErr.message}`);
+
       const { data: pub } = supabase.storage.from('agency-logos').getPublicUrl(path);
-      if (kind === 'square') setLogoUrl(pub.publicUrl);
-      else setLandscapeLogoUrl(pub.publicUrl);
+      const publicUrl = typeof pub?.publicUrl === 'string' ? pub.publicUrl : '';
+      if (!publicUrl.startsWith('http')) throw new Error('לא הצלחנו לקבל כתובת ציבורית לתמונה');
+
+      const nextSquare = kind === 'square' ? publicUrl : (logoUrl || null);
+      const nextLandscape = kind === 'landscape' ? publicUrl : (landscapeLogoUrl || null);
+
       const { error: wlErr } = await (supabase as any)
         .from('white_label_settings')
         .upsert({
           user_id: user.id,
           agency_name: agencyName || null,
-          logo_url: kind === 'square' ? pub.publicUrl : logoUrl || null,
-          landscape_logo_url: kind === 'landscape' ? pub.publicUrl : landscapeLogoUrl || null,
+          logo_url: nextSquare,
+          landscape_logo_url: nextLandscape,
         } as any, { onConflict: 'user_id' });
-      if (wlErr) throw wlErr;
-      if (kind === 'square') { try { window.localStorage.setItem(LOGO_STORAGE_KEY, pub.publicUrl); } catch {} }
+      if (wlErr) throw new Error(`שמירת הלוגו נכשלה: ${wlErr.message}`);
+
+      if (kind === 'square') setLogoUrl(publicUrl); else setLandscapeLogoUrl(publicUrl);
+      if (kind === 'square') { try { window.localStorage.setItem(LOGO_STORAGE_KEY, publicUrl); } catch {} }
       await refreshBrand();
       toast.success('הלוגו הועלה ושותף לכל חברי המשרד');
     } catch (err: any) {
-      toast.error(err?.message || 'שגיאה בהעלאת הלוגו');
+      toast.error('שגיאה בהעלאת הלוגו', { description: err?.message || 'נסו שוב או בחרו קובץ אחר' });
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   };
 
+
   const removeLogo = async (kind: 'square' | 'landscape') => {
     if (!isOwner || !user?.id) return;
+    const prevSquare = logoUrl;
+    const prevLandscape = landscapeLogoUrl;
     if (kind === 'square') setLogoUrl('');
     else setLandscapeLogoUrl('');
-    await (supabase as any)
-      .from('white_label_settings')
-      .upsert({
-        user_id: user.id,
-        logo_url: kind === 'square' ? null : logoUrl || null,
-        landscape_logo_url: kind === 'landscape' ? null : landscapeLogoUrl || null,
-      } as any, { onConflict: 'user_id' });
-    if (kind === 'square') { try { window.localStorage.removeItem(LOGO_STORAGE_KEY); } catch {} }
-    await refreshBrand();
-    toast.success('הלוגו הוסר');
+    try {
+      const { error } = await (supabase as any)
+        .from('white_label_settings')
+        .upsert({
+          user_id: user.id,
+          agency_name: agencyName || null,
+          logo_url: kind === 'square' ? null : prevSquare || null,
+          landscape_logo_url: kind === 'landscape' ? null : prevLandscape || null,
+        } as any, { onConflict: 'user_id' });
+      if (error) throw error;
+      if (kind === 'square') { try { window.localStorage.removeItem(LOGO_STORAGE_KEY); } catch {} }
+      await refreshBrand();
+      toast.success('הלוגו הוסר');
+    } catch (err: any) {
+      if (kind === 'square') setLogoUrl(prevSquare); else setLandscapeLogoUrl(prevLandscape);
+      toast.error('הסרת הלוגו נכשלה', { description: err?.message || 'נסו שוב' });
+    }
   };
+
+
 
   const save = async () => {
     if (!isOwner || !user?.id) { toast.error('רק בעל החשבון יכול לשמור את פרטי המשרד'); return; }
