@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { resolveWorkspaceIdentity } from '@/lib/workspaceIdentity';
+import realtyzLogo from '@/assets/realtyz-logo.png';
+
 
 interface BrandMarkProps {
   className?: string;
@@ -43,13 +45,24 @@ export function BrandMark({ className = '', to = '/', fallbackLabel = 'Realtyz A
       aria-label={`${labelToShow || 'Home'} - דף הבית`}
       className={`realtyz-logo inline-flex items-center gap-2 ${className}`}
     >
-      {logoUrl && (
+      {/* Office logo when one is uploaded, otherwise the default Realtyz AI logo.
+          A personal profile picture is never used here. */}
+      {logoUrl ? (
         <img
           src={logoUrl}
           alt={agencyName ?? 'Agency logo'}
           className="h-7 w-auto max-w-[140px] object-contain"
           loading="eager"
         />
+      ) : (
+        !hideRealtyz && (
+          <img
+            src={realtyzLogo}
+            alt="Realtyz AI"
+            className="h-7 w-auto max-w-[140px] object-contain"
+            loading="eager"
+          />
+        )
       )}
       {labelToShow && <span className="font-bold tracking-tight">{labelToShow}</span>}
     </Link>
