@@ -482,9 +482,22 @@ Deno.serve(async (req) => {
     if (body?.action === "debug_post") {
       const postId = String(body?.post_id ?? "").trim();
       if (!postId || !page) return json({ error: "missing post_id or page" }, 400);
-      const r = await graph(`/${postId}?fields=id,object_id,created_time,from,message&access_token=${encodeURIComponent(page.token)}`);
-      return json({ ok: r.ok, status: r.status, payload: r.payload });
+      const pageRead = await graph(`/${postId}?fields=id,object_id,created_time,from,message&access_token=${encodeURIComponent(page.token)}`);
+      const { data: pc } = await db.from("fb_personal_connections").select("access_token, scopes").eq("workspace_owner_id", ownerId).maybeSingle();
+      let userRead: any = null;
+      let userComment: any = null;
+      if (pc?.access_token) {
+        userRead = await graph(`/${postId}?fields=id,object_id,created_time,from,message&access_token=${encodeURIComponent(pc.access_token)}`);
+        const form = new URLSearchParams({ message: "בדיקת תגובה מטוקן משתמש", access_token: pc.access_token });
+        userComment = await graph(`/${postId}/comments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+          body: form.toString(),
+        });
+      }
+      return json({ ok: pageRead.ok, pageRead: pageRead.payload, userRead: userRead?.payload, userComment: userComment?.payload, userTokenExists: !!pc?.access_token, scopes: pc?.scopes });
     }
+
 
     // ---- Delete a live post ------------------------------------------------
     if (req.method === "DELETE" || body?.action === "delete") {
