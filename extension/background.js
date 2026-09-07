@@ -276,6 +276,8 @@ async function poll() {
   if (running) return;
   running = true;
   try {
+    // The local browser queue runs regardless of Realtyz pairing.
+    await drainQueue();
     const token = await getToken();
     if (!token) {
       await setState({ paired: false, last_error: 'התוסף לא מחובר לחשבון Realtyz' });
@@ -298,8 +300,6 @@ async function poll() {
     }
 
     await setState({ paired: true, last_poll_at: Date.now(), last_error: null });
-
-    await drainQueue();
 
     const jobs = Array.isArray(json.jobs) ? json.jobs : [];
     for (const job of jobs) {

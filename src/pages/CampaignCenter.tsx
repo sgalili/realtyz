@@ -2998,6 +2998,38 @@ const ConfirmDispatchDialog = ({
             } catch { /* keep the base text for this group */ }
           }));
         }
+        // Group posts never touch Meta's Graph API (App Review blocks group
+        // publishing): they are queued locally and the Realtyz browser
+        // extension posts them from the broker's own Facebook session.
+        let queuedGroups = 0;
+        if (channel.id === 'facebook' && apiGroupIds.length > 0) {
+          queuedGroups = enqueueExtensionPosts({
+            text: bodyToPublish,
+            images: mediaUrls,
+            link: null,
+            firstComment: firstComment || null,
+            scheduledAt: scheduledAt,
+            groups: groupIds.filter((id) => !!id).map((id) => {
+              const bare = String(id).replace(/^ext:/, '');
+              return { group_id: bare, group_name: bare, group_url: `https://www.facebook.com/groups/${bare}` };
+            }),
+          });
+          if (queuedGroups > 0) {
+            toast.success(
+              scheduledAt
+                ? `${queuedGroups} פוסטים נוספו לתור הפרסום האוטומטי של התוסף · ${new Date(scheduledAt).toLocaleString('he-IL')}`
+                : `${queuedGroups} פוסטים נוספו לתור הפרסום האוטומטי של התוסף בדפדפן`,
+            );
+          }
+        }
+
+        // Nothing left for the Graph API when only groups were targeted.
+        if (queuedGroups > 0 && publishToPage === false) {
+          onConfirmed();
+          onClose();
+          return;
+        }
+
         const results = [] as any[];
 
         for (const target of targets) {
@@ -3024,7 +3056,7 @@ const ConfirmDispatchDialog = ({
               media_urls: mediaUrls,
               scheduled_at: scheduledAt,
               workspace_owner_id: ownerScope,
-              group_ids: apiGroupIds,
+              group_ids: [],
               publish_to_page: publishToPage !== false,
               group_texts: groupTexts,
 
