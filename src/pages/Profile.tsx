@@ -653,6 +653,26 @@ export default function Profile() {
     setBrainPrompt(true);
   };
 
+  /* Google OAuth callback result: surface success / failure as a toast. */
+  useEffect(() => {
+    const g = params.get('google');
+    if (!g) return;
+    if (g === 'connected') {
+      const acc = params.get('google_account');
+      toast.success('חיבור Google הושלם', { description: acc || undefined });
+    } else {
+      toast.error('חיבור Google נכשל', {
+        description: params.get('google_reason') || 'נסו להתחבר שוב',
+      });
+    }
+    const next = new URLSearchParams(params);
+    next.delete('google');
+    next.delete('google_reason');
+    next.delete('google_account');
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.get('google')]);
+
   useEffect(() => {
     const onSaved = () => openBrainPrompt();
     window.addEventListener('realtyz:profile-saved', onSaved);
