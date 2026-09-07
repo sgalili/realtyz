@@ -33,11 +33,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import {
   enqueueExtensionPosts,
+  enqueuePageFirstComment,
   useExtensionQueue,
   queueStatusForText,
   isLegacyMetaGroupError,
   resetQueueEntriesForText,
 } from '@/lib/extensionGroupBridge';
+
 import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
