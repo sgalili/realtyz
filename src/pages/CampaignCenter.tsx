@@ -1866,7 +1866,7 @@ const InlineComposer = ({
   // Messenger link, even after regeneration, draft restore or re-toggle.
   const stripAllWaLinkLines = () => {
     setFirstComment((curr) => (curr || '')
-      .replace(/\n*[^\n]*(?:wa\.me\/\d+|realtyz\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
+      .replace(/\n*[^\n]*(?:wa\.me\/\d+|whatsapp:\/\/send|realtyz\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
       .replace(/\n{3,}/g, '\n\n')
       .replace(/\s+$/, ''));
   };
@@ -1927,7 +1927,7 @@ const InlineComposer = ({
       // The post itself must always carry a way to reach us on WhatsApp.
       setBody((curr) => {
         const text = (curr || '');
-        if (/wa\.me\/\d+|realtyz\.co\.il\/r\/[A-Za-z0-9]+/i.test(text)) return text;
+        if (/wa\.me\/\d+|whatsapp:\/\/send|realtyz\.co\.il\/r\/[A-Za-z0-9]+/i.test(text)) return text;
         const trimmed = text.replace(/\s+$/, '');
         return trimmed ? `${trimmed}\n\n${line}` : line;
       });
