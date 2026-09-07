@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+import { safeChannel as _sc } from '@/lib/safeRealtime';
 
 /**
  * Subscribes to Supabase Realtime changes on a table and invalidates

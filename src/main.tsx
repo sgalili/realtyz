@@ -31,7 +31,18 @@ function maybeReloadForStaleChunk(err: unknown) {
   window.location.reload();
 }
 window.addEventListener("error", (e) => maybeReloadForStaleChunk(e.error ?? e.message));
-window.addEventListener("unhandledrejection", (e) => maybeReloadForStaleChunk(e.reason));
+window.addEventListener("unhandledrejection", (e) => {
+  maybeReloadForStaleChunk(e.reason);
+  // Auth/realtime recovery rejections (token refresh races, offline tabs) are
+  // transient: log them instead of letting them surface as fatal app errors.
+  const msg = String((e.reason as any)?.message ?? e.reason ?? "");
+  if (/_recoverAndRefresh|_notifyAllSubscribers|AuthApiError|refresh_token|Failed to fetch/i.test(msg)) {
+    // eslint-disable-next-line no-console
+    console.warn("[auth] transient recovery error swallowed:", msg);
+    e.preventDefault();
+  }
+});
+
 
 const rootEl = document.getElementById("root")!;
 
