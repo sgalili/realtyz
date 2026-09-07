@@ -48,6 +48,8 @@
   setInterval(deliver, 3000);
 
   window.addEventListener('message', (e) => {
+
+
     const d = e.data;
     if (!d || typeof d !== 'object') return;
     if (d.type === 'RZ_FB_GROUPS_REQUEST') deliver();

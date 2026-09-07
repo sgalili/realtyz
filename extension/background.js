@@ -139,7 +139,57 @@ async function runJob(token, job) {
   }
 }
 
+async function runPageFirstComment(token, entry) {
+  const postUrl = String(entry.postUrl || entry.post_url || '').trim();
+  const message = String(entry.firstComment || entry.first_comment || '').trim();
+  if (!postUrl) {
+    await report(token, { id: entry.id, local: true }, false, 'כתובת הפוסט חסרה');
+    return false;
+  }
+  if (!message) {
+    await report(token, { id: entry.id, local: true }, false, 'תוכן התגובה הראשונה ריק');
+    return false;
+  }
+
+  let tabId = null;
+  try {
+    const tab = await chrome.tabs.create({ url: postUrl, active: false });
+    tabId = tab.id;
+    const loaded = await waitForTabLoad(tabId);
+    if (!loaded) {
+      await report(token, { id: entry.id, local: true }, false, 'עמוד הפוסט לא נטען בזמן');
+      return false;
+    }
+    await sleep(2500);
+
+    const result = await sendToTab(
+      tabId,
+      {
+        source: 'realtyz-extension',
+        type: 'RZ_POST_FIRST_COMMENT',
+        job: {
+          id: entry.id,
+          post_url: postUrl,
+          message,
+        },
+      },
+      JOB_TIMEOUT_MS,
+    );
+
+    await report(token, { id: entry.id, local: true }, result.ok === true, result.reason || null, result.post_url || postUrl);
+    return result.ok === true;
+  } catch (e) {
+    await report(token, { id: entry.id, local: true }, false, String((e && e.message) || e));
+    return false;
+  } finally {
+    if (tabId != null) {
+      try { await chrome.tabs.remove(tabId); } catch (e) { /* noop */ }
+    }
+  }
+}
+
 async function report(token, job, ok, reason, postUrl) {
+
   // Local (app-triggered) jobs have no backend queue row — skip the report call.
   if (token && !job.local) {
     await api('ext-queue-report', {

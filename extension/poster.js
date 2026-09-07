@@ -234,11 +234,83 @@
     };
   }
 
+  async function postFirstCommentToPage(job) {
+    if (isLoggedOut()) return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' };
+
+    const postUrl = String(job.post_url || '').trim();
+    const postId = String(job.post_id || '').trim();
+    const message = String(job.message || '').trim();
+    if (!message) return { ok: false, reason: 'תוכן התגובה הראשונה ריק' };
+
+    // Try to locate the post article by permalink or post id.
+    let article = await waitFor(() => {
+      const articles = [...document.querySelectorAll('div[role="article"]')];
+      if (postUrl) {
+        const byHref = articles.find((a) =>
+          [...a.querySelectorAll('a[href]')].some((x) => {
+            const h = x.getAttribute('href') || '';
+            return h === postUrl || h.includes(postUrl.replace(/^https:\/\/www\.facebook\.com\//, ''));
+          }),
+        );
+        if (byHref) return byHref;
+      }
+      if (postId) {
+        const byId = articles.find((a) =>
+          [...a.querySelectorAll('a[href]')].some((x) => {
+            const h = x.getAttribute('href') || '';
+            return h.includes(postId);
+          }),
+        );
+        if (byId) return byId;
+      }
+      return null;
+    }, 25000, 800);
+
+    if (!article) {
+      // Fallback: scroll once to load more feed items.
+      window.scrollBy({ top: 800, behavior: 'smooth' });
+      await sleep(1500);
+      article = await waitFor(() => {
+        const articles = [...document.querySelectorAll('div[role="article"]')];
+        if (postUrl) {
+          return articles.find((a) =>
+            [...a.querySelectorAll('a[href]')].some((x) => {
+              const h = x.getAttribute('href') || '';
+              return h === postUrl || h.includes(postUrl.replace(/^https:\/\/www\.facebook\.com\//, ''));
+            }),
+          ) || null;
+        }
+        if (postId) {
+          return articles.find((a) =>
+            [...a.querySelectorAll('a[href]')].some((x) => (x.getAttribute('href') || '').includes(postId)),
+          ) || null;
+        }
+        return null;
+      }, 15000, 800);
+    }
+
+    if (!article) return { ok: false, reason: 'הפוסט לא נמצא בעמוד — נסו לרענן את העמוד' };
+
+    const err = await addFirstComment(article, '', message);
+    if (err) return { ok: false, reason: err };
+    return { ok: true, post_url: postUrl };
+  }
+
+
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (!msg || msg.source !== 'realtyz-extension' || msg.type !== 'RZ_POST_TO_GROUP') return;
-    postToGroup(msg.job || {})
-      .then((res) => sendResponse(res))
-      .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
-    return true;
+    if (!msg || msg.source !== 'realtyz-extension') return;
+    if (msg.type === 'RZ_POST_TO_GROUP') {
+      postToGroup(msg.job || {})
+        .then((res) => sendResponse(res))
+        .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
+      return true;
+    }
+    if (msg.type === 'RZ_POST_FIRST_COMMENT') {
+      postFirstCommentToPage(msg.job || {})
+        .then((res) => sendResponse(res))
+        .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
+      return true;
+    }
   });
 })();
+
