@@ -208,7 +208,10 @@ export function ProductTour() {
         // non-fatal
       }
     }
-    if (navigateTo) navigate(navigateTo);
+    // Best-effort: pull the owner's WhatsApp photo as their profile picture.
+    void supabase.functions.invoke('sync-owner-wa-avatar').catch(() => {});
+    // New signups land on their profile to complete their details.
+    navigate(navigateTo ?? '/profile?welcome=1');
   };
 
   const step = STEPS[index];
