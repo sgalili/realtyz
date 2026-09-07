@@ -324,7 +324,62 @@ export default function KnowledgeBase() {
     onError: (e: Error) => { if (e.message !== 'demo-blocked') toast.error(e.message); },
   });
 
-  const tabs: { id: Tab; label: string; icon: typeof FileText }[] = [
+  /* ── Gemini workspace ── */
+  const [geminiPrompt, setGeminiPrompt] = useState('');
+  const [geminiOutput, setGeminiOutput] = useState('');
+  const [geminiSources, setGeminiSources] = useState<string[]>([]);
+  const [geminiTitle, setGeminiTitle] = useState('');
+  const [geminiMode, setGeminiMode] = useState<'answer' | 'document'>('answer');
+  const [geminiLoading, setGeminiLoading] = useState(false);
+  const [savingGemini, setSavingGemini] = useState(false);
+
+  const runGemini = async () => {
+    const prompt = geminiPrompt.trim();
+    if (!prompt || geminiLoading) return;
+    setGeminiLoading(true);
+    setGeminiOutput('');
+    setGeminiSources([]);
+    try {
+      const { data, error } = await supabase.functions.invoke('kb-gemini-studio', {
+        body: { prompt, mode: geminiMode },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setGeminiOutput((data as any)?.content ?? '');
+      setGeminiSources(((data as any)?.sources ?? []).slice(0, 12));
+      setGeminiTitle((data as any)?.title || prompt.slice(0, 60));
+    } catch (e: any) {
+      toast.error(e?.message ?? 'שגיאה בהרצת Gemini');
+    } finally {
+      setGeminiLoading(false);
+    }
+  };
+
+  const saveGeminiToKb = async () => {
+    if (!geminiOutput.trim()) return;
+    if (blockDemoAction('add-knowledge-text')) return;
+    setSavingGemini(true);
+    try {
+      const { error } = await supabase.functions.invoke('kb-ingest', {
+        body: {
+          title: (geminiTitle.trim() || `Gemini · ${new Date().toLocaleString('he-IL')}`).slice(0, 120),
+          raw_text: geminiOutput.trim(),
+          source_type: 'text',
+          source_metadata: { generated_by: 'gemini', prompt: geminiPrompt.trim().slice(0, 500) },
+        },
+      });
+      if (error) throw error;
+      toast.success('הקובץ נשמר במאגר הידע');
+      qc.invalidateQueries({ queryKey: ['kb-documents'] });
+    } catch (e: any) {
+      toast.error(e?.message ?? 'שגיאה בשמירה');
+    } finally {
+      setSavingGemini(false);
+    }
+  };
+
+  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'ai', label: 'AI', icon: GeminiIcon },
     { id: 'files', label: 'קבצים', icon: FileText },
     { id: 'text', label: 'טקסט', icon: Type },
     { id: 'link', label: 'קישור', icon: LinkIcon },
