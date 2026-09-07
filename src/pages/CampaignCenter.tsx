@@ -20,7 +20,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square, Users,
-  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone, History } from 'lucide-react';
+  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone, History, Save } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -1282,51 +1282,52 @@ const InlineComposer = ({
 
 
 
-  // Auto-save: persist edits + attachments + selected property to ai_content_logs (debounced).
-  // Creates a new row on first edit if no logId yet; otherwise updates the active row.
-  useEffect(() => {
-    if (!body.trim() && attachments.length === 0) return;
+  // Manual draft save only — nothing is written to ai_content_logs in the
+  // background any more. The user must press "שמור טיוטה".
+  const saveDraftNow = async () => {
+    if (!body.trim() && attachments.length === 0) {
+      toast.info('אין תוכן לשמירה');
+      return;
+    }
     setSaveState('saving');
-    const t = setTimeout(async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const payload = {
-          generated_text: body,
-
-          // Persist only durable https URLs — local blob: previews die on reload
-          // and would render as empty file chips after restoring from history.
-          media_urls: attachments
-            .filter((a) => a.url && !a.url.startsWith('blob:'))
-            .map((a) => ({ name: a.name, kind: a.kind, url: a.url })),
-          listing_id: selectedListingId,
-          updated_at: new Date().toISOString(),
-        };
-        if (logId) {
-          await supabase.from('ai_content_logs').update(payload).eq('id', logId);
-        } else {
-          const { data, error } = await supabase
-            .from('ai_content_logs')
-            .insert({
-              topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
-              platform: channel.id,
-              created_by: user.id,
-              ...payload,
-            })
-            .select('id')
-            .single();
-          if (error) throw error;
-          if (data?.id) setLogId(data.id);
-        }
-        setSaveState('saved');
-        setHistoryRefresh((n) => n + 1);
-      } catch (e) {
-        console.warn('[CampaignCenter] autosave failed', e);
-        setSaveState('idle');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setSaveState('idle'); return; }
+      const payload = {
+        generated_text: body,
+        // Persist only durable https URLs — local blob: previews die on reload
+        // and would render as empty file chips after restoring from history.
+        media_urls: attachments
+          .filter((a) => a.url && !a.url.startsWith('blob:'))
+          .map((a) => ({ name: a.name, kind: a.kind, url: a.url })),
+        listing_id: selectedListingId,
+        updated_at: new Date().toISOString(),
+      };
+      if (logId) {
+        await supabase.from('ai_content_logs').update(payload).eq('id', logId);
+      } else {
+        const { data, error } = await supabase
+          .from('ai_content_logs')
+          .insert({
+            topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
+            platform: channel.id,
+            created_by: user.id,
+            ...payload,
+          })
+          .select('id')
+          .single();
+        if (error) throw error;
+        if (data?.id) setLogId(data.id);
       }
-    }, 1200);
-    return () => clearTimeout(t);
-  }, [body, attachments, selectedListingId, logId, channel.id]);
+      setSaveState('saved');
+      setHistoryRefresh((n) => n + 1);
+      toast.success('הטיוטה נשמרה');
+    } catch (e) {
+      console.warn('[CampaignCenter] draft save failed', e);
+      setSaveState('idle');
+      toast.error('שמירת הטיוטה נכשלה');
+    }
+  };
 
   // Load the full live property list on mount and refresh when the picker opens.
   // Search is client-side so the dropdown always shows every listing by default.
@@ -1563,20 +1564,11 @@ const InlineComposer = ({
         const durableMedia = nextAttachments
           .filter((a) => a.url && !a.url.startsWith('blob:'))
           .map((a) => ({ name: a.name, kind: a.kind, url: a.url }));
+        // Only refresh an EXISTING manually saved draft — never create one.
         if (logId) {
           await supabase.from('ai_content_logs')
             .update({ media_urls: durableMedia, updated_at: new Date().toISOString() })
             .eq('id', logId);
-        } else {
-          const { data: inserted } = await supabase.from('ai_content_logs').insert({
-            topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
-            generated_text: body,
-            platform: channel.id,
-            created_by: user.id,
-            media_urls: durableMedia,
-            listing_id: selectedListingId,
-          }).select('id').single();
-          if (inserted?.id) setLogId(inserted.id);
         }
       } catch (persistErr) {
         console.warn('[CampaignCenter] immediate media persist failed', persistErr);
@@ -1708,22 +1700,8 @@ const InlineComposer = ({
           void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot);
         } catch {}
 
-        // so subsequent manual edits + media updates flow into the same record.
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          const { data: inserted } = await supabase.from('ai_content_logs').insert({
-            topic: topic.slice(0, 500),
-            generated_text: text,
-            platform: channel.id,
-            created_by: user?.id ?? null,
-            media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
-            listing_id: selectedListingId,
-          }).select('id').single();
-          if (inserted?.id) setLogId(inserted.id);
-          setHistoryRefresh((n) => n + 1);
-        } catch (logErr) {
-          console.warn('[CampaignCenter] history log failed', logErr);
-        }
+        // No DB draft row is created here — drafts are saved only when the
+        // operator presses "שמור טיוטה".
       } else toast.info('לא התקבל טקסט');
       // Auto-generate a first comment in Udi's signature style.
       if (text && !ctrl.signal.aborted && !isGenerationStopped()) {
@@ -2517,6 +2495,21 @@ const InlineComposer = ({
                 {calendarLocked ? `פרסם ב-${scheduledLabel}` : (mode === 'scheduled' ? 'פרסם בזמן שנבחר' : 'פרסם עכשיו')}
               </button>
               <div className="flex items-stretch gap-2">
+              <button
+                type="button"
+                onClick={() => { void saveDraftNow(); }}
+                disabled={!hasBody || saveState === 'saving'}
+                title="שמור טיוטה"
+                aria-label="שמור טיוטה"
+                className={cn(
+                  'inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition',
+                  hasBody
+                    ? 'bg-card text-[hsl(217,80%,18%)] border-[hsl(217,80%,18%)]/30 hover:bg-[hsl(217,80%,18%)]/5 shadow-sm'
+                    : 'bg-muted text-muted-foreground/80 border-transparent cursor-not-allowed',
+                )}
+              >
+                {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              </button>
               <button
                 type="button"
                 onClick={() => setScheduleDialogOpen(true)}
@@ -6111,7 +6104,7 @@ const CampaignCenter = () => {
   // directly on the "פוסטים עתידיים" tab with fresh rows.
   const [historyTab, setHistoryTab] = useState<FeedSubTab>('published');
   const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
-  const [historyGroupMeta, setHistoryGroupMeta] = useState<Record<string, { name: string; icon: string | null }>>({});
+  const [historyGroupMeta, setHistoryGroupMeta] = useState<Record<string, { name: string; icon: string | null; memberCount?: number | null; url?: string | null }>>({});
   const [editSeriesRow, setEditSeriesRow] = useState<any | null>(null);
 
 
@@ -6275,6 +6268,8 @@ const CampaignCenter = () => {
   const [alsoEmail, setAlsoEmail] = useState(false);
   // Bulk selection + confirmation for permanently deleting saved drafts.
   const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([]);
+  // Per-card selection circles appear only after the master "בחר הכל" is used.
+  const [draftSelectMode, setDraftSelectMode] = useState(false);
   const [bulkDeleteDraftsOpen, setBulkDeleteDraftsOpen] = useState(false);
   const [bulkDeletingDrafts, setBulkDeletingDrafts] = useState(false);
   const toggleDraftSelected = (id: string) =>
@@ -6289,6 +6284,7 @@ const CampaignCenter = () => {
     if (error) { toast.error('מחיקת הטיוטות נכשלה'); setHistoryRefreshTick((t) => t + 1); return; }
     setCampaignDraftRows((prev) => prev.filter((x) => !ids.includes(x.id)));
     setSelectedDraftIds([]);
+    setDraftSelectMode(false);
     toast.success(`${ids.length} טיוטות נמחקו`);
   };
 
@@ -6370,17 +6366,22 @@ const CampaignCenter = () => {
         // No workspace filter: group rows may be imported under a different
         // workspace stamp, and a missing name would show as "קבוצה 1234".
         (supabase as any).from('fb_user_groups')
-          .select('group_id,group_name,group_icon')
+          .select('group_id,group_name,group_icon,group_url,member_count')
           .limit(2000),
       ]);
       if (!cancelled) {
         setCampaignHistoryRows([...(sentLogs ?? []), ...(futureLogs ?? [])]);
         setCampaignDraftRows(drafts ?? []);
-        const meta: Record<string, { name: string; icon: string | null }> = {};
+        const meta: Record<string, { name: string; icon: string | null; memberCount?: number | null; url?: string | null }> = {};
         (groups ?? []).forEach((g: any) => {
           const id = String(g?.group_id ?? '');
           if (!id) return;
-          const entry = { name: g.group_name || id, icon: g.group_icon ?? null };
+          const entry = {
+            name: g.group_name || id,
+            icon: g.group_icon ?? null,
+            memberCount: typeof g.member_count === 'number' ? g.member_count : null,
+            url: g.group_url ?? null,
+          };
           meta[id] = entry;
           // Index the bare id too — campaign_logs stores "ext:<id>"/"manual:<id>".
           meta[id.replace(/^(ext:|manual:)/, '')] = entry;
@@ -6864,8 +6865,12 @@ const CampaignCenter = () => {
         <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
           <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-semibold text-foreground">
             <Checkbox
-              checked={selectedDraftIds.length === campaignDraftRows.length && campaignDraftRows.length > 0}
-              onCheckedChange={(v) => setSelectedDraftIds(v === true ? campaignDraftRows.map((x) => x.id) : [])}
+              checked={draftSelectMode}
+              onCheckedChange={(v) => {
+                const on = v === true;
+                setDraftSelectMode(on);
+                setSelectedDraftIds(on ? campaignDraftRows.map((x) => x.id) : []);
+              }}
               aria-label="בחר את כל הטיוטות"
             />
             בחר הכל ({selectedDraftIds.length}/{campaignDraftRows.length})
@@ -6913,12 +6918,14 @@ const CampaignCenter = () => {
             dateLabel={new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}
             actions={
               <>
-                <Checkbox
-                  checked={selectedDraftIds.includes(r.id)}
-                  onCheckedChange={() => toggleDraftSelected(r.id)}
-                  aria-label="בחירת טיוטה למחיקה"
-                  className="shrink-0"
-                />
+                {draftSelectMode && (
+                  <Checkbox
+                    checked={selectedDraftIds.includes(r.id)}
+                    onCheckedChange={() => toggleDraftSelected(r.id)}
+                    aria-label="בחירת טיוטה למחיקה"
+                    className="shrink-0"
+                  />
+                )}
                 <Button
 
                   size="icon"
