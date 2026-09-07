@@ -82,6 +82,7 @@ export function ExtensionGroupSyncCard({
   const checkNow = async () => {
     if (checking) return;
     setChecking(true);
+    setOpen(false);
     try {
       refresh();
       let found: ExtensionGroup[] = [];
