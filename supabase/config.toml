@@ -5,6 +5,10 @@ project_id = "gvylyghwfysvydygqdtf"
     verify_jwt = false
   [functions.elevenlabs-call-webhook]
     verify_jwt = false
+  [functions.ext-queue-claim]
+    verify_jwt = false
+  [functions.ext-queue-report]
+    verify_jwt = false
   [functions.greenapi-webhook]
     verify_jwt = false
   [functions.greenapi-webhook-sync]
