@@ -197,7 +197,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
 
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (isMobile) setOpenMobile(false);
                   window.dispatchEvent(new Event('realtyz:start-tour'));
                 }}
