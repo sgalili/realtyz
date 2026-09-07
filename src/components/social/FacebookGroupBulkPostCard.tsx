@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { enqueueExtensionPosts } from '@/lib/extensionGroupBridge';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,7 +28,7 @@ type Result = { ok: boolean; reason?: string };
 /**
  * FacebookGroupBulkPostCard — write one property post (text + image + link)
  * and broadcast it to every selected Facebook group through the official
- * Graph API (fb-group-publish edge function), optionally generating a unique
+ * Realtyz browser extension (local rzPostQueue, never Meta Graph), optionally generating a unique
  * AI variation per group so Facebook's duplicate filters stay quiet.
  */
 export const FacebookGroupBulkPostCard = () => {
@@ -203,6 +204,9 @@ export const FacebookGroupBulkPostCard = () => {
     }
   };
 
+  // Group posts never touch Meta's Graph API: they are written to the local
+  // rzPostQueue and executed by the Realtyz browser extension from the
+  // broker's own Facebook session.
   const publish = async () => {
     if (!message.trim()) {
       toast.error('יש לכתוב תוכן לפוסט');
@@ -214,57 +218,39 @@ export const FacebookGroupBulkPostCard = () => {
     }
     setSending(true);
     setResults({});
-    let ok = 0;
-    let failed = 0;
     const ids = Array.from(selected);
+    const texts: Record<string, string> = {};
+    const targets: { group_id: string; group_name?: string; group_url?: string | null }[] = [];
     for (let i = 0; i < ids.length; i++) {
       const groupId = ids[i];
       const group = (groups ?? []).find((g) => g.group_id === groupId);
       setProgress(`${i + 1}/${ids.length} · ${group?.group_name ?? ''}`);
       try {
-        const text = aiVariation && group ? await variationFor(group, i + 1) : message.trim();
-        const { data, error } = await supabase.functions.invoke('fb-group-publish', {
-          body: {
-            group_id: groupId,
-            message: text,
-            link: link.trim() || undefined,
-            image_url: imageUrl.trim() || undefined,
-          },
-        });
-        if (error) throw error;
-        const res: any = data;
-        if (res?.ok) {
-          ok++;
-          setResults((p) => ({ ...p, [groupId]: { ok: true } }));
-          // Record the publication so the per-group counters and metric
-          // sync jobs can pick it up.
-          if (workspaceOwnerId) {
-            const { data: auth } = await supabase.auth.getUser();
-            await (supabase as any).from('campaign_logs').insert({
-              user_id: auth?.user?.id ?? workspaceOwnerId,
-              workspace_owner_id: workspaceOwnerId,
-              campaign_name: `קבוצת פייסבוק · ${group?.group_name ?? groupId}`,
-              channel: 'facebook',
-              status: 'sent',
-              message_body: text,
-              group_ids: [groupId],
-              provider_message_id: String(res?.post_id ?? ''),
-              sent_at: new Date().toISOString(),
-            });
-          }
-        } else {
-          failed++;
-          setResults((p) => ({ ...p, [groupId]: { ok: false, reason: res?.reason } }));
-        }
-      } catch (e: any) {
-        failed++;
-        setResults((p) => ({ ...p, [groupId]: { ok: false, reason: e?.message } }));
+        texts[groupId] = aiVariation && group ? await variationFor(group, i + 1) : message.trim();
+      } catch {
+        texts[groupId] = message.trim();
       }
+      targets.push({ group_id: groupId, group_name: group?.group_name ?? undefined, group_url: group?.group_url ?? null });
     }
+    const queued = enqueueExtensionPosts({
+      text: message.trim(),
+      texts,
+      groups: targets,
+      images: imageUrl.trim() ? [imageUrl.trim()] : [],
+      link: link.trim() || null,
+    });
+    const next: Record<string, { ok: boolean; reason?: string }> = {};
+    for (const id of ids) next[id] = queued > 0 ? { ok: true } : { ok: false, reason: 'לא ניתן היה להוסיף לתור התוסף' };
+    setResults(next);
     setSending(false);
     setProgress(null);
-    if (ok > 0) toast.success(`הפוסט פורסם ב-${ok} קבוצות`, { description: failed ? `${failed} נכשלו` : undefined });
-    else toast.error('הפרסום נכשל בכל הקבוצות הנבחרות');
+    if (queued > 0) {
+      toast.success(`${queued} פוסטים נוספו לתור הפרסום האוטומטי של התוסף בדפדפן`, {
+        description: 'ודא שתוסף Realtyz מותקן ופעיל בכרום ושאתה מחובר לפייסבוק.',
+      });
+    } else {
+      toast.error('לא נוספו פוסטים לתור התוסף');
+    }
   };
 
   return (

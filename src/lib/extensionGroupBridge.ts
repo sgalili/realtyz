@@ -236,6 +236,8 @@ export const writePostQueue = (queue: QueuedExtensionPost[]) => {
  */
 export const enqueueExtensionPosts = (input: {
   text: string;
+  /** Optional per-group phrasing ({ [group_id]: text }) to avoid duplicate-content filtering. */
+  texts?: Record<string, string>;
   groups: { group_id: string; group_name?: string; group_url?: string | null }[];
   images?: string[];
   link?: string | null;
@@ -250,9 +252,10 @@ export const enqueueExtensionPosts = (input: {
       const bare = String(g.group_id || "").replace(/^ext:/, "");
       const url = g.group_url || (bare ? `https://www.facebook.com/groups/${bare}` : "");
       if (!url) return null;
+      const override = input.texts?.[g.group_id] ?? input.texts?.[bare];
       return {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        text: input.text,
+        text: override && override.trim() ? override : input.text,
         groupUrl: url,
         groupName: g.group_name || bare,
         images: input.images ?? [],

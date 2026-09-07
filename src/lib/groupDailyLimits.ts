@@ -3,7 +3,7 @@
  *
  * Every Facebook group can carry a `max_posts_per_day` cap
  * (`fb_user_groups.max_posts_per_day`). The authoritative counter lives in
- * `fb_group_post_log` and is claimed server-side by `fb-group-publish` through
+ * `fb_group_post_log`; publishing itself happens only in the browser extension, via
  * the `claim_fb_group_post_slot()` RPC, so a group that reached its limit is
  * blocked until the next day even if something slips past the UI.
  *
