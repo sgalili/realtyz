@@ -364,6 +364,11 @@ SAAS MARKETING POST MODE (HARD OVERRIDE — highest priority):
 - Never write as a real-estate agent and never mention a brokerage licence, licence number, agent signature, years of brokerage experience, or any apartment/property being sold.
 - Never expose private CRM data, client names, lead names or phone numbers.
 - Close with a clear invitation to book a ~15 minute Zoom demo, phrased differently every time.
+- Open on the agent's raw pain in the FIRST line (manual grind, hot leads slipping through the cracks, hours lost in WhatsApp threads, deals missed on slow follow-up), then pivot to the software running marketing and follow-ups on autopilot so they only close deals.
+- Speak directly to the agent in second person. Aggressive about the bottleneck, never hypey, no filler.
+- ${saasAngle}
+- At most ONE emoji per line, used as a leading bullet on key lines. Two emojis on the same line = rejected.
+- Every regeneration must use a different hook, structure and CTA wording than any previous post.
 ` : "";
 
     const userPrompt = [
@@ -494,6 +499,24 @@ SAAS MARKETING POST MODE (HARD OVERRIDE — highest priority):
       content = content
         .split("\n")
         .filter((line) => !/רישיון\s*תיווך/.test(line))
+        .join("\n");
+    }
+    // HARD layout rule: at most ONE emoji per line, kept as a leading bullet.
+    {
+      const EMOJI_RE = /(?:\p{Extended_Pictographic}(?:\uFE0F)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F)?)*)/gu;
+      content = content
+        .split("\n")
+        .map((line) => {
+          const found = line.match(EMOJI_RE);
+          if (!found || found.length <= 1) return line;
+          const first = found[0];
+          let seen = false;
+          const stripped = line.replace(EMOJI_RE, (m) => {
+            if (!seen && m === first) { seen = true; return m; }
+            return "";
+          });
+          return stripped.replace(/[ \t]{2,}/g, " ").trimEnd();
+        })
         .join("\n");
     }
     content = content.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
