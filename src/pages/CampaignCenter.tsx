@@ -5220,6 +5220,33 @@ const PublishedFeed = ({
                     commentCount={typeof liveCount === 'number' ? liveCount : dbComments}
                     onLiveCountResolved={updateLiveCount}
                     refreshSignal={refreshSignals[r.id] ?? 0}
+                    headerActions={(() => {
+                      const isRefreshing = !!refreshingIds[r.id];
+                      const cooldownSecs = getCooldownSeconds(r.id);
+                      const onCooldown = !isRefreshing && cooldownSecs > 0;
+                      const label = isRefreshing
+                        ? 'מרענן…'
+                        : onCooldown
+                          ? `ממתין: ${formatCooldown(cooldownSecs)}`
+                          : 'רענן תגובות';
+                      return (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          title={label}
+                          aria-label={label}
+                          disabled={isRefreshing || onCooldown}
+                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}
+                          className={cn('h-7 w-7', onCooldown && 'opacity-50 cursor-not-allowed')}
+                        >
+                          {onCooldown ? (
+                            <span className="tabular-nums text-[10px] font-medium">{formatCooldown(cooldownSecs)}</span>
+                          ) : (
+                            <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
+                          )}
+                        </Button>
+                      );
+                    })()}
                     onCountersResolved={(campaignId, counters) => {
                       const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
                       const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
