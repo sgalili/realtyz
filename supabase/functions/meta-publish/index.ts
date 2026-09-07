@@ -891,6 +891,8 @@ Deno.serve(async (req) => {
           first_comment: firstComment || null,
           first_comment_ids: firstCommentIds,
           first_comment_error: firstCommentError,
+          first_comment_extension_payload: firstCommentExtensionPayload,
+
 
           postIds,
           content_hash: hashes[ch],
