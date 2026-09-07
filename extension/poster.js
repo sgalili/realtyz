@@ -154,18 +154,32 @@
     }, 25000, 1000);
 
     let postUrl = null;
+    let article = null;
     if (seen) {
-      const art = [...document.querySelectorAll('div[role="article"]')].find((a) =>
+      article = [...document.querySelectorAll('div[role="article"]')].find((a) =>
         (a.innerText || '').replace(/\s+/g, ' ').includes(snippet),
-      );
-      const href = art
-        ? [...art.querySelectorAll('a[href]')].map((a) => a.getAttribute('href') || '').find((h) => /\/posts\/|permalink|multi_permalinks/.test(h))
+      ) || null;
+      const href = article
+        ? [...article.querySelectorAll('a[href]')].map((a) => a.getAttribute('href') || '').find((h) => /\/posts\/|permalink|multi_permalinks/.test(h))
         : null;
       if (href) postUrl = href.startsWith('http') ? href : `https://www.facebook.com${href}`;
     }
 
+    // 6. first comment (contact details / link) right after the post went live
+    const firstComment = String(job.first_comment || job.firstComment || '').trim();
+    let commentError = null;
+    if (firstComment) {
+      commentError = await addFirstComment(article, snippet, firstComment);
+    }
+
     // Dialog closed with no visible error → Facebook accepted the post.
-    return { ok: true, post_url: postUrl, verified_in_feed: !!seen };
+    return {
+      ok: true,
+      post_url: postUrl,
+      verified_in_feed: !!seen,
+      first_comment_ok: firstComment ? !commentError : null,
+      first_comment_error: commentError || null,
+    };
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
