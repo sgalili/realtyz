@@ -379,11 +379,10 @@ export default function KnowledgeBase() {
   };
 
   const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'ai', label: 'AI', icon: GeminiIcon },
+    { id: 'ai', label: 'AI', icon: Sparkles },
     { id: 'files', label: 'קבצים', icon: FileText },
     { id: 'text', label: 'טקסט', icon: Type },
     { id: 'link', label: 'קישור', icon: LinkIcon },
-    { id: 'voice', label: 'הקלטה', icon: Mic },
   ];
 
   const filters: { id: Filter; label: string }[] = [
