@@ -97,6 +97,42 @@ import {
 
 
 
+/**
+ * Removes saved composer drafts for a channel from both stores.
+ * Called after a successful submit so the text area starts empty again.
+ */
+const sweepComposerDraftKeys = (channelId: string, suffix?: string) => {
+  for (const store of [localStorage, sessionStorage]) {
+    const keys: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const k = store.key(i);
+      if (!k || !k.startsWith('rz-composer-draft:')) continue;
+      if (!k.includes(`:${channelId}`)) continue;
+      if (suffix && !k.endsWith(`:${suffix}`)) continue;
+      keys.push(k);
+    }
+    keys.forEach((k) => store.removeItem(k));
+  }
+};
+
+// One-time purge of pre-workspace-scoped drafts (v1/v2). Those keys were shared
+// across every workspace in this browser, which is how a post from another
+// office could reappear here after a refresh.
+try {
+  if (typeof window !== 'undefined' && !localStorage.getItem('rz-composer-draft-purge:v3')) {
+    for (const store of [localStorage, sessionStorage]) {
+      const stale: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (k && k.startsWith('rz-composer-draft:') && !k.startsWith('rz-composer-draft:v3:')) stale.push(k);
+        if (k && k.startsWith('rz_post_cache:') && !k.startsWith('rz_post_cache:v2:')) stale.push(k);
+      }
+      stale.forEach((k) => store.removeItem(k));
+    }
+    localStorage.setItem('rz-composer-draft-purge:v3', '1');
+  }
+} catch { /* storage unavailable */ }
+
 type TabValue = 'create' | 'published' | 'calendar';
 
 const TABS: { value: TabValue; label: string }[] = [
