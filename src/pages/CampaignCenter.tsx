@@ -3000,20 +3000,23 @@ const ConfirmDispatchDialog = ({
           }));
         }
         // Group posts never touch Meta's Graph API (App Review blocks group
-        // publishing): they are queued locally and the Realtyz browser
-        // extension posts them from the broker's own Facebook session.
+        // publishing): they are queued locally in localStorage['rzPostQueue']
+        // and the Realtyz browser extension posts them from the broker's own
+        // Facebook session.
         let queuedGroups = 0;
         if (channel.id === 'facebook' && apiGroupIds.length > 0) {
           queuedGroups = enqueueExtensionPosts({
             text: bodyToPublish,
+            texts: groupTexts,
             images: mediaUrls,
             link: null,
             firstComment: firstComment || null,
             scheduledAt: scheduledAt,
-            groups: groupIds.filter((id) => !!id).map((id) => {
-              const bare = String(id).replace(/^ext:/, '');
-              return { group_id: bare, group_name: bare, group_url: `https://www.facebook.com/groups/${bare}` };
-            }),
+            groups: apiGroupIds.map((bare) => ({
+              group_id: bare,
+              group_name: bare,
+              group_url: `https://www.facebook.com/groups/${bare}`,
+            })),
           });
           if (queuedGroups > 0) {
             toast.success(
@@ -3024,14 +3027,15 @@ const ConfirmDispatchDialog = ({
           }
         }
 
-        // Nothing left for the Graph API when only groups were targeted.
-        if (queuedGroups > 0 && publishToPage === false) {
+        // Nothing left for the backend when only groups were targeted.
+        if (queuedGroups > 0 && (publishToPage === false || (channel.id === 'facebook' && publishTargets.length === 0))) {
           onConfirmed();
           onClose();
           return;
         }
 
         const results = [] as any[];
+
 
         for (const target of targets) {
           // Optimistic pill in the sent-posts feed while Meta verifies.
