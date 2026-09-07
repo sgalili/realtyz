@@ -477,6 +477,19 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
+    // ---- Post (or retry) the first comment on an existing Page post --------
+    if (body?.action === "comment" || body?.action === "first_comment") {
+      const postId = String(body?.post_id ?? body?.external_post_id ?? "").trim();
+      const message = ensureMandatoryComment(body?.first_comment ?? body?.message);
+      if (!postId) return json({ success: false, error: "post_id is required" }, 400);
+      if (!page) return json({ success: false, error: "not_connected", message: "דף הפייסבוק לא מחובר" }, 200);
+      page = await ensurePageToken(db, ownerId, page);
+      const c = await postFirstComment(page.pageId, page.token, postId, message);
+      if ("comment_id" in c) return json({ success: true, comment_id: c.comment_id, target: c.target });
+      return json({ success: false, error: "comment_failed", message: c.error, raw: c.raw }, 200);
+    }
+
+
     // ---- Publish -----------------------------------------------------------
     const text = String(body?.post ?? body?.text ?? "").trim();
     const channels: string[] = (Array.isArray(body?.channels) ? body.channels : ["facebook"]).map((c: unknown) =>
