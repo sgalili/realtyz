@@ -107,25 +107,29 @@ export function scrubForbiddenBylines(input: string): string {
   return out.replace(/[ \t]{2,}/g, " ");
 }
 
-// HARD compliance constants. Udi's real signature block — never replace,
-// never read from env, never fall back to anything else.
-const DEFAULT_OWNER_LICENSE = "3251767";
-const OWNER_PHONE = "0522973500";
-const FOOTER_RE = /רישיון\s*תיווך\s*[:：]\s*3251767/;
-const PHONE_RE = /0522973500/;
+/**
+ * Per-workspace signature. Built ONLY from the active workspace owner's own
+ * profile — never from another workspace, never from a hardcoded broker.
+ */
+export type OwnerSignature = {
+  name?: string | null;
+  byline?: string | null;
+  phone?: string | null;
+  license?: string | null;
+};
 
-// STRICT canonical signature block — exactly as the owner specified.
-export const OWNER_SIGNATURE_BLOCK = [
-  "לפרטים ולתיאום ביקור:",
-  "אודי ויטמן",
-  'יועץ נדל״ן | אנגלו סכסון הרצליה | רמת השרון',
-  `📞 ${OWNER_PHONE}`,
-  `רישיון תיווך: ${DEFAULT_OWNER_LICENSE}`,
-].join("\n");
-
-function buildFooterBlock(_license?: string | null): string {
-  // Signature block is HARDCODED — ignore any caller value.
-  return OWNER_SIGNATURE_BLOCK;
+function buildFooterBlock(sig?: OwnerSignature | null): string {
+  const name = String(sig?.name ?? "").trim();
+  const byline = String(sig?.byline ?? "").trim();
+  const phone = String(sig?.phone ?? "").trim();
+  const license = String(sig?.license ?? "").trim();
+  if (!name && !byline && !phone && !license) return "";
+  const lines = ["לפרטים ולתיאום ביקור:"];
+  if (name) lines.push(name);
+  if (byline) lines.push(byline);
+  if (phone) lines.push(`📞 ${phone}`);
+  if (license) lines.push(`רישיון תיווך: ${license}`);
+  return lines.join("\n");
 }
 
 /**
