@@ -3011,6 +3011,9 @@ const ConfirmDispatchDialog = ({
         // Facebook session.
         let queuedGroups = 0;
         if (channel.id === 'facebook' && apiGroupIds.length > 0) {
+          // Retry / re-publish: clear stale completed+failed entries (and legacy
+          // Meta errors) for this text so the card reflects the fresh queue run.
+          resetQueueEntriesForText(bodyToPublish);
           queuedGroups = enqueueExtensionPosts({
             text: bodyToPublish,
             texts: groupTexts,
