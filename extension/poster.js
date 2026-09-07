@@ -105,6 +105,58 @@
     return null;
   };
 
+  /* Type + submit the first comment on the freshly published post.
+     Resolves with null on success or a Hebrew reason on failure. */
+  const addFirstComment = async (article, snippet, text) => {
+    let art = article;
+    if (!art) {
+      art = await waitFor(() => {
+        const hit = [...document.querySelectorAll('div[role="article"]')].find((a) =>
+          (a.innerText || '').replace(/\s+/g, ' ').includes(snippet),
+        );
+        return hit || null;
+      }, 20000, 800);
+    }
+    if (!art) return 'הפוסט לא נמצא בפיד להוספת תגובה ראשונה';
+
+    // Open the comment box: either it already exists, or the "Comment" action opens it.
+    const commentBox = () =>
+      [...art.querySelectorAll('div[role="textbox"][contenteditable="true"]')].filter(visible)[0] || null;
+
+    let box = commentBox();
+    if (!box) {
+      const trigger = findByText(/^(הגב|תגובה|כתוב תגובה|Comment|Write a comment)/i, art);
+      if (trigger) {
+        trigger.click();
+        box = await waitFor(commentBox, 12000, 400);
+      }
+    }
+    if (!box) return 'שדה התגובה לא נפתח';
+
+    const injected = await injectText(box, text);
+    if (!injected) return 'הזנת התגובה הראשונה נכשלה';
+
+    // Submit: Enter is the native way to publish a Facebook comment.
+    box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+    box.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+    box.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+
+    const cleared = await waitFor(() => (textOf(commentBox()) ? null : true), 15000, 700);
+    if (!cleared) {
+      const send = findByText(/^(שלח|פרסם תגובה|Post|Send)$/i, art);
+      if (send) {
+        send.click();
+        const cleared2 = await waitFor(() => (textOf(commentBox()) ? null : true), 12000, 700);
+        if (!cleared2) return 'התגובה הראשונה לא נשלחה';
+      } else {
+        return 'התגובה הראשונה לא נשלחה';
+      }
+    }
+    return null;
+  };
+
+
+
   async function postToGroup(job) {
     if (isLoggedOut()) return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' };
 
