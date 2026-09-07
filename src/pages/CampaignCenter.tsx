@@ -44,6 +44,7 @@ import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from 
 import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
 
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { nativeWaLink } from '@/lib/officialWa';
 import { cn } from '@/lib/utils';
 
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
@@ -1865,7 +1866,7 @@ const InlineComposer = ({
   // Messenger link, even after regeneration, draft restore or re-toggle.
   const stripAllWaLinkLines = () => {
     setFirstComment((curr) => (curr || '')
-      .replace(/\n*[^\n]*(?:wa\.me\/\d+|realtyz\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
+      .replace(/\n*[^\n]*(?:wa\.me\/\d+|whatsapp:\/\/send|realtyz\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
       .replace(/\n{3,}/g, '\n\n')
       .replace(/\s+$/, ''));
   };
@@ -1904,7 +1905,9 @@ const InlineComposer = ({
         const digits = String(cfg.display_phone_number ?? cfg.phone_number ?? '').replace(/\D/g, '');
         if (digits.length >= 9) officialPhone = digits;
       } catch { /* keep fallback */ }
-      let url = `https://wa.me/${officialPhone}`;
+      // Native app deep link — opens the installed WhatsApp instantly instead
+      // of the "download WhatsApp" web page.
+      let url = nativeWaLink(officialPhone);
       try {
         if (selectedListingId) {
           const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
@@ -1924,7 +1927,7 @@ const InlineComposer = ({
       // The post itself must always carry a way to reach us on WhatsApp.
       setBody((curr) => {
         const text = (curr || '');
-        if (/wa\.me\/\d+|realtyz\.co\.il\/r\/[A-Za-z0-9]+/i.test(text)) return text;
+        if (/wa\.me\/\d+|whatsapp:\/\/send|realtyz\.co\.il\/r\/[A-Za-z0-9]+/i.test(text)) return text;
         const trimmed = text.replace(/\s+$/, '');
         return trimmed ? `${trimmed}\n\n${line}` : line;
       });
@@ -3031,6 +3034,39 @@ const ConfirmDispatchDialog = ({
 
         // Nothing left for the backend when only groups were targeted.
         if (queuedGroups > 0 && (publishToPage === false || (channel.id === 'facebook' && publishTargets.length === 0))) {
+          // The post must show up in "פורסמו" right away with its queue badge
+          // and its group-names pill, so we persist a history row and paint an
+          // optimistic card immediately.
+          try {
+            window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
+              detail: {
+                channel: channel.id,
+                body: bodyToPublish,
+                media_urls: mediaUrls,
+                campaign_name: campaignName,
+                group_ids: apiGroupIds,
+                scheduled_at: scheduledAt,
+              },
+            }));
+          } catch { /* noop */ }
+          try {
+            await supabase.from('campaign_logs').insert({
+              user_id: ownerScope,
+              workspace_owner_id: ownerScope,
+              campaign_name: campaignName,
+              channel: channel.id,
+              message_body: bodyToPublish,
+              media_urls: mediaUrls,
+              group_ids: apiGroupIds,
+              first_comment: firstComment || null,
+              // Immediate group posts belong in "פורסמו" straight away with the
+              // extension-queue badge; only real future slots are "scheduled".
+              status: scheduledAt ? 'scheduled' : 'publishing',
+              sent_at: scheduledAt ?? null,
+            } as any);
+          } catch (err) {
+            console.warn('[campaign] group-only history row failed', err);
+          }
           onConfirmed();
           onClose();
           return;
@@ -3417,6 +3453,7 @@ type CampaignRow = {
   sent_at?: string | null;
 
   media_urls?: string[];
+  group_ids?: string[];
   external_url?: string | null;
   is_external?: boolean;
   listing_id?: string | null;
@@ -3717,6 +3754,7 @@ const PublishedFeed = ({
         created_at: new Date(now).toISOString(),
         provider_message_id: null,
         media_urls: Array.isArray(detail.media_urls) ? detail.media_urls : [],
+        group_ids: Array.isArray(detail.group_ids) ? detail.group_ids.map((g: any) => String(g)) : [],
         status: isScheduled ? 'scheduled' : 'publishing',
         sent_at: isScheduled ? scheduledAt : null,
         like_count: 0,
@@ -3997,7 +4035,7 @@ const PublishedFeed = ({
     // instantly whatever was previously stored, never waiting on the provider.
     const { data } = await supabase
       .from('campaign_logs')
-      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at')
+      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids')
       .in('user_id', scopedUserIds)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
@@ -5135,9 +5173,12 @@ const PublishedFeed = ({
                   </div>
                 )}
                 {uniqueMedia.length > 0 && (() => {
-                  // One large hero image on top, the rest in a horizontal
-                  // scrolling thumbnail strip right below it.
-                  const [hero, ...rest] = uniqueMedia;
+                  // Mobile: one large hero image on top. Desktop: two large
+                  // images side by side. The rest always sit underneath in a
+                  // horizontal scrolling thumbnail strip.
+                  const heroCount = uniqueMedia.length > 1 ? 2 : 1;
+                  const heroes = uniqueMedia.slice(0, heroCount);
+                  const rest = uniqueMedia.slice(heroCount);
                   const tile = (src: string, i: number, cls: string) => (
                     <div key={src} className={cn('relative group', cls)}>
                       <PostImage src={src} campaignLogId={r.id} index={i} alt=""
@@ -5160,12 +5201,25 @@ const PublishedFeed = ({
                   );
                   return (
                     <div className="mx-4 mb-3 space-y-2">
-                      {tile(hero, 0, 'aspect-[4/3] w-full')}
-                      {rest.length > 0 && (
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2" dir="rtl">
+                        {heroes.map((src, i) => (
+                          <div key={src} className={cn('aspect-[4/3] w-full', i > 0 && 'hidden md:block')}>
+                            {tile(src, i, 'h-full w-full')}
+                          </div>
+                        ))}
+                      </div>
+                      {(rest.length > 0 || heroCount > 1) && (
                         <div className="flex gap-2 overflow-x-auto pb-1" dir="rtl">
+                          {/* On mobile the 2nd hero is not shown above, so it
+                              joins the thumbnail strip instead. */}
+                          {heroCount > 1 && (
+                            <div className="h-20 w-20 shrink-0 md:hidden">
+                              {tile(uniqueMedia[1], 1, 'h-20 w-20')}
+                            </div>
+                          )}
                           {rest.map((src, i) => (
                             <div key={src} className="h-20 w-20 shrink-0">
-                              {tile(src, i + 1, 'h-20 w-20')}
+                              {tile(src, i + heroCount, 'h-20 w-20')}
                             </div>
                           ))}
                         </div>
@@ -5187,11 +5241,7 @@ const PublishedFeed = ({
                     {/* Comment refresh lives at the trailing edge of the
                         "תגובות לקמפיין / תגובות המשך" row below. */}
 
-                    <Button variant="outline" size="icon" disabled className="opacity-90"
-                            title={`מדיה מצורפת: ${Array.isArray(r.media_urls) ? r.media_urls.length : 0}`}
-                            aria-label="מדיה מצורפת">
-                      <Paperclip className="h-4 w-4" />
-                    </Button>
+                    {/* Attachment indicator removed from published cards. */}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" title="ערוך ופרסם מחדש" aria-label="ערוך ופרסם מחדש"

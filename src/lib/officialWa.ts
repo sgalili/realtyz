@@ -45,6 +45,17 @@ export function officialWaLink(text?: string, phone: string = OFFICIAL_WABA_PHON
   return text ? `${base}?text=${encodeURIComponent(text)}` : base;
 }
 
+/**
+ * NATIVE deep link to the installed WhatsApp app.
+ * Used inside published post text / CTAs so tapping the link jumps straight
+ * into the chat instead of landing on WhatsApp's "download" web page.
+ */
+export function nativeWaLink(phone: string = OFFICIAL_WABA_PHONE, text?: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const base = `whatsapp://send?phone=${digits}`;
+  return text ? `${base}&text=${encodeURIComponent(text)}` : base;
+}
+
 /** Opens WhatsApp against the official WBA number only. */
 export async function openOfficialWhatsApp(text?: string): Promise<void> {
   const phone = await getOfficialWaNumber();
