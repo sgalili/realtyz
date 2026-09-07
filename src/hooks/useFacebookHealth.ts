@@ -85,13 +85,10 @@ export function useFacebookHealth() {
       }
 
       const hasBinding = !!page?.page?.id;
-      // A stored page binding with a working page token IS a live connection.
-      // The backend now scans every binding and only sets needs_reconnect when
-      // zero bindings have a valid token AND at least one token failed auth.
-      // We bind the banner EXACTLY to that boolean so it disappears the
-      // instant the backend reports a working page token.
-      const pageOk = !!page?.connected && hasBinding;
+      // A stored page binding IS a live connection unless the backend proved a
+      // hard token expiry (Meta auth-error code) on an active API call.
       const needsReconnect = page?.needs_reconnect === true;
+      const pageOk = hasBinding && !needsReconnect;
 
       const value: FacebookHealth = {
         pageConnected: pageOk,
