@@ -47,12 +47,22 @@ export function ExtensionPairingButton({ className }: { className?: string }) {
     }
   };
 
+  // Icon-only control. Deselected (muted) by default; live green only once the
+  // extension is actually paired with this workspace.
   return (
     <Button
       type="button"
-      size="sm"
-      variant={connected ? 'outline' : 'default'}
-      className={cn('h-8 gap-1 text-[12px]', className)}
+      size="icon"
+      variant="ghost"
+      aria-label={connected ? 'פרסום מחובר' : 'חיבור פרסום'}
+      aria-pressed={connected}
+      className={cn(
+        'h-8 w-8 shrink-0 rounded-md border transition-colors',
+        connected
+          ? 'border-emerald-600 bg-emerald-600 text-primary-foreground hover:bg-emerald-600/90'
+          : 'border-border bg-muted text-muted-foreground hover:bg-muted/80',
+        className,
+      )}
       title={
         connected
           ? status?.lastError
@@ -64,13 +74,12 @@ export function ExtensionPairingButton({ className }: { className?: string }) {
       onClick={() => void onClick()}
     >
       {busy ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <Loader2 className="h-4 w-4 animate-spin" />
       ) : connected ? (
-        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+        <ShieldCheck className="h-4 w-4" />
       ) : (
-        <Link2 className="h-3.5 w-3.5" />
+        <Link2 className="h-4 w-4" />
       )}
-      {connected ? 'פרסום מחובר' : 'חיבור פרסום'}
     </Button>
   );
 }
