@@ -126,6 +126,9 @@ serve(async (req) => {
 
     const wsPersona = await fetchWorkspacePersona(admin as any, userId);
     const isSaas = wsPersona.domain === "software";
+    // A software / SaaS workspace never markets a property listing.
+    if (isSaas) promotedListing = null;
+
 
     const BROKER_PERSONA = isSaas
       ? `${renderPersonaBlock(wsPersona)}
@@ -240,7 +243,37 @@ LISTING-FOCUS MODE — EXACT MASTER TEMPLATE (mandatory, no deviation, blank lin
 - Do NOT use ✅ bullets or "-"/"•" bullets — האמוג'י הוא הבולט.
 - FORBIDDEN everywhere: 💎 🔥 🎉 💯 🌟 ❤️ 💪 👇 🙌 🤩 ⭐ and any hype/spam emoji.`;
 
-    const systemPrompt = `${BROKER_PERSONA}
+    // B2B SaaS workspace prompt — built ONLY from the workspace persona +
+    // knowledge base. Zero brokerage/agent/licence content.
+    const saasSystemPrompt = `${renderPersonaBlock(wsPersona)}
+
+ROLE (LOCKED): You are the B2B software sales & marketing voice of this workspace's SaaS platform for real-estate agencies and agents. You are NOT a real-estate agent, you have no brokerage licence, you never sell or market apartments, plots, listings, prices or viewings, and you never write in the voice of a broker.
+
+פלטפורמה: ${platform}
+כללי פלטפורמה: ${rule}
+
+WHAT EVERY POST DOES:
+- מתאר בעיה תפעולית אמיתית של סוכן או סוכנות נדל"ן (זמן תגובה לפניות, לידים שנשרפים, מעקב ידני, וואטסאפ מפוזר, ניהול נכסים בגוגל שיטס, פרסום ידני, עומס אדמיניסטרטיבי).
+- מציג את הפתרון של התוכנה בערך אמיתי בלבד: חיסכון בזמן, אוטומציה, CRM, מענה AI ללידים, מעקב ופרסום — רק פיצ'רים שמופיעים במאגר הידע של המשרד הזה.
+- מסתיים בהזמנה ברורה לתאם שיחת זום קצרה של 15 דקות (הדגמה). זו מטרת כל פוסט.
+
+GROUNDING POLICY (אפס סובלנות לפיברוק):
+- כל פיצ'ר, מחיר, חבילה, תנאי, אחוז שיפור, מספר לקוחות או תוצאה חייבים להופיע מילולית ב-[WORKSPACE KNOWLEDGE BASE]. אם משהו לא נמצא שם — אל תכתוב אותו.
+- מדרגות המחירים והמסרים נלקחים מהמאגר בלבד. אין להמציא מחיר, מסלול, הנחה או התחייבות.
+- אין להשתמש בנתוני לקוחות, לידים או שיחות פרטיות בפוסט.
+
+ABSOLUTE FORBIDDEN (הפרה = פסילה):
+- להציג את עצמך כמתווך, סוכן נדל"ן, בעל רישיון או משרד תיווך.
+- "רישיון תיווך", מספר רישיון, חתימת מתווך, "שנות ניסיוני בזירה המקצועית", "כמתווך", ניסיון במכירת דירות, סיפורי עסקאות אישיות.
+- לשווק דירה, נכס, כתובת או מחיר נדל"ן.
+- סוגריים מרובעים / placeholders ("[מספר טלפון]", "[TBD]"), האשטגים, תגיות או שורת מילות מפתח.
+- אמוג'ים מוגזמים: לכל היותר אמוג'י אחד בשורה, בלי שני אמוג'ים צמודים, בלי 🔥 💎 💯 🌟.
+- em-dash (—), en-dash (–), "--", "---".
+
+כתוב בעברית ישראלית טבעית, ענייני ומשכנע, 4-8 שורות. החזר את הפוסט בלבד, בלי הסברים.`;
+
+    const brokerSystemPrompt = `${BROKER_PERSONA}
+
 
 פלטפורמה: ${platform}
 כללי פלטפורמה: ${rule}
@@ -287,9 +320,11 @@ HIGH-CONVERTING COPY STRUCTURE (apply ONLY when a specific נכס/PROMOTED LISTI
 
 כתוב בעברית בלבד, ישראלית טבעית, בגוף ראשון של ${brokerFirst}. החזר את הפוסט בלבד, בלי הסברים נלווים.`;
 
+    const systemPrompt = isSaas ? saasSystemPrompt : brokerSystemPrompt;
+
     const noListingSelected = !promotedListing;
 
-    const GENERAL_POST_RULE = noListingSelected ? `
+    const GENERAL_POST_RULE = (!isSaas && noListingSelected) ? `
 GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
 - No specific property was selected. Write a GENERAL post about ${brokerFirst} as a broker: his approach, motivation, professional insights, market perspective, values, success mindset, or general activity in the field.
 - ABSOLUTELY FORBIDDEN: any client name, lead name, owner name, phone number, email, address of a private deal, specific property from the CRM, private notes, internal reminders, deal status, negotiation details, or anything sourced from CRM/leads/messages/private KB entries.
@@ -298,27 +333,41 @@ GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
 - Write in first person as ${brokerFirst} about broker craft, motivation, discipline, work ethic, market observations at a generic level, or goals — nothing that exposes private CRM data.
 ` : "";
 
+    const SAAS_POST_RULE = isSaas ? `
+SAAS MARKETING POST MODE (HARD OVERRIDE — highest priority):
+- Everything factual (features, pricing tiers, terms, proof points) must appear verbatim in [WORKSPACE KNOWLEDGE BASE]. Nothing else is allowed.
+- Never write as a real-estate agent and never mention a brokerage licence, licence number, agent signature, years of brokerage experience, or any apartment/property being sold.
+- Never expose private CRM data, client names, lead names or phone numbers.
+- Close with a clear invitation to book a ~15 minute Zoom demo, phrased differently every time.
+` : "";
+
     const userPrompt = [
       kbTemplatesBlock || null,
       promotedBlock,
       // Never expose CRM/private client data in general (no-listing) posts.
-      focusOnly || noListingSelected ? null : renderCrmBlock(snap),
-      focusOnly || noListingSelected ? null : renderKbBlock(kb),
+      isSaas || focusOnly || noListingSelected ? null : renderCrmBlock(snap),
+      isSaas ? renderKbBlock(kb) : (focusOnly || noListingSelected ? null : renderKbBlock(kb)),
       kbInstructionsBlock || null,
       customBlock,
       GENERAL_POST_RULE || null,
-      focusOnly
-        ? `מטרת הפוסט: פוסט מכירה/השכרה קצר וישיר לנכס שלמעלה בלבד — בלי שום הקשר אישי, ביוגרפיה או נושאים לא קשורים.`
-        : noListingSelected
-          ? `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}\n\nכתוב פוסט כללי בגוף ראשון על ${brokerFirst} כמתווך — גישה, מוטיבציה, ערכים, תובנות שוק כלליות, הצלחה מקצועית. אסור לחלוטין להזכיר שמות לקוחות, לידים, בעלי נכסים, כתובות פרטיות, או כל פרט מה-CRM.`
-          : `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}`,
+      SAAS_POST_RULE || null,
+      isSaas
+        ? `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}\n\nכתוב פוסט שיווקי B2B בשם הפלטפורמה: כאב תפעולי אמיתי של סוכן/סוכנות נדל"ן, איך התוכנה פותרת אותו (חיסכון בזמן, אוטומציה, CRM, מענה AI ללידים), וסיום בהזמנה לזום של 15 דקות. רק מסרים, פיצ'רים ומחירים שמופיעים במאגר הידע.`
+        : focusOnly
+          ? `מטרת הפוסט: פוסט מכירה/השכרה קצר וישיר לנכס שלמעלה בלבד — בלי שום הקשר אישי, ביוגרפיה או נושאים לא קשורים.`
+          : noListingSelected
+            ? `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}\n\nכתוב פוסט כללי בגוף ראשון על ${brokerFirst} כמתווך — גישה, מוטיבציה, ערכים, תובנות שוק כלליות, הצלחה מקצועית. אסור לחלוטין להזכיר שמות לקוחות, לידים, בעלי נכסים, כתובות פרטיות, או כל פרט מה-CRM.`
+            : `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}`,
       `Anti-spam entropy seed (vary opener / structure / CTA vs any prior post): ${entropySeed}`,
-      focusOnly
-        ? `Write a clean, short, scroll-stopping sales post for the ONE listing above. No personal history. No filler.`
-        : noListingSelected
-          ? `Write ${brokerFirst}'s general broker post now. NEVER reference any private client, lead, owner, address, or CRM data. Speak generically about the craft.`
-          : `Write ${brokerFirst}'s post now — grounded strictly in the blocks above. Never mention software/AI/platform/Realtyz.`,
+      isSaas
+        ? `Write the SaaS marketing post now — grounded strictly in the workspace knowledge base. No broker persona, no licence line, no property.`
+        : focusOnly
+          ? `Write a clean, short, scroll-stopping sales post for the ONE listing above. No personal history. No filler.`
+          : noListingSelected
+            ? `Write ${brokerFirst}'s general broker post now. NEVER reference any private client, lead, owner, address, or CRM data. Speak generically about the craft.`
+            : `Write ${brokerFirst}'s post now — grounded strictly in the blocks above.`,
     ].filter(Boolean).join("\n\n");
+
 
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -395,23 +444,35 @@ GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
-    // HARD SCRUB: forbidden vendor/tech vocabulary must never reach the public.
-    const FORBIDDEN_PATTERNS: { re: RegExp; replacement: string }[] = [
-      { re: /\brealtyz(?:\s*ai)?\b/gi, replacement: "" },
-      { re: /רילטיז(?:\s*AI)?/gi, replacement: "" },
-      { re: /\bA\.?I\.?\b/g, replacement: "" },
-      { re: /בינה\s+מלאכותית/gi, replacement: "מומחיות" },
-      { re: /אלגוריתם[ים]*/gi, replacement: "ניסיון" },
-      { re: /\b(platform|algorithm)\b/gi, replacement: "" },
-      { re: /פלטפורמ[הת]/gi, replacement: "משרד" },
-      { re: /\bבוט\b/gi, replacement: "" },
-      { re: /צ['׳]?אטבוט/gi, replacement: "" },
-      { re: /אוטומצי[הת]/gi, replacement: "" },
-    ];
-    for (const { re, replacement } of FORBIDDEN_PATTERNS) {
-      content = content.replace(re, replacement);
+    // HARD SCRUB: for a brokerage workspace, vendor/tech vocabulary must never
+    // reach the public. A SaaS workspace SELLS the software, so these words are
+    // legitimate there and must never be stripped.
+    if (!isSaas) {
+      const FORBIDDEN_PATTERNS: { re: RegExp; replacement: string }[] = [
+        { re: /\brealtyz(?:\s*ai)?\b/gi, replacement: "" },
+        { re: /רילטיז(?:\s*AI)?/gi, replacement: "" },
+        { re: /\bA\.?I\.?\b/g, replacement: "" },
+        { re: /בינה\s+מלאכותית/gi, replacement: "מומחיות" },
+        { re: /אלגוריתם[ים]*/gi, replacement: "ניסיון" },
+        { re: /\b(platform|algorithm)\b/gi, replacement: "" },
+        { re: /פלטפורמ[הת]/gi, replacement: "משרד" },
+        { re: /\bבוט\b/gi, replacement: "" },
+        { re: /צ['׳]?אטבוט/gi, replacement: "" },
+        { re: /אוטומצי[הת]/gi, replacement: "" },
+      ];
+      for (const { re, replacement } of FORBIDDEN_PATTERNS) {
+        content = content.replace(re, replacement);
+      }
+    }
+    // SaaS safety net: strip any brokerage-licence footer the model slipped in.
+    if (isSaas) {
+      content = content
+        .split("\n")
+        .filter((line) => !/רישיון\s*תיווך/.test(line))
+        .join("\n");
     }
     content = content.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+
 
     // NO-HASHTAGS scrub: remove any hashtag tokens and any trailing
     // "tags / keywords / האשטגים / תגיות" lines, regardless of what the
@@ -451,7 +512,7 @@ GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
         byline: branding.byline,
         name: branding.name,
         phone: branding.phone,
-        withLicense: !!promotedListing && !skipLicenseFooter,
+        withLicense: !isSaas && !!promotedListing && !skipLicenseFooter,
       });
     } catch (_e) { /* never block on enforcement failure */ }
 

@@ -6,6 +6,8 @@
 // In-memory LRU cache (TTL 30s) keeps repeated webhook hits lightning-fast.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { fetchWorkspacePersona } from "./workspacePersona.ts";
+
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -60,12 +62,14 @@ function formatBlock(
     return `- ${prefix} ${r.rule_text.trim()}`;
   });
   // HARD LAWS — injected at the TOP, always present, NEVER skippable.
-  const licenseLine = license
-    ? `- ALWAYS: At the very bottom of every generated post / outreach copy / property profile draft, on a new line, append exactly this footer (no markdown, no emoji): "רישיון תיווך מספר: ${license}". Do NOT add any text after the footer.`
-    : `- ALWAYS: At the very bottom of every generated post / outreach copy / property profile draft, on a new line, append exactly: "רישיון תיווך מספר: [יש להזין מספר רישיון בפרופיל]". Do NOT add any text after the footer.`;
+  // The brokerage-licence footer belongs ONLY to real-estate workspaces. A
+  // software / SaaS / generic workspace must never be told to sign posts with
+  // a "רישיון תיווך" line, so `license` arrives empty for those workspaces.
   const hardLaws = [
     `- NEVER: Include the building / house number of any property address. If the address is "ארלוזורוב 26", write only "ברחוב ארלוזורוב" or "באזור ארלוזורוב". Strip every numeric suffix from street addresses (e.g. "רחוב ויצמן 4" → "רחוב ויצמן"). This applies to posts, comments, replies, outreach copy, captions, IVR scripts, and any other text the public can see.`,
-    licenseLine,
+    ...(license
+      ? [`- ALWAYS: At the very bottom of every generated post / outreach copy / property profile draft, on a new line, append exactly this footer (no markdown, no emoji): "רישיון תיווך מספר: ${license}". Do NOT add any text after the footer.`]
+      : []),
   ];
   return [
     "#CRITICAL_SYSTEM_PREFERENCES — HIGHEST PRIORITY, NON-NEGOTIABLE",
@@ -81,6 +85,7 @@ function formatBlock(
     "#END_CRITICAL_SYSTEM_PREFERENCES",
   ].join("\n");
 }
+
 
 /**
  * Returns a formatted system-prefs block (or "" when no active rules match).
@@ -100,17 +105,22 @@ export async function fetchSystemRulesBlock(
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.block;
 
-  // Always fetch the workspace owner's broker license so the HARD LAWS block
-  // can hardcode the exact footer string into the prompt.
+  // The brokerage licence footer applies ONLY to real-estate workspaces.
+  // Software / SaaS / undefined workspaces must never be given a
+  // "רישיון תיווך" instruction or placeholder.
   let license = "";
   try {
-    const { data: prof } = await admin
-      .from("profiles")
-      .select("broker_license_number")
-      .eq("id", workspace)
-      .maybeSingle();
-    license = String((prof?.broker_license_number ?? "")).trim();
+    const persona = await fetchWorkspacePersona(admin as any, workspace);
+    if (persona.domain === "real_estate") {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("broker_license_number")
+        .eq("id", workspace)
+        .maybeSingle();
+      license = String((prof?.broker_license_number ?? "")).trim();
+    }
   } catch { /* ignore */ }
+
 
   // Fast path: when no owner-defined rules exist we STILL emit the hard-laws
   // block — street-number redaction + license footer are non-negotiable.
