@@ -102,22 +102,6 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/deals'],
   },
   {
-    title: 'פוסטים',
-    url: '/campaigns',
-    icon: Megaphone,
-    iconColor: 'text-orange-500',
-    badgeClass: 'bg-orange-50 text-orange-700 ring-orange-200',
-    aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
-  },
-  {
-    title: 'מוח AI',
-    url: '/knowledge',
-    icon: Brain,
-    iconColor: 'text-purple-600',
-    badgeClass: 'bg-purple-50 text-purple-700 ring-purple-200',
-    aliases: ['/live-conversations', '/ai-content', '/sentiment', '/conversation-analytics', '/insights'],
-  },
-  {
     title: 'רשת שותפים',
     url: '/affiliate-network',
     icon: Share2,
