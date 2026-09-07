@@ -1505,7 +1505,8 @@ export const CampaignCommentsStream = memo(CampaignCommentsStreamInner, (prev, n
     prev.campaign.id === next.campaign.id &&
     prev.commentCount === next.commentCount &&
     prev.refreshSignal === next.refreshSignal &&
-    prev.hideHeader === next.hideHeader
+    prev.hideHeader === next.hideHeader &&
+    prev.headerActions === next.headerActions
   );
 });
 
