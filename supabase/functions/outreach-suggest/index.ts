@@ -222,8 +222,10 @@ Deno.serve(async (req) => {
 
     // Pre-fetch owner's system rules once for this batch.
     let systemRulesBlock = "";
+    let wsPersona: WorkspacePersona = EMPTY_PERSONA;
     try {
-      systemRulesBlock = await fetchSystemRulesBlock(user.id, "real estate follow-up outreach message");
+      wsPersona = await fetchWorkspacePersona(supabase as any, user.id);
+      systemRulesBlock = await fetchSystemRulesBlock(user.id, "follow-up outreach message");
     } catch (e) {
       console.warn("[outreach-suggest] fetchSystemRulesBlock failed:", e instanceof Error ? e.message : e);
     }
@@ -235,7 +237,7 @@ Deno.serve(async (req) => {
       const autoDraft = tier ? autoTiers.has(tier) : false;
       let draft = TEMPLATES[hit.trigger_type]?.(hit.lead, hit.context) || "";
       if (autoDraft) {
-        const aiDraft = await draftWithAI(hit.lead, hit.trigger_type, hit.context, systemRulesBlock);
+        const aiDraft = await draftWithAI(hit.lead, hit.trigger_type, hit.context, systemRulesBlock, wsPersona);
         if (aiDraft) draft = aiDraft;
       }
       // HARD LAWS — strip street numbers + append broker license footer.

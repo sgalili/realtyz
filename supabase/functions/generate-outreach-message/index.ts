@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { z } from "https://esm.sh/zod@3.25.76";
 import {
   COMPLIANCE_PROMPT,
@@ -165,6 +166,11 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
     const projectBlock = projectName
       ? `\n\n#PROJECT_CONTEXT\nהדירה הזו היא חלק מפרויקט הבלעדיות היוקרתי '${projectName}'. כשאתה מנסח את ההודעה, חובה לשלב במפורש משפט אסטרטגי קצר בנוסח הבא (אפשר לחדד את הניסוח, אך לשמר את המסר במלואו ולא להחסיר אף רכיב):\n"הדירה הזו היא חלק מפרויקט הבלעדיות היוקרתי '${projectName}'. מעבר ליחידה הספציפית הזו, ישנן מגוון רחב של אפשרויות נוספות זמינות בפרויקט, כולל דירות פרי-סייל מיוחדות ויחידות 'אוף-מרקט' (Unlisted) שעדיין לא פורסמו רשמית לקהל הרחב. נשמח להתאים לך את הטיפוס המדויק לצרכים שלך."\nשלב את המשפט הזה באופן טבעי בגוף ההודעה (לא כפוטר), לפני ה-CTA.`
       : "";
+
+    const wsPersona = await fetchWorkspacePersona(
+      createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!) as any,
+      userData.user.id,
+    );
 
     // Owner standing orders (workspace-level) — must override persona + compliance defaults.
     let systemRulesBlock = "";
