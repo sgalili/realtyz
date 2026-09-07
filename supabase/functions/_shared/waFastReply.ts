@@ -39,23 +39,36 @@ export interface FastReplyInput {
   history: Array<{ role: string; content: string }>;
   /** Optional short block of live workspace facts (listings, notes). */
   contextBlock?: string;
+  /** Identity of the ACTIVE workspace owner. Never hardcoded, never shared. */
+  owner?: { name?: string | null; agency?: string | null };
 }
 
 /**
  * The WhatsApp lead-facing persona. Sharp Israeli real-estate expert speaking
- * on behalf of Udi Witman's office — never pretending to BE Udi.
+ * on behalf of THIS workspace owner's office — never pretending to BE them,
+ * and never referencing any other workspace's broker.
  */
-export function buildFastReplyPrompt(lead: FastReplyLead, contextBlock?: string): string {
+export function buildFastReplyPrompt(
+  lead: FastReplyLead,
+  contextBlock?: string,
+  owner?: { name?: string | null; agency?: string | null },
+): string {
   const name = (lead.full_name ?? "").trim();
   const deal = lead.deal_type === "rent" ? "שכירות" : lead.deal_type === "sale" ? "מכירה" : "לא ידוע";
+  const ownerName = String(owner?.name ?? "").trim();
+  const agency = String(owner?.agency ?? "").trim();
+  const officeLine = ownerName
+    ? `אתה העוזר האישי של ${ownerName}${agency ? `, ${agency}` : ""}.`
+    : "אתה העוזר האישי של המשרד שמנהל את הפנייה הזו.";
+  const ownerRef = ownerName || "המתווך האחראי";
 
   return `${externalMasterPrompt({ surface: "whatsapp", compact: true })}
 
-אתה העוזר האישי של אודי ויטמן, המתווך והיועץ המוביל בהרצליה (אנגלו סכסון הרצליה) ובאזור השרון.
+${officeLine}
 אתה מדבר בוואטסאפ עם מתעניין אמיתי, בזמן אמת. אתה מקצועי, חד, אנושי וענייני.
 
 זהות:
-- אתה מציג את עצמך כמי שמנהל את הפניות עבור אודי. אינך אודי עצמו ואינך מתחזה אליו.
+- אתה מציג את עצמך כמי שמנהל את הפניות עבור ${ownerRef}. אינך ${ownerRef} עצמו ואינך מתחזה אליו.
 - אתה מכיר את שוק הנדל"ן הישראלי לעומק: מחירים, שכונות, ועדות תכנון, תמ"א 38/פינוי בינוי, ארנונה, מיסוי מקרקעין, מימון ומשכנתאות, לוחות זמנים של עסקה.
 
 איך אתה כותב (חובה):
@@ -63,7 +76,7 @@ export function buildFastReplyPrompt(lead: FastReplyLead, contextBlock?: string)
 2. תשובה ישירה קודם. בלי פתיחות מנומסות ריקות, בלי "אשמח לסייע", בלי "כמובן", בלי הצהרות שאתה AI, בלי חזרה על השאלה.
 3. תמיד לתת ערך קונקרטי: מספר, טווח מחירים, תובנת שוק, שם שכונה, צעד פרקטי. לא תשובות ענן.
 4. לסיים בשאלה אחת ממוקדת שמקדמת את העסקה (תקציב, חדרים, אזור, מועד כניסה, מצב מימון) או בהצעה לתיאום צפייה. שאלה אחת בלבד.
-5. לא להמציא: אם אין לך את הנתון על נכס ספציפי, לומר בכיאות שתבדוק עם אודי ותחזור עם תשובה מדויקת, ולהמשיך את השיחה.
+5. לא להמציא: אם אין לך את הנתון על נכס ספציפי, לומר בכיאות שתבדוק עם ${ownerRef} ותחזור עם תשובה מדויקת, ולהמשיך את השיחה.
 6. ללא אימוג'ים מוגזמים (עד אחד, ורק אם זה מתאים), ללא בולטים אלא אם באמת מציגים 2-3 אופציות נכסים, ללא מקפים ארוכים (— או --), ללא markdown כבד.
 7. אם המתעניין כותב אנגלית או רוסית, ענה באותה שפה באותו סגנון.
 8. לא להבטיח מחיר סופי, תשואה מובטחת או אישור משכנתא. אפשר לתת טווחים והערכות מקצועיות ולסמן אותן כהערכה.
@@ -106,7 +119,7 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
       body: JSON.stringify({
         model: FAST_MODEL,
         messages: [
-          { role: "system", content: buildFastReplyPrompt(input.lead, input.contextBlock) },
+          { role: "system", content: buildFastReplyPrompt(input.lead, input.contextBlock, input.owner) },
           ...recent,
         ],
         temperature: 0.6,
