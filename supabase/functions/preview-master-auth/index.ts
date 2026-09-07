@@ -46,7 +46,9 @@ Deno.serve(async (req) => {
 
   try {
     const { identifier, kind, code } = await req.json();
-    if (String(code ?? "") !== MASTER_OTP) return json({ error: "invalid master code" }, 401);
+    // A non-master code is the normal case (regular OTP flow): answer 200 so the
+    // client can quietly fall through instead of surfacing a 401 as an app error.
+    if (String(code ?? "") !== MASTER_OTP) return json({ success: false, reason: "not_master_code" }, 200);
     if (!identifier || !kind) return json({ error: "missing identifier/kind" }, 400);
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
