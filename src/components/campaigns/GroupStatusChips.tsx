@@ -122,12 +122,18 @@ export function GroupStatusChips({
             const name = info?.name || `קבוצה ${bare.slice(-6)}`;
             const res = results?.[gid] ?? results?.[bare];
             const state: GroupChipState = res ? (res.ok ? 'published' : 'failed') : defaultState;
+            const url = info?.url || (/^\d+$/.test(bare) ? `https://www.facebook.com/groups/${bare}` : null);
             const title = res?.reason ? `${name} — ${res.reason}` : `${name} — ${STATE_LABEL[state]}`;
             return (
-              <span
+              <button
                 key={gid}
-                title={title}
-                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${STATE_STYLE[state]}`}
+                type="button"
+                title={url ? `${title} — פתח בפייסבוק` : title}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${STATE_STYLE[state]} ${url ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
               >
                 <span className="max-w-[170px] truncate">{name}</span>
                 {typeof info?.memberCount === 'number' && info.memberCount > 0 && (
@@ -136,7 +142,7 @@ export function GroupStatusChips({
                   </span>
                 )}
                 <StateIcon state={state} />
-              </span>
+              </button>
             );
           })}
           {ids.length > max && <span className="text-[11px] text-muted-foreground">+{ids.length - max}</span>}
