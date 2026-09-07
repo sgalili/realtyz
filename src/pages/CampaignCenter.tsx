@@ -1759,12 +1759,56 @@ const InlineComposer = ({
   // Generate a Hebrew "first comment" in the workspace owner's warm, first-person tone.
   // Called automatically right after the main post is generated, and manually
   // via the refresh button on the first-comment textarea.
+  /**
+   * Mints a branded realtyz.co.il/r/<slug> link that opens a chat with the
+   * OFFICIAL Meta WhatsApp Business number (never a personal number).
+   */
+  const mintOfficialWaShortLink = async (): Promise<string> => {
+    const phone = await getOfficialWaNumber();
+    const intro = 'היי, ראיתי את הפוסט של Realtyz ואשמח לשמוע איך זה עובד.';
+    const longUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(intro)}`;
+    try {
+      const { data } = await supabase.functions.invoke('shortlink-create', { body: { long_url: longUrl } });
+      const slug = (data as any)?.slug;
+      if (slug) return `https://realtyz.co.il/r/${slug}`;
+    } catch { /* fall back to the native deep link */ }
+    return nativeWaLink(phone, intro);
+  };
+
   const handleGenerateFirstComment = async (postBody?: string) => {
     if (isGenerationStopped()) return;
     const ctrl = registerGeneration();
     setFirstCommentGenerating(true);
     try {
       const listing = selectedListing;
+      // No property attached: this is a platform (SaaS) sales post, so the
+      // first comment invites the reader to continue on our official WhatsApp
+      // via a branded short link.
+      if (!listing) {
+        const waUrl = waShortUrl || (await mintOfficialWaShortLink());
+        const { data, error } = await supabase.functions.invoke('generate-content', {
+          body: {
+            topic: 'תגובה ראשונה לפוסט שיווקי של פלטפורמת Realtyz — שתי שורות בלבד',
+            platform: channel.id,
+            customInstructions: [
+              'כתוב תגובה ראשונה (First Comment) בשתי שורות בלבד, בעברית, פונה ישירות לסוכן נדל"ן.',
+              'שורה 1: משפט אחד קצר שממשיך את הכאב מהפוסט ומזמין לשיחת זום של 15 דקות. מקסימום 14 מילים.',
+              'שורה 2: הזמנה להמשיך בוואטסאפ עם הצוות (בלי לכתוב קישור — המערכת מוסיפה אותו).',
+              'אסור: אמוג\'י יותר מאחד בשורה, האשטגים, סוגריים מרובעים, מחירים שלא במאגר הידע, רישיון תיווך, חתימת מתווך.',
+              postBody ? `גוף הפוסט להקשר בלבד, אל תחזור עליו: """${postBody.slice(0, 600)}"""` : '',
+            ].filter(Boolean).join('\n\n'),
+            skipLicenseFooter: true,
+          },
+          signal: ctrl.signal,
+        });
+        if (ctrl.signal.aborted) return;
+        if (error) throw error;
+        const raw = cleanFirstComment(String((data as any)?.content || (data as any)?.text || ''));
+        const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 2);
+        const base = lines.length ? lines.join('\n') : 'רוצה לראות איך זה עובד אצלך? זום של 15 דקות ואתה בפנים.';
+        setFirstComment(waUrl ? `${base}\n\n${pickRandom(WA_INTRO_PHRASES)}: ${waUrl}` : base);
+        return;
+      }
       const keywordLine = buildFirstCommentKeywordLine(listing as CampaignListing | null);
       const listingFacts = listing
         ? [
