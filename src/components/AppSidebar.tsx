@@ -2,7 +2,6 @@ import {
   Activity,
   Users,
   Megaphone,
-  Brain,
   MessageCircle,
   Building2,
   Handshake,
