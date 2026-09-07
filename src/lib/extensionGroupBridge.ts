@@ -186,7 +186,67 @@ export const publishViaExtension = (payload: ExtensionPublishPayload): number =>
   };
   try { window.postMessage(job, window.location.origin); } catch { /* noop */ }
   try { document.dispatchEvent(new CustomEvent(EXT_PUBLISH_EVENT, { detail: job.payload })); } catch { /* noop */ }
+  // Local hand-off: the extension posts straight from this browser, no Meta API.
+  startLocalPosting({ ...payload, groups: resolved });
   return resolved.length;
+};
+
+export const EXT_PENDING_POST_KEY = "rz-pending-post";
+export const EXT_START_POSTING_MESSAGE = "RZ_START_POSTING";
+export const EXT_POSTING_RESULT_MESSAGE = "RZ_POSTING_RESULT";
+
+export type LocalPostingResult = {
+  ok: boolean;
+  posted?: number;
+  total?: number;
+  failures?: string[];
+  reason?: string;
+};
+
+/**
+ * Hand a post to the extension for immediate local publishing (no Meta API).
+ * The payload is stored in localStorage and announced via postMessage.
+ */
+export const startLocalPosting = (payload: ExtensionPublishPayload): number => {
+  const groups = payload.groups.filter((g) => !!(g.group_url || g.group_id));
+  if (groups.length === 0) return 0;
+
+  const post = {
+    text: payload.text,
+    images: payload.imageUrls ?? [],
+    firstComment: ensureMandatoryComment(payload.firstComment),
+    link: payload.link ?? null,
+    groups: groups.map((g) => ({
+      group_id: g.group_id.replace(/^ext:/, ""),
+      group_name: g.group_name,
+      group_url: g.group_url || `https://www.facebook.com/groups/${g.group_id.replace(/^ext:/, "")}`,
+    })),
+    createdAt: Date.now(),
+  };
+
+  try { localStorage.setItem(EXT_PENDING_POST_KEY, JSON.stringify(post)); } catch { /* noop */ }
+  try {
+    window.postMessage({ source: "realtyz-app", type: EXT_START_POSTING_MESSAGE, post }, window.location.origin);
+  } catch { /* noop */ }
+  try { document.dispatchEvent(new CustomEvent("rz:ext-start-posting", { detail: post })); } catch { /* noop */ }
+  return post.groups.length;
+};
+
+/** Listen for the extension's local posting result. Returns an unsubscribe fn. */
+export const onLocalPostingResult = (cb: (r: LocalPostingResult) => void): (() => void) => {
+  const onMessage = (e: MessageEvent) => {
+    const d: any = e.data;
+    if (!d || typeof d !== "object") return;
+    if (d.source !== "realtyz-extension" || d.type !== EXT_POSTING_RESULT_MESSAGE) return;
+    cb((d.result || {}) as LocalPostingResult);
+  };
+  const onCustom = (e: Event) => cb(((e as CustomEvent).detail || {}) as LocalPostingResult);
+  window.addEventListener("message", onMessage);
+  document.addEventListener("rz:ext-posting-result", onCustom as EventListener);
+  return () => {
+    window.removeEventListener("message", onMessage);
+    document.removeEventListener("rz:ext-posting-result", onCustom as EventListener);
+  };
 };
 
 export const clearExtensionGroups = () => {
