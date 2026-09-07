@@ -289,6 +289,17 @@
       }, 15000, 800);
     }
 
+    if (!article) {
+      // Permalink pages render exactly one post — take the largest visible
+      // article that already carries a comment affordance.
+      const candidates = [...document.querySelectorAll('div[role="article"]')].filter(visible);
+      article =
+        candidates.find((a) =>
+          a.querySelector('div[role="textbox"][contenteditable="true"]') ||
+          findByText(/^(הגב|תגובה|כתוב תגובה|Comment|Write a comment)/i, a),
+        ) || candidates[0] || null;
+    }
+
     if (!article) return { ok: false, reason: 'הפוסט לא נמצא בעמוד — נסו לרענן את העמוד' };
 
     const err = await addFirstComment(article, '', message);
