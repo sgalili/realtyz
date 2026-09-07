@@ -512,7 +512,7 @@ SAAS MARKETING POST MODE (HARD OVERRIDE — highest priority):
         byline: branding.byline,
         name: branding.name,
         phone: branding.phone,
-        withLicense: !!promotedListing && !skipLicenseFooter,
+        withLicense: !isSaas && !!promotedListing && !skipLicenseFooter,
       });
     } catch (_e) { /* never block on enforcement failure */ }
 
