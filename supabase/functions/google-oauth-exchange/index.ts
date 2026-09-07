@@ -15,6 +15,28 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
+/** Every outbound Google call is time-boxed so the function can never hang. */
+async function timedFetch(url: string, init: RequestInit = {}, ms = 8000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } catch (e: any) {
+    if (e?.name === 'AbortError') throw new Error(`Google request timed out after ${ms}ms: ${url}`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Time-box any promise (DB writes included) with a descriptive error. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -39,7 +61,7 @@ async function exchangeCode(params: {
   | { access_token: string; refresh_token?: string; expires_in?: number; scope?: string }
   | { error: string }
 > {
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await timedFetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -71,7 +93,7 @@ async function exchangeCode(params: {
 }
 
 async function fetchGmailIdentity(accessToken: string) {
-  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+  const res = await timedFetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const json = await res.json().catch(() => ({}));
@@ -87,7 +109,7 @@ async function fetchGmailIdentity(accessToken: string) {
 }
 
 async function fetchYouTubeIdentity(accessToken: string) {
-  const res = await fetch(
+  const res = await timedFetch(
     'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
@@ -113,14 +135,14 @@ async function fetchYouTubeIdentity(accessToken: string) {
 
 async function fetchDriveIdentity(accessToken: string) {
   // userinfo gives us the email; Drive about gives us the user's display name + storage quota.
-  const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+  const userRes = await timedFetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const userJson = await userRes.json().catch(() => ({}));
   if (!userRes.ok) {
     return { error: userJson.error?.message || `userinfo ${userRes.status}`, status: userRes.status };
   }
-  const aboutRes = await fetch(
+  const aboutRes = await timedFetch(
     'https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress),storageQuota(limit,usage)',
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
@@ -136,7 +158,7 @@ async function fetchDriveIdentity(accessToken: string) {
 }
 
 async function fetchCalendarIdentity(accessToken: string) {
-  const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+  const userRes = await timedFetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const userJson = await userRes.json().catch(() => ({}));
@@ -144,7 +166,7 @@ async function fetchCalendarIdentity(accessToken: string) {
     return { error: userJson.error?.message || `userinfo ${userRes.status}`, status: userRes.status };
   }
   // Probe primary calendar to confirm scope
-  const calRes = await fetch(
+  const calRes = await timedFetch(
     'https://www.googleapis.com/calendar/v3/calendars/primary',
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
@@ -163,7 +185,7 @@ async function fetchCalendarIdentity(accessToken: string) {
   };
 }
 
-Deno.serve(async (req) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
@@ -491,5 +513,19 @@ Deno.serve(async (req) => {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+  }
+}
+
+Deno.serve(async (req) => {
+  try {
+    // Absolute ceiling: return a descriptive error instead of hanging until the
+    // platform kills the request.
+    return await withTimeout(handle(req), 18_000, 'google-oauth-exchange');
+  } catch (err: any) {
+    console.error('google-oauth-exchange fatal', err);
+    return new Response(
+      JSON.stringify({ ok: false, error: err?.message ?? 'timeout', code: 'timeout' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   }
 });
