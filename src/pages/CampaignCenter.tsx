@@ -2497,6 +2497,21 @@ const InlineComposer = ({
               <div className="flex items-stretch gap-2">
               <button
                 type="button"
+                onClick={() => { void saveDraftNow(); }}
+                disabled={!hasBody || saveState === 'saving'}
+                title="שמור טיוטה"
+                aria-label="שמור טיוטה"
+                className={cn(
+                  'inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition',
+                  hasBody
+                    ? 'bg-card text-[hsl(217,80%,18%)] border-[hsl(217,80%,18%)]/30 hover:bg-[hsl(217,80%,18%)]/5 shadow-sm'
+                    : 'bg-muted text-muted-foreground/80 border-transparent cursor-not-allowed',
+                )}
+              >
+                {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              </button>
+              <button
+                type="button"
                 onClick={() => setScheduleDialogOpen(true)}
                 disabled={!hasBody}
                 title={recurrenceBubble ? `תזמון פרסום · חזרתיות: ${recurrenceBubble}` : 'תזמן פרסום (כולל חזרות)'}
