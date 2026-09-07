@@ -528,12 +528,20 @@ export default function KnowledgeBase() {
                   onChange={(e) => setTextTitle(e.target.value)}
                   placeholder="כותרת"
                 />
-                <Textarea
-                  value={textBody}
-                  onChange={(e) => setTextBody(e.target.value)}
-                  placeholder="הקלד חוקי התנהגות, הנחיות לסוכן או מידע על נכסים עבור מאגר הידע (לדוגמה: 'מעכשיו תתמקד תמיד בדירות להשקעה ברעננה ותדגיש שיש חניה...')"
-                  className="min-h-[140px]"
-                />
+                <div className="relative">
+                  <Textarea
+                    value={textBody}
+                    onChange={(e) => setTextBody(e.target.value)}
+                    placeholder="הקלד חוקי התנהגות, הנחיות לסוכן או מידע על נכסים עבור מאגר הידע (לדוגמה: 'מעכשיו תתמקד תמיד בדירות להשקעה ברעננה ותדגיש שיש חניה...')"
+                    className="min-h-[140px] pt-10"
+                  />
+                  <div className="absolute top-1 start-1">
+                    <VoiceInputButton
+                      size="sm"
+                      onTranscript={(t) => setTextBody((p) => (p ? `${p} ${t}` : t))}
+                    />
+                  </div>
+                </div>
                 <div className="flex justify-end">
                   <Button onClick={() => saveText.mutate()} disabled={saveText.isPending}>
                     {saveText.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמור למאגר'}
