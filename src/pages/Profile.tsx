@@ -488,18 +488,29 @@ function WorkspaceTab() {
 
   const removeLogo = async (kind: 'square' | 'landscape') => {
     if (!isOwner || !user?.id) return;
+    const prevSquare = logoUrl;
+    const prevLandscape = landscapeLogoUrl;
     if (kind === 'square') setLogoUrl('');
     else setLandscapeLogoUrl('');
-    await (supabase as any)
-      .from('white_label_settings')
-      .upsert({
-        user_id: user.id,
-        logo_url: kind === 'square' ? null : logoUrl || null,
-        landscape_logo_url: kind === 'landscape' ? null : landscapeLogoUrl || null,
-      } as any, { onConflict: 'user_id' });
-    if (kind === 'square') { try { window.localStorage.removeItem(LOGO_STORAGE_KEY); } catch {} }
-    await refreshBrand();
-    toast.success('הלוגו הוסר');
+    try {
+      const { error } = await (supabase as any)
+        .from('white_label_settings')
+        .upsert({
+          user_id: user.id,
+          agency_name: agencyName || null,
+          logo_url: kind === 'square' ? null : prevSquare || null,
+          landscape_logo_url: kind === 'landscape' ? null : prevLandscape || null,
+        } as any, { onConflict: 'user_id' });
+      if (error) throw error;
+      if (kind === 'square') { try { window.localStorage.removeItem(LOGO_STORAGE_KEY); } catch {} }
+      await refreshBrand();
+      toast.success('הלוגו הוסר');
+    } catch (err: any) {
+      if (kind === 'square') setLogoUrl(prevSquare); else setLandscapeLogoUrl(prevLandscape);
+      toast.error('הסרת הלוגו נכשלה', { description: err?.message || 'נסו שוב' });
+    }
+  };
+
   };
 
   const save = async () => {

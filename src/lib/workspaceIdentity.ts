@@ -38,6 +38,8 @@ export function resolveWorkspaceIdentity(
   const wsName = norm(workspace?.workspace_name);
   const wsLogo = norm(workspace?.workspace_logo_url) || null;
   const brandName = norm(brand?.agency_name);
+  // Logo precedence: the workspace's own landscape logo, then its square logo,
+  // then the workspace-list logo. Never another workspace's logo.
   const brandLogo = norm(brand?.landscape_logo_url) || norm(brand?.logo_url) || null;
 
   const isSelf = !workspace || workspace.is_self;
@@ -45,7 +47,7 @@ export function resolveWorkspaceIdentity(
   if (!isSelf) {
     return {
       name: wsName || brandName || DEFAULT_NAME,
-      logo: wsLogo || brandLogo,
+      logo: brandLogo || wsLogo,
       isTenant: true,
     };
   }
@@ -57,7 +59,8 @@ export function resolveWorkspaceIdentity(
   const nameIsPersonal =
     !!wsName && !!personal && (lc(wsName) === lc(personal) || lc(wsName).includes(lc(personal)));
   const name = (nameIsPersonal ? '' : wsName) || brandName || DEFAULT_NAME;
-  const logo = (nameIsPersonal ? null : wsLogo) || brandLogo;
+  const logo = brandLogo || (nameIsPersonal ? null : wsLogo);
+
 
   return { name, logo, isTenant: false };
 }
