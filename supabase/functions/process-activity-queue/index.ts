@@ -100,16 +100,29 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // When a paired browser extension is live for this workspace, group posts
-    // are executed locally by that extension (it claims the row itself through
-    // ext-queue-claim). Leave the row pending so the server does not race it.
+    // Facebook group posts are executed ONLY by the Realtyz browser extension
+    // (it claims the row itself through ext-queue-claim). The server never
+    // publishes to a group through Meta's Graph API, so the row stays pending
+    // until an extension picks it up. Surface a hint when none is paired.
     if (isScheduledGroupPost) {
       const { data: extLive } = await admin.rpc("ext_is_active", { _ws: ws });
-      if (extLive === true) {
-        results.push({ id: row.id, status: "deferred", reason: "extension_runner_active", workspace: ws });
-        continue;
+      if (extLive !== true && row.last_error !== "waiting_for_browser_extension") {
+        await admin
+          .from("campaign_activity_queue")
+          .update({ last_error: "waiting_for_browser_extension" })
+          .eq("id", row.id)
+          .eq("status", "pending");
       }
+      results.push({
+        id: row.id,
+        status: "deferred",
+        reason: extLive === true ? "extension_runner_active" : "waiting_for_browser_extension",
+        workspace: ws,
+      });
+      continue;
     }
+
+
 
 
 
