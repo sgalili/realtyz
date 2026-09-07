@@ -6864,8 +6864,12 @@ const CampaignCenter = () => {
         <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
           <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-semibold text-foreground">
             <Checkbox
-              checked={selectedDraftIds.length === campaignDraftRows.length && campaignDraftRows.length > 0}
-              onCheckedChange={(v) => setSelectedDraftIds(v === true ? campaignDraftRows.map((x) => x.id) : [])}
+              checked={draftSelectMode}
+              onCheckedChange={(v) => {
+                const on = v === true;
+                setDraftSelectMode(on);
+                setSelectedDraftIds(on ? campaignDraftRows.map((x) => x.id) : []);
+              }}
               aria-label="בחר את כל הטיוטות"
             />
             בחר הכל ({selectedDraftIds.length}/{campaignDraftRows.length})
