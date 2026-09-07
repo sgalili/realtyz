@@ -281,7 +281,42 @@ export const enqueueExtensionPosts = (input: {
   return entries.length;
 };
 
+/**
+ * Queue a first-comment job for a published Facebook Page post.
+ * Used when Meta's Graph API blocks server-side comments (App Review/PPAC)
+ * and the Realtyz browser extension should post the comment from the user's
+ * own Facebook session instead.
+ */
+export const enqueuePageFirstComment = (input: {
+  postId: string;
+  postUrl: string;
+  firstComment: string;
+  scheduledAt?: string | number | null;
+}): boolean => {
+  const text = String(input.firstComment || "").trim();
+  const postId = String(input.postId || "").trim();
+  const postUrl = String(input.postUrl || "").trim();
+  if (!text || !postId || !postUrl) return false;
+  const when = input.scheduledAt ? new Date(input.scheduledAt).getTime() : Date.now();
+  const scheduledTime = Number.isFinite(when) ? when : Date.now();
+  const entry: QueuedExtensionPost = {
+    id: `comment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type: "page_first_comment",
+    postId,
+    postUrl,
+    firstComment: ensureMandatoryComment(text),
+    status: "pending",
+    scheduledTime,
+    createdAt: Date.now(),
+  };
+  const existingQueue = readPostQueue();
+  existingQueue.push(entry);
+  writePostQueue(existingQueue);
+  return true;
+};
+
 /** Legacy Meta Graph / App Review errors that no longer apply to group posts. */
+
 export const isLegacyMetaGroupError = (reason?: string | null): boolean => {
   const t = String(reason || '');
   if (!t) return false;
