@@ -30,7 +30,13 @@ import { nextBlockedKeys } from '@/lib/mediaBlocklist';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { enqueueExtensionPosts } from '@/lib/extensionGroupBridge';
+import {
+  enqueueExtensionPosts,
+  useExtensionQueue,
+  queueStatusForText,
+  isLegacyMetaGroupError,
+  resetQueueEntriesForText,
+} from '@/lib/extensionGroupBridge';
 import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
@@ -3682,6 +3688,8 @@ const PublishedFeed = ({
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const fbGroupMeta = useFbGroupMeta();
+  // Live local extension queue — cards flip failed → pending → completed on their own.
+  const extensionQueue = useExtensionQueue();
   const initialScopedRows = workspaceOwnerId ? FEED_ROWS_CACHE.get(workspaceOwnerId) ?? null : null;
   const [rows, setRows] = useState<CampaignRow[] | null>(initialScopedRows);
   // True only during the very first cold load (no cache anywhere, in-memory or
@@ -4865,10 +4873,22 @@ const PublishedFeed = ({
         const scheduled = isScheduledRow(r);
         // A publish that Meta rejected: shown explicitly as "נכשל" with the exact
         // provider reason, never as a normal published post.
-        const failed = String(r.status || '').toLowerCase() === 'failed';
-        const failureReason = failed
-          ? (r.failure_reason || (r.provider_response as any)?.error || 'הפרסום לפייסבוק נכשל')
+        const rawFailureReason = r.failure_reason || (r.provider_response as any)?.error || null;
+        const hasGroupTargets = Array.isArray((r as any).group_ids) && (r as any).group_ids.length > 0;
+        // Legacy Meta App Review errors are obsolete: group posts now run through
+        // the browser-extension queue, so the old banner is suppressed and the
+        // card reflects the live extension queue state instead.
+        const legacyMetaError = hasGroupTargets && isLegacyMetaGroupError(rawFailureReason);
+        const extQueueStatus = hasGroupTargets
+          ? queueStatusForText(extensionQueue, r.message_body || '')
           : null;
+        const failed =
+          String(r.status || '').toLowerCase() === 'failed' &&
+          !legacyMetaError &&
+          extQueueStatus !== 'completed' &&
+          extQueueStatus !== 'pending' &&
+          extQueueStatus !== 'posting';
+        const failureReason = failed ? (rawFailureReason || 'הפרסום לפייסבוק נכשל') : null;
 
         const seriesSlots = (r as any)._seriesSlots as Array<{ id: string; sent_at: string | null }> | undefined;
         const isSeries = Array.isArray(seriesSlots) && seriesSlots.length > 1;
@@ -4944,16 +4964,24 @@ const PublishedFeed = ({
               </div>
 
 
-              {/* Target groups + live per-group status — revealed on expand only */}
-              {isOpen && Array.isArray((r as any).group_ids) && (r as any).group_ids.length > 0 && (
+              {/* Target groups — collapsed pill always visible, names on expand */}
+              {hasGroupTargets && (
                 <div onClick={(e) => e.stopPropagation()}>
                   <GroupStatusChips
                     groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
                     meta={fbGroupMeta}
-                    results={groupResultMap((r.provider_response as any)?.group_results)}
-                    defaultState={scheduled ? 'pending' : failed ? 'failed' : 'published'}
+                    results={legacyMetaError ? undefined : groupResultMap((r.provider_response as any)?.group_results)}
+                    defaultState={
+                      extQueueStatus === 'completed'
+                        ? 'published'
+                        : extQueueStatus === 'pending' || extQueueStatus === 'posting' || legacyMetaError || scheduled
+                          ? 'pending'
+                          : failed
+                            ? 'failed'
+                            : 'published'
+                    }
                     countdownIso={scheduled ? r.sent_at : null}
-                    defaultOpen
+                    defaultOpen={isOpen}
                   />
                 </div>
               )}
