@@ -2,6 +2,7 @@
 // and answers strictly using that context (no outside knowledge).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { internalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
+import { fetchWorkspacePersona, renderPersonaBlock } from "../_shared/workspacePersona.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
