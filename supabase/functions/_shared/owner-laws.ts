@@ -197,13 +197,9 @@ export function enforceOwnerLaws(
   out = stripStreetNumbers(scrubForbiddenBylines(out));
   // Step 3 (ABSOLUTE LAST): inject contact + license footer if missing.
   if (withLicense) {
-    out = appendLicenseFooter(out, license, byline);
-    // Final deterministic guarantee — if for any reason the license line is
-    // still absent (e.g. caller passed withLicense=true but the body was
-    // pre-sanitized upstream), force-append the canonical 2-line footer.
-    if (!FOOTER_RE.test(out) || !PHONE_RE.test(out)) {
-      out = `${out.replace(/\s+$/g, "")}\n\n${buildFooterBlock(license)}`;
-    }
+    // Signature comes from THIS workspace owner only. When the workspace has
+    // no branding yet we append nothing — never another broker's block.
+    out = appendLicenseFooter(out, { license, byline, name, phone });
   }
   return out;
 }
