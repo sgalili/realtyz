@@ -18,7 +18,7 @@
   "content_scripts": [
     {
       "matches": ["https://*.facebook.com/*"],
-      "js": ["facebook.js"],
+      "js": ["facebook.js", "poster.js"],
       "run_at": "document_idle"
     },
     {
