@@ -663,7 +663,7 @@ export default function Profile() {
         </DialogContent>
       </Dialog>
 
-      <Tabs value={tab} onValueChange={setTab} dir="rtl">
+      <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
         <TabsList className={`grid w-full ${isAgency ? 'grid-cols-6' : 'grid-cols-5'} mb-[15px]`}>
           <TabsTrigger value="personal">פרופיל</TabsTrigger>
           <TabsTrigger value="workspace">המשרד</TabsTrigger>
