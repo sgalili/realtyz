@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
 import confetti from 'canvas-confetti';

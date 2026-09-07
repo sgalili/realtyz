@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { shortenName } from "@/lib/shortenName";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';

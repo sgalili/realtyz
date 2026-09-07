@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 

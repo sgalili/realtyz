@@ -4,6 +4,7 @@
 // campaign log has a provider_message_id, otherwise falls back to a time-
 // windowed lookup around the campaign's created_at.
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

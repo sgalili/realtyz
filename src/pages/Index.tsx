@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
