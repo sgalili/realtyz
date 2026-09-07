@@ -1564,20 +1564,11 @@ const InlineComposer = ({
         const durableMedia = nextAttachments
           .filter((a) => a.url && !a.url.startsWith('blob:'))
           .map((a) => ({ name: a.name, kind: a.kind, url: a.url }));
+        // Only refresh an EXISTING manually saved draft — never create one.
         if (logId) {
           await supabase.from('ai_content_logs')
             .update({ media_urls: durableMedia, updated_at: new Date().toISOString() })
             .eq('id', logId);
-        } else {
-          const { data: inserted } = await supabase.from('ai_content_logs').insert({
-            topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
-            generated_text: body,
-            platform: channel.id,
-            created_by: user.id,
-            media_urls: durableMedia,
-            listing_id: selectedListingId,
-          }).select('id').single();
-          if (inserted?.id) setLogId(inserted.id);
         }
       } catch (persistErr) {
         console.warn('[CampaignCenter] immediate media persist failed', persistErr);
