@@ -730,12 +730,26 @@ Deno.serve(async (req) => {
             if ("comment_id" in c) {
               console.log("[meta-publish] first comment published", res.id, c.comment_id);
               firstCommentIds.push({ target: res.id, comment_id: c.comment_id });
+            } else if (c.blocked) {
+              // Meta blocks comment creation until the app passes App Review for
+              // Page Public Content Access. Hand the comment off to the Realtyz
+              // browser extension, which runs from the broker's own Facebook
+              // session and is not subject to this Graph restriction.
+              console.warn("[meta-publish] first comment blocked by Meta; deferring to extension", res.id);
+              firstCommentExtensionPayload = {
+                post_id: res.id,
+                post_url: `https://www.facebook.com/${res.id}`,
+                first_comment: firstComment,
+              };
+              firstCommentError = `${c.error} — התגובה הראשונה הועברה לתוסף הדפדפן לפרסום אוטומטי.`;
+              warnings.push(firstCommentError);
             } else {
               console.error("[meta-publish] first comment failed", res.id, JSON.stringify(c.raw));
               firstCommentError = c.error;
               warnings.push(c.error);
             }
           }
+
 
         }
 
