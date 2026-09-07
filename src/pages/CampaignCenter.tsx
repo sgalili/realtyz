@@ -4882,7 +4882,7 @@ const PublishedFeed = ({
       if (aSched && bSched) return aTime - bTime;
       return bTime - aTime;
     });
-  }, [rows, activeChannel, optimisticRows]);
+  }, [rows, activeChannel, optimisticRows, extensionQueue]);
 
   // Blocking loader ONLY on a true cold start: no cached rows in memory AND
   // the initial background load is still in-flight. As soon as we have any
