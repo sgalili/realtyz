@@ -85,7 +85,66 @@ function renderOAuthBridge(): Promise<boolean> {
   });
 }
 
+/**
+ * Short-link fast path (/r/:code): resolve the destination and redirect
+ * immediately, without booting the whole app (which could leave a blank page
+ * if any provider fails). WhatsApp destinations open the native app scheme
+ * with a universal-link fallback.
+ */
+async function handleShortLink(code: string): Promise<void> {
+  rootEl.innerHTML = `
+    <div dir="rtl" style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Assistant,Arial,sans-serif;color:#334155">
+      <p style="font-size:15px">פותחים עבורכם וואטסאפ…</p>
+    </div>`;
+  const base = import.meta.env.VITE_SUPABASE_URL as string;
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+  let longUrl = "";
+  try {
+    const res = await fetch(`${base}/functions/v1/shortlink-resolve`, {
+      method: "POST",
+      headers: { "content-type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ slug: code }),
+    });
+    const json = await res.json().catch(() => null);
+    longUrl = String((json as any)?.long_url || "");
+  } catch {
+    longUrl = "";
+  }
+  if (!longUrl) {
+    window.location.replace("https://realtyz.co.il");
+    return;
+  }
+  // Normalise any WhatsApp flavour to the native scheme.
+  let phone = "";
+  let text = "";
+  try {
+    const u = new URL(longUrl.replace(/^whatsapp:\/\//i, "https://whatsapp.local/"));
+    const host = u.hostname.toLowerCase();
+    if (host === "wa.me" || host === "whatsapp.local" || host.endsWith("whatsapp.com")) {
+      phone = (u.searchParams.get("phone") || u.pathname.replace(/\D/g, "")).replace(/\D/g, "");
+      text = u.searchParams.get("text") || "";
+    }
+  } catch {
+    /* noop */
+  }
+  if (!phone) {
+    window.location.replace(longUrl);
+    return;
+  }
+  const query = `phone=${phone}${text ? `&text=${encodeURIComponent(text)}` : ""}`;
+  const universal = `https://wa.me/${phone}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+  window.location.replace(`whatsapp://send?${query}`);
+  window.setTimeout(() => {
+    if (document.visibilityState === "visible") window.location.replace(universal);
+  }, 1200);
+}
+
 async function bootstrap() {
+  const shortLink = window.location.pathname.match(/^\/r\/([A-Za-z0-9_-]+)\/?$/);
+  if (shortLink) {
+    await handleShortLink(shortLink[1]);
+    return;
+  }
   const isOAuthCallback = /^\/oauth\/callback\/?$/.test(window.location.pathname);
   // Only take the popup shortcut when there really IS an opener to hand the
   // grant to. Full-page redirects (Google one-click) must reach the React
