@@ -22,24 +22,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+    const apply = (session: Session | null) => {
+      try {
         setSession(session);
         setUser(session?.user ?? null);
         window.localStorage.setItem('realtyz-authenticated-session', session?.user ? 'true' : 'false');
+      } catch {
+        /* private-mode storage etc. must never bubble into the auth client */
+      } finally {
         setLoading(false);
       }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => { apply(session); }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      window.localStorage.setItem('realtyz-authenticated-session', session?.user ? 'true' : 'false');
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => apply(session))
+      .catch(() => apply(null));
 
-    return () => subscription.unsubscribe();
+    return () => { try { subscription.unsubscribe(); } catch { /* noop */ } };
   }, []);
+
 
   const signOut = async () => {
     await supabase.auth.signOut();
