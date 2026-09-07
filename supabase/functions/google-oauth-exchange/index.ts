@@ -403,7 +403,7 @@ Deno.serve(async (req) => {
           .eq('id', targetRow.id);
         if (error && !saveWarning) saveWarning = error.message;
       } else {
-        const { error } = await admin.from('social_connections').insert(upd);
+        const { error } = await admin.from('social_connections').upsert(upd, { onConflict: 'created_by,platform' });
         if (error && !saveWarning) saveWarning = error.message;
       }
     }
@@ -468,7 +468,7 @@ Deno.serve(async (req) => {
       if (sibRow?.id) {
         await admin.from('social_connections').update(sibUpd).eq('id', sibRow.id);
       } else {
-        await admin.from('social_connections').insert(sibUpd);
+        await admin.from('social_connections').upsert(sibUpd, { onConflict: 'created_by,platform' });
       }
     }
 

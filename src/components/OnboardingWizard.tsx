@@ -164,7 +164,7 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
     const existingConnection = connections?.find((c) => c.platform === platform);
     const { error } = existingConnection
       ? await supabase.from('social_connections').update(payload).eq('id', existingConnection.id)
-      : await supabase.from('social_connections').insert(payload);
+      : await supabase.from('social_connections').upsert(payload, { onConflict: 'created_by,platform' });
     if (error) throw error;
   };
 
