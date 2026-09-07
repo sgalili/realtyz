@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
           withLicense: true,
         });
       } else {
-        finalText = stripStreetNumbers(scrubForbiddenBylines(finalText));
+        finalText = stripStreetNumbers(scrubForbiddenBylines(finalText, branding.name));
       }
     } catch (_e) { /* never block on enforcement failure */ }
 
