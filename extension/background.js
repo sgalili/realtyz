@@ -299,6 +299,8 @@ async function poll() {
 
     await setState({ paired: true, last_poll_at: Date.now(), last_error: null });
 
+    await drainQueue();
+
     const jobs = Array.isArray(json.jobs) ? json.jobs : [];
     for (const job of jobs) {
       await runJob(token, job);
@@ -344,6 +346,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         try { sendResponse(res); } catch (e) { /* noop */ }
       });
     });
+    return true;
+  }
+
+  if (msg.type === 'RZ_QUEUE_UPDATE') {
+    mergeQueue(msg.queue).then(() => drainQueue());
+    sendResponse({ ok: true });
     return true;
   }
 
