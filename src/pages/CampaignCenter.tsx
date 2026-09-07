@@ -1284,7 +1284,7 @@ const InlineComposer = ({
     setSaveState('idle');
     if (savedHasWork) setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel.id, deepLinkListingId]);
+  }, [channel.id, deepLinkListingId, wsScope]);
 
   // Cloud fallback: if this browser has no local copy of the draft (cleared
   // cache, new tab, other device, new auth session), pull the durable mirror
@@ -1318,7 +1318,7 @@ const InlineComposer = ({
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel.id, instanceId, deepLinkListingId]);
+  }, [channel.id, instanceId, deepLinkListingId, wsScope]);
 
 
 
@@ -1687,7 +1687,7 @@ const InlineComposer = ({
   // ---- Per-property generated content cache -------------------------------
   // Content generated for a property is remembered so revisiting it loads
   // instantly without spending tokens. Regeneration is always allowed.
-  const listingCacheKey = (id: string) => `rz_post_cache:${channel.id}:${id}`;
+  const listingCacheKey = (id: string) => `rz_post_cache:v2:${wsScope}:${channel.id}:${id}`;
   const readListingCache = (id: string): { body: string; firstComment: string } | null => {
     try {
       const raw = localStorage.getItem(listingCacheKey(id));
