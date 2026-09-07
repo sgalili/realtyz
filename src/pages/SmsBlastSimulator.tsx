@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
 import confetti from 'canvas-confetti';
@@ -325,13 +326,12 @@ export default function SmsBlastSimulator() {
   // "Connect button still showing after success" bug — no manual refresh needed.
   useEffect(() => {
     let cancelled = false;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let channel: ReturnType<typeof safeChannel> | null = null;
     (async () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const userId = currentUser?.id;
       if (!userId || cancelled) return;
-      channel = supabase
-        .channel(`sms-blast-social-conn-${userId}`)
+      channel = safeChannel(`sms-blast-social-conn-${userId}`)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'social_connections', filter: `created_by=eq.${userId}` },
@@ -345,7 +345,7 @@ export default function SmsBlastSimulator() {
     return () => {
       cancelled = true;
       window.removeEventListener('focus', onFocus);
-      if (channel) supabase.removeChannel(channel);
+      if (channel) removeChannelSafe(channel);
     };
   }, [refreshConnectionStatus]);
 

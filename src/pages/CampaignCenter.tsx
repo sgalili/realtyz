@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { shortenName } from "@/lib/shortenName";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -4468,8 +4469,7 @@ const PublishedFeed = ({
         try { (supabase as any).realtime.setAuth(token); } catch { /* noop */ }
       }
     });
-    const channel = supabase
-      .channel(`campaign_logs:${scope}`)
+    const channel = safeChannel(`campaign_logs:${scope}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'campaign_logs' },
@@ -4583,7 +4583,7 @@ const PublishedFeed = ({
       )
 
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { removeChannelSafe(channel); };
   }, [userId, workspaceOwnerId, campaignUserIds.join('|')]);
 
   // Each card represents a GROUP of campaign_logs rows (same campaign_name +

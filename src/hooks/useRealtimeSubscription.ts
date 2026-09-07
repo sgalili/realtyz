@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
+import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+
 
 /**
  * Subscribes to Supabase Realtime changes on a table and invalidates
@@ -18,8 +19,7 @@ export function useRealtimeSubscription(
       ? `${table}-${filter.column}-${filter.value}`
       : `${table}-changes`;
 
-    let channel = supabase
-      .channel(channelName)
+    let channel = safeChannel(channelName)
       .on(
         'postgres_changes' as any,
         {
@@ -38,7 +38,7 @@ export function useRealtimeSubscription(
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      removeChannelSafe(channel);
     };
   }, [table, JSON.stringify(queryKeys), filter?.column, filter?.value, queryClient]);
 }

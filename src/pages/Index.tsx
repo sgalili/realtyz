@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -60,8 +61,7 @@ const Dashboard = () => {
   /* ───── Realtime: new listings (Yad2 injections) ───── */
   useEffect(() => {
     if (!user?.id) return;
-    const channel = supabase
-      .channel(`listings-inserts-${user.id}`)
+    const channel = safeChannel(`listings-inserts-${user.id}`)
       .on(
         'postgres_changes' as any,
         { event: 'INSERT', schema: 'public', table: 'listings' },
@@ -79,7 +79,7 @@ const Dashboard = () => {
         },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { removeChannelSafe(channel); };
   }, [user?.id, queryClient]);
 
   /* ───── KPIs ───── */
