@@ -1437,7 +1437,8 @@ const InlineComposer = ({
   // smart vision filter purges logos / photos of people for good.
   const autoPhotoListingRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!selectedListingId) return;
+    // No property selected = general/SaaS post: never inject any default image.
+    if (!selectedListingId) { autoPhotoListingRef.current = null; setPhotosLoading(false); return; }
     if (autoPhotoListingRef.current === selectedListingId) return;
     let cancelled = false;
     setPhotosLoading(true);
@@ -2202,6 +2203,11 @@ const InlineComposer = ({
               {selectedListingId && (
                 <button type="button" onClick={() => {
                   setSelectedListingId(null);
+                  // General post = clean image state. Every auto-attached
+                  // property photo is dropped; the operator attaches manually.
+                  autoPhotoListingRef.current = null;
+                  setAttachments((curr) => curr.filter((a) => a.kind !== 'image'));
+                  setPhotosLoading(false);
                   setBody((current) => cleanBody(current.replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')));
                   setListingPickerOpen(false);
                 }}

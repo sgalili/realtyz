@@ -371,6 +371,16 @@ SAAS MARKETING POST MODE (HARD OVERRIDE — highest priority):
 - Every regeneration must use a different hook, structure and CTA wording than any previous post.
 ` : "";
 
+    // Universal readability + compliance layout law (all workspaces).
+    const LAYOUT_RULE = `
+LAYOUT LAW (mandatory):
+- No long dense paragraphs. Short, punchy sentences, one idea per line.
+- Every line is separated from the next by a FULL BLANK LINE (double line break). Lines must never bunch up.
+- Short punch lines start with a single emoji as a bullet. Never more than one emoji per line.
+- NEVER put a WhatsApp link, wa.me URL, api.whatsapp.com link, phone number CTA or any URL inside the post body. The contact link lives ONLY in the automatic first comment.
+- NEVER write a real-estate licence field or placeholder ("רישיון תיווך מספר:", "מספר רישיון", licence footer). Omit it completely.
+`;
+
     const userPrompt = [
       kbTemplatesBlock || null,
       promotedBlock,
@@ -381,6 +391,7 @@ SAAS MARKETING POST MODE (HARD OVERRIDE — highest priority):
       customBlock,
       GENERAL_POST_RULE || null,
       SAAS_POST_RULE || null,
+      LAYOUT_RULE,
       isSaas
         ? `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}\n\nכתוב פוסט שיווקי B2B בשם הפלטפורמה: כאב תפעולי אמיתי של סוכן/סוכנות נדל"ן, איך התוכנה פותרת אותו (חיסכון בזמן, אוטומציה, CRM, מענה AI ללידים), וסיום בהזמנה לזום של 15 דקות. רק מסרים, פיצ'רים ומחירים שמופיעים במאגר הידע.`
         : focusOnly
@@ -520,6 +531,27 @@ SAAS MARKETING POST MODE (HARD OVERRIDE — highest priority):
         .join("\n");
     }
     content = content.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+
+    // HARD BODY LAWS: no WhatsApp/contact links and no licence fields in the body.
+    content = content
+      .split("\n")
+      .filter((line) => !/(wa\.me|api\.whatsapp\.com|whatsapp:\/\/|whatsapp\s*[:：]\s*https?)/i.test(line))
+      .filter((line) => !/רישיון\s*תיווך|מספר\s*רישיון/.test(line))
+      .join("\n")
+      .replace(/https?:\/\/(?:www\.)?(?:wa\.me|api\.whatsapp\.com)\/\S*/gi, "")
+      .replace(/whatsapp:\/\/\S*/gi, "")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    // READABILITY LAW: a full blank line between every content line so bullets
+    // and punch lines never bunch up.
+    content = content
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .join("\n\n")
+      .trim();
 
 
     // NO-HASHTAGS scrub: remove any hashtag tokens and any trailing
