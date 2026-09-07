@@ -201,17 +201,22 @@ async function igAccountId(pageId: string, token: string): Promise<string | null
  * forms are attempted (2 tries each, small backoff because the post object is
  * sometimes not yet queryable) and the raw Graph payload is returned so the
  * real reason is logged/persisted instead of being swallowed.
+ *
+ * When Meta blocks the comment endpoint because the app lacks Page Public
+ * Content Access / App Review, the function returns `{ blocked: true }` so
+ * the caller can hand the comment off to the browser-extension automation
+ * instead of failing the whole publish.
  */
 async function postFirstComment(
   pageId: string,
   token: string,
   postId: string,
   message: string,
-): Promise<{ comment_id: string; target: string } | { error: string; raw: unknown }> {
+): Promise<{ comment_id: string; target: string } | { error: string; raw: unknown; blocked?: boolean }> {
   const text = String(message ?? "").trim();
   if (!text) return { error: "אין תוכן לתגובה הראשונה", raw: null };
   const candidates = postId.includes("_") ? [postId, postId.split("_").pop()!] : [`${pageId}_${postId}`, postId];
-  let lastPayload: unknown = null;
+  let lastPayload: any = null;
   for (const target of candidates) {
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
@@ -225,8 +230,13 @@ async function postFirstComment(
       if (res.ok && res.payload?.id) return { comment_id: String(res.payload.id), target };
     }
   }
-  return { error: humanize(lastPayload, "פרסום התגובה הראשונה בעמוד נכשל"), raw: lastPayload };
+  const code = Number(lastPayload?.error?.code ?? 0);
+  const sub = Number(lastPayload?.error?.error_subcode ?? 0);
+  const msg = String(lastPayload?.error?.message ?? "").toLowerCase();
+  const blocked = code === 10 || code === 12 || sub === 33 || /page public content access|pages_read_engagement|singular statuses|deprecated/i.test(msg);
+  return { error: humanize(lastPayload, "פרסום התגובה הראשונה בעמוד נכשל"), raw: lastPayload, blocked };
 }
+
 
 
 /**
