@@ -47,7 +47,33 @@
   deliver();
   setInterval(deliver, 3000);
 
+  // Forward page-first-comment requests from the background worker to poster.js.
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.source !== 'realtyz-extension') return;
+    if (msg.type !== 'RZ_POST_FIRST_COMMENT') return;
+
+    const onResult = (e) => {
+      const d = e && e.data;
+      if (!d || typeof d !== 'object') return;
+      if (d.source !== 'realtyz-extension-poster' || d.type !== 'RZ_FIRST_COMMENT_RESULT') return;
+      window.removeEventListener('message', onResult);
+      sendResponse(d.result || { ok: false, reason: 'לא התקבלה תוצאה מהפוסטר' });
+    };
+    window.addEventListener('message', onResult);
+
+    // Give poster.js a generous timeout before we give up.
+    setTimeout(() => {
+      window.removeEventListener('message', onResult);
+      sendResponse({ ok: false, reason: 'תם הזמן לפרסום התגובה הראשונה' });
+    }, 120000);
+
+    window.postMessage({ source: 'realtyz-extension', type: 'RZ_POST_FIRST_COMMENT', job: msg.job }, window.location.origin);
+    return true;
+  });
+
   window.addEventListener('message', (e) => {
+
     const d = e.data;
     if (!d || typeof d !== 'object') return;
     if (d.type === 'RZ_FB_GROUPS_REQUEST') deliver();
