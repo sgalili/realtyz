@@ -280,17 +280,35 @@ async function mergeQueue(incoming) {
   return merged;
 }
 
+const STALE_POSTING_MS = 6 * 60 * 1000;
+
 async function drainQueue() {
   if (queueRunning) return;
   queueRunning = true;
   try {
     const token = await getToken();
     let queue = await loadQueue();
-    for (const entry of queue) {
+    // Recover jobs left "posting" by a killed service worker so nothing hangs.
+    let recovered = false;
+    for (const e of queue) {
+      if (e && e.status === 'posting' && Date.now() - Number(e.startedAt || e.createdAt || 0) > STALE_POSTING_MS) {
+        e.status = 'pending';
+        e.startedAt = null;
+        recovered = true;
+      }
+    }
+    if (recovered) await saveQueue(queue);
+
+    // Comments first: a first comment must land right under the fresh post.
+    const ordered = queue
+      .slice()
+      .sort((a, b) => (b && (b.type === 'page_first_comment') ? 1 : 0) - (a && (a.type === 'page_first_comment') ? 1 : 0));
+    for (const entry of ordered) {
       if (!entry || entry.status !== 'pending') continue;
       if (Number(entry.scheduledTime || 0) > Date.now()) continue;
 
       entry.status = 'posting';
+      entry.startedAt = Date.now();
       await saveQueue(queue);
 
       let ok = false;
