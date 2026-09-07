@@ -424,6 +424,70 @@ export default function KnowledgeBase() {
               })}
             </div>
 
+            {tab === 'ai' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <GeminiIcon className="h-4 w-4" />
+                  <p className="text-sm font-medium">Gemini · שאילתה על מאגר הידע</p>
+                </div>
+                <Textarea
+                  value={geminiPrompt}
+                  onChange={(e) => setGeminiPrompt(e.target.value)}
+                  placeholder="שאל את Gemini כל דבר על מאגר הידע: פרסונת הסוכן, תבניות פוסטים, הנחיות כתיבה ומענה וכללי תקשורת. לדוגמה: 'נתח את כללי המענה שלי וכתוב מדריך תגובות לפניות מחיר'"
+                  className="min-h-[120px]"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex gap-1 p-1 rounded-lg bg-muted">
+                    {([
+                      { id: 'answer' as const, label: 'תשובה' },
+                      { id: 'document' as const, label: 'מסמך למאגר' },
+                    ]).map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setGeminiMode(m.id)}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
+                          geminiMode === m.id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                  <Button onClick={runGemini} disabled={geminiLoading || !geminiPrompt.trim()} className="ms-auto">
+                    {geminiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 me-1.5" />הרץ</>}
+                  </Button>
+                </div>
+
+                {geminiOutput && (
+                  <div className="space-y-2 border rounded-lg p-3 bg-muted/30">
+                    <Input
+                      value={geminiTitle}
+                      onChange={(e) => setGeminiTitle(e.target.value)}
+                      placeholder="כותרת הקובץ שיישמר"
+                    />
+                    <Textarea
+                      value={geminiOutput}
+                      onChange={(e) => setGeminiOutput(e.target.value)}
+                      className="min-h-[200px] text-sm"
+                    />
+                    {geminiSources.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {geminiSources.map((s) => (
+                          <Badge key={s} variant="secondary" className="text-[10px]">{s}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex justify-end">
+                      <Button onClick={saveGeminiToKb} disabled={savingGemini}>
+                        {savingGemini ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמור כקובץ במאגר'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {tab === 'files' && (
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
