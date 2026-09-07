@@ -3448,6 +3448,7 @@ type CampaignRow = {
   sent_at?: string | null;
 
   media_urls?: string[];
+  group_ids?: string[];
   external_url?: string | null;
   is_external?: boolean;
   listing_id?: string | null;
