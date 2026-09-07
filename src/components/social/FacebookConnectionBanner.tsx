@@ -10,13 +10,14 @@ import { useFacebookHealth } from '@/hooks/useFacebookHealth';
  * failure) and silent while the connection is healthy.
  */
 export function FacebookConnectionBanner() {
-  const { data: health } = useFacebookHealth();
+  const { data: health, isLoading } = useFacebookHealth();
   const needsReconnect = health?.needsReconnect === true;
 
-  // Strict hide: the backend only sets needs_reconnect when zero bound pages
-  // have a working token. If it is false — or any page binding is healthy —
-  // the banner must disappear immediately.
-  if (!needsReconnect || health?.pageConnected) return null;
+  // Strict hide: only a definitive hard token expiry (Meta auth error on a live
+  // API call) may show this banner. Any existing/valid workspace page
+  // connection, an unknown state, or a still-loading check stays silent.
+  if (isLoading || !health) return null;
+  if (!needsReconnect || health.pageConnected || health.neverConnected) return null;
 
   return (
     <div
