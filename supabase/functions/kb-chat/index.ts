@@ -61,23 +61,59 @@ Deno.serve(async (req) => {
       if (m) leadName = m[1];
     } catch (_) { /* noop */ }
 
+    // Persona + identity are resolved from the CALLER'S ACTIVE WORKSPACE only.
+    // Nothing about any other broker may ever leak into this prompt.
+    let ownerName = "";
+    let personaBlock = "";
+    try {
+      const { data: me } = await admin
+        .from("profiles")
+        .select("full_name, active_workspace_owner_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      const ownerId = (me as any)?.active_workspace_owner_id ?? user.id;
+      let ownerRow: any = me;
+      if (ownerId && ownerId !== user.id) {
+        const { data: owner } = await admin
+          .from("profiles")
+          .select("full_name")
+          .eq("id", ownerId)
+          .maybeSingle();
+        ownerRow = owner ?? me;
+      }
+      ownerName = String(ownerRow?.full_name ?? "").trim();
+      const { data: persona } = await admin
+        .from("agent_personas")
+        .select("tone, tone_custom, professional_bio, selling_philosophy, signature, language")
+        .eq("user_id", ownerId)
+        .maybeSingle();
+      if (persona) {
+        personaBlock = [
+          (persona as any).tone ? `סגנון: ${(persona as any).tone}` : "",
+          (persona as any).tone_custom ? `הנחיות סגנון: ${(persona as any).tone_custom}` : "",
+          (persona as any).professional_bio ? `רקע מקצועי: ${(persona as any).professional_bio}` : "",
+          (persona as any).selling_philosophy ? `תפיסת מכירה: ${(persona as any).selling_philosophy}` : "",
+          (persona as any).signature ? `חתימה: ${(persona as any).signature}` : "",
+        ].filter(Boolean).join("\n");
+      }
+    } catch (_) { /* generic persona is an acceptable fallback */ }
+
     const systemPrompt = [
-      "אתה ה-AI Agent של אודי ויטמן, מתווך נדל\"ן ב-Realtyz AI. ברירת מחדל: ברוקר חד, יעיל, החלטי. אתה מנהל פתרונות - לא 'עונה על שאלות'.",
+      ownerName
+        ? `אתה ה-AI Agent של ${ownerName}, מתווך נדל"ן ב-Realtyz. ברירת מחדל: ברוקר חד, יעיל, החלטי. אתה מנהל פתרונות - לא 'עונה על שאלות'.`
+        : "אתה ה-AI Agent של המשרד ב-Realtyz. ברירת מחדל: ברוקר חד, יעיל, החלטי. אתה מנהל פתרונות - לא 'עונה על שאלות'.",
       "מיקוד 100%: הנכס, העסקה, וצרכי הלקוח. בלי סיפורי רקע אישיים.",
-      "Less is More על הביוגרפיה: ב-90% מהשיחות אל תזכיר בכלל גולני, אייירון מן, קייאקים, ספורט אולימפי, או רפואה. הסיפור האישי לא רלוונטי לרוב הלקוחות.",
-      "טעימה אסטרטגית בלבד: רק אם השיחה תקועה או צריך 'בוסט' מקצועי (למשל להסביר למה בלעדיות עדיפה) - מותר משפט אחד קצר עם מטאפורה ספורטיבית/צבאית. אחד. לא יותר.",
-      "טון: ישיר, ישראלי, תכליתי. בלי פתיחות AI ('אשמח לעזור', 'כמודל שפה'), בלי התנצלויות, בלי חברמניות מוגזמת.",
-      "מבנה: 1-2 משפטים חדים. בלי פסקאות, בלי בולטים, בלי כותרות, בלי מקפים ארוכים (— –). עובדה ראשונה, ואז קריאה לפעולה.",
+      "טון: ישיר, ישראלי, תכליתי. בלי פתיחות AI ('אשמח לעזור', 'כמודל שפה'), בלי התנצלויות.",
+      "מבנה: 1-2 משפטים חדים. בלי פסקאות, בלי בולטים, בלי כותרות, בלי מקפים ארוכים. עובדה ראשונה, ואז קריאה לפעולה.",
       leadName ? `פנה ללקוח בשמו הפרטי (${leadName}).` : "אם ידוע שם פרטי של הלקוח - פתח בו.",
       "כל תשובה חייבת להסתיים בקריאה לפעולה: פגישה, סיור בנכס, חתימה, או החלטה ספציפית.",
-      "ידע על נכס בבשן, הרצליה: במקור 2 חדרים ענקיים שחולקו מקצועית ל-4 פונקציונליים. הוק: 4 חדרים במחיר של 2.",
-      "אם הלקוח הוא אלון או שואל על דירת בשן - השתמש בדיוק בסגנון: 'היי אלון, הדירה בבשן עדיין פנויה. במקור אלו היו 2 חדרים ענקיים שחילקתי ל-4 פונקציונליים, ככה שאתה מקבל 4 חדרים במחיר של 2. אני כאן כדי לנהל לך את הפתרון הכי מדויק. מתי אתה רוצה לראות?'",
       "בלעדיות: נכס צריך מתווך אחד מפוקס - אחרת אין תוצאות. משפט אחד, בלי דרשות.",
-      "אסור להמציא נכסים, לקוחות, כתובות, מחירים או עסקאות שלא ב-KB.",
+      "אסור להמציא נכסים, לקוחות, כתובות, מחירים או עסקאות שלא במאגר הידע של המשרד הזה.",
       "אסור לומר 'אני לא יודע על נדל\"ן'. תמיד מציע צעד הבא.",
+      personaBlock ? `\nהפרסונה של המשרד:\n${personaBlock}` : "",
       "",
-      context ? `הקשר ממאגר הידע:\n${context}` : "אין הקשר ספציפי ב-KB - ענה קצר וחד, ובקש פרט אחד שיקדם את העסקה.",
-    ].join("\n");
+      context ? `הקשר ממאגר הידע:\n${context}` : "אין הקשר ספציפי במאגר - ענה קצר וחד, ובקש פרט אחד שיקדם את העסקה.",
+    ].filter(Boolean).join("\n");
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
