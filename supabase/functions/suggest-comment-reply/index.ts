@@ -353,6 +353,10 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Persona of THIS workspace only (no hardcoded broker/agency fallback).
+    const wsPersona = await fetchWorkspacePersona(admin as any, userId);
+    const SYSTEM = buildSystemPrompt({ name: wsPersona.name, agency: wsPersona.agency });
+
     // STRICT TRANSACTION TYPE ALIGNMENT — resolve the primary listing's
     // sale/rent type so we NEVER cross-reference sale alternatives to a
     // rental lead (or vice-versa).
