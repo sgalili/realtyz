@@ -336,15 +336,6 @@ export const UniversalKnowledgeInput = () => {
           {/* TEXT */}
           <TabsContent value="text" className="mt-4 space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="text-title" className="text-xs">כותרת</Label>
-              <Input
-                id="text-title"
-                value={textTitle}
-                onChange={(e) => setTextTitle(e.target.value)}
-                placeholder="לדוגמה: סיכום פגישה עם בעל הנכס"
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="text-body" className="text-xs">תוכן</Label>
               <Textarea
                 id="text-body"
