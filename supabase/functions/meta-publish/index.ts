@@ -196,6 +196,40 @@ async function igAccountId(pageId: string, token: string): Promise<string | null
 }
 
 /**
+ * Post the automatic first comment on a freshly published Page post.
+ * Facebook returns either `{page_id}_{post_id}` or a bare object id; both
+ * forms are attempted (2 tries each, small backoff because the post object is
+ * sometimes not yet queryable) and the raw Graph payload is returned so the
+ * real reason is logged/persisted instead of being swallowed.
+ */
+async function postFirstComment(
+  pageId: string,
+  token: string,
+  postId: string,
+  message: string,
+): Promise<{ comment_id: string; target: string } | { error: string; raw: unknown }> {
+  const text = String(message ?? "").trim();
+  if (!text) return { error: "אין תוכן לתגובה הראשונה", raw: null };
+  const candidates = postId.includes("_") ? [postId, postId.split("_").pop()!] : [`${pageId}_${postId}`, postId];
+  let lastPayload: unknown = null;
+  for (const target of candidates) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
+      const form = new URLSearchParams({ message: text, access_token: token });
+      const res = await graph(`/${target}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+        body: form.toString(),
+      });
+      lastPayload = res.payload;
+      if (res.ok && res.payload?.id) return { comment_id: String(res.payload.id), target };
+    }
+  }
+  return { error: humanize(lastPayload, "פרסום התגובה הראשונה בעמוד נכשל"), raw: lastPayload };
+}
+
+
+/**
  * Upload one photo to the Page as an UNPUBLISHED attachment and return its
  * media_fbid. Strategy: first let Facebook fetch the URL itself (`url=`), and
  * if that fails (hot-link protection, signed CDN links, query strings, private
