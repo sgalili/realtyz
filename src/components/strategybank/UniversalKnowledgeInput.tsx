@@ -144,7 +144,7 @@ export const UniversalKnowledgeInput = () => {
   const handleSaveText = async () => {
     if (blockDemoAction('add-knowledge-text')) return;
     if (!textBody.trim()) { toast.error('יש להזין תוכן'); return; }
-    const title = textTitle.trim() || `הערה מהירה · ${new Date().toLocaleString('he-IL')}`;
+    const title = `הערה מהירה · ${new Date().toLocaleString('he-IL')}`;
     try {
       await ingest.mutateAsync({
         title,
@@ -153,7 +153,7 @@ export const UniversalKnowledgeInput = () => {
         tag: TAG_BY_MODE.text,
       });
       toast.success('הטקסט נוסף למאגר הידע');
-      setTextTitle(''); setTextBody('');
+      setTextBody('');
     } catch (e) {
       toast.error(`שמירה נכשלה: ${(e as Error).message}`);
     }
