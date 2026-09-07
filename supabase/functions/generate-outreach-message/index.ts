@@ -204,7 +204,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: externalMasterPrompt({ surface: "outreach" }) + "\n\n" + finalSystemPrompt },
+          { role: "system", content: externalMasterPrompt({ surface: "outreach", owner: { name: wsPersona.name, agency: wsPersona.agency }, personaBrief: wsPersona.brief, domain: wsPersona.domain }) + "\n\n" + finalSystemPrompt },
           { role: "user", content: userPrompt },
         ],
         tools: [

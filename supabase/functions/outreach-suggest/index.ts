@@ -90,7 +90,7 @@ Write a single short follow-up message in Hebrew. Do not invent prices or addres
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: externalMasterPrompt({ surface: "outreach_suggest" }) + "\n\n" + sysPrompt },
+          { role: "system", content: externalMasterPrompt({ surface: "outreach_suggest", owner: { name: wsPersona.name, agency: wsPersona.agency }, personaBrief: wsPersona.brief, domain: wsPersona.domain }) + "\n\n" + sysPrompt },
           { role: "user", content: userPrompt },
         ],
       }),
