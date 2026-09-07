@@ -234,11 +234,42 @@
     };
   }
 
+  async function postFirstCommentToPage(job) {
+    if (isLoggedOut()) return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' };
+
+    const snippet = String(job.message || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const article = await waitFor(() => {
+      const hit = [...document.querySelectorAll('div[role="article"]')].find((a) =>
+        (a.innerText || '').replace(/\s+/g, ' ').includes(snippet),
+      );
+      return hit || null;
+    }, 25000, 800);
+
+    if (!article) {
+      // Fallback: the post may not be in the top of the feed yet; try scrolling once.
+      window.scrollBy({ top: 600, behavior: 'smooth' });
+      await sleep(1500);
+    }
+
+    const err = await addFirstComment(article, snippet, String(job.message || ''));
+    if (err) return { ok: false, reason: err };
+    return { ok: true, post_url: job.post_url };
+  }
+
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (!msg || msg.source !== 'realtyz-extension' || msg.type !== 'RZ_POST_TO_GROUP') return;
-    postToGroup(msg.job || {})
-      .then((res) => sendResponse(res))
-      .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
-    return true;
+    if (!msg || msg.source !== 'realtyz-extension') return;
+    if (msg.type === 'RZ_POST_TO_GROUP') {
+      postToGroup(msg.job || {})
+        .then((res) => sendResponse(res))
+        .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
+      return true;
+    }
+    if (msg.type === 'RZ_POST_FIRST_COMMENT') {
+      postFirstCommentToPage(msg.job || {})
+        .then((res) => sendResponse(res))
+        .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
+      return true;
+    }
   });
 })();
+
