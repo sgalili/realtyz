@@ -31,16 +31,33 @@ function norm(v?: string | null) {
  *   personal full name, so it is suppressed in favour of the configured
  *   white-label agency branding, and finally the Realtyz wordmark.
  */
+/**
+ * A personal profile picture is NEVER office branding. Anything served from the
+ * personal avatar bucket (or equal to the owner's avatar) is rejected outright,
+ * so a stale cached value can't leak a headshot into the header.
+ */
+function officeLogoOnly(url: string | null, ownerAvatar: string): string | null {
+  if (!url) return null;
+  if (/\/(?:avatars|profile-photos)\//i.test(url)) return null;
+  if (ownerAvatar && url === ownerAvatar) return null;
+  return url;
+}
+
 export function resolveWorkspaceIdentity(
   workspace: Workspace | null | undefined,
   brand?: BrandLike,
 ): WorkspaceIdentity {
   const wsName = norm(workspace?.workspace_name);
-  const wsLogo = norm(workspace?.workspace_logo_url) || null;
+  const ownerAvatar = norm(workspace?.owner_avatar_url);
+  const wsLogo = officeLogoOnly(norm(workspace?.workspace_logo_url) || null, ownerAvatar);
   const brandName = norm(brand?.agency_name);
   // Logo precedence: the workspace's own landscape logo, then its square logo,
-  // then the workspace-list logo. Never another workspace's logo.
-  const brandLogo = norm(brand?.landscape_logo_url) || norm(brand?.logo_url) || null;
+  // then the workspace-list logo. Never another workspace's logo, and never a
+  // personal profile picture.
+  const brandLogo = officeLogoOnly(
+    norm(brand?.landscape_logo_url) || norm(brand?.logo_url) || null,
+    ownerAvatar,
+  );
 
   const isSelf = !workspace || workspace.is_self;
 
@@ -64,6 +81,7 @@ export function resolveWorkspaceIdentity(
 
   return { name, logo, isTenant: false };
 }
+
 
 export function workspaceInitial(name: string) {
   return (name || DEFAULT_NAME).trim().slice(0, 1).toUpperCase();
