@@ -268,15 +268,18 @@ export const SocialAutomationService = {
     method: SessionMethod;
     account: ConnectedAccount;
   }) {
+    const { data: { user: sessionUser } } = await supabase.auth.getUser();
     const { data: existing } = await supabase
       .from('social_connections')
       .select('id, credentials')
       .eq('platform', params.platform)
+      .eq('created_by', sessionUser?.id ?? '')
       .maybeSingle();
 
     const previousCreds = (existing?.credentials as Record<string, unknown> | null) ?? {};
 
     const payload = {
+      created_by: sessionUser?.id ?? null,
       platform: params.platform,
       display_name: params.displayName,
       credentials: {
@@ -300,7 +303,7 @@ export const SocialAutomationService = {
         .eq('id', existing.id);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from('social_connections').insert(payload);
+      const { error } = await supabase.from('social_connections').upsert(payload, { onConflict: 'created_by,platform' });
       if (error) throw error;
     }
   },
@@ -503,10 +506,12 @@ async function writeManual(
 ) {
   if (Object.keys(fields).length === 0) return;
 
+  const { data: { user: manualUser } } = await supabase.auth.getUser();
   const { data: existing } = await supabase
     .from('social_connections')
     .select('id, credentials')
     .eq('platform', platform)
+    .eq('created_by', manualUser?.id ?? '')
     .maybeSingle();
 
   const previousCreds = (existing?.credentials as Record<string, unknown> | null) ?? {};
@@ -532,10 +537,9 @@ async function writeManual(
     if (error) throw error;
   } else {
     // Stamp created_by so the dispatch function (which scopes per user) can find this row.
-    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from('social_connections')
-      .insert({ ...payload, is_connected: false, created_by: user?.id ?? null });
+      .upsert({ ...payload, is_connected: false, created_by: manualUser?.id ?? null }, { onConflict: 'created_by,platform' });
     if (error) throw error;
   }
 }

@@ -45,11 +45,38 @@ export async function buildGoogleAllAuthUrl(): Promise<string | null> {
 
 /** Which of the three Google services are already live for this user. */
 export async function connectedGoogleServices(): Promise<Set<string>> {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth?.user?.id;
+  if (!userId) return new Set<string>();
   const { data } = await supabase
     .from('social_connections')
     .select('platform, is_connected')
+    .eq('created_by', userId)
     .in('platform', ['gmail', 'google_calendar', 'youtube']);
   return new Set((data ?? []).filter((r: any) => r.is_connected).map((r: any) => String(r.platform)));
+}
+
+/**
+ * True when this workspace already has a live Facebook link (a Page binding or
+ * a personal connection). Used to hide every "connect Facebook" prompt.
+ */
+export async function isFacebookConnected(): Promise<boolean> {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth?.user?.id;
+  if (!userId) return false;
+  const [page, personal, social] = await Promise.all([
+    supabase.from('messenger_page_bindings').select('page_id').eq('owner_id', userId).limit(1),
+    supabase.from('fb_personal_connections').select('id').eq('workspace_owner_id', userId).limit(1),
+    supabase
+      .from('social_connections')
+      .select('platform, is_connected')
+      .eq('created_by', userId)
+      .in('platform', ['facebook', 'facebook_page', 'instagram', 'meta'])
+      .limit(5),
+  ]);
+  if ((page.data ?? []).length > 0) return true;
+  if ((personal.data ?? []).length > 0) return true;
+  return (social.data ?? []).some((r: any) => r.is_connected);
 }
 
 export function readFlag(store: Storage | undefined, key: string): string | null {
