@@ -150,9 +150,6 @@ export function appendLicenseFooter(
     .replace(/\n*\s*רישיון\s*תיווך\s*מספר\s*[:：][^\n]*/gu, "")
     .replace(/\n*\s*רישיון\s*תיווך\s*\d[^\n]*/gu, "")
     .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, "")
-    // any prior byline line (Udi Witman + agency)
-    .replace(/\n*\s*אודי\s+ויטמן[^\n]*אנגלו[^\n]*/gu, "")
-    .replace(/\n*\s*אודי\s+ויטמן[^\n]*/gu, "")
     // old contact/CTA lines the AI sometimes generates
     .replace(/\n*[^\n]*לקבלת\s+פרטים\s+נוספים[^\n]*/gu, "")
     .replace(/\n*[^\n]*לפרטים\s+נוספים[^\n]*/gu, "")
