@@ -40,14 +40,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (error || !comment) throw new Error('comment not found');
 
-    const userMsg0 = is_simulation && comment.historical_reply_text
-      ? `תגובה של ${comment.author_name || 'גולש'}: "${comment.comment_text}"\n\nהתשובה של ${brokerFirst} בפועל היתה: "${comment.historical_reply_text}".\nהפק 3 גרסאות חלופיות בסגנונו.`
-      : `תגובה של ${comment.author_name || 'גולש'}: "${comment.comment_text}"\n\nהפק 3 גרסאות תשובה שונות בסגנונו של ${brokerFirst}.`;
-
-    // Pull the workspace owner's standing orders. fb-engagement is a workspace-
-    // singleton surface (one Facebook Page), so resolve owner via the engagement
-    // settings table.
-    let systemRulesBlock = '';
+    // Resolve the Page's workspace owner, then their display name. The reply
+    // voice always belongs to that owner — never to a hardcoded broker.
+    let ownerId: string | null = null;
     try {
       const { data: ownerRow } = await admin
         .from('fb_engagement_settings')
@@ -55,13 +50,39 @@ Deno.serve(async (req) => {
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (ownerRow?.user_id) {
-        systemRulesBlock = await fetchSystemRulesBlock(ownerRow.user_id, comment.comment_text || 'facebook comment reply');
-      }
+      ownerId = (ownerRow as any)?.user_id ?? null;
     } catch (e) {
-      console.warn('[fb-engagement-draft] fetchSystemRulesBlock failed:', e instanceof Error ? e.message : e);
+      console.warn('[fb-engagement-draft] owner lookup failed:', e instanceof Error ? e.message : e);
     }
 
+    let broker = 'המתווך';
+    if (ownerId) {
+      try {
+        const { data: prof } = await admin
+          .from('profiles')
+          .select('full_name')
+          .eq('id', ownerId)
+          .maybeSingle();
+        const nm = String((prof as any)?.full_name ?? '').trim();
+        if (nm) broker = nm;
+      } catch (_) { /* generic fallback */ }
+    }
+    const brokerFirst = broker.split(/\s+/)[0];
+
+    const userMsg = is_simulation && comment.historical_reply_text
+      ? `תגובה של ${comment.author_name || 'גולש'}: "${comment.comment_text}"\n\nהתשובה של ${brokerFirst} בפועל היתה: "${comment.historical_reply_text}".\nהפק 3 גרסאות חלופיות בסגנונו.`
+      : `תגובה של ${comment.author_name || 'גולש'}: "${comment.comment_text}"\n\nהפק 3 גרסאות תשובה שונות בסגנונו של ${brokerFirst}.`;
+
+    let systemRulesBlock = '';
+    if (ownerId) {
+      try {
+        systemRulesBlock = await fetchSystemRulesBlock(ownerId, comment.comment_text || 'facebook comment reply');
+      } catch (e) {
+        console.warn('[fb-engagement-draft] fetchSystemRulesBlock failed:', e instanceof Error ? e.message : e);
+      }
+    }
+
+    const SYSTEM = buildSystem(broker, brokerFirst);
     const finalSystem = systemRulesBlock ? `${systemRulesBlock}\n\n${SYSTEM}` : SYSTEM;
     const finalUser = systemRulesBlock
       ? `${userMsg}\n\nכל גרסה חייבת לציית במלואה לכל הכללים תחת #CRITICAL_SYSTEM_PREFERENCES — אל תפר אף כלל.`
