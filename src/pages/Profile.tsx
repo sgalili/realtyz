@@ -511,7 +511,7 @@ function WorkspaceTab() {
     }
   };
 
-  };
+
 
   const save = async () => {
     if (!isOwner || !user?.id) { toast.error('רק בעל החשבון יכול לשמור את פרטי המשרד'); return; }
