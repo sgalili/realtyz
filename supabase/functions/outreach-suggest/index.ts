@@ -17,6 +17,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
+import { fetchWorkspacePersona, renderPersonaBlock, EMPTY_PERSONA, type WorkspacePersona } from "../_shared/workspacePersona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 
 const corsHeaders = {
@@ -71,10 +72,10 @@ const TEMPLATES: Record<string, (l: Lead, ctx: Record<string, any>) => string> =
     }₪. חשבתי שיעניין אותך — נוכל לתאם סיור?`,
 };
 
-async function draftWithAI(lead: Lead, trigger: string, ctx: Record<string, any>, systemRulesBlock = ""): Promise<string | null> {
+async function draftWithAI(lead: Lead, trigger: string, ctx: Record<string, any>, systemRulesBlock = "", wsPersona: WorkspacePersona = EMPTY_PERSONA): Promise<string | null> {
   if (!LOVABLE_API_KEY) return null;
   const fallback = TEMPLATES[trigger]?.(lead, ctx) || "";
-  const basePrompt = `אתה סוכן נדל"ן ישראלי כותב הודעת WhatsApp קצרה, חמה ומקצועית בעברית (עד 3 משפטים, ללא אימוג׳ים מוגזמים).`;
+  const basePrompt = `${renderPersonaBlock(wsPersona)}\n\nאתה כותב הודעת WhatsApp קצרה, חמה ומקצועית בעברית בשם החשבון הזה (עד 3 משפטים, ללא אימוג׳ים מוגזמים).`;
   const sysPrompt = systemRulesBlock ? `${systemRulesBlock}\n\n${basePrompt}` : basePrompt;
   const userPrompt = `Lead: ${lead.full_name || "Unknown"} (${lead.city || "—"}). Stage: ${lead.lead_stage}. Tier: ${lead.loyalty_tier || "—"}. Interest: ${lead.interest_tag || "—"}.
 Trigger: ${trigger}. Context: ${JSON.stringify(ctx)}.
