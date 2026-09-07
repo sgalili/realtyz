@@ -126,6 +126,9 @@ serve(async (req) => {
 
     const wsPersona = await fetchWorkspacePersona(admin as any, userId);
     const isSaas = wsPersona.domain === "software";
+    // A software / SaaS workspace never markets a property listing.
+    if (isSaas) promotedListing = null;
+
 
     const BROKER_PERSONA = isSaas
       ? `${renderPersonaBlock(wsPersona)}
