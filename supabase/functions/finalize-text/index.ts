@@ -80,21 +80,30 @@ Deno.serve(async (req) => {
 
     // Resolve owner branding so we can hard-pin the byline + license footer
     // for the model AND deterministically re-apply them after generation.
+    // The brokerage footer applies ONLY to real-estate workspaces: a software /
+    // SaaS workspace must never receive a "רישיון תיווך" instruction.
     const branding = admin ? await fetchOwnerBranding(admin as any, userId) : { license: "", byline: "", name: "", phone: "" };
+    const wsPersona = admin ? await fetchWorkspacePersona(admin as any, userId) : EMPTY_PERSONA;
+    const isRealEstate = wsPersona.domain === "real_estate";
     const HARD_LAWS_BLOCK = [
       "#HARD COMPLIANCE LAWS — HIGHEST PRIORITY, NON-NEGOTIABLE:",
       "- NEVER include a building / house / apartment number in any street address. \"ארלוזורוב 26\" must become \"ברחוב ארלוזורוב\". Strip ALL numeric suffixes from street addresses.",
-      "- NEVER invent or attach an agency title, company name or slogan to the owner's name (for example \"<name> נדל\"ן\", \"<name> | תיווך\", \"<name> Real Estate\"). Only the exact byline configured in the profile may appear.",
+      "- NEVER invent or attach a company name, title or slogan to the owner's name. Only the exact byline configured in the profile may appear.",
       branding.byline
-        ? `- The ONLY allowed broker byline is exactly: "${branding.byline}". Use it only inside the bottom footer block, never inside the body copy.`
-        : `- Do NOT invent any broker title; only the broker's plain name may appear.`,
-      `- ALWAYS end the post with a clean blank line and the footer block below — exactly as written, no markdown, no emoji, no extra text after it:`,
-      branding.byline ? `    ${branding.byline}` : "",
-      branding.license
-        ? `    רישיון תיווך מספר: ${branding.license}`
-        : `    רישיון תיווך מספר: [יש להזין מספר רישיון בפרופיל]`,
+        ? `- The ONLY allowed byline is exactly: "${branding.byline}". Use it only inside the bottom footer block, never inside the body copy.`
+        : `- Do NOT invent any title; only the owner's plain name may appear.`,
+      ...(isRealEstate
+        ? [
+            `- ALWAYS end the post with a clean blank line and the footer block below — exactly as written, no markdown, no emoji, no extra text after it:`,
+            branding.byline ? `    ${branding.byline}` : "",
+            branding.license
+              ? `    רישיון תיווך מספר: ${branding.license}`
+              : "",
+          ]
+        : ["- NEVER add a brokerage licence line, property-agent signature, or any real-estate agent framing. This workspace is not a brokerage."]),
       "#END_HARD_LAWS",
     ].filter(Boolean).join("\n");
+
 
     const SYSTEM = [
       "You are a senior copy editor producing the FINAL VERSION of a draft.",
