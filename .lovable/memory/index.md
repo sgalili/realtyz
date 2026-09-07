@@ -16,6 +16,8 @@
 - **Freemium**: 30-day trial · 100 contacts cap · ₪50 wallet (profiles.trial_end_date + wallet_balance_agorot). `useFreemiumStatus()` gates Add/Import buttons in CRM. `enforce_trial_lead_cap` trigger blocks inserts when expired (TRIAL_TIME_EXPIRED / TRIAL_RECORD_LIMIT). Currency always rendered via `<PriceTag>` (₪ left of digits).
 - **Gender (HARD)**: `profiles.gender` + `cloned_voices.voice_gender` ('male'|'female'). UI Hebrew must match broker gender (use `heVerb` helper in CampaignCenter). Voice AI MUST self-refer in the voice clone's gender (Udi Whitman=MALE) and address the lead in their gender for the ENTIRE call — never switch mid-call, never assume. vapi-outbound-call injects genderRules() into the system prompt.
 
+- **FB groups (HARD)**: group posts ONLY via the Chrome extension (`enqueueExtensionPosts` → localStorage rzPostQueue, or `fb_group_post` queue rows). Never Graph `/feed` for groups; `fb-group-publish` deleted.
+
 ## Memories
 - [Visual Identity](mem://style/visual-identity) — Realtyz branding: minimalist, no icons/emojis in headers.
 - [Localization & Typography](mem://style/localization) — RTL Hebrew layout, Assistant/Inter fonts, specific Hebrew terminology.
@@ -56,3 +58,4 @@
 - [Package Pricing](mem://features/pricing-packages) — Fixed monthly packages ₪0/145/495/795; per-contact pricing retired; tour WA button removed.
 - [Workspace SMS 019 + OTP fallback](mem://features/workspace-sms-019) — per-workspace 019 credentials, WhatsApp OTP SMS fallback, first-time Google/Facebook approval popup, FB group publish scopes.
 - [Meta template compliance](mem://features/wa-template-compliance) — OTP AUTHENTICATION template, drip stage-2 UTILITY/MARKETING templates, template_rejected logging.
+- [FB groups extension-only](mem://constraints/fb-groups-extension-only) — No Graph API for group posts; rzPostQueue + campaign_activity_queue fb_group_post handled by the extension.
