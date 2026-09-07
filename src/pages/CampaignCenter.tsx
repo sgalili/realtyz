@@ -3748,6 +3748,7 @@ const PublishedFeed = ({
         created_at: new Date(now).toISOString(),
         provider_message_id: null,
         media_urls: Array.isArray(detail.media_urls) ? detail.media_urls : [],
+        group_ids: Array.isArray(detail.group_ids) ? detail.group_ids.map((g: any) => String(g)) : [],
         status: isScheduled ? 'scheduled' : 'publishing',
         sent_at: isScheduled ? scheduledAt : null,
         like_count: 0,
