@@ -100,6 +100,19 @@ Deno.serve(async (req) => {
       continue;
     }
 
+    // When a paired browser extension is live for this workspace, group posts
+    // are executed locally by that extension (it claims the row itself through
+    // ext-queue-claim). Leave the row pending so the server does not race it.
+    if (isScheduledGroupPost) {
+      const { data: extLive } = await admin.rpc("ext_is_active", { _ws: ws });
+      if (extLive === true) {
+        results.push({ id: row.id, status: "deferred", reason: "extension_runner_active", workspace: ws });
+        continue;
+      }
+    }
+
+
+
     const { data: locked, error: lockErr } = await admin
       .from("campaign_activity_queue")
       .update({ status: "processing", processed_at: now, attempts: (row.attempts ?? 0) + 1 })

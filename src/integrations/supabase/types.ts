@@ -1024,6 +1024,8 @@ export type Database = {
         Row: {
           activity_type: string
           attempts: number
+          claim_expires_at: string | null
+          claimed_by: string | null
           completed_at: string | null
           created_at: string
           created_by: string | null
@@ -1045,6 +1047,8 @@ export type Database = {
         Insert: {
           activity_type: string
           attempts?: number
+          claim_expires_at?: string | null
+          claimed_by?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -1066,6 +1070,8 @@ export type Database = {
         Update: {
           activity_type?: string
           attempts?: number
+          claim_expires_at?: string | null
+          claimed_by?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -2287,6 +2293,45 @@ export type Database = {
           trigger_category?: string
           trigger_keywords?: string[]
           user_id?: string
+        }
+        Relationships: []
+      }
+      extension_pairings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string | null
+          last_seen_at: string | null
+          revoked_at: string | null
+          token: string
+          updated_at: string
+          user_agent: string | null
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          last_seen_at?: string | null
+          revoked_at?: string | null
+          token: string
+          updated_at?: string
+          user_agent?: string | null
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          last_seen_at?: string | null
+          revoked_at?: string | null
+          token?: string
+          updated_at?: string
+          user_agent?: string | null
+          workspace_owner_id?: string
         }
         Relationships: []
       }
@@ -5840,6 +5885,22 @@ export type Database = {
       }
       ensure_credit_wallet: { Args: { _user_id: string }; Returns: string }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
+      ext_claim_jobs: {
+        Args: { _limit?: number; _token: string; _user_agent?: string }
+        Returns: Json
+      }
+      ext_create_pairing: { Args: { _label?: string }; Returns: Json }
+      ext_is_active: { Args: { _ws: string }; Returns: boolean }
+      ext_report_job: {
+        Args: {
+          _job_id: string
+          _ok: boolean
+          _post_url?: string
+          _reason?: string
+          _token: string
+        }
+        Returns: Json
+      }
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
       gen_referral_code: { Args: never; Returns: string }
       get_account_integrations: { Args: never; Returns: Json }
