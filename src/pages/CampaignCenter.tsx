@@ -30,7 +30,13 @@ import { nextBlockedKeys } from '@/lib/mediaBlocklist';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { enqueueExtensionPosts } from '@/lib/extensionGroupBridge';
+import {
+  enqueueExtensionPosts,
+  useExtensionQueue,
+  queueStatusForText,
+  isLegacyMetaGroupError,
+  resetQueueEntriesForText,
+} from '@/lib/extensionGroupBridge';
 import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
