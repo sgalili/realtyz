@@ -44,6 +44,7 @@ import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from 
 import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
 
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { nativeWaLink } from '@/lib/officialWa';
 import { cn } from '@/lib/utils';
 
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
