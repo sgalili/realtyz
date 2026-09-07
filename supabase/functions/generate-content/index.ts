@@ -320,9 +320,11 @@ HIGH-CONVERTING COPY STRUCTURE (apply ONLY when a specific נכס/PROMOTED LISTI
 
 כתוב בעברית בלבד, ישראלית טבעית, בגוף ראשון של ${brokerFirst}. החזר את הפוסט בלבד, בלי הסברים נלווים.`;
 
+    const systemPrompt = isSaas ? saasSystemPrompt : brokerSystemPrompt;
+
     const noListingSelected = !promotedListing;
 
-    const GENERAL_POST_RULE = noListingSelected ? `
+    const GENERAL_POST_RULE = (!isSaas && noListingSelected) ? `
 GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
 - No specific property was selected. Write a GENERAL post about ${brokerFirst} as a broker: his approach, motivation, professional insights, market perspective, values, success mindset, or general activity in the field.
 - ABSOLUTELY FORBIDDEN: any client name, lead name, owner name, phone number, email, address of a private deal, specific property from the CRM, private notes, internal reminders, deal status, negotiation details, or anything sourced from CRM/leads/messages/private KB entries.
@@ -331,27 +333,41 @@ GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
 - Write in first person as ${brokerFirst} about broker craft, motivation, discipline, work ethic, market observations at a generic level, or goals — nothing that exposes private CRM data.
 ` : "";
 
+    const SAAS_POST_RULE = isSaas ? `
+SAAS MARKETING POST MODE (HARD OVERRIDE — highest priority):
+- Everything factual (features, pricing tiers, terms, proof points) must appear verbatim in [WORKSPACE KNOWLEDGE BASE]. Nothing else is allowed.
+- Never write as a real-estate agent and never mention a brokerage licence, licence number, agent signature, years of brokerage experience, or any apartment/property being sold.
+- Never expose private CRM data, client names, lead names or phone numbers.
+- Close with a clear invitation to book a ~15 minute Zoom demo, phrased differently every time.
+` : "";
+
     const userPrompt = [
       kbTemplatesBlock || null,
       promotedBlock,
       // Never expose CRM/private client data in general (no-listing) posts.
-      focusOnly || noListingSelected ? null : renderCrmBlock(snap),
-      focusOnly || noListingSelected ? null : renderKbBlock(kb),
+      isSaas || focusOnly || noListingSelected ? null : renderCrmBlock(snap),
+      isSaas ? renderKbBlock(kb) : (focusOnly || noListingSelected ? null : renderKbBlock(kb)),
       kbInstructionsBlock || null,
       customBlock,
       GENERAL_POST_RULE || null,
-      focusOnly
-        ? `מטרת הפוסט: פוסט מכירה/השכרה קצר וישיר לנכס שלמעלה בלבד — בלי שום הקשר אישי, ביוגרפיה או נושאים לא קשורים.`
-        : noListingSelected
-          ? `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}\n\nכתוב פוסט כללי בגוף ראשון על ${brokerFirst} כמתווך — גישה, מוטיבציה, ערכים, תובנות שוק כלליות, הצלחה מקצועית. אסור לחלוטין להזכיר שמות לקוחות, לידים, בעלי נכסים, כתובות פרטיות, או כל פרט מה-CRM.`
-          : `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}`,
+      SAAS_POST_RULE || null,
+      isSaas
+        ? `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}\n\nכתוב פוסט שיווקי B2B בשם הפלטפורמה: כאב תפעולי אמיתי של סוכן/סוכנות נדל"ן, איך התוכנה פותרת אותו (חיסכון בזמן, אוטומציה, CRM, מענה AI ללידים), וסיום בהזמנה לזום של 15 דקות. רק מסרים, פיצ'רים ומחירים שמופיעים במאגר הידע.`
+        : focusOnly
+          ? `מטרת הפוסט: פוסט מכירה/השכרה קצר וישיר לנכס שלמעלה בלבד — בלי שום הקשר אישי, ביוגרפיה או נושאים לא קשורים.`
+          : noListingSelected
+            ? `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}\n\nכתוב פוסט כללי בגוף ראשון על ${brokerFirst} כמתווך — גישה, מוטיבציה, ערכים, תובנות שוק כלליות, הצלחה מקצועית. אסור לחלוטין להזכיר שמות לקוחות, לידים, בעלי נכסים, כתובות פרטיות, או כל פרט מה-CRM.`
+            : `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}`,
       `Anti-spam entropy seed (vary opener / structure / CTA vs any prior post): ${entropySeed}`,
-      focusOnly
-        ? `Write a clean, short, scroll-stopping sales post for the ONE listing above. No personal history. No filler.`
-        : noListingSelected
-          ? `Write ${brokerFirst}'s general broker post now. NEVER reference any private client, lead, owner, address, or CRM data. Speak generically about the craft.`
-          : `Write ${brokerFirst}'s post now — grounded strictly in the blocks above. Never mention software/AI/platform/Realtyz.`,
+      isSaas
+        ? `Write the SaaS marketing post now — grounded strictly in the workspace knowledge base. No broker persona, no licence line, no property.`
+        : focusOnly
+          ? `Write a clean, short, scroll-stopping sales post for the ONE listing above. No personal history. No filler.`
+          : noListingSelected
+            ? `Write ${brokerFirst}'s general broker post now. NEVER reference any private client, lead, owner, address, or CRM data. Speak generically about the craft.`
+            : `Write ${brokerFirst}'s post now — grounded strictly in the blocks above.`,
     ].filter(Boolean).join("\n\n");
+
 
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
