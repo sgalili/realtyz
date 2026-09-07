@@ -6268,6 +6268,8 @@ const CampaignCenter = () => {
   const [alsoEmail, setAlsoEmail] = useState(false);
   // Bulk selection + confirmation for permanently deleting saved drafts.
   const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([]);
+  // Per-card selection circles appear only after the master "בחר הכל" is used.
+  const [draftSelectMode, setDraftSelectMode] = useState(false);
   const [bulkDeleteDraftsOpen, setBulkDeleteDraftsOpen] = useState(false);
   const [bulkDeletingDrafts, setBulkDeletingDrafts] = useState(false);
   const toggleDraftSelected = (id: string) =>
