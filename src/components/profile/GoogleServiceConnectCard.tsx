@@ -193,7 +193,7 @@ export function GoogleServiceConnectCard({
             <GoogleBrandGlyph brand={brand} />
             <span>{title}</span>
             {connected && (
-              <Badge className="gap-1 border-transparent bg-emerald-600 text-[11px] font-semibold text-white">
+              <Badge variant="success" className="gap-1 text-[11px] font-semibold">
                 <CheckCircle2 className="h-3 w-3" /> מחובר
               </Badge>
             )}
