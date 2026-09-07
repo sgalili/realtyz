@@ -196,6 +196,40 @@ async function igAccountId(pageId: string, token: string): Promise<string | null
 }
 
 /**
+ * Post the automatic first comment on a freshly published Page post.
+ * Facebook returns either `{page_id}_{post_id}` or a bare object id; both
+ * forms are attempted (2 tries each, small backoff because the post object is
+ * sometimes not yet queryable) and the raw Graph payload is returned so the
+ * real reason is logged/persisted instead of being swallowed.
+ */
+async function postFirstComment(
+  pageId: string,
+  token: string,
+  postId: string,
+  message: string,
+): Promise<{ comment_id: string; target: string } | { error: string; raw: unknown }> {
+  const text = String(message ?? "").trim();
+  if (!text) return { error: "אין תוכן לתגובה הראשונה", raw: null };
+  const candidates = postId.includes("_") ? [postId, postId.split("_").pop()!] : [`${pageId}_${postId}`, postId];
+  let lastPayload: unknown = null;
+  for (const target of candidates) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
+      const form = new URLSearchParams({ message: text, access_token: token });
+      const res = await graph(`/${target}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+        body: form.toString(),
+      });
+      lastPayload = res.payload;
+      if (res.ok && res.payload?.id) return { comment_id: String(res.payload.id), target };
+    }
+  }
+  return { error: humanize(lastPayload, "פרסום התגובה הראשונה בעמוד נכשל"), raw: lastPayload };
+}
+
+
+/**
  * Upload one photo to the Page as an UNPUBLISHED attachment and return its
  * media_fbid. Strategy: first let Facebook fetch the URL itself (`url=`), and
  * if that fails (hot-link protection, signed CDN links, query strings, private
@@ -443,6 +477,19 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
+    // ---- Post (or retry) the first comment on an existing Page post --------
+    if (body?.action === "comment" || body?.action === "first_comment") {
+      const postId = String(body?.post_id ?? body?.external_post_id ?? "").trim();
+      const message = ensureMandatoryComment(body?.first_comment ?? body?.message);
+      if (!postId) return json({ success: false, error: "post_id is required" }, 400);
+      if (!page) return json({ success: false, error: "not_connected", message: "דף הפייסבוק לא מחובר" }, 200);
+      page = await ensurePageToken(db, ownerId, page);
+      const c = await postFirstComment(page.pageId, page.token, postId, message);
+      if ("comment_id" in c) return json({ success: true, comment_id: c.comment_id, target: c.target });
+      return json({ success: false, error: "comment_failed", message: c.error, raw: c.raw }, 200);
+    }
+
+
     // ---- Publish -----------------------------------------------------------
     const text = String(body?.post ?? body?.text ?? "").trim();
     const channels: string[] = (Array.isArray(body?.channels) ? body.channels : ["facebook"]).map((c: unknown) =>
@@ -590,6 +637,8 @@ Deno.serve(async (req) => {
     const failures: Array<{ platform: string; message: string }> = [];
     const warnings: string[] = [];
     const firstCommentIds: Array<{ target: string; comment_id: string }> = [];
+    let firstCommentError: string | null = null;
+
 
     // Never publish with a User/system token: upgrade to the Page-scoped token.
     if (page) page = await ensurePageToken(db, ownerId, page);
@@ -630,41 +679,20 @@ Deno.serve(async (req) => {
           if (res.warning) warnings.push(res.warning);
 
           // First auto-comment: always executed right after a successful page
-          // publish. A failure is surfaced as a warning (never fails the post).
+          // publish. A failure is surfaced as a warning (never fails the post)
+          // and its real Graph reason is persisted for diagnostics.
           if (firstComment) {
-            // Posted synchronously with the real post id returned by Graph.
-            // Bare object ids are qualified as {page_id}_{object_id}; both
-            // forms are attempted (with one retry) before giving up.
-            const candidates = res.id.includes("_")
-              ? [res.id]
-              : [`${activePage.pageId}_${res.id}`, res.id];
-            let commentId: string | null = null;
-            let lastPayload: unknown = null;
-
-            for (const target of candidates) {
-              for (let attempt = 0; attempt < 2 && !commentId; attempt++) {
-                if (attempt > 0) await new Promise((r) => setTimeout(r, 1200));
-                const form = new URLSearchParams({ message: firstComment, access_token: activePage.token });
-                const cRes = await graph(`/${target}/comments`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
-                  body: form.toString(),
-                });
-                lastPayload = cRes.payload;
-                if (cRes.ok && cRes.payload?.id) commentId = String(cRes.payload.id);
-              }
-              if (commentId) break;
-            }
-
-            if (commentId) {
-              console.log("[meta-publish] first comment published", res.id, commentId);
-              firstCommentIds.push({ target: res.id, comment_id: commentId });
+            const c = await postFirstComment(activePage.pageId, activePage.token, res.id, firstComment);
+            if ("comment_id" in c) {
+              console.log("[meta-publish] first comment published", res.id, c.comment_id);
+              firstCommentIds.push({ target: res.id, comment_id: c.comment_id });
             } else {
-              const cMsg = humanize(lastPayload, "פרסום התגובה הראשונה בעמוד נכשל");
-              console.error("[meta-publish] first comment failed", res.id, lastPayload);
-              warnings.push(cMsg);
+              console.error("[meta-publish] first comment failed", res.id, JSON.stringify(c.raw));
+              firstCommentError = c.error;
+              warnings.push(c.error);
             }
           }
+
         }
 
       } else if (ch === "instagram") {
@@ -804,6 +832,8 @@ Deno.serve(async (req) => {
           media_urls: media,
           first_comment: firstComment || null,
           first_comment_ids: firstCommentIds,
+          first_comment_error: firstCommentError,
+
           postIds,
           content_hash: hashes[ch],
           error: fail?.message ?? null,
