@@ -1282,51 +1282,52 @@ const InlineComposer = ({
 
 
 
-  // Auto-save: persist edits + attachments + selected property to ai_content_logs (debounced).
-  // Creates a new row on first edit if no logId yet; otherwise updates the active row.
-  useEffect(() => {
-    if (!body.trim() && attachments.length === 0) return;
+  // Manual draft save only — nothing is written to ai_content_logs in the
+  // background any more. The user must press "שמור טיוטה".
+  const saveDraftNow = async () => {
+    if (!body.trim() && attachments.length === 0) {
+      toast.info('אין תוכן לשמירה');
+      return;
+    }
     setSaveState('saving');
-    const t = setTimeout(async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const payload = {
-          generated_text: body,
-
-          // Persist only durable https URLs — local blob: previews die on reload
-          // and would render as empty file chips after restoring from history.
-          media_urls: attachments
-            .filter((a) => a.url && !a.url.startsWith('blob:'))
-            .map((a) => ({ name: a.name, kind: a.kind, url: a.url })),
-          listing_id: selectedListingId,
-          updated_at: new Date().toISOString(),
-        };
-        if (logId) {
-          await supabase.from('ai_content_logs').update(payload).eq('id', logId);
-        } else {
-          const { data, error } = await supabase
-            .from('ai_content_logs')
-            .insert({
-              topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
-              platform: channel.id,
-              created_by: user.id,
-              ...payload,
-            })
-            .select('id')
-            .single();
-          if (error) throw error;
-          if (data?.id) setLogId(data.id);
-        }
-        setSaveState('saved');
-        setHistoryRefresh((n) => n + 1);
-      } catch (e) {
-        console.warn('[CampaignCenter] autosave failed', e);
-        setSaveState('idle');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setSaveState('idle'); return; }
+      const payload = {
+        generated_text: body,
+        // Persist only durable https URLs — local blob: previews die on reload
+        // and would render as empty file chips after restoring from history.
+        media_urls: attachments
+          .filter((a) => a.url && !a.url.startsWith('blob:'))
+          .map((a) => ({ name: a.name, kind: a.kind, url: a.url })),
+        listing_id: selectedListingId,
+        updated_at: new Date().toISOString(),
+      };
+      if (logId) {
+        await supabase.from('ai_content_logs').update(payload).eq('id', logId);
+      } else {
+        const { data, error } = await supabase
+          .from('ai_content_logs')
+          .insert({
+            topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
+            platform: channel.id,
+            created_by: user.id,
+            ...payload,
+          })
+          .select('id')
+          .single();
+        if (error) throw error;
+        if (data?.id) setLogId(data.id);
       }
-    }, 1200);
-    return () => clearTimeout(t);
-  }, [body, attachments, selectedListingId, logId, channel.id]);
+      setSaveState('saved');
+      setHistoryRefresh((n) => n + 1);
+      toast.success('הטיוטה נשמרה');
+    } catch (e) {
+      console.warn('[CampaignCenter] draft save failed', e);
+      setSaveState('idle');
+      toast.error('שמירת הטיוטה נכשלה');
+    }
+  };
 
   // Load the full live property list on mount and refresh when the picker opens.
   // Search is client-side so the dropdown always shows every listing by default.
