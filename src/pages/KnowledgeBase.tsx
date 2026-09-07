@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
-type Tab = 'files' | 'text' | 'link' | 'voice';
+type Tab = 'ai' | 'files' | 'text' | 'link' | 'voice';
 type Filter = 'all' | 'images' | 'videos' | 'docs';
 
 export default function KnowledgeBase() {
