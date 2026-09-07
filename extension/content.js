@@ -113,7 +113,31 @@
     startPosting(post);
   });
 
+  /* ── Local post queue handed over by the app ─────────────────────────── */
+  const pushQueue = (queue) => {
+    if (!Array.isArray(queue)) return;
+    chrome.runtime.sendMessage({ type: 'RZ_QUEUE_UPDATE', queue });
+  };
+
+  const readQueue = () => {
+    try { return JSON.parse(localStorage.getItem('rzPostQueue') || '[]'); } catch (err) { return []; }
+  };
+
+  document.addEventListener('rz:update-queue', (e) => {
+    pushQueue((e && e.detail) || readQueue());
+  });
+
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d || typeof d !== 'object' || d.type !== 'RZ_QUEUE_UPDATE') return;
+    pushQueue(d.queue || readQueue());
+  });
+
+  // Pick up anything queued before the extension loaded.
+  setTimeout(() => { const q = readQueue(); if (q.length) pushQueue(q); }, 1500);
+
   document.addEventListener('rz:ext-fb-groups:request', deliver);
   document.addEventListener('rz:ext-fb-posts:request', deliverPosts);
   document.addEventListener('rz:ext-fb-comments:request', (e) => deliverComments(e?.detail?.postIds));
 })();
+

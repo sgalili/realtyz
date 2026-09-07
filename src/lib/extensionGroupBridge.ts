@@ -195,6 +195,84 @@ export const EXT_PENDING_POST_KEY = "rz-pending-post";
 export const EXT_START_POSTING_MESSAGE = "RZ_START_POSTING";
 export const EXT_POSTING_RESULT_MESSAGE = "RZ_POSTING_RESULT";
 
+/** Shared local queue the browser extension drains (no Meta Graph API). */
+export const EXT_POST_QUEUE_KEY = "rzPostQueue";
+export const EXT_QUEUE_EVENT = "rz:update-queue";
+export const EXT_QUEUE_MESSAGE = "RZ_QUEUE_UPDATE";
+
+export type QueuedExtensionPost = {
+  id: string;
+  text: string;
+  groupUrl: string;
+  groupName?: string;
+  images?: string[];
+  link?: string | null;
+  firstComment?: string | null;
+  status: "pending" | "posting" | "completed" | "failed";
+  scheduledTime: number;
+  createdAt: number;
+};
+
+export const readPostQueue = (): QueuedExtensionPost[] => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(EXT_POST_QUEUE_KEY) || "[]");
+    return Array.isArray(raw) ? (raw as QueuedExtensionPost[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const writePostQueue = (queue: QueuedExtensionPost[]) => {
+  try { localStorage.setItem(EXT_POST_QUEUE_KEY, JSON.stringify(queue)); } catch { /* noop */ }
+  try { document.dispatchEvent(new CustomEvent(EXT_QUEUE_EVENT, { detail: queue })); } catch { /* noop */ }
+  try {
+    window.postMessage({ source: "realtyz-app", type: EXT_QUEUE_MESSAGE, queue }, window.location.origin);
+  } catch { /* noop */ }
+};
+
+/**
+ * Queue one post per target group for the extension's browser automation.
+ * Returns the number of queued entries.
+ */
+export const enqueueExtensionPosts = (input: {
+  text: string;
+  groups: { group_id: string; group_name?: string; group_url?: string | null }[];
+  images?: string[];
+  link?: string | null;
+  firstComment?: string | null;
+  /** ISO string or ms timestamp; omit for immediate posting. */
+  scheduledAt?: string | number | null;
+}): number => {
+  const when = input.scheduledAt ? new Date(input.scheduledAt).getTime() : Date.now();
+  const scheduledTime = Number.isFinite(when) ? when : Date.now();
+  const entries: QueuedExtensionPost[] = input.groups
+    .map<QueuedExtensionPost | null>((g) => {
+      const bare = String(g.group_id || "").replace(/^ext:/, "");
+      const url = g.group_url || (bare ? `https://www.facebook.com/groups/${bare}` : "");
+      if (!url) return null;
+      return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        text: input.text,
+        groupUrl: url,
+        groupName: g.group_name || bare,
+        images: input.images ?? [],
+        link: input.link ?? null,
+        firstComment: ensureMandatoryComment(input.firstComment),
+        status: "pending" as const,
+        scheduledTime,
+        createdAt: Date.now(),
+      };
+    })
+    .filter((e): e is QueuedExtensionPost => !!e);
+  if (entries.length === 0) return 0;
+
+  const existingQueue = readPostQueue();
+  existingQueue.push(...entries);
+  writePostQueue(existingQueue);
+  return entries.length;
+};
+
+
 export type LocalPostingResult = {
   ok: boolean;
   posted?: number;
