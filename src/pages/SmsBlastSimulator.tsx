@@ -326,7 +326,7 @@ export default function SmsBlastSimulator() {
   // "Connect button still showing after success" bug — no manual refresh needed.
   useEffect(() => {
     let cancelled = false;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let channel: ReturnType<typeof safeChannel> | null = null;
     (async () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const userId = currentUser?.id;
