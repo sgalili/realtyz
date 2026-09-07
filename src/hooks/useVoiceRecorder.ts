@@ -100,19 +100,43 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
   const transcribe = useCallback(async (blob: Blob) => {
     setState('transcribing');
     try {
+      // Base MIME only: `audio/webm;codecs=opus` would put extra parameters
+      // between the media type and the `;base64` marker of the data URL.
+      const baseMime = (blob.type || 'audio/webm').split(';')[0].trim() || 'audio/webm';
+      const clean = blob.type === baseMime ? blob : new Blob([blob], { type: baseMime });
+      if (clean.size < 1024) throw new Error('ההקלטה הייתה ריקה — נסו שוב');
+
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error ?? new Error('read failed'));
-        reader.readAsDataURL(blob);
+        reader.onload = () => {
+          const out = typeof reader.result === 'string' ? reader.result : '';
+          if (!out) reject(new Error('קריאת ההקלטה נכשלה — נסו שוב'));
+          else resolve(out);
+        };
+        reader.onerror = () => reject(reader.error ?? new Error('קריאת ההקלטה נכשלה — נסו שוב'));
+        reader.onabort = () => reject(new Error('קריאת ההקלטה בוטלה'));
+        try {
+          reader.readAsDataURL(clean);
+        } catch (e) {
+          reject(e instanceof Error ? e : new Error('קריאת ההקלטה נכשלה — נסו שוב'));
+        }
       });
+
+      // Validate the payload before it ever leaves the browser.
+      const comma = dataUrl.indexOf(',');
+      const payload = comma >= 0 ? dataUrl.slice(comma + 1) : '';
+      if (!dataUrl.startsWith('data:') || !/^data:audio\//i.test(dataUrl) || payload.length < 64) {
+        throw new Error('ההקלטה לא נקראה כראוי — נסו להקליט שוב');
+      }
+
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: {
           audio_data_url: dataUrl,
-          mime_type: blob.type || 'audio/webm',
+          mime_type: baseMime,
           ...(language !== 'auto' ? { language } : {}),
         },
       });
+
       if (error) {
         const detail = error instanceof FunctionsHttpError
           ? await error.context.json().catch(() => null) as { error?: string } | null
