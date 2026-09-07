@@ -6376,11 +6376,16 @@ const CampaignCenter = () => {
       if (!cancelled) {
         setCampaignHistoryRows([...(sentLogs ?? []), ...(futureLogs ?? [])]);
         setCampaignDraftRows(drafts ?? []);
-        const meta: Record<string, { name: string; icon: string | null }> = {};
+        const meta: Record<string, { name: string; icon: string | null; memberCount?: number | null; url?: string | null }> = {};
         (groups ?? []).forEach((g: any) => {
           const id = String(g?.group_id ?? '');
           if (!id) return;
-          const entry = { name: g.group_name || id, icon: g.group_icon ?? null };
+          const entry = {
+            name: g.group_name || id,
+            icon: g.group_icon ?? null,
+            memberCount: typeof g.member_count === 'number' ? g.member_count : null,
+            url: g.group_url ?? null,
+          };
           meta[id] = entry;
           // Index the bare id too — campaign_logs stores "ext:<id>"/"manual:<id>".
           meta[id.replace(/^(ext:|manual:)/, '')] = entry;
