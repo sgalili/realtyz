@@ -140,7 +140,11 @@ async function runJob(token, job) {
 }
 
 async function runPageFirstComment(token, entry) {
-  const postUrl = String(entry.postUrl || entry.post_url || '').trim();
+  const postId = String(entry.postId || entry.post_id || '').trim();
+  // Prefer the permalink; fall back to a permalink built from the post id.
+  const postUrl =
+    String(entry.postUrl || entry.post_url || '').trim() ||
+    (postId ? `https://www.facebook.com/${postId.replace('_', '/posts/')}` : '');
   const message = String(entry.firstComment || entry.first_comment || '').trim();
   if (!postUrl) {
     await report(token, { id: entry.id, local: true }, false, 'כתובת הפוסט חסרה');
@@ -170,6 +174,7 @@ async function runPageFirstComment(token, entry) {
         job: {
           id: entry.id,
           post_url: postUrl,
+          post_id: postId || null,
           message,
         },
       },
