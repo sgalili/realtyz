@@ -3031,6 +3031,37 @@ const ConfirmDispatchDialog = ({
 
         // Nothing left for the backend when only groups were targeted.
         if (queuedGroups > 0 && (publishToPage === false || (channel.id === 'facebook' && publishTargets.length === 0))) {
+          // The post must show up in "פורסמו" right away with its queue badge
+          // and its group-names pill, so we persist a history row and paint an
+          // optimistic card immediately.
+          try {
+            window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
+              detail: {
+                channel: channel.id,
+                body: bodyToPublish,
+                media_urls: mediaUrls,
+                campaign_name: campaignName,
+                group_ids: apiGroupIds,
+                scheduled_at: scheduledAt,
+              },
+            }));
+          } catch { /* noop */ }
+          try {
+            await supabase.from('campaign_logs').insert({
+              user_id: ownerScope,
+              workspace_owner_id: ownerScope,
+              campaign_name: campaignName,
+              channel: channel.id,
+              message_body: bodyToPublish,
+              media_urls: mediaUrls,
+              group_ids: apiGroupIds,
+              first_comment: firstComment || null,
+              status: scheduledAt ? 'scheduled' : 'queued',
+              sent_at: scheduledAt ?? null,
+            } as any);
+          } catch (err) {
+            console.warn('[campaign] group-only history row failed', err);
+          }
           onConfirmed();
           onClose();
           return;
