@@ -115,6 +115,42 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     }
   };
 
+  const toggleMark = (id: string) => {
+    setMarkedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const markAll = (next: boolean) => setMarkedIds(next ? new Set(groups.map((g) => g.id)) : new Set());
+
+  const deleteMarked = async () => {
+    if (markedIds.size === 0 || !workspaceOwnerId) return;
+    setDeleting(true);
+    try {
+      const ids = Array.from(markedIds);
+      const { error } = await (supabase as any)
+        .from('fb_user_groups')
+        .delete()
+        .eq('workspace_owner_id', workspaceOwnerId)
+        .in('id', ids);
+      if (error) throw error;
+      const remaining = groups.filter((g) => !markedIds.has(g.id));
+      setGroups(remaining);
+      try {
+        localStorage.setItem(cacheKeyFor(workspaceOwnerId), JSON.stringify({ groups: remaining }));
+      } catch { /* noop */ }
+      setMarkedIds(new Set());
+      setDeleteMode(false);
+      toast.success(`${ids.length} קבוצות נמחקו`);
+    } catch (e: any) {
+      toast.error('מחיקת הקבוצות נכשלה', { description: e?.message });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const selectedGroups = groups.filter((g) => g.selected).length;
 
   return (
