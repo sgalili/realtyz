@@ -3069,6 +3069,8 @@ const ConfirmDispatchDialog = ({
   selectedProfileIds: string[];
   attachWaLink: boolean;
   firstComment: string;
+  /** YouTube upload metadata — routed to the YouTube Data API, never to Meta. */
+  youtube?: ConfirmPayload['youtube'] | null;
   onConfirmed: () => void;
   /** Bulk mode: dispatch immediately, with no confirmation UI at all. */
   autoConfirm?: boolean;
