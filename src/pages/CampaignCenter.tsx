@@ -7236,7 +7236,31 @@ const CampaignCenter = () => {
           return true;
         });
         if (!visible.length) return <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
-        return visible.map((r) => {
+        const header = (
+          <div key="future-bulk-bar" className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
+            <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-semibold text-foreground">
+              <Checkbox
+                checked={futureSelectMode}
+                onCheckedChange={(v) => {
+                  const on = v === true;
+                  setFutureSelectMode(on);
+                  setSelectedFutureIds(on ? visible.map((x) => x.id) : []);
+                }}
+                aria-label="בחר את כל הפוסטים העתידיים"
+              />
+              בחר הכל ({selectedFutureIds.length}/{visible.length})
+            </label>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={selectedFutureIds.length === 0 || bulkDeletingFuture}
+              onClick={() => { void bulkDeleteSelectedFuture(); }}
+            >
+              {bulkDeletingFuture ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="me-1 h-4 w-4" /> מחיקת הנבחרים</>}
+            </Button>
+          </div>
+        );
+        return [header, ...visible.map((r) => {
           const media = Array.isArray(r.media_urls) ? r.media_urls : [];
           const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
           const imageUrl = typeof image === 'string' ? image : (image as any)?.url ?? null;
