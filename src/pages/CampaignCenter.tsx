@@ -3281,6 +3281,48 @@ const ConfirmDispatchDialog = ({
         .trim();
       const campaignName = `${brandName} · ${channel.label}`;
 
+      // ── YouTube: dedicated upload route ─────────────────────────────────
+      // YouTube must never be routed through the Meta / Facebook publishing
+      // handler. It goes straight to the YouTube Data API v3 upload endpoint
+      // with the connected Google account credentials.
+      if (channel.id === 'youtube') {
+        const yt = youtube ?? null;
+        const videoUrl = yt?.video_url
+          || mediaUrls.find((u) => /\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(u))
+          || null;
+        if (!videoUrl) {
+          toast.error('צרפו קובץ וידאו לפני פרסום ל-YouTube');
+          return;
+        }
+        const { data, error } = await supabase.functions.invoke('youtube-publish', {
+          body: {
+            video_url: videoUrl,
+            title: yt?.title || bodyToPublish.split('\n')[0].slice(0, 100),
+            description: yt?.description ?? bodyToPublish,
+            tags: yt?.tags ?? [],
+            privacy_status: yt?.privacy_status ?? 'private',
+            category_id: yt?.category_id ?? '22',
+            made_for_kids: yt?.made_for_kids ?? false,
+            scheduled_at: scheduledAt,
+            campaign_name: campaignName,
+            workspace_owner_id: ownerScope,
+          },
+        });
+        const ytError = error?.message || (data as any)?.error;
+        if (ytError || (data as any)?.success === false) {
+          toast.error(String(ytError || 'הפרסום ל-YouTube נכשל'));
+          return;
+        }
+        toast.success(
+          scheduledAt
+            ? `הסרטון הועלה ל-YouTube ותוזמן לפרסום · ${new Date(scheduledAt).toLocaleString('he-IL')}`
+            : 'הסרטון פורסם ל-YouTube',
+        );
+        onConfirmed();
+        onClose();
+        return;
+      }
+
       if (SOCIAL_CHANNELS.has(channel.id)) {
         // mediaUrls was already filtered to public https links upstream by
         // InlineComposer; if it ends up empty here while the composer had any
