@@ -3962,7 +3962,7 @@ const GlobalSocialFeed = ({
       ) : (
         <div aria-hidden className="min-w-0" />
       )}
-      <div className="flex items-center justify-center gap-3 overflow-x-auto scrollbar-none px-1 pb-1 w-full min-w-0 justify-self-center">
+      <div className="flex flex-wrap items-center justify-center gap-3 px-1 pb-1 w-full min-w-0 justify-self-center">
         <button
           type="button"
           onClick={() => onChannelChange('all')}
