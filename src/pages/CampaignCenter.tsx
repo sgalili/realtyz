@@ -38,6 +38,7 @@ import {
   queueStatusForText,
   isLegacyMetaGroupError,
   resetQueueEntriesForText,
+  removeQueueEntriesForPosts,
 } from '@/lib/extensionGroupBridge';
 
 import { toast } from 'sonner';
@@ -3843,6 +3844,10 @@ const PublishedFeed = ({
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
   const [editRepostRow, setEditRepostRow] = useState<CampaignRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CampaignRow | null>(null);
+  // Multi-select deletion of published posts.
+  const [feedSelectMode, setFeedSelectMode] = useState(false);
+  const [selectedFeedIds, setSelectedFeedIds] = useState<string[]>([]);
+  const [bulkDeletingFeed, setBulkDeletingFeed] = useState(false);
   // Optimistic rows for immediate publish — prepended to the feed with a
   // countdown pill while Meta finishes verifying the FB publish.
   const [optimisticRows, setOptimisticRows] = useState<Array<CampaignRow & { _optimistic: true; _eta_ms: number; _scheduled_at?: string | null }>>([]);
@@ -4732,7 +4737,7 @@ const PublishedFeed = ({
   // Performs the actual deletion. `mode === 'both'` first wipes the post off
   // the native social network (Meta Graph via meta-publish) and aborts on
   // failure, so we never leave a phantom post live on the broker's Page.
-  const performDelete = async (r: CampaignRow, mode: 'db' | 'both') => {
+  const performDelete = async (r: CampaignRow, mode: 'db' | 'both', silent = false) => {
     const externalIds = mode === 'both' ? externalIdsFor(r) : [];
 
     if (externalIds.length > 0) {
@@ -4769,14 +4774,18 @@ const PublishedFeed = ({
       .lt('created_at', to);
     if (error) throw new Error('מחיקה מהמערכת נכשלה: ' + error.message);
 
+    // A deleted post must never stay in the browser-extension queue.
+    removeQueueEntriesForPosts({ ids: [r.id], texts: [r.message_body || ''] });
+
     setRows((prev) => {
       const next = prev?.filter((x) => x.id !== r.id) ?? prev;
       const scopeKey = workspaceOwnerId ?? userId ?? '';
       if (next && scopeKey) FEED_ROWS_CACHE.set(scopeKey, next);
       return next;
     });
+    setOptimisticRows((prev) => prev.filter((x) => x.id !== r.id));
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
-    toast.success(
+    if (!silent) toast.success(
       externalIds.length > 0
         ? `הפוסט נמחק מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`
         : `הפוסט נמחק מהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`,
@@ -4784,6 +4793,37 @@ const PublishedFeed = ({
   };
 
   const deleteCampaign = (r: CampaignRow) => setDeleteTarget(r);
+
+  const toggleFeedSelected = (id: string) =>
+    setSelectedFeedIds((curr) => (curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]));
+
+  // Permanently deletes every selected published card: DB rows, optimistic /
+  // extension-queue cards and the extension queue jobs behind them.
+  const bulkDeleteSelectedFeed = async (selected: CampaignRow[]) => {
+    if (selected.length === 0) return;
+    setBulkDeletingFeed(true);
+    let ok = 0;
+    const failures: string[] = [];
+    for (const r of selected) {
+      try {
+        if (String(r.id).startsWith('ext-queue-') || (r as any)._optimistic) {
+          removeQueueEntriesForPosts({ ids: [r.id], texts: [r.message_body || ''] });
+          setOptimisticRows((prev) => prev.filter((x) => x.id !== r.id));
+          ok += 1;
+          continue;
+        }
+        await performDelete(r, 'db', true);
+        ok += 1;
+      } catch (e: any) {
+        failures.push(String(e?.message ?? e));
+      }
+    }
+    setBulkDeletingFeed(false);
+    setSelectedFeedIds([]);
+    setFeedSelectMode(false);
+    if (failures.length > 0) toast.error(`נמחקו ${ok} פוסטים, ${failures.length} נכשלו: ${failures[0]}`);
+    else toast.success(`${ok} פוסטים נמחקו לצמיתות`);
+  };
 
 
   // Remove a single image from a post — permanently. The URL's dedupe key is
@@ -5053,6 +5093,34 @@ const PublishedFeed = ({
         </Button>
       </div>
 
+      {/* Multi-select bar for permanently deleting published posts. */}
+      {subTab === 'published' && (filteredRows || []).length > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
+          <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-semibold text-foreground">
+            <Checkbox
+              checked={feedSelectMode}
+              onCheckedChange={(v) => {
+                const on = v === true;
+                setFeedSelectMode(on);
+                setSelectedFeedIds(on ? (filteredRows || []).map((x) => x.id) : []);
+              }}
+              aria-label="בחר את כל הפוסטים"
+            />
+            בחר הכל ({selectedFeedIds.length}/{(filteredRows || []).length})
+          </label>
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={selectedFeedIds.length === 0 || bulkDeletingFeed}
+            onClick={() => {
+              void bulkDeleteSelectedFeed((filteredRows || []).filter((x) => selectedFeedIds.includes(x.id)));
+            }}
+          >
+            {bulkDeletingFeed ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="me-1 h-4 w-4" /> מחיקת הפוסטים הנבחרים</>}
+          </Button>
+        </div>
+      )}
+
       {subTab !== 'published' ? altContent : filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
           <p className="text-sm font-semibold text-foreground">אין קמפיינים בערוץ זה</p>
@@ -5125,6 +5193,15 @@ const PublishedFeed = ({
 
               {/* Row 1: thumbnail + post title */}
               <div className={cn('flex items-center gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
+                {feedSelectMode && (
+                  <Checkbox
+                    checked={selectedFeedIds.includes(r.id)}
+                    onCheckedChange={() => toggleFeedSelected(r.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="בחירת פוסט למחיקה"
+                    className="shrink-0"
+                  />
+                )}
                 <div className="relative h-12 w-12 shrink-0">
                   <PostImage
                     src={uniqueMedia[0]}
@@ -6504,10 +6581,42 @@ const CampaignCenter = () => {
     setBulkDeletingDrafts(false);
     setBulkDeleteDraftsOpen(false);
     if (error) { toast.error('מחיקת הטיוטות נכשלה'); setHistoryRefreshTick((t) => t + 1); return; }
+    const texts = campaignDraftRows
+      .filter((x) => ids.includes(x.id))
+      .map((x) => String(x.generated_text || ''));
+    removeQueueEntriesForPosts({ ids, texts });
     setCampaignDraftRows((prev) => prev.filter((x) => !ids.includes(x.id)));
     setSelectedDraftIds([]);
     setDraftSelectMode(false);
     toast.success(`${ids.length} טיוטות נמחקו`);
+  };
+
+  // Bulk selection + deletion for scheduled ("עתידיים") posts.
+  const [futureSelectMode, setFutureSelectMode] = useState(false);
+  const [selectedFutureIds, setSelectedFutureIds] = useState<string[]>([]);
+  const [bulkDeletingFuture, setBulkDeletingFuture] = useState(false);
+  const toggleFutureSelected = (id: string) =>
+    setSelectedFutureIds((curr) => (curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]));
+  const bulkDeleteSelectedFuture = async () => {
+    const ids = [...selectedFutureIds];
+    if (ids.length === 0) return;
+    setBulkDeletingFuture(true);
+    const targets = campaignHistoryRows.filter((x) => ids.includes(x.id));
+    // Recurring series: delete every sibling slot of each selected series.
+    const seriesIds = Array.from(new Set(targets.map((t) => t.series_id).filter(Boolean)));
+    const allIds = new Set(ids);
+    for (const row of campaignHistoryRows) {
+      if (row.series_id && seriesIds.includes(row.series_id)) allIds.add(row.id);
+    }
+    const idList = Array.from(allIds);
+    const { error } = await supabase.from('campaign_logs').delete().in('id', idList);
+    setBulkDeletingFuture(false);
+    if (error) { toast.error('מחיקת הפוסטים נכשלה'); setHistoryRefreshTick((t) => t + 1); return; }
+    removeQueueEntriesForPosts({ ids: idList, texts: targets.map((t) => String(t.message_body || '')) });
+    setCampaignHistoryRows((prev) => prev.filter((x) => !allIds.has(x.id)));
+    setSelectedFutureIds([]);
+    setFutureSelectMode(false);
+    toast.success(`${ids.length} פוסטים נמחקו`);
   };
 
 
@@ -7172,6 +7281,7 @@ const CampaignCenter = () => {
                   className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
                   onClick={async () => {
                     setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
+                    removeQueueEntriesForPosts({ ids: [r.id], texts: [String(r.generated_text || '')] });
                     const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
                     if (error) { toast.error('מחיקת הטיוטה נכשלה'); setHistoryRefreshTick((t) => t + 1); }
                     else toast.success('הטיוטה נמחקה');
@@ -7202,7 +7312,31 @@ const CampaignCenter = () => {
           return true;
         });
         if (!visible.length) return <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
-        return visible.map((r) => {
+        const header = (
+          <div key="future-bulk-bar" className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
+            <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-semibold text-foreground">
+              <Checkbox
+                checked={futureSelectMode}
+                onCheckedChange={(v) => {
+                  const on = v === true;
+                  setFutureSelectMode(on);
+                  setSelectedFutureIds(on ? visible.map((x) => x.id) : []);
+                }}
+                aria-label="בחר את כל הפוסטים העתידיים"
+              />
+              בחר הכל ({selectedFutureIds.length}/{visible.length})
+            </label>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={selectedFutureIds.length === 0 || bulkDeletingFuture}
+              onClick={() => { void bulkDeleteSelectedFuture(); }}
+            >
+              {bulkDeletingFuture ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="me-1 h-4 w-4" /> מחיקת הנבחרים</>}
+            </Button>
+          </div>
+        );
+        return [header, ...visible.map((r) => {
           const media = Array.isArray(r.media_urls) ? r.media_urls : [];
           const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
           const imageUrl = typeof image === 'string' ? image : (image as any)?.url ?? null;
@@ -7222,6 +7356,14 @@ const CampaignCenter = () => {
               dateLabel={new Date(r.sent_at).toLocaleString('he-IL')}
               actions={
                 <>
+                  {futureSelectMode && (
+                    <Checkbox
+                      checked={selectedFutureIds.includes(r.id)}
+                      onCheckedChange={() => toggleFutureSelected(r.id)}
+                      aria-label="בחירת פוסט מתוזמן למחיקה"
+                      className="shrink-0"
+                    />
+                  )}
                   <Button
                     size="icon"
                     variant="outline"
@@ -7240,6 +7382,7 @@ const CampaignCenter = () => {
                     className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
                     onClick={async () => {
                       setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
+                      removeQueueEntriesForPosts({ ids: [r.id], texts: [String(r.message_body || '')] });
                       const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
                       if (error) { toast.error('מחיקת הפוסט המתוזמן נכשלה'); setHistoryRefreshTick((t) => t + 1); }
                       else toast.success('הפוסט המתוזמן נמחק');
@@ -7251,7 +7394,7 @@ const CampaignCenter = () => {
               }
             />
           );
-        });
+        })];
       })()}
     </div>
   );
