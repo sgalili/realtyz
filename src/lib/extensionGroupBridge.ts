@@ -322,10 +322,13 @@ const LOCAL_STATUS = (s: string | null | undefined): QueuedExtensionPost["status
 };
 
 let mirrorBusy = false;
+let mirrorPending: QueuedExtensionPost[] | null = null;
 
 /** Push local queue jobs (and their live status) into the database. */
 export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<void> => {
-  if (mirrorBusy) return;
+  // Never drop a status change: remember the newest queue and replay it once the
+  // in-flight mirror finishes, otherwise jobs get stuck on their old status.
+  if (mirrorBusy) { mirrorPending = queue; return; }
   mirrorBusy = true;
   try {
     const { data: auth } = await supabase.auth.getUser();
@@ -353,6 +356,10 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
             target_ref: job.groupUrl ?? job.postUrl ?? null,
             target_label: job.groupName ?? null,
             payload,
+            // Local browser (Chrome extension) owns freshly queued jobs so it can
+            // pick them up immediately; the server hands them to the cloud only
+            // when no extension is alive.
+            runner: "extension",
             scheduled_for: new Date(job.scheduledTime || Date.now()).toISOString(),
             status: CLOUD_STATUS[job.status] ?? "pending",
             last_error: job.error ?? null,
@@ -365,12 +372,19 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
         }
         continue;
       }
+      const cloudStatus = CLOUD_STATUS[job.status] ?? "pending";
       await (supabase as any)
         .from("campaign_activity_queue")
         .update({
           payload,
-          status: CLOUD_STATUS[job.status] ?? "pending",
+          status: cloudStatus,
           last_error: job.error ?? null,
+          ...(cloudStatus === "completed"
+            ? { completed_at: new Date().toISOString(), processed_at: new Date().toISOString(), claimed_by: null, claim_expires_at: null }
+            : {}),
+          ...(cloudStatus === "failed"
+            ? { processed_at: new Date().toISOString(), claimed_by: null, claim_expires_at: null }
+            : {}),
         })
         .eq("id", job.cloudId);
     }
@@ -383,6 +397,11 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
     /* offline / RLS — local queue still works */
   } finally {
     mirrorBusy = false;
+    if (mirrorPending) {
+      const replay = mirrorPending;
+      mirrorPending = null;
+      void mirrorQueueToCloud(replay);
+    }
   }
 };
 
@@ -533,13 +552,19 @@ export const isLegacyMetaGroupError = (reason?: string | null): boolean => {
  * Live view of the local extension post queue (localStorage['rzPostQueue']).
  * Updates on same-tab writes, cross-tab storage events and extension messages.
  */
+const sameQueue = (a: QueuedExtensionPost[], b: QueuedExtensionPost[]) => {
+  try { return JSON.stringify(a) === JSON.stringify(b); } catch { return false; }
+};
+
 export const useExtensionQueue = (): QueuedExtensionPost[] => {
   const [queue, setQueue] = useState<QueuedExtensionPost[]>(() => readPostQueue());
 
   useEffect(() => {
     const commit = (next: unknown) => {
-      if (Array.isArray(next)) setQueue(next as QueuedExtensionPost[]);
-      else setQueue(readPostQueue());
+      const value = Array.isArray(next) ? (next as QueuedExtensionPost[]) : readPostQueue();
+      // Keep the previous array identity when nothing actually changed, so the
+      // campaign cards do not unmount/remount on every poll tick.
+      setQueue((curr) => (sameQueue(curr, value) ? curr : value));
     };
     const onCustom = (e: Event) => commit((e as CustomEvent).detail);
     const onStorage = (e: StorageEvent) => {
@@ -581,7 +606,10 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
     const pullCloud = async () => {
       const cloud = await fetchCloudQueue();
       if (!alive || cloud.length === 0) return;
-      setQueue((curr) => mergeQueues(curr, cloud));
+      setQueue((curr) => {
+        const merged = mergeQueues(curr, cloud);
+        return sameQueue(curr, merged) ? curr : merged;
+      });
     };
     void pullCloud();
     const cloudBeat = window.setInterval(pullCloud, 20000);
