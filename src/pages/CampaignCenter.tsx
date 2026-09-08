@@ -4774,12 +4774,16 @@ const PublishedFeed = ({
       .lt('created_at', to);
     if (error) throw new Error('מחיקה מהמערכת נכשלה: ' + error.message);
 
+    // A deleted post must never stay in the browser-extension queue.
+    removeQueueEntriesForPosts({ ids: [r.id], texts: [r.message_body || ''] });
+
     setRows((prev) => {
       const next = prev?.filter((x) => x.id !== r.id) ?? prev;
       const scopeKey = workspaceOwnerId ?? userId ?? '';
       if (next && scopeKey) FEED_ROWS_CACHE.set(scopeKey, next);
       return next;
     });
+    setOptimisticRows((prev) => prev.filter((x) => x.id !== r.id));
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     toast.success(
       externalIds.length > 0
