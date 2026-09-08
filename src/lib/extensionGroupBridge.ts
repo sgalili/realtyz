@@ -421,12 +421,16 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
   return queue;
 };
 
+/** Normalize text for queue matching. */
+const queueMatchBody = (e: QueuedExtensionPost): string =>
+  String(e.sourceText || e.text || e.firstComment || '').replace(/\s+/g, ' ').trim();
+
 /** Drop failed/completed queue entries for a post before it is retried. */
 export const resetQueueEntriesForText = (text: string) => {
   const key = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
   if (!key) return;
   const next = readPostQueue().filter(
-    (e) => !(String(e.text || '').replace(/\s+/g, ' ').includes(key) && e.status !== 'posting'),
+    (e) => !(queueMatchBody(e).includes(key) && e.status !== 'posting'),
   );
   writePostQueue(next);
 };
