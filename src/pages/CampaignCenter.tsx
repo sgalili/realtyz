@@ -2179,7 +2179,7 @@ const InlineComposer = ({
     });
     return true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [body, originalAiBody, selectedListingId, mode, attachments, scheduledLocal, groupIds, publishToPage, workspaceOwnerId, selectedProfileIds, attachWaLink, firstComment, firstCommentEnabled, attachMsngrLink, channel.id, platformProfiles.length]);
+  }, [body, originalAiBody, selectedListingId, mode, attachments, scheduledLocal, groupIds, publishToPage, workspaceOwnerId, selectedProfileIds, attachWaLink, firstComment, firstCommentEnabled, attachMsngrLink, channel.id, platformProfiles.length, ytTitle, ytTags, ytPrivacy, ytCategory, ytMadeForKids]);
 
   useEffect(() => {
     onRegisterPublish?.(submitDraft);
