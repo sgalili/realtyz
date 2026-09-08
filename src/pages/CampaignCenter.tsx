@@ -8212,6 +8212,7 @@ const CampaignCenter = () => {
         selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
         attachWaLink={confirmPayload?.attach_wa_link ?? false}
         firstComment={confirmPayload?.first_comment ?? ''}
+        youtube={confirmPayload?.youtube ?? null}
         autoConfirm={bulkSilent}
 
         onConfirmed={async () => {
