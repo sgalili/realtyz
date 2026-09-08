@@ -168,15 +168,45 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
               <Users className="h-4 w-4" /> קבוצות ({selectedGroups}/{groups.length})
             </div>
             {groups.length > 0 && (
-              <button
-                type="button"
-                onClick={() => void setAllGroups(selectedGroups !== groups.length)}
-                className={cn('font-semibold text-primary underline', TEXT_SM)}
-              >
-                {selectedGroups === groups.length ? 'בטל הכל' : 'בחר הכל'}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); }}
+                  className={cn('font-semibold text-destructive underline', TEXT_SM)}
+                >
+                  {deleteMode ? 'ביטול' : 'מחיקת קבוצות'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => (deleteMode ? markAll(markedIds.size !== groups.length) : void setAllGroups(selectedGroups !== groups.length))}
+                  className={cn('font-semibold text-primary underline', TEXT_SM)}
+                >
+                  {deleteMode
+                    ? (markedIds.size === groups.length ? 'בטל הכל' : 'בחר הכל')
+                    : (selectedGroups === groups.length ? 'בטל הכל' : 'בחר הכל')}
+                </button>
+              </div>
             )}
           </div>
+
+          {deleteMode && (
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2 py-1.5">
+              <span className={cn('text-muted-foreground', TEXT_SM)}>
+                {markedIds.size > 0 ? `${markedIds.size} נבחרו למחיקה` : 'סמן קבוצות למחיקה'}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="h-8 gap-1 text-[12px]"
+                disabled={markedIds.size === 0 || deleting}
+                onClick={() => void deleteMarked()}
+              >
+                {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                מחיקת קבוצות נבחרות
+              </Button>
+            </div>
+          )}
           {groups.length === 0 ? (
             <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות מיובאות. לחץ "סנכרן קבוצות".</p>
           ) : (
