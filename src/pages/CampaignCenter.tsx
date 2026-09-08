@@ -5330,25 +5330,6 @@ const PublishedFeed = ({
         open={!!supportChannel}
         onOpenChange={(v) => { if (!v) setSupportChannel(null); }}
       />
-      <GlobalSocialFeed
-        rows={rows ?? []}
-        activeChannel={activeChannel}
-        onChannelChange={setActiveChannel}
-        connectedChannels={connectedChannels}
-        onConnectChannel={handleFeedConnect}
-        feedSelectMode={feedSelectMode}
-        selectedFeedIds={selectedFeedIds}
-        filteredRows={filteredRows || []}
-        bulkDeletingFeed={bulkDeletingFeed}
-        onToggleSelectAll={(on) => {
-          setFeedSelectMode(on);
-          setSelectedFeedIds(on ? (filteredRows || []).map((x) => x.id) : []);
-        }}
-        onDeleteSelected={() => {
-          void bulkDeleteSelectedFeed((filteredRows || []).filter((x) => selectedFeedIds.includes(x.id)));
-        }}
-      />
-
 
       {/* Inline queue tabs — published / future / drafts, all managed on this page. */}
       <div className="flex items-center gap-2" dir="rtl">
