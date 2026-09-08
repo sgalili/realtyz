@@ -130,14 +130,47 @@
     emit('RZ_QUEUE_UPDATE', 'queue', queue, 'rz:update-queue');
   };
 
-  const pushQueue = (queue) => {
-    if (!Array.isArray(queue)) return;
+  /* Fallback path: if the service worker is asleep or the message channel dies,
+   * merge the app's queue straight into chrome.storage.local so the poster can
+   * still pick the jobs up on its next storage poll. */
+  const mergeIntoStorage = (queue) => {
+    if (!Array.isArray(queue) || !queue.length) return;
     try {
-      chrome.runtime.sendMessage({ type: 'RZ_QUEUE_UPDATE', queue }, (res) => {
+      chrome.storage.local.get(['rzPostQueue'], (res) => {
         if (chrome.runtime.lastError) return;
-        if (res && Array.isArray(res.queue)) writeQueue(res.queue);
+        const existing = Array.isArray((res || {}).rzPostQueue) ? res.rzPostQueue : [];
+        const byId = new Map(existing.map((e) => [String(e && e.id), e]));
+        queue.forEach((entry) => {
+          if (!entry || !entry.id) return;
+          const key = String(entry.id);
+          const hit = byId.get(key);
+          // Never downgrade a job the extension already ran.
+          if (hit && (hit.status === 'completed' || hit.status === 'posting')) return;
+          byId.set(key, hit ? { ...hit, ...entry, status: hit.status || entry.status } : entry);
+        });
+        chrome.storage.local.set({ rzPostQueue: [...byId.values()] }, () => {
+          if (chrome.runtime.lastError) return;
+          try { chrome.runtime.sendMessage({ type: 'RZ_EXT_POLL_NOW' }, () => chrome.runtime.lastError); } catch (e) { /* noop */ }
+        });
       });
     } catch (err) { /* noop */ }
+  };
+
+  const pushQueue = (queue) => {
+    if (!Array.isArray(queue)) return;
+    let answered = false;
+    try {
+      chrome.runtime.sendMessage({ type: 'RZ_QUEUE_UPDATE', queue }, (res) => {
+        if (chrome.runtime.lastError) { mergeIntoStorage(queue); return; }
+        answered = true;
+        if (res && Array.isArray(res.queue)) writeQueue(res.queue);
+      });
+    } catch (err) {
+      mergeIntoStorage(queue);
+      return;
+    }
+    // Worker never answered (cold start / crashed) — write the queue ourselves.
+    setTimeout(() => { if (!answered) mergeIntoStorage(queue); }, 2500);
   };
 
   document.addEventListener('rz:update-queue', (e) => {
@@ -146,9 +179,13 @@
 
   window.addEventListener('message', (e) => {
     const d = e.data;
-    if (!d || typeof d !== 'object' || d.type !== 'RZ_QUEUE_UPDATE') return;
+    if (!d || typeof d !== 'object') return;
+    // Both the internal name and the public REALTYZ_* broadcast are accepted.
+    if (d.type !== 'RZ_QUEUE_UPDATE' && d.type !== 'REALTYZ_QUEUE_UPDATE') return;
     if (d.source === 'realtyz-extension') return; // our own echo
-    pushQueue(d.queue || readQueue());
+    const incoming = Array.isArray(d.queue) ? d.queue : readQueue();
+    if (Array.isArray(d.queue)) writeQueue(d.queue);
+    pushQueue(incoming);
   });
 
   // The app deleted posts — purge those jobs from the extension queue too.

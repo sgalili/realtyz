@@ -327,3 +327,29 @@
   });
 })();
 
+/* ── App queue bridge ──────────────────────────────────────────────────────
+ * The app broadcasts REALTYZ_QUEUE_UPDATE on its own tab. If this script ever
+ * runs on a page that receives it (or the app is embedded), sync the jobs into
+ * chrome.storage.local directly so the queue is never lost. */
+window.addEventListener('message', (e) => {
+  const d = e && e.data;
+  if (!d || typeof d !== 'object') return;
+  if (d.type !== 'REALTYZ_QUEUE_UPDATE' && d.type !== 'RZ_QUEUE_UPDATE') return;
+  if (d.source === 'realtyz-extension') return;
+  const queue = Array.isArray(d.queue) ? d.queue : null;
+  if (!queue || !queue.length) return;
+  try {
+    chrome.storage.local.get(['rzPostQueue'], (res) => {
+      if (chrome.runtime.lastError) return;
+      const existing = Array.isArray((res || {}).rzPostQueue) ? res.rzPostQueue : [];
+      const byId = new Map(existing.map((x) => [String(x && x.id), x]));
+      queue.forEach((entry) => {
+        if (!entry || !entry.id) return;
+        const hit = byId.get(String(entry.id));
+        if (hit && (hit.status === 'completed' || hit.status === 'posting')) return;
+        byId.set(String(entry.id), hit ? { ...hit, ...entry, status: hit.status || entry.status } : entry);
+      });
+      chrome.storage.local.set({ rzPostQueue: [...byId.values()] }, () => chrome.runtime.lastError);
+    });
+  } catch (err) { /* noop */ }
+});

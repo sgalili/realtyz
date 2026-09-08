@@ -201,6 +201,8 @@ export const EXT_POSTING_RESULT_MESSAGE = "RZ_POSTING_RESULT";
 export const EXT_POST_QUEUE_KEY = "rzPostQueue";
 export const EXT_QUEUE_EVENT = "rz:update-queue";
 export const EXT_QUEUE_MESSAGE = "RZ_QUEUE_UPDATE";
+/** Origin-agnostic alias broadcast with "*" for the content script. */
+export const EXT_QUEUE_BROADCAST_MESSAGE = "REALTYZ_QUEUE_UPDATE";
 
 export type QueuedExtensionPost = {
   id: string;
@@ -235,6 +237,12 @@ export const writePostQueue = (queue: QueuedExtensionPost[]) => {
   try { document.dispatchEvent(new CustomEvent(EXT_QUEUE_EVENT, { detail: queue })); } catch { /* noop */ }
   try {
     window.postMessage({ source: "realtyz-app", type: EXT_QUEUE_MESSAGE, queue }, window.location.origin);
+  } catch { /* noop */ }
+  // Public broadcast the extension content script also accepts. Sent with "*"
+  // so it still arrives when the app runs on a preview/custom origin the
+  // content script did not resolve identically.
+  try {
+    window.postMessage({ source: "realtyz-app", type: EXT_QUEUE_BROADCAST_MESSAGE, queue }, "*");
   } catch { /* noop */ }
 };
 
