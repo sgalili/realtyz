@@ -3311,7 +3311,7 @@ const ConfirmDispatchDialog = ({
             groups: apiGroupIds.map((bare) => ({
               group_id: bare,
               group_name: groupMetaMap[bare]?.name || bare,
-              group_url: groupMetaMap[bare]?.url || `https://www.facebook.com/groups/${bare}`,
+              group_url: fbGroupUrlFrom(groupMetaMap[bare]?.url, bare) ?? '',
             })),
 
           });

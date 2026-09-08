@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Plus, ExternalLink, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { fbGroupUrl } from '@/lib/fbGroupUrl';
 
 type CustomGroup = {
   id: string;
@@ -50,7 +51,8 @@ export function CustomGroupsManager() {
       toast.error('יש למלא שם וקישור');
       return;
     }
-    if (!/^https?:\/\/(www\.)?facebook\.com\/groups\//i.test(trimmedUrl)) {
+    const absoluteUrl = fbGroupUrl(trimmedUrl);
+    if (!absoluteUrl) {
       toast.error('הקישור חייב להיות כתובת קבוצת פייסבוק (facebook.com/groups/…)');
       return;
     }
@@ -59,7 +61,7 @@ export function CustomGroupsManager() {
     const { error } = await (supabase as any).from('custom_user_groups').insert({
       workspace_owner_id: workspaceOwnerId,
       group_name: trimmedName,
-      group_url: trimmedUrl,
+      group_url: absoluteUrl,
       platform: 'facebook',
     });
     setSaving(false);

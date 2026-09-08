@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { shortenName } from "@/lib/shortenName";
 import { openExternal } from "@/lib/openExternal";
+import { fbGroupId, fbGroupUrl, fbGroupUrlFrom } from "@/lib/fbGroupUrl";
 import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
@@ -17,10 +18,7 @@ export type FacebookGroup = {
 };
 
 /** Pull the numeric/slug group id out of a facebook.com/groups/... URL. */
-function groupIdFromUrl(url: string): string | null {
-  const m = url.match(/groups\/([^/?#]+)/i);
-  return m?.[1] ? decodeURIComponent(m[1]) : null;
-}
+const groupIdFromUrl = (url: string): string | null => fbGroupId(url);
 
 type Props = {
   selectedIds: string[];
@@ -50,7 +48,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     group_name: String(r.group_name || "קבוצה"),
     group_icon: r.group_icon || null,
     member_count: typeof r.member_count === 'number' ? r.member_count : null,
-    group_url: r.group_url || `https://www.facebook.com/groups/${String(r.group_id)}`,
+    group_url: fbGroupUrlFrom(r.group_url, String(r.group_id)),
     connected: true,
   });
 
@@ -124,7 +122,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       const { error } = await (supabase as any).from("custom_user_groups").insert({
         workspace_owner_id: uid,
         group_name: name,
-        group_url: url,
+        group_url: fbGroupUrl(url) ?? url,
         platform: "facebook",
       });
       if (error) throw error;

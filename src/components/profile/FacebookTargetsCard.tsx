@@ -9,6 +9,7 @@ import { shortenName } from '@/lib/shortenName';
 import { openExternal } from '@/lib/openExternal';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean };
 
@@ -252,7 +253,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                     aria-label={`פתח את הקבוצה ${g.name} בלשונית חדשה`}
                     title="צפה בקבוצה בלשונית חדשה"
                     onClick={() =>
-                      openExternal(g.url || `https://www.facebook.com/groups/${g.groupId}`)
+                      openExternal(fbGroupUrlFrom(g.url, g.groupId))
                     }
                     className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
                   >
