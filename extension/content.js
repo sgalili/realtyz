@@ -177,6 +177,39 @@
     pushQueue((e && e.detail) || readQueue());
   });
 
+  /* ── Live state mirror: chrome.storage.local -> page ─────────────────────
+   * The extension runs the jobs in its own context, so the page would stay
+   * stuck on "ממתין בתור". Mirror the authoritative queue (status + stage)
+   * back into localStorage so the app's status pills update in real time. */
+  const mirrorState = () => {
+    try {
+      chrome.storage.local.get(['rzPostQueue'], (res) => {
+        if (chrome.runtime.lastError) return;
+        const live = Array.isArray((res || {}).rzPostQueue) ? res.rzPostQueue : null;
+        if (!live) return;
+        const local = readQueue();
+        const byId = new Map(local.map((e) => [String(e && e.id), e]));
+        live.forEach((job) => {
+          if (!job || !job.id) return;
+          const key = String(job.id);
+          const hit = byId.get(key);
+          byId.set(key, hit ? { ...hit, status: job.status, stage: job.stage, stageAt: job.stageAt, error: job.error } : job);
+        });
+        writeQueue([...byId.values()]);
+      });
+    } catch (err) { /* noop */ }
+  };
+
+  setInterval(mirrorState, 1500);
+  mirrorState();
+
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local' || !changes || !changes.rzPostQueue) return;
+      mirrorState();
+    });
+  } catch (err) { /* noop */ }
+
   window.addEventListener('message', (e) => {
     const d = e.data;
     if (!d || typeof d !== 'object') return;
