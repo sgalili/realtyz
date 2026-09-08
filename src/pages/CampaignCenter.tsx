@@ -7205,6 +7205,7 @@ const CampaignCenter = () => {
                   className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
                   onClick={async () => {
                     setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
+                    removeQueueEntriesForPosts({ ids: [r.id], texts: [String(r.generated_text || '')] });
                     const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
                     if (error) { toast.error('מחיקת הטיוטה נכשלה'); setHistoryRefreshTick((t) => t + 1); }
                     else toast.success('הטיוטה נמחקה');
