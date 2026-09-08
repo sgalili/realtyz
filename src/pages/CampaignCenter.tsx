@@ -3633,12 +3633,24 @@ const FEED_PLATFORMS: { id: string; label: string; brand?: string; icon?: typeof
 const GlobalSocialFeed = ({
   rows, activeChannel, onChannelChange,
   connectedChannels, onConnectChannel,
+  feedSelectMode = false,
+  selectedFeedIds = [],
+  filteredRows = [],
+  bulkDeletingFeed = false,
+  onToggleSelectAll,
+  onDeleteSelected,
 }: {
   rows: CampaignRow[];
   activeChannel: string;
   onChannelChange: (id: string) => void;
   connectedChannels: Set<string>;
   onConnectChannel: (id: string) => void;
+  feedSelectMode?: boolean;
+  selectedFeedIds?: string[];
+  filteredRows?: CampaignRow[];
+  bulkDeletingFeed?: boolean;
+  onToggleSelectAll?: (on: boolean) => void;
+  onDeleteSelected?: () => void;
 }) => {
   const counts = useMemo(() => {
     const m: Record<string, number> = { all: rows.length };
@@ -3649,6 +3661,11 @@ const GlobalSocialFeed = ({
     });
     return m;
   }, [rows]);
+
+  const totalSelectable = filteredRows.length;
+  const selectedCount = selectedFeedIds.length;
+  const allSelected = totalSelectable > 0 && selectedCount === totalSelectable;
+  const someSelected = selectedCount > 0 && selectedCount < totalSelectable;
 
   const Pill = ({ id, label, brand, icon: Icon }: { id: string; label: string; brand?: string; icon?: typeof Bot }) => {
     const active = activeChannel === id;
@@ -3694,7 +3711,17 @@ const GlobalSocialFeed = ({
 
 
   return (
-    <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1" dir="rtl">
+    <div className="flex items-center justify-center gap-3 overflow-x-auto scrollbar-none px-1 pb-1 w-full" dir="rtl">
+      {totalSelectable > 0 && (
+        <label className="flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-foreground shrink-0">
+          <Checkbox
+            checked={allSelected ? true : someSelected ? 'indeterminate' : feedSelectMode}
+            onCheckedChange={(v) => { onToggleSelectAll?.(v === true || v === 'indeterminate'); }}
+            aria-label="בחר את כל הפוסטים"
+          />
+          בחר הכל ({selectedCount}/{totalSelectable})
+        </label>
+      )}
       <button
         type="button"
         onClick={() => onChannelChange('all')}
@@ -3710,6 +3737,20 @@ const GlobalSocialFeed = ({
         )} dir="ltr">{counts.all}</span>
       </button>
       {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
+      {(feedSelectMode || selectedCount > 0) && (
+        <Button
+          type="button"
+          size="icon"
+          variant="destructive"
+          disabled={selectedCount === 0 || bulkDeletingFeed}
+          onClick={() => onDeleteSelected?.()}
+          title="מחיקת הפוסטים הנבחרים"
+          aria-label="מחיקת הפוסטים הנבחרים"
+          className="h-7 w-7 shrink-0"
+        >
+          {bulkDeletingFeed ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        </Button>
+      )}
     </div>
   );
 };
