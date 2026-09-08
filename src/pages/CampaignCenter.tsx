@@ -5465,8 +5465,12 @@ const PublishedFeed = ({
           ? queueStatusForText(extensionQueue, r.message_body || '')
           : null;
         // Live automation stage (queued → navigating → writing → comment → done).
+        // We first try to match by the original campaign body; if the body was
+        // spun per-group we fall back to matching by the target group IDs so the
+        // pill still renders in preview/production regardless of text variation.
         const extProgress = hasGroupTargets
-          ? queueProgressForText(extensionQueue, r.message_body || '')
+          ? (queueProgressForText(extensionQueue, r.message_body || '') ||
+             queueProgressForGroups(extensionQueue, (r as any).group_ids as string[]))
           : null;
         const failed =
           String(r.status || '').toLowerCase() === 'failed' &&
