@@ -177,6 +177,22 @@
     pushQueue((e && e.detail) || readQueue());
   });
 
+  /* Push whatever the app already stored, right at injection time. Without this
+   * a queue created before the content script loaded would never reach
+   * chrome.storage.local and the poster would find nothing to run. */
+  const pushPending = () => {
+    const queue = readQueue();
+    if (!queue.length) return;
+    const pending = queue.filter((j) => j && (j.status === 'pending' || !j.status));
+    if (!pending.length) return;
+    pushQueue(queue);
+  };
+
+  pushPending();
+  setInterval(pushPending, 5000);
+  window.addEventListener('focus', pushPending);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pushPending(); });
+
   /* ── Live state mirror: chrome.storage.local -> page ─────────────────────
    * The extension runs the jobs in its own context, so the page would stay
    * stuck on "ממתין בתור". Mirror the authoritative queue (status + stage)
