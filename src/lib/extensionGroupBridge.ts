@@ -606,7 +606,10 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
     const pullCloud = async () => {
       const cloud = await fetchCloudQueue();
       if (!alive || cloud.length === 0) return;
-      setQueue((curr) => mergeQueues(curr, cloud));
+      setQueue((curr) => {
+        const merged = mergeQueues(curr, cloud);
+        return sameQueue(curr, merged) ? curr : merged;
+      });
     };
     void pullCloud();
     const cloudBeat = window.setInterval(pullCloud, 20000);
