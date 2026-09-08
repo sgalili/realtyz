@@ -2183,6 +2183,13 @@ const InlineComposer = ({
               privacy_status: ytPrivacy,
               category_id: ytCategory,
               made_for_kids: ytMadeForKids,
+              // The actual video asset: YouTube uploads never travel through
+              // the Meta handler, so the file URL rides along with the metadata.
+              video_url: attachments.find(
+                (a) => typeof a.url === 'string'
+                  && /^https?:\/\//i.test(a.url)
+                  && /\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(a.url),
+              )?.url ?? null,
             },
           }
         : {}),
