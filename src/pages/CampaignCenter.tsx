@@ -94,6 +94,8 @@ import {
 } from '@/lib/composerSession';
 
 import {
+import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
+import { safeUtf8 } from '@/lib/utf8Text';
   hebrewOnlyParts, hebrewPropertyType, sanitizeFloor, sanitizeRooms, sanitizeSqm,
   floorsInBuildingFromSqm,
 } from '@/lib/propertyMeasures';
@@ -3259,7 +3261,9 @@ const ConfirmDispatchDialog = ({
       // into `body`, so we ship it as-is. When unchecked we transmit clean text.
       // Normalization happens at dispatch time (never on keystroke) so the
       // caret is never moved while the user types.
-      const bodyToPublish = body
+      // safeUtf8 repairs any latin-1 mojibake / broken emoji pairs pasted into
+      // the composer so emoji survive the DB round-trip and the extension.
+      const bodyToPublish = safeUtf8(body)
         .replace(/^[\s\u200f\u200e]+/g, '')
         .replace(/[ \t]+\n/g, '\n')
         .replace(/\n{3,}/g, '\n\n')
@@ -3311,7 +3315,7 @@ const ConfirmDispatchDialog = ({
             groups: apiGroupIds.map((bare) => ({
               group_id: bare,
               group_name: groupMetaMap[bare]?.name || bare,
-              group_url: groupMetaMap[bare]?.url || `https://www.facebook.com/groups/${bare}`,
+              group_url: fbGroupUrlFrom(groupMetaMap[bare]?.url, bare) ?? '',
             })),
 
           });

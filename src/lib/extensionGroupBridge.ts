@@ -14,6 +14,8 @@ import { ensureMandatoryComment } from "@/lib/mandatoryComment";
  */
 
 import { useEffect, useState } from "react";
+import { fbGroupUrlFrom } from "@/lib/fbGroupUrl";
+import { safeUtf8 } from "@/lib/utf8Text";
 
 export const EXT_GROUPS_STORAGE_KEY = "rz-ext-fb-groups";
 export const EXT_GROUPS_MESSAGE = "RZ_FB_GROUPS";
@@ -54,7 +56,7 @@ const normalizeOne = (raw: any): ExtensionGroup | null => {
     group_id: id.startsWith("ext:") ? id : `ext:${id}`,
     group_name: String(raw.group_name ?? raw.name ?? raw.title ?? id),
     group_icon: raw.group_icon ?? raw.icon ?? raw.image ?? null,
-    group_url: url ?? `https://www.facebook.com/groups/${id.replace(/^ext:/, "")}`,
+    group_url: fbGroupUrlFrom(url, id) ?? "",
     member_count: parseMemberCount(raw),
   };
 };
@@ -172,7 +174,7 @@ export const publishViaExtension = (payload: ExtensionPublishPayload): number =>
       return {
         group_id: g.group_id,
         group_name: g.group_name || hit?.group_name || bare,
-        group_url: g.group_url || hit?.group_url || `https://www.facebook.com/groups/${bare}`,
+        group_url: fbGroupUrlFrom(g.group_url || hit?.group_url, bare) ?? "",
       };
     })
     .filter((g) => !!g.group_url);
@@ -256,17 +258,17 @@ export const enqueueExtensionPosts = (input: {
   const entries: QueuedExtensionPost[] = input.groups
     .map<QueuedExtensionPost | null>((g) => {
       const bare = String(g.group_id || "").replace(/^ext:/, "");
-      const url = g.group_url || (bare ? `https://www.facebook.com/groups/${bare}` : "");
+      const url = fbGroupUrlFrom(g.group_url, bare) ?? "";
       if (!url) return null;
       const override = input.texts?.[g.group_id] ?? input.texts?.[bare];
       return {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        text: override && override.trim() ? override : input.text,
+        text: safeUtf8(override && override.trim() ? override : input.text),
         groupUrl: url,
         groupName: g.group_name || bare,
         images: input.images ?? [],
         link: input.link ?? null,
-        firstComment: ensureMandatoryComment(input.firstComment),
+        firstComment: safeUtf8(ensureMandatoryComment(input.firstComment)),
         status: "pending" as const,
         scheduledTime,
         createdAt: Date.now(),
@@ -460,7 +462,7 @@ export const startLocalPosting = (payload: ExtensionPublishPayload): number => {
   if (groups.length === 0) return 0;
 
   const post = {
-    text: payload.text,
+    text: safeUtf8(payload.text),
     images: payload.imageUrls ?? [],
     firstComment: ensureMandatoryComment(payload.firstComment),
     link: payload.link ?? null,

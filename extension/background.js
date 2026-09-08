@@ -86,12 +86,25 @@ const sendToTab = (tabId, payload, timeoutMs) =>
     }
   });
 
-const groupUrl = (job) => {
-  const raw = String(job.group_url || '').trim();
-  if (/^https?:\/\/(www\.)?facebook\.com\/groups\//i.test(raw)) return raw.split('?')[0];
-  const id = String(job.group_id || '').trim();
-  return id ? `https://www.facebook.com/groups/${id}` : null;
+/* Accepts full desktop URLs, m./mbasic. URLs, relative "/groups/123" hrefs and
+ * bare ids — always returns an absolute https://www.facebook.com/groups/<id>. */
+const RESERVED_GROUP_SEGMENTS = ['joins', 'feed', 'discover', 'create', 'search', 'your_groups'];
+const groupIdOf = (value) => {
+  const raw = String(value || '').trim().replace(/^ext:/, '');
+  if (!raw) return null;
+  const m = raw.match(/(?:facebook\.com|fb\.com)\/groups\/([^/?#\s]+)|(?:^|\/)groups\/([^/?#\s]+)/i);
+  let id = m ? (m[1] || m[2]) : (/^[A-Za-z0-9._-]{3,}$/.test(raw) && !raw.includes('.com') ? raw : null);
+  if (!id) return null;
+  try { id = decodeURIComponent(id); } catch (e) { /* keep raw */ }
+  id = id.trim();
+  if (!id || RESERVED_GROUP_SEGMENTS.includes(id.toLowerCase())) return null;
+  return id;
 };
+const absoluteGroupUrl = (value) => {
+  const id = groupIdOf(value);
+  return id ? `https://www.facebook.com/groups/${encodeURIComponent(id)}` : null;
+};
+const groupUrl = (job) => absoluteGroupUrl(job.group_url) || absoluteGroupUrl(job.group_id);
 
 /* ── one job ────────────────────────────────────────────────────────────── */
 

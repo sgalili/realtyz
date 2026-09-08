@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronUp, Clock, Users, XCircle } from 'lucide-react';
 import { useFbGroupMeta, type FbGroupMeta } from '@/hooks/useFbGroupMeta';
+import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 import { openExternal } from '@/lib/openExternal';
 
 export type GroupResult = {
@@ -126,7 +127,7 @@ export function GroupStatusChips({
             const name = info?.name || `קבוצה ${bare.slice(-6)}`;
             const res = results?.[gid] ?? results?.[bare];
             const state: GroupChipState = res ? (res.ok ? 'published' : 'failed') : defaultState;
-            const url = info?.url || (/^\d+$/.test(bare) ? `https://www.facebook.com/groups/${bare}` : null);
+            const url = fbGroupUrlFrom(info?.url, bare);
             const title = res?.reason ? `${name} — ${res.reason}` : `${name} — ${STATE_LABEL[state]}`;
             return (
               <button
