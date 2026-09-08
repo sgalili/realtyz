@@ -552,13 +552,19 @@ export const isLegacyMetaGroupError = (reason?: string | null): boolean => {
  * Live view of the local extension post queue (localStorage['rzPostQueue']).
  * Updates on same-tab writes, cross-tab storage events and extension messages.
  */
+const sameQueue = (a: QueuedExtensionPost[], b: QueuedExtensionPost[]) => {
+  try { return JSON.stringify(a) === JSON.stringify(b); } catch { return false; }
+};
+
 export const useExtensionQueue = (): QueuedExtensionPost[] => {
   const [queue, setQueue] = useState<QueuedExtensionPost[]>(() => readPostQueue());
 
   useEffect(() => {
     const commit = (next: unknown) => {
-      if (Array.isArray(next)) setQueue(next as QueuedExtensionPost[]);
-      else setQueue(readPostQueue());
+      const value = Array.isArray(next) ? (next as QueuedExtensionPost[]) : readPostQueue();
+      // Keep the previous array identity when nothing actually changed, so the
+      // campaign cards do not unmount/remount on every poll tick.
+      setQueue((curr) => (sameQueue(curr, value) ? curr : value));
     };
     const onCustom = (e: Event) => commit((e as CustomEvent).detail);
     const onStorage = (e: StorageEvent) => {
