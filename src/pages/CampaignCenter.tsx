@@ -181,7 +181,17 @@ type ConfirmPayload = {
   first_comment: string;
   first_comment_enabled: boolean;
   attach_msngr_link: boolean;
+  /** YouTube upload metadata (only for the youtube channel). */
+  youtube?: {
+    title: string;
+    description: string;
+    tags: string[];
+    privacy_status: 'public' | 'unlisted' | 'private';
+    category_id: string;
+    made_for_kids: boolean;
+  };
 };
+
 
 // Media URL handling lives in src/lib/postMediaUrl.ts so the feed, the post
 // card and the cache resolver all agree on what a valid absolute URL is.
@@ -911,6 +921,14 @@ const InlineComposer = ({
   // "פרסם גם בעמוד הפייסבוק העסקי" — on by default. When off, the post is
   // published only to the selected Facebook groups.
   const [publishToPage, setPublishToPage] = useState<boolean>(initial.publishToPage ?? true);
+  // YouTube upload metadata — mirrors the real fields the YouTube Data API
+  // expects for a new video (snippet.title / description / tags, status).
+  const [ytTitle, setYtTitle] = useState<string>(initial.ytTitle || '');
+  const [ytTags, setYtTags] = useState<string>(initial.ytTags || '');
+  const [ytPrivacy, setYtPrivacy] = useState<'public' | 'unlisted' | 'private'>(initial.ytPrivacy || 'public');
+  const [ytCategory, setYtCategory] = useState<string>(initial.ytCategory || '22');
+  const [ytMadeForKids, setYtMadeForKids] = useState<boolean>(!!initial.ytMadeForKids);
+
   const [firstComment, setFirstComment] = useState<string>(initial.firstComment || '');
   const [firstCommentGenerating, setFirstCommentGenerating] = useState<boolean>(false);
   // Preview shortlinks generated the moment the WA / Messenger link options are
@@ -2014,13 +2032,13 @@ const InlineComposer = ({
       waInjectedRef.current = line;
 
       injectFirstCommentLine(line);
-      // The post itself must always carry a way to reach us on WhatsApp.
-      setBody((curr) => {
-        const text = (curr || '');
-        if (/wa\.me\/\d+|whatsapp:\/\/send|realtyz\.co\.il\/r\/[A-Za-z0-9]+/i.test(text)) return text;
-        const trimmed = text.replace(/\s+$/, '');
-        return trimmed ? `${trimmed}\n\n${line}` : line;
-      });
+      // The WhatsApp CTA lives ONLY in the first comment — never in the post
+      // body. Strip any tracking line that leaked into the body.
+      setBody((curr) => (curr || '')
+        .replace(/\n*[^\n]*(?:wa\.me\/\d+|whatsapp:\/\/send|realtyz\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/\s+$/, ''));
+
 
     })();
     return () => { cancelled = true; };
@@ -2145,10 +2163,23 @@ const InlineComposer = ({
       first_comment: firstCommentEnabled ? firstComment : '',
       first_comment_enabled: firstCommentEnabled,
       attach_msngr_link: attachMsngrLink,
+      ...(channel.id === 'youtube'
+        ? {
+            youtube: {
+              title: ytTitle.trim() || body.trim().split('\n')[0].slice(0, 100),
+              description: body,
+              tags: ytTags.split(',').map((t) => t.trim()).filter(Boolean),
+              privacy_status: ytPrivacy,
+              category_id: ytCategory,
+              made_for_kids: ytMadeForKids,
+            },
+          }
+        : {}),
+
     });
     return true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [body, originalAiBody, selectedListingId, mode, attachments, scheduledLocal, groupIds, publishToPage, workspaceOwnerId, selectedProfileIds, attachWaLink, firstComment, firstCommentEnabled, attachMsngrLink, channel.id, platformProfiles.length]);
+  }, [body, originalAiBody, selectedListingId, mode, attachments, scheduledLocal, groupIds, publishToPage, workspaceOwnerId, selectedProfileIds, attachWaLink, firstComment, firstCommentEnabled, attachMsngrLink, channel.id, platformProfiles.length, ytTitle, ytTags, ytPrivacy, ytCategory, ytMadeForKids]);
 
   useEffect(() => {
     onRegisterPublish?.(submitDraft);
@@ -2473,20 +2504,75 @@ const InlineComposer = ({
 
       </div>
 
-      {/* Publish targets: the business Page is checked by default; groups are
-          picked from the group button in the bottom bar. */}
-      {channel.id === 'facebook' && (
-        <div className="rounded-xl border border-border bg-muted/20 px-3 py-2" dir="rtl">
-          <label className="flex items-center gap-2 text-sm font-semibold text-foreground select-none cursor-pointer">
-            <Checkbox
-              checked={publishToPage}
-              onCheckedChange={(v) => setPublishToPage(v === true)}
-              aria-label="פרסם גם בעמוד הפייסבוק העסקי"
+      {/* Publish targets: the business Page toggle now lives inside the groups
+          dialog, directly above its submit button. */}
+
+      {/* YouTube upload metadata — the real fields YouTube expects for a new
+          video upload. The main textarea above is the video description. */}
+      {channel.id === 'youtube' && (
+        <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-3" dir="rtl">
+          <div className="flex items-center gap-2">
+            <BrandIcon name="youtube" className="h-4 w-4 text-[#FF0000]" />
+            <span className="text-sm font-semibold text-foreground">פרטי הסרטון ביוטיוב</span>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">כותרת הסרטון (עד 100 תווים)</Label>
+            <Input
+              value={ytTitle}
+              maxLength={100}
+              onChange={(e) => setYtTitle(e.target.value)}
+              placeholder="כותרת הסרטון"
+              className="text-right"
             />
-            <span>פרסם גם בעמוד הפייסבוק העסקי</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            תיאור הסרטון נלקח מתיבת הטקסט הראשית של הפוסט.
+          </p>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">תגיות (מופרדות בפסיק)</Label>
+            <Input
+              value={ytTags}
+              onChange={(e) => setYtTags(e.target.value)}
+              placeholder="נדל״ן, דירות, תיווך"
+              className="text-right"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">הגדרת פרטיות</Label>
+              <Select value={ytPrivacy} onValueChange={(v) => setYtPrivacy(v as 'public' | 'unlisted' | 'private')}>
+                <SelectTrigger className="text-right"><SelectValue /></SelectTrigger>
+                <SelectContent dir="rtl">
+                  <SelectItem value="public">ציבורי</SelectItem>
+                  <SelectItem value="unlisted">לא מפורט (לינק בלבד)</SelectItem>
+                  <SelectItem value="private">פרטי</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">קטגוריה</Label>
+              <Select value={ytCategory} onValueChange={setYtCategory}>
+                <SelectTrigger className="text-right"><SelectValue /></SelectTrigger>
+                <SelectContent dir="rtl">
+                  <SelectItem value="22">אנשים ובלוגים</SelectItem>
+                  <SelectItem value="24">בידור</SelectItem>
+                  <SelectItem value="25">חדשות ופוליטיקה</SelectItem>
+                  <SelectItem value="26">איך עושים זאת וסטייל</SelectItem>
+                  <SelectItem value="27">חינוך</SelectItem>
+                  <SelectItem value="28">מדע וטכנולוגיה</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-foreground select-none cursor-pointer">
+            <Checkbox checked={ytMadeForKids} onCheckedChange={(v) => setYtMadeForKids(v === true)} />
+            <span>הסרטון מיועד לילדים</span>
           </label>
         </div>
       )}
+
+
+
 
       {/* First-comment composer — always visible below the main textarea.
           When enabled (checkbox on), the Meta API posts this text as the first
@@ -2666,7 +2752,17 @@ const InlineComposer = ({
               <Checkbox checked={groupTextVariation} onCheckedChange={(v) => setGroupTextVariation(v === true)} />
               <span className="text-sm font-semibold text-foreground">שינוי טקסט לקבוצות</span>
             </label>
+            {/* Business Page toggle sits directly above the submit button. */}
+            <label className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 cursor-pointer">
+              <Checkbox
+                checked={publishToPage}
+                onCheckedChange={(v) => setPublishToPage(v === true)}
+                aria-label="פרסם גם בעמוד הפייסבוק העסקי"
+              />
+              <span className="text-sm font-semibold text-foreground">פרסם גם בעמוד הפייסבוק העסקי</span>
+            </label>
           </div>
+
           <DialogFooter className="sm:justify-start">
             <Button type="button" className="w-auto" onClick={() => setGroupPickerOpen(false)}>
               אישור{groupIds.length > 0 ? ` (${groupIds.length})` : ''}
@@ -2854,7 +2950,59 @@ const InlineComposer = ({
   );
 };
 
+/* ───────────── Stacked per-platform composer section ─────────────
+   When several platforms are picked, each one renders its own form, stacked
+   vertically, with the platform logo in the section's top corner. The primary
+   (last picked) section keeps the sticky publish bar; the others publish with
+   their own inline button. */
+const StackedComposerSection = ({
+  channel, primary, composerKey, brandName, socialProfiles, onConfirm, onOpenScheduleCalendar,
+}: {
+  channel: ChannelCard;
+  primary: boolean;
+  composerKey: string;
+  brandName: string;
+  socialProfiles: SocialAccountProfile[];
+  onConfirm: (payload: ConfirmPayload) => void;
+  onOpenScheduleCalendar?: () => void;
+}) => {
+  const publishRef = useRef<(() => boolean) | null>(null);
+  return (
+    <section className="rounded-2xl border border-border bg-card/40 p-3 space-y-3" dir="rtl">
+      <header className="flex items-center gap-2">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background">
+          <BrandIcon
+            name={channel.brand}
+            className={cn('h-4 w-4', BRAND_COLOR[channel.brand] ?? 'text-muted-foreground')}
+          />
+        </span>
+        <span className="text-sm font-semibold text-foreground">{channel.label}</span>
+      </header>
+      <InlineComposer
+        key={composerKey}
+        channel={channel}
+        brandName={brandName}
+        socialProfiles={socialProfiles}
+        onConfirm={onConfirm}
+        onOpenScheduleCalendar={onOpenScheduleCalendar}
+        {...(primary
+          ? {}
+          : {
+              hideBottomBar: true,
+              onRegisterPublish: (fn: (() => boolean) | null) => { publishRef.current = fn; },
+            })}
+      />
+      {!primary && (
+        <Button type="button" className="w-full" onClick={() => { publishRef.current?.(); }}>
+          פרסם ב{channel.label}
+        </Button>
+      )}
+    </section>
+  );
+};
+
 /* ───────────── Dispatch confirmation modal ───────────── */
+
 
 const ConfirmDispatchDialog = ({
   open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, publishToPage = true, selectedProfileIds, attachWaLink, firstComment, onConfirmed, autoConfirm = false,
@@ -7569,21 +7717,47 @@ const CampaignCenter = () => {
                 assignments = saved.assignments;
               }
             }
-            // Single composer when no multi-property fan-out
+            // Single composer when no multi-property fan-out. When more than
+            // one platform is picked, every platform's form is stacked
+            // vertically, each with its own logo header.
             if (propertyIds.length <= 1 && assignments.length <= 1) {
-
+              const stacked = CHANNEL_CARDS.filter(
+                (c) => pickedChannelIds.has(c.id) && c.id !== 'ivr' && c.id !== 'ai-call',
+              );
+              const ordered = [
+                pickedChannel,
+                ...stacked.filter((c) => c.id !== pickedChannel.id),
+              ];
+              if (ordered.length <= 1) {
+                return (
+                  <InlineComposer
+                    key={`composer-${pickedChannel?.id ?? 'none'}-${composerResetTick}`}
+                    channel={pickedChannel}
+                    brandName={brandName}
+                    socialProfiles={socialAccountProfiles}
+                    onConfirm={(p) => setConfirmPayload(p)}
+                    onOpenScheduleCalendar={() => handleChange('calendar')}
+                  />
+                );
+              }
               return (
-                <InlineComposer
-                  key={`composer-${pickedChannel?.id ?? 'none'}-${composerResetTick}`}
-                  channel={pickedChannel}
-                  brandName={brandName}
-                  socialProfiles={socialAccountProfiles}
-                  onConfirm={(p) => setConfirmPayload(p)}
-                  onOpenScheduleCalendar={() => handleChange('calendar')}
-                />
-
+                <div className="space-y-4">
+                  {ordered.map((c) => (
+                    <StackedComposerSection
+                      key={`stacked-${c.id}-${composerResetTick}`}
+                      composerKey={`composer-${c.id}-${composerResetTick}`}
+                      channel={c}
+                      primary={c.id === pickedChannel.id}
+                      brandName={brandName}
+                      socialProfiles={socialAccountProfiles}
+                      onConfirm={(p) => setConfirmPayload(p)}
+                      onOpenScheduleCalendar={() => handleChange('calendar')}
+                    />
+                  ))}
+                </div>
               );
             }
+
             // One composer block per scheduled assignment — each tied to its
             // listing, slot time and variant index for independent generation
             // and an independent Approve/Schedule action.
