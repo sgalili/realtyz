@@ -43,6 +43,7 @@ import { WaTemplatesSyncCard } from '@/components/settings/WaTemplatesSyncCard';
 import { SpeedToLeadCard } from '@/components/settings/SpeedToLeadCard';
 
 import { MetaDirectConnectionCard } from '@/components/profile/MetaDirectConnectionCard';
+import { CloudPostingSessionCard } from '@/components/profile/CloudPostingSessionCard';
 import { FacebookPersonalConnectCard } from '@/components/social/FacebookPersonalConnectCard';
 
 
@@ -922,6 +923,7 @@ const ApiSettings = () => {
         <div id="facebook" className="scroll-mt-24 space-y-4">
           <FacebookPersonalConnectCard />
           <MetaDirectConnectionCard />
+          <CloudPostingSessionCard />
         </div>
 
       </SectionShell>

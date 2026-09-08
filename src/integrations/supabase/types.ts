@@ -1026,6 +1026,7 @@ export type Database = {
           attempts: number
           claim_expires_at: string | null
           claimed_by: string | null
+          cloud_attempts: number
           completed_at: string | null
           created_at: string
           created_by: string | null
@@ -1035,6 +1036,8 @@ export type Database = {
           payload: Json
           processed_at: string | null
           publication_status: string
+          runner: string
+          runner_note: string | null
           scheduled_for: string
           status: string
           target_label: string | null
@@ -1049,6 +1052,7 @@ export type Database = {
           attempts?: number
           claim_expires_at?: string | null
           claimed_by?: string | null
+          cloud_attempts?: number
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -1058,6 +1062,8 @@ export type Database = {
           payload?: Json
           processed_at?: string | null
           publication_status?: string
+          runner?: string
+          runner_note?: string | null
           scheduled_for?: string
           status?: string
           target_label?: string | null
@@ -1072,6 +1078,7 @@ export type Database = {
           attempts?: number
           claim_expires_at?: string | null
           claimed_by?: string | null
+          cloud_attempts?: number
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -1081,6 +1088,8 @@ export type Database = {
           payload?: Json
           processed_at?: string | null
           publication_status?: string
+          runner?: string
+          runner_note?: string | null
           scheduled_for?: string
           status?: string
           target_label?: string | null
@@ -2329,6 +2338,45 @@ export type Database = {
           last_seen_at?: string | null
           revoked_at?: string | null
           token?: string
+          updated_at?: string
+          user_agent?: string | null
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
+      fb_cloud_sessions: {
+        Row: {
+          cookies_encrypted: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          last_error: string | null
+          last_verified_at: string | null
+          status: string
+          updated_at: string
+          user_agent: string | null
+          workspace_owner_id: string
+        }
+        Insert: {
+          cookies_encrypted?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          last_error?: string | null
+          last_verified_at?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          workspace_owner_id: string
+        }
+        Update: {
+          cookies_encrypted?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          last_error?: string | null
+          last_verified_at?: string | null
+          status?: string
           updated_at?: string
           user_agent?: string | null
           workspace_owner_id?: string
