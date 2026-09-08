@@ -73,6 +73,7 @@ export function GroupStatusChips({
   emptyLabel,
   countdownIso,
   defaultOpen = false,
+  inline = false,
 }: {
   groupIds: string[];
   meta?: Record<string, FbGroupMeta>;
@@ -85,6 +86,8 @@ export function GroupStatusChips({
   /** When provided, the collapsed summary shows a dd/hh/mm/ss countdown. */
   countdownIso?: string | null;
   defaultOpen?: boolean;
+  /** Render without top margin so the collapsed pill can sit inside a flex row. */
+  inline?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const shared = useFbGroupMeta();
