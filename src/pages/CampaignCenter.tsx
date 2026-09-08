@@ -352,16 +352,16 @@ const ChannelGrid = ({
             { id: 'linkedin',  label: 'LinkedIn',  brand: 'linkedin' },
             { id: 'youtube',   label: 'YouTube',   brand: 'youtube' },
           ].map((p) => {
-            const isConnected = connected.has(p.id);
             const isSelected = selectedIds.has(p.id);
-            // A selected channel always renders in full brand color, even while
-            // the connection probe is still resolving server-side.
-            const lit = isConnected || isSelected;
+            // Only an explicitly selected channel is lit — being connected
+            // never implies selection.
+            const lit = isSelected;
+            const card = CHANNEL_CARDS.find((c) => c.id === p.id);
             return (
               <button
                 key={p.id}
                 type="button"
-                onClick={() => setOpen((v) => !v)}
+                onClick={() => { if (card) onPick(card); }}
                 title={p.label}
                 aria-label={p.label}
                 aria-pressed={isSelected}
