@@ -7717,21 +7717,47 @@ const CampaignCenter = () => {
                 assignments = saved.assignments;
               }
             }
-            // Single composer when no multi-property fan-out
+            // Single composer when no multi-property fan-out. When more than
+            // one platform is picked, every platform's form is stacked
+            // vertically, each with its own logo header.
             if (propertyIds.length <= 1 && assignments.length <= 1) {
-
+              const stacked = CHANNEL_CARDS.filter(
+                (c) => pickedChannelIds.has(c.id) && c.id !== 'ivr' && c.id !== 'ai-call',
+              );
+              const ordered = [
+                pickedChannel,
+                ...stacked.filter((c) => c.id !== pickedChannel.id),
+              ];
+              if (ordered.length <= 1) {
+                return (
+                  <InlineComposer
+                    key={`composer-${pickedChannel?.id ?? 'none'}-${composerResetTick}`}
+                    channel={pickedChannel}
+                    brandName={brandName}
+                    socialProfiles={socialAccountProfiles}
+                    onConfirm={(p) => setConfirmPayload(p)}
+                    onOpenScheduleCalendar={() => handleChange('calendar')}
+                  />
+                );
+              }
               return (
-                <InlineComposer
-                  key={`composer-${pickedChannel?.id ?? 'none'}-${composerResetTick}`}
-                  channel={pickedChannel}
-                  brandName={brandName}
-                  socialProfiles={socialAccountProfiles}
-                  onConfirm={(p) => setConfirmPayload(p)}
-                  onOpenScheduleCalendar={() => handleChange('calendar')}
-                />
-
+                <div className="space-y-4">
+                  {ordered.map((c) => (
+                    <StackedComposerSection
+                      key={`stacked-${c.id}-${composerResetTick}`}
+                      composerKey={`composer-${c.id}-${composerResetTick}`}
+                      channel={c}
+                      primary={c.id === pickedChannel.id}
+                      brandName={brandName}
+                      socialProfiles={socialAccountProfiles}
+                      onConfirm={(p) => setConfirmPayload(p)}
+                      onOpenScheduleCalendar={() => handleChange('calendar')}
+                    />
+                  ))}
+                </div>
               );
             }
+
             // One composer block per scheduled assignment — each tied to its
             // listing, slot time and variant index for independent generation
             // and an independent Approve/Schedule action.
