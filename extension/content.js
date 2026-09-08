@@ -151,6 +151,22 @@
     pushQueue(d.queue || readQueue());
   });
 
+  // The app deleted posts — purge those jobs from the extension queue too.
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d || typeof d !== 'object' || d.type !== 'RZ_QUEUE_REMOVE') return;
+    if (d.source === 'realtyz-extension') return;
+    try {
+      chrome.runtime.sendMessage(
+        { type: 'RZ_QUEUE_REMOVE', ids: d.ids || [], textKeys: d.textKeys || [] },
+        (res) => {
+          if (chrome.runtime.lastError) return;
+          if (res && Array.isArray(res.queue)) writeQueue(res.queue);
+        },
+      );
+    } catch (err) { /* noop */ }
+  });
+
   // Pick up anything queued before the extension loaded.
   setTimeout(() => { const q = readQueue(); if (q.length) pushQueue(q); }, 1500);
 
