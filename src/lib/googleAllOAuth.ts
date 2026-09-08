@@ -66,7 +66,7 @@ export async function isFacebookConnected(): Promise<boolean> {
   if (!userId) return false;
   const [page, personal, social] = await Promise.all([
     supabase.from('messenger_page_bindings').select('page_id').eq('owner_id', userId).limit(1),
-    supabase.from('fb_personal_connections').select('id').eq('workspace_owner_id', userId).limit(1),
+    supabase.from('fb_personal_connections').select('workspace_owner_id').eq('workspace_owner_id', userId).limit(1),
     supabase
       .from('social_connections')
       .select('platform, is_connected')
