@@ -2903,8 +2903,11 @@ const ConfirmDispatchDialog = ({
 
   // Pre-send statistics for the selected Facebook groups (count + reach).
   const [groupStats, setGroupStats] = useState<{ known: number; members: number }>({ known: 0, members: 0 });
+  // Real group names / urls so the extension queue and the post card pills show
+  // the group's actual name instead of its numeric id.
+  const [groupMetaMap, setGroupMetaMap] = useState<Record<string, { name: string; url: string | null }>>({});
   useEffect(() => {
-    if (!open || !groupIds?.length) { setGroupStats({ known: 0, members: 0 }); return; }
+    if (!open || !groupIds?.length) { setGroupStats({ known: 0, members: 0 }); setGroupMetaMap({}); return; }
     (async () => {
       const ids = Array.from(new Set(groupIds.flatMap((g) => {
         const id = String(g);
@@ -2914,16 +2917,25 @@ const ConfirmDispatchDialog = ({
       try {
         const { data } = await (supabase as any)
           .from('fb_user_groups')
-          .select('group_id, member_count')
+          .select('group_id, group_name, group_url, member_count')
           .in('group_id', ids);
         const rows = (data || []) as any[];
         const members = rows.reduce((sum, r) => sum + (Number(r?.member_count) || 0), 0);
         setGroupStats({ known: rows.filter((r) => Number(r?.member_count) > 0).length, members });
+        const map: Record<string, { name: string; url: string | null }> = {};
+        rows.forEach((r) => {
+          const bare = String(r?.group_id || '').replace(/^ext:/, '');
+          if (!bare) return;
+          map[bare] = { name: String(r?.group_name || bare), url: r?.group_url ? String(r.group_url) : null };
+        });
+        setGroupMetaMap(map);
       } catch {
         setGroupStats({ known: 0, members: 0 });
+        setGroupMetaMap({});
       }
     })();
   }, [open, groupIds]);
+
 
   // ── Silent bulk dispatch ───────────────────────────────────────────────
   // In bulk mode the dialog renders nothing and fires the broadcast itself as
