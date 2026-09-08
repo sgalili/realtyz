@@ -223,7 +223,7 @@
       });
     } catch (err) { /* noop */ }
   };
-  setInterval(syncQueue, 3000);
+  setInterval(syncQueue, 1500);
   setTimeout(syncQueue, 2000);
 
   document.addEventListener('rz:ext-fb-groups:request', deliver);

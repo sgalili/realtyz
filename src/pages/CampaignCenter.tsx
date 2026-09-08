@@ -36,6 +36,7 @@ import {
   enqueuePageFirstComment,
   useExtensionQueue,
   queueStatusForText,
+  queueProgressForText,
   isLegacyMetaGroupError,
   resetQueueEntriesForText,
   removeQueueEntriesForPosts,
@@ -50,6 +51,7 @@ import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { nativeWaLink, getOfficialWaNumber } from '@/lib/officialWa';
 import { cn } from '@/lib/utils';
+import { ExtensionPostProgress } from '@/components/ExtensionPostProgress';
 
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
@@ -5461,6 +5463,10 @@ const PublishedFeed = ({
         const extQueueStatus = hasGroupTargets
           ? queueStatusForText(extensionQueue, r.message_body || '')
           : null;
+        // Live automation stage (queued → navigating → writing → comment → done).
+        const extProgress = hasGroupTargets
+          ? queueProgressForText(extensionQueue, r.message_body || '')
+          : null;
         const failed =
           String(r.status || '').toLowerCase() === 'failed' &&
           !legacyMetaError &&
@@ -5599,19 +5605,12 @@ const PublishedFeed = ({
                       {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
                     </span>
                   );
-                })() : isPaused ? null : (extQueueStatus === 'completed' && hasGroupTargets) ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-200">
-                    <CheckCircle2 className="h-3 w-3" />
-                    פורסם בקבוצות
-                  </span>
-                ) : ((extQueueStatus === 'pending' || extQueueStatus === 'posting' || legacyMetaError) && hasGroupTargets) ? (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800 ring-1 ring-blue-200"
-                    title="הפוסט מנוהל בתור הפרסום של תוסף הדפדפן"
-                  >
-                    <Loader2 className={cn('h-3 w-3', extQueueStatus === 'posting' && 'animate-spin')} />
-                    {extQueueStatus === 'posting' ? 'מפרסם דרך התוסף' : 'בתור התוסף'}
-                  </span>
+                })() : isPaused ? null : (extProgress && hasGroupTargets) ? (
+                  <ExtensionPostProgress progress={extProgress} />
+                ) : (legacyMetaError && hasGroupTargets) ? (
+                  <ExtensionPostProgress
+                    progress={{ stage: 'queued', label: '⏳ ממתין בתור', percent: 8, error: null, done: 0, total: 1 }}
+                  />
                 ) : failed ? (
                   <span
                     className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive ring-1 ring-destructive/30 max-w-[60%]"
