@@ -61,7 +61,7 @@ export function MandateSelectorMount() {
       window.clearTimeout(t2);
       window.clearTimeout(t3);
       observer?.disconnect();
-      if (createdHost?.parentElement) createdHost.parentElement.removeChild(createdHost);
+      if (createdHost?.parentNode) createdHost.parentNode.removeChild(createdHost);
       setHost(null);
     };
   }, [location.pathname, isDashboard]);

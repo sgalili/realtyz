@@ -79,7 +79,7 @@ export function HeroWaveMount() {
         const parent = c.parentElement;
         if (parent) {
           delete parent.dataset.realtyzWaveMounted;
-          if (parent.contains(c)) parent.removeChild(c);
+           if (c.parentNode === parent) parent.removeChild(c);
         }
       });
     };
