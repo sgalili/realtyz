@@ -5758,9 +5758,9 @@ const PublishedFeed = ({
                   );
                   return (
                     <div className="mx-4 mb-3 space-y-2">
-                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2" dir="rtl">
+                      <div className="grid grid-cols-1 justify-items-center gap-2 md:grid-cols-2" dir="rtl">
                         {heroes.map((src, i) => (
-                          <div key={src} className={cn('aspect-[4/3] w-full', i > 0 && 'hidden md:block')}>
+                          <div key={src} className={cn('aspect-[4/3] w-full mx-auto flex items-center justify-center', i > 0 && 'hidden md:block')}>
                             {tile(src, i, 'h-full w-full')}
                           </div>
                         ))}
