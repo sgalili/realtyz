@@ -7478,7 +7478,7 @@ const CampaignCenter = () => {
             socialProfiles={socialAccountProfiles}
             onAddFacebookPage={() => { void handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!); }}
           />
-          {pickedChannel && (() => {
+          {pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
             const propertiesParam = searchParams.get('properties') || '';
             let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
             let assignments: ComposerAssignment[] = [];
