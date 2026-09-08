@@ -1,0 +1,15 @@
+{
+  "name": "realtyz-cloud-runner",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "puppeteer": "^23.11.1"
+  }
+}
