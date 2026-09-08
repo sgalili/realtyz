@@ -6,6 +6,15 @@
  * a clear Hebrew reason so the queue never stays stuck.
  */
 (function () {
+  /* Live stage feedback so the web app can render a real progress bar. */
+  let currentJobId = null;
+  const reportStage = (stage) => {
+    if (!currentJobId) return;
+    try {
+      chrome.runtime.sendMessage({ type: 'RZ_JOB_STAGE', jobId: currentJobId, stage }, () => chrome.runtime.lastError);
+    } catch (e) { /* noop */ }
+  };
+
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const visible = (el) => {
@@ -171,6 +180,7 @@
     if (!box) return { ok: false, reason: 'עורך הפוסט לא נפתח' };
 
     // 2. text
+    reportStage('writing');
     const injected = await injectText(box, String(job.message || ''));
     if (!injected) return { ok: false, reason: 'הזנת תוכן הפוסט נכשלה' };
 
@@ -221,6 +231,7 @@
     const firstComment = String(job.first_comment || job.firstComment || '').trim();
     let commentError = null;
     if (firstComment) {
+      reportStage('commenting');
       commentError = await addFirstComment(article, snippet, firstComment);
     }
 
@@ -313,12 +324,15 @@
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || msg.source !== 'realtyz-extension') return;
     if (msg.type === 'RZ_POST_TO_GROUP') {
+      currentJobId = (msg.job && msg.job.id) || null;
       postToGroup(msg.job || {})
         .then((res) => sendResponse(res))
         .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
       return true;
     }
     if (msg.type === 'RZ_POST_FIRST_COMMENT') {
+      currentJobId = (msg.job && msg.job.id) || null;
+      reportStage('commenting');
       postFirstCommentToPage(msg.job || {})
         .then((res) => sendResponse(res))
         .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));

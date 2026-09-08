@@ -15,6 +15,23 @@ const STATE_KEY = 'rzQueueState';
 const JOB_TIMEOUT_MS = 4 * 60 * 1000; // hard ceiling per job
 
 let running = false;
+/** Last failure reason produced by report(), used for queue stage details. */
+let lastJobReason = null;
+
+/* ── live per-job stage (progress feedback for the web app) ──────────────── */
+const JOB_STAGES = ['queued', 'navigating', 'writing', 'commenting', 'completed', 'failed'];
+
+async function setJobStage(jobId, stage, extra) {
+  if (!jobId || JOB_STAGES.indexOf(stage) < 0) return;
+  const id = String(jobId).replace(/^queue-/, '');
+  const queue = await loadQueue();
+  const hit = queue.find((e) => e && String(e.id) === id);
+  if (!hit) return;
+  hit.stage = stage;
+  hit.stageAt = Date.now();
+  if (extra && typeof extra === 'object') Object.assign(hit, extra);
+  await saveQueue(queue);
+}
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
 
@@ -115,6 +132,7 @@ async function runJob(token, job) {
 
   let tabId = null;
   try {
+    await setJobStage(job.id, 'navigating');
     const tab = await chrome.tabs.create({ url, active: false });
     tabId = tab.id;
     const loaded = await waitForTabLoad(tabId);
@@ -123,6 +141,7 @@ async function runJob(token, job) {
       return;
     }
     await sleep(2500); // let Facebook hydrate the feed
+    await setJobStage(job.id, 'writing');
 
     const result = await sendToTab(
       tabId,
@@ -170,6 +189,7 @@ async function runPageFirstComment(token, entry) {
 
   let tabId = null;
   try {
+    await setJobStage(entry.id, 'navigating');
     const tab = await chrome.tabs.create({ url: postUrl, active: false });
     tabId = tab.id;
     const loaded = await waitForTabLoad(tabId);
@@ -178,6 +198,7 @@ async function runPageFirstComment(token, entry) {
       return false;
     }
     await sleep(2500);
+    await setJobStage(entry.id, 'commenting');
 
     const result = await sendToTab(
       tabId,
@@ -207,6 +228,7 @@ async function runPageFirstComment(token, entry) {
 }
 
 async function report(token, job, ok, reason, postUrl) {
+  lastJobReason = ok ? null : (reason || 'פרסום בדפדפן נכשל');
 
   // Local (app-triggered) jobs have no backend queue row — skip the report call.
   if (token && !job.local) {
@@ -324,6 +346,7 @@ async function drainQueue() {
     for (const e of queue) {
       if (e && e.status === 'posting' && Date.now() - Number(e.startedAt || e.createdAt || 0) > STALE_POSTING_MS) {
         e.status = 'pending';
+        e.stage = 'queued';
         e.startedAt = null;
         recovered = true;
       }
@@ -339,11 +362,14 @@ async function drainQueue() {
       if (Number(entry.scheduledTime || 0) > Date.now()) continue;
 
       entry.status = 'posting';
+      entry.stage = 'queued';
+      entry.stageAt = Date.now();
+      entry.error = null;
       entry.startedAt = Date.now();
       await saveQueue(queue);
 
       let ok = false;
-      let reason = null;
+      lastJobReason = null;
       if (entry.type === 'page_first_comment' || entry.postId || entry.postUrl) {
         ok = await runPageFirstComment(token, entry);
       } else {
@@ -359,9 +385,17 @@ async function drainQueue() {
         });
       }
       entry.status = ok ? 'completed' : 'failed';
+      const failReason = ok ? null : (lastJobReason || 'פרסום בדפדפן נכשל');
       queue = await loadQueue().then((fresh) => {
         const hit = fresh.find((e) => String(e.id) === String(entry.id));
-        if (hit) { hit.status = entry.status; hit.startedAt = null; hit.finishedAt = Date.now(); }
+        if (hit) {
+          hit.status = entry.status;
+          hit.stage = ok ? 'completed' : 'failed';
+          hit.stageAt = Date.now();
+          hit.error = failReason;
+          hit.startedAt = null;
+          hit.finishedAt = Date.now();
+        }
         return fresh;
       });
       await saveQueue(queue);
@@ -474,6 +508,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'RZ_QUEUE_REMOVE') {
     removeQueueJobs(msg.ids, msg.textKeys).then((queue) => {
       try { sendResponse({ ok: true, queue }); } catch (e) { /* noop */ }
+    });
+    return true;
+  }
+
+  if (msg.type === 'RZ_JOB_STAGE') {
+    setJobStage(msg.jobId, msg.stage).then(() => {
+      try { sendResponse({ ok: true }); } catch (e) { /* noop */ }
     });
     return true;
   }
