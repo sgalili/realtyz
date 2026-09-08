@@ -3193,7 +3193,11 @@ const ConfirmDispatchDialog = ({
                   body: bodyToPublish,
                   media_urls: mediaUrls,
                   campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
+                  // Page + groups in one submit: the card must already carry its
+                  // group pills while the extension works through the queue.
+                  group_ids: apiGroupIds,
                 },
+
               }));
             } catch { /* noop */ }
           }
