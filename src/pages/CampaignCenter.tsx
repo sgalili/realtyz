@@ -3710,6 +3710,10 @@ const GlobalSocialFeed = ({
       if (!isConnected) { onConnectChannel(id); return; }
       onChannelChange(id);
     };
+    // YouTube logo: grayscale unless actively selected AND has posts to show.
+    const isYouTube = id === 'youtube';
+    const youtubeColored = isYouTube && active && count > 0;
+    const iconMuted = isYouTube ? !youtubeColored : !isConnected;
     return (
       <button
         type="button"
@@ -3719,6 +3723,7 @@ const GlobalSocialFeed = ({
         className={cn(
           'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
           !isConnected && 'opacity-40 hover:opacity-70 grayscale',
+          isYouTube && !youtubeColored && 'grayscale',
           active && 'opacity-100',
         )}
       >
@@ -3726,7 +3731,12 @@ const GlobalSocialFeed = ({
           <BrandIcon
             name={brand}
             aria-label={label}
-            className={cn('h-5 w-5', isConnected ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-500')}
+            className={cn(
+              'h-5 w-5',
+              isYouTube
+                ? (youtubeColored ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-400 grayscale')
+                : (isConnected ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-500')
+            )}
           />
         ) : Icon ? (
           <Icon aria-label={label} className="h-5 w-5 text-slate-600" />
