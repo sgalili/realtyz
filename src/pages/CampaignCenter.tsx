@@ -3909,7 +3909,7 @@ const GlobalSocialFeed = ({
         title={isConnected ? label : `${label} — לחץ לחיבור`}
         aria-label={isConnected ? label : `חבר ${label}`}
         className={cn(
-          'inline-flex shrink items-center gap-1 sm:gap-1.5 whitespace-nowrap transition-opacity min-w-0',
+          'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity min-w-0',
           !isConnected && 'opacity-40 hover:opacity-70 grayscale',
           isYouTube && !youtubeColored && 'grayscale',
           active && 'opacity-100',
