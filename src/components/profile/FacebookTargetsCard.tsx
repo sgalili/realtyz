@@ -236,7 +236,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                   )}
                   <button
                     type="button"
-                    onClick={() => void toggleGroup(g)}
+                    onClick={() => (deleteMode ? toggleMark(g.id) : void toggleGroup(g))}
                     className={cn('min-w-0 flex-1 text-right', TEXT_MD)}
                   >
                     <span className="block truncate">{shortenName(g.name)}</span>
