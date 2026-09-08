@@ -922,6 +922,7 @@ const ApiSettings = () => {
         <div id="facebook" className="scroll-mt-24 space-y-4">
           <FacebookPersonalConnectCard />
           <MetaDirectConnectionCard />
+          <CloudPostingSessionCard />
         </div>
 
       </SectionShell>
