@@ -208,6 +208,9 @@ export type QueuedExtensionPost = {
   id: string;
   type?: "group_post" | "page_first_comment";
   text?: string;
+  /** The original campaign body text; used to link the queue job back to the
+   *  campaign log even when per-group spun variations are queued. */
+  sourceText?: string;
   /** Group post target (legacy field). */
   groupUrl?: string;
   groupName?: string;
