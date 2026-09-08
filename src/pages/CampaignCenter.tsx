@@ -3303,6 +3303,24 @@ const ConfirmDispatchDialog = ({
           }
         });
 
+        // Page publishing runs on the server, group publishing runs in the
+        // browser extension. Stamp the group targets onto the history row the
+        // server just created so the card keeps its group pills after refresh.
+        if (queuedGroups > 0 && apiGroupIds.length > 0) {
+          try {
+            await (supabase as any)
+              .from('campaign_logs')
+              .update({ group_ids: apiGroupIds })
+              .eq('user_id', ownerScope)
+              .eq('channel', channel.id)
+              .eq('message_body', bodyToPublish)
+              .gte('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString());
+          } catch (err) {
+            console.warn('[campaign] stamping group targets failed', err);
+          }
+        }
+
+
         const reachNote = groupStats.members > 0 ? ` · חשיפה פוטנציאלית ${groupStats.members.toLocaleString('he-IL')} חברים` : '';
         if (scheduledAt) {
 
