@@ -911,6 +911,14 @@ const InlineComposer = ({
   // "פרסם גם בעמוד הפייסבוק העסקי" — on by default. When off, the post is
   // published only to the selected Facebook groups.
   const [publishToPage, setPublishToPage] = useState<boolean>(initial.publishToPage ?? true);
+  // YouTube upload metadata — mirrors the real fields the YouTube Data API
+  // expects for a new video (snippet.title / description / tags, status).
+  const [ytTitle, setYtTitle] = useState<string>(initial.ytTitle || '');
+  const [ytTags, setYtTags] = useState<string>(initial.ytTags || '');
+  const [ytPrivacy, setYtPrivacy] = useState<'public' | 'unlisted' | 'private'>(initial.ytPrivacy || 'public');
+  const [ytCategory, setYtCategory] = useState<string>(initial.ytCategory || '22');
+  const [ytMadeForKids, setYtMadeForKids] = useState<boolean>(!!initial.ytMadeForKids);
+
   const [firstComment, setFirstComment] = useState<string>(initial.firstComment || '');
   const [firstCommentGenerating, setFirstCommentGenerating] = useState<boolean>(false);
   // Preview shortlinks generated the moment the WA / Messenger link options are
