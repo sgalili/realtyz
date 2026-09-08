@@ -151,7 +151,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const [pageRes, socialRes, personalRes] = await Promise.all([
         supabase.from('messenger_page_bindings').select('id, page_id').eq('owner_id', owner).limit(1),
         supabase.from('social_connections').select('id').limit(1),
-        supabase.from('fb_personal_connections').select('id, access_token, token_expires_at').limit(1),
+        supabase.from('fb_personal_connections').select('workspace_owner_id, access_token, token_expires_at').eq('workspace_owner_id', owner).limit(1),
       ]);
 
       // Errors == unknown state, not broken state.
