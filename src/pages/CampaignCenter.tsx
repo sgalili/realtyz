@@ -3909,7 +3909,7 @@ const GlobalSocialFeed = ({
         title={isConnected ? label : `${label} — לחץ לחיבור`}
         aria-label={isConnected ? label : `חבר ${label}`}
         className={cn(
-          'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
+          'inline-flex shrink items-center gap-1 sm:gap-1.5 whitespace-nowrap transition-opacity min-w-0',
           !isConnected && 'opacity-40 hover:opacity-70 grayscale',
           isYouTube && !youtubeColored && 'grayscale',
           active && 'opacity-100',
@@ -3920,18 +3920,18 @@ const GlobalSocialFeed = ({
             name={brand}
             aria-label={label}
             className={cn(
-              'h-5 w-5',
+              'h-4 w-4 sm:h-5 sm:w-5',
               isYouTube
                 ? (youtubeColored ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-400 grayscale')
                 : (isConnected ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-500')
             )}
           />
         ) : Icon ? (
-          <Icon aria-label={label} className="h-5 w-5 text-slate-600" />
+          <Icon aria-label={label} className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
         ) : null}
         <span
           className={cn(
-            'text-sm font-bold tabular-nums',
+            'text-xs sm:text-sm font-bold tabular-nums',
             active ? 'text-slate-900' : 'text-slate-500',
           )}
           dir="ltr"
