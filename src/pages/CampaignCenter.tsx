@@ -181,7 +181,17 @@ type ConfirmPayload = {
   first_comment: string;
   first_comment_enabled: boolean;
   attach_msngr_link: boolean;
+  /** YouTube upload metadata (only for the youtube channel). */
+  youtube?: {
+    title: string;
+    description: string;
+    tags: string[];
+    privacy_status: 'public' | 'unlisted' | 'private';
+    category_id: string;
+    made_for_kids: boolean;
+  };
 };
+
 
 // Media URL handling lives in src/lib/postMediaUrl.ts so the feed, the post
 // card and the cache resolver all agree on what a valid absolute URL is.
