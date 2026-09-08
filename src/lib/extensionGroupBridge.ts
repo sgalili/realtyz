@@ -313,6 +313,7 @@ export const enqueueExtensionPosts = (input: {
       return {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         text: safeUtf8(override && override.trim() ? override : input.text),
+        sourceText: safeUtf8(input.text),
         groupUrl: url,
         groupName: g.group_name || bare,
         images: input.images ?? [],
