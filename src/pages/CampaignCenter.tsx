@@ -4010,7 +4010,7 @@ const GlobalSocialFeed = ({
             />
           </label>
           <span className={cn(
-            'text-sm font-bold tabular-nums',
+            'text-base font-bold tabular-nums',
             activeChannel === 'all' ? 'text-slate-900' : 'text-slate-500',
           )} dir="ltr">{counts.all}</span>
         </div>
