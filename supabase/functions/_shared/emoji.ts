@@ -41,3 +41,65 @@ export const RICH_TEMPLATE_CONTRACT = [
   "- בלי האשטגים, בלי סוגריים מרובעים, בלי מספר בית בכתובת, בלי הצגה עצמית, בלי בולטים של ✅ או מקפים.",
   "- אל תכתוב חתימה/טלפון/רישיון — המערכת מוסיפה את בלוק החתימה של בעל החשבון אוטומטית.",
 ].join("\n");
+
+/**
+ * Prompt law shared by EVERY generator (all channels, all templates):
+ * each pain-point / benefit / punch line opens with ONE relevant emoji bullet.
+ */
+export const EMOJI_BULLET_LAW = [
+  "EMOJI BULLET LAW (all channels, mandatory):",
+  "- כל שורת תוכן פותחת באמוג'י אחד רלוונטי, אחריו רווח ואז הטקסט. האמוג'י הוא הבולט.",
+  "- שורות כאב (הבעיה של הקורא) פותחות באמוג'י כאב: ⏳ ⚠️ 😤 📉 📵 🕐.",
+  "- שורות תועלת/פתרון פותחות באמוג'י תועלת: ✅ ⚡ 🤖 📈 💬 🎯 🧠 🗂️.",
+  "- שורת מחיר 💰, שורת מיקום 📍, שורת נתונים 📐, שורת הזמנה לפעולה 📅.",
+  "- אמוג'י אחד לכל שורה בלבד — אסור שני אמוג'ים זה לצד זה, אסור לחזור על אותו אמוג'י פעמיים.",
+  "- אסור ✅ כשורת כאב, אסור בולטים של '-' או '•', אסור אמוג'י הייפ (🔥 💯 🎉 🌟 💎 🙌 🤩 ⭐).",
+  "- שורה ריקה מלאה בין שורה לשורה, כדי שהשורות לא ייצמדו.",
+].join("\n");
+
+const PAIN_EMOJI = "⏳";
+const BENEFIT_EMOJI = "✅";
+
+const LINE_EMOJI_RULES: { re: RegExp; emoji: string }[] = [
+  { re: /(מחיר|עלות|שקל|₪|תמחור|חבילה)/, emoji: "💰" },
+  { re: /(כתובת|שכונ|עיר|מיקום|נגישות|תחבורה)/, emoji: "📍" },
+  { re: /(מ"ר|מ״ר|חדרים|קומה|שטח)/, emoji: "📐" },
+  { re: /(זום|פגישה|נקבע|יומן|15 דקות|הדגמה|דמו|לתאום|לתיאום)/, emoji: "📅" },
+  { re: /(וואטסאפ|ווטסאפ|whatsapp|הודע|שיחה|צ'אט)/, emoji: "💬" },
+  { re: /(אוטומט|אוטומצי|בוט|AI|מענה אוטומטי)/, emoji: "🤖" },
+  { re: /(חוסך|חיסכון|מהיר|תוך שניות|מיד)/, emoji: "⚡" },
+  { re: /(גדל|יותר עסקאות|הכנס|תשואה|צמיח|המרות)/, emoji: "📈" },
+  // pain signals
+  { re: /(מפספס|נשרפ|אבד|מתפספס|לא ענ|בלי מענה|נשאר על הרצפה|מפוזר|בלגן|ידני|שוכח)/, emoji: PAIN_EMOJI },
+  { re: /(שעות|כל היום|עומס|מתיש|רץ בין)/, emoji: "🕐" },
+  { re: /(בעיה|קשה מדי|נכשל|טועה|סיכון)/, emoji: "⚠️" },
+];
+
+/**
+ * Deterministic safety net: guarantees every content line starts with exactly
+ * one relevant emoji bullet, even when the model forgets.
+ */
+export function ensureLeadingEmojiBullets(
+  input: string | null | undefined,
+  opts: { skip?: RegExp } = {},
+): string {
+  const text = enforceSingleEmojis(input);
+  if (!text) return "";
+  const leading = new RegExp(`^\\s*(?:${EMOJI_RE.source})`, "u");
+  const skip = opts.skip;
+
+  return text
+    .split("\n")
+    .map((raw) => {
+      const line = raw.trim();
+      if (!line) return line;
+      if (leading.test(line)) return line;
+      if (skip && skip.test(line)) return line;
+      // never decorate signatures / contact / license / bare URLs
+      if (/^(https?:\/\/|רישיון|טלפון|נייד|\+?\d[\d\-\s]{6,})/.test(line)) return line;
+      const rule = LINE_EMOJI_RULES.find((r) => r.re.test(line));
+      const emoji = rule?.emoji ?? (/[?？]\s*$/.test(line) ? PAIN_EMOJI : BENEFIT_EMOJI);
+      return `${emoji} ${line}`;
+    })
+    .join("\n");
+}

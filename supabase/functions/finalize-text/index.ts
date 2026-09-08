@@ -12,6 +12,8 @@ import { enforceOwnerLaws, fetchOwnerBranding, scrubForbiddenBylines, stripStree
 import { fetchWorkspacePersona, EMPTY_PERSONA } from "../_shared/workspacePersona.ts";
 
 
+import { ensureLeadingEmojiBullets, EMOJI_BULLET_LAW } from "../_shared/emoji.ts";
+
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -112,6 +114,7 @@ Deno.serve(async (req) => {
       "The user has already edited the AI's first draft. Their edits are AUTHORITATIVE INTENT — preserve every fact, name, number, price, link, hashtag and emoji they kept.",
       "Do NOT introduce new facts, claims, listings, prices, or promises. Do NOT add a signature unless one is present.",
       "Improve grammar, flow, rhythm, punctuation, line breaks and clarity. Tighten where wordy. Keep the user's voice.",
+      purpose === "social_post" ? EMOJI_BULLET_LAW : null,
       "FORBIDDEN punctuation: em-dash (—), en-dash (–), double hyphen (--), triple hyphen (---). Use commas or periods instead.",
       PURPOSE_HINTS[purpose] || PURPOSE_HINTS.generic,
       langLine,
@@ -174,6 +177,9 @@ Deno.serve(async (req) => {
       .trim();
 
     if (!finalText) throw new Error("empty final text");
+
+    // Emoji bullet law: posts open every line with exactly one relevant emoji.
+    if (purpose === "social_post") finalText = ensureLeadingEmojiBullets(finalText);
 
     // HARD COMPLIANCE LAWS — deterministic safety net. For posts and DMs we
     // append the byline + license footer; for public comments we only strip
