@@ -3909,7 +3909,7 @@ const GlobalSocialFeed = ({
         title={isConnected ? label : `${label} — לחץ לחיבור`}
         aria-label={isConnected ? label : `חבר ${label}`}
         className={cn(
-          'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
+          'inline-flex shrink items-center gap-1 sm:gap-1.5 whitespace-nowrap transition-opacity min-w-0',
           !isConnected && 'opacity-40 hover:opacity-70 grayscale',
           isYouTube && !youtubeColored && 'grayscale',
           active && 'opacity-100',
@@ -3920,18 +3920,18 @@ const GlobalSocialFeed = ({
             name={brand}
             aria-label={label}
             className={cn(
-              'h-5 w-5',
+              'h-4 w-4 sm:h-5 sm:w-5',
               isYouTube
                 ? (youtubeColored ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-400 grayscale')
                 : (isConnected ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-500')
             )}
           />
         ) : Icon ? (
-          <Icon aria-label={label} className="h-5 w-5 text-slate-600" />
+          <Icon aria-label={label} className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
         ) : null}
         <span
           className={cn(
-            'text-sm font-bold tabular-nums',
+            'text-xs sm:text-sm font-bold tabular-nums',
             active ? 'text-slate-900' : 'text-slate-500',
           )}
           dir="ltr"
@@ -3962,16 +3962,16 @@ const GlobalSocialFeed = ({
       ) : (
         <div aria-hidden className="min-w-0" />
       )}
-      <div className="flex flex-wrap items-center justify-center gap-3 px-1 pb-1 w-full min-w-0 justify-self-center">
+      <div className="flex flex-nowrap items-center justify-center gap-1 sm:gap-3 px-1 pb-1 w-full min-w-0 justify-self-center">
         <button
           type="button"
           onClick={() => onChannelChange('all')}
           className={cn(
-            'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
+            'inline-flex shrink items-center gap-1 sm:gap-1.5 whitespace-nowrap transition-opacity min-w-0',
             activeChannel === 'all' ? 'opacity-100' : 'opacity-70 hover:opacity-100',
           )}
         >
-          <span className={cn('text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>הכל</span>
+          <span className={cn('text-xs sm:text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>הכל</span>
         </button>
         {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
       </div>
