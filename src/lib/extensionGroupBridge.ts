@@ -208,6 +208,9 @@ export type QueuedExtensionPost = {
   id: string;
   type?: "group_post" | "page_first_comment";
   text?: string;
+  /** The original campaign body text; used to link the queue job back to the
+   *  campaign log even when per-group spun variations are queued. */
+  sourceText?: string;
   /** Group post target (legacy field). */
   groupUrl?: string;
   groupName?: string;
@@ -310,6 +313,7 @@ export const enqueueExtensionPosts = (input: {
       return {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         text: safeUtf8(override && override.trim() ? override : input.text),
+        sourceText: safeUtf8(input.text),
         groupUrl: url,
         groupName: g.group_name || bare,
         images: input.images ?? [],
@@ -417,12 +421,16 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
   return queue;
 };
 
+/** Normalize text for queue matching. */
+const queueMatchBody = (e: QueuedExtensionPost): string =>
+  String(e.sourceText || e.text || e.firstComment || '').replace(/\s+/g, ' ').trim();
+
 /** Drop failed/completed queue entries for a post before it is retried. */
 export const resetQueueEntriesForText = (text: string) => {
   const key = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
   if (!key) return;
   const next = readPostQueue().filter(
-    (e) => !(String(e.text || '').replace(/\s+/g, ' ').includes(key) && e.status !== 'posting'),
+    (e) => !(queueMatchBody(e).includes(key) && e.status !== 'posting'),
   );
   writePostQueue(next);
 };
@@ -446,7 +454,7 @@ export const removeQueueEntriesForPosts = (input: {
 
   const matches = (e: QueuedExtensionPost) => {
     if (ids.has(String(e.id))) return true;
-    const body = queueTextKey(e.text) || queueTextKey(e.firstComment);
+    const body = queueTextKey(e.sourceText) || queueTextKey(e.text) || queueTextKey(e.firstComment);
     if (!body) return false;
     return keys.some((k) => body.includes(k) || k.includes(body));
   };
@@ -480,7 +488,7 @@ export const queueStatusForText = (
 ): 'pending' | 'posting' | 'completed' | 'failed' | null => {
   const key = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
   if (!key) return null;
-  const hits = queue.filter((e) => String(e.text || '').replace(/\s+/g, ' ').includes(key));
+  const hits = queue.filter((e) => queueMatchBody(e).includes(key));
   if (hits.length === 0) return null;
   if (hits.some((e) => e.status === 'posting')) return 'posting';
   if (hits.some((e) => e.status === 'pending')) return 'pending';
@@ -501,7 +509,7 @@ export const queueProgressForText = (
 ): ExtensionProgress | null => {
   const key = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
   if (!key) return null;
-  const hits = queue.filter((e) => String(e.text || '').replace(/\s+/g, ' ').includes(key));
+  const hits = queue.filter((e) => queueMatchBody(e).includes(key));
   if (hits.length === 0) return null;
 
   const total = hits.length;
@@ -526,6 +534,69 @@ export const queueProgressForText = (
 
   const meta = STAGE_META[stage];
   // While a run is in flight the bar blends finished groups with the live stage.
+  const percent = stage === 'completed' || stage === 'failed'
+    ? 100
+    : Math.min(99, Math.round(((done + meta.percent / 100) / total) * 100));
+
+  return {
+    stage,
+    label: total > 1 && stage !== 'failed' ? `${meta.label} · ${done}/${total}` : meta.label,
+    percent,
+    error: stage === 'failed' || failedJobs.length > 0
+      ? (failedJobs.find((e) => e.error)?.error ?? 'הפרסום דרך התוסף נכשל')
+      : null,
+    done,
+    total,
+  };
+};
+
+/** Extract a bare Facebook group id from a group URL. */
+const groupIdFromUrl = (url?: string | null): string => {
+  if (!url) return '';
+  const m = url.match(/groups\/([a-zA-Z0-9._-]+)/i);
+  return m ? m[1] : '';
+};
+
+/**
+ * Live progress for a set of group IDs. Used as a fallback when the campaign
+ * body text was spun per-group and no longer matches the original body.
+ */
+export const queueProgressForGroups = (
+  queue: QueuedExtensionPost[],
+  groupIds: string[],
+): ExtensionProgress | null => {
+  const ids = new Set(groupIds.map((id) => String(id).replace(/^ext:/, '')).filter(Boolean));
+  if (ids.size === 0) return null;
+  const hits = queue.filter((e) => {
+    const bare = String(e.groupUrl || e.groupName || '').replace(/^ext:/, '');
+    if (ids.has(bare)) return true;
+    const fromUrl = groupIdFromUrl(e.groupUrl);
+    if (fromUrl && ids.has(fromUrl)) return true;
+    return false;
+  });
+  if (hits.length === 0) return null;
+
+  const total = hits.length;
+  const done = hits.filter((e) => e.status === 'completed').length;
+  const failedJobs = hits.filter((e) => e.status === 'failed');
+  const active = hits.find((e) => e.status === 'posting');
+
+  let stage: ExtensionStage;
+  if (active) {
+    stage = (active.stage && active.stage !== 'completed' && active.stage !== 'failed')
+      ? active.stage
+      : 'navigating';
+  } else if (hits.some((e) => e.status === 'pending')) {
+    stage = 'queued';
+  } else if (done > 0 && failedJobs.length === 0) {
+    stage = 'completed';
+  } else if (failedJobs.length === total) {
+    stage = 'failed';
+  } else {
+    stage = done > 0 ? 'completed' : 'failed';
+  }
+
+  const meta = STAGE_META[stage];
   const percent = stage === 'completed' || stage === 'failed'
     ? 100
     : Math.min(99, Math.round(((done + meta.percent / 100) / total) * 100));
