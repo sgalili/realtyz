@@ -6812,14 +6812,18 @@ const CampaignCenter = () => {
   // Default-select Facebook when nothing is picked yet. Facebook publishes via
   // the native Page token resolved server-side, so we never gate the default
   // selection on the async connection probe.
+  const defaultChannelApplied = useRef(false);
   useEffect(() => {
-    if (pickedChannel) return;
+    // Runs once: after that the user's own toggles are respected, so
+    // deselecting every channel stays deselected.
+    if (defaultChannelApplied.current || pickedChannel) return;
+    defaultChannelApplied.current = true;
     const fb = CHANNEL_CARDS.find((c) => c.id === 'facebook');
     if (fb) {
       setPickedChannel(fb);
       setPickedChannelIds((prev) => (prev.has('facebook') ? prev : new Set(prev).add('facebook')));
     }
-  }, [connectedChannels, pickedChannel]);
+  }, [pickedChannel]);
 
 
 
