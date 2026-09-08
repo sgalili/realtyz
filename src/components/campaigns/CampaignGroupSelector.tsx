@@ -233,7 +233,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                     <button
                       type="button"
                       title="פתח קבוצה בלשונית חדשה"
-                      onClick={(e) => { e.preventDefault(); window.open(g.group_url!, '_blank', 'noopener,noreferrer'); }}
+                      onClick={(e) => { e.preventDefault(); openExternal(g.group_url); }}
                       className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <ExternalLink className="h-4 w-4" />

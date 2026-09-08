@@ -252,7 +252,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                     aria-label={`פתח את הקבוצה ${g.name} בלשונית חדשה`}
                     title="צפה בקבוצה בלשונית חדשה"
                     onClick={() =>
-                      window.open(g.url || `https://www.facebook.com/groups/${g.groupId}`, '_blank', 'noopener,noreferrer')
+                      openExternal(g.url || `https://www.facebook.com/groups/${g.groupId}`)
                     }
                     className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
                   >

@@ -139,7 +139,7 @@ export function ExtensionGroupSyncCard({
               type="button"
               size="sm"
               className="h-8 text-[15px]"
-              onClick={() => { window.open(FB_GROUPS_URL, '_blank', 'noopener,noreferrer'); refresh(); }}
+              onClick={() => { openExternal(FB_GROUPS_URL); refresh(); }}
             >
               פתח את עמוד הקבוצות בפייסבוק
             </Button>

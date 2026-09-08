@@ -135,7 +135,7 @@ export function GroupStatusChips({
                 title={url ? `${title} — פתח בפייסבוק` : title}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                  openExternal(url);
                 }}
                 className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${STATE_STYLE[state]} ${url ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
               >
