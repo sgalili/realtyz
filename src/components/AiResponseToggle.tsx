@@ -56,7 +56,7 @@ export function AiResponseToggle() {
             )}
           >
             <span className="text-sm font-semibold text-slate-800 leading-tight min-w-0">
-              {aiPositiveOn ? 'מענה לתגובות חיוביות: AI' : 'חיוביות: נציג'}
+              {aiPositiveOn ? 'מענה לתגובות חיוביות: AI' : 'מענה לתגובות חיוביות: נציג'}
             </span>
             <Switch
               checked={aiPositiveOn}
@@ -72,7 +72,7 @@ export function AiResponseToggle() {
             )}
           >
             <span className="text-sm font-semibold text-slate-800 leading-tight min-w-0">
-              {aiNegativeOn ? 'מענה לתגובות שליליות: AI' : 'שליליות: נציג'}
+              {aiNegativeOn ? 'מענה לתגובות שליליות: AI' : 'מענה לתגובות שליליות: נציג'}
             </span>
             <Switch
               checked={aiNegativeOn}
