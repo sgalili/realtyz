@@ -207,6 +207,8 @@ export const EXT_QUEUE_BROADCAST_MESSAGE = "REALTYZ_QUEUE_UPDATE";
 
 export type QueuedExtensionPost = {
   id: string;
+  /** campaign_activity_queue row id — lets the same job render on any domain. */
+  cloudId?: string;
   type?: "group_post" | "page_first_comment";
   text?: string;
   /** The original campaign body text; used to link the queue job back to the
