@@ -404,7 +404,7 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
       let raw: string | null = null;
       try { raw = localStorage.getItem(EXT_POST_QUEUE_KEY); } catch { raw = null; }
       if (raw !== lastRaw) { lastRaw = raw; commit(undefined); }
-    }, 4000);
+    }, 1500);
 
     return () => {
       document.removeEventListener(EXT_QUEUE_EVENT, onCustom as EventListener);
