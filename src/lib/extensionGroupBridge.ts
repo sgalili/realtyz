@@ -488,7 +488,7 @@ export const queueStatusForText = (
 ): 'pending' | 'posting' | 'completed' | 'failed' | null => {
   const key = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
   if (!key) return null;
-  const hits = queue.filter((e) => String(e.text || '').replace(/\s+/g, ' ').includes(key));
+  const hits = queue.filter((e) => queueMatchBody(e).includes(key));
   if (hits.length === 0) return null;
   if (hits.some((e) => e.status === 'posting')) return 'posting';
   if (hits.some((e) => e.status === 'pending')) return 'pending';
@@ -509,7 +509,7 @@ export const queueProgressForText = (
 ): ExtensionProgress | null => {
   const key = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
   if (!key) return null;
-  const hits = queue.filter((e) => String(e.text || '').replace(/\s+/g, ' ').includes(key));
+  const hits = queue.filter((e) => queueMatchBody(e).includes(key));
   if (hits.length === 0) return null;
 
   const total = hits.length;
