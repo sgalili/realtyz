@@ -583,6 +583,10 @@ ${EMOJI_BULLET_LAW}
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
+    // EMOJI BULLET LAW: every content line opens with one relevant emoji.
+    // Runs BEFORE the owner signature block so the byline is never decorated.
+    content = ensureLeadingEmojiBullets(content);
+
     // HARD COMPLIANCE LAWS — deterministic safety net (street numbers, license footer).
     // The broker license footer (the workspace owner's own byline + license) is
     // appended ONLY when a real property is attached (promotedListing). General /
@@ -606,7 +610,7 @@ ${EMOJI_BULLET_LAW}
 
     // HARD EMOJI LAW: never two emojis side by side, always one emoji + space,
     // and every content line opens with one relevant emoji bullet.
-    content = ensureLeadingEmojiBullets(enforceSingleEmojis(content));
+    content = enforceSingleEmojis(content);
 
 
 
