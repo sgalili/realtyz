@@ -202,9 +202,10 @@ export default function CommandCenter() {
 
 
       <Card className="p-4">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
           <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)}>
-            <TabsList className="justify-start overflow-x-auto">
+            <TabsList className="justify-center overflow-x-auto">
+
               {(Object.keys(TAB_LABEL) as SectionTab[]).map((key) => (
                 <TabsTrigger key={key} value={key}>
                   {TAB_LABEL[key]} ({counts[key]})
