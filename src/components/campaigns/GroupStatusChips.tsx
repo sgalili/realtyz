@@ -103,7 +103,7 @@ export function GroupStatusChips({
   }
 
   return (
-    <div className="mt-1.5" dir="rtl">
+    <div className={inline ? 'inline-block' : 'mt-1.5'} dir="rtl">
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
