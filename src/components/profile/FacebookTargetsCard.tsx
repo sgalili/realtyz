@@ -19,6 +19,17 @@ const TEXT_MD = 'text-[15px]';
 const CACHE_KEY_BASE = 'realtyz_fb_targets_cache';
 const cacheKeyFor = (owner: string | null) => `${CACHE_KEY_BASE}:${owner ?? 'anon'}`;
 
+/** Drop any cached group list that belongs to a different workspace. */
+function purgeForeignCaches(owner: string | null) {
+  try {
+    const keep = cacheKeyFor(owner);
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_KEY_BASE) && k !== keep) localStorage.removeItem(k);
+    }
+  } catch { /* noop */ }
+}
+
 function readCache(owner: string | null): { groups: GroupTarget[] } | null {
   try {
     const raw = localStorage.getItem(cacheKeyFor(owner));
