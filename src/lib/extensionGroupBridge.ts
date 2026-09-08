@@ -16,6 +16,7 @@ import { ensureMandatoryComment } from "@/lib/mandatoryComment";
 import { useEffect, useState } from "react";
 import { fbGroupUrlFrom } from "@/lib/fbGroupUrl";
 import { safeUtf8 } from "@/lib/utf8Text";
+import { supabase } from "@/integrations/supabase/client";
 
 export const EXT_GROUPS_STORAGE_KEY = "rz-ext-fb-groups";
 export const EXT_GROUPS_MESSAGE = "RZ_FB_GROUPS";
@@ -206,6 +207,8 @@ export const EXT_QUEUE_BROADCAST_MESSAGE = "REALTYZ_QUEUE_UPDATE";
 
 export type QueuedExtensionPost = {
   id: string;
+  /** campaign_activity_queue row id — lets the same job render on any domain. */
+  cloudId?: string;
   type?: "group_post" | "page_first_comment";
   text?: string;
   /** The original campaign body text; used to link the queue job back to the
@@ -285,6 +288,157 @@ export const writePostQueue = (queue: QueuedExtensionPost[]) => {
   try {
     window.postMessage({ source: "realtyz-app", type: EXT_QUEUE_BROADCAST_MESSAGE, queue }, "*");
   } catch { /* noop */ }
+  // Mirror to the database so the same jobs and status pills show up on every
+  // domain (live site, preview, other devices) — localStorage is per-origin.
+  void mirrorQueueToCloud(queue);
+};
+
+/* ------------------------------------------------------------------ *
+ * Cross-domain queue mirror (campaign_activity_queue)
+ * ------------------------------------------------------------------ */
+
+const CLOUD_STATUS: Record<QueuedExtensionPost["status"], string> = {
+  pending: "pending",
+  posting: "processing",
+  completed: "completed",
+  failed: "failed",
+};
+
+const LOCAL_STATUS = (s: string | null | undefined): QueuedExtensionPost["status"] => {
+  switch (String(s || "")) {
+    case "processing":
+    case "claimed":
+    case "posting":
+      return "posting";
+    case "completed":
+    case "done":
+      return "completed";
+    case "failed":
+    case "error":
+      return "failed";
+    default:
+      return "pending";
+  }
+};
+
+let mirrorBusy = false;
+
+/** Push local queue jobs (and their live status) into the database. */
+export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<void> => {
+  if (mirrorBusy) return;
+  mirrorBusy = true;
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth?.user?.id;
+    if (!uid) return;
+
+    let changed = false;
+    const next = [...queue];
+
+    for (let i = 0; i < next.length; i++) {
+      const job = next[i];
+      if (!job || typeof job !== "object") continue;
+      const payload = {
+        local_id: job.id,
+        job,
+        published_via: "browser_extension",
+      };
+      if (!job.cloudId) {
+        const { data, error } = await (supabase as any)
+          .from("campaign_activity_queue")
+          .insert({
+            workspace_owner_id: uid,
+            created_by: uid,
+            activity_type: job.type === "page_first_comment" ? "fb_comment" : "fb_group_post",
+            target_ref: job.groupUrl ?? job.postUrl ?? null,
+            target_label: job.groupName ?? null,
+            payload,
+            scheduled_for: new Date(job.scheduledTime || Date.now()).toISOString(),
+            status: CLOUD_STATUS[job.status] ?? "pending",
+            last_error: job.error ?? null,
+          })
+          .select("id")
+          .single();
+        if (!error && data?.id) {
+          next[i] = { ...job, cloudId: data.id as string };
+          changed = true;
+        }
+        continue;
+      }
+      await (supabase as any)
+        .from("campaign_activity_queue")
+        .update({
+          payload,
+          status: CLOUD_STATUS[job.status] ?? "pending",
+          last_error: job.error ?? null,
+        })
+        .eq("id", job.cloudId);
+    }
+
+    if (changed) {
+      try { localStorage.setItem(EXT_POST_QUEUE_KEY, JSON.stringify(next)); } catch { /* noop */ }
+      try { document.dispatchEvent(new CustomEvent(EXT_QUEUE_EVENT, { detail: next })); } catch { /* noop */ }
+    }
+  } catch {
+    /* offline / RLS — local queue still works */
+  } finally {
+    mirrorBusy = false;
+  }
+};
+
+/** Read mirrored jobs back so any domain renders the same queue + pills. */
+export const fetchCloudQueue = async (): Promise<QueuedExtensionPost[]> => {
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth?.user?.id;
+    if (!uid) return [];
+    const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
+    const { data, error } = await (supabase as any)
+      .from("campaign_activity_queue")
+      .select("id, status, last_error, scheduled_for, created_at, payload")
+      .eq("workspace_owner_id", uid)
+      .in("activity_type", ["fb_group_post", "fb_comment"])
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(300);
+    if (error || !Array.isArray(data)) return [];
+    const out: QueuedExtensionPost[] = [];
+    for (const row of data) {
+      const job = (row?.payload as any)?.job;
+      if (!job || typeof job !== "object" || !job.id) continue;
+      out.push({
+        ...(job as QueuedExtensionPost),
+        cloudId: row.id as string,
+        status: LOCAL_STATUS(row.status),
+        error: row.last_error ?? job.error ?? null,
+        scheduledTime: row.scheduled_for ? new Date(row.scheduled_for).getTime() : job.scheduledTime,
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+};
+
+/** Merge cloud jobs into the local queue, keeping the more advanced status. */
+const mergeQueues = (
+  local: QueuedExtensionPost[],
+  cloud: QueuedExtensionPost[],
+): QueuedExtensionPost[] => {
+  const rank: Record<QueuedExtensionPost["status"], number> = {
+    pending: 0, posting: 1, failed: 2, completed: 3,
+  };
+  const byKey = new Map<string, QueuedExtensionPost>();
+  const keyOf = (j: QueuedExtensionPost) => j.id || j.cloudId || "";
+  for (const j of [...cloud, ...local]) {
+    const k = keyOf(j);
+    if (!k) continue;
+    const prev = byKey.get(k);
+    if (!prev) { byKey.set(k, j); continue; }
+    const winner = (rank[j.status] ?? 0) >= (rank[prev.status] ?? 0) ? j : prev;
+    byKey.set(k, { ...prev, ...winner, cloudId: winner.cloudId ?? prev.cloudId });
+  }
+  return Array.from(byKey.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 };
 
 /**
@@ -421,7 +575,22 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
     window.addEventListener('focus', rebroadcast);
     rebroadcast();
 
+    // Pull the database mirror so posts created on another domain (live site vs.
+    // preview) render here with identical status pills.
+    let alive = true;
+    const pullCloud = async () => {
+      const cloud = await fetchCloudQueue();
+      if (!alive || cloud.length === 0) return;
+      setQueue((curr) => mergeQueues(curr, cloud));
+    };
+    void pullCloud();
+    const cloudBeat = window.setInterval(pullCloud, 20000);
+    window.addEventListener('focus', pullCloud);
+
     return () => {
+      alive = false;
+      window.clearInterval(cloudBeat);
+      window.removeEventListener('focus', pullCloud);
       window.clearInterval(beat);
       window.removeEventListener('focus', rebroadcast);
       document.removeEventListener(EXT_QUEUE_EVENT, onCustom as EventListener);
