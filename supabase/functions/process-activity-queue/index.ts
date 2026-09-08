@@ -106,6 +106,30 @@ Deno.serve(async (req) => {
     // until an extension picks it up. Surface a hint when none is paired.
     if (isScheduledGroupPost) {
       const { data: extLive } = await admin.rpc("ext_is_active", { _ws: ws });
+
+      // No live browser? Hand the job to the cloud worker when the workspace
+      // stored an encrypted Facebook session, so posts still go out with the
+      // laptop off. Only one runner ever owns a row.
+      if (extLive !== true && row.runner === "extension") {
+        const { data: cloud } = await admin
+          .from("fb_cloud_sessions")
+          .select("status, expires_at")
+          .eq("workspace_owner_id", ws)
+          .maybeSingle();
+        const usable =
+          cloud?.status === "active" &&
+          (!cloud.expires_at || new Date(cloud.expires_at).getTime() > Date.now());
+        if (usable) {
+          await admin
+            .from("campaign_activity_queue")
+            .update({ runner: "cloud", last_error: null })
+            .eq("id", row.id)
+            .eq("status", "pending");
+          results.push({ id: row.id, status: "handed_to_cloud", workspace: ws });
+          continue;
+        }
+      }
+
       if (extLive !== true && row.last_error !== "waiting_for_browser_extension") {
         await admin
           .from("campaign_activity_queue")
