@@ -391,7 +391,7 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
     const onMessage = (e: MessageEvent) => {
       const d: any = e.data;
       if (!d || typeof d !== 'object') return;
-      if (d.type !== EXT_QUEUE_MESSAGE) return;
+      if (d.type !== EXT_QUEUE_MESSAGE && d.type !== EXT_QUEUE_BROADCAST_MESSAGE) return;
       commit(d.queue);
     };
 
