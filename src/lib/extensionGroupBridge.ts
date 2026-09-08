@@ -201,6 +201,8 @@ export const EXT_POSTING_RESULT_MESSAGE = "RZ_POSTING_RESULT";
 export const EXT_POST_QUEUE_KEY = "rzPostQueue";
 export const EXT_QUEUE_EVENT = "rz:update-queue";
 export const EXT_QUEUE_MESSAGE = "RZ_QUEUE_UPDATE";
+/** Origin-agnostic alias broadcast with "*" for the content script. */
+export const EXT_QUEUE_BROADCAST_MESSAGE = "REALTYZ_QUEUE_UPDATE";
 
 export type QueuedExtensionPost = {
   id: string;
