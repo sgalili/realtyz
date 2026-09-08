@@ -28,13 +28,6 @@ export const ExtensionPostProgress = ({
         )}
         title={progress.error ?? 'מנוהל בתור הפרסום של תוסף הדפדפן'}
       >
-        {done ? (
-          <CheckCircle2 className="h-3 w-3 shrink-0" />
-        ) : failed ? (
-          <AlertTriangle className="h-3 w-3 shrink-0" />
-        ) : (
-          <Loader2 className={cn('h-3 w-3 shrink-0', progress.stage !== 'queued' && 'animate-spin')} />
-        )}
         <span className="truncate">{progress.label}</span>
       </span>
 
