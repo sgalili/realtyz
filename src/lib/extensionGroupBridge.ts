@@ -379,6 +379,52 @@ export const resetQueueEntriesForText = (text: string) => {
   writePostQueue(next);
 };
 
+export const EXT_QUEUE_REMOVE_MESSAGE = "RZ_QUEUE_REMOVE";
+
+const queueTextKey = (t: unknown) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+
+/**
+ * Drop queue entries for posts the user deleted in the app, so the extension
+ * stops trying to publish them. Removes from localStorage['rzPostQueue'] and
+ * asks the extension to purge the same jobs from chrome.storage.local.
+ */
+export const removeQueueEntriesForPosts = (input: {
+  ids?: string[];
+  texts?: (string | null | undefined)[];
+}): number => {
+  const ids = new Set((input.ids || []).map((i) => String(i)).filter(Boolean));
+  const keys = (input.texts || []).map(queueTextKey).filter(Boolean);
+  if (ids.size === 0 && keys.length === 0) return 0;
+
+  const matches = (e: QueuedExtensionPost) => {
+    if (ids.has(String(e.id))) return true;
+    const body = queueTextKey(e.text) || queueTextKey(e.firstComment);
+    if (!body) return false;
+    return keys.some((k) => body.includes(k) || k.includes(body));
+  };
+
+  const current = readPostQueue();
+  const next = current.filter((e) => !matches(e));
+  const removed = current.length - next.length;
+  if (removed > 0) writePostQueue(next);
+
+  // Tell the extension to purge them from its own storage (the background
+  // merge is additive, so a local removal alone is not enough).
+  try {
+    window.postMessage(
+      {
+        source: 'realtyz-app',
+        type: EXT_QUEUE_REMOVE_MESSAGE,
+        ids: Array.from(ids),
+        textKeys: keys,
+      },
+      window.location.origin,
+    );
+  } catch { /* noop */ }
+
+  return removed;
+};
+
 /** Aggregate extension queue status for a post body. */
 export const queueStatusForText = (
   queue: QueuedExtensionPost[],
