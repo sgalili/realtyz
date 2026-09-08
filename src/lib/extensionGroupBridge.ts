@@ -322,10 +322,13 @@ const LOCAL_STATUS = (s: string | null | undefined): QueuedExtensionPost["status
 };
 
 let mirrorBusy = false;
+let mirrorPending: QueuedExtensionPost[] | null = null;
 
 /** Push local queue jobs (and their live status) into the database. */
 export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<void> => {
-  if (mirrorBusy) return;
+  // Never drop a status change: remember the newest queue and replay it once the
+  // in-flight mirror finishes, otherwise jobs get stuck on their old status.
+  if (mirrorBusy) { mirrorPending = queue; return; }
   mirrorBusy = true;
   try {
     const { data: auth } = await supabase.auth.getUser();
