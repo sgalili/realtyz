@@ -38,6 +38,7 @@ import {
   queueStatusForText,
   isLegacyMetaGroupError,
   resetQueueEntriesForText,
+  removeQueueEntriesForPosts,
 } from '@/lib/extensionGroupBridge';
 
 import { toast } from 'sonner';
