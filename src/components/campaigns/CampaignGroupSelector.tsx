@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { shortenName } from "@/lib/shortenName";
+import { openExternal } from "@/lib/openExternal";
 import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
@@ -232,7 +233,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                     <button
                       type="button"
                       title="פתח קבוצה בלשונית חדשה"
-                      onClick={(e) => { e.preventDefault(); window.open(g.group_url!, '_blank', 'noopener,noreferrer'); }}
+                      onClick={(e) => { e.preventDefault(); openExternal(g.group_url); }}
                       className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <ExternalLink className="h-4 w-4" />
