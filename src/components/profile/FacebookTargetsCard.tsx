@@ -220,8 +220,8 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                 >
                   <Checkbox
                     className="shrink-0"
-                    checked={g.selected}
-                    onCheckedChange={() => void toggleGroup(g)}
+                    checked={deleteMode ? markedIds.has(g.id) : g.selected}
+                    onCheckedChange={() => (deleteMode ? toggleMark(g.id) : void toggleGroup(g))}
                     aria-label={g.name}
                   />
                   {g.icon && (
