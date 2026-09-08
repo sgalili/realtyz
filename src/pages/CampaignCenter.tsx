@@ -2473,20 +2473,9 @@ const InlineComposer = ({
 
       </div>
 
-      {/* Publish targets: the business Page is checked by default; groups are
-          picked from the group button in the bottom bar. */}
-      {channel.id === 'facebook' && (
-        <div className="rounded-xl border border-border bg-muted/20 px-3 py-2" dir="rtl">
-          <label className="flex items-center gap-2 text-sm font-semibold text-foreground select-none cursor-pointer">
-            <Checkbox
-              checked={publishToPage}
-              onCheckedChange={(v) => setPublishToPage(v === true)}
-              aria-label="פרסם גם בעמוד הפייסבוק העסקי"
-            />
-            <span>פרסם גם בעמוד הפייסבוק העסקי</span>
-          </label>
-        </div>
-      )}
+      {/* Publish targets: the business Page toggle now lives inside the groups
+          dialog, directly above its submit button. */}
+
 
       {/* First-comment composer — always visible below the main textarea.
           When enabled (checkbox on), the Meta API posts this text as the first
