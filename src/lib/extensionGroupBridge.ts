@@ -356,6 +356,10 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
             target_ref: job.groupUrl ?? job.postUrl ?? null,
             target_label: job.groupName ?? null,
             payload,
+            // Local browser (Chrome extension) owns freshly queued jobs so it can
+            // pick them up immediately; the server hands them to the cloud only
+            // when no extension is alive.
+            runner: "extension",
             scheduled_for: new Date(job.scheduledTime || Date.now()).toISOString(),
             status: CLOUD_STATUS[job.status] ?? "pending",
             last_error: job.error ?? null,
@@ -368,12 +372,19 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
         }
         continue;
       }
+      const cloudStatus = CLOUD_STATUS[job.status] ?? "pending";
       await (supabase as any)
         .from("campaign_activity_queue")
         .update({
           payload,
-          status: CLOUD_STATUS[job.status] ?? "pending",
+          status: cloudStatus,
           last_error: job.error ?? null,
+          ...(cloudStatus === "completed"
+            ? { completed_at: new Date().toISOString(), processed_at: new Date().toISOString(), claimed_by: null, claim_expires_at: null }
+            : {}),
+          ...(cloudStatus === "failed"
+            ? { processed_at: new Date().toISOString(), claimed_by: null, claim_expires_at: null }
+            : {}),
         })
         .eq("id", job.cloudId);
     }
@@ -386,6 +397,13 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
     /* offline / RLS — local queue still works */
   } finally {
     mirrorBusy = false;
+    if (mirrorPending) {
+      const replay = mirrorPending;
+      mirrorPending = null;
+      void mirrorQueueToCloud(replay);
+    }
+  }
+};
   }
 };
 
