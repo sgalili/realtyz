@@ -3986,7 +3986,7 @@ const GlobalSocialFeed = ({
         ) : null}
         <span
           className={cn(
-            'text-xs sm:text-sm font-bold tabular-nums',
+            'text-sm sm:text-base font-bold tabular-nums',
             active ? 'text-slate-900' : 'text-slate-500',
           )}
           dir="ltr"
