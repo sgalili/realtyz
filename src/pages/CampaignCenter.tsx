@@ -4794,6 +4794,37 @@ const PublishedFeed = ({
 
   const deleteCampaign = (r: CampaignRow) => setDeleteTarget(r);
 
+  const toggleFeedSelected = (id: string) =>
+    setSelectedFeedIds((curr) => (curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]));
+
+  // Permanently deletes every selected published card: DB rows, optimistic /
+  // extension-queue cards and the extension queue jobs behind them.
+  const bulkDeleteSelectedFeed = async (selected: CampaignRow[]) => {
+    if (selected.length === 0) return;
+    setBulkDeletingFeed(true);
+    let ok = 0;
+    const failures: string[] = [];
+    for (const r of selected) {
+      try {
+        if (String(r.id).startsWith('ext-queue-') || (r as any)._optimistic) {
+          removeQueueEntriesForPosts({ ids: [r.id], texts: [r.message_body || ''] });
+          setOptimisticRows((prev) => prev.filter((x) => x.id !== r.id));
+          ok += 1;
+          continue;
+        }
+        await performDelete(r, 'db');
+        ok += 1;
+      } catch (e: any) {
+        failures.push(String(e?.message ?? e));
+      }
+    }
+    setBulkDeletingFeed(false);
+    setSelectedFeedIds([]);
+    setFeedSelectMode(false);
+    if (failures.length > 0) toast.error(`נמחקו ${ok} פוסטים, ${failures.length} נכשלו: ${failures[0]}`);
+    else toast.success(`${ok} פוסטים נמחקו לצמיתות`);
+  };
+
 
   // Remove a single image from a post — permanently. The URL's dedupe key is
   // added to provider_response.removed_media_keys, which every merge path (and
