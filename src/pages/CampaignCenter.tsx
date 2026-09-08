@@ -352,16 +352,16 @@ const ChannelGrid = ({
             { id: 'linkedin',  label: 'LinkedIn',  brand: 'linkedin' },
             { id: 'youtube',   label: 'YouTube',   brand: 'youtube' },
           ].map((p) => {
-            const isConnected = connected.has(p.id);
             const isSelected = selectedIds.has(p.id);
-            // A selected channel always renders in full brand color, even while
-            // the connection probe is still resolving server-side.
-            const lit = isConnected || isSelected;
+            // Only an explicitly selected channel is lit — being connected
+            // never implies selection.
+            const lit = isSelected;
+            const card = CHANNEL_CARDS.find((c) => c.id === p.id);
             return (
               <button
                 key={p.id}
                 type="button"
-                onClick={() => setOpen((v) => !v)}
+                onClick={() => { if (card) onPick(card); }}
                 title={p.label}
                 aria-label={p.label}
                 aria-pressed={isSelected}
@@ -393,9 +393,9 @@ const ChannelGrid = ({
             const Icon = c.icon;
             const isSelected = selectedIds.has(c.id);
             const isConnected = connected.has(c.id);
-            // Selection is never blocked by the connection probe: a channel the
-            // user picked (or one already bound server-side) renders as active.
-            const lit = isConnected || isSelected;
+            // Selected = lit. A connected-but-unselected channel stays neutral
+            // so nothing looks pre-picked when the screen opens.
+            const lit = isSelected;
             const brandColor = lit ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
             const profiles = socialProfiles.filter((p) => p.platform === c.id || (c.id === 'x' && p.platform === 'twitter'));
             return (
@@ -6812,14 +6812,18 @@ const CampaignCenter = () => {
   // Default-select Facebook when nothing is picked yet. Facebook publishes via
   // the native Page token resolved server-side, so we never gate the default
   // selection on the async connection probe.
+  const defaultChannelApplied = useRef(false);
   useEffect(() => {
-    if (pickedChannel) return;
+    // Runs once: after that the user's own toggles are respected, so
+    // deselecting every channel stays deselected.
+    if (defaultChannelApplied.current || pickedChannel) return;
+    defaultChannelApplied.current = true;
     const fb = CHANNEL_CARDS.find((c) => c.id === 'facebook');
     if (fb) {
       setPickedChannel(fb);
       setPickedChannelIds((prev) => (prev.has('facebook') ? prev : new Set(prev).add('facebook')));
     }
-  }, [connectedChannels, pickedChannel]);
+  }, [pickedChannel]);
 
 
 
@@ -7478,7 +7482,7 @@ const CampaignCenter = () => {
             socialProfiles={socialAccountProfiles}
             onAddFacebookPage={() => { void handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!); }}
           />
-          {pickedChannel && (() => {
+          {pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
             const propertiesParam = searchParams.get('properties') || '';
             let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
             let assignments: ComposerAssignment[] = [];
