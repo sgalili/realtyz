@@ -5368,6 +5368,25 @@ const PublishedFeed = ({
         </Button>
       </div>
 
+      <GlobalSocialFeed
+        rows={rows ?? []}
+        activeChannel={activeChannel}
+        onChannelChange={setActiveChannel}
+        connectedChannels={connectedChannels}
+        onConnectChannel={handleFeedConnect}
+        feedSelectMode={feedSelectMode}
+        selectedFeedIds={selectedFeedIds}
+        filteredRows={filteredRows || []}
+        bulkDeletingFeed={bulkDeletingFeed}
+        onToggleSelectAll={(on) => {
+          setFeedSelectMode(on);
+          setSelectedFeedIds(on ? (filteredRows || []).map((x) => x.id) : []);
+        }}
+        onDeleteSelected={() => {
+          void bulkDeleteSelectedFeed((filteredRows || []).filter((x) => selectedFeedIds.includes(x.id)));
+        }}
+      />
+
       {subTab !== 'published' ? altContent : filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
           <p className="text-sm font-semibold text-foreground">אין קמפיינים בערוץ זה</p>
