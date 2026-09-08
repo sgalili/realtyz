@@ -3962,7 +3962,7 @@ const GlobalSocialFeed = ({
       ) : (
         <div aria-hidden className="min-w-0" />
       )}
-      <div className="flex items-center justify-center gap-3 overflow-x-auto scrollbar-none px-1 pb-1 w-full min-w-0 justify-self-center">
+      <div className="flex flex-wrap items-center justify-center gap-3 px-1 pb-1 w-full min-w-0 justify-self-center">
         <button
           type="button"
           onClick={() => onChannelChange('all')}
@@ -5330,25 +5330,6 @@ const PublishedFeed = ({
         open={!!supportChannel}
         onOpenChange={(v) => { if (!v) setSupportChannel(null); }}
       />
-      <GlobalSocialFeed
-        rows={rows ?? []}
-        activeChannel={activeChannel}
-        onChannelChange={setActiveChannel}
-        connectedChannels={connectedChannels}
-        onConnectChannel={handleFeedConnect}
-        feedSelectMode={feedSelectMode}
-        selectedFeedIds={selectedFeedIds}
-        filteredRows={filteredRows || []}
-        bulkDeletingFeed={bulkDeletingFeed}
-        onToggleSelectAll={(on) => {
-          setFeedSelectMode(on);
-          setSelectedFeedIds(on ? (filteredRows || []).map((x) => x.id) : []);
-        }}
-        onDeleteSelected={() => {
-          void bulkDeleteSelectedFeed((filteredRows || []).filter((x) => selectedFeedIds.includes(x.id)));
-        }}
-      />
-
 
       {/* Inline queue tabs — published / future / drafts, all managed on this page. */}
       <div className="flex items-center gap-2" dir="rtl">
@@ -5386,6 +5367,25 @@ const PublishedFeed = ({
           <CalendarIcon className="h-4 w-4" />
         </Button>
       </div>
+
+      <GlobalSocialFeed
+        rows={rows ?? []}
+        activeChannel={activeChannel}
+        onChannelChange={setActiveChannel}
+        connectedChannels={connectedChannels}
+        onConnectChannel={handleFeedConnect}
+        feedSelectMode={feedSelectMode}
+        selectedFeedIds={selectedFeedIds}
+        filteredRows={filteredRows || []}
+        bulkDeletingFeed={bulkDeletingFeed}
+        onToggleSelectAll={(on) => {
+          setFeedSelectMode(on);
+          setSelectedFeedIds(on ? (filteredRows || []).map((x) => x.id) : []);
+        }}
+        onDeleteSelected={() => {
+          void bulkDeleteSelectedFeed((filteredRows || []).filter((x) => selectedFeedIds.includes(x.id)));
+        }}
+      />
 
       {subTab !== 'published' ? altContent : filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
