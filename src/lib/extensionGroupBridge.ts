@@ -236,6 +236,12 @@ export const writePostQueue = (queue: QueuedExtensionPost[]) => {
   try {
     window.postMessage({ source: "realtyz-app", type: EXT_QUEUE_MESSAGE, queue }, window.location.origin);
   } catch { /* noop */ }
+  // Public broadcast the extension content script also accepts. Sent with "*"
+  // so it still arrives when the app runs on a preview/custom origin the
+  // content script did not resolve identically.
+  try {
+    window.postMessage({ source: "realtyz-app", type: EXT_QUEUE_BROADCAST_MESSAGE, queue }, "*");
+  } catch { /* noop */ }
 };
 
 /**
