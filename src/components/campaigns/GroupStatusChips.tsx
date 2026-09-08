@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronUp, Clock, Users, XCircle } from 'lucide-react';
 import { useFbGroupMeta, type FbGroupMeta } from '@/hooks/useFbGroupMeta';
+import { openExternal } from '@/lib/openExternal';
 
 export type GroupResult = {
   group_id?: string;

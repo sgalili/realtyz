@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { shortenName } from '@/lib/shortenName';
+import { openExternal } from '@/lib/openExternal';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 

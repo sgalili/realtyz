@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { openExternal } from '@/lib/openExternal';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useExtensionGroups, readExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
 import { ExtensionDownloadButton } from '@/components/social/ExtensionDownloadButton';

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { shortenName } from "@/lib/shortenName";
+import { openExternal } from "@/lib/openExternal";
 import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
