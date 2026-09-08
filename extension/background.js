@@ -458,6 +458,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 
+  if (msg.type === 'RZ_QUEUE_REMOVE') {
+    removeQueueJobs(msg.ids, msg.textKeys).then((queue) => {
+      try { sendResponse({ ok: true, queue }); } catch (e) { /* noop */ }
+    });
+    return true;
+  }
+
   if (msg.type === 'RZ_QUEUE_STATE_REQUEST') {
     loadQueue().then((queue) => {
       try { sendResponse({ ok: true, queue }); } catch (e) { /* noop */ }
