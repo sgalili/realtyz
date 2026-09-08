@@ -3730,7 +3730,7 @@ const GlobalSocialFeed = ({
           activeChannel === 'all' ? 'opacity-100' : 'opacity-70 hover:opacity-100',
         )}
       >
-        <span className={cn('text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>הכל</span>
+        <span className={cn('text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>{'\n'}</span>
         <span className={cn(
           'text-sm font-bold tabular-nums',
           activeChannel === 'all' ? 'text-slate-900' : 'text-slate-500',
