@@ -2642,6 +2642,33 @@ const InlineComposer = ({
       </div>
 
 
+      {/* No-images guard before publishing */}
+      <Dialog open={askImages} onOpenChange={setAskImages}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-right">לפרסם בלי תמונות?</DialogTitle>
+            <DialogDescription className="text-right">
+              לא צורפו תמונות לפוסט. פוסטים עם תמונות מקבלים חשיפה גבוהה יותר.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row-reverse gap-2 sm:justify-start">
+            <Button
+              type="button"
+              onClick={() => { setAskImages(false); galleryInputRef.current?.click(); }}
+            >
+              הוסף תמונות
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setAskImages(false); submitDraft({ skipImagePrompt: true }); }}
+            >
+              פרסם בלי תמונות
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Hidden inputs */}
       <input ref={galleryInputRef} type="file" accept="image/*,video/*" multiple className="hidden"
