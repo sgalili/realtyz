@@ -3844,6 +3844,10 @@ const PublishedFeed = ({
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
   const [editRepostRow, setEditRepostRow] = useState<CampaignRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CampaignRow | null>(null);
+  // Multi-select deletion of published posts.
+  const [feedSelectMode, setFeedSelectMode] = useState(false);
+  const [selectedFeedIds, setSelectedFeedIds] = useState<string[]>([]);
+  const [bulkDeletingFeed, setBulkDeletingFeed] = useState(false);
   // Optimistic rows for immediate publish — prepended to the feed with a
   // countdown pill while Meta finishes verifying the FB publish.
   const [optimisticRows, setOptimisticRows] = useState<Array<CampaignRow & { _optimistic: true; _eta_ms: number; _scheduled_at?: string | null }>>([]);
