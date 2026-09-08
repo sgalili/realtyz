@@ -218,10 +218,48 @@ export type QueuedExtensionPost = {
   images?: string[];
   link?: string | null;
   status: "pending" | "posting" | "completed" | "failed";
+  /** Live automation stage reported by the browser extension. */
+  stage?: ExtensionStage;
+  stageAt?: number;
+  /** Hebrew failure detail reported by the extension. */
+  error?: string | null;
   scheduledTime: number;
   createdAt: number;
 };
 
+
+/** Automation stages the extension walks through for one queued post. */
+export type ExtensionStage =
+  | "queued"
+  | "navigating"
+  | "writing"
+  | "commenting"
+  | "completed"
+  | "failed";
+
+export type ExtensionProgress = {
+  stage: ExtensionStage;
+  /** Hebrew label with the matching emoji, ready to render. */
+  label: string;
+  /** 0-100 progress for the bar. */
+  percent: number;
+  /** Failure detail when stage === 'failed'. */
+  error: string | null;
+  /** How many of the target groups already finished. */
+  done: number;
+  total: number;
+};
+
+const STAGE_META: Record<ExtensionStage, { label: string; percent: number }> = {
+  queued: { label: "⏳ ממתין בתור", percent: 8 },
+  navigating: { label: "🔄 ניווט לקבוצה", percent: 35 },
+  writing: { label: "✍️ כותב פוסט", percent: 60 },
+  commenting: { label: "💬 מוסיף תגובה ראשונה", percent: 85 },
+  completed: { label: "✅ פורסם בהצלחה", percent: 100 },
+  failed: { label: "❌ שגיאה", percent: 100 },
+};
+
+export const stageLabel = (stage: ExtensionStage) => STAGE_META[stage].label;
 
 export const readPostQueue = (): QueuedExtensionPost[] => {
   try {
@@ -452,6 +490,57 @@ export const queueStatusForText = (
 
 
 
+
+/**
+ * Live progress for one post body across all of its queued group jobs.
+ * Returns null when the post has no extension jobs at all.
+ */
+export const queueProgressForText = (
+  queue: QueuedExtensionPost[],
+  text: string,
+): ExtensionProgress | null => {
+  const key = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  if (!key) return null;
+  const hits = queue.filter((e) => String(e.text || '').replace(/\s+/g, ' ').includes(key));
+  if (hits.length === 0) return null;
+
+  const total = hits.length;
+  const done = hits.filter((e) => e.status === 'completed').length;
+  const failedJobs = hits.filter((e) => e.status === 'failed');
+  const active = hits.find((e) => e.status === 'posting');
+
+  let stage: ExtensionStage;
+  if (active) {
+    stage = (active.stage && active.stage !== 'completed' && active.stage !== 'failed')
+      ? active.stage
+      : 'navigating';
+  } else if (hits.some((e) => e.status === 'pending')) {
+    stage = 'queued';
+  } else if (done > 0 && failedJobs.length === 0) {
+    stage = 'completed';
+  } else if (failedJobs.length === total) {
+    stage = 'failed';
+  } else {
+    stage = done > 0 ? 'completed' : 'failed';
+  }
+
+  const meta = STAGE_META[stage];
+  // While a run is in flight the bar blends finished groups with the live stage.
+  const percent = stage === 'completed' || stage === 'failed'
+    ? 100
+    : Math.min(99, Math.round(((done + meta.percent / 100) / total) * 100));
+
+  return {
+    stage,
+    label: total > 1 && stage !== 'failed' ? `${meta.label} · ${done}/${total}` : meta.label,
+    percent,
+    error: stage === 'failed' || failedJobs.length > 0
+      ? (failedJobs.find((e) => e.error)?.error ?? 'הפרסום דרך התוסף נכשל')
+      : null,
+    done,
+    total,
+  };
+};
 
 export type LocalPostingResult = {
   ok: boolean;
