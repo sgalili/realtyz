@@ -404,8 +404,6 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
     }
   }
 };
-  }
-};
 
 /** Read mirrored jobs back so any domain renders the same queue + pills. */
 export const fetchCloudQueue = async (): Promise<QueuedExtensionPost[]> => {
