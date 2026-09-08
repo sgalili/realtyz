@@ -2563,6 +2563,7 @@ export type Database = {
           fb_avatar_url: string | null
           fb_user_id: string | null
           fb_user_name: string | null
+          id: string
           last_error: string | null
           last_import_at: string | null
           scopes: string[]
@@ -2578,6 +2579,7 @@ export type Database = {
           fb_avatar_url?: string | null
           fb_user_id?: string | null
           fb_user_name?: string | null
+          id?: string
           last_error?: string | null
           last_import_at?: string | null
           scopes?: string[]
@@ -2593,6 +2595,7 @@ export type Database = {
           fb_avatar_url?: string | null
           fb_user_id?: string | null
           fb_user_name?: string | null
+          id?: string
           last_error?: string | null
           last_import_at?: string | null
           scopes?: string[]
