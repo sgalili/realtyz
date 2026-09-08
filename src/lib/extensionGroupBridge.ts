@@ -550,6 +550,69 @@ export const queueProgressForText = (
   };
 };
 
+/** Extract a bare Facebook group id from a group URL. */
+const groupIdFromUrl = (url?: string | null): string => {
+  if (!url) return '';
+  const m = url.match(/groups\/([a-zA-Z0-9._-]+)/i);
+  return m ? m[1] : '';
+};
+
+/**
+ * Live progress for a set of group IDs. Used as a fallback when the campaign
+ * body text was spun per-group and no longer matches the original body.
+ */
+export const queueProgressForGroups = (
+  queue: QueuedExtensionPost[],
+  groupIds: string[],
+): ExtensionProgress | null => {
+  const ids = new Set(groupIds.map((id) => String(id).replace(/^ext:/, '')).filter(Boolean));
+  if (ids.size === 0) return null;
+  const hits = queue.filter((e) => {
+    const bare = String(e.groupUrl || e.groupName || '').replace(/^ext:/, '');
+    if (ids.has(bare)) return true;
+    const fromUrl = groupIdFromUrl(e.groupUrl);
+    if (fromUrl && ids.has(fromUrl)) return true;
+    return false;
+  });
+  if (hits.length === 0) return null;
+
+  const total = hits.length;
+  const done = hits.filter((e) => e.status === 'completed').length;
+  const failedJobs = hits.filter((e) => e.status === 'failed');
+  const active = hits.find((e) => e.status === 'posting');
+
+  let stage: ExtensionStage;
+  if (active) {
+    stage = (active.stage && active.stage !== 'completed' && active.stage !== 'failed')
+      ? active.stage
+      : 'navigating';
+  } else if (hits.some((e) => e.status === 'pending')) {
+    stage = 'queued';
+  } else if (done > 0 && failedJobs.length === 0) {
+    stage = 'completed';
+  } else if (failedJobs.length === total) {
+    stage = 'failed';
+  } else {
+    stage = done > 0 ? 'completed' : 'failed';
+  }
+
+  const meta = STAGE_META[stage];
+  const percent = stage === 'completed' || stage === 'failed'
+    ? 100
+    : Math.min(99, Math.round(((done + meta.percent / 100) / total) * 100));
+
+  return {
+    stage,
+    label: total > 1 && stage !== 'failed' ? `${meta.label} · ${done}/${total}` : meta.label,
+    percent,
+    error: stage === 'failed' || failedJobs.length > 0
+      ? (failedJobs.find((e) => e.error)?.error ?? 'הפרסום דרך התוסף נכשל')
+      : null,
+    done,
+    total,
+  };
+};
+
 export type LocalPostingResult = {
   ok: boolean;
   posted?: number;
