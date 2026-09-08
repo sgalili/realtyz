@@ -7306,6 +7306,7 @@ const CampaignCenter = () => {
                     className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
                     onClick={async () => {
                       setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
+                      removeQueueEntriesForPosts({ ids: [r.id], texts: [String(r.message_body || '')] });
                       const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
                       if (error) { toast.error('מחיקת הפוסט המתוזמן נכשלה'); setHistoryRefreshTick((t) => t + 1); }
                       else toast.success('הפוסט המתוזמן נמחק');
@@ -7317,7 +7318,7 @@ const CampaignCenter = () => {
               }
             />
           );
-        });
+        })];
       })()}
     </div>
   );
