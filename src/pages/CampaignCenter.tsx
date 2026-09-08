@@ -5193,6 +5193,15 @@ const PublishedFeed = ({
 
               {/* Row 1: thumbnail + post title */}
               <div className={cn('flex items-center gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
+                {feedSelectMode && (
+                  <Checkbox
+                    checked={selectedFeedIds.includes(r.id)}
+                    onCheckedChange={() => toggleFeedSelected(r.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="בחירת פוסט למחיקה"
+                    className="shrink-0"
+                  />
+                )}
                 <div className="relative h-12 w-12 shrink-0">
                   <PostImage
                     src={uniqueMedia[0]}
