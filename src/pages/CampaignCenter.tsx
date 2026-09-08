@@ -393,9 +393,9 @@ const ChannelGrid = ({
             const Icon = c.icon;
             const isSelected = selectedIds.has(c.id);
             const isConnected = connected.has(c.id);
-            // Selection is never blocked by the connection probe: a channel the
-            // user picked (or one already bound server-side) renders as active.
-            const lit = isConnected || isSelected;
+            // Selected = lit. A connected-but-unselected channel stays neutral
+            // so nothing looks pre-picked when the screen opens.
+            const lit = isSelected;
             const brandColor = lit ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
             const profiles = socialProfiles.filter((p) => p.platform === c.id || (c.id === 'x' && p.platform === 'twitter'));
             return (
