@@ -280,6 +280,24 @@ async function mergeQueue(incoming) {
   return merged;
 }
 
+const qTextKey = (t) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+
+// Posts deleted in the web app must never be published: drop their jobs.
+async function removeQueueJobs(ids, textKeys) {
+  const idSet = new Set((ids || []).map((i) => String(i)));
+  const keys = (textKeys || []).map(qTextKey).filter(Boolean);
+  const current = await loadQueue();
+  const next = current.filter((e) => {
+    if (!e) return false;
+    if (idSet.has(String(e.id))) return false;
+    const body = qTextKey(e.text) || qTextKey(e.firstComment);
+    if (body && keys.some((k) => body.indexOf(k) >= 0 || k.indexOf(body) >= 0)) return false;
+    return true;
+  });
+  if (next.length !== current.length) await saveQueue(next);
+  return next;
+}
+
 const STALE_POSTING_MS = 6 * 60 * 1000;
 
 async function drainQueue() {
