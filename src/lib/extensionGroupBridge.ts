@@ -454,7 +454,7 @@ export const removeQueueEntriesForPosts = (input: {
 
   const matches = (e: QueuedExtensionPost) => {
     if (ids.has(String(e.id))) return true;
-    const body = queueTextKey(e.text) || queueTextKey(e.firstComment);
+    const body = queueTextKey(e.sourceText) || queueTextKey(e.text) || queueTextKey(e.firstComment);
     if (!body) return false;
     return keys.some((k) => body.includes(k) || k.includes(body));
   };
