@@ -5094,6 +5094,17 @@ const PublishedFeed = ({
         onChannelChange={setActiveChannel}
         connectedChannels={connectedChannels}
         onConnectChannel={handleFeedConnect}
+        feedSelectMode={feedSelectMode}
+        selectedFeedIds={selectedFeedIds}
+        filteredRows={filteredRows || []}
+        bulkDeletingFeed={bulkDeletingFeed}
+        onToggleSelectAll={(on) => {
+          setFeedSelectMode(on);
+          setSelectedFeedIds(on ? (filteredRows || []).map((x) => x.id) : []);
+        }}
+        onDeleteSelected={() => {
+          void bulkDeleteSelectedFeed((filteredRows || []).filter((x) => selectedFeedIds.includes(x.id)));
+        }}
       />
 
 
@@ -5133,34 +5144,6 @@ const PublishedFeed = ({
           <CalendarIcon className="h-4 w-4" />
         </Button>
       </div>
-
-      {/* Multi-select bar for permanently deleting published posts. */}
-      {subTab === 'published' && (filteredRows || []).length > 0 && (
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
-          <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-semibold text-foreground">
-            <Checkbox
-              checked={feedSelectMode}
-              onCheckedChange={(v) => {
-                const on = v === true;
-                setFeedSelectMode(on);
-                setSelectedFeedIds(on ? (filteredRows || []).map((x) => x.id) : []);
-              }}
-              aria-label="בחר את כל הפוסטים"
-            />
-            בחר הכל ({selectedFeedIds.length}/{(filteredRows || []).length})
-          </label>
-          <Button
-            size="sm"
-            variant="destructive"
-            disabled={selectedFeedIds.length === 0 || bulkDeletingFeed}
-            onClick={() => {
-              void bulkDeleteSelectedFeed((filteredRows || []).filter((x) => selectedFeedIds.includes(x.id)));
-            }}
-          >
-            {bulkDeletingFeed ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="me-1 h-4 w-4" /> מחיקת הפוסטים הנבחרים</>}
-          </Button>
-        </div>
-      )}
 
       {subTab !== 'published' ? altContent : filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
