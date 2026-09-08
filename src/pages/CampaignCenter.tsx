@@ -191,6 +191,8 @@ type ConfirmPayload = {
     privacy_status: 'public' | 'unlisted' | 'private';
     category_id: string;
     made_for_kids: boolean;
+    /** Public URL of the video asset to upload to YouTube Data API v3. */
+    video_url?: string | null;
   };
 };
 
@@ -2183,6 +2185,13 @@ const InlineComposer = ({
               privacy_status: ytPrivacy,
               category_id: ytCategory,
               made_for_kids: ytMadeForKids,
+              // The actual video asset: YouTube uploads never travel through
+              // the Meta handler, so the file URL rides along with the metadata.
+              video_url: attachments.find(
+                (a) => typeof a.url === 'string'
+                  && /^https?:\/\//i.test(a.url)
+                  && /\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(a.url),
+              )?.url ?? null,
             },
           }
         : {}),
@@ -3043,7 +3052,7 @@ const StackedComposerSection = ({
 
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, publishToPage = true, selectedProfileIds, attachWaLink, firstComment, onConfirmed, autoConfirm = false,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, publishToPage = true, selectedProfileIds, attachWaLink, firstComment, onConfirmed, autoConfirm = false, youtube = null,
 
 }: {
   open: boolean;
@@ -3060,6 +3069,8 @@ const ConfirmDispatchDialog = ({
   selectedProfileIds: string[];
   attachWaLink: boolean;
   firstComment: string;
+  /** YouTube upload metadata — routed to the YouTube Data API, never to Meta. */
+  youtube?: ConfirmPayload['youtube'] | null;
   onConfirmed: () => void;
   /** Bulk mode: dispatch immediately, with no confirmation UI at all. */
   autoConfirm?: boolean;
@@ -3269,6 +3280,48 @@ const ConfirmDispatchDialog = ({
         .replace(/\n{3,}/g, '\n\n')
         .trim();
       const campaignName = `${brandName} · ${channel.label}`;
+
+      // ── YouTube: dedicated upload route ─────────────────────────────────
+      // YouTube must never be routed through the Meta / Facebook publishing
+      // handler. It goes straight to the YouTube Data API v3 upload endpoint
+      // with the connected Google account credentials.
+      if (channel.id === 'youtube') {
+        const yt = youtube ?? null;
+        const videoUrl = yt?.video_url
+          || mediaUrls.find((u) => /\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(u))
+          || null;
+        if (!videoUrl) {
+          toast.error('צרפו קובץ וידאו לפני פרסום ל-YouTube');
+          return;
+        }
+        const { data, error } = await supabase.functions.invoke('youtube-publish', {
+          body: {
+            video_url: videoUrl,
+            title: yt?.title || bodyToPublish.split('\n')[0].slice(0, 100),
+            description: yt?.description ?? bodyToPublish,
+            tags: yt?.tags ?? [],
+            privacy_status: yt?.privacy_status ?? 'private',
+            category_id: yt?.category_id ?? '22',
+            made_for_kids: yt?.made_for_kids ?? false,
+            scheduled_at: scheduledAt,
+            campaign_name: campaignName,
+            workspace_owner_id: ownerScope,
+          },
+        });
+        const ytError = error?.message || (data as any)?.error;
+        if (ytError || (data as any)?.success === false) {
+          toast.error(String(ytError || 'הפרסום ל-YouTube נכשל'));
+          return;
+        }
+        toast.success(
+          scheduledAt
+            ? `הסרטון הועלה ל-YouTube ותוזמן לפרסום · ${new Date(scheduledAt).toLocaleString('he-IL')}`
+            : 'הסרטון פורסם ל-YouTube',
+        );
+        onConfirmed();
+        onClose();
+        return;
+      }
 
       if (SOCIAL_CHANNELS.has(channel.id)) {
         // mediaUrls was already filtered to public https links upstream by
@@ -8159,6 +8212,7 @@ const CampaignCenter = () => {
         selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
         attachWaLink={confirmPayload?.attach_wa_link ?? false}
         firstComment={confirmPayload?.first_comment ?? ''}
+        youtube={confirmPayload?.youtube ?? null}
         autoConfirm={bulkSilent}
 
         onConfirmed={async () => {
