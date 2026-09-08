@@ -10,6 +10,8 @@
     "https://realtyz.co.il/*",
     "https://*.realtyz.co.il/*",
     "https://*.lovable.app/*",
+    "https://*.lovableproject.com/*",
+    "https://*.lovable.dev/*",
     "http://localhost/*"
   ],
   "background": {
