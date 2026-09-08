@@ -3909,7 +3909,7 @@ const GlobalSocialFeed = ({
         title={isConnected ? label : `${label} — לחץ לחיבור`}
         aria-label={isConnected ? label : `חבר ${label}`}
         className={cn(
-          'inline-flex shrink items-center gap-1 sm:gap-1.5 whitespace-nowrap transition-opacity min-w-0',
+          'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity min-w-0',
           !isConnected && 'opacity-40 hover:opacity-70 grayscale',
           isYouTube && !youtubeColored && 'grayscale',
           active && 'opacity-100',
@@ -3962,12 +3962,12 @@ const GlobalSocialFeed = ({
       ) : (
         <div aria-hidden className="min-w-0" />
       )}
-      <div className="flex flex-nowrap items-center justify-center gap-1 sm:gap-3 px-1 pb-1 w-full min-w-0 justify-self-center">
+      <div className="flex flex-nowrap items-center justify-center gap-4 px-1 pb-1 w-full min-w-0 justify-self-center">
         <button
           type="button"
           onClick={() => onChannelChange('all')}
           className={cn(
-            'inline-flex shrink items-center gap-1 sm:gap-1.5 whitespace-nowrap transition-opacity min-w-0',
+            'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity min-w-0',
             activeChannel === 'all' ? 'opacity-100' : 'opacity-70 hover:opacity-100',
           )}
         >
