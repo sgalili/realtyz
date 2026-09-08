@@ -3962,18 +3962,18 @@ const GlobalSocialFeed = ({
       ) : (
         <div aria-hidden className="min-w-0" />
       )}
-      <div className="flex flex-wrap items-center justify-center gap-3 px-1 pb-1 w-full min-w-0 justify-self-center">
+      <div className="flex flex-nowrap items-center justify-center gap-1 sm:gap-3 px-1 pb-1 w-full min-w-0 justify-self-center">
         <button
           type="button"
           onClick={() => onChannelChange('all')}
           className={cn(
-            'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
+            'inline-flex shrink items-center gap-1 sm:gap-1.5 whitespace-nowrap transition-opacity min-w-0',
             activeChannel === 'all' ? 'opacity-100' : 'opacity-70 hover:opacity-100',
           )}
         >
-          <span className={cn('text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>הכל</span>
+          <span className={cn('text-xs sm:text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>הכל</span>
         </button>
-        {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
+        {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}</div>
       </div>
       {(feedSelectMode || selectedCount > 0) ? (
         <div className="flex justify-self-end">
