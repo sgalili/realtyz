@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, Loader2, Users } from 'lucide-react';
+import { ExternalLink, Loader2, Trash2, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { shortenName } from '@/lib/shortenName';
@@ -17,6 +18,17 @@ const TEXT_MD = 'text-[15px]';
 /** Local cache so groups render instantly on the next visit. */
 const CACHE_KEY_BASE = 'realtyz_fb_targets_cache';
 const cacheKeyFor = (owner: string | null) => `${CACHE_KEY_BASE}:${owner ?? 'anon'}`;
+
+/** Drop any cached group list that belongs to a different workspace. */
+function purgeForeignCaches(owner: string | null) {
+  try {
+    const keep = cacheKeyFor(owner);
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_KEY_BASE) && k !== keep) localStorage.removeItem(k);
+    }
+  } catch { /* noop */ }
+}
 
 function readCache(owner: string | null): { groups: GroupTarget[] } | null {
   try {
@@ -39,6 +51,13 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   const cached = readCache(workspaceOwnerId);
   const [groups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
   const [loading, setLoading] = useState(!cached);
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+
+  // Never keep another workspace's groups in local storage.
+  useEffect(() => { purgeForeignCaches(workspaceOwnerId); setMarkedIds(new Set()); }, [workspaceOwnerId]);
+
 
   const load = useCallback(async () => {
     if (!workspaceOwnerId) return;
@@ -96,6 +115,42 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     }
   };
 
+  const toggleMark = (id: string) => {
+    setMarkedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const markAll = (next: boolean) => setMarkedIds(next ? new Set(groups.map((g) => g.id)) : new Set());
+
+  const deleteMarked = async () => {
+    if (markedIds.size === 0 || !workspaceOwnerId) return;
+    setDeleting(true);
+    try {
+      const ids = Array.from(markedIds);
+      const { error } = await (supabase as any)
+        .from('fb_user_groups')
+        .delete()
+        .eq('workspace_owner_id', workspaceOwnerId)
+        .in('id', ids);
+      if (error) throw error;
+      const remaining = groups.filter((g) => !markedIds.has(g.id));
+      setGroups(remaining);
+      try {
+        localStorage.setItem(cacheKeyFor(workspaceOwnerId), JSON.stringify({ groups: remaining }));
+      } catch { /* noop */ }
+      setMarkedIds(new Set());
+      setDeleteMode(false);
+      toast.success(`${ids.length} קבוצות נמחקו`);
+    } catch (e: any) {
+      toast.error('מחיקת הקבוצות נכשלה', { description: e?.message });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const selectedGroups = groups.filter((g) => g.selected).length;
 
   return (
@@ -113,15 +168,45 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
               <Users className="h-4 w-4" /> קבוצות ({selectedGroups}/{groups.length})
             </div>
             {groups.length > 0 && (
-              <button
-                type="button"
-                onClick={() => void setAllGroups(selectedGroups !== groups.length)}
-                className={cn('font-semibold text-primary underline', TEXT_SM)}
-              >
-                {selectedGroups === groups.length ? 'בטל הכל' : 'בחר הכל'}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); }}
+                  className={cn('font-semibold text-destructive underline', TEXT_SM)}
+                >
+                  {deleteMode ? 'ביטול' : 'מחיקת קבוצות'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => (deleteMode ? markAll(markedIds.size !== groups.length) : void setAllGroups(selectedGroups !== groups.length))}
+                  className={cn('font-semibold text-primary underline', TEXT_SM)}
+                >
+                  {deleteMode
+                    ? (markedIds.size === groups.length ? 'בטל הכל' : 'בחר הכל')
+                    : (selectedGroups === groups.length ? 'בטל הכל' : 'בחר הכל')}
+                </button>
+              </div>
             )}
           </div>
+
+          {deleteMode && (
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2 py-1.5">
+              <span className={cn('text-muted-foreground', TEXT_SM)}>
+                {markedIds.size > 0 ? `${markedIds.size} נבחרו למחיקה` : 'סמן קבוצות למחיקה'}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="h-8 gap-1 text-[12px]"
+                disabled={markedIds.size === 0 || deleting}
+                onClick={() => void deleteMarked()}
+              >
+                {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                מחיקת קבוצות נבחרות
+              </Button>
+            </div>
+          )}
           {groups.length === 0 ? (
             <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות מיובאות. לחץ "סנכרן קבוצות".</p>
           ) : (
@@ -135,8 +220,8 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                 >
                   <Checkbox
                     className="shrink-0"
-                    checked={g.selected}
-                    onCheckedChange={() => void toggleGroup(g)}
+                    checked={deleteMode ? markedIds.has(g.id) : g.selected}
+                    onCheckedChange={() => (deleteMode ? toggleMark(g.id) : void toggleGroup(g))}
                     aria-label={g.name}
                   />
                   {g.icon && (
@@ -151,7 +236,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                   )}
                   <button
                     type="button"
-                    onClick={() => void toggleGroup(g)}
+                    onClick={() => (deleteMode ? toggleMark(g.id) : void toggleGroup(g))}
                     className={cn('min-w-0 flex-1 text-right', TEXT_MD)}
                   >
                     <span className="block truncate">{shortenName(g.name)}</span>
