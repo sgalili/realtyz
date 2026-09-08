@@ -575,7 +575,22 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
     window.addEventListener('focus', rebroadcast);
     rebroadcast();
 
+    // Pull the database mirror so posts created on another domain (live site vs.
+    // preview) render here with identical status pills.
+    let alive = true;
+    const pullCloud = async () => {
+      const cloud = await fetchCloudQueue();
+      if (!alive || cloud.length === 0) return;
+      setQueue((curr) => mergeQueues(curr, cloud));
+    };
+    void pullCloud();
+    const cloudBeat = window.setInterval(pullCloud, 20000);
+    window.addEventListener('focus', pullCloud);
+
     return () => {
+      alive = false;
+      window.clearInterval(cloudBeat);
+      window.removeEventListener('focus', pullCloud);
       window.clearInterval(beat);
       window.removeEventListener('focus', rebroadcast);
       document.removeEventListener(EXT_QUEUE_EVENT, onCustom as EventListener);
