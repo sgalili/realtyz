@@ -37,6 +37,7 @@ import {
   useExtensionQueue,
   queueStatusForText,
   queueProgressForText,
+  queueProgressForGroups,
   isLegacyMetaGroupError,
   resetQueueEntriesForText,
   removeQueueEntriesForPosts,
