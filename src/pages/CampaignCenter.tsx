@@ -3920,14 +3920,14 @@ const GlobalSocialFeed = ({
             name={brand}
             aria-label={label}
             className={cn(
-              'h-4 w-4 sm:h-5 sm:w-5',
+              'h-6 w-6',
               isYouTube
                 ? (youtubeColored ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-400 grayscale')
                 : (isConnected ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-500')
             )}
           />
         ) : Icon ? (
-          <Icon aria-label={label} className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
+          <Icon aria-label={label} className="h-6 w-6 text-slate-600" />
         ) : null}
         <span
           className={cn(
