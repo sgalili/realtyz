@@ -51,6 +51,13 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   const cached = readCache(workspaceOwnerId);
   const [groups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
   const [loading, setLoading] = useState(!cached);
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+
+  // Never keep another workspace's groups in local storage.
+  useEffect(() => { purgeForeignCaches(workspaceOwnerId); setMarkedIds(new Set()); }, [workspaceOwnerId]);
+
 
   const load = useCallback(async () => {
     if (!workspaceOwnerId) return;
