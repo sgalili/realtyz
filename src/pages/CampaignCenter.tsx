@@ -3719,7 +3719,7 @@ const GlobalSocialFeed = ({
             onCheckedChange={(v) => { onToggleSelectAll?.(v === true || v === 'indeterminate'); }}
             aria-label="בחר את כל הפוסטים"
           />
-          בחר הכל ({selectedCount}/{totalSelectable})
+          0
         </label>
       )}
       <button
