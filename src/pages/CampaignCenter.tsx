@@ -2950,7 +2950,59 @@ const InlineComposer = ({
   );
 };
 
+/* ───────────── Stacked per-platform composer section ─────────────
+   When several platforms are picked, each one renders its own form, stacked
+   vertically, with the platform logo in the section's top corner. The primary
+   (last picked) section keeps the sticky publish bar; the others publish with
+   their own inline button. */
+const StackedComposerSection = ({
+  channel, primary, composerKey, brandName, socialProfiles, onConfirm, onOpenScheduleCalendar,
+}: {
+  channel: ChannelCard;
+  primary: boolean;
+  composerKey: string;
+  brandName: string;
+  socialProfiles: SocialAccountProfile[];
+  onConfirm: (payload: ConfirmPayload) => void;
+  onOpenScheduleCalendar?: () => void;
+}) => {
+  const publishRef = useRef<(() => boolean) | null>(null);
+  return (
+    <section className="rounded-2xl border border-border bg-card/40 p-3 space-y-3" dir="rtl">
+      <header className="flex items-center gap-2">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background">
+          <BrandIcon
+            name={channel.brand}
+            className={cn('h-4 w-4', BRAND_COLOR[channel.brand] ?? 'text-muted-foreground')}
+          />
+        </span>
+        <span className="text-sm font-semibold text-foreground">{channel.label}</span>
+      </header>
+      <InlineComposer
+        key={composerKey}
+        channel={channel}
+        brandName={brandName}
+        socialProfiles={socialProfiles}
+        onConfirm={onConfirm}
+        onOpenScheduleCalendar={onOpenScheduleCalendar}
+        {...(primary
+          ? {}
+          : {
+              hideBottomBar: true,
+              onRegisterPublish: (fn: (() => boolean) | null) => { publishRef.current = fn; },
+            })}
+      />
+      {!primary && (
+        <Button type="button" className="w-full" onClick={() => { publishRef.current?.(); }}>
+          פרסם ב{channel.label}
+        </Button>
+      )}
+    </section>
+  );
+};
+
 /* ───────────── Dispatch confirmation modal ───────────── */
+
 
 const ConfirmDispatchDialog = ({
   open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, publishToPage = true, selectedProfileIds, attachWaLink, firstComment, onConfirmed, autoConfirm = false,
