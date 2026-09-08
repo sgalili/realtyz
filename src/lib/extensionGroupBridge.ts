@@ -16,6 +16,7 @@ import { ensureMandatoryComment } from "@/lib/mandatoryComment";
 import { useEffect, useState } from "react";
 import { fbGroupUrlFrom } from "@/lib/fbGroupUrl";
 import { safeUtf8 } from "@/lib/utf8Text";
+import { supabase } from "@/integrations/supabase/client";
 
 export const EXT_GROUPS_STORAGE_KEY = "rz-ext-fb-groups";
 export const EXT_GROUPS_MESSAGE = "RZ_FB_GROUPS";
