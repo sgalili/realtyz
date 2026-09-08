@@ -6505,10 +6505,42 @@ const CampaignCenter = () => {
     setBulkDeletingDrafts(false);
     setBulkDeleteDraftsOpen(false);
     if (error) { toast.error('מחיקת הטיוטות נכשלה'); setHistoryRefreshTick((t) => t + 1); return; }
+    const texts = campaignDraftRows
+      .filter((x) => ids.includes(x.id))
+      .map((x) => String(x.generated_text || ''));
+    removeQueueEntriesForPosts({ ids, texts });
     setCampaignDraftRows((prev) => prev.filter((x) => !ids.includes(x.id)));
     setSelectedDraftIds([]);
     setDraftSelectMode(false);
     toast.success(`${ids.length} טיוטות נמחקו`);
+  };
+
+  // Bulk selection + deletion for scheduled ("עתידיים") posts.
+  const [futureSelectMode, setFutureSelectMode] = useState(false);
+  const [selectedFutureIds, setSelectedFutureIds] = useState<string[]>([]);
+  const [bulkDeletingFuture, setBulkDeletingFuture] = useState(false);
+  const toggleFutureSelected = (id: string) =>
+    setSelectedFutureIds((curr) => (curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]));
+  const bulkDeleteSelectedFuture = async () => {
+    const ids = [...selectedFutureIds];
+    if (ids.length === 0) return;
+    setBulkDeletingFuture(true);
+    const targets = campaignHistoryRows.filter((x) => ids.includes(x.id));
+    // Recurring series: delete every sibling slot of each selected series.
+    const seriesIds = Array.from(new Set(targets.map((t) => t.series_id).filter(Boolean)));
+    const allIds = new Set(ids);
+    for (const row of campaignHistoryRows) {
+      if (row.series_id && seriesIds.includes(row.series_id)) allIds.add(row.id);
+    }
+    const idList = Array.from(allIds);
+    const { error } = await supabase.from('campaign_logs').delete().in('id', idList);
+    setBulkDeletingFuture(false);
+    if (error) { toast.error('מחיקת הפוסטים נכשלה'); setHistoryRefreshTick((t) => t + 1); return; }
+    removeQueueEntriesForPosts({ ids: idList, texts: targets.map((t) => String(t.message_body || '')) });
+    setCampaignHistoryRows((prev) => prev.filter((x) => !allIds.has(x.id)));
+    setSelectedFutureIds([]);
+    setFutureSelectMode(false);
+    toast.success(`${ids.length} פוסטים נמחקו`);
   };
 
 
