@@ -5503,6 +5503,27 @@ const PublishedFeed = ({
                 )}>
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
+                {hasGroupTargets && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <GroupStatusChips
+                      inline
+                      groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
+                      meta={fbGroupMeta}
+                      results={legacyMetaError ? undefined : groupResultMap((r.provider_response as any)?.group_results)}
+                      defaultState={
+                        extQueueStatus === 'completed'
+                          ? 'published'
+                          : extQueueStatus === 'pending' || extQueueStatus === 'posting' || legacyMetaError || scheduled
+                            ? 'pending'
+                            : failed
+                              ? 'failed'
+                              : 'published'
+                      }
+                      countdownIso={scheduled ? r.sent_at : null}
+                      defaultOpen={isOpen}
+                    />
+                  </div>
+                )}
                 <span className="flex-1" />
                 {(r as any)._optimistic && !scheduled ? (() => {
                   const remaining = Math.max(0, Math.ceil((((r as any)._eta_ms as number) - Date.now()) / 1000));
