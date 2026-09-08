@@ -912,6 +912,9 @@ const InlineComposer = ({
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
+  // Asks the operator whether to attach images when publishing without any.
+  const [askImages, setAskImages] = useState(false);
+
   // Opt-in WhatsApp CTA (now attached to the FIRST COMMENT, not the main post).
   const [attachWaLink, setAttachWaLink] = useState<boolean>(initial.attachWaLink ?? true);
   const [attachMsngrLink, setAttachMsngrLink] = useState<boolean>(!!initial.attachMsngrLink);
@@ -2137,11 +2140,17 @@ const InlineComposer = ({
   const hasSelectedPagesNow = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
   const canPublish = hasBody && scheduledValidNow && hasSelectedPagesNow;
 
-  const submitDraft = useCallback((): boolean => {
+  const submitDraft = useCallback((opts?: { skipImagePrompt?: boolean }): boolean => {
     const sd = scheduledLocal ? new Date(scheduledLocal) : null;
     const valid = mode === 'now' || (!!sd && sd.getTime() > Date.now());
     const pagesOk = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
     if (!body.trim() || !valid || !pagesOk) return false;
+    // No images attached: ask the user whether to add some before publishing.
+    if (!opts?.skipImagePrompt && attachments.filter((a) => a.kind === 'image').length === 0) {
+      setAskImages(true);
+      return false;
+    }
+
     // Never lose the picked groups: fall back to the shared per-workspace store
     // so a scheduled/instant post can never be saved as "לא נבחרו קבוצות".
     const effectiveGroupIds = groupIds.length > 0
@@ -2632,6 +2641,33 @@ const InlineComposer = ({
         )}
       </div>
 
+
+      {/* No-images guard before publishing */}
+      <Dialog open={askImages} onOpenChange={setAskImages}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-right">לפרסם בלי תמונות?</DialogTitle>
+            <DialogDescription className="text-right">
+              לא צורפו תמונות לפוסט. פוסטים עם תמונות מקבלים חשיפה גבוהה יותר.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row-reverse gap-2 sm:justify-start">
+            <Button
+              type="button"
+              onClick={() => { setAskImages(false); galleryInputRef.current?.click(); }}
+            >
+              הוסף תמונות
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setAskImages(false); submitDraft({ skipImagePrompt: true }); }}
+            >
+              פרסם בלי תמונות
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
 
       {/* Hidden inputs */}
