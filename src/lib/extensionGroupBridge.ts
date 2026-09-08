@@ -410,7 +410,20 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
       if (raw !== lastRaw) { lastRaw = raw; commit(undefined); }
     }, 1500);
 
+    // Re-broadcast pending jobs so a content script injected after the queue was
+    // written still receives it and mirrors it into chrome.storage.local.
+    const rebroadcast = () => {
+      const current = readPostQueue();
+      if (!current.some((j) => !j.status || j.status === 'pending')) return;
+      try { window.postMessage({ source: 'realtyz-app', type: EXT_QUEUE_BROADCAST_MESSAGE, queue: current }, '*'); } catch { /* noop */ }
+    };
+    const beat = window.setInterval(rebroadcast, 5000);
+    window.addEventListener('focus', rebroadcast);
+    rebroadcast();
+
     return () => {
+      window.clearInterval(beat);
+      window.removeEventListener('focus', rebroadcast);
       document.removeEventListener(EXT_QUEUE_EVENT, onCustom as EventListener);
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('message', onMessage);
