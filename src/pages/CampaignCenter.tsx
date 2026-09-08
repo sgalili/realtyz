@@ -912,6 +912,9 @@ const InlineComposer = ({
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
+  // Asks the operator whether to attach images when publishing without any.
+  const [askImages, setAskImages] = useState(false);
+
   // Opt-in WhatsApp CTA (now attached to the FIRST COMMENT, not the main post).
   const [attachWaLink, setAttachWaLink] = useState<boolean>(initial.attachWaLink ?? true);
   const [attachMsngrLink, setAttachMsngrLink] = useState<boolean>(!!initial.attachMsngrLink);
