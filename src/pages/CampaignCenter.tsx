@@ -7280,6 +7280,14 @@ const CampaignCenter = () => {
               dateLabel={new Date(r.sent_at).toLocaleString('he-IL')}
               actions={
                 <>
+                  {futureSelectMode && (
+                    <Checkbox
+                      checked={selectedFutureIds.includes(r.id)}
+                      onCheckedChange={() => toggleFutureSelected(r.id)}
+                      aria-label="בחירת פוסט מתוזמן למחיקה"
+                      className="shrink-0"
+                    />
+                  )}
                   <Button
                     size="icon"
                     variant="outline"
