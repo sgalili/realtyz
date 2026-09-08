@@ -2163,6 +2163,19 @@ const InlineComposer = ({
       first_comment: firstCommentEnabled ? firstComment : '',
       first_comment_enabled: firstCommentEnabled,
       attach_msngr_link: attachMsngrLink,
+      ...(channel.id === 'youtube'
+        ? {
+            youtube: {
+              title: ytTitle.trim() || body.trim().split('\n')[0].slice(0, 100),
+              description: body,
+              tags: ytTags.split(',').map((t) => t.trim()).filter(Boolean),
+              privacy_status: ytPrivacy,
+              category_id: ytCategory,
+              made_for_kids: ytMadeForKids,
+            },
+          }
+        : {}),
+
     });
     return true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
