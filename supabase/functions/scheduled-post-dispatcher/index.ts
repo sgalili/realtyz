@@ -13,7 +13,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { enforceSingleEmojis, RICH_TEMPLATE_CONTRACT } from "../_shared/emoji.ts";
+import { enforceSingleEmojis, ensureLeadingEmojiBullets, EMOJI_BULLET_LAW, RICH_TEMPLATE_CONTRACT } from "../_shared/emoji.ts";
 import { ensureMandatoryComment } from "../_shared/mandatoryComment.ts";
 
 // HARD posting window: nothing is ever published before 09:00 or after 21:00.
@@ -131,7 +131,7 @@ async function regenerateBody(row: any): Promise<string> {
       body: JSON.stringify({
         topic: "פוסט קידום נכס (וריאציה בסדרה מתוזמנת)",
         platform: row.channel,
-        customInstructions: `${row.regen_prompt}\n\n${RICH_TEMPLATE_CONTRACT}`,
+        customInstructions: `${row.regen_prompt}\n\n${RICH_TEMPLATE_CONTRACT}\n\n${EMOJI_BULLET_LAW}`,
         selectedListingId: row.listing_id,
         listingFocusOnly: true,
       }),
@@ -139,7 +139,7 @@ async function regenerateBody(row: any): Promise<string> {
     const data = await res.json().catch(() => ({}));
     const next = data?.content || data?.text || data?.body;
     const clean = typeof next === "string" ? next.trim() : "";
-    return enforceSingleEmojis(clean || fallback);
+    return ensureLeadingEmojiBullets(enforceSingleEmojis(clean || fallback));
   } catch {
     return fallback;
   }

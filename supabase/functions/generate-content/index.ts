@@ -16,7 +16,7 @@ import {
 import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
 import { fetchWorkspacePersona, renderPersonaBlock } from "../_shared/workspacePersona.ts";
 import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
-import { enforceSingleEmojis, RICH_TEMPLATE_CONTRACT } from "../_shared/emoji.ts";
+import { enforceSingleEmojis, ensureLeadingEmojiBullets, EMOJI_BULLET_LAW, RICH_TEMPLATE_CONTRACT } from "../_shared/emoji.ts";
 
 
 const corsHeaders = {
@@ -379,6 +379,8 @@ LAYOUT LAW (mandatory):
 - Short punch lines start with a single emoji as a bullet. Never more than one emoji per line.
 - NEVER put a WhatsApp link, wa.me URL, api.whatsapp.com link, phone number CTA or any URL inside the post body. The contact link lives ONLY in the automatic first comment.
 - NEVER write a real-estate licence field or placeholder ("רישיון תיווך מספר:", "מספר רישיון", licence footer). Omit it completely.
+
+${EMOJI_BULLET_LAW}
 `;
 
     const userPrompt = [
@@ -602,8 +604,9 @@ LAYOUT LAW (mandatory):
     // Strip any residual auto-injected CTA line from prior versions just in case.
     content = content.replace(/\n*[^\n]*דברו\s+איתנו\s+עכשיו[^\n]*/gu, "").replace(/\s+$/g, "");
 
-    // HARD EMOJI LAW: never two emojis side by side, always one emoji + space.
-    content = enforceSingleEmojis(content);
+    // HARD EMOJI LAW: never two emojis side by side, always one emoji + space,
+    // and every content line opens with one relevant emoji bullet.
+    content = ensureLeadingEmojiBullets(enforceSingleEmojis(content));
 
 
 
