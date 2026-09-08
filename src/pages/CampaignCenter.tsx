@@ -3126,9 +3126,10 @@ const ConfirmDispatchDialog = ({
             scheduledAt: scheduledAt,
             groups: apiGroupIds.map((bare) => ({
               group_id: bare,
-              group_name: bare,
-              group_url: `https://www.facebook.com/groups/${bare}`,
+              group_name: groupMetaMap[bare]?.name || bare,
+              group_url: groupMetaMap[bare]?.url || `https://www.facebook.com/groups/${bare}`,
             })),
+
           });
           if (queuedGroups > 0) {
             toast.success(
