@@ -4737,7 +4737,7 @@ const PublishedFeed = ({
   // Performs the actual deletion. `mode === 'both'` first wipes the post off
   // the native social network (Meta Graph via meta-publish) and aborts on
   // failure, so we never leave a phantom post live on the broker's Page.
-  const performDelete = async (r: CampaignRow, mode: 'db' | 'both') => {
+  const performDelete = async (r: CampaignRow, mode: 'db' | 'both', silent = false) => {
     const externalIds = mode === 'both' ? externalIdsFor(r) : [];
 
     if (externalIds.length > 0) {
@@ -4785,7 +4785,7 @@ const PublishedFeed = ({
     });
     setOptimisticRows((prev) => prev.filter((x) => x.id !== r.id));
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
-    toast.success(
+    if (!silent) toast.success(
       externalIds.length > 0
         ? `הפוסט נמחק מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`
         : `הפוסט נמחק מהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`,
@@ -4812,7 +4812,7 @@ const PublishedFeed = ({
           ok += 1;
           continue;
         }
-        await performDelete(r, 'db');
+        await performDelete(r, 'db', true);
         ok += 1;
       } catch (e: any) {
         failures.push(String(e?.message ?? e));
