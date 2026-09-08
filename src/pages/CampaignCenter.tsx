@@ -2507,6 +2507,72 @@ const InlineComposer = ({
       {/* Publish targets: the business Page toggle now lives inside the groups
           dialog, directly above its submit button. */}
 
+      {/* YouTube upload metadata — the real fields YouTube expects for a new
+          video upload. The main textarea above is the video description. */}
+      {channel.id === 'youtube' && (
+        <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-3" dir="rtl">
+          <div className="flex items-center gap-2">
+            <BrandIcon name="youtube" className="h-4 w-4 text-[#FF0000]" />
+            <span className="text-sm font-semibold text-foreground">פרטי הסרטון ביוטיוב</span>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">כותרת הסרטון (עד 100 תווים)</Label>
+            <Input
+              value={ytTitle}
+              maxLength={100}
+              onChange={(e) => setYtTitle(e.target.value)}
+              placeholder="כותרת הסרטון"
+              className="text-right"
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            תיאור הסרטון נלקח מתיבת הטקסט הראשית של הפוסט.
+          </p>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">תגיות (מופרדות בפסיק)</Label>
+            <Input
+              value={ytTags}
+              onChange={(e) => setYtTags(e.target.value)}
+              placeholder="נדל״ן, דירות, תיווך"
+              className="text-right"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">הגדרת פרטיות</Label>
+              <Select value={ytPrivacy} onValueChange={(v) => setYtPrivacy(v as 'public' | 'unlisted' | 'private')}>
+                <SelectTrigger className="text-right"><SelectValue /></SelectTrigger>
+                <SelectContent dir="rtl">
+                  <SelectItem value="public">ציבורי</SelectItem>
+                  <SelectItem value="unlisted">לא מפורט (לינק בלבד)</SelectItem>
+                  <SelectItem value="private">פרטי</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">קטגוריה</Label>
+              <Select value={ytCategory} onValueChange={setYtCategory}>
+                <SelectTrigger className="text-right"><SelectValue /></SelectTrigger>
+                <SelectContent dir="rtl">
+                  <SelectItem value="22">אנשים ובלוגים</SelectItem>
+                  <SelectItem value="24">בידור</SelectItem>
+                  <SelectItem value="25">חדשות ופוליטיקה</SelectItem>
+                  <SelectItem value="26">איך עושים זאת וסטייל</SelectItem>
+                  <SelectItem value="27">חינוך</SelectItem>
+                  <SelectItem value="28">מדע וטכנולוגיה</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-foreground select-none cursor-pointer">
+            <Checkbox checked={ytMadeForKids} onCheckedChange={(v) => setYtMadeForKids(v === true)} />
+            <span>הסרטון מיועד לילדים</span>
+          </label>
+        </div>
+      )}
+
+
+
 
       {/* First-comment composer — always visible below the main textarea.
           When enabled (checkbox on), the Meta API posts this text as the first
