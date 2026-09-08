@@ -2137,11 +2137,17 @@ const InlineComposer = ({
   const hasSelectedPagesNow = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
   const canPublish = hasBody && scheduledValidNow && hasSelectedPagesNow;
 
-  const submitDraft = useCallback((): boolean => {
+  const submitDraft = useCallback((opts?: { skipImagePrompt?: boolean }): boolean => {
     const sd = scheduledLocal ? new Date(scheduledLocal) : null;
     const valid = mode === 'now' || (!!sd && sd.getTime() > Date.now());
     const pagesOk = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
     if (!body.trim() || !valid || !pagesOk) return false;
+    // No images attached: ask the user whether to add some before publishing.
+    if (!opts?.skipImagePrompt && attachments.filter((a) => a.kind === 'image').length === 0) {
+      setAskImages(true);
+      return false;
+    }
+
     // Never lose the picked groups: fall back to the shared per-workspace store
     // so a scheduled/instant post can never be saved as "לא נבחרו קבוצות".
     const effectiveGroupIds = groupIds.length > 0
