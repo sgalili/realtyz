@@ -3975,18 +3975,18 @@ const GlobalSocialFeed = ({
             name={brand}
             aria-label={label}
             className={cn(
-              'h-6 w-6 shrink-0',
+              'h-[18px] w-[18px] shrink-0',
               isYouTube
                 ? (youtubeColored ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-400 grayscale')
                 : (isConnected ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-500')
             )}
           />
         ) : Icon ? (
-          <Icon aria-label={label} className="h-6 w-6 shrink-0 text-slate-600" />
+          <Icon aria-label={label} className="h-[18px] w-[18px] shrink-0 text-slate-600" />
         ) : null}
         <span
           className={cn(
-            'text-xs sm:text-sm font-bold tabular-nums',
+            'text-sm sm:text-base font-bold tabular-nums',
             active ? 'text-slate-900' : 'text-slate-500',
           )}
           dir="ltr"
@@ -4010,7 +4010,7 @@ const GlobalSocialFeed = ({
             />
           </label>
           <span className={cn(
-            'text-sm font-bold tabular-nums',
+            'text-base font-bold tabular-nums',
             activeChannel === 'all' ? 'text-slate-900' : 'text-slate-500',
           )} dir="ltr">{counts.all}</span>
         </div>
