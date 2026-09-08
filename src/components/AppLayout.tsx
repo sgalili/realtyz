@@ -513,9 +513,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </header>
           <PageHero />
           <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-6 pt-0">
-            <FacebookConnectionBanner />
-            {children}
-            <DemoSidebarPeek />
+            <div className="w-full lg:mx-auto lg:w-[70vw] lg:max-w-[70vw]">
+              <FacebookConnectionBanner />
+              {children}
+              <DemoSidebarPeek />
+            </div>
           </main>
           <AiAgentDrawer />
           <QuickActionDrawer />
