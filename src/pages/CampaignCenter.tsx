@@ -3052,7 +3052,7 @@ const StackedComposerSection = ({
 
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, publishToPage = true, selectedProfileIds, attachWaLink, firstComment, onConfirmed, autoConfirm = false,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds: groupIdsProp, publishToPage = true, selectedProfileIds, attachWaLink, firstComment, onConfirmed, autoConfirm = false, youtube = null,
 
 }: {
   open: boolean;
