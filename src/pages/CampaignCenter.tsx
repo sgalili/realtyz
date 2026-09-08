@@ -3944,9 +3944,9 @@ const GlobalSocialFeed = ({
 
 
   return (
-    <div className="flex items-center w-full gap-2" dir="rtl">
-      {totalSelectable > 0 && (
-        <div className="flex items-center gap-1.5 shrink-0">
+    <div className="grid grid-cols-[minmax(auto,1fr)_1fr_minmax(auto,1fr)] items-center gap-2 w-full" dir="rtl">
+      {totalSelectable > 0 ? (
+        <div className="flex items-center gap-1.5 justify-self-start">
           <label className="flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-foreground">
             <Checkbox
               checked={allSelected ? true : someSelected ? 'indeterminate' : feedSelectMode}
@@ -3959,8 +3959,10 @@ const GlobalSocialFeed = ({
             activeChannel === 'all' ? 'text-slate-900' : 'text-slate-500',
           )} dir="ltr">{counts.all}</span>
         </div>
+      ) : (
+        <div aria-hidden className="min-w-0" />
       )}
-      <div className="flex items-center justify-center gap-3 overflow-x-auto scrollbar-none px-1 pb-1 flex-1">
+      <div className="flex items-center justify-center gap-3 overflow-x-auto scrollbar-none px-1 pb-1 w-full min-w-0 justify-self-center">
         <button
           type="button"
           onClick={() => onChannelChange('all')}
@@ -3973,19 +3975,23 @@ const GlobalSocialFeed = ({
         </button>
         {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
       </div>
-      {(feedSelectMode || selectedCount > 0) && (
-        <Button
-          type="button"
-          size="icon"
-          variant="destructive"
-          disabled={selectedCount === 0 || bulkDeletingFeed}
-          onClick={() => onDeleteSelected?.()}
-          title="מחיקת הפוסטים הנבחרים"
-          aria-label="מחיקת הפוסטים הנבחרים"
-          className="h-7 w-7 shrink-0"
-        >
-          {bulkDeletingFeed ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-        </Button>
+      {(feedSelectMode || selectedCount > 0) ? (
+        <div className="flex justify-self-end">
+          <Button
+            type="button"
+            size="icon"
+            variant="destructive"
+            disabled={selectedCount === 0 || bulkDeletingFeed}
+            onClick={() => onDeleteSelected?.()}
+            title="מחיקת הפוסטים הנבחרים"
+            aria-label="מחיקת הפוסטים הנבחרים"
+            className="h-7 w-7 shrink-0"
+          >
+            {bulkDeletingFeed ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+        </div>
+      ) : (
+        <div aria-hidden className="min-w-0" />
       )}
     </div>
   );
