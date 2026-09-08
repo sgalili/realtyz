@@ -191,6 +191,8 @@ type ConfirmPayload = {
     privacy_status: 'public' | 'unlisted' | 'private';
     category_id: string;
     made_for_kids: boolean;
+    /** Public URL of the video asset to upload to YouTube Data API v3. */
+    video_url?: string | null;
   };
 };
 
