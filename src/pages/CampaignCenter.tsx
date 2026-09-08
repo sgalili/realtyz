@@ -3973,7 +3973,7 @@ const GlobalSocialFeed = ({
         >
           <span className={cn('text-xs sm:text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>הכל</span>
         </button>
-        {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}</div>
+        {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
       </div>
       {(feedSelectMode || selectedCount > 0) ? (
         <div className="flex justify-self-end">
