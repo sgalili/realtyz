@@ -3944,32 +3944,35 @@ const GlobalSocialFeed = ({
 
 
   return (
-    <div className="flex items-center justify-center gap-3 overflow-x-auto scrollbar-none px-1 pb-1 w-full" dir="rtl">
+    <div className="flex items-center w-full gap-2" dir="rtl">
       {totalSelectable > 0 && (
-        <label className="flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-foreground shrink-0">
-          <Checkbox
-            checked={allSelected ? true : someSelected ? 'indeterminate' : feedSelectMode}
-            onCheckedChange={(v) => { onToggleSelectAll?.(v === true || v === 'indeterminate'); }}
-            aria-label="בחר את כל הפוסטים"
-          />
-          {'\n'}
-        </label>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <label className="flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-foreground">
+            <Checkbox
+              checked={allSelected ? true : someSelected ? 'indeterminate' : feedSelectMode}
+              onCheckedChange={(v) => { onToggleSelectAll?.(v === true || v === 'indeterminate'); }}
+              aria-label="בחר את כל הפוסטים"
+            />
+          </label>
+          <span className={cn(
+            'text-sm font-bold tabular-nums',
+            activeChannel === 'all' ? 'text-slate-900' : 'text-slate-500',
+          )} dir="ltr">{counts.all}</span>
+        </div>
       )}
-      <button
-        type="button"
-        onClick={() => onChannelChange('all')}
-        className={cn(
-          'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
-          activeChannel === 'all' ? 'opacity-100' : 'opacity-70 hover:opacity-100',
-        )}
-      >
-        <span className={cn('text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>{'\n'}</span>
-        <span className={cn(
-          'text-sm font-bold tabular-nums',
-          activeChannel === 'all' ? 'text-slate-900' : 'text-slate-500',
-        )} dir="ltr">{counts.all}</span>
-      </button>
-      {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
+      <div className="flex items-center justify-center gap-3 overflow-x-auto scrollbar-none px-1 pb-1 flex-1">
+        <button
+          type="button"
+          onClick={() => onChannelChange('all')}
+          className={cn(
+            'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
+            activeChannel === 'all' ? 'opacity-100' : 'opacity-70 hover:opacity-100',
+          )}
+        >
+          <span className={cn('text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>הכל</span>
+        </button>
+        {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
+      </div>
       {(feedSelectMode || selectedCount > 0) && (
         <Button
           type="button"
