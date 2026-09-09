@@ -235,23 +235,31 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
       if (ins.error) {
         const dup =
           ins.error.code === '23505' ||
-          /duplicate key value|leads_phone_number/i.test(ins.error.message || '');
+          /duplicate key value|leads_phone_number|leads_owner_phone|leads_owner_email|leads_email/i.test(
+            ins.error.message || '',
+          );
         if (!dup) throw ins.error;
 
         // A contact with this phone already exists — merge into it instead of failing.
         const existing = await supabase
           .from('leads')
           .select('id')
+          .eq('assigned_to', ownerId)
           .eq('phone_number', normalizedPhone)
           .limit(1)
           .maybeSingle();
         if (existing.error || !existing.data?.id) {
-          toast.error('קיים כבר איש קשר עם מספר הטלפון הזה', {
-            description: 'חפשו אותו ברשימת אנשי הקשר ועדכנו את הפרטים שם.',
-          });
-          return;
-        }
-        const upd = await supabase
+          // No such contact in this workspace — try the insert once more before failing.
+          const retry = await supabase.from('leads').insert(payload).select('id').maybeSingle();
+          if (retry.error) {
+            toast.error('לא ניתן לשמור את איש הקשר', {
+              description: retry.error.message || 'נסו שוב בעוד רגע.',
+            });
+            return;
+          }
+          created = retry.data;
+        } else {
+          const upd = await supabase
           .from('leads')
           .update({
             full_name: payload.full_name,
@@ -265,9 +273,10 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           .eq('id', existing.data.id)
           .select('id')
           .maybeSingle();
-        if (upd.error) throw upd.error;
-        created = upd.data;
-        merged = true;
+          if (upd.error) throw upd.error;
+          created = upd.data;
+          merged = true;
+        }
       } else {
         created = ins.data;
       }
