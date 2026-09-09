@@ -53,6 +53,7 @@ import {
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
 import LinkedPropertiesField from '@/components/leads/LinkedPropertiesField';
 import LeadEnrichmentPanel, { LeadEnrichmentButton, LeadEnrichmentIconButton } from '@/components/leads/LeadEnrichmentPanel';
+import { ExcelIcon } from '@/components/icons/ExcelIcon';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 import { PriceTag } from '@/components/PriceTag';
 import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus, DownloadCloud } from 'lucide-react';
