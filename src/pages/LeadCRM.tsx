@@ -2149,63 +2149,6 @@ const LeadCRM = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add to Campaign Dialog */}
-      <Dialog open={addToCampaignOpen} onOpenChange={setAddToCampaignOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>הוסף לקמפיין</DialogTitle>
-            <DialogDescription>בחר קמפיין להוספת {selectedIds.size} אנשי קשר</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {campaigns?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">אין קמפיינים פעילים</p>}
-            {campaigns?.map((c) => (
-              <Button key={c.id} variant="outline" className="w-full justify-start gap-2" onClick={() => handleAddToCampaign(c.id)}>
-                <Megaphone className="h-4 w-4 text-primary" />
-                {c.name}
-              </Button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* AI Blast Preview Modal */}
-      <Dialog open={aiBlastOpen} onOpenChange={setAiBlastOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              תצוגה מקדימה - הודעת AI מותאמת אישית
-            </DialogTitle>
-            <DialogDescription>
-              {selectedIds.size} אנשי קשר נבחרו · מוצגות עד 10 דוגמאות
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-3 py-2">
-            {aiPreviews.map((p, i) => (
-              <div key={i} className="rounded-xl border border-border/50 p-4 bg-muted/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center">
-                    <User className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <span className="text-sm font-semibold">{p.name}</span>
-                </div>
-                <div className="bg-background rounded-lg px-4 py-3 text-sm leading-relaxed border border-border/30 whitespace-pre-wrap">
-                  {p.message}
-                </div>
-              </div>
-            ))}
-            {aiPreviews.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">בחר אנשי קשר כדי לצפות בתצוגה מקדימה</p>
-            )}
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setAiBlastOpen(false)}>סגור</Button>
-            <Button disabled className="gap-2 opacity-60">
-              <Eye className="h-4 w-4" /> שליחה בקרוב...
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Full Lead Profile Sheet */}
       <Sheet open={!!selectedVoterId} onOpenChange={(open) => {
