@@ -2477,6 +2477,7 @@ const LeadCRM = () => {
                     leadId={selectedVoter.id}
                     phone={selectedVoter.phone_number}
                     vars={{ name: selectedVoter.full_name, city: selectedVoter.city }}
+                    leadKind={(selectedVoter as any)?.preferences?.lead_kind ?? null}
                   />
 
                   {/* Smart timeline + quick note + follow-up extraction */}
