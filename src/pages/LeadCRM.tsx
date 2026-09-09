@@ -1173,14 +1173,6 @@ const LeadCRM = () => {
   };
 
 
-  const handleAddToCampaign = async (campaignId: string) => {
-    if (blockDemoAction('add-to-campaign')) return;
-    const ids = Array.from(selectedIds);
-    await sendToN8n('add_to_campaign', { campaign_id: campaignId, lead_ids: ids });
-    toast.success(`${ids.length} אנשי קשר נוספו לקמפיין`);
-    setAddToCampaignOpen(false);
-    setSelectedIds(new Set());
-  };
 
   /**
    * "Add Lead" no longer writes a placeholder row. The NewLeadDialog collects
