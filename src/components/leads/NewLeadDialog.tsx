@@ -258,9 +258,8 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             return;
           }
           created = retry.data;
-          setSaving?.(false as any);
         } else {
-        const upd = await supabase
+          const upd = await supabase
           .from('leads')
           .update({
             full_name: payload.full_name,
