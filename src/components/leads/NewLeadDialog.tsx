@@ -242,6 +242,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         const existing = await supabase
           .from('leads')
           .select('id')
+          .eq('assigned_to', ownerId)
           .eq('phone_number', normalizedPhone)
           .limit(1)
           .maybeSingle();
