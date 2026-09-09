@@ -235,7 +235,9 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
       if (ins.error) {
         const dup =
           ins.error.code === '23505' ||
-          /duplicate key value|leads_phone_number/i.test(ins.error.message || '');
+          /duplicate key value|leads_phone_number|leads_owner_phone|leads_owner_email|leads_email/i.test(
+            ins.error.message || '',
+          );
         if (!dup) throw ins.error;
 
         // A contact with this phone already exists — merge into it instead of failing.
