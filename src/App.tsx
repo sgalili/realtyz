@@ -239,9 +239,19 @@ const App = () => (
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/communication" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/deal-room" element={<ProtectedRoute allowGuestDemo><DealRoom /></ProtectedRoute>} />
-              <Route path="/properties" element={<ProtectedRoute allowGuestDemo><Properties /></ProtectedRoute>} />
-              <Route path="/properties-hub" element={<ProtectedRoute allowGuestDemo><PropertiesHub /></ProtectedRoute>} />
-              <Route path="/properties/:id" element={<ProtectedRoute allowGuestDemo><PropertyDetail /></ProtectedRoute>} />
+              {LISTINGS_ENABLED ? (
+                <>
+                  <Route path="/properties" element={<ProtectedRoute allowGuestDemo><Properties /></ProtectedRoute>} />
+                  <Route path="/properties-hub" element={<ProtectedRoute allowGuestDemo><PropertiesHub /></ProtectedRoute>} />
+                  <Route path="/properties/:id" element={<ProtectedRoute allowGuestDemo><PropertyDetail /></ProtectedRoute>} />
+                </>
+              ) : (
+                <>
+                  <Route path="/properties" element={<Navigate to="/lead-crm" replace />} />
+                  <Route path="/properties-hub" element={<Navigate to="/lead-crm" replace />} />
+                  <Route path="/properties/:id" element={<Navigate to="/lead-crm" replace />} />
+                </>
+              )}
               <Route path="/crm/profile/:id" element={<ProtectedRoute><CrmProfile /></ProtectedRoute>} />
 
               <Route path="/automations" element={<ProtectedRoute allowGuestDemo><AutomationStudioPage /></ProtectedRoute>} />
