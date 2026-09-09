@@ -2611,11 +2611,15 @@ const LeadCRM = () => {
                               <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
                             </>
                           )}
-                        </div>
-                        {/* Owner-only: 13 Homely-style property fields, backed by the linked listing */}
-                        {ownerLead && (
-                          <OwnerPropertyGrid lead={selectedVoter as any} />
-                        )}
+                         </div>
+                         {/* Property relation — link any number of properties to this contact */}
+                         <div className="p-3 rounded-lg bg-slate-100 border border-slate-200">
+                           <LinkedPropertiesField leadId={(selectedVoter as any).id} />
+                         </div>
+                         {/* Owner-only: 13 Homely-style property fields, backed by the linked listing */}
+                         {ownerLead && (
+                           <OwnerPropertyGrid lead={selectedVoter as any} />
+                         )}
                       </div>
                     );
                   })()}
