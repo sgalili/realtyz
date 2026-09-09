@@ -430,16 +430,20 @@ const Dashboard = () => {
       </CollapsibleSection>
 
 
-      {/* AI-detected pending listings */}
-      <CollapsibleSection id="pending-listings" title="נכסים שזוהו אוטומטית" description="אישור, עריכה או מחיקה של נכסים שהופקו על ידי ה-AI">
-        <PendingListingsCard />
-      </CollapsibleSection>
-      <CollapsibleSection id="match-progress" title="התאמות לקוחות ונכסים" description="מצב ההתאמות בין מתעניינים לנכסים">
-        <MatchProgressCard />
-      </CollapsibleSection>
-      <CollapsibleSection id="listing-visibility" title="ניהול חשיפת נכסים" description="נכסים מקודמים ומודגשים">
-        <ListingVisibilityManagerCard />
-      </CollapsibleSection>
+      {/* Listing management is hidden in broker-recruitment mode */}
+      {LISTINGS_ENABLED && (
+        <>
+          <CollapsibleSection id="pending-listings" title="נכסים שזוהו אוטומטית" description="אישור, עריכה או מחיקה של נכסים שהופקו על ידי ה-AI">
+            <PendingListingsCard />
+          </CollapsibleSection>
+          <CollapsibleSection id="match-progress" title="התאמות לקוחות ונכסים" description="מצב ההתאמות בין מתעניינים לנכסים">
+            <MatchProgressCard />
+          </CollapsibleSection>
+          <CollapsibleSection id="listing-visibility" title="ניהול חשיפת נכסים" description="נכסים מקודמים ומודגשים">
+            <ListingVisibilityManagerCard />
+          </CollapsibleSection>
+        </>
+      )}
 
 
 

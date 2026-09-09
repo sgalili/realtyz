@@ -76,14 +76,16 @@ const NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
     aliases: ['/crm', '/leads'],
   },
-  {
-    title: 'נכסים',
-    url: '/properties',
-    icon: Building2,
-    iconColor: 'text-amber-500',
-    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
-    aliases: ['/property', '/listings'],
-  },
+  ...(LISTINGS_ENABLED
+    ? [{
+        title: 'נכסים',
+        url: '/properties',
+        icon: Building2,
+        iconColor: 'text-amber-500',
+        badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
+        aliases: ['/property', '/listings'],
+      } as NavItem]
+    : []),
   {
     title: 'צ׳אטים',
     url: '/inbox',
