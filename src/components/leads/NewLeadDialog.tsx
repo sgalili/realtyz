@@ -14,6 +14,8 @@
  * code paths (importer, demo data, persona prompt fallback).
  */
 import { useState } from 'react';
+import LinkedPropertiesField, { saveLeadPropertyLinks } from '@/components/leads/LinkedPropertiesField';
+
 import { supabase } from '@/integrations/supabase/client';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useQueryClient } from '@tanstack/react-query';
@@ -99,6 +101,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   const [notes, setNotes] = useState('');
   const [source, setSource] = useState('manual');
   const [saving, setSaving] = useState(false);
+  const [linkedListings, setLinkedListings] = useState<string[]>([]);
   /** When user attempts to save an out-of-area lead, we hold the action and ask to confirm. */
   const [pendingOutOfArea, setPendingOutOfArea] = useState(false);
 
@@ -129,6 +132,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     setNotes('');
     setSource('manual');
     setPendingOutOfArea(false);
+    setLinkedListings([]);
   }
 
   /** Resolve which account the contact belongs to (workspace owner or self). */
@@ -267,6 +271,17 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
       } else {
         created = ins.data;
       }
+
+      // Property relation — persist the linked properties for this contact.
+      if (created?.id && linkedListings.length) {
+        try {
+          await saveLeadPropertyLinks(created.id, linkedListings);
+          queryClient.invalidateQueries({ queryKey: ['lead-listings', created.id] });
+        } catch {
+          toast.error('קישור הנכסים לא נשמר במלואו');
+        }
+      }
+
 
       // Background WhatsApp profile-picture hydration — never blocks the save.
       if (created?.id) {
@@ -490,7 +505,13 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               placeholder="פרטים שיעזרו לסגור את העסקה…"
             />
           </div>
+
+          {/* Property relation — link one or many properties to this contact */}
+          <div className="col-span-2">
+            <LinkedPropertiesField value={linkedListings} onChange={setLinkedListings} />
+          </div>
         </div>
+
 
         {pendingOutOfArea && (
           <div
