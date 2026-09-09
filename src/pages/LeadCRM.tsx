@@ -1668,7 +1668,7 @@ const LeadCRM = () => {
   const messageSentiment = getSentimentFromMessages(activeVoterMessages);
 
   return (
-    <div className="space-y-4 relative pb-20 pt-5">
+    <div className="space-y-4 relative pb-20 pt-[10px]">
       {/* Header + add menu live in the global PageHero (top bar) */}
 
 
@@ -1824,7 +1824,7 @@ const LeadCRM = () => {
             {BROKER_RECRUITMENT_MODE && (
               <Button
                 size="sm"
-                className="gap-1.5 h-8 bg-emerald-600 hover:bg-emerald-700 text-primary-foreground"
+                className="gap-1.5 h-8 !bg-emerald-600 hover:!bg-emerald-700 !text-white border-0"
                 onClick={handleBrokerFirstOutreach}
                 disabled={sendingFirstOutreach}
               >
