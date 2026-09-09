@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   Search, CheckCircle2, XCircle, User, MapPin, Tag, Clock,
   ArrowUpRight, ArrowDownLeft, Upload, FileSpreadsheet, AlertTriangle,
-  Users, Download, Megaphone, Trash2, X, Sparkles, Eye, SlidersHorizontal,
+  Users, Trash2, X, Eye, SlidersHorizontal,
   Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
   Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail,
   Loader2, Pencil, Check, Send
@@ -53,6 +53,7 @@ import {
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
 import LinkedPropertiesField from '@/components/leads/LinkedPropertiesField';
 import LeadEnrichmentPanel, { LeadEnrichmentButton, LeadEnrichmentIconButton } from '@/components/leads/LeadEnrichmentPanel';
+import { ExcelIcon } from '@/components/icons/ExcelIcon';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 import { PriceTag } from '@/components/PriceTag';
 import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus, DownloadCloud } from 'lucide-react';
@@ -538,10 +539,7 @@ const LeadCRM = () => {
   // and preferences.lead_kind on every inserted row so buyers/sellers/renters/landlords
   // stay in the right pipeline from day one.
   const [importLeadKind, setImportLeadKind] = useState<'buyer' | 'seller' | 'renter' | 'landlord' | 'broker'>('buyer');
-  const [addToCampaignOpen, setAddToCampaignOpen] = useState(false);
-  const [aiBlastOpen, setAiBlastOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [aiPreviews, setAiPreviews] = useState<Array<{ name: string; message: string }>>([]);
   const [addVoterOpen, setAddVoterOpen] = useState(false);
   const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
   const [deletingSingle, setDeletingSingle] = useState(false);
@@ -828,14 +826,6 @@ const LeadCRM = () => {
     staleTime: 2 * 60 * 1000,
   });
 
-  const { data: campaigns } = useQuery({
-    queryKey: ['campaigns'],
-    queryFn: async () => {
-      const { data } = await supabase.from('campaigns').select('*');
-      return data ?? [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
 
   const selectedVoter = leads?.find((v) => v.id === selectedVoterId);
   const activeVoterMessages = (isDemoMode && selectedVoterId?.startsWith('demo-lead-')
@@ -1058,23 +1048,6 @@ const LeadCRM = () => {
     toast.success(`${rows.length} אנשי קשר יוצאו בהצלחה`);
   };
 
-  const handleAiBlastPreview = () => {
-    const selected = leads?.filter(v => selectedIds.has(v.id)) ?? [];
-    const previews = selected.slice(0, 10).map(v => {
-      const interest = v.interest_tag || 'כללי';
-      const name = v.full_name || 'איש קשר';
-      const score = v.engagement_score ?? 0;
-      let tone = 'ידידותי';
-      if (score >= 60) tone = 'חם ומחזק';
-      else if (score < 30) tone = 'מניע לפעולה';
-      return {
-        name,
-        message: `שלום ${name}! 👋\nראיתי שאתה איש קשר ב${interest}. רציתי לעדכן אותך שיש לנו חדשות חשובות בנושא.\n\nנשמח אם תצטרף אלינו - ביחד נשפיע! 🇮🇱\n\n[סגנון: ${tone}]`,
-      };
-    });
-    setAiPreviews(previews);
-    setAiBlastOpen(true);
-  };
 
   /**
    * Broker recruitment hub: fire the exact personal first-touch message to every
@@ -1143,24 +1116,6 @@ const LeadCRM = () => {
     }
   };
 
-  const handleBatchStatus = async (newStatus: string) => {
-    if (blockDemoAction('bulk-status')) return;
-    const ids = Array.from(selectedIds);
-    if (!ids.length) return;
-    try {
-      const { data: count, error } = await supabase.rpc('bulk_update_leads', {
-        lead_ids: ids,
-        new_status: newStatus,
-      });
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
-      setSelectedIds(new Set());
-      toast.success(`${count ?? ids.length} אנשי קשר עודכנו ל-${hebrewLabel(statusHebrew, newStatus)}`);
-    } catch (err: any) {
-      toast.error('שגיאה בעדכון סטטוס: ' + (err?.message || ''));
-    }
-  };
 
   const handleBulkInterestTag = async (tag: string) => {
     if (blockDemoAction('bulk-interest-tag')) return;
@@ -1218,14 +1173,6 @@ const LeadCRM = () => {
   };
 
 
-  const handleAddToCampaign = async (campaignId: string) => {
-    if (blockDemoAction('add-to-campaign')) return;
-    const ids = Array.from(selectedIds);
-    await sendToN8n('add_to_campaign', { campaign_id: campaignId, lead_ids: ids });
-    toast.success(`${ids.length} אנשי קשר נוספו לקמפיין`);
-    setAddToCampaignOpen(false);
-    setSelectedIds(new Set());
-  };
 
   /**
    * "Add Lead" no longer writes a placeholder row. The NewLeadDialog collects
@@ -1853,26 +1800,11 @@ const LeadCRM = () => {
               <Users className="h-3.5 w-3.5" /> {selectedIds.size} נבחרו
             </Badge>
             <Separator orientation="vertical" className="h-6" />
-            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => setAddToCampaignOpen(true)}>
-              <Megaphone className="h-3.5 w-3.5" /> הוסף לקמפיין
-            </Button>
-            <Select onValueChange={handleBatchStatus}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
-                <SelectValue placeholder="שנה סטטוס" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(statusHebrew)
-                  .filter(([, v], i, arr) => arr.findIndex(([, v2]) => v2 === v) === i)
-                  .map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
             {BROKER_RECRUITMENT_MODE && (
               <Button
                 size="sm"
                 variant="default"
-                className="gap-1.5 h-8 border-0 !bg-green-600 hover:!bg-green-700 !text-white disabled:!opacity-100 disabled:!bg-green-600"
+                className="gap-1.5 h-8 border-0 !bg-green-600 hover:!bg-green-700 !text-white disabled:!opacity-100 disabled:!bg-green-600 disabled:!cursor-wait"
                 onClick={handleBrokerFirstOutreach}
                 disabled={sendingFirstOutreach}
               >
@@ -1880,14 +1812,12 @@ const LeadCRM = () => {
                 {sendingFirstOutreach ? 'שולח…' : 'הודעת פתיחה למתווכים'}
               </Button>
             )}
-            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleAiBlastPreview}>
-              <Sparkles className="h-3.5 w-3.5" /> שלח הודעת AI
+            <Button variant="outline" size="sm" className="gap-2 h-8 items-center" onClick={() => handleExportExcel('selected')}>
+              <ExcelIcon className="h-4 w-4" />
+              <span>ייצוא נבחרים</span>
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => handleExportExcel('selected')}>
-              <Download className="h-3.5 w-3.5" /> ייצוא נבחרים
-            </Button>
-            <Button variant="destructive" size="sm" className="gap-1.5 h-8" onClick={openBatchDeleteDialog}>
-              <Trash2 className="h-3.5 w-3.5" /> מחק
+            <Button variant="destructive" size="icon" className="h-8 w-8" aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}>
+              <Trash2 className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 ms-auto" onClick={() => setSelectedIds(new Set())}>
               <X className="h-4 w-4" />
@@ -2165,63 +2095,6 @@ const LeadCRM = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add to Campaign Dialog */}
-      <Dialog open={addToCampaignOpen} onOpenChange={setAddToCampaignOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>הוסף לקמפיין</DialogTitle>
-            <DialogDescription>בחר קמפיין להוספת {selectedIds.size} אנשי קשר</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {campaigns?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">אין קמפיינים פעילים</p>}
-            {campaigns?.map((c) => (
-              <Button key={c.id} variant="outline" className="w-full justify-start gap-2" onClick={() => handleAddToCampaign(c.id)}>
-                <Megaphone className="h-4 w-4 text-primary" />
-                {c.name}
-              </Button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* AI Blast Preview Modal */}
-      <Dialog open={aiBlastOpen} onOpenChange={setAiBlastOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              תצוגה מקדימה - הודעת AI מותאמת אישית
-            </DialogTitle>
-            <DialogDescription>
-              {selectedIds.size} אנשי קשר נבחרו · מוצגות עד 10 דוגמאות
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-3 py-2">
-            {aiPreviews.map((p, i) => (
-              <div key={i} className="rounded-xl border border-border/50 p-4 bg-muted/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center">
-                    <User className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <span className="text-sm font-semibold">{p.name}</span>
-                </div>
-                <div className="bg-background rounded-lg px-4 py-3 text-sm leading-relaxed border border-border/30 whitespace-pre-wrap">
-                  {p.message}
-                </div>
-              </div>
-            ))}
-            {aiPreviews.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">בחר אנשי קשר כדי לצפות בתצוגה מקדימה</p>
-            )}
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setAiBlastOpen(false)}>סגור</Button>
-            <Button disabled className="gap-2 opacity-60">
-              <Eye className="h-4 w-4" /> שליחה בקרוב...
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Full Lead Profile Sheet */}
       <Sheet open={!!selectedVoterId} onOpenChange={(open) => {
