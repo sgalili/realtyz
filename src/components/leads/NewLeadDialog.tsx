@@ -265,17 +265,29 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           </DialogDescription>
         </DialogHeader>
 
-        {/* Deal type selector — drives the dynamic field set */}
-        <Tabs value={dealType} onValueChange={(v) => setDealType(v as DealType)} dir="rtl">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="sale" className="gap-2">
-              <Home className="h-4 w-4" /> מכירה
-            </TabsTrigger>
-            <TabsTrigger value="rent" className="gap-2">
-              <KeyRound className="h-4 w-4" /> השכרה
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Contact kind — pins the pipeline and the dynamic field set */}
+        <div className="space-y-2">
+          <Label>סוג איש קשר *</Label>
+          <div className="grid grid-cols-5 gap-1.5">
+            {KIND_OPTIONS.map((k) => (
+              <Button
+                key={k.v}
+                type="button"
+                size="sm"
+                variant={leadKind === k.v ? 'default' : 'outline'}
+                className="text-xs px-1"
+                onClick={() => pickKind(k.v)}
+              >
+                {k.l}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            {isRental ? <KeyRound className="h-3.5 w-3.5" /> : <Home className="h-3.5 w-3.5" />}
+            {isRental ? 'ניהול השכרה' : 'ניהול מכירה'} · {isOwner ? 'בעל נכס' : 'מחפש נכס'}
+          </p>
+        </div>
+
 
         <div className="grid grid-cols-2 gap-3 mt-2">
           <div className="col-span-2">
