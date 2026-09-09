@@ -1586,7 +1586,7 @@ const LeadCRM = () => {
                   {selectedIds.size > 0
                     ? `נבחרו ${selectedIds.size.toLocaleString('he-IL')} רשומות`
                     : accountTotal === 0
-                      ? 'אין רשומות במאגר. העלה רשימה כדי להתחיל'
+                      ? '\n'
                       : hasFilter
                         ? `מציג ${filteredTotal.toLocaleString('he-IL')} מתוך ${accountTotal.toLocaleString('he-IL')}`
                         : `סה״כ: ${accountTotal.toLocaleString('he-IL')} רשומות`}
