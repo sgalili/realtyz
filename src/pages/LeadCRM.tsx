@@ -125,22 +125,25 @@ const STAGE_LABEL_HE: Record<string, string> = {
   closed: 'סגר עסקה',
 };
 
-// Strict Israeli mobile cleaner. Returns 9725XXXXXXXX (12 digits) for storage, or null if invalid.
-// Rules per spec:
-//  1) Strip every non-digit (spaces, dots, hyphens, parens, plus, etc.)
-//  2) Leading "972" → replace with "0"   (handles +972 and 972)
-//  3) Leading "5" without 0 → prepend "0"
-//  4) Final local form must be exactly 10 digits and start with 05
+// Lenient phone cleaner. Accepts any standard-length number (8-11 digits),
+// with or without a leading zero / country code. Returns a stored form, or
+// null only when there really is no usable number.
 function normalizeIsraeliPhone(raw: string | null | undefined): string | null {
   if (raw === null || raw === undefined) return null;
   let digits = String(raw).replace(/\D/g, '');
   if (!digits) return null;
-  if (digits.startsWith('972')) digits = '0' + digits.slice(3);
-  else if (digits.startsWith('5') && digits.length === 9) digits = '0' + digits;
-  if (!/^05\d{8}$/.test(digits)) return null;
-  // Store in international form for consistency with existing rows
-  return '972' + digits.slice(1);
+  // Strip international prefixes: 00972..., +972..., 972...
+  if (digits.startsWith('00972')) digits = '0' + digits.slice(5);
+  else if (digits.startsWith('972')) digits = '0' + digits.slice(3);
+  // Local mobile/landline without a leading zero (e.g. 5XXXXXXXX, 3XXXXXXX)
+  if (!digits.startsWith('0') && digits.length >= 8 && digits.length <= 10) digits = '0' + digits;
+  // Accept any plausible length after cleaning
+  if (digits.length < 8 || digits.length > 12) return null;
+  // Israeli local form → international storage form for consistency
+  if (/^0\d{7,9}$/.test(digits)) return '972' + digits.slice(1);
+  return digits;
 }
+
 
 
 const interestHebrew: Record<string, string> = {
