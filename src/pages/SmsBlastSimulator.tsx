@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
+import { LIMITS_ENABLED } from '@/config/workspaceMode';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
 import confetti from 'canvas-confetti';
@@ -955,8 +956,9 @@ export default function SmsBlastSimulator() {
       } catch {
         balance = 0;
       }
-      const insufficientBalance = balance > 0 && estimatedCredits > balance * 1000; // 1 NIS = ~1000 credits indicative
-      // If balance row doesn't exist yet, treat as zero and warn but don't block on first send.
+      // Credit restrictions are disabled for this workspace (broker-recruitment hub):
+      // sends are never blocked by balance.
+      const insufficientBalance = LIMITS_ENABLED && balance > 0 && estimatedCredits > balance * 1000;
 
       // 3) Pull real recipients from leads table
       const { data: voterRows, error: voterErr } = await supabase

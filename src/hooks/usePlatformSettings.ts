@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { LISTINGS_ENABLED } from '@/config/workspaceMode';
 
 export interface PlatformSettings {
   enable_auto_followups: boolean;
@@ -24,8 +25,9 @@ const DEFAULTS: PlatformSettings = {
   enable_broker_referrals: true,
   enable_ai_autopilot: false,
   enable_voice_calls: false,
-  enable_featured_listings: true,
-  enable_pending_extraction: true,
+  // Listing management is off in broker-recruitment mode.
+  enable_featured_listings: LISTINGS_ENABLED,
+  enable_pending_extraction: LISTINGS_ENABLED,
   ai_paused: false,
   ai_paused_reason: null,
   ai_paused_at: null,
