@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuickTemplates, fillTemplate, type TemplateVars } from '@/hooks/useQuickTemplates';
+import { BROKER_OUTREACH_TEMPLATES } from '@/lib/brokerOutreachTemplates';
 
 type Props = {
   scope: 'lead' | 'listing';
@@ -18,6 +19,8 @@ type Props = {
   className?: string;
   collapsible?: boolean;
   forceOpenKey?: number;
+  /** Contact type (preferences.lead_kind). 'broker' unlocks the recruitment templates. */
+  leadKind?: string | null;
 };
 
 function toIntl(phone?: string | null): string | null {
@@ -29,14 +32,21 @@ function toIntl(phone?: string | null): string | null {
   return digits;
 }
 
-export default function QuickMessageCard({ scope, leadId, phone, vars, listingId, className, collapsible = false, forceOpenKey = 0 }: Props) {
-  const { data: templates = [], isLoading } = useQuickTemplates(scope);
+export default function QuickMessageCard({ scope, leadId, phone, vars, listingId, className, collapsible = false, forceOpenKey = 0, leadKind = null }: Props) {
+  const { data: dbTemplates = [], isLoading } = useQuickTemplates(scope);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [channel, setChannel] = useState<'whatsapp' | 'sms'>('whatsapp');
   const [sending, setSending] = useState(false);
   const [open, setOpen] = useState(!collapsible);
   const queryClient = useQueryClient();
+
+  // Brokers get the Realtyz recruitment sequence on top of the workspace templates.
+  const isBroker = leadKind === 'broker';
+  const templates = useMemo(() => {
+    if (!isBroker) return dbTemplates as any[];
+    return [...BROKER_OUTREACH_TEMPLATES.map((t) => ({ ...t, scope: 'lead' })), ...(dbTemplates as any[])];
+  }, [isBroker, dbTemplates]);
 
   useEffect(() => {
     if (collapsible && forceOpenKey > 0) setOpen(true);

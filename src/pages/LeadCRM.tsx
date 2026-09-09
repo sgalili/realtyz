@@ -396,7 +396,7 @@ const LeadCRM = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [profileFilter, setProfileFilter] = useState<string>('all');
   const [dealTypeFilter, setDealTypeFilter] = useState<string>('all');
-  const [leadKindFilter, setLeadKindFilter] = useState<'all' | 'buyer' | 'seller' | 'renter' | 'landlord'>('all');
+  const [leadKindFilter, setLeadKindFilter] = useState<'all' | 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker'>('all');
   const [sentimentFilter, setSentimentFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [compactMode, setCompactMode] = useState<boolean>(() => {
@@ -468,7 +468,7 @@ const LeadCRM = () => {
   // Lead kind selected by the agent BEFORE confirming an import. Drives deal_type
   // and preferences.lead_kind on every inserted row so buyers/sellers/renters/landlords
   // stay in the right pipeline from day one.
-  const [importLeadKind, setImportLeadKind] = useState<'buyer' | 'seller' | 'renter' | 'landlord'>('buyer');
+  const [importLeadKind, setImportLeadKind] = useState<'buyer' | 'seller' | 'renter' | 'landlord' | 'broker'>('buyer');
   const [addToCampaignOpen, setAddToCampaignOpen] = useState(false);
   const [aiBlastOpen, setAiBlastOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -1561,6 +1561,7 @@ const LeadCRM = () => {
                 { v: 'seller', label: 'מוכרים' },
                 { v: 'renter', label: 'שוכרים' },
                 { v: 'landlord', label: 'משכירים' },
+                { v: 'broker', label: 'מתווכים' },
               ] as const).map((t) => (
                 <button
                   key={t.v}
@@ -1830,6 +1831,7 @@ const LeadCRM = () => {
                               seller:   { label: 'מוכר',   cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' },
                               renter:   { label: 'שוכר',   cls: 'bg-[#0b3982]/10 text-[#0b3982] border-[#0b3982]/40' },
                               landlord: { label: 'משכיר', cls: 'bg-purple-500/10 text-purple-700 border-purple-300' },
+                              broker:   { label: 'מתווך', cls: 'bg-amber-500/10 text-amber-700 border-amber-300' },
                             };
                             const m = kind ? map[kind] : null;
                             return m
@@ -2475,6 +2477,7 @@ const LeadCRM = () => {
                     leadId={selectedVoter.id}
                     phone={selectedVoter.phone_number}
                     vars={{ name: selectedVoter.full_name, city: selectedVoter.city }}
+                    leadKind={(selectedVoter as any)?.preferences?.lead_kind ?? null}
                   />
 
                   {/* Smart timeline + quick note + follow-up extraction */}
@@ -2502,12 +2505,13 @@ const LeadCRM = () => {
               Buyer/Seller stay on the sale pipeline; Renter/Landlord move to rent. */}
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
             <div className="text-xs font-semibold">סוג הרשימה</div>
-            <div className="grid grid-cols-4 gap-1.5" dir="rtl">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5" dir="rtl">
               {([
                 { v: 'buyer', label: 'קונים' },
                 { v: 'seller', label: 'מוכרים' },
                 { v: 'renter', label: 'שוכרים' },
                 { v: 'landlord', label: 'משכירים' },
+                { v: 'broker', label: 'מתווכים' },
               ] as const).map((opt) => (
                 <button
                   key={opt.v}
@@ -2523,7 +2527,7 @@ const LeadCRM = () => {
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground">כל הרשומות שייובאו יסומנו בסוג זה ויופנו לצינור המתאים (מכירה / השכרה).</p>
+            <p className="text-[11px] text-muted-foreground">כל הרשומות שייובאו יסומנו בסוג זה ויופנו לצינור המתאים (מכירה / השכרה). מתווכים מנוהלים בנפרד ומקבלים תבניות גיוס ל-Realtyz.</p>
           </div>
 
           {importStats && (
