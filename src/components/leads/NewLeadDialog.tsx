@@ -132,6 +132,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     setNotes('');
     setSource('manual');
     setPendingOutOfArea(false);
+    setLinkedListings([]);
   }
 
   /** Resolve which account the contact belongs to (workspace owner or self). */
