@@ -32,7 +32,7 @@ import { SidebarIntelInput } from '@/components/SidebarIntelInput';
 import { useSidebarCounts } from '@/hooks/useSidebarCounts';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
-import { LISTINGS_ENABLED } from '@/config/workspaceMode';
+import { LISTINGS_ENABLED, SUPPORT_CONTACT } from '@/config/workspaceMode';
 
 
 type NavItem = {
