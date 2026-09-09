@@ -1048,23 +1048,6 @@ const LeadCRM = () => {
     toast.success(`${rows.length} אנשי קשר יוצאו בהצלחה`);
   };
 
-  const handleAiBlastPreview = () => {
-    const selected = leads?.filter(v => selectedIds.has(v.id)) ?? [];
-    const previews = selected.slice(0, 10).map(v => {
-      const interest = v.interest_tag || 'כללי';
-      const name = v.full_name || 'איש קשר';
-      const score = v.engagement_score ?? 0;
-      let tone = 'ידידותי';
-      if (score >= 60) tone = 'חם ומחזק';
-      else if (score < 30) tone = 'מניע לפעולה';
-      return {
-        name,
-        message: `שלום ${name}! 👋\nראיתי שאתה איש קשר ב${interest}. רציתי לעדכן אותך שיש לנו חדשות חשובות בנושא.\n\nנשמח אם תצטרף אלינו - ביחד נשפיע! 🇮🇱\n\n[סגנון: ${tone}]`,
-      };
-    });
-    setAiPreviews(previews);
-    setAiBlastOpen(true);
-  };
 
   /**
    * Broker recruitment hub: fire the exact personal first-touch message to every
