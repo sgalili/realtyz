@@ -490,7 +490,13 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               placeholder="פרטים שיעזרו לסגור את העסקה…"
             />
           </div>
+
+          {/* Property relation — link one or many properties to this contact */}
+          <div className="col-span-2">
+            <LinkedPropertiesField value={linkedListings} onChange={setLinkedListings} />
+          </div>
         </div>
+
 
         {pendingOutOfArea && (
           <div
