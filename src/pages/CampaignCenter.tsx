@@ -4933,7 +4933,8 @@ const PublishedFeed = ({
           .filter(([, isOpen]) => isOpen)
           .map(([id]) => id);
         if (openIds.length > 0) {
-          const postIds = (rows ?? [])
+          const liveRows = FEED_ROWS_CACHE.get(scope) ?? [];
+          const postIds = liveRows
             .filter((r) => openIds.includes(r.id) && r.provider_message_id)
             .map((r) => String(r.provider_message_id))
             .slice(0, 10);
