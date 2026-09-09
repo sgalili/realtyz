@@ -38,7 +38,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useAuth } from '@/hooks/useAuth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type DealType = 'sale' | 'rent' | 'sell' | 'rent_out';
+type DealType = 'sale' | 'rent';
 /** Contact kind — mirrors preferences.lead_kind used across the CRM. */
 type LeadKind = 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker';
 
@@ -53,9 +53,9 @@ const KIND_OPTIONS: { v: LeadKind; l: string }[] = [
 /** Each contact kind pins its own deal_type + Hebrew interest tag. */
 const KIND_MAP: Record<LeadKind, { deal: DealType; tag: string }> = {
   buyer: { deal: 'sale', tag: 'דירה למכירה' },
-  seller: { deal: 'sell', tag: 'מוכר נכס' },
+  seller: { deal: 'sale', tag: 'מוכר נכס' },
   renter: { deal: 'rent', tag: 'דירה להשכרה' },
-  landlord: { deal: 'rent_out', tag: 'משכיר נכס' },
+  landlord: { deal: 'rent', tag: 'משכיר נכס' },
   broker: { deal: 'sale', tag: 'מתווך' },
 };
 
@@ -105,7 +105,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   const [pendingOutOfArea, setPendingOutOfArea] = useState(false);
 
   /** Rental side of the business (renter looking, or landlord offering). */
-  const isRental = dealType === 'rent' || dealType === 'rent_out';
+  const isRental = dealType === 'rent';
   /** Owners list property data instead of search preferences. */
   const isOwner = leadKind === 'seller' || leadKind === 'landlord';
 
@@ -219,7 +219,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         preferences,
         lead_stage: 'new',
         status: 'new',
-        source,
         assigned_to: ownerId,
         interest_tag: KIND_MAP[leadKind].tag,
       } as any).select('id').maybeSingle();
@@ -238,6 +237,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
       reset();
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
     } catch (err: any) {
       toast.error('יצירת הליד נכשלה', { description: err?.message });
