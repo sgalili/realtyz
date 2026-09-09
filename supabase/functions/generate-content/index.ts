@@ -722,7 +722,7 @@ function buildListingShortlinkLongUrl(listing: any, brokerFirst?: string): { tex
   const text = `${greeting}, אני פונה אליך לגבי הדירה ${dealToken} שפרסמת ${locationPhrase}. דירת ${rooms} חדרים במחיר ${price}. אשמח לקבל פרטים נוספים.`;
   return {
     text,
-    long_url: `https://api.whatsapp.com/send?phone=972537339533&text=${encodeURIComponent(text)}`,
+    long_url: `https://api.whatsapp.com/send?phone=972537983832&text=${encodeURIComponent(text)}`,
   };
 }
 async function ensureListingShortlink(

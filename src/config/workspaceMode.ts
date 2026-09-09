@@ -17,6 +17,6 @@ export const LIMITS_ENABLED = !BROKER_RECRUITMENT_MODE;
 /** Personal support contact for brokers joining Realtyz. */
 export const SUPPORT_CONTACT = {
   name: 'ריטה',
-  phone: '0537339533',
-  waPhone: '972537339533',
+  phone: '0537983832',
+  waPhone: '972537983832',
 } as const;
