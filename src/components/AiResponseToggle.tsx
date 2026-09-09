@@ -45,7 +45,6 @@ export function AiResponseToggle() {
         className="w-64 p-3 text-right"
         dir="rtl"
       >
-        <p className="mb-2 text-sm font-semibold text-foreground">{'\n'}</p>
         <div className="space-y-2">
           <label
             className={cn(

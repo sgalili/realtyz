@@ -864,7 +864,6 @@ export function ScheduleCurrentPostDialog({
 
           {/* Preview before posting: text, attached photos, first comment */}
           <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-            <div className="text-xs font-semibold text-muted-foreground text-right">{"\n"}</div>
             <div className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md border border-input bg-background p-2 text-[13px] text-right leading-relaxed">
               {body?.trim() || 'אין תוכן לפוסט'}
             </div>

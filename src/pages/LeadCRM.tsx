@@ -1668,7 +1668,7 @@ const LeadCRM = () => {
   const messageSentiment = getSentimentFromMessages(activeVoterMessages);
 
   return (
-    <div className="space-y-4 relative pb-20 pt-5">
+    <div className="space-y-4 relative pb-20 pt-[10px]">
       {/* Header + add menu live in the global PageHero (top bar) */}
 
 
@@ -1814,25 +1814,17 @@ const LeadCRM = () => {
                 <SelectValue placeholder="שנה סטטוס" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(statusHebrew).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select onValueChange={handleBulkInterestTag}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
-                <SelectValue placeholder="שנה תגית" />
-              </SelectTrigger>
-              <SelectContent>
-                {uniqueInterests.map(t => (
-                  <SelectItem key={t} value={t!}>{t}</SelectItem>
-                ))}
+                {Object.entries(statusHebrew)
+                  .filter(([, v], i, arr) => arr.findIndex(([, v2]) => v2 === v) === i)
+                  .map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             {BROKER_RECRUITMENT_MODE && (
               <Button
                 size="sm"
-                className="gap-1.5 h-8 bg-emerald-600 hover:bg-emerald-700 text-primary-foreground"
+                className="gap-1.5 h-8 !bg-emerald-600 hover:!bg-emerald-700 !text-white border-0"
                 onClick={handleBrokerFirstOutreach}
                 disabled={sendingFirstOutreach}
               >

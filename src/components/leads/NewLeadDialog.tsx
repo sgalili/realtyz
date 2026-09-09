@@ -22,7 +22,6 @@ import { formatPhoneAsTyped } from '@/lib/formatPhone';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,7 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { UserPlus, Home, KeyRound } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useAuth } from '@/hooks/useAuth';
@@ -79,7 +78,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   const { checkInArea, isConfigured, serviceAreas } = useServiceAreas();
   const activeWorkspaceId = useActiveWorkspaceOwnerId();
   const { user } = useAuth();
-  const [leadKind, setLeadKind] = useState<LeadKind>(defaultDealType === 'rent' ? 'renter' : 'buyer');
+  const [leadKind, setLeadKind] = useState<LeadKind | null>(null);
   const [dealType, setDealType] = useState<DealType>(defaultDealType);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -115,9 +114,8 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   }
 
   function reset() {
-    const kind: LeadKind = defaultDealType === 'rent' ? 'renter' : 'buyer';
-    setLeadKind(kind);
-    setDealType(KIND_MAP[kind].deal);
+    setLeadKind(null);
+    setDealType(defaultDealType);
     setFullName('');
     setPhone('');
     setEmail('');
@@ -151,6 +149,10 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   }
 
   async function handleSave(opts: { force?: boolean } = {}) {
+    if (!leadKind) {
+      toast.error('יש לבחור סוג איש קשר');
+      return;
+    }
     if (!fullName.trim()) {
       toast.error('שם מלא הוא שדה חובה');
       return;
@@ -179,7 +181,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     // pipeline's fields so the AI never sees, e.g., a mortgage flag on a
     // rental lead.
     const preferences: Record<string, unknown> = {
-      lead_kind: leadKind,
+      lead_kind: leadKind!,
       listing_type: isRental ? 'rent' : 'sale', // legacy mirror for older code paths
       deal_side: isOwner ? 'owner' : 'seeker',
       source,
@@ -253,20 +255,17 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         onOpenChange(o);
       }}
     >
-      <DialogContent className="sm:max-w-lg" dir="rtl">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
             איש קשר חדש
           </DialogTitle>
-          <DialogDescription>
-            {'\\n'}
-          </DialogDescription>
+  
         </DialogHeader>
 
         {/* Contact kind — pins the pipeline and the dynamic field set */}
         <div className="space-y-2">
-          <Label>סוג איש קשר *</Label>
           <div className="grid grid-cols-5 gap-1.5">
             {KIND_OPTIONS.map((k) => (
               <Button
@@ -281,10 +280,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               </Button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            {isRental ? <KeyRound className="h-3.5 w-3.5" /> : <Home className="h-3.5 w-3.5" />}
-            {isRental ? 'ניהול השכרה' : 'ניהול מכירה'} · {isOwner ? 'בעל נכס' : 'מחפש נכס'}
-          </p>
         </div>
 
 
@@ -321,7 +316,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             />
           </div>
           <div>
-            <Label htmlFor="nl-city">עיר מועדפת</Label>
+            <Label htmlFor="nl-city">עיר</Label>
             <Input
               id="nl-city"
               value={city}
@@ -475,12 +470,12 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           </div>
         )}
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex-row items-center justify-between gap-2 sm:justify-between">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             ביטול
           </Button>
-          <Button onClick={() => handleSave()} disabled={saving || pendingOutOfArea}>
-            {saving ? 'יוצר…' : `הוסף ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}`}
+          <Button onClick={() => handleSave()} disabled={saving || pendingOutOfArea || !leadKind}>
+            {saving ? 'יוצר…' : leadKind ? `הוסף ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}` : 'הוסף איש קשר'}
           </Button>
         </DialogFooter>
       </DialogContent>
