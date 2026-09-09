@@ -1871,7 +1871,8 @@ const LeadCRM = () => {
             {BROKER_RECRUITMENT_MODE && (
               <Button
                 size="sm"
-                className="gap-1.5 h-8 !bg-emerald-600 hover:!bg-emerald-700 !text-white border-0"
+                variant="default"
+                className="gap-1.5 h-8 border-0 !bg-green-600 hover:!bg-green-700 !text-white disabled:!opacity-100 disabled:!bg-green-600"
                 onClick={handleBrokerFirstOutreach}
                 disabled={sendingFirstOutreach}
               >
