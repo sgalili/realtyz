@@ -608,7 +608,6 @@ const LeadCRM = () => {
           `operating_area.ilike.${like}`,
           `instagram_handle.ilike.${like}`,
           `telegram_username.ilike.${like}`,
-          `preferences.ilike.${like}`,
         ];
         // Phone: match with or without the leading zero / country prefix so
         // "053...", "53...", "97253..." all find the same stored number.
