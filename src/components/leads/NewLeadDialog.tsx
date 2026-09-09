@@ -481,7 +481,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             ביטול
           </Button>
           <Button onClick={() => handleSave()} disabled={saving || pendingOutOfArea}>
-            {saving ? 'יוצר…' : `הוסף ל${dealType === 'sale' ? 'מכירה' : 'השכרה'}`}
+            {saving ? 'יוצר…' : `הוסף ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}`}
           </Button>
         </DialogFooter>
       </DialogContent>
