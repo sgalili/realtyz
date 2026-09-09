@@ -14,6 +14,8 @@
  * code paths (importer, demo data, persona prompt fallback).
  */
 import { useState } from 'react';
+import LinkedPropertiesField, { saveLeadPropertyLinks } from '@/components/leads/LinkedPropertiesField';
+
 import { supabase } from '@/integrations/supabase/client';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useQueryClient } from '@tanstack/react-query';
