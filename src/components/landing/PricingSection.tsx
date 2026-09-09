@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { PriceTag } from '@/components/PriceTag';
 import { cn } from '@/lib/utils';
 import {
@@ -110,13 +108,7 @@ export default function PricingSection() {
             ))}
           </ul>
 
-          <Link to="/auth" className="mt-7 block">
-            <Button className="h-12 w-full text-sm font-extrabold">
-              {pkg.monthlyPrice === 0 ? 'התחלה בחינם' : 'בחירת מסלול'}
-            </Button>
-          </Link>
-
-          <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-7 text-center text-xs leading-relaxed text-muted-foreground">
             מגע = כל פעולה שמפעילה AI: יצירת תוכן, פרסום, תשובה ב-WhatsApp/SMS/טלגרם/פייסבוק או
             תגובה. שיחת WhatsApp שלמה נספרת כמגע אחד בחלון של 24 שעות. כשנגמרים הקרדיטים אפשר
             לטעון את הארנק בתוך המערכת ולהמשיך לעבוד.
