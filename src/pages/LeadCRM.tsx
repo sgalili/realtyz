@@ -1047,7 +1047,7 @@ const LeadCRM = () => {
       ]);
       setSelectedIds(new Set());
       setDeleteDialogOpen(false);
-      setDeleteConfirmText('');
+      
       toast.success(`${deleted} מתעניינים נמחקו בהצלחה`);
     } finally {
       setDeleting(false);
