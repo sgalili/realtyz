@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS leads_phone_number_key ON public.leads (phone_number);
