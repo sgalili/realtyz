@@ -4329,11 +4329,16 @@ const PublishedFeed = ({
   const [cooldownUntil, setCooldownUntil] = useState<Record<string, number>>({});
   const [nowTick, setNowTick] = useState<number>(() => Date.now());
   useEffect(() => {
-    const hasActive = Object.values(cooldownUntil).some((t) => t > nowTick);
+    // Depend only on the cooldown map: including `nowTick` tore down and
+    // rebuilt the interval on every single tick, which re-rendered the whole
+    // feed once a second.
+    const hasActive = Object.values(cooldownUntil).some((t) => t > Date.now());
     if (!hasActive) return;
-    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    const id = setInterval(() => {
+      setNowTick(Date.now());
+    }, 1000);
     return () => clearInterval(id);
-  }, [cooldownUntil, nowTick]);
+  }, [cooldownUntil]);
   const getCooldownSeconds = (campaignId: string): number => {
     const until = cooldownUntil[campaignId] ?? 0;
     return Math.max(0, Math.ceil((until - nowTick) / 1000));
