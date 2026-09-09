@@ -37,7 +37,7 @@ import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import { BROKER_RECRUITMENT_MODE } from '@/config/workspaceMode';
-import { renderBrokerFirstOutreach } from '@/lib/brokerOutreachTemplates';
+import { renderBrokerFirstOutreach, BROKER_WA_TEMPLATE_NAME } from '@/lib/brokerOutreachTemplates';
 import VoterAvatar from '@/components/VoterAvatar';
 import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
 import { BrandIcon } from '@/components/BrandIcon';
