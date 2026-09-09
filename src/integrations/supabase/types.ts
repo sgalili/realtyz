@@ -1929,6 +1929,42 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_requests: {
+        Row: {
+          created_at: string
+          first_name: string
+          id: string
+          last_name: string
+          notes: string | null
+          phone: string
+          preferred_at: string
+          source: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          first_name: string
+          id?: string
+          last_name: string
+          notes?: string | null
+          phone: string
+          preferred_at: string
+          source?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          notes?: string | null
+          phone?: string
+          preferred_at?: string
+          source?: string
+          status?: string
+        }
+        Relationships: []
+      }
       demo_sessions: {
         Row: {
           archetype: string | null
