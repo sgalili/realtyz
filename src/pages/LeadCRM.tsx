@@ -227,15 +227,52 @@ function normalizeHeader(h: string): string {
     .toLowerCase();
 }
 
+// Specific fields are matched BEFORE generic ones so a column like "שם משרד"
+// is never swallowed by the generic "שם" (full_name) alias.
+const FIELD_PRIORITY = [
+  'agency_name',
+  'operating_area',
+  'notes',
+  'email',
+  'identity_number',
+  'phone',
+  'city',
+  'interest_tag',
+  'first_name',
+  'last_name',
+  'full_name',
+];
+
 function buildHeaderMap(headers: string[]): Record<string, string> {
   // Returns: { canonicalField: actualHeaderInFile }
   const map: Record<string, string> = {};
   const normalized = headers.map((h) => ({ raw: h, norm: normalizeHeader(h) }));
-  for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
-    const aliasSet = new Set(aliases.map(normalizeHeader));
-    const hit = normalized.find((h) => aliasSet.has(h.norm));
-    if (hit) map[field] = hit.raw;
+  const claimed = new Set<string>();
+  const fields = FIELD_PRIORITY.filter((f) => HEADER_ALIASES[f]).concat(
+    Object.keys(HEADER_ALIASES).filter((f) => !FIELD_PRIORITY.includes(f)),
+  );
+
+  // Pass 1: exact alias match
+  for (const field of fields) {
+    const aliasSet = new Set(HEADER_ALIASES[field].map(normalizeHeader));
+    const hit = normalized.find((h) => !claimed.has(h.raw) && aliasSet.has(h.norm));
+    if (hit) { map[field] = hit.raw; claimed.add(hit.raw); }
   }
+
+  // Pass 2: fuzzy fallback — header CONTAINS an alias (handles "שם המשרד",
+  // "אזור הפעילות", "טלפון נייד", "הערות נוספות", "שם מלא של המתווך"...)
+  for (const field of fields) {
+    if (map[field]) continue;
+    const aliases = HEADER_ALIASES[field]
+      .map(normalizeHeader)
+      .filter((a) => a.length >= 2)
+      .sort((a, b) => b.length - a.length);
+    const hit = normalized.find(
+      (h) => !claimed.has(h.raw) && h.norm && aliases.some((a) => h.norm.includes(a)),
+    );
+    if (hit) { map[field] = hit.raw; claimed.add(hit.raw); }
+  }
+
   return map;
 }
 
