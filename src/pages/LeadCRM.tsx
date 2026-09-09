@@ -826,14 +826,6 @@ const LeadCRM = () => {
     staleTime: 2 * 60 * 1000,
   });
 
-  const { data: campaigns } = useQuery({
-    queryKey: ['campaigns'],
-    queryFn: async () => {
-      const { data } = await supabase.from('campaigns').select('*');
-      return data ?? [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
 
   const selectedVoter = leads?.find((v) => v.id === selectedVoterId);
   const activeVoterMessages = (isDemoMode && selectedVoterId?.startsWith('demo-lead-')
