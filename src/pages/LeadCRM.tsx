@@ -1116,24 +1116,6 @@ const LeadCRM = () => {
     }
   };
 
-  const handleBatchStatus = async (newStatus: string) => {
-    if (blockDemoAction('bulk-status')) return;
-    const ids = Array.from(selectedIds);
-    if (!ids.length) return;
-    try {
-      const { data: count, error } = await supabase.rpc('bulk_update_leads', {
-        lead_ids: ids,
-        new_status: newStatus,
-      });
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
-      setSelectedIds(new Set());
-      toast.success(`${count ?? ids.length} אנשי קשר עודכנו ל-${hebrewLabel(statusHebrew, newStatus)}`);
-    } catch (err: any) {
-      toast.error('שגיאה בעדכון סטטוס: ' + (err?.message || ''));
-    }
-  };
 
   const handleBulkInterestTag = async (tag: string) => {
     if (blockDemoAction('bulk-interest-tag')) return;
