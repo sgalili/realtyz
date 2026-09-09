@@ -439,11 +439,13 @@ export default function Landing() {
           </Reveal>
           <Reveal delay={200}>
 
-            <Link to="/auth" className="mt-10 inline-block">
-              <Button size="lg" className="h-14 px-10 text-base font-extrabold shadow-2xl shadow-primary/25">
-                פתיחת חשבון וכניסה מיידית למערכת
-              </Button>
-            </Link>
+            <div className="mt-10 inline-block">
+              <ScheduleDemoDialog>
+                <Button size="lg" className="h-14 px-10 text-base font-extrabold shadow-2xl shadow-primary/25">
+                  תיאום דמו בזום
+                </Button>
+              </ScheduleDemoDialog>
+            </div>
           </Reveal>
         </div>
       </section>
