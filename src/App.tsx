@@ -19,6 +19,7 @@ import { lazyWithRetry as lazy } from "@/lib/lazyWithRetry";
 import { RealtyzLoader } from "@/components/RealtyzLoader";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import { LISTINGS_ENABLED } from "@/config/workspaceMode";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
