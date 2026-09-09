@@ -44,7 +44,7 @@ const UPDATE_TYPES: { value: UpdateType; label: string; icon: React.ComponentTyp
 ];
 
 const ARCHETYPES: { value: Archetype; label: string; hint: string }[] = [
-  { value: 'all',              label: 'כל המתעניינים', hint: 'ללא חיתוך אבטיפוס' },
+  { value: 'all',              label: 'כל אנשי הקשר', hint: 'ללא חיתוך אבטיפוס' },
   { value: 'buyers_in_city',   label: 'קונים',          hint: 'pipeline = מכירה' },
   { value: 'renters',          label: 'שוכרים',         hint: 'pipeline = השכרה' },
   { value: 'investors',        label: 'משקיעים',        hint: 'תג "השקעה" או שלב qualified' },
@@ -112,7 +112,7 @@ export function CommunityBroadcastPanel() {
     try {
       const data = await callBroadcast('preview') as PreviewResp;
       setPreview(data);
-      if (data.recipient_count === 0) toast.message('הסגמנט לא מצא מתעניינים מתאימים');
+      if (data.recipient_count === 0) toast.message('הסגמנט לא מצא אנשי קשר מתאימים');
     } catch (e: any) {
       toast.error(e?.message || 'התצוגה המקדימה נכשלה');
     } finally {
@@ -139,10 +139,10 @@ export function CommunityBroadcastPanel() {
       <div>
         <h2 className="text-xl font-bold tracking-tight text-primary">Community Broadcast · עדכון לקהילה</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          בחר/י סגמנט, נסח/י עדכון אחד מקצועי, וה-AI יכתוב הודעה אישית לכל מתעניין בסגנון שלך. אין שליחות גנריות.
+          בחר/י סגמנט, נסח/י עדכון אחד מקצועי, וה-AI יכתוב הודעה אישית לכל איש קשר בסגנון שלך. אין שליחות גנריות.
         </p>
         {typeof totalLeads === 'number' && (
-          <p className="text-[11px] text-muted-foreground mt-1">סה"כ מתעניינים פעילים במערכת: {totalLeads}</p>
+          <p className="text-[11px] text-muted-foreground mt-1">סה"כ אנשי קשר פעילים במערכת: {totalLeads}</p>
         )}
       </div>
 
@@ -323,7 +323,7 @@ export function CommunityBroadcastPanel() {
           className="gap-1.5"
         >
           {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          שיגור אישי לכל מתעניין
+          שיגור אישי לכל איש קשר
         </Button>
       </div>
 
@@ -336,14 +336,14 @@ export function CommunityBroadcastPanel() {
               תוצאת התצוגה המקדימה
             </CardTitle>
             <CardDescription className="text-xs">
-              {preview.recipient_count} מתעניינים תואמים את הסגמנט (תקרה: {preview.capped_at}).
+              {preview.recipient_count} אנשי קשר תואמים את הסגמנט (תקרה: {preview.capped_at}).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {preview.sample_draft && (
               <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
                 <Badge variant="outline" className="mb-2 border-primary/40 text-primary">
-                  טיוטה לדוגמה ל{preview.sample_draft.lead_name ?? 'מתעניין'}
+                  טיוטה לדוגמה ל{preview.sample_draft.lead_name ?? 'איש קשר'}
                 </Badge>
                 <pre className="whitespace-pre-wrap font-sans text-[13px] leading-relaxed text-foreground">
                   {preview.sample_draft.message}
@@ -376,7 +376,7 @@ export function CommunityBroadcastPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle>אישור שיגור</AlertDialogTitle>
             <AlertDialogDescription>
-              ה-AI יכתוב הודעה אישית לכל אחד מ-{preview?.recipient_count ?? 0} המתעניינים בסגמנט ויכניס אותן לתור השיגור של {channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}. האם להמשיך?
+              ה-AI יכתוב הודעה אישית לכל אחד מ-{preview?.recipient_count ?? 0} אנשי הקשר בסגמנט ויכניס אותן לתור השיגור של {channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}. האם להמשיך?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -313,7 +313,7 @@ const LiveConversations = () => {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-primary">שיחות חיות</h1>
-        <p className="text-muted-foreground text-sm">צפייה בשיחות AI עם מתעניינים בזמן אמת</p>
+        <p className="text-muted-foreground text-sm">צפייה בשיחות AI עם אנשי קשר בזמן אמת</p>
       </div>
 
       {isDemoMode && (
@@ -329,7 +329,7 @@ const LiveConversations = () => {
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="חיפוש מתעניין..."
+              placeholder="חיפוש איש קשר..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pr-9 bg-background border-primary/15 text-sm h-9"

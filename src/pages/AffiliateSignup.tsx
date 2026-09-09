@@ -18,7 +18,7 @@ import { publicUrl } from '@/lib/publicUrl';
 const PERKS = [
   { icon: Building2, title: 'מאגר נכסים משותף', text: 'נכסים למכירה ולהשכרה שמתווכים פתחו לשיווק על ידכם.' },
   { icon: Handshake, title: 'עמלה ב-3 שלבים', text: 'תגמול על ליד חם, תגמול כפול על ליד שאומת, ובונוס בסגירת עסקה.' },
-  { icon: TrendingUp, title: 'מעקב מלא', text: 'לוח מחוונים עם סטטוס כל מתעניין והתגמול שנצבר.' },
+  { icon: TrendingUp, title: 'מעקב מלא', text: 'לוח מחוונים עם סטטוס כל איש קשר והתגמול שנצבר.' },
 ];
 
 export default function AffiliateSignup() {
@@ -103,7 +103,7 @@ export default function AffiliateSignup() {
             שווקו נכסים של מתווכים אחרים והרוויחו עמלה בכל שלב
           </h1>
           <p className="text-sm text-slate-600">
-            הצטרפו כשותפי שיווק, בחרו נכסים מהזירה המשותפת, הגישו מתעניינים חמים וקבלו תגמול לפי מודל
+            הצטרפו כשותפי שיווק, בחרו נכסים מהזירה המשותפת, הגישו אנשי קשר חמים וקבלו תגמול לפי מודל
             שלושת השלבים שהמתווך קבע לכל נכס.
           </p>
           <ul className="space-y-3">

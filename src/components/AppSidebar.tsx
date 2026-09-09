@@ -70,7 +70,7 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
   },
   {
-    title: 'לקוחות',
+    title: 'אנשי קשר',
     url: '/lead-crm',
     icon: Users,
     iconColor: 'text-emerald-600',

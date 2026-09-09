@@ -206,7 +206,7 @@ const Dashboard = () => {
           id: `inq-${r.id}`,
           type: 'inquiry',
           title: 'פנייה חדשה לנכס',
-          detail: r.full_name || 'מתעניין חדש',
+          detail: r.full_name || 'איש קשר חדש',
           at: r.created_at,
         });
       });
@@ -215,7 +215,7 @@ const Dashboard = () => {
           id: `show-${r.id}`,
           type: 'showing',
           title: 'נקבע סיור בנכס',
-          detail: `${r.lead_name ?? 'מתעניין'} · ${r.title}`,
+          detail: `${r.lead_name ?? 'איש קשר'} · ${r.title}`,
           at: r.created_at,
         });
       });
@@ -232,7 +232,7 @@ const Dashboard = () => {
         items.push({
           id: `rep-${r.id}`,
           type: 'reply',
-          title: 'מתעניין הגיב',
+          title: 'איש קשר הגיב',
           detail: (r.content ?? '').slice(0, 60) || 'הודעה חדשה',
           at: r.created_at,
         });
@@ -297,7 +297,7 @@ const Dashboard = () => {
       <CollapsibleSection
         id="kpis"
         title="מדדים מרכזיים"
-        description="נכסים, מתעניינים, פגישות ועסקאות"
+        description="נכסים, אנשי קשר, פגישות ועסקאות"
         icon={<Building2 className="h-4 w-4 text-primary" />}
       >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
@@ -311,10 +311,10 @@ const Dashboard = () => {
         />
         <KpiCard
           icon={Flame}
-          label="מתעניינים חמים"
+          label="אנשי קשר חמים"
           value={hotLeads ?? 0}
           loading={loadingHot}
-          tooltip="מתעניינים שיצרו אינטראקציה ב-24 השעות האחרונות."
+          tooltip="אנשי קשר שיצרו אינטראקציה ב-24 השעות האחרונות."
           accent="warning"
           to="/lead-crm"
         />
@@ -343,7 +343,7 @@ const Dashboard = () => {
       <CollapsibleSection
         id="activity-and-neighborhoods"
         title="פעילות נדל״ן והתפלגות שכונות"
-        description="פניות, סיורים, חוזים ותגובות מתעניינים"
+        description="פניות, סיורים, חוזים ותגובות אנשי קשר"
         icon={<Home className="h-4 w-4 text-primary" />}
       >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -354,7 +354,7 @@ const Dashboard = () => {
               <Home className="h-4 w-4 text-primary" />
               פעילות נדל״ן בזמן אמת
             </CardTitle>
-            <CardDescription>פניות, סיורים, חוזים ותגובות מתעניינים</CardDescription>
+            <CardDescription>פניות, סיורים, חוזים ותגובות אנשי קשר</CardDescription>
           </CardHeader>
           <CardContent>
             {!activityFeed ? (
@@ -378,7 +378,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
-                מתעניינים לפי שכונה
+                אנשי קשר לפי שכונה
               </CardTitle>
               <CardDescription className="text-xs">6 שכונות מובילות</CardDescription>
             </div>
@@ -437,7 +437,7 @@ const Dashboard = () => {
           <CollapsibleSection id="pending-listings" title="נכסים שזוהו אוטומטית" description="אישור, עריכה או מחיקה של נכסים שהופקו על ידי ה-AI">
             <PendingListingsCard />
           </CollapsibleSection>
-          <CollapsibleSection id="match-progress" title="התאמות לקוחות ונכסים" description="מצב ההתאמות בין מתעניינים לנכסים">
+          <CollapsibleSection id="match-progress" title="התאמות אנשי קשר ונכסים" description="מצב ההתאמות בין אנשי קשר לנכסים">
             <MatchProgressCard />
           </CollapsibleSection>
           <CollapsibleSection id="listing-visibility" title="ניהול חשיפת נכסים" description="נכסים מקודמים ומודגשים">

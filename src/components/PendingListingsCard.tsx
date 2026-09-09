@@ -136,7 +136,7 @@ export function PendingListingsCard() {
               נכסים חדשים שזוהו על ידי ה-AI
             </CardTitle>
             <CardDescription className="text-xs">
-              ה-AI חילץ פרטי נכס משיחות עם מתעניינים. אשר/י, ערוך/י או דחה/י לפני שהם נכנסים ל-CRM.
+              ה-AI חילץ פרטי נכס משיחות עם אנשי קשר. אשר/י, ערוך/י או דחה/י לפני שהם נכנסים ל-CRM.
             </CardDescription>
           </div>
           {!isLoading && (data?.length ?? 0) > 0 && (

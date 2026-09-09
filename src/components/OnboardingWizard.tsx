@@ -456,7 +456,7 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
         {step === 8 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-foreground font-semibold">
-              <MessageSquare className="h-4 w-4 text-primary" /> הודעת פתיחה למתעניינים
+              <MessageSquare className="h-4 w-4 text-primary" /> הודעת פתיחה לאנשי קשר
             </div>
             {draftingMessage ? (
               <div className="flex items-center gap-3 py-8 justify-center text-muted-foreground">
@@ -469,7 +469,7 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
                   value={initialMessage}
                   onChange={(e) => setInitialMessage(e.target.value)}
                   rows={8}
-                  placeholder="ההודעה הראשונה שתישלח לכל מתעניין חדש..."
+                  placeholder="ההודעה הראשונה שתישלח לכל איש קשר חדש..."
                   className="text-sm leading-relaxed"
                   dir="rtl"
                 />

@@ -48,7 +48,7 @@ export const DEMO_SUMMARY = {
 };
 
 export const DEMO_CAMPAIGNS = [
-  { id: '1', name: 'גיוס מתעניינים, דירות 3 חדרים תל אביב', description: 'פרסום לקונים פוטנציאליים בת״א', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
+  { id: '1', name: 'גיוס אנשי קשר, דירות 3 חדרים תל אביב', description: 'פרסום לקונים פוטנציאליים בת״א', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
   { id: '2', name: 'שכירות סטודנטים, ירושלים', description: 'מבצע השכרות לקראת תחילת שנה', status: 'completed', total_sent: 120_000, total_clicks: 38_400, created_at: '2024-12-01' },
   { id: '3', name: 'יד שנייה, ראשון לציון', description: 'נכסים יד שנייה לזוגות צעירים', status: 'active', total_sent: 28_600, total_clicks: 9_100, created_at: '2025-02-10' },
   { id: '4', name: 'משקיעים, נדל"ן מניב בירושלים', description: 'הזדמנויות השקעה לנכסים מניבים', status: 'paused', total_sent: 65_000, total_clicks: 18_200, created_at: '2024-11-20' },
@@ -107,7 +107,7 @@ const deepConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: st
     { role: 'ai', content: 'נהדר. שולח Pin ל-Waze. אם תאהב, אפשר לסגור חוזה כבר השבוע.', month: 3 },
   ],
   3: [ // נועם ברק, חיפה, Sale · משקיע בנכס מניב
-    { role: 'ai', content: 'שלום נועם, אני אודי. ראיתי שאתה מתעניין בנכסים מניבים בחיפה. כבר יש לך תיק או זו השקעה ראשונה?', month: 0 },
+    { role: 'ai', content: 'שלום נועם, אני אודי. ראיתי שאתה איש קשר בנכסים מניבים בחיפה. כבר יש לך תיק או זו השקעה ראשונה?', month: 0 },
     { role: 'lead', content: 'תיק קטן, 2 דירות בקריות. רוצה משהו עם תשואה טובה.', month: 0 },
     { role: 'ai', content: 'יש לי דירת 3 חדרים בהדר משופצת, מושכרת ב-3,800 ש״ח, נמכרת ב-1.05 מיליון. תשואה ~4.3%.', month: 1 },
     { role: 'lead', content: 'מעניין. מה לגבי הוצאות ועד וארנונה?', month: 1 },
@@ -116,7 +116,7 @@ const deepConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: st
     { role: 'ai', content: 'יום שני 11:00 בבוקר. אקח אותך גם לעוד נכס דומה ברחוב מסדה לשם השוואה.', month: 4 },
   ],
   4: [ // יוספה אברהם, באר שבע, Rent · סטודנטים
-    { role: 'ai', content: 'היי יוספה, אני אודי. ראיתי שאת מחפשת דירת שותפים מתעניין אוניברסיטת בן גוריון.', month: 0 },
+    { role: 'ai', content: 'היי יוספה, אני אודי. ראיתי שאת מחפשת דירת שותפים איש קשר אוניברסיטת בן גוריון.', month: 0 },
     { role: 'lead', content: 'כן, מ-1 לאוקטובר. עד 1,800 ש״ח לחדר.', month: 0 },
     { role: 'ai', content: 'יש לי 4 חדרים בשכונת ד׳, חדר פרטי 1,650 ש״ח, כולל אינטרנט. שותפות נחמדות.', month: 1 },
     { role: 'lead', content: 'נשמע טוב. אפשר לבוא לראות?', month: 2 },
@@ -138,7 +138,7 @@ const shortConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: s
     { role: 'ai', content: 'יש לי דירה ברחוב ההגנה, 4 חדרים, 105 מ״ר, חניה, 7,300 ש״ח. אפשר לסייר מחר ב-18:00.', month: 1 },
   ],
   7: [ // שמעון, אשדוד, Sale · קבלן
-    { role: 'ai', content: 'היי שמעון, אני אודי. ראיתי שאתה מתעניין בפרויקט החדש מקבלן באשדוד.', month: 0 },
+    { role: 'ai', content: 'היי שמעון, אני אודי. ראיתי שאתה איש קשר בפרויקט החדש מקבלן באשדוד.', month: 0 },
     { role: 'lead', content: 'כן, 3 חדרים. יש זכאות משכנתא לזכאים?', month: 0 },
     { role: 'ai', content: 'יש מסלול לזכאי משרד השיכון, מחיר החל מ-1.69 מיליון. אשלח לך מסמך מלא.', month: 1 },
     { role: 'lead', content: 'תודה, אקרא ואחזור אליך.', month: 2 },
@@ -240,7 +240,7 @@ const demoTopics = [
   { tag: 'דירה למכירה', key: 'sale_apt',     listing_type: 'sale' as const, voter: 'מחפש לקנות 3 חדרים, עד 2.5 מיליון.', ai: 'מעולה. אאסוף 3 נכסים שמתאימים בדיוק ואשלח עוד היום.' },
   { tag: 'דירה להשכרה', key: 'rent_apt',     listing_type: 'rent' as const, voter: 'מחפש דירה להשכרה, מ-1 לחודש.', ai: 'יש לי כמה אפשרויות מדויקות לתאריך. שולח עכשיו.' },
   { tag: 'נכס מניב',    key: 'investment',   listing_type: 'sale' as const, voter: 'מחפש השקעה בתשואה 4%+ לשנה.', ai: 'אצרף 3 נכסים מניבים עם גיליון תשואה נטו מלא.' },
-  { tag: 'שכירות סטודנטים', key: 'rent_student', listing_type: 'rent' as const, voter: 'דירת שותפים מתעניין האוניברסיטה.', ai: 'יש לי שתיים פנויות מאוקטובר. אקבע סיור.' },
+  { tag: 'שכירות סטודנטים', key: 'rent_student', listing_type: 'rent' as const, voter: 'דירת שותפים איש קשר האוניברסיטה.', ai: 'יש לי שתיים פנויות מאוקטובר. אקבע סיור.' },
   { tag: 'בית פרטי',    key: 'house_sale',   listing_type: 'sale' as const, voter: 'בית פרטי עם גינה למשפחה.', ai: 'מצוין. אאתר נכסים עם גינה לפי תקציב ויישוב.' },
 ];
 
@@ -344,8 +344,8 @@ export const DEMO_SOCIAL_METRICS = [
 ];
 
 export const DEMO_LIVE_ACTIONS = [
-  'שיחת AI Voice הסתיימה עם דני כהן · סווג כמתעניין חם למכירה',
-  'מתעניין חדש מאינסטגרם נכנס לניהול מתעניינים השכרות בת״א',
+  'שיחת AI Voice הסתיימה עם דני כהן · סווג כאיש קשר חם למכירה',
+  'איש קשר חדש מאינסטגרם נכנס לניהול אנשי קשר השכרות בת״א',
   'פרסום WhatsApp לדירת 3 חד׳ ברמת גן הגיע ל-85% מסירה',
   'ה-AI ענה אוטומטית ל-14 שאלות לגבי משכנתא וזכאות',
   'בקשת סיור התקבלה מפייסבוק · נכס למכירה בראשון לציון',
@@ -439,7 +439,7 @@ export const DEMO_CANDIDATES: Array<{
     electionType: 'national',
     scale: 'medium',
     focus: ['יוקר המחיה', 'ביטחון אישי', 'אחדות'],
-    crisis: 'תחרות על מתעניינים מתלבטים מול גוש שכן',
+    crisis: 'תחרות על אנשי קשר מתלבטים מול גוש שכן',
     narrative: 'מפלגה בינונית במרוץ הארצי: מאבק על מתלבטים בגוש, ניהול הדוק של שיח רשתות והקרנת יציבות.',
   },
   {
@@ -807,7 +807,7 @@ export const getDemoUpgradePath = (candidateId?: DemoCandidateId | null) => {
         sms: { current: 5_000, next: 15_000, unit: 'הודעות / חודש' },
         voice: { current: 500, next: 2_000, unit: 'דקות / חודש' },
         ai_touchpoints: { current: 50_000, next: 200_000, unit: 'אינטראקציות / חודש' },
-        reach: { current: 5_000, next: 50_000, unit: 'מתעניינים פעילים' },
+        reach: { current: 5_000, next: 50_000, unit: 'אנשי קשר פעילים' },
         channels: { current: 2, next: 3, unit: 'ערוצי שידור מקבילים' },
         ai_speed: { current: 1, next: 2, unit: 'מהירות עיבוד AI (פי)' },
       },
@@ -837,7 +837,7 @@ export const getDemoUpgradePath = (candidateId?: DemoCandidateId | null) => {
       sms: { current: 15_000, next: 60_000, unit: 'הודעות / חודש' },
       voice: { current: 2_000, next: 10_000, unit: 'דקות / חודש' },
       ai_touchpoints: { current: 200_000, next: 1_000_000, unit: 'אינטראקציות / חודש' },
-      reach: { current: 50_000, next: 250_000, unit: 'מתעניינים פעילים' },
+      reach: { current: 50_000, next: 250_000, unit: 'אנשי קשר פעילים' },
       channels: { current: 3, next: 99, unit: 'ערוצי שידור מקבילים' },
       ai_speed: { current: 2, next: 4, unit: 'מהירות עיבוד AI (פי)' },
     },
@@ -1026,7 +1026,7 @@ export const getDemoMetaAdCampaigns = (candidateId?: DemoCandidateId | null) => 
       metrics: { spend: 4_280, engagements: 12_450, cpa: 3.4, roas: 0 },
       creative_variants: [
         { headline: 'מזהים. מנתחים. סוגרים.', primary_text: 'בשן, הרצליה: 4 חדרים במחיר של 2. מציאת שוק אמיתית.' },
-        { headline: 'הנכס שלך הופך לעסקה.', primary_text: 'מתעניינים מסוננים, פגישות מתואמות, סגירה מהירה.' },
+        { headline: 'הנכס שלך הופך לעסקה.', primary_text: 'אנשי קשר מסוננים, פגישות מתואמות, סגירה מהירה.' },
         { headline: 'תוכנית עבודה למכירה בשיא.', primary_text: 'תמחור מבוסס נתוני שוק חיים, חשיפה לקהל הנכון.' },
       ],
     },
@@ -1156,7 +1156,7 @@ export const getDemoConversationAnalytics = (candidateId?: DemoCandidateId | nul
     ],
     aiInsights: [
       `עליה של 22% בשיח על ${focus[0] ?? 'ביטחון'} בשכונות דרום העיר - מומלץ לתגבר נוכחות דיגיטלית שם.`,
-      `המתעניינים מגיבים בחיוב למסרים של אחדות בקמפיין של ${candidate.name} (סנטימנט 74%+).`,
+      `אנשי הקשר מגיבים בחיוב למסרים של אחדות בקמפיין של ${candidate.name} (סנטימנט 74%+).`,
       `זוהתה התנגדות סביב נושא ${focus[1] ?? 'המיסוי המקומי'} - מומלץ לעדכן את דף המסרים (Knowledge Base).`,
     ],
     sampleConversations: [

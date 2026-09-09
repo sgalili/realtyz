@@ -95,7 +95,7 @@ export const EmailAliasSetupDialog = ({
             הגדרת דואר אלקטרוני מקצועי
           </DialogTitle>
           <DialogDescription className="text-right text-[12px] text-muted-foreground">
-            בחרו את ה-prefix של תיבת המייל המותגית שלכם. כתובת זו תשמש לשליחה וקבלת הודעות עם מתעניינים.
+            בחרו את ה-prefix של תיבת המייל המותגית שלכם. כתובת זו תשמש לשליחה וקבלת הודעות עם אנשי קשר.
           </DialogDescription>
         </DialogHeader>
 

@@ -495,7 +495,7 @@ export const UniversalKnowledgeInput = () => {
               />
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 המערכת תזקק את התוכן לעקרונות, טכניקות וניסוחים עבור הפרסונה שלך —
-                ותשמור את הקישור בספריית המדיה. המקור לעולם לא ייחשף ללקוחות.
+                ותשמור את הקישור בספריית המדיה. המקור לעולם לא ייחשף לאנשי קשר.
               </p>
             </div>
             <div className="flex items-center justify-between">

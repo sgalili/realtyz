@@ -157,7 +157,7 @@ export default function BusinessPerformance() {
     const f = perf?.funnel;
     if (!f) return [];
     return [
-      { key: 'leads',     label: 'מתעניינים',  value: f.leads,     color: 'hsl(217 91% 60%)' },
+      { key: 'leads',     label: 'אנשי קשר',  value: f.leads,     color: 'hsl(217 91% 60%)' },
       { key: 'qualified', label: 'מוסמכים',     value: f.qualified, color: 'hsl(199 89% 48%)' },
       { key: 'meetings',  label: 'פגישות',      value: f.meetings,  color: 'hsl(43 96% 56%)'  },
       { key: 'offers',    label: 'הצעות',       value: f.offers,    color: 'hsl(24 95% 53%)'  },
@@ -224,7 +224,7 @@ export default function BusinessPerformance() {
           tone="text-foreground"
           label="שיעור המרה כולל"
           value={perf ? `${conversionRate}%` : null}
-          hint="מתעניין → עסקה סגורה"
+          hint="איש קשר → עסקה סגורה"
         />
       </div>
 
@@ -271,7 +271,7 @@ export default function BusinessPerformance() {
                         borderRadius: '6px',
                         fontSize: '12px',
                       }}
-                      formatter={(v: number) => [v, 'מתעניינים']}
+                      formatter={(v: number) => [v, 'אנשי קשר']}
                     />
                     <Bar dataKey="value" radius={[0, 6, 6, 0]}>
                       {funnelData.map((d) => (
@@ -319,7 +319,7 @@ export default function BusinessPerformance() {
             <Skeleton className="h-32 w-full" />
           ) : !perf || perf.efficiency.length === 0 ? (
             <div className="text-sm text-muted-foreground py-6 text-center">
-              עדיין אין נתוני הסמכה. תייג מתעניינים כ"מוסמך" כדי שהמערכת תחשב את הזמן הממוצע.
+              עדיין אין נתוני הסמכה. תייג אנשי קשר כ"מוסמך" כדי שהמערכת תחשב את הזמן הממוצע.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -337,7 +337,7 @@ export default function BusinessPerformance() {
                     {formatHours(row.avg_hours)}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    מתעניין → מוסמך
+                    איש קשר → מוסמך
                   </div>
                 </div>
               ))}
@@ -351,7 +351,7 @@ export default function BusinessPerformance() {
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Banknote className="h-4 w-4 text-primary" />
-            ייחוס הכנסות (עמלה לכל מתעניין)
+            ייחוס הכנסות (עמלה לכל איש קשר)
           </CardTitle>
           <p className="text-[11px] text-muted-foreground">
             הקלד עמלה משוערת ותאריך סגירה כדי להזין את הצפי החודשי
@@ -362,7 +362,7 @@ export default function BusinessPerformance() {
             <Skeleton className="h-48 w-full" />
           ) : !leadsForCommission || leadsForCommission.length === 0 ? (
             <div className="text-sm text-muted-foreground py-6 text-center">
-              אין מתעניינים בחלון הזמן הנוכחי.
+              אין אנשי קשר בחלון הזמן הנוכחי.
             </div>
           ) : (
             <ScrollArea className="h-80">
@@ -376,7 +376,7 @@ export default function BusinessPerformance() {
                     >
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium truncate">
-                          {l.full_name || 'מתעניין ללא שם'}
+                          {l.full_name || 'איש קשר ללא שם'}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           {stageBadge && (

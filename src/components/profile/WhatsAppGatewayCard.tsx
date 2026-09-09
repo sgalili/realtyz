@@ -356,7 +356,7 @@ export function WhatsAppGatewayCard() {
             size="sm"
             onClick={() => syncAvatars(false)}
             disabled={syncingAvatars || avatarSync.active || loading}
-            title="משוך תמונות פרופיל מ-WhatsApp לכל המתעניינים החסרים תמונה"
+            title="משוך תמונות פרופיל מ-WhatsApp לכל אנשי הקשר החסרים תמונה"
             className="px-2 text-xs whitespace-nowrap"
           >
             {syncingAvatars || avatarSync.active ? (

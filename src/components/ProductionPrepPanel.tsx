@@ -59,7 +59,7 @@ export function ProductionPrepPanel() {
       if (error) throw error;
       const r = data as any;
       if (r?.status === 'exists') toast.info('נתוני דמו כבר טעונים');
-      else toast.success(`נטענו ${r?.leads ?? 0} מתעניינים ו-${r?.listings ?? 0} נכסים לדוגמה`);
+      else toast.success(`נטענו ${r?.leads ?? 0} אנשי קשר ו-${r?.listings ?? 0} נכסים לדוגמה`);
       qc.invalidateQueries();
     } catch (e: any) {
       toast.error('שגיאה בטעינת דמו', { description: e.message });
@@ -72,7 +72,7 @@ export function ProductionPrepPanel() {
       const { data, error } = await supabase.rpc('wipe_demo_data' as any);
       if (error) throw error;
       const r = data as any;
-      toast.success(`נמחקו ${r?.leads ?? 0} מתעניינים ו-${r?.listings ?? 0} נכסים מסומני דמו`);
+      toast.success(`נמחקו ${r?.leads ?? 0} אנשי קשר ו-${r?.listings ?? 0} נכסים מסומני דמו`);
       qc.invalidateQueries();
     } catch (e: any) {
       toast.error('שגיאה במחיקת דמו', { description: e.message });
@@ -106,7 +106,7 @@ export function ProductionPrepPanel() {
 
   const clearPersonalData = async () => {
     if (!leadIdToClear.trim()) {
-      toast.error('יש להזין מזהה מתעניין');
+      toast.error('יש להזין מזהה איש קשר');
       return;
     }
     setClearBusy(true);
@@ -197,7 +197,7 @@ export function ProductionPrepPanel() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Download className="h-4 w-4 text-primary" />
-            ייצוא כל המתעניינים (גיבוי / Backup)
+            ייצוא כל אנשי הקשר (גיבוי / Backup)
           </CardTitle>
           <CardDescription className="text-xs">
             הנתונים שלך — בבעלותך. יצא לקובץ CSV או Excel בכל רגע.
@@ -223,12 +223,12 @@ export function ProductionPrepPanel() {
             מחיקת פרטים אישיים (GDPR / חוק הגנת הפרטיות)
           </CardTitle>
           <CardDescription className="text-xs">
-            לבקשת מחיקה של מתעניין: שם, טלפון, אימייל, ת.ז ופרופילים חברתיים יוחלפו ב-[REDACTED]. הרשומה תישאר לצרכי אנליטיקה אנונימית.
+            לבקשת מחיקה של איש קשר: שם, טלפון, אימייל, ת.ז ופרופילים חברתיים יוחלפו ב-[REDACTED]. הרשומה תישאר לצרכי אנליטיקה אנונימית.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="lead-id-pii" className="text-xs">מזהה מתעניין (Lead ID)</Label>
+            <Label htmlFor="lead-id-pii" className="text-xs">מזהה איש קשר (Lead ID)</Label>
             <Input
               id="lead-id-pii"
               dir="ltr"
@@ -249,7 +249,7 @@ export function ProductionPrepPanel() {
               <AlertDialogHeader>
                 <AlertDialogTitle>לאשר מחיקת פרטים אישיים?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  הפעולה אינה הפיכה. כל פרטי הקשר וההודעות של המתעניין יוחלפו ב-[REDACTED] ויירשם תיעוד ב-audit log.
+                  הפעולה אינה הפיכה. כל פרטי הקשר וההודעות של איש הקשר יוחלפו ב-[REDACTED] ויירשם תיעוד ב-audit log.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

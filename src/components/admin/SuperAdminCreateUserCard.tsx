@@ -81,7 +81,7 @@ export function SuperAdminCreateUserCard() {
           <UserPlus className="h-4 w-4 text-primary" /> יצירת משתמש חדש (Workspace)
         </CardTitle>
         <CardDescription>
-          כל משתמש שייווצר כאן יקבל מרחב עבודה נפרד עם 1,000 ₪ יתרה, חבילה ללא הגבלת מתעניינים/נכסים/דאטה.
+          כל משתמש שייווצר כאן יקבל מרחב עבודה נפרד עם 1,000 ₪ יתרה, חבילה ללא הגבלת אנשי קשר/נכסים/דאטה.
           לא נשלח OTP אוטומטית — בתצוגה מקדימה המשתמש החדש יכול להיכנס עם קוד מאסטר <code className="font-mono">9321</code>.
         </CardDescription>
       </CardHeader>

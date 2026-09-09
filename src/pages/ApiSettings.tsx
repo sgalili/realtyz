@@ -864,10 +864,10 @@ const ApiSettings = () => {
 
       <UsageMeterPanel />
 
-      <SectionShell title="פרטיות ו-GDPR" subtitle="מסכת PII, ביקורת ומחיקת מתעניין לצמיתות">
+      <SectionShell title="פרטיות ו-GDPR" subtitle="מסכת PII, ביקורת ומחיקת איש קשר לצמיתות">
         <p className="text-xs text-muted-foreground">
           נתונים אישיים (ת.ז., אימיילים, טלפונים) מוסתרים אוטומטית לפני שליחה ל-AI וביומני הצוות.
-          כל ייצוא/מחיקה של מתעניין נרשם ביומן ביקורת בלתי-ניתן-לעריכה.
+          כל ייצוא/מחיקה של איש קשר נרשם ביומן ביקורת בלתי-ניתן-לעריכה.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="default" size="sm">
@@ -877,7 +877,7 @@ const ApiSettings = () => {
             </a>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <a href="/privacy">ייצוא נתוני מתעניין</a>
+            <a href="/privacy">ייצוא נתוני איש קשר</a>
           </Button>
         </div>
       </SectionShell>
@@ -886,8 +886,8 @@ const ApiSettings = () => {
         <div className="rounded-lg overflow-hidden">
           <FeatureRow
             title="AI Touchpoint (שיחות AI)"
-            description="בוט קולי שמתקשר למתעניינים חמים"
-            learnMore="AI Touchpoint מפעיל בוט קולי שמתקשר באופן יזום למתעניינים חמים, מנהל שיחה קצרה, מסווג עניין ומעדכן את ה-CRM."
+            description="בוט קולי שמתקשר לאנשי קשר חמים"
+            learnMore="AI Touchpoint מפעיל בוט קולי שמתקשר באופן יזום לאנשי קשר חמים, מנהל שיחה קצרה, מסווג עניין ומעדכן את ה-CRM."
             icon={Phone}
             iconColor="text-blue-500"
             serviceKey="ai_voice"
@@ -1039,7 +1039,7 @@ const ApiSettings = () => {
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground">
-            הקטגוריה (קונה / שוכר / מוכר וכו׳) נגזרת אוטומטית מסוג העסקה והעדפות המתעניין.
+            הקטגוריה (קונה / שוכר / מוכר וכו׳) נגזרת אוטומטית מסוג העסקה והעדפות איש הקשר.
           </p>
         </div>
 

@@ -44,7 +44,7 @@ export function ComplianceReport({ data }: { data?: ReportData }) {
       lines.push(`שלילי,${data.sentimentBreakdown.negative},${Math.round(data.sentimentBreakdown.negative / total * 100)}%`);
       lines.push('');
       lines.push('=== התפלגות גיאוגרפית ===');
-      lines.push('עיר,מתעניינים,חיובי,ניטרלי,שלילי');
+      lines.push('עיר,אנשי קשר,חיובי,ניטרלי,שלילי');
       data.cityClusters
         .sort((a, b) => b.count - a.count)
         .forEach(c => {

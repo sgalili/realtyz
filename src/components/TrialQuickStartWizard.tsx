@@ -227,7 +227,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
       }
       const phone = normalizeIsraeliPhone(phoneRaw);
       if (!phone) continue;
-      out.push({ name: name || 'מתעניין/ת', phone });
+      out.push({ name: name || 'איש קשר/ת', phone });
     }
     return out.slice(0, TRIAL_RECORD_CAP);
   };
@@ -262,7 +262,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
         }
         return;
       }
-      toast.success(`${slice.length} מתעניינים נוספו לרשימה`);
+      toast.success(`${slice.length} אנשי קשר נוספו לרשימה`);
       setVoterCount((c) => c + slice.length);
       setRecipientsText('');
     } catch (e: any) {
@@ -279,7 +279,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
           platform: 'whatsapp',
-          topic: 'הודעת היכרות ראשונה למתעניינים פוטנציאליים בעברית, חמה ואישית, עד 280 תווים, ללא מיתוג חיצוני',
+          topic: 'הודעת היכרות ראשונה לאנשי קשר פוטנציאליים בעברית, חמה ואישית, עד 280 תווים, ללא מיתוג חיצוני',
         },
       });
       if (error) throw error;
@@ -493,7 +493,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
               <div>
                 <h3 className="text-base font-semibold">קהל יעד</h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  הדבק רשימה של מתעניינים: שם וטלפון, מופרדים בפסיק. עד {TRIAL_RECORD_CAP} רשומות בניסיון. כעת יש לך {voterCount}/{TRIAL_RECORD_CAP}.
+                  הדבק רשימה של אנשי קשר: שם וטלפון, מופרדים בפסיק. עד {TRIAL_RECORD_CAP} רשומות בניסיון. כעת יש לך {voterCount}/{TRIAL_RECORD_CAP}.
                 </p>
               </div>
               <Textarea
@@ -542,7 +542,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
                   disabled={launching || isTrialExpired || !welcomeMsg.trim()}
                   className="bg-primary"
                 >
-                  {launching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `שגר ל-${voterCount} מתעניינים`}
+                  {launching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `שגר ל-${voterCount} אנשי קשר`}
                 </Button>
               </div>
               {launchedCount !== null && (
@@ -556,7 +556,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
                     className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-gradient-to-l from-amber-500/10 to-amber-500/5 px-4 py-2.5 text-sm font-semibold text-amber-600 hover:from-amber-500/15 hover:to-amber-500/10 transition-colors"
                   >
                     <Sparkles className="h-4 w-4" />
-                    שדרג ל-VIP Setup ופתח את המערכת לאלפי מתעניינים
+                    שדרג ל-VIP Setup ופתח את המערכת לאלפי אנשי קשר
                   </a>
                 </div>
               )}

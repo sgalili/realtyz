@@ -76,7 +76,7 @@ export default function PlatformSettingsPage() {
         <div>
           <h1 className="text-2xl font-semibold">הגדרות פלטפורמה</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            הפעלה וכיבוי של מודולים בפלטפורמה. ההגדרות פרטיות לחשבון שלך, ומוסתרות מלקוחות.
+            הפעלה וכיבוי של מודולים בפלטפורמה. ההגדרות פרטיות לחשבון שלך, ומוסתרות מאנשי קשר.
           </p>
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function PlatformSettingsPage() {
       <Card className="border-dashed">
         <CardContent className="py-3 flex items-center gap-2 text-xs text-muted-foreground">
           <Lock className="h-3.5 w-3.5" />
-          חשוף רק למנהלי הסוכנות. אינו נראה ללקוחות או למתעניינים.
+          חשוף רק למנהלי הסוכנות. אינו נראה לאנשי קשר או לאנשי קשר.
         </CardContent>
       </Card>
 

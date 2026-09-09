@@ -235,7 +235,7 @@ export default function MassiveImporter() {
         .eq('is_demo', false);
       const existing = existingCount ?? 0;
       if (existing + parsed.rows.length > TRIAL_RECORD_CAP) {
-        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר המתעניינים שלך', {
+        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר אנשי הקשר שלך', {
           duration: 8000,
           action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
         });
@@ -312,7 +312,7 @@ export default function MassiveImporter() {
         s.errors += chunk.length;
         console.error('Chunk error:', error);
         if (typeof error.message === 'string' && error.message.includes('TRIAL_RECORD_LIMIT')) {
-          toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר המתעניינים שלך', {
+          toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר אנשי הקשר שלך', {
             duration: 8000,
             action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
           });

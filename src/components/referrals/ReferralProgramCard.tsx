@@ -20,7 +20,7 @@ export function ReferralProgramCard() {
 
   const shareWa = () => {
     if (!link) return;
-    const text = `היי, אני עובד עם רילטיז — צבא סוכני AI שמנהל לקוחות, נכסים ושיווק. הרשמה חינם דרך הקישור: ${link}`;
+    const text = `היי, אני עובד עם רילטיז — צבא סוכני AI שמנהל אנשי קשר, נכסים ושיווק. הרשמה חינם דרך הקישור: ${link}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 

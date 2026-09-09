@@ -124,7 +124,7 @@ const PLATFORMS: Platform[] = [
   {
     id: 'Resend',
     label: 'Resend (אימייל טרנזקציוני)',
-    hint: 'שליחת אימיילים מערכתיים וטפסים ללקוחות.',
+    hint: 'שליחת אימיילים מערכתיים וטפסים לאנשי קשר.',
     link: { url: 'https://resend.com/api-keys', label: 'Resend API Keys' },
     instructions: ['Resend → API Keys → Create.', 'הוסף דומיין מאומת כדי לשלוח מ-realtyz.co.il.'],
     fields: [{ name: 'api_key', label: 'Resend API Key', type: 'password' }],
