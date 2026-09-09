@@ -1419,6 +1419,7 @@ const LeadCRM = () => {
               identity_number: r.identity_number || null,
               status: 'uploaded',
               deal_type: dealType,
+              assigned_to: activeWorkspaceId ?? user?.id ?? null,
               preferences: {
                 lead_kind: importLeadKind,
                 ...(r.extra && Object.keys(r.extra).length ? { extra_fields: r.extra } : {}),
@@ -1477,6 +1478,7 @@ const LeadCRM = () => {
           identity_number: r.identity_number || null,
           status: 'uploaded',
           deal_type: dealType,
+          assigned_to: activeWorkspaceId ?? user?.id ?? null,
           // Persist the agent-chosen kind AND every original column from the file
           // under preferences.extra_fields so nothing the user uploaded is lost.
           preferences: {
