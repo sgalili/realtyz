@@ -730,9 +730,17 @@ Deno.serve(async (req) => {
               firstCommentError = `${c.error} — התגובה הראשונה הועברה לתוסף הדפדפן לפרסום אוטומטי.`;
               warnings.push(firstCommentError);
             } else {
+              // Any other Graph failure (transient error, permission hiccup):
+              // still guarantee the first comment lands by handing it to the
+              // browser extension queue instead of silently dropping it.
               console.error("[meta-publish] first comment failed", res.id, JSON.stringify(c.raw));
-              firstCommentError = c.error;
-              warnings.push(c.error);
+              firstCommentExtensionPayload = {
+                post_id: res.id,
+                post_url: `https://www.facebook.com/${res.id}`,
+                first_comment: firstComment,
+              };
+              firstCommentError = `${c.error} — התגובה הראשונה הועברה לתוסף הדפדפן לפרסום אוטומטי.`;
+              warnings.push(firstCommentError);
             }
           }
 
