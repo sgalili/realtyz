@@ -465,7 +465,6 @@ const LeadCRM = () => {
   };
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportRow[]>([]);
   const [importStats, setImportStats] = useState<{ total: number; valid: number; duplicates: number; invalid: number; healthPct: number; detectedFields: string[]; missingPhone: boolean } | null>(null);
@@ -1022,21 +1021,13 @@ const LeadCRM = () => {
   const openBatchDeleteDialog = () => {
     if (blockDemoAction('delete-leads')) return;
     if (!selectedIds.size) return;
-    setDeleteConfirmText('');
+
     setDeleteDialogOpen(true);
   };
 
   const confirmBatchDelete = async () => {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
-    if (ids.length > 50 && !isAdmin) {
-      toast.error('מחיקה של מעל 50 רשומות דורשת הרשאת מנהל');
-      return;
-    }
-    if (deleteConfirmText.trim() !== 'DELETE') {
-      toast.error('יש להקליד DELETE באותיות גדולות לאישור');
-      return;
-    }
     setDeleting(true);
     try {
       const { data, error } = await supabase.rpc('delete_leads_cascade', { _ids: ids });
@@ -1056,7 +1047,7 @@ const LeadCRM = () => {
       ]);
       setSelectedIds(new Set());
       setDeleteDialogOpen(false);
-      setDeleteConfirmText('');
+      
       toast.success(`${deleted} מתעניינים נמחקו בהצלחה`);
     } finally {
       setDeleting(false);
@@ -2766,22 +2757,6 @@ const LeadCRM = () => {
                   </span>{' '}
                   מתעניינים. פעולה זו <span className="font-bold">בלתי הפיכה</span> ותסיר את כל ההיסטוריה, ההודעות והפגישות המשויכות.
                 </div>
-                {selectedIds.size > 50 && !isAdmin && (
-                  <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
-                    מחיקה של מעל 50 רשומות חסומה עבור משתמש שאינו מנהל. פנה למנהל המערכת.
-                  </div>
-                )}
-                <div className="pt-2">
-                  הקלד <span className="font-mono font-bold">DELETE</span> כדי לאשר:
-                </div>
-                <Input
-                  dir="ltr"
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  placeholder="DELETE"
-                  autoFocus
-                  disabled={deleting}
-                />
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -2789,11 +2764,7 @@ const LeadCRM = () => {
             <AlertDialogCancel disabled={deleting}>ביטול</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); confirmBatchDelete(); }}
-              disabled={
-                deleting ||
-                deleteConfirmText.trim() !== 'DELETE' ||
-                (selectedIds.size > 50 && !isAdmin)
-              }
+              disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? 'מוחק...' : `מחק ${selectedIds.size.toLocaleString('he-IL')} לצמיתות`}
