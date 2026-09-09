@@ -190,7 +190,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             איש קשר חדש
           </DialogTitle>
           <DialogDescription>
-            בחרו תחילה את סוג העסקה — השדות יותאמו אוטומטית לניהול אנשי קשר הנכון.
+            {'\\n'}
           </DialogDescription>
         </DialogHeader>
 
