@@ -210,7 +210,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     setSaving(true);
     try {
       const ownerId = await resolveOwnerId();
-      const { data: created, error } = await supabase.from('leads').insert({
+      const payload = {
         full_name: fullName.trim(),
         phone_number: normalizedPhone,
         email: email.trim() || null,
@@ -222,18 +222,64 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         status: 'new',
         assigned_to: ownerId,
         interest_tag: KIND_MAP[leadKind].tag,
-      } as any).select('id').maybeSingle();
-      if (error) throw error;
+      } as any;
+
+      let created: any = null;
+      let merged = false;
+
+      const ins = await supabase.from('leads').insert(payload).select('id').maybeSingle();
+      if (ins.error) {
+        const dup =
+          ins.error.code === '23505' ||
+          /duplicate key value|leads_phone_number/i.test(ins.error.message || '');
+        if (!dup) throw ins.error;
+
+        // A contact with this phone already exists — merge into it instead of failing.
+        const existing = await supabase
+          .from('leads')
+          .select('id')
+          .eq('phone_number', normalizedPhone)
+          .limit(1)
+          .maybeSingle();
+        if (existing.error || !existing.data?.id) {
+          toast.error('קיים כבר איש קשר עם מספר הטלפון הזה', {
+            description: 'חפשו אותו ברשימת אנשי הקשר ועדכנו את הפרטים שם.',
+          });
+          return;
+        }
+        const upd = await supabase
+          .from('leads')
+          .update({
+            full_name: payload.full_name,
+            email: payload.email,
+            city: payload.city,
+            neighborhood: payload.neighborhood,
+            deal_type: payload.deal_type,
+            preferences: payload.preferences,
+            interest_tag: payload.interest_tag,
+          } as any)
+          .eq('id', existing.data.id)
+          .select('id')
+          .maybeSingle();
+        if (upd.error) throw upd.error;
+        created = upd.data;
+        merged = true;
+      } else {
+        created = ins.data;
+      }
+
       // Background WhatsApp profile-picture hydration — never blocks the save.
-      if ((created as any)?.id) {
+      if (created?.id) {
         supabase.functions
-          .invoke('fetch-wa-avatars', { body: { lead_ids: [(created as any).id] } })
+          .invoke('fetch-wa-avatars', { body: { lead_ids: [created.id] } })
           .then(() => queryClient.invalidateQueries({ queryKey: ['leads'] }))
           .catch(() => {});
       }
 
-      toast.success('איש הקשר נוצר בהצלחה', {
-        description: `${fullName.trim()} · ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}`,
+      toast.success(merged ? 'איש הקשר עודכן' : 'איש הקשר נוצר בהצלחה', {
+        description: merged
+          ? `${fullName.trim()} · כבר היה במאגר עם אותו טלפון, הפרטים עודכנו`
+          : `${fullName.trim()} · ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}`,
       });
       reset();
       onOpenChange(false);
@@ -245,6 +291,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     } finally {
       setSaving(false);
     }
+
   }
 
   return (
