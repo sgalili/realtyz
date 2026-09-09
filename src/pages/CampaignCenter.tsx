@@ -4243,11 +4243,16 @@ const PublishedFeed = ({
   // When a real row lands with matching body, drop the optimistic entry.
   useEffect(() => {
     if (!rows || optimisticRows.length === 0) return;
-    setOptimisticRows((prev) => prev.filter((opt) => {
-      const bodyKey = String(opt.message_body || '').trim().slice(0, 80);
-      const match = rows.find((r) => String(r.message_body || '').trim().slice(0, 80) === bodyKey && String(r.channel).toLowerCase() === opt.channel);
-      return !match;
-    }));
+    setOptimisticRows((prev) => {
+      const kept = prev.filter((opt) => {
+        const bodyKey = String(opt.message_body || '').trim().slice(0, 80);
+        const match = rows.find((r) => String(r.message_body || '').trim().slice(0, 80) === bodyKey && String(r.channel).toLowerCase() === opt.channel);
+        return !match;
+      });
+      // Identity-stable: never hand back a fresh array when nothing changed —
+      // that re-rendered every card on each feed tick and caused the flicker.
+      return kept.length === prev.length ? prev : kept;
+    });
   }, [rows]);
 
   // Circuit-breaker countdown: DISABLED via emergency override — publishing is
