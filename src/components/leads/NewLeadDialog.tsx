@@ -31,7 +31,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPlus, Home, KeyRound } from 'lucide-react';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
