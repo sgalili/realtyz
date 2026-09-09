@@ -2455,6 +2455,57 @@ const LeadCRM = () => {
                     );
                   })()}
 
+                  {/* Broker details — agency / operating area / notes */}
+                  {(() => {
+                    const lead: any = selectedVoter;
+                    const isBroker = (lead?.preferences?.lead_kind ?? '') === 'broker';
+                    const hasAny = !!(lead.agency_name || lead.operating_area || lead.notes);
+                    if (!isBroker && !hasAny) return null;
+                    const saveField = async (field: string, value: string) => {
+                      const next = value.trim() || null;
+                      if ((lead[field] ?? null) === next) return;
+                      const { error } = await supabase.from('leads').update({ [field]: next } as any).eq('id', lead.id);
+                      if (error) { toast.error('שגיאה בעדכון'); return; }
+                      toast.success('עודכן');
+                      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                    };
+                    return (
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-semibold">פרטי מתווך</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
+                            <p className="text-xs font-bold text-slate-900">משרד</p>
+                            <Input
+                              defaultValue={lead.agency_name ?? ''}
+                              placeholder="שם המשרד"
+                              className="h-8 text-sm bg-white"
+                              onBlur={(e) => saveField('agency_name', e.target.value)}
+                            />
+                          </div>
+                          <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
+                            <p className="text-xs font-bold text-slate-900">אזור פעילות</p>
+                            <Input
+                              defaultValue={lead.operating_area ?? ''}
+                              placeholder="אזור הפעילות"
+                              className="h-8 text-sm bg-white"
+                              onBlur={(e) => saveField('operating_area', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
+                          <p className="text-xs font-bold text-slate-900">הערות</p>
+                          <textarea
+                            defaultValue={lead.notes ?? ''}
+                            placeholder="הערות"
+                            rows={3}
+                            className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
+                            onBlur={(e) => saveField('notes', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Demographics + Social (collapsed) + GreenAPI */}
                   <LeadEnrichmentPanel lead={selectedVoter} hideEnrichmentButton />
 
