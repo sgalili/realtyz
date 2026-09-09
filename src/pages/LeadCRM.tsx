@@ -539,8 +539,6 @@ const LeadCRM = () => {
   // and preferences.lead_kind on every inserted row so buyers/sellers/renters/landlords
   // stay in the right pipeline from day one.
   const [importLeadKind, setImportLeadKind] = useState<'buyer' | 'seller' | 'renter' | 'landlord' | 'broker'>('buyer');
-  const [addToCampaignOpen, setAddToCampaignOpen] = useState(false);
-  const [aiBlastOpen, setAiBlastOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiPreviews, setAiPreviews] = useState<Array<{ name: string; message: string }>>([]);
   const [addVoterOpen, setAddVoterOpen] = useState(false);
