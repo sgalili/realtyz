@@ -273,9 +273,10 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           .eq('id', existing.data.id)
           .select('id')
           .maybeSingle();
-        if (upd.error) throw upd.error;
-        created = upd.data;
-        merged = true;
+          if (upd.error) throw upd.error;
+          created = upd.data;
+          merged = true;
+        }
       } else {
         created = ins.data;
       }
