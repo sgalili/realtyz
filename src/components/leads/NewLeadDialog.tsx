@@ -34,8 +34,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPlus, Home, KeyRound } from 'lucide-react';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useAuth } from '@/hooks/useAuth';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type DealType = 'sale' | 'rent';
+type DealType = 'sale' | 'rent' | 'sell' | 'rent_out';
+/** Contact kind — mirrors preferences.lead_kind used across the CRM. */
+type LeadKind = 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker';
+
+const KIND_OPTIONS: { v: LeadKind; l: string }[] = [
+  { v: 'buyer', l: 'קונה' },
+  { v: 'seller', l: 'מוכר' },
+  { v: 'renter', l: 'שוכר' },
+  { v: 'landlord', l: 'משכיר' },
+  { v: 'broker', l: 'מתווך' },
+];
+
+/** Each contact kind pins its own deal_type + Hebrew interest tag. */
+const KIND_MAP: Record<LeadKind, { deal: DealType; tag: string }> = {
+  buyer: { deal: 'sale', tag: 'דירה למכירה' },
+  seller: { deal: 'sell', tag: 'מוכר נכס' },
+  renter: { deal: 'rent', tag: 'דירה להשכרה' },
+  landlord: { deal: 'rent_out', tag: 'משכיר נכס' },
+  broker: { deal: 'sale', tag: 'מתווך' },
+};
 
 function normalizeIsraeliPhone(raw: string): string | null {
   let digits = String(raw || '').replace(/\D/g, '');
@@ -50,12 +72,15 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   /** Optional: pre-select the pipeline (used when launched from a Sale/Rent context). */
-  defaultDealType?: DealType;
+  defaultDealType?: 'sale' | 'rent';
 }
 
 export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 'sale' }: Props) {
   const queryClient = useQueryClient();
   const { checkInArea, isConfigured, serviceAreas } = useServiceAreas();
+  const activeWorkspaceId = useActiveWorkspaceOwnerId();
+  const { user } = useAuth();
+  const [leadKind, setLeadKind] = useState<LeadKind>(defaultDealType === 'rent' ? 'renter' : 'buyer');
   const [dealType, setDealType] = useState<DealType>(defaultDealType);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
