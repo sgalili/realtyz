@@ -18,6 +18,7 @@ import {
   loadAgentPersona,
   renderPersonaPrompt,
   renderDealTypeBlock,
+  renderBrokerRecruitmentBlock,
   renderStageHatBlock,
   renderChannelBlock,
   detectWhatsAppPivotAgreement,
@@ -814,7 +815,10 @@ serve(async (req) => {
         console.warn("deal_type lookup failed:", e);
       }
     }
-    const dealTypeBlock = renderDealTypeBlock(dealType, resolvedLeadName);
+    const isBrokerLead = String(leadPreferences?.lead_kind ?? '') === 'broker';
+    const dealTypeBlock = isBrokerLead
+      ? renderBrokerRecruitmentBlock(resolvedLeadName)
+      : renderDealTypeBlock(dealType, resolvedLeadName);
     const stageHatBlock = renderStageHatBlock(leadStage, resolvedLeadName);
 
     // === CHANNEL INTEGRITY: detect inbound channel + persisted pivot state ===
