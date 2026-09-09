@@ -31,11 +31,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPlus, Home, KeyRound } from 'lucide-react';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useAuth } from '@/hooks/useAuth';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type DealType = 'sale' | 'rent';
+/** Contact kind — mirrors preferences.lead_kind used across the CRM. */
+type LeadKind = 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker';
+
+const KIND_OPTIONS: { v: LeadKind; l: string }[] = [
+  { v: 'buyer', l: 'קונה' },
+  { v: 'seller', l: 'מוכר' },
+  { v: 'renter', l: 'שוכר' },
+  { v: 'landlord', l: 'משכיר' },
+  { v: 'broker', l: 'מתווך' },
+];
+
+/** Each contact kind pins its own deal_type + Hebrew interest tag. */
+const KIND_MAP: Record<LeadKind, { deal: DealType; tag: string }> = {
+  buyer: { deal: 'sale', tag: 'דירה למכירה' },
+  seller: { deal: 'sale', tag: 'מוכר נכס' },
+  renter: { deal: 'rent', tag: 'דירה להשכרה' },
+  landlord: { deal: 'rent', tag: 'משכיר נכס' },
+  broker: { deal: 'sale', tag: 'מתווך' },
+};
 
 function normalizeIsraeliPhone(raw: string): string | null {
   let digits = String(raw || '').replace(/\D/g, '');
@@ -50,12 +71,15 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   /** Optional: pre-select the pipeline (used when launched from a Sale/Rent context). */
-  defaultDealType?: DealType;
+  defaultDealType?: 'sale' | 'rent';
 }
 
 export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 'sale' }: Props) {
   const queryClient = useQueryClient();
   const { checkInArea, isConfigured, serviceAreas } = useServiceAreas();
+  const activeWorkspaceId = useActiveWorkspaceOwnerId();
+  const { user } = useAuth();
+  const [leadKind, setLeadKind] = useState<LeadKind>(defaultDealType === 'rent' ? 'renter' : 'buyer');
   const [dealType, setDealType] = useState<DealType>(defaultDealType);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -74,12 +98,26 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   // Shared
   const [rooms, setRooms] = useState('');
   const [notes, setNotes] = useState('');
+  const [source, setSource] = useState('manual');
   const [saving, setSaving] = useState(false);
   /** When user attempts to save an out-of-area lead, we hold the action and ask to confirm. */
   const [pendingOutOfArea, setPendingOutOfArea] = useState(false);
 
+  /** Rental side of the business (renter looking, or landlord offering). */
+  const isRental = dealType === 'rent';
+  /** Owners list property data instead of search preferences. */
+  const isOwner = leadKind === 'seller' || leadKind === 'landlord';
+
+  /** Picking a contact kind pins the matching pipeline automatically. */
+  function pickKind(kind: LeadKind) {
+    setLeadKind(kind);
+    setDealType(KIND_MAP[kind].deal);
+  }
+
   function reset() {
-    setDealType(defaultDealType);
+    const kind: LeadKind = defaultDealType === 'rent' ? 'renter' : 'buyer';
+    setLeadKind(kind);
+    setDealType(KIND_MAP[kind].deal);
     setFullName('');
     setPhone('');
     setEmail('');
@@ -91,7 +129,25 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     setMoveInDate('');
     setRooms('');
     setNotes('');
+    setSource('manual');
     setPendingOutOfArea(false);
+  }
+
+  /** Resolve which account the contact belongs to (workspace owner or self). */
+  async function resolveOwnerId(): Promise<string | null> {
+    const uid = user?.id ?? null;
+    if (!activeWorkspaceId || !uid || activeWorkspaceId === uid) return uid;
+    try {
+      const { data } = await supabase
+        .from('workspace_memberships')
+        .select('workspace_owner_id')
+        .eq('user_id', uid)
+        .eq('workspace_owner_id', activeWorkspaceId)
+        .maybeSingle();
+      return data ? activeWorkspaceId : uid;
+    } catch {
+      return uid;
+    }
   }
 
   async function handleSave(opts: { force?: boolean } = {}) {
@@ -123,16 +179,26 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     // pipeline's fields so the AI never sees, e.g., a mortgage flag on a
     // rental lead.
     const preferences: Record<string, unknown> = {
-      listing_type: dealType, // legacy mirror for older code paths
+      lead_kind: leadKind,
+      listing_type: isRental ? 'rent' : 'sale', // legacy mirror for older code paths
+      deal_side: isOwner ? 'owner' : 'seeker',
+      source,
+      lead_source: source,
       rooms: rooms ? Number(rooms) : undefined,
       notes: notes.trim() || undefined,
     };
-    if (dealType === 'sale') {
-      preferences.budget_max = budgetMax ? Number(budgetMax) : undefined;
-      preferences.financing = financing;
-    } else {
-      preferences.monthly_rent_max = monthlyMax ? Number(monthlyMax) : undefined;
+    if (isRental) {
+      const monthly = monthlyMax ? Number(monthlyMax) : undefined;
+      if (isOwner) preferences.monthly_rent = monthly;
+      else preferences.monthly_rent_max = monthly;
       preferences.move_in_date = moveInDate || undefined;
+    } else {
+      const price = budgetMax ? Number(budgetMax) : undefined;
+      if (isOwner) preferences.asking_price = price;
+      else {
+        preferences.budget_max = price;
+        preferences.financing = financing;
+      }
     }
     // Strip undefined keys for a clean jsonb payload
     Object.keys(preferences).forEach(
@@ -141,6 +207,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
 
     setSaving(true);
     try {
+      const ownerId = await resolveOwnerId();
       const { data: created, error } = await supabase.from('leads').insert({
         full_name: fullName.trim(),
         phone_number: normalizedPhone,
@@ -150,7 +217,9 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         deal_type: dealType,
         preferences,
         lead_stage: 'new',
-        interest_tag: dealType === 'sale' ? 'דירה למכירה' : 'דירה להשכרה',
+        status: 'new',
+        assigned_to: ownerId,
+        interest_tag: KIND_MAP[leadKind].tag,
       } as any).select('id').maybeSingle();
       if (error) throw error;
       // Background WhatsApp profile-picture hydration — never blocks the save.
@@ -161,12 +230,13 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           .catch(() => {});
       }
 
-      toast.success('הליד נוצר בהצלחה', {
-        description: `${fullName.trim()} נוסף לניהול אנשי קשר ${dealType === 'sale' ? 'מכירה' : 'השכרה'}`,
+      toast.success('איש הקשר נוצר בהצלחה', {
+        description: `${fullName.trim()} · ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}`,
       });
       reset();
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
     } catch (err: any) {
       toast.error('יצירת הליד נכשלה', { description: err?.message });
@@ -194,17 +264,29 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           </DialogDescription>
         </DialogHeader>
 
-        {/* Deal type selector — drives the dynamic field set */}
-        <Tabs value={dealType} onValueChange={(v) => setDealType(v as DealType)} dir="rtl">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="sale" className="gap-2">
-              <Home className="h-4 w-4" /> מכירה
-            </TabsTrigger>
-            <TabsTrigger value="rent" className="gap-2">
-              <KeyRound className="h-4 w-4" /> השכרה
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Contact kind — pins the pipeline and the dynamic field set */}
+        <div className="space-y-2">
+          <Label>סוג איש קשר *</Label>
+          <div className="grid grid-cols-5 gap-1.5">
+            {KIND_OPTIONS.map((k) => (
+              <Button
+                key={k.v}
+                type="button"
+                size="sm"
+                variant={leadKind === k.v ? 'default' : 'outline'}
+                className="text-xs px-1"
+                onClick={() => pickKind(k.v)}
+              >
+                {k.l}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            {isRental ? <KeyRound className="h-3.5 w-3.5" /> : <Home className="h-3.5 w-3.5" />}
+            {isRental ? 'ניהול השכרה' : 'ניהול מכירה'} · {isOwner ? 'בעל נכס' : 'מחפש נכס'}
+          </p>
+        </div>
+
 
         <div className="grid grid-cols-2 gap-3 mt-2">
           <div className="col-span-2">
@@ -269,11 +351,32 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             />
           </div>
 
-          {/* DYNAMIC: Sale-only fields */}
-          {dealType === 'sale' && (
+          {/* Arrival channel — keeps the CRM "ערוץ הגעה" field filled from day one */}
+          <div>
+            <Label>ערוץ הגעה</Label>
+            <Select value={source} onValueChange={setSource}>
+              <SelectTrigger className="h-10 text-sm">
+                <SelectValue placeholder="בחר ערוץ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual">הוזן ידנית</SelectItem>
+                <SelectItem value="whatsapp">וואטסאפ</SelectItem>
+                <SelectItem value="facebook">פייסבוק</SelectItem>
+                <SelectItem value="facebook_groups">פייסבוק קבוצות</SelectItem>
+                <SelectItem value="instagram">אינסטגרם</SelectItem>
+                <SelectItem value="inbound_call">שיחה נכנסת</SelectItem>
+                <SelectItem value="yad2">יד2</SelectItem>
+                <SelectItem value="website">אתר</SelectItem>
+                <SelectItem value="homely">הומלי</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* DYNAMIC: sale side (buyer budget / owner asking price) */}
+          {!isRental && (
             <>
               <div>
-                <Label htmlFor="nl-budget">תקציב מקסימום (₪)</Label>
+                <Label htmlFor="nl-budget">{isOwner ? 'מחיר מבוקש (₪)' : 'תקציב מקסימום (₪)'}</Label>
                 <Input
                   id="nl-budget"
                   type="number"
@@ -283,27 +386,29 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
                   placeholder="2500000"
                 />
               </div>
-              <div>
-                <Label htmlFor="nl-fin">מימון</Label>
-                <select
-                  id="nl-fin"
-                  value={financing}
-                  onChange={(e) => setFinancing(e.target.value as any)}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="unknown">לא ידוע עדיין</option>
-                  <option value="cash">מזומן</option>
-                  <option value="mortgage">משכנתא</option>
-                </select>
-              </div>
+              {!isOwner && (
+                <div>
+                  <Label htmlFor="nl-fin">מימון</Label>
+                  <select
+                    id="nl-fin"
+                    value={financing}
+                    onChange={(e) => setFinancing(e.target.value as any)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="unknown">לא ידוע עדיין</option>
+                    <option value="cash">מזומן</option>
+                    <option value="mortgage">משכנתא</option>
+                  </select>
+                </div>
+              )}
             </>
           )}
 
-          {/* DYNAMIC: Rent-only fields */}
-          {dealType === 'rent' && (
+          {/* DYNAMIC: rental side (renter budget / landlord asking rent) */}
+          {isRental && (
             <>
               <div>
-                <Label htmlFor="nl-monthly">שכ״ד חודשי מקסימום (₪)</Label>
+                <Label htmlFor="nl-monthly">{isOwner ? 'שכ״ד מבוקש (₪ לחודש)' : 'שכ״ד חודשי מקסימום (₪)'}</Label>
                 <Input
                   id="nl-monthly"
                   type="number"
@@ -314,7 +419,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
                 />
               </div>
               <div>
-                <Label htmlFor="nl-movein">תאריך כניסה רצוי</Label>
+                <Label htmlFor="nl-movein">{isOwner ? 'תאריך פינוי / כניסה' : 'תאריך כניסה רצוי'}</Label>
                 <Input
                   id="nl-movein"
                   type="date"
@@ -324,6 +429,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               </div>
             </>
           )}
+
 
           <div className="col-span-2">
             <div className="flex items-center justify-between">
@@ -374,7 +480,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             ביטול
           </Button>
           <Button onClick={() => handleSave()} disabled={saving || pendingOutOfArea}>
-            {saving ? 'יוצר…' : `הוסף ל${dealType === 'sale' ? 'מכירה' : 'השכרה'}`}
+            {saving ? 'יוצר…' : `הוסף ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}`}
           </Button>
         </DialogFooter>
       </DialogContent>

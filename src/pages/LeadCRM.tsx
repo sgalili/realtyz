@@ -2417,6 +2417,11 @@ const LeadCRM = () => {
                     const stage: string = (selectedVoter as any).lead_stage || selectedVoter.status || '';
                     const area: string = (selectedVoter as any).neighborhood || selectedVoter.city || '';
 
+                    const leadKindOpts = [
+                      { v: 'buyer', l: 'קונה' }, { v: 'seller', l: 'מוכר' },
+                      { v: 'renter', l: 'שוכר' }, { v: 'landlord', l: 'משכיר' },
+                      { v: 'broker', l: 'מתווך' },
+                    ];
                     const dealTypeOpts = [
                       { v: 'sale', l: 'קנייה' }, { v: 'rent', l: 'שכירות' },
                       { v: 'investment', l: 'השקעה' }, { v: 'sell', l: 'מכירה' },
@@ -2505,6 +2510,7 @@ const LeadCRM = () => {
                     return (
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
+                          <SelectCell icon={<UserRoundPlus className="h-3.5 w-3.5 text-slate-700" />} label="סוג איש קשר" value={(prefs.lead_kind as string) || ''} placeholder="בחר סוג" options={leadKindOpts} onChange={(v) => savePref({ lead_kind: v })} />
                           <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
                           <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v, lead_source: v })} />
                           <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
