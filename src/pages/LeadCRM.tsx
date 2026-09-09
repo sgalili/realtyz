@@ -195,6 +195,9 @@ interface ImportRow {
   interest_tag?: string;
   identity_number?: string;
   email?: string;
+  agency_name?: string;
+  operating_area?: string;
+  notes?: string;
   /** All ORIGINAL columns from the source file (header → value), so we never
    * lose data the agent might want later (budget, neighborhood, source, etc.). */
   extra?: Record<string, string>;
@@ -210,6 +213,9 @@ const HEADER_ALIASES: Record<string, string[]> = {
   city: ['city', 'town', 'locality', 'עיר', 'יישוב', 'ישוב'],
   identity_number: ['id', 'id number', 'identity number', 'national id', 'ת.ז', 'תז', 'מספר זהות', 'תעודת זהות', 'identity_number'],
   interest_tag: ['interest', 'tag', 'topic', 'נושא', 'נושא עניין', 'תג', 'interest_tag'],
+  agency_name: ['agency', 'office', 'agency name', 'office name', 'company', 'brokerage', 'משרד', 'שם משרד', 'משרד תיווך', 'סוכנות', 'חברה'],
+  operating_area: ['area', 'operating area', 'region', 'activity area', 'coverage', 'אזור', 'אזור פעילות', 'איזור פעילות', 'אזורי פעילות', 'איזור'],
+  notes: ['notes', 'note', 'comments', 'remarks', 'הערות', 'הערה', 'תגובות'],
 };
 
 function normalizeHeader(h: string): string {
@@ -1204,6 +1210,7 @@ const LeadCRM = () => {
           first_name: 'שם פרטי', last_name: 'שם משפחה', full_name: 'שם',
           phone: 'טלפון', email: 'אימייל', city: 'עיר',
           identity_number: 'ת.ז', interest_tag: 'נושא',
+          agency_name: 'משרד', operating_area: 'אזור פעילות', notes: 'הערות',
         };
         const detectedFields = Object.keys(headerMap).map((k) => fieldLabels[k] ?? k);
         const hasPhoneColumn = !!headerMap.phone;
@@ -1234,6 +1241,9 @@ const LeadCRM = () => {
           const identityNumber = get(row, 'identity_number') || undefined;
           const interest = get(row, 'interest_tag') || undefined;
           const email = get(row, 'email') || undefined;
+          const agencyName = get(row, 'agency_name') || undefined;
+          const operatingArea = get(row, 'operating_area') || undefined;
+          const notes = get(row, 'notes') || undefined;
 
           if (!name) { invalid++; continue; }
           const phone = normalizeIsraeliPhone(rawPhone);
@@ -1262,6 +1272,9 @@ const LeadCRM = () => {
             interest_tag: interest,
             identity_number: identityNumber,
             email,
+            agency_name: agencyName,
+            operating_area: operatingArea,
+            notes,
             extra: Object.keys(extra).length ? extra : undefined,
           });
         }
@@ -1407,6 +1420,9 @@ const LeadCRM = () => {
             if (r.city) patch.city = r.city;
             if (r.interest_tag) patch.interest_tag = r.interest_tag;
             if (r.identity_number) patch.identity_number = r.identity_number;
+            if (r.agency_name) patch.agency_name = r.agency_name;
+            if (r.operating_area) patch.operating_area = r.operating_area;
+            if (r.notes) patch.notes = r.notes;
             const { error } = await supabase.from('leads').update(patch).eq('id', matchId);
             if (!error) updated++;
           } else {
@@ -1417,6 +1433,9 @@ const LeadCRM = () => {
               city: r.city || null,
               interest_tag: r.interest_tag || null,
               identity_number: r.identity_number || null,
+              agency_name: r.agency_name || null,
+              operating_area: r.operating_area || null,
+              notes: r.notes || null,
               status: 'uploaded',
               deal_type: dealType,
               assigned_to: activeWorkspaceId ?? user?.id ?? null,
@@ -1476,6 +1495,9 @@ const LeadCRM = () => {
           city: r.city || null,
           interest_tag: r.interest_tag || null,
           identity_number: r.identity_number || null,
+          agency_name: r.agency_name || null,
+          operating_area: r.operating_area || null,
+          notes: r.notes || null,
           status: 'uploaded',
           deal_type: dealType,
           assigned_to: activeWorkspaceId ?? user?.id ?? null,
@@ -2429,6 +2451,57 @@ const LeadCRM = () => {
                         {ownerLead && (
                           <OwnerPropertyGrid lead={selectedVoter as any} />
                         )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Broker details — agency / operating area / notes */}
+                  {(() => {
+                    const lead: any = selectedVoter;
+                    const isBroker = (lead?.preferences?.lead_kind ?? '') === 'broker';
+                    const hasAny = !!(lead.agency_name || lead.operating_area || lead.notes);
+                    if (!isBroker && !hasAny) return null;
+                    const saveField = async (field: string, value: string) => {
+                      const next = value.trim() || null;
+                      if ((lead[field] ?? null) === next) return;
+                      const { error } = await supabase.from('leads').update({ [field]: next } as any).eq('id', lead.id);
+                      if (error) { toast.error('שגיאה בעדכון'); return; }
+                      toast.success('עודכן');
+                      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                    };
+                    return (
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-semibold">פרטי מתווך</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
+                            <p className="text-xs font-bold text-slate-900">משרד</p>
+                            <Input
+                              defaultValue={lead.agency_name ?? ''}
+                              placeholder="שם המשרד"
+                              className="h-8 text-sm bg-white"
+                              onBlur={(e) => saveField('agency_name', e.target.value)}
+                            />
+                          </div>
+                          <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
+                            <p className="text-xs font-bold text-slate-900">אזור פעילות</p>
+                            <Input
+                              defaultValue={lead.operating_area ?? ''}
+                              placeholder="אזור הפעילות"
+                              className="h-8 text-sm bg-white"
+                              onBlur={(e) => saveField('operating_area', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
+                          <p className="text-xs font-bold text-slate-900">הערות</p>
+                          <textarea
+                            defaultValue={lead.notes ?? ''}
+                            placeholder="הערות"
+                            rows={3}
+                            className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
+                            onBlur={(e) => saveField('notes', e.target.value)}
+                          />
+                        </div>
                       </div>
                     );
                   })()}

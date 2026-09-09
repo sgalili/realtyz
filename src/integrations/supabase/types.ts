@@ -3207,6 +3207,7 @@ export type Database = {
       leads: {
         Row: {
           address: string | null
+          agency_name: string | null
           ai_autopilot: boolean | null
           assigned_to: string | null
           city: string | null
@@ -3240,6 +3241,8 @@ export type Database = {
           messenger_id: string | null
           messenger_psid: string | null
           neighborhood: string | null
+          notes: string | null
+          operating_area: string | null
           outcome_set_at: string | null
           outcome_set_by: string | null
           phone_number: string
@@ -3256,6 +3259,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          agency_name?: string | null
           ai_autopilot?: boolean | null
           assigned_to?: string | null
           city?: string | null
@@ -3289,6 +3293,8 @@ export type Database = {
           messenger_id?: string | null
           messenger_psid?: string | null
           neighborhood?: string | null
+          notes?: string | null
+          operating_area?: string | null
           outcome_set_at?: string | null
           outcome_set_by?: string | null
           phone_number: string
@@ -3305,6 +3311,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          agency_name?: string | null
           ai_autopilot?: boolean | null
           assigned_to?: string | null
           city?: string | null
@@ -3338,6 +3345,8 @@ export type Database = {
           messenger_id?: string | null
           messenger_psid?: string | null
           neighborhood?: string | null
+          notes?: string | null
+          operating_area?: string | null
           outcome_set_at?: string | null
           outcome_set_by?: string | null
           phone_number?: string
