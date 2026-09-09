@@ -248,12 +248,11 @@ export default function Landing() {
       {/* ───────── Nav ───────── */}
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
-          <Link
-            to="/auth"
-            className="text-sm font-medium text-primary underline-offset-4 transition-colors hover:underline"
-          >
-            הרשמה/התחברות
-          </Link>
+          <ScheduleDemoDialog>
+            <Button className="h-11 px-5 text-sm font-extrabold shadow-lg shadow-primary/25">
+              תיאום דמו בזום
+            </Button>
+          </ScheduleDemoDialog>
           <Link to="/" aria-label="Realtyz AI">
             <img src={realtyzLogo} alt="Realtyz AI" className="h-[3.12rem] w-auto object-contain" />
           </Link>
