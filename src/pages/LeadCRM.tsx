@@ -1219,6 +1219,21 @@ const LeadCRM = () => {
     const isJson = /\.json$/i.test(file.name) || file.type === 'application/json';
     setImportIsJson(isJson);
 
+    // Hard reset of every trace of a previously uploaded file so we only ever
+    // stage the freshly selected one (no stale rows, previews or stats).
+    try { delete (window as any).__importRows; } catch { (window as any).__importRows = undefined; }
+    (window as any).__importRows = [];
+    setImportPreview([]);
+    setImportStats(null);
+    try {
+      Object.keys(localStorage)
+        .filter((k) => /^(crm|leads|contacts)[.:_-]?import/i.test(k) || /import(Rows|Preview|Stats|Queue)/i.test(k))
+        .forEach((k) => localStorage.removeItem(k));
+      Object.keys(sessionStorage)
+        .filter((k) => /import/i.test(k))
+        .forEach((k) => sessionStorage.removeItem(k));
+    } catch {}
+
     const processRows = (rows: Record<string, any>[]) => {
       try {
         if (rows.length === 0) { toast.error('הקובץ ריק'); return; }
