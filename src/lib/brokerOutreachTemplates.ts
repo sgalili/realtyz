@@ -13,7 +13,32 @@ export type BrokerOutreachTemplate = {
   body: string;
 };
 
+/**
+ * The exact first-touch message Udi sends personally to an agent.
+ * Kept verbatim by request: only [שם] / {{name}} is replaced.
+ */
+export const BROKER_FIRST_OUTREACH_BODY =
+  'היי {{name}}, מה שלומך?\n\n' +
+  'כאן אודי ויטמן מאנגלו סכסון הרצליה רמת השרון.\n\n' +
+  'אני פונה אליך באופן אישי כי אני מאוד מעריך אותך כאיש מקצוע ואת הדרך שבה אתה עובד.\n\n' +
+  'בתקופה האחרונה אני שותף בפיתוח של RealtyZ, מערכת AI שנבנתה במיוחד למתווכים ולסוכנויות נדל״ן, מתוך העבודה והצרכים שאנחנו פוגשים ביום יום.\n\n' +
+  'המערכת מרכזת במקום אחד לידים, לקוחות, נכסים, מעקבים, התאמות, פרסום וכלי AI שנועדו לחסוך זמן ולעזור לעבוד בצורה הרבה יותר יעילה.\n\n' +
+  'חשבתי שיהיה לי מעניין במיוחד שתראה אותה ותיתן לי גם את נקודת המבט המקצועית שלך.\n\n' +
+  'ההתנסות בחינם, ואם זה מסקרן אותך בוא נתאם שיחת זום קצרה להדגמה בזמן שנוח לך.';
+
+/** Fill the agent's real name into the first-outreach message. */
+export function renderBrokerFirstOutreach(name?: string | null): string {
+  const clean = String(name ?? '').trim();
+  return BROKER_FIRST_OUTREACH_BODY.replace(/\{\{name\}\}/g, clean || 'שלום');
+}
+
 export const BROKER_OUTREACH_TEMPLATES: BrokerOutreachTemplate[] = [
+  {
+    id: 'broker-first-outreach',
+    title: 'הודעת פתיחה אישית',
+    channel: 'whatsapp',
+    body: BROKER_FIRST_OUTREACH_BODY,
+  },
   {
     id: 'broker-intro',
     title: 'פתיחה למתווך',

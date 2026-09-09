@@ -25,7 +25,7 @@ import {
   Users, Download, Megaphone, Trash2, X, Sparkles, Eye, SlidersHorizontal,
   Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
   Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail,
-  Loader2, Pencil, Check
+  Loader2, Pencil, Check, Send
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
@@ -36,6 +36,8 @@ import * as XLSX from 'xlsx';
 import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
+import { BROKER_RECRUITMENT_MODE } from '@/config/workspaceMode';
+import { renderBrokerFirstOutreach } from '@/lib/brokerOutreachTemplates';
 import VoterAvatar from '@/components/VoterAvatar';
 import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
 import { BrandIcon } from '@/components/BrandIcon';
@@ -1041,6 +1043,59 @@ const LeadCRM = () => {
     setAiBlastOpen(true);
   };
 
+  /**
+   * Broker recruitment hub: fire the exact personal first-touch message to every
+   * selected agent over WhatsApp. Sent one by one so a single bad number never
+   * aborts the batch, and each send is reported back to the user.
+   */
+  const [sendingFirstOutreach, setSendingFirstOutreach] = useState(false);
+  const handleBrokerFirstOutreach = async () => {
+    const selected = (leads ?? []).filter((v) => selectedIds.has(v.id));
+    if (!selected.length) return;
+    setSendingFirstOutreach(true);
+    let sent = 0;
+    const failed: string[] = [];
+    try {
+      for (const lead of selected) {
+        const phone = String(lead.phone_number ?? '').replace(/\D/g, '');
+        const name = (lead.full_name ?? '').trim();
+        if (!phone || phone.startsWith('no-phone')) {
+          failed.push(name || 'ללא שם');
+          continue;
+        }
+        try {
+          const { data, error } = await supabase.functions.invoke('send-message', {
+            body: {
+              lead_id: lead.id,
+              content: renderBrokerFirstOutreach(name),
+              channel: 'whatsapp',
+              phone_number: phone,
+            },
+          });
+          const res = data as { success?: boolean; error?: string; details?: string } | null;
+          if (error || (res && res.success === false)) {
+            throw new Error(res?.details || res?.error || error?.message || 'שליחה נכשלה');
+          }
+          sent += 1;
+        } catch {
+          failed.push(name || formatPhoneDisplay(phone));
+        }
+      }
+      if (sent) {
+        toast.success(`הודעת הפתיחה נשלחה ל-${sent} מתווכים`, {
+          description: failed.length ? `לא נשלחו: ${failed.slice(0, 5).join(', ')}` : undefined,
+        });
+      } else {
+        toast.error('לא נשלחה אף הודעה', {
+          description: failed.slice(0, 5).join(', ') || undefined,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+    } finally {
+      setSendingFirstOutreach(false);
+    }
+  };
+
   const handleBatchStatus = async (newStatus: string) => {
     if (blockDemoAction('bulk-status')) return;
     const ids = Array.from(selectedIds);
@@ -1774,6 +1829,17 @@ const LeadCRM = () => {
                 ))}
               </SelectContent>
             </Select>
+            {BROKER_RECRUITMENT_MODE && (
+              <Button
+                size="sm"
+                className="gap-1.5 h-8 bg-emerald-600 hover:bg-emerald-700 text-primary-foreground"
+                onClick={handleBrokerFirstOutreach}
+                disabled={sendingFirstOutreach}
+              >
+                <Send className="h-3.5 w-3.5" />
+                {sendingFirstOutreach ? 'שולח…' : 'הודעת פתיחה למתווכים'}
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleAiBlastPreview}>
               <Sparkles className="h-3.5 w-3.5" /> שלח הודעת AI
             </Button>

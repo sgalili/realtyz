@@ -19,6 +19,7 @@ import {
   renderPersonaPrompt,
   renderDealTypeBlock,
   renderBrokerRecruitmentBlock,
+  BROKER_RECRUITMENT_WORKSPACE,
   renderStageHatBlock,
   renderChannelBlock,
   detectWhatsAppPivotAgreement,
@@ -815,7 +816,10 @@ serve(async (req) => {
         console.warn("deal_type lookup failed:", e);
       }
     }
-    const isBrokerLead = String(leadPreferences?.lead_kind ?? '') === 'broker';
+    // This workspace recruits agents only, so every conversation uses the
+    // recruitment persona even when the contact was not tagged as a broker yet.
+    const isBrokerLead =
+      BROKER_RECRUITMENT_WORKSPACE || String(leadPreferences?.lead_kind ?? '') === 'broker';
     const dealTypeBlock = isBrokerLead
       ? renderBrokerRecruitmentBlock(resolvedLeadName)
       : renderDealTypeBlock(dealType, resolvedLeadName);
