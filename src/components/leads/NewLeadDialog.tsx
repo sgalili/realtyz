@@ -180,16 +180,26 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     // pipeline's fields so the AI never sees, e.g., a mortgage flag on a
     // rental lead.
     const preferences: Record<string, unknown> = {
-      listing_type: dealType, // legacy mirror for older code paths
+      lead_kind: leadKind,
+      listing_type: isRental ? 'rent' : 'sale', // legacy mirror for older code paths
+      deal_side: isOwner ? 'owner' : 'seeker',
+      source,
+      lead_source: source,
       rooms: rooms ? Number(rooms) : undefined,
       notes: notes.trim() || undefined,
     };
-    if (dealType === 'sale') {
-      preferences.budget_max = budgetMax ? Number(budgetMax) : undefined;
-      preferences.financing = financing;
-    } else {
-      preferences.monthly_rent_max = monthlyMax ? Number(monthlyMax) : undefined;
+    if (isRental) {
+      const monthly = monthlyMax ? Number(monthlyMax) : undefined;
+      if (isOwner) preferences.monthly_rent = monthly;
+      else preferences.monthly_rent_max = monthly;
       preferences.move_in_date = moveInDate || undefined;
+    } else {
+      const price = budgetMax ? Number(budgetMax) : undefined;
+      if (isOwner) preferences.asking_price = price;
+      else {
+        preferences.budget_max = price;
+        preferences.financing = financing;
+      }
     }
     // Strip undefined keys for a clean jsonb payload
     Object.keys(preferences).forEach(
@@ -198,6 +208,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
 
     setSaving(true);
     try {
+      const ownerId = await resolveOwnerId();
       const { data: created, error } = await supabase.from('leads').insert({
         full_name: fullName.trim(),
         phone_number: normalizedPhone,
@@ -207,7 +218,10 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         deal_type: dealType,
         preferences,
         lead_stage: 'new',
-        interest_tag: dealType === 'sale' ? 'דירה למכירה' : 'דירה להשכרה',
+        status: 'new',
+        source,
+        assigned_to: ownerId,
+        interest_tag: KIND_MAP[leadKind].tag,
       } as any).select('id').maybeSingle();
       if (error) throw error;
       // Background WhatsApp profile-picture hydration — never blocks the save.
@@ -218,8 +232,8 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           .catch(() => {});
       }
 
-      toast.success('הליד נוצר בהצלחה', {
-        description: `${fullName.trim()} נוסף לניהול אנשי קשר ${dealType === 'sale' ? 'מכירה' : 'השכרה'}`,
+      toast.success('איש הקשר נוצר בהצלחה', {
+        description: `${fullName.trim()} · ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}`,
       });
       reset();
       onOpenChange(false);
