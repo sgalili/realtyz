@@ -272,6 +272,17 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         created = ins.data;
       }
 
+      // Property relation — persist the linked properties for this contact.
+      if (created?.id && linkedListings.length) {
+        try {
+          await saveLeadPropertyLinks(created.id, linkedListings);
+          queryClient.invalidateQueries({ queryKey: ['lead-listings', created.id] });
+        } catch {
+          toast.error('קישור הנכסים לא נשמר במלואו');
+        }
+      }
+
+
       // Background WhatsApp profile-picture hydration — never blocks the save.
       if (created?.id) {
         supabase.functions
