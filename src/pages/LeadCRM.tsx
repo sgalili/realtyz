@@ -465,7 +465,6 @@ const LeadCRM = () => {
   };
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportRow[]>([]);
   const [importStats, setImportStats] = useState<{ total: number; valid: number; duplicates: number; invalid: number; healthPct: number; detectedFields: string[]; missingPhone: boolean } | null>(null);
@@ -1022,7 +1021,7 @@ const LeadCRM = () => {
   const openBatchDeleteDialog = () => {
     if (blockDemoAction('delete-leads')) return;
     if (!selectedIds.size) return;
-    setDeleteConfirmText('');
+
     setDeleteDialogOpen(true);
   };
 
