@@ -2527,7 +2527,7 @@ const LeadCRM = () => {
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground">כל הרשומות שייובאו יסומנו בסוג זה ויופנו לצינור המתאים (מכירה / השכרה).</p>
+            <p className="text-[11px] text-muted-foreground">כל הרשומות שייובאו יסומנו בסוג זה ויופנו לצינור המתאים (מכירה / השכרה). מתווכים מנוהלים בנפרד ומקבלים תבניות גיוס ל-Realtyz.</p>
           </div>
 
           {importStats && (
