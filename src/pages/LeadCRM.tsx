@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   Search, CheckCircle2, XCircle, User, MapPin, Tag, Clock,
   ArrowUpRight, ArrowDownLeft, Upload, FileSpreadsheet, AlertTriangle,
-  Users, Download, Megaphone, Trash2, X, Sparkles, Eye, SlidersHorizontal,
+  Users, Download, Trash2, X, Eye, SlidersHorizontal,
   Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
   Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail,
   Loader2, Pencil, Check, Send
