@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuickTemplates, fillTemplate, type TemplateVars } from '@/hooks/useQuickTemplates';
+import { BROKER_OUTREACH_TEMPLATES } from '@/lib/brokerOutreachTemplates';
 
 type Props = {
   scope: 'lead' | 'listing';
@@ -18,6 +19,8 @@ type Props = {
   className?: string;
   collapsible?: boolean;
   forceOpenKey?: number;
+  /** Contact type (preferences.lead_kind). 'broker' unlocks the recruitment templates. */
+  leadKind?: string | null;
 };
 
 function toIntl(phone?: string | null): string | null {
