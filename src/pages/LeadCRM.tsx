@@ -540,7 +540,6 @@ const LeadCRM = () => {
   // stay in the right pipeline from day one.
   const [importLeadKind, setImportLeadKind] = useState<'buyer' | 'seller' | 'renter' | 'landlord' | 'broker'>('buyer');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [aiPreviews, setAiPreviews] = useState<Array<{ name: string; message: string }>>([]);
   const [addVoterOpen, setAddVoterOpen] = useState(false);
   const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
   const [deletingSingle, setDeletingSingle] = useState(false);
