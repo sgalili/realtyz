@@ -249,11 +249,17 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           .limit(1)
           .maybeSingle();
         if (existing.error || !existing.data?.id) {
-          toast.error('קיים כבר איש קשר עם מספר הטלפון הזה', {
-            description: 'חפשו אותו ברשימת אנשי הקשר ועדכנו את הפרטים שם.',
-          });
-          return;
-        }
+          // No such contact in this workspace — try the insert once more before failing.
+          const retry = await supabase.from('leads').insert(payload).select('id').maybeSingle();
+          if (retry.error) {
+            toast.error('לא ניתן לשמור את איש הקשר', {
+              description: retry.error.message || 'נסו שוב בעוד רגע.',
+            });
+            return;
+          }
+          created = retry.data;
+          setSaving?.(false as any);
+        } else {
         const upd = await supabase
           .from('leads')
           .update({
