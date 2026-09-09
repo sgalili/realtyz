@@ -1171,12 +1171,13 @@ const LeadCRM = () => {
     }
     setAddingVoter(true);
     try {
+      const ownerId = await resolveOwnerId();
       const insertData: Record<string, any> = {
         full_name: newVoter.full_name.trim(),
         phone_number: phone,
         city: newVoter.city.trim() || null,
         identity_number: newVoter.identity_number.trim() || null,
-        assigned_to: activeWorkspaceId ?? user?.id ?? null,
+        assigned_to: ownerId,
       };
       if (newVoter.instagram_handle.trim()) insertData.instagram_handle = newVoter.instagram_handle.trim();
       if (newVoter.telegram_username.trim()) insertData.telegram_username = newVoter.telegram_username.trim();
@@ -1448,6 +1449,7 @@ const LeadCRM = () => {
     setImporting(true);
     setImportProgress(0);
     let totalInserted = 0;
+    const ownerId = await resolveOwnerId();
 
     // ---- JSON mode: match existing contacts and update their phone numbers ----
     if (importIsJson) {
@@ -1505,7 +1507,7 @@ const LeadCRM = () => {
               notes: r.notes || null,
               status: 'uploaded',
               deal_type: dealType,
-              assigned_to: activeWorkspaceId ?? user?.id ?? null,
+              assigned_to: ownerId,
               preferences: {
                 lead_kind: importLeadKind,
                 ...(r.extra && Object.keys(r.extra).length ? { extra_fields: r.extra } : {}),
@@ -1567,7 +1569,7 @@ const LeadCRM = () => {
           notes: r.notes || null,
           status: 'uploaded',
           deal_type: dealType,
-          assigned_to: activeWorkspaceId ?? user?.id ?? null,
+          assigned_to: ownerId,
           // Persist the agent-chosen kind AND every original column from the file
           // under preferences.extra_fields so nothing the user uploaded is lost.
           preferences: {
