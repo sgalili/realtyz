@@ -22,7 +22,6 @@ import { formatPhoneAsTyped } from '@/lib/formatPhone';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,7 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { UserPlus, Home, KeyRound } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useAuth } from '@/hooks/useAuth';
