@@ -2,7 +2,7 @@
 //
 // Tab 1 "נכסים ותגמולים" — flip a property into the affiliate marketplace and
 //   set the reward (fixed ILS or percent of commission) paid on a signed deal.
-// Tab 2 "מתעניינים משותפים" — full tracking CRM of every affiliate-generated
+// Tab 2 "אנשי קשר משותפים" — full tracking CRM of every affiliate-generated
 //   referral: status funnel, source affiliate, linked lead, and settlement.
 import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -217,7 +217,7 @@ export default function AffiliateNetwork() {
         <header>
           <h1 className="text-2xl font-bold text-slate-900">רשת השותפים</h1>
           <p className="text-sm text-slate-500">
-            קבעו תגמול לכל נכס, ועקבו אחרי כל מתעניין שמגיע דרך שותפי השיווק.
+            קבעו תגמול לכל נכס, ועקבו אחרי כל איש קשר שמגיע דרך שותפי השיווק.
           </p>
         </header>
 
@@ -245,7 +245,7 @@ export default function AffiliateNetwork() {
         <Tabs defaultValue="rewards">
           <TabsList>
             <TabsTrigger value="rewards">נכסים ותגמולים</TabsTrigger>
-            <TabsTrigger value="tracking">מתעניינים משותפים</TabsTrigger>
+            <TabsTrigger value="tracking">אנשי קשר משותפים</TabsTrigger>
             <TabsTrigger value="submissions">הגשות שותפים</TabsTrigger>
           </TabsList>
 
@@ -323,7 +323,7 @@ export default function AffiliateNetwork() {
             ) : submissions.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
-                  שותפים עוד לא הגישו מתעניינים לנכסים שלכם.
+                  שותפים עוד לא הגישו אנשי קשר לנכסים שלכם.
                 </CardContent>
               </Card>
             ) : (
@@ -416,7 +416,7 @@ export default function AffiliateNetwork() {
             ) : referrals.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
-                  עוד לא נכנסו מתעניינים דרך שותפים.
+                  עוד לא נכנסו אנשי קשר דרך שותפים.
                 </CardContent>
               </Card>
             ) : (
@@ -450,7 +450,7 @@ export default function AffiliateNetwork() {
                           className="flex items-center gap-2 rounded-md bg-slate-50 px-2.5 py-2 text-[12px] font-semibold text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-slate-100"
                         >
                           <Users className="h-3.5 w-3.5 text-slate-400" />
-                          {r.lead.full_name || 'מתעניין'}
+                          {r.lead.full_name || 'איש קשר'}
                           {r.lead.phone ? <bdi dir="ltr" className="text-slate-500">{r.lead.phone}</bdi> : null}
                         </Link>
                       )}

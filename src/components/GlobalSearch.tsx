@@ -9,7 +9,7 @@ import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
 const QUICK_LINKS = [
   { label: 'לוח בקרה', path: '/', icon: LayoutDashboard },
-  { label: 'לקוחות', path: '/lead-crm', icon: User },
+  { label: 'אנשי קשר', path: '/lead-crm', icon: User },
   { label: 'נכסים', path: '/properties', icon: Building2 },
   { label: 'תיבת הודעות', path: '/inbox', icon: MessageSquare },
   { label: 'שידור לקהילה', path: '/broadcast', icon: Radio },
@@ -189,7 +189,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
       const tourResults: SearchResult[] = (toursRes.data ?? []).map((t: any) => ({
         id: `tour-${t.id}`,
         type: 'tour',
-        title: `סיור · ${t.client_name || 'מתעניין'}`,
+        title: `סיור · ${t.client_name || 'איש קשר'}`,
         subtitle:
           [t.property_title || t.property_address, t.scheduled_at ? new Date(t.scheduled_at).toLocaleString('he-IL') : null]
             .filter(Boolean)
@@ -243,7 +243,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
 
   const labelFor = (t: SearchResult['type']) => {
     switch (t) {
-      case 'lead': return 'מתעניין';
+      case 'lead': return 'איש קשר';
       case 'listing': return 'נכס';
       case 'message': return 'הודעה';
       case 'inquiry': return 'פנייה';
@@ -265,7 +265,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="חיפוש בכל המערכת — מתעניינים, נכסים, פניות, פגישות, הודעות..."
+            placeholder="חיפוש בכל המערכת — אנשי קשר, נכסים, פניות, פגישות, הודעות..."
             className="border-0 focus-visible:ring-0 h-12 text-base"
             autoFocus
            />
@@ -343,7 +343,7 @@ export function GlobalSearchTrigger({ className }: GlobalSearchTriggerProps) {
         dir="rtl"
       >
         <Search className="h-4 w-4 text-muted-foreground" />
-        <span className="flex-1 text-right">חיפוש גלובלי — מתעניינים, נכסים, שיחות</span>
+        <span className="flex-1 text-right">חיפוש גלובלי — אנשי קשר, נכסים, שיחות</span>
         <kbd className="hidden sm:inline-flex text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
       </button>
       <GlobalSearch open={open} onOpenChange={setOpen} />

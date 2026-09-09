@@ -292,7 +292,7 @@ function CalculatorBody() {
   const unitSingular = terms.seat;          // עסקה / מושב
   const unitPlural = terms.seats;           // עסקאות / מושבים
   const voterPlural = terms.votes;          // קולות / מתפקדים
-  const memberPlural = terms.voters;        // מתעניינים / מתפקדים
+  const memberPlural = terms.voters;        // אנשי קשר / מתפקדים
 
   const mandates = selectedMandates;
   const handleMandates = (n: number) => setSelectedMandates(n);
@@ -606,12 +606,12 @@ function CalculatorBody() {
                   </button>
                 </div>
                 <div className="mt-3 text-center text-[12.5px] font-medium text-muted-foreground">
-                  הערכת שיעור המרה: עסקה סגורה אחת לכל ~60 מתעניינים מוסמכים
+                  הערכת שיעור המרה: עסקה סגורה אחת לכל ~60 אנשי קשר מוסמכים
                 </div>
                 <div className="mt-1 text-center text-[11px] text-muted-foreground/80">
                   {mandates === 1
-                    ? `יעד: עסקה סגורה אחת ≈ ${formatILS(60)} מתעניינים מוסמכים בניהול מתעניינים`
-                    : `יעד: ${mandates} עסקאות סגורות ≈ ${formatILS(mandates * 60)} מתעניינים מוסמכים בניהול מתעניינים`}
+                    ? `יעד: עסקה סגורה אחת ≈ ${formatILS(60)} אנשי קשר מוסמכים בניהול אנשי קשר`
+                    : `יעד: ${mandates} עסקאות סגורות ≈ ${formatILS(mandates * 60)} אנשי קשר מוסמכים בניהול אנשי קשר`}
                 </div>
               </div>
 
@@ -625,7 +625,7 @@ function CalculatorBody() {
                 >
                   <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
                     <SlidersHorizontal className="h-4 w-4 text-primary" />
-                    פילוח קהל (Leading) · רשימות מתעניינים
+                    פילוח קהל (Leading) · רשימות אנשי קשר
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="text-[11px] tabular-nums text-muted-foreground">{formatILS(listSize)}</span>
@@ -650,7 +650,7 @@ function CalculatorBody() {
                     >
                       <div className="mt-3 space-y-4 rounded-lg border border-border bg-secondary/40 p-4">
                         <div className="text-[12px] text-muted-foreground">
-                          כמה מתעניינים יש לכם במאגר / ברשימות הפעילות?
+                          כמה אנשי קשר יש לכם במאגר / ברשימות הפעילות?
                         </div>
 
                         {/* Warm */}
@@ -684,7 +684,7 @@ function CalculatorBody() {
                               <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
                               {isPrimaries ? 'פוטנציאל מתפקדים' : 'רשימה קרה'}
                               <InfoTip title={isPrimaries ? 'פוטנציאל מתפקדים' : 'רשימה קרה'}>
-                                מתעניינים פוטנציאליים שעדיין לא מכירים אתכם. שיעור המרה נמוך ({coldPct}%) אך הקהל גדול בהרבה.
+                                אנשי קשר פוטנציאליים שעדיין לא מכירים אתכם. שיעור המרה נמוך ({coldPct}%) אך הקהל גדול בהרבה.
                               </InfoTip>
                             </div>
                             <span className="text-[12.5px] font-bold tabular-nums text-foreground">{formatILS(coldSize)}</span>
@@ -707,8 +707,8 @@ function CalculatorBody() {
 
                 {inputsTouched && listShortfall && (
                   <WarnBlock>
-                    התמהיל מניב <span className="font-black">{formatILS(projectedVotes)}</span> מתעניינים מוסמכים, מתוך{' '}
-                    <span className="font-black">{formatILS(requiredVotes)}</span> מתעניינים נדרשים ליעד של {mandates} עסקאות סגורות.
+                    התמהיל מניב <span className="font-black">{formatILS(projectedVotes)}</span> אנשי קשר מוסמכים, מתוך{' '}
+                    <span className="font-black">{formatILS(requiredVotes)}</span> אנשי קשר נדרשים ליעד של {mandates} עסקאות סגורות.
                     <button
                       type="button"
                       onClick={() => handleMandatesChange(Math.max(1, optimizedMandates))}
@@ -820,11 +820,11 @@ function CalculatorBody() {
                     <ResourceSlider
                       icon={<Users className="h-4 w-4 text-primary" />}
                       title="חשיפה לשוק (Market Exposure)"
-                      info={<>כלל הזהב המקצועי: {TOUCHPOINTS_PER_VOTER_TOTAL} נקודות חשיפה לכל מתעניין עד להבשלת עסקה. הפחתה תקטין הוצאה אך גם את סיכויי הסגירה.</>}
+                      info={<>כלל הזהב המקצועי: {TOUCHPOINTS_PER_VOTER_TOTAL} נקודות חשיפה לכל איש קשר עד להבשלת עסקה. הפחתה תקטין הוצאה אך גם את סיכויי הסגירה.</>}
                       min={5} max={30} step={1}
                       value={touchpointsPerVoter}
                       onChange={setTouchpointsPerVoter}
-                      valueLabel={`${touchpointsPerVoter} חשיפות / מתעניין · סה״כ ${formatCompact(totalCampaignTouchpoints)}`}
+                      valueLabel={`${touchpointsPerVoter} חשיפות / איש קשר · סה״כ ${formatCompact(totalCampaignTouchpoints)}`}
                       cost={monthlyTouchpointCost}
                       onReset={touchpointsPerVoter !== TOUCHPOINTS_PER_VOTER_TOTAL ? () => setTouchpointsPerVoter(TOUCHPOINTS_PER_VOTER_TOTAL) : undefined}
                     />
@@ -833,7 +833,7 @@ function CalculatorBody() {
                       icon={<MessageSquare className="h-4 w-4 text-primary" />}
                       title="עדכונים לאימות (SMS)"
                       rateNote={`₪${SMS_RATE.toFixed(2)} / עדכון`}
-                      info={<>{formatILS(includedSms)} עדכוני אימות (SMS) כלולים בחבילה — לאישורי פגישה, קודי OTP ועדכוני סטטוס למתעניינים. מעבר לכך, חיוב של ₪{SMS_RATE.toFixed(2)} להודעה.</>}
+                      info={<>{formatILS(includedSms)} עדכוני אימות (SMS) כלולים בחבילה — לאישורי פגישה, קודי OTP ועדכוני סטטוס לאנשי קשר. מעבר לכך, חיוב של ₪{SMS_RATE.toFixed(2)} להודעה.</>}
                       min={0} max={Math.max(suggestedSms * 3, 1_000_000)} step={5_000}
                       value={effectiveSms}
                       onChange={(v) => { setSmsVolume(v); setSmsTouched(true); }}
@@ -860,9 +860,9 @@ function CalculatorBody() {
 
                     <ResourceSlider
                       icon={<AudioLines className="h-4 w-4 text-primary" />}
-                      title="שיחות סינון מתעניינים (AI)"
+                      title="שיחות סינון אנשי קשר (AI)"
                       rateNote={`₪${VOICE_RATE.toFixed(2)} / דקה`}
-                      info={<>סוכן AI קולי שמסנן מתעניינים נכנסים, מאמת תקציב, צרכי דיור ולוחות זמנים — ומעביר אליך רק מתעניינים חמים ומוכנים לפגישה. תמחור: דקות בפועל × ₪{VOICE_RATE.toFixed(2)}.</>}
+                      info={<>סוכן AI קולי שמסנן אנשי קשר נכנסים, מאמת תקציב, צרכי דיור ולוחות זמנים — ומעביר אליך רק אנשי קשר חמים ומוכנים לפגישה. תמחור: דקות בפועל × ₪{VOICE_RATE.toFixed(2)}.</>}
                       min={0} max={Math.max(suggestedVoiceMinutes * 3, 50_000)} step={500}
                       value={effectiveVoiceMinutes}
                       onChange={(v) => { setVoiceVolume(v); setVoiceTouched(true); }}
@@ -966,7 +966,7 @@ function CalculatorBody() {
                     {voiceEnabled && (
                       <FormulaRow
                         icon={<AudioLines className="h-3.5 w-3.5 text-violet-500" />}
-                        label={`${formatCompact(effectiveVoiceMinutes)} דקות שיחות סינון מתעניינים (AI)`}
+                        label={`${formatCompact(effectiveVoiceMinutes)} דקות שיחות סינון אנשי קשר (AI)`}
                         value={monthlyVoiceCost}
                       />
                     )}
@@ -988,8 +988,8 @@ function CalculatorBody() {
                       <FormulaRow
                         icon={<AlertTriangle className="h-3.5 w-3.5 text-orange-500" />}
                         label={dbTier2Active
-                          ? `דמי אחסון מאגר מתעניינים, מעל ${formatCompact(DB_TIER_2_THRESHOLD)} מתעניינים`
-                          : `דמי אחסון מאגר מתעניינים, מעל ${formatCompact(DB_TIER_1_THRESHOLD)} מתעניינים`}
+                          ? `דמי אחסון מאגר אנשי קשר, מעל ${formatCompact(DB_TIER_2_THRESHOLD)} אנשי קשר`
+                          : `דמי אחסון מאגר אנשי קשר, מעל ${formatCompact(DB_TIER_1_THRESHOLD)} אנשי קשר`}
                         value={audienceScalingFee}
                       />
                     )}
@@ -1073,7 +1073,7 @@ function CalculatorBody() {
             />
             <ResourceFeatureCard
               icon={<AudioLines className="h-5 w-5" />}
-              title="שיחות סינון מתעניינים (AI)"
+              title="שיחות סינון אנשי קשר (AI)"
               value={`${formatCompact(includedVoiceMinutes)} דקות`}
               note={`עלות מעבר: ₪${VOICE_RATE.toFixed(2)} לדקה`}
             />
@@ -1093,7 +1093,7 @@ function CalculatorBody() {
         </section>
 
         <p className="mx-auto mt-8 max-w-3xl text-center text-[11px] leading-relaxed text-muted-foreground">
-          החישוב מבוסס על תמהיל רשימות מתעניינים: {warmPct}% המרה למתעניינים חמים ו-{coldPct}% למתעניינים קרים בעבודה אינטנסיבית עם Realtyz AI.
+          החישוב מבוסס על תמהיל רשימות אנשי קשר: {warmPct}% המרה לאנשי קשר חמים ו-{coldPct}% לאנשי קשר קרים בעבודה אינטנסיבית עם Realtyz AI.
           המספרים המוצגים הם הערכה מקצועית בלבד ואינם מהווים התחייבות לתוצאת מכירות. המחיר אינו כולל מע״מ ועלויות מדיה ישירות ל-Meta.
         </p>
       </div>

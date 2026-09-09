@@ -238,7 +238,7 @@ const SentimentDashboard = () => {
       <div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-primary">ניתוח סנטימנט</h1>
-          <p className="text-muted-foreground text-sm">דופק המתעניינים בזמן אמת, סנטימנט, נושאים חמים ומפת ערים</p>
+          <p className="text-muted-foreground text-sm">דופק אנשי הקשר בזמן אמת, סנטימנט, נושאים חמים ומפת ערים</p>
         </div>
       </div>
 
@@ -379,7 +379,7 @@ const SentimentDashboard = () => {
                   >
                     <p className="font-medium truncate">{c.city}</p>
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-muted-foreground">{c.total} מתעניינים</span>
+                      <span className="text-muted-foreground">{c.total} אנשי קשר</span>
                       <span className="font-bold" style={{ color: scoreColor }}>{c.positivePercent}%</span>
                     </div>
                   </button>

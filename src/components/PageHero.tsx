@@ -110,7 +110,7 @@ function LeadsHeroAddButton() {
           variant="ghost"
           disabled={busy}
           className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white disabled:opacity-100"
-          aria-label="הוספת מתעניין"
+          aria-label="הוספת איש קשר"
         >
           {busy
             ? <Loader2 className="!h-5 !w-5 animate-spin" strokeWidth={2.5} />
@@ -119,10 +119,10 @@ function LeadsHeroAddButton() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => dispatch('manual')} className="gap-2" disabled={busy}>
-          <User className="h-4 w-4" /> הוספת מתעניין
+          <User className="h-4 w-4" /> הוספת איש קשר
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => dispatch('import')} className="gap-2" disabled={busy}>
-          <FileSpreadsheet className="h-4 w-4" /> ייבוא מתעניינים
+          <FileSpreadsheet className="h-4 w-4" /> ייבוא אנשי קשר
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => dispatch('homely')} className="gap-2" disabled={busy}>
           <DownloadCloud className="h-4 w-4" /> משיכת אנשי קשר מ-Homely
@@ -193,7 +193,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/$/, title: 'משימות היום' },
   { match: /^\/(command-center|tasks)/, title: 'משימות היום' },
   { match: /^\/dashboard$/, title: 'לוח בקרה' },
-  { match: /^\/lead-crm/, title: 'לקוחות' },
+  { match: /^\/lead-crm/, title: 'אנשי קשר' },
   { match: /^\/inbox/, title: 'צ׳אטים בכל הערוצים' },
   { match: /^\/communication/, title: 'צ׳אטים בכל הערוצים' },
   { match: /^\/deal-room/, title: 'עסקאות' },

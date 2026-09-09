@@ -134,7 +134,7 @@ export function UdiIntelligenceCard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <Kpi label="מתעניינים בתקופה" value={intel.totals.total_leads} />
+            <Kpi label="אנשי קשר בתקופה" value={intel.totals.total_leads} />
             <Kpi label="הוסמכו" value={intel.totals.qualified + intel.totals.meeting_scheduled + intel.totals.won} />
             <Kpi label="עסקאות נסגרו" value={intel.totals.won} highlight />
             <Kpi label="אחוז המרה" value={`${intel.conversion_rate}%`} highlight />
@@ -151,7 +151,7 @@ export function UdiIntelligenceCard() {
               <AlertTriangle className="h-4 w-4 text-rose-500" /> סיבות אובדן מובילות
             </CardTitle>
             <CardDescription className="text-xs">
-              למה עסקאות אבדו או מתעניינים נעלמו (כולל הקשר נכס + מיקום).
+              למה עסקאות אבדו או אנשי קשר נעלמו (כולל הקשר נכס + מיקום).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -249,12 +249,12 @@ export function UdiIntelligenceCard() {
             <Clock className="h-4 w-4 text-amber-500" /> ניג'וגים מומלצים ע"י ה-AI
           </CardTitle>
           <CardDescription className="text-xs">
-            מתעניינים שנעלמו או מוסמכים שקפאו ≥3 ימים. שליחה ל-Autopilot Queue לאישורך.
+            אנשי קשר שנעלמו או מוסמכים שקפאו ≥3 ימים. שליחה ל-Autopilot Queue לאישורך.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {suggestions.length === 0 ? (
-            <p className="text-xs text-muted-foreground">כרגע אין מתעניינים שדורשים ניג'וג. כל הכבוד.</p>
+            <p className="text-xs text-muted-foreground">כרגע אין אנשי קשר שדורשים ניג'וג. כל הכבוד.</p>
           ) : (
             suggestions.map((s) => (
               <div key={s.lead_id} className="flex items-center justify-between gap-2 rounded-md border border-border/60 p-2">

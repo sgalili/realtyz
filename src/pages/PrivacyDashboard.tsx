@@ -139,7 +139,7 @@ export default function PrivacyDashboard() {
           פרטיות וציות (GDPR)
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          ייצוא נתוני מתעניין ומחיקה מלאה של היסטוריה — לעמידה בדרישות GDPR ופרטיות בישראל.
+          ייצוא נתוני איש קשר ומחיקה מלאה של היסטוריה — לעמידה בדרישות GDPR ופרטיות בישראל.
         </p>
       </div>
 
@@ -170,11 +170,11 @@ export default function PrivacyDashboard() {
             <FileText className="w-4 h-4" />
             ניהול נתוני לקוח
           </CardTitle>
-          <CardDescription>חפש מתעניין לפי שם, טלפון או אימייל, ואז ייצא או מחק את כל ההיסטוריה שלו.</CardDescription>
+          <CardDescription>חפש איש קשר לפי שם, טלפון או אימייל, ואז ייצא או מחק את כל ההיסטוריה שלו.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2 max-w-md">
-            <Label htmlFor="search">חיפוש מתעניין</Label>
+            <Label htmlFor="search">חיפוש איש קשר</Label>
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -194,7 +194,7 @@ export default function PrivacyDashboard() {
                   <div key={i} className="p-3"><Skeleton className="h-12 w-full" /></div>
                 ))
               ) : (leads ?? []).length === 0 ? (
-                <div className="p-6 text-sm text-muted-foreground text-center">לא נמצאו מתעניינים</div>
+                <div className="p-6 text-sm text-muted-foreground text-center">לא נמצאו אנשי קשר</div>
               ) : (
                 (leads ?? []).map((lead) => (
                   <div key={lead.id} className="p-3 flex items-center justify-between gap-3 hover:bg-accent/30">

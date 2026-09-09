@@ -17,7 +17,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/$/, title: 'משימות היום' },
   { match: /^\/(command-center|tasks)/, title: 'משימות היום' },
   { match: /^\/dashboard$/, title: 'לוח בקרה' },
-  { match: /^\/lead-crm/, title: 'לקוחות' },
+  { match: /^\/lead-crm/, title: 'אנשי קשר' },
   { match: /^\/inbox/, title: 'תיבת הודעות' },
   { match: /^\/deal-room/, title: 'עסקאות' },
   { match: /^\/properties\/[^/]+/, title: 'פרטי נכס' },

@@ -61,8 +61,8 @@ export function SuperAdminLeadAlert({ collapsed }: { collapsed?: boolean }) {
           const attempted = row.attempted_target ?? '?';
           const isPrimaries = row.election_type === 'primaries';
           const unit = isPrimaries ? 'מושבים' : 'עסקאות';
-          toast.success('🎯 מתעניין שדרוג חדש', {
-            description: `${email} מתעניין ב-${attempted} ${unit}`,
+          toast.success('🎯 איש קשר שדרוג חדש', {
+            description: `${email} איש קשר ב-${attempted} ${unit}`,
             duration: 7000,
           });
           queryClient.invalidateQueries({ queryKey: QUERY_KEY });
@@ -93,8 +93,8 @@ export function SuperAdminLeadAlert({ collapsed }: { collapsed?: boolean }) {
       to="/super-admin"
       onClick={handleClick}
       className="group relative flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-primary hover:bg-primary/10"
-      aria-label={newCount > 0 ? `${newCount} מתעניינים חדשים` : 'ניטור מתעניינים'}
-      title={newCount > 0 ? `${newCount} לידי שדרוג חדשים` : 'אין מתעניינים חדשים'}
+      aria-label={newCount > 0 ? `${newCount} אנשי קשר חדשים` : 'ניטור אנשי קשר'}
+      title={newCount > 0 ? `${newCount} לידי שדרוג חדשים` : 'אין אנשי קשר חדשים'}
     >
       <span className="relative inline-flex">
         <Bell className="h-4 w-4 text-warning" aria-hidden="true" />

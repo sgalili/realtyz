@@ -48,7 +48,7 @@ export function AffiliateInviteCard() {
   const metrics = [
     { label: 'הזמנות', value: String(invites) },
     { label: 'נרשמים', value: String(signups) },
-    { label: 'לקוחות משלמים', value: String(activeSubs) },
+    { label: 'אנשי קשר משלמים', value: String(activeSubs) },
     { label: 'קרדיט שנצבר', value: fmtILS(earnings) },
   ];
 
@@ -100,7 +100,7 @@ export function AffiliateInviteCard() {
             <div className="rounded-xl bg-card p-3 shadow-sm">
               <div className="text-base font-extrabold text-foreground">חודש חינם בחבילת Pro</div>
               <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
-                בונוס יעד: אחרי 3 חברים שהזמנתם שהפכו ללקוחות משלמים.
+                בונוס יעד: אחרי 3 חברים שהזמנתם שהפכו לאנשי קשר משלמים.
               </div>
             </div>
           </div>

@@ -3240,7 +3240,7 @@ const ConfirmDispatchDialog = ({
 
   const selectedPages = pages.filter((p) => selectedProfileIds.includes(p.id));
   // Deduplicate by profile key / account ref / normalized name so the same
-  // Facebook page never renders as two stacked cards for the מתעניין flow.
+  // Facebook page never renders as two stacked cards for the איש קשר flow.
   const dedupePages = (rows: typeof pages) => {
     const seen = new Set<string>();
     const out: typeof pages = [];
@@ -3644,7 +3644,7 @@ const ConfirmDispatchDialog = ({
             </span>
           );
         } else {
-          toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
+          toast.success(`שודר ל-${rows.length} אנשי קשר בערוץ ${channel.label}`);
         }
       }
       // Active-learning capture for manual edits to the AI-drafted post body.
@@ -6100,11 +6100,11 @@ const VoiceLeadPickerDialog = ({
     const targets = listGroup === 'manual'
       ? leads.filter((l) => selectedLeadIds.has(l.id))
       : leads;
-    if (targets.length === 0) { toast.error('אין מתעניינים זמינים לחיוג'); return; }
+    if (targets.length === 0) { toast.error('אין אנשי קשר זמינים לחיוג'); return; }
     const agent = allAgents.find((a) => a.id === agentId);
     if (!agent) { toast.error('בחר/י קול לפני החיוג'); return; }
     setDialing(true);
-    toast.loading(`מחייג ל-${targets.length} מתעניינים בקול ${agent.label}…`, { id: 'voice-dial' });
+    toast.loading(`מחייג ל-${targets.length} אנשי קשר בקול ${agent.label}…`, { id: 'voice-dial' });
     let ok = 0; let failed = 0;
     try {
       for (const l of targets) {
@@ -6234,7 +6234,7 @@ const VoiceLeadPickerDialog = ({
                 <div className="max-h-60 overflow-y-auto divide-y divide-border/50">
                   {loading && <div className="p-3 text-center text-xs text-muted-foreground">טוען…</div>}
                   {!loading && filteredLeads.length === 0 && (
-                    <div className="p-3 text-center text-xs text-muted-foreground">לא נמצאו מתעניינים</div>
+                    <div className="p-3 text-center text-xs text-muted-foreground">לא נמצאו אנשי קשר</div>
                   )}
                   {!loading && filteredLeads.map((l) => {
                     const checked = selectedLeadIds.has(l.id);
@@ -6317,8 +6317,8 @@ const VoiceLeadPickerDialog = ({
               // sees a concrete example instead of a hard-coded street.
               const example = voiceListings[0];
               const examplePlaceholder = example
-                ? `לדוגמה: "בדוק האם המתעניין עדיין מחפש נכס דומה ל-${example.title}${example.city ? ` ב${example.city}` : ''}, ועדכן אותו על האפשרות החדשה הזאת"`
-                : 'לדוגמה: "בדוק האם המתעניין עדיין מחפש דירה לפי ההעדפות שלו, ועדכן אותו על נכס חדש שמתאים"';
+                ? `לדוגמה: "בדוק האם איש הקשר עדיין מחפש נכס דומה ל-${example.title}${example.city ? ` ב${example.city}` : ''}, ועדכן אותו על האפשרות החדשה הזאת"`
+                : 'לדוגמה: "בדוק האם איש הקשר עדיין מחפש דירה לפי ההעדפות שלו, ועדכן אותו על נכס חדש שמתאים"';
               return (
                 <>
                   {/* Property promotion picker — mirrors the FB post flow */}
@@ -6356,7 +6356,7 @@ const VoiceLeadPickerDialog = ({
                       className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
                     />
                     <p className="text-[11px] text-muted-foreground text-right leading-snug">
-                      אם {heVerb(userGender, 'תשאיר', 'תשאירי')} ריק, המערכת {heVerb(userGender, 'תשתמש', 'תשתמש')} באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם המתעניין.
+                      אם {heVerb(userGender, 'תשאיר', 'תשאירי')} ריק, המערכת {heVerb(userGender, 'תשתמש', 'תשתמש')} באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם איש הקשר.
                     </p>
                   </div>
 
@@ -7736,7 +7736,7 @@ const CampaignCenter = () => {
             <div className="flex justify-start">
               <Button variant="ghost" size="icon"
                 onClick={() => fromCrm ? navigate(`/lead-crm?lead=${encodeURIComponent(leadId!)}`) : navigate('/lead-crm')}
-                className="text-primary-foreground hover:bg-primary-foreground/10" aria-label="חזרה לפרופיל המתעניין">
+                className="text-primary-foreground hover:bg-primary-foreground/10" aria-label="חזרה לפרופיל איש הקשר">
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </div>

@@ -64,7 +64,7 @@ export function NextMilestoneWidget() {
         <CardContent className="text-center space-y-2 py-4">
           <p className="text-sm text-foreground">עדיין אין נתוני קמפיין במערכת שלך.</p>
           <p className="text-xs text-muted-foreground">
-            הגדר יעד עסקאות בעמוד המנוי וייבא את רשימת המתעניינים שלך כדי לראות את אבן הדרך הבאה.
+            הגדר יעד עסקאות בעמוד המנוי וייבא את רשימת אנשי הקשר שלך כדי לראות את אבן הדרך הבאה.
           </p>
         </CardContent>
       </Card>

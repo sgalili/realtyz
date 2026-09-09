@@ -79,9 +79,9 @@ export function ShareWithLeadDialog({ property, open, onOpenChange }: Props) {
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent dir="rtl" className="max-w-lg">
           <DialogHeader className="text-right">
-            <DialogTitle>שתף נכס עם מתעניין</DialogTitle>
+            <DialogTitle>שתף נכס עם איש קשר</DialogTitle>
             <DialogDescription>
-              בחרו מתעניין פעיל מהעסקאות כדי לפתוח טיוטת פנייה (Listing Outreach).
+              בחרו איש קשר פעיל מהעסקאות כדי לפתוח טיוטת פנייה (Listing Outreach).
             </DialogDescription>
           </DialogHeader>
 
@@ -112,7 +112,7 @@ export function ShareWithLeadDialog({ property, open, onOpenChange }: Props) {
                 ))
               ) : filtered.length === 0 ? (
                 <p className="text-center text-sm text-muted-foreground py-8">
-                  לא נמצאו מתעניינים פעילים.
+                  לא נמצאו אנשי קשר פעילים.
                 </p>
               ) : (
                 filtered.map((p) => (

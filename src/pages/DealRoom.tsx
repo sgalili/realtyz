@@ -131,7 +131,7 @@ type StageColumn = {
 };
 
 const SALE_STAGE_COLUMNS: StageColumn[] = [
-  { key: 'new_lead',       title: 'מתעניין חדש',          icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_lead'] },
+  { key: 'new_lead',       title: 'איש קשר חדש',          icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_lead'] },
   { key: 'listing_outreach',   title: 'שליחת נכסים למכירה',   icon: Megaphone,     accent: 'text-social-facebook',  legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'] },
   { key: 'negotiation',        title: 'משא ומתן על מחיר',     icon: Handshake,     accent: 'text-warning',          legacyKeys: ['negotiation', 'qualified', 'meeting'] },
   { key: 'awaiting_signature', title: 'ממתין לחתימת זיכרון',  icon: PenLine,       accent: 'text-primary',          legacyKeys: ['awaiting_signature', 'signature_pending'] },
@@ -139,7 +139,7 @@ const SALE_STAGE_COLUMNS: StageColumn[] = [
 ];
 
 const RENT_STAGE_COLUMNS: StageColumn[] = [
-  { key: 'new_lead',       title: 'מתעניין חדש',           icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_lead'] },
+  { key: 'new_lead',       title: 'איש קשר חדש',           icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_lead'] },
   { key: 'listing_outreach',   title: 'שליחת נכסים להשכרה',    icon: Megaphone,     accent: 'text-social-facebook',  legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'] },
   { key: 'negotiation',        title: 'תיאום צפייה / מו״מ',    icon: Handshake,     accent: 'text-warning',          legacyKeys: ['negotiation', 'qualified', 'meeting'] },
   { key: 'awaiting_signature', title: 'ממתין לחתימת חוזה שכירות', icon: PenLine,    accent: 'text-primary',          legacyKeys: ['awaiting_signature', 'signature_pending'] },
@@ -241,10 +241,10 @@ export default function DealRoom() {
       .update({ assigned_to: userId })
       .eq('id', leadId);
     if (error) {
-      toast.error('לא ניתן להקצות את המתעניין', { description: error.message });
+      toast.error('לא ניתן להקצות את איש הקשר', { description: error.message });
       return;
     }
-    toast.success(userId ? 'המתעניין הוקצה' : 'ההקצאה בוטלה');
+    toast.success(userId ? 'איש הקשר הוקצה' : 'ההקצאה בוטלה');
     queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
   }
   const [recomputing, setRecomputing] = useState(false);
@@ -265,7 +265,7 @@ export default function DealRoom() {
       });
       queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
     } catch (err: any) {
-      toast.error('ייבוא המתעניינים נכשל', { description: err?.message });
+      toast.error('ייבוא אנשי הקשר נכשל', { description: err?.message });
     } finally {
       setImporting(false);
     }
@@ -397,7 +397,7 @@ export default function DealRoom() {
       });
       if (error) throw error;
       const n = (data as any)?.processed ?? 0;
-      toast.success(`חושבו מחדש ${n} ציוני מתעניין`);
+      toast.success(`חושבו מחדש ${n} ציוני איש קשר`);
       queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
     } catch (err: any) {
       toast.error('לא ניתן לחשב מחדש את הציונים', { description: err?.message });
@@ -471,7 +471,7 @@ export default function DealRoom() {
     lead?: any;
   }) {
     if (!suggestion.lead) {
-      toast.error('המתעניין אינו זמין עבור הצעה זו');
+      toast.error('איש הקשר אינו זמין עבור הצעה זו');
       return;
     }
     setActiveSuggestionId(suggestion.id);
@@ -523,7 +523,7 @@ export default function DealRoom() {
         throw new Error(reason);
       }
       toast.success('התשובה אושרה ונשלחה', {
-        description: `WhatsApp נמסר ל-${activeLead.full_name || 'המתעניין'}`,
+        description: `WhatsApp נמסר ל-${activeLead.full_name || 'איש הקשר'}`,
       });
       // If this draft came from an Action Item, mark the suggestion as used so it
       // disappears from the queue and we don't suggest the same thing again.
@@ -595,7 +595,7 @@ export default function DealRoom() {
           <SheetHeader className="text-right">
             <SheetTitle>סינון עסקאות</SheetTitle>
             <SheetDescription>
-              {visibleLeads.length} מתעניינים מוצגים ב{activeDealType === 'rent' ? 'השכרה' : 'מכירה'}
+              {visibleLeads.length} אנשי קשר מוצגים ב{activeDealType === 'rent' ? 'השכרה' : 'מכירה'}
             </SheetDescription>
           </SheetHeader>
 
@@ -669,7 +669,7 @@ export default function DealRoom() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                מסנן לפי התקציב שנשמר בכרטיס המתעניין. מתעניינים ללא תקציב יוסתרו.
+                מסנן לפי התקציב שנשמר בכרטיס איש הקשר. אנשי קשר ללא תקציב יוסתרו.
               </p>
             </div>
 
@@ -812,7 +812,7 @@ export default function DealRoom() {
 
                   {!isLoading && items.length === 0 && (
                     <div className="text-center text-xs text-muted-foreground py-8">
-                      אין מתעניינים בשלב זה
+                      אין אנשי קשר בשלב זה
                     </div>
                   )}
 
@@ -841,7 +841,7 @@ export default function DealRoom() {
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-center justify-between gap-2">
                             <div className="font-medium text-sm truncate min-w-0 flex-1">
-                              {p.full_name || 'מתעניין ללא שם'}
+                              {p.full_name || 'איש קשר ללא שם'}
                             </div>
                             <Badge variant="secondary" className="text-[10px] font-normal shrink-0">
                               {stageLabel}
@@ -912,7 +912,7 @@ export default function DealRoom() {
             <SheetDescription>
               תשובה מוצעת עבור{' '}
               <span className="font-medium text-foreground">
-                {activeLead?.full_name || 'מתעניין זה'}
+                {activeLead?.full_name || 'איש קשר זה'}
               </span>
               , נכתבה בקול האותנטי שלך מתוך מאגר האסטרטגיה.
             </SheetDescription>
@@ -1039,7 +1039,7 @@ export default function DealRoom() {
                   />
                 )}
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  שום דבר לא נשלח למתעניין עד שתלחץ <span className="font-medium text-foreground">אשר ושלח</span>.
+                  שום דבר לא נשלח לאיש קשר עד שתלחץ <span className="font-medium text-foreground">אשר ושלח</span>.
                 </p>
                 {smartReply.trim() && (
                   <AiMessageFeedback

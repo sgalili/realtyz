@@ -277,7 +277,7 @@ export default function AffiliatePortal() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
             { label: 'נכסים בשיווק', value: String(stats.promoting), icon: Megaphone, color: 'text-sky-600' },
-            { label: 'מתעניינים שהוגשו', value: String(stats.leads), icon: MousePointerClick, color: 'text-indigo-600' },
+            { label: 'אנשי קשר שהוגשו', value: String(stats.leads), icon: MousePointerClick, color: 'text-indigo-600' },
             { label: 'עסקאות שנחתמו', value: String(stats.signed), icon: TrendingUp, color: 'text-emerald-600' },
             { label: 'תגמול מצטבר', value: fmtILS(stats.earned), icon: Banknote, color: 'text-amber-600' },
           ].map((s) => (
@@ -298,7 +298,7 @@ export default function AffiliatePortal() {
         <Tabs defaultValue="marketplace">
           <TabsList>
             <TabsTrigger value="marketplace">נכסים לשיווק</TabsTrigger>
-            <TabsTrigger value="leads">המתעניינים שהגשתי</TabsTrigger>
+            <TabsTrigger value="leads">אנשי הקשר שהגשתי</TabsTrigger>
             <TabsTrigger value="mine">השיווקים שלי</TabsTrigger>
           </TabsList>
 
@@ -336,7 +336,7 @@ export default function AffiliatePortal() {
             ) : submissions.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
-                  עוד לא הגשתם מתעניינים. בחרו נכס ולחצו "הגשת מתעניין לנכס".
+                  עוד לא הגשתם אנשי קשר. בחרו נכס ולחצו "הגשת איש קשר לנכס".
                 </CardContent>
               </Card>
             ) : (

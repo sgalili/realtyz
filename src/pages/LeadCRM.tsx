@@ -113,12 +113,12 @@ const SOURCE_LABEL_HE: Record<string, string> = {
 
 /** Hebrew display dictionary for the "סטטוס לקוח" (lead_stage) dropdown. */
 const STAGE_LABEL_HE: Record<string, string> = {
-  new: 'מתעניין חדש',
-  new_lead: 'מתעניין חדש',
+  new: 'איש קשר חדש',
+  new_lead: 'איש קשר חדש',
   contacted: 'יצר קשר',
   engaging: 'בטיפול',
-  cold: 'מתעניין קר',
-  qualified: 'מתעניין מוסמך',
+  cold: 'איש קשר קר',
+  qualified: 'איש קשר מוסמך',
   touring: 'בסיור נכסים',
   offer_pending: 'ממתין להצעה',
   negotiation: 'במשא ומתן',
@@ -149,14 +149,14 @@ const interestHebrew: Record<string, string> = {
 };
 const statusHebrew: Record<string, string> = {
   // Real-estate CRM lead statuses (Hebrew only in the UI)
-  new: 'מתעניין חדש',
-  lead: 'מתעניין חדש',
-  cold: 'מתעניין קר',
-  qualified: 'מתעניין מוסמך',
+  new: 'איש קשר חדש',
+  lead: 'איש קשר חדש',
+  cold: 'איש קשר קר',
+  qualified: 'איש קשר מוסמך',
   negotiation: 'במשא ומתן',
   closed: 'נסגרה עסקה',
   // Legacy fallbacks
-  supporter: 'נסגרה עסקה', active: 'מתעניין מוסמך',
+  supporter: 'נסגרה עסקה', active: 'איש קשר מוסמך',
   inactive: 'לא רלוונטי כרגע', contacted: 'נוצר קשר', voted: 'נסגרה עסקה',
 };
 /** Hebrew display dictionary for the sentiment ("יחס הלקוח") filter. */
@@ -167,14 +167,14 @@ const SENTIMENT_LABEL_HE: Record<string, string> = {
 };
 
 const loyaltyConfig: Record<string, { label: string; color: string }> = {
-  cold: { label: 'מתעניין קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
-  qualified: { label: 'מתעניין מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
+  cold: { label: 'איש קשר קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  qualified: { label: 'איש קשר מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
   negotiation: { label: 'במשא ומתן', color: 'bg-amber-500/15 text-amber-700 border-amber-300' },
   closed: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
   // Legacy
   supporter: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
-  active: { label: 'מתעניין מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
-  lead: { label: 'מתעניין קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  active: { label: 'איש קשר מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
+  lead: { label: 'איש קשר קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
   inactive: { label: 'לא רלוונטי', color: 'bg-red-500/15 text-red-700 border-red-300' },
   contacted: { label: 'נוצר קשר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
   voted: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
@@ -227,15 +227,52 @@ function normalizeHeader(h: string): string {
     .toLowerCase();
 }
 
+// Specific fields are matched BEFORE generic ones so a column like "שם משרד"
+// is never swallowed by the generic "שם" (full_name) alias.
+const FIELD_PRIORITY = [
+  'agency_name',
+  'operating_area',
+  'notes',
+  'email',
+  'identity_number',
+  'phone',
+  'city',
+  'interest_tag',
+  'first_name',
+  'last_name',
+  'full_name',
+];
+
 function buildHeaderMap(headers: string[]): Record<string, string> {
   // Returns: { canonicalField: actualHeaderInFile }
   const map: Record<string, string> = {};
   const normalized = headers.map((h) => ({ raw: h, norm: normalizeHeader(h) }));
-  for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
-    const aliasSet = new Set(aliases.map(normalizeHeader));
-    const hit = normalized.find((h) => aliasSet.has(h.norm));
-    if (hit) map[field] = hit.raw;
+  const claimed = new Set<string>();
+  const fields = FIELD_PRIORITY.filter((f) => HEADER_ALIASES[f]).concat(
+    Object.keys(HEADER_ALIASES).filter((f) => !FIELD_PRIORITY.includes(f)),
+  );
+
+  // Pass 1: exact alias match
+  for (const field of fields) {
+    const aliasSet = new Set(HEADER_ALIASES[field].map(normalizeHeader));
+    const hit = normalized.find((h) => !claimed.has(h.raw) && aliasSet.has(h.norm));
+    if (hit) { map[field] = hit.raw; claimed.add(hit.raw); }
   }
+
+  // Pass 2: fuzzy fallback — header CONTAINS an alias (handles "שם המשרד",
+  // "אזור הפעילות", "טלפון נייד", "הערות נוספות", "שם מלא של המתווך"...)
+  for (const field of fields) {
+    if (map[field]) continue;
+    const aliases = HEADER_ALIASES[field]
+      .map(normalizeHeader)
+      .filter((a) => a.length >= 2)
+      .sort((a, b) => b.length - a.length);
+    const hit = normalized.find(
+      (h) => !claimed.has(h.raw) && h.norm && aliases.some((a) => h.norm.includes(a)),
+    );
+    if (hit) { map[field] = hit.raw; claimed.add(hit.raw); }
+  }
+
   return map;
 }
 
@@ -433,7 +470,7 @@ const LeadCRM = () => {
     if (homelySyncing) return;
     setHomelySyncing(true);
     window.dispatchEvent(new Event('leads:busy:on'));
-    const t = toast.loading('מסנכרן מתעניינים מהומלי...');
+    const t = toast.loading('מסנכרן אנשי קשר מהומלי...');
     try {
       const { data, error } = await supabase.functions.invoke('homely-leads', { body: { wipe_first: true } });
       if (error) throw error;
@@ -840,8 +877,8 @@ const LeadCRM = () => {
       const badge =
         tier === 'closed' ? 'נסגר'
         : tier === 'negotiation' ? 'במשא ומתן'
-        : tier === 'qualified' ? 'מתעניין מוסמך'
-        : 'מתעניין קר';
+        : tier === 'qualified' ? 'איש קשר מוסמך'
+        : 'איש קשר קר';
       return badge === profileFilter;
     });
   }, [leads, profileFilter]);
@@ -909,10 +946,10 @@ const LeadCRM = () => {
       return { ...sent, score, badge: 'במשא ומתן', emoji: '✍️', badgeClass: 'bg-amber-500 text-white border-amber-600' };
     }
 
-    if (score >= 80) return { ...sent, score, badge: 'מתעניין רותח', emoji: '🌋', badgeClass: 'bg-red-600 text-white border-red-700' };
-    if (score >= 60) return { ...sent, score, badge: 'מתעניין חם',   emoji: '🔥', badgeClass: 'bg-orange-500 text-white border-orange-600' };
-    if (score >= 30) return { ...sent, score, badge: 'מתעניין פושר', emoji: '🌤️', badgeClass: 'bg-amber-400 text-amber-950 border-amber-500' };
-    return { ...sent, score, badge: 'מתעניין קר', emoji: '❄️', badgeClass: 'bg-slate-500 text-white border-slate-600' };
+    if (score >= 80) return { ...sent, score, badge: 'איש קשר רותח', emoji: '🌋', badgeClass: 'bg-red-600 text-white border-red-700' };
+    if (score >= 60) return { ...sent, score, badge: 'איש קשר חם',   emoji: '🔥', badgeClass: 'bg-orange-500 text-white border-orange-600' };
+    if (score >= 30) return { ...sent, score, badge: 'איש קשר פושר', emoji: '🌤️', badgeClass: 'bg-amber-400 text-amber-950 border-amber-500' };
+    return { ...sent, score, badge: 'איש קשר קר', emoji: '❄️', badgeClass: 'bg-slate-500 text-white border-slate-600' };
   };
 
 
@@ -951,29 +988,29 @@ const LeadCRM = () => {
     const rows = source?.map(v => ({
       'שם מלא': v.full_name, 'טלפון': formatPhoneDisplay(v.phone_number), 'עיר': v.city,
       'נושא עניין': v.interest_tag, 'דרגת נאמנות': getLoyalty(v.status).label,
-      'שלב מתעניין': getPoliticalProfile(v.status, v.engagement_score).badge,
+      'שלב איש קשר': getPoliticalProfile(v.status, v.engagement_score).badge,
       'הצביע': v.is_voted ? 'כן' : 'לא', 'ציון מעורבות': v.engagement_score,
     }));
     if (!rows?.length) { toast.error('אין נתונים לייצוא'); return; }
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'מתעניינים');
-    XLSX.writeFile(wb, `מתעניינים_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-    toast.success(`${rows.length} מתעניינים יוצאו בהצלחה`);
+    XLSX.utils.book_append_sheet(wb, ws, 'אנשי קשר');
+    XLSX.writeFile(wb, `אנשי קשר_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    toast.success(`${rows.length} אנשי קשר יוצאו בהצלחה`);
   };
 
   const handleAiBlastPreview = () => {
     const selected = leads?.filter(v => selectedIds.has(v.id)) ?? [];
     const previews = selected.slice(0, 10).map(v => {
       const interest = v.interest_tag || 'כללי';
-      const name = v.full_name || 'מתעניין';
+      const name = v.full_name || 'איש קשר';
       const score = v.engagement_score ?? 0;
       let tone = 'ידידותי';
       if (score >= 60) tone = 'חם ומחזק';
       else if (score < 30) tone = 'מניע לפעולה';
       return {
         name,
-        message: `שלום ${name}! 👋\nראיתי שאתה מתעניין ב${interest}. רציתי לעדכן אותך שיש לנו חדשות חשובות בנושא.\n\nנשמח אם תצטרף אלינו - ביחד נשפיע! 🇮🇱\n\n[סגנון: ${tone}]`,
+        message: `שלום ${name}! 👋\nראיתי שאתה איש קשר ב${interest}. רציתי לעדכן אותך שיש לנו חדשות חשובות בנושא.\n\nנשמח אם תצטרף אלינו - ביחד נשפיע! 🇮🇱\n\n[סגנון: ${tone}]`,
       };
     });
     setAiPreviews(previews);
@@ -993,7 +1030,7 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       setSelectedIds(new Set());
-      toast.success(`${count ?? ids.length} מתעניינים עודכנו ל-${hebrewLabel(statusHebrew, newStatus)}`);
+      toast.success(`${count ?? ids.length} אנשי קשר עודכנו ל-${hebrewLabel(statusHebrew, newStatus)}`);
     } catch (err: any) {
       toast.error('שגיאה בעדכון סטטוס: ' + (err?.message || ''));
     }
@@ -1012,7 +1049,7 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       setSelectedIds(new Set());
-      toast.success(`${count ?? ids.length} מתעניינים עודכנו לתגית "${tag}"`);
+      toast.success(`${count ?? ids.length} אנשי קשר עודכנו לתגית "${tag}"`);
     } catch (err: any) {
       toast.error('שגיאה בעדכון תגית: ' + (err?.message || ''));
     }
@@ -1048,7 +1085,7 @@ const LeadCRM = () => {
       setSelectedIds(new Set());
       setDeleteDialogOpen(false);
       
-      toast.success(`${deleted} מתעניינים נמחקו בהצלחה`);
+      toast.success(`${deleted} אנשי קשר נמחקו בהצלחה`);
     } finally {
       setDeleting(false);
     }
@@ -1059,7 +1096,7 @@ const LeadCRM = () => {
     if (blockDemoAction('add-to-campaign')) return;
     const ids = Array.from(selectedIds);
     await sendToN8n('add_to_campaign', { campaign_id: campaignId, lead_ids: ids });
-    toast.success(`${ids.length} מתעניינים נוספו לקמפיין`);
+    toast.success(`${ids.length} אנשי קשר נוספו לקמפיין`);
     setAddToCampaignOpen(false);
     setSelectedIds(new Set());
   };
@@ -1089,7 +1126,7 @@ const LeadCRM = () => {
       setSingleDeleteId(null);
       setSelectedVoterId(null);
       if (routeLeadId) navigate('/lead-crm');
-      toast.success('המתעניין נמחק לצמיתות');
+      toast.success('איש הקשר נמחק לצמיתות');
     } catch (err: any) {
       toast.error('מחיקה נכשלה: ' + (err?.message || 'שגיאה'));
     } finally {
@@ -1139,7 +1176,7 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       queryClient.invalidateQueries({ queryKey: ['leads-total'] });
-      toast.success('מתעניין נוסף בהצלחה');
+      toast.success('איש קשר נוסף בהצלחה');
       // Fire-and-forget Green API avatar fetch so the new row gets a real WA photo.
       supabase.functions
         .invoke('fetch-wa-avatars', { body: { lead_ids: [(inserted as any).id], owner_id: activeWorkspaceId, force: true } })
@@ -1151,12 +1188,12 @@ const LeadCRM = () => {
     } catch (err: any) {
       const msg = String(err?.message || '');
       if (msg.includes('TRIAL_RECORD_LIMIT')) {
-        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר המתעניינים שלך', {
+        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר אנשי הקשר שלך', {
           duration: 8000,
           action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
         });
       } else {
-        toast.error('שגיאה בהוספת מתעניין: ' + (err?.message || 'שגיאה'));
+        toast.error('שגיאה בהוספת איש קשר: ' + (err?.message || 'שגיאה'));
       }
     } finally {
       setAddingVoter(false);
@@ -1181,6 +1218,21 @@ const LeadCRM = () => {
     const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
     const isJson = /\.json$/i.test(file.name) || file.type === 'application/json';
     setImportIsJson(isJson);
+
+    // Hard reset of every trace of a previously uploaded file so we only ever
+    // stage the freshly selected one (no stale rows, previews or stats).
+    try { delete (window as any).__importRows; } catch { (window as any).__importRows = undefined; }
+    (window as any).__importRows = [];
+    setImportPreview([]);
+    setImportStats(null);
+    try {
+      Object.keys(localStorage)
+        .filter((k) => /^(crm|leads|contacts)[.:_-]?import/i.test(k) || /import(Rows|Preview|Stats|Queue)/i.test(k))
+        .forEach((k) => localStorage.removeItem(k));
+      Object.keys(sessionStorage)
+        .filter((k) => /import/i.test(k))
+        .forEach((k) => sessionStorage.removeItem(k));
+    } catch {}
 
     const processRows = (rows: Record<string, any>[]) => {
       try {
@@ -1635,8 +1687,8 @@ const LeadCRM = () => {
               <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="שלב" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל השלבים</SelectItem>
-                <SelectItem value="מתעניין קר">מתעניין קר</SelectItem>
-                <SelectItem value="מתעניין מוסמך">מתעניין מוסמך</SelectItem>
+                <SelectItem value="איש קשר קר">איש קשר קר</SelectItem>
+                <SelectItem value="איש קשר מוסמך">איש קשר מוסמך</SelectItem>
                 <SelectItem value="במשא ומתן">במשא ומתן</SelectItem>
                 <SelectItem value="נסגר">נסגר</SelectItem>
               </SelectContent>
@@ -1745,7 +1797,7 @@ const LeadCRM = () => {
                     <TableRow><TableCell colSpan={totalColCount} className="py-12">
                       <div className="flex flex-col items-center gap-3">
                         <div className="realtyz-loader h-10 w-10" />
-                        <p className="text-sm text-muted-foreground">טוען מתעניינים...</p>
+                        <p className="text-sm text-muted-foreground">טוען אנשי קשר...</p>
                       </div>
                     </TableCell></TableRow>
                   )}
@@ -1763,12 +1815,12 @@ const LeadCRM = () => {
                               <p className="text-base font-semibold text-foreground mb-1">אין רשומות במאגר</p>
                               <p className="text-sm text-muted-foreground mb-3">העלה רשימה כדי להתחיל</p>
                               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-2">
-                                <Upload className="h-4 w-4" /> ייבוא מתעניינים
+                                <Upload className="h-4 w-4" /> ייבוא אנשי קשר
                               </Button>
                             </>
                           ) : (
                             <>
-                              <p className="text-base font-semibold text-foreground mb-1">לא נמצאו מתעניינים</p>
+                              <p className="text-base font-semibold text-foreground mb-1">לא נמצאו אנשי קשר</p>
                               <p className="text-sm text-muted-foreground mb-3">נסה לשנות את הפילטרים או את מילות החיפוש</p>
                               {hasFilter && (
                                 <Button variant="outline" size="sm" onClick={() => { setInterestFilter('all'); setCityFilter('all'); setStatusFilter('all'); setProfileFilter('all'); setSearch(''); }}>
@@ -1928,15 +1980,15 @@ const LeadCRM = () => {
             const status = v?.status || 'cold';
             const cfg = getLoyalty(status);
             const descriptions: Record<string, string> = {
-              cold: 'מתעניין קר — נרשם במערכת אך עדיין לא הייתה אינטראקציה משמעותית. הסוכן הדיגיטלי ינסה ליצור קשר ראשוני.',
-              qualified: 'מתעניין מוסמך — נוצר קשר, אומתו צרכים בסיסיים (תקציב/אזור/סוג נכס). מוכן לשלב הצגת נכסים.',
+              cold: 'איש קשר קר — נרשם במערכת אך עדיין לא הייתה אינטראקציה משמעותית. הסוכן הדיגיטלי ינסה ליצור קשר ראשוני.',
+              qualified: 'איש קשר מוסמך — נוצר קשר, אומתו צרכים בסיסיים (תקציב/אזור/סוג נכס). מוכן לשלב הצגת נכסים.',
               negotiation: 'במשא ומתן — התקיים סיור או הוצגה הצעה. שלב רגיש: הסוכן מעדיף תשובה אישית של הברוקר.',
               closed: 'נסגר — העסקה הושלמה. הלקוח עובר למאגר חיזוק קשר ולא ייפנה אוטומטית.',
               contacted: 'נוצר קשר — בוצעה פנייה ראשונית. ממתינים לתגובה כדי להעלות לשלב הבא.',
               inactive: 'לא רלוונטי — לא מתאים כרגע. לא תישלחנה פניות עד שינוי ידני של הסטטוס.',
-              lead: 'מתעניין קר — נרשם במערכת אך עדיין לא הייתה אינטראקציה משמעותית.',
+              lead: 'איש קשר קר — נרשם במערכת אך עדיין לא הייתה אינטראקציה משמעותית.',
               supporter: 'נסגר — העסקה הושלמה.',
-              active: 'מתעניין מוסמך — קשר פעיל ושוטף.',
+              active: 'איש קשר מוסמך — קשר פעיל ושוטף.',
               voted: 'נסגר — העסקה הושלמה.',
             };
             const lastInteraction = v?.last_interaction_at
@@ -1986,7 +2038,7 @@ const LeadCRM = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>הוסף לקמפיין</DialogTitle>
-            <DialogDescription>בחר קמפיין להוספת {selectedIds.size} מתעניינים</DialogDescription>
+            <DialogDescription>בחר קמפיין להוספת {selectedIds.size} אנשי קשר</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {campaigns?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">אין קמפיינים פעילים</p>}
@@ -2009,7 +2061,7 @@ const LeadCRM = () => {
               תצוגה מקדימה - הודעת AI מותאמת אישית
             </DialogTitle>
             <DialogDescription>
-              {selectedIds.size} מתעניינים נבחרו · מוצגות עד 10 דוגמאות
+              {selectedIds.size} אנשי קשר נבחרו · מוצגות עד 10 דוגמאות
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-3 py-2">
@@ -2027,7 +2079,7 @@ const LeadCRM = () => {
               </div>
             ))}
             {aiPreviews.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">בחר מתעניינים כדי לצפות בתצוגה מקדימה</p>
+              <p className="text-sm text-muted-foreground text-center py-8">בחר אנשי קשר כדי לצפות בתצוגה מקדימה</p>
             )}
           </div>
           <DialogFooter className="gap-2">
@@ -2065,7 +2117,7 @@ const LeadCRM = () => {
 
             // Creation event
             if (selectedVoter.created_at) {
-              events.push({ id: 'created', date: selectedVoter.created_at, type: 'created', label: 'נוסף למערכת', detail: selectedVoter.full_name || 'מתעניין חדש' });
+              events.push({ id: 'created', date: selectedVoter.created_at, type: 'created', label: 'נוסף למערכת', detail: selectedVoter.full_name || 'איש קשר חדש' });
             }
 
             // Messages from messages table
@@ -2191,7 +2243,7 @@ const LeadCRM = () => {
                     <div className="flex-1 min-w-0">
                       <EditableInlineText
                         value={selectedVoter.full_name || ''}
-                        placeholder="מתעניין לא ידוע"
+                        placeholder="איש קשר לא ידוע"
                         ariaLabel="ערוך שם מלא"
                         className="text-lg font-bold max-w-full"
                         onSave={async (next) => {
@@ -2281,8 +2333,8 @@ const LeadCRM = () => {
                             <LeadEnrichmentIconButton lead={selectedVoter} />
                             <button
                               type="button"
-                              aria-label="מחק מתעניין"
-                              title="מחק מתעניין"
+                              aria-label="מחק איש קשר"
+                              title="מחק איש קשר"
                               onClick={() => setSingleDeleteId(selectedVoter.id)}
                               className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-destructive hover:bg-destructive/10 transition-colors"
                             >
@@ -2363,11 +2415,11 @@ const LeadCRM = () => {
                           { v: '10000000+',       l: 'מעל 10M ₪' },
                         ];
                     const stageOpts = [
-                      { v: 'new', l: 'מתעניין חדש' },
-                      { v: 'new_lead', l: 'מתעניין חדש' },
+                      { v: 'new', l: 'איש קשר חדש' },
+                      { v: 'new_lead', l: 'איש קשר חדש' },
                       { v: 'contacted', l: 'יצר קשר' },
                       { v: 'engaging', l: 'בטיפול' },
-                      { v: 'cold', l: 'מתעניין קר' }, { v: 'qualified', l: 'מתעניין מוסמך' },
+                      { v: 'cold', l: 'איש קשר קר' }, { v: 'qualified', l: 'איש קשר מוסמך' },
                       { v: 'touring', l: 'בסיור נכסים' }, { v: 'offer_pending', l: 'ממתין להצעה' },
                       { v: 'negotiation', l: 'במשא ומתן' }, { v: 'closed', l: 'סגר עסקה' },
                     ];
@@ -2562,7 +2614,7 @@ const LeadCRM = () => {
         <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5 text-primary" /> ייבוא מתעניינים
+              <FileSpreadsheet className="h-5 w-5 text-primary" /> ייבוא אנשי קשר
             </DialogTitle>
             <DialogDescription>סקירת בריאות הנתונים לפני ייבוא</DialogDescription>
           </DialogHeader>
@@ -2700,7 +2752,7 @@ const LeadCRM = () => {
               )}
               <span className="relative flex items-center gap-2">
                 <Upload className="h-4 w-4" />
-                {importing ? `${importProgress}%` : `ייבא ${importStats?.valid ?? 0} מתעניינים`}
+                {importing ? `${importProgress}%` : `ייבא ${importStats?.valid ?? 0} אנשי קשר`}
               </span>
             </Button>
           </DialogFooter>
@@ -2713,7 +2765,7 @@ const LeadCRM = () => {
       <AlertDialog open={!!singleDeleteId} onOpenChange={(o) => { if (!deletingSingle && !o) setSingleDeleteId(null); }}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">מחיקת מתעניין</AlertDialogTitle>
+            <AlertDialogTitle className="text-destructive">מחיקת איש קשר</AlertDialogTitle>
             <AlertDialogDescription className="text-right">
               האם אתה בטוח שברצונך למחוק ליד זה לצמיתות? הפעולה בלתי הפיכה.
             </AlertDialogDescription>
@@ -2755,7 +2807,7 @@ const LeadCRM = () => {
                   <span className="font-bold text-destructive">
                     {selectedIds.size.toLocaleString('he-IL')}
                   </span>{' '}
-                  מתעניינים. פעולה זו <span className="font-bold">בלתי הפיכה</span> ותסיר את כל ההיסטוריה, ההודעות והפגישות המשויכות.
+                  אנשי קשר. פעולה זו <span className="font-bold">בלתי הפיכה</span> ותסיר את כל ההיסטוריה, ההודעות והפגישות המשויכות.
                 </div>
               </div>
             </AlertDialogDescription>

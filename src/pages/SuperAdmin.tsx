@@ -329,7 +329,7 @@ const SuperAdmin = () => {
           מרכז שליטה סופר-אדמין
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          מודיעין דמו, מתעניינים חמים ובריאות מערכות לקראת פגישות מכירה מנצחות.
+          מודיעין דמו, אנשי קשר חמים ובריאות מערכות לקראת פגישות מכירה מנצחות.
         </p>
       </div>
 
@@ -347,7 +347,7 @@ const SuperAdmin = () => {
           <AlertDialogContent dir="rtl" className="border-destructive/25">
             <AlertDialogHeader className="text-right">
               <AlertDialogTitle>האם אתה בטוח?</AlertDialogTitle>
-              <AlertDialogDescription>פעולה זו תנקה את כל נתוני הדמו והמתעניינים שנאספו.</AlertDialogDescription>
+              <AlertDialogDescription>פעולה זו תנקה את כל נתוני הדמו ואנשי הקשר שנאספו.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="gap-2 sm:justify-start">
               <AlertDialogAction
@@ -368,13 +368,13 @@ const SuperAdmin = () => {
         <PremiumStat icon={RadioTower} label="סוכני דמו פעילים" value={liveDemoUsers} hint="/dashboard?demo=true" />
         <PremiumStat icon={Flame} label="עמוד מוביל" value="סנטימנט" hint="46% מצפיות הדמו" />
         <PremiumStat icon={Crown} label="ארכיטיפ מוביל" value={topArchetype} hint="מכירות דמו בפועל" />
-        <PremiumStat icon={Gauge} label="מתעניינים שנלכדו" value={capturedLeads?.length ?? 0} hint="מלכודות שליחת דוחות" />
+        <PremiumStat icon={Gauge} label="אנשי קשר שנלכדו" value={capturedLeads?.length ?? 0} hint="מלכודות שליחת דוחות" />
       </div>
 
       <Tabs defaultValue="intelligence" className="w-full">
         <TabsList className="flex h-auto flex-wrap justify-start">
           <TabsTrigger value="intelligence"><BrainCircuit className="ml-2 h-4 w-4" /> מרכז מודיעין</TabsTrigger>
-          <TabsTrigger value="leads"><MessageCircle className="ml-2 h-4 w-4" /> מתעניינים שנלכדו</TabsTrigger>
+          <TabsTrigger value="leads"><MessageCircle className="ml-2 h-4 w-4" /> אנשי קשר שנלכדו</TabsTrigger>
           <TabsTrigger value="users"><Users className="ml-2 h-4 w-4" /> משתמשים</TabsTrigger>
           <TabsTrigger value="finance"><Wallet className="ml-2 h-4 w-4" /> פיננסי</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="ml-2 h-4 w-4" /> פעילות</TabsTrigger>
@@ -396,7 +396,7 @@ const SuperAdmin = () => {
         </TabsContent>
 
         <TabsContent value="leads" className="mt-4">
-          <Card><CardHeader><CardTitle>Captured Leads</CardTitle><CardDescription>מתעניינים שנלכדו מ-Send Report value traps בדמו.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Email / Phone</TableHead><TableHead>זמן כניסה</TableHead><TableHead>ארכיטיפ</TableHead><TableHead>Engagement</TableHead></TableRow></TableHeader><TableBody>{(capturedLeads ?? []).map((lead, index) => <TableRow key={lead.id}><TableCell><div className="font-mono text-xs">{lead.email || formatPhoneDisplay(lead.phone_number)}</div><div className="text-xs text-muted-foreground">{lead.value_trap_type || 'send_report'}</div></TableCell><TableCell>{format(new Date(lead.created_at), 'dd/MM HH:mm')}</TableCell><TableCell><Badge variant="secondary">{lead.archetype || DEMO_CANDIDATES[index % DEMO_CANDIDATES.length]?.name}</Badge></TableCell><TableCell><span className="font-black tabular-nums text-primary">{lead.engagement_score}</span></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+          <Card><CardHeader><CardTitle>Captured Leads</CardTitle><CardDescription>אנשי קשר שנלכדו מ-Send Report value traps בדמו.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Email / Phone</TableHead><TableHead>זמן כניסה</TableHead><TableHead>ארכיטיפ</TableHead><TableHead>Engagement</TableHead></TableRow></TableHeader><TableBody>{(capturedLeads ?? []).map((lead, index) => <TableRow key={lead.id}><TableCell><div className="font-mono text-xs">{lead.email || formatPhoneDisplay(lead.phone_number)}</div><div className="text-xs text-muted-foreground">{lead.value_trap_type || 'send_report'}</div></TableCell><TableCell>{format(new Date(lead.created_at), 'dd/MM HH:mm')}</TableCell><TableCell><Badge variant="secondary">{lead.archetype || DEMO_CANDIDATES[index % DEMO_CANDIDATES.length]?.name}</Badge></TableCell><TableCell><span className="font-black tabular-nums text-primary">{lead.engagement_score}</span></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
         </TabsContent>
 
         <TabsContent value="users" className="mt-4 space-y-4">
@@ -490,7 +490,7 @@ const SuperAdmin = () => {
         </TabsContent>
 
         <TabsContent value="errors" className="mt-4"><ErrorLogPanel /></TabsContent>
-        <TabsContent value="system" className="mt-4 space-y-4"><div className="grid gap-4 md:grid-cols-4"><StatCard label="סה״כ מתעניינים" value={stats?.voters ?? 0} /><StatCard label="הודעות" value={stats?.messages ?? 0} /><StatCard label="קמפיינים" value={stats?.campaigns ?? 0} /><StatCard label="חיבורים פעילים" value={stats?.connections ?? 0} /></div><Card><CardHeader><CardTitle>System Status</CardTitle><CardDescription>בדיקת בריאות ל-WhatsApp ולמנועי AI בזמן פגישה.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><HealthToggle label="WhatsApp Gateway" status={health.whatsapp} onChange={(v) => checkHealth('whatsapp', v)} /><HealthToggle label="AI Engines" status={health.ai} onChange={(v) => checkHealth('ai', v)} /></CardContent></Card></TabsContent>
+        <TabsContent value="system" className="mt-4 space-y-4"><div className="grid gap-4 md:grid-cols-4"><StatCard label="סה״כ אנשי קשר" value={stats?.voters ?? 0} /><StatCard label="הודעות" value={stats?.messages ?? 0} /><StatCard label="קמפיינים" value={stats?.campaigns ?? 0} /><StatCard label="חיבורים פעילים" value={stats?.connections ?? 0} /></div><Card><CardHeader><CardTitle>System Status</CardTitle><CardDescription>בדיקת בריאות ל-WhatsApp ולמנועי AI בזמן פגישה.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><HealthToggle label="WhatsApp Gateway" status={health.whatsapp} onChange={(v) => checkHealth('whatsapp', v)} /><HealthToggle label="AI Engines" status={health.ai} onChange={(v) => checkHealth('ai', v)} /></CardContent></Card></TabsContent>
       </Tabs>
     </div>
   );

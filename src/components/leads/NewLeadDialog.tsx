@@ -162,7 +162,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
       }
 
       toast.success('הליד נוצר בהצלחה', {
-        description: `${fullName.trim()} נוסף לניהול מתעניינים ${dealType === 'sale' ? 'מכירה' : 'השכרה'}`,
+        description: `${fullName.trim()} נוסף לניהול אנשי קשר ${dealType === 'sale' ? 'מכירה' : 'השכרה'}`,
       });
       reset();
       onOpenChange(false);
@@ -187,10 +187,10 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
-            מתעניין חדש
+            איש קשר חדש
           </DialogTitle>
           <DialogDescription>
-            בחרו תחילה את סוג העסקה — השדות יותאמו אוטומטית לניהול מתעניינים הנכון.
+            בחרו תחילה את סוג העסקה — השדות יותאמו אוטומטית לניהול אנשי קשר הנכון.
           </DialogDescription>
         </DialogHeader>
 

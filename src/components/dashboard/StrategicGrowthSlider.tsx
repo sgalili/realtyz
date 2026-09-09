@@ -284,12 +284,12 @@ export function StrategicGrowthSlider() {
               const pct = Math.min(100, Math.round((activeLeads / leadsNeeded) * 100));
               const encouragement =
                 pct >= 100
-                  ? 'הניהול מתעניינים שלך מוכן ליעד 🎯'
+                  ? 'הניהול אנשי קשר שלך מוכן ליעד 🎯'
                   : pct >= 66
-                    ? 'כמעט שם — המשך לטפח מתעניינים'
+                    ? 'כמעט שם — המשך לטפח אנשי קשר'
                     : pct >= 33
-                      ? 'בדרך הנכונה — הוסף עוד מתעניינים איכותיים'
-                      : 'בוא נמלא את הניהול מתעניינים יחד';
+                      ? 'בדרך הנכונה — הוסף עוד אנשי קשר איכותיים'
+                      : 'בוא נמלא את הניהול אנשי קשר יחד';
               return (
                 <div
                   key={`pipeline-${projected}`}
@@ -297,21 +297,21 @@ export function StrategicGrowthSlider() {
                 >
                   <div className="flex items-center gap-1.5 text-[12px] font-medium text-primary/75">
                     <Activity className="h-3 w-3" />
-                    <span>בריאות הניהול מתעניינים</span>
+                    <span>בריאות הניהול אנשי קשר</span>
                     <span className="text-primary/40">·</span>
                     <span className="tabular-nums">
-                      עסקה ≈ <span className="font-bold text-primary">{ACTIVE_LEADS_PER_DEAL}</span> מתעניינים פעילים
+                      עסקה ≈ <span className="font-bold text-primary">{ACTIVE_LEADS_PER_DEAL}</span> אנשי קשר פעילים
                     </span>
                   </div>
                   <Progress
                     value={pct}
                     className="h-1.5 w-full transition-all duration-500"
-                    aria-label="התקדמות ניהול מתעניינים"
+                    aria-label="התקדמות ניהול אנשי קשר"
                   />
                   <p className="text-[11px] tabular-nums text-muted-foreground">
                     <span className="font-semibold text-primary">{formatNumber(activeLeads)}</span>
                     {' / '}
-                    <span>{formatNumber(leadsNeeded)}</span> מתעניינים בניהול מתעניינים
+                    <span>{formatNumber(leadsNeeded)}</span> אנשי קשר בניהול אנשי קשר
                     <span className="text-primary/40"> · </span>
                     <span className="text-primary/80">{encouragement}</span>
                   </p>
