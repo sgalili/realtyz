@@ -11,6 +11,7 @@ import { ArrowLeft, Check, Star } from 'lucide-react';
 import { FREE_CONTACTS, FREE_PROPERTIES } from '@/lib/pricing';
 import PricingSection from '@/components/landing/PricingSection';
 import CreditsSection from '@/components/landing/CreditsSection';
+import ScheduleDemoDialog from '@/components/landing/ScheduleDemoDialog';
 import { cn } from '@/lib/utils';
 import { BrandLogo } from '@/components/social/BrandLogo';
 
