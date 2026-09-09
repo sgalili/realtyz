@@ -51,6 +51,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
+import LinkedPropertiesField from '@/components/leads/LinkedPropertiesField';
 import LeadEnrichmentPanel, { LeadEnrichmentButton, LeadEnrichmentIconButton } from '@/components/leads/LeadEnrichmentPanel';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 import { PriceTag } from '@/components/PriceTag';
