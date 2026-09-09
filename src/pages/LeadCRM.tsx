@@ -591,9 +591,8 @@ const LeadCRM = () => {
       // email, city, address, neighborhood, identity, social handles, tags.
       // Falls back to tsvector when the query is complex.
       if (debouncedSearch.trim()) {
-        const raw = debouncedSearch.trim().replace(/[,()]/g, ' ').trim();
+        const raw = debouncedSearch.trim().replace(/[,()"']/g, ' ').replace(/\s+/g, ' ').trim();
         const like = `*${raw}*`;
-        const digits = raw.replace(/\D/g, '');
         const conds = [
           `full_name.ilike.${like}`,
           `email.ilike.${like}`,
@@ -603,10 +602,44 @@ const LeadCRM = () => {
           `identity_number.ilike.${like}`,
           `interest_tag.ilike.${like}`,
           `status.ilike.${like}`,
+          `lead_stage.ilike.${like}`,
+          `notes.ilike.${like}`,
+          `agency_name.ilike.${like}`,
+          `operating_area.ilike.${like}`,
           `instagram_handle.ilike.${like}`,
           `telegram_username.ilike.${like}`,
+          `preferences.ilike.${like}`,
         ];
-        if (digits.length >= 3) conds.push(`phone_number.ilike.*${digits}*`);
+        // Phone: match with or without the leading zero / country prefix so
+        // "053...", "53...", "97253..." all find the same stored number.
+        const digits = raw.replace(/\D/g, '');
+        if (digits.length >= 3) {
+          const variants = new Set<string>([digits]);
+          variants.add(digits.replace(/^0+/, ''));
+          variants.add(digits.replace(/^972/, ''));
+          [...variants].filter(Boolean).forEach((d) => conds.push(`phone_number.ilike.*${d}*`));
+        }
+        // Property details (address / title / city of a linked property).
+        try {
+          const { data: matchedListings } = await supabase
+            .from('listings')
+            .select('id')
+            .or(`property_title.ilike.${like},address.ilike.${like},city.ilike.${like}`)
+            .limit(200);
+          const listingIds = (matchedListings ?? []).map((l: any) => l.id);
+          if (listingIds.length) {
+            const { data: links } = await supabase
+              .from('lead_listings')
+              .select('lead_id')
+              .in('listing_id', listingIds)
+              .limit(500);
+            const leadIds = Array.from(new Set((links ?? []).map((r: any) => r.lead_id)));
+            if (listingIds.length) conds.push(`linked_listing_id.in.(${listingIds.join(',')})`);
+            if (leadIds.length) conds.push(`id.in.(${leadIds.join(',')})`);
+          }
+        } catch {
+          /* property matching is best-effort — never blocks contact search */
+        }
         query = query.or(conds.join(','));
       }
       if (interestFilter !== 'all') query = query.eq('interest_tag', interestFilter);
