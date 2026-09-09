@@ -4911,10 +4911,62 @@ const PublishedFeed = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId, userId, rows?.length]);
 
+  // LIVE Facebook synchronization while the tab is open and visible: every 90s
+  // pull fresh counters (likes / comments / shares / views) plus a fresh media
+  // + comments tree for the cards the broker currently has open. Paused while
+  // the tab is hidden so nothing polls in the background.
+  useEffect(() => {
+    const scope = workspaceOwnerId ?? userId;
+    if (!scope) return;
+    let cancelled = false;
+    let running = false;
 
+    const syncLive = async () => {
+      if (cancelled || running || document.visibilityState !== 'visible') return;
+      running = true;
+      try {
+        // 1) Headline counters straight from the live Page.
+        await refreshMetrics(scope);
+        // 2) Full comments tree only for the expanded cards — keeps us far
+        //    below Meta's rate limits while open threads stay accurate.
+        const openIds = Object.entries(expanded)
+          .filter(([, isOpen]) => isOpen)
+          .map(([id]) => id);
+        if (openIds.length > 0) {
+          const postIds = (rows ?? [])
+            .filter((r) => openIds.includes(r.id) && r.provider_message_id)
+            .map((r) => String(r.provider_message_id))
+            .slice(0, 10);
+          if (postIds.length > 0) {
+            await supabase.functions.invoke('meta-comments-sync', {
+              body: { post_ids: postIds, user_id: scope },
+            });
+            if (!cancelled) {
+              setRefreshSignals((prev) => {
+                const next = { ...prev };
+                for (const id of openIds) next[id] = (next[id] ?? 0) + 1;
+                return next;
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[campaign] live facebook sync failed (non-fatal)', err);
+      } finally {
+        running = false;
+      }
+    };
 
-
-
+    const timer = window.setInterval(() => { void syncLive(); }, 90_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') void syncLive(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceOwnerId, userId, expanded]);
 
 
 
