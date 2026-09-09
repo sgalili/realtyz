@@ -99,12 +99,26 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   // Shared
   const [rooms, setRooms] = useState('');
   const [notes, setNotes] = useState('');
+  const [source, setSource] = useState('manual');
   const [saving, setSaving] = useState(false);
   /** When user attempts to save an out-of-area lead, we hold the action and ask to confirm. */
   const [pendingOutOfArea, setPendingOutOfArea] = useState(false);
 
+  /** Rental side of the business (renter looking, or landlord offering). */
+  const isRental = dealType === 'rent' || dealType === 'rent_out';
+  /** Owners list property data instead of search preferences. */
+  const isOwner = leadKind === 'seller' || leadKind === 'landlord';
+
+  /** Picking a contact kind pins the matching pipeline automatically. */
+  function pickKind(kind: LeadKind) {
+    setLeadKind(kind);
+    setDealType(KIND_MAP[kind].deal);
+  }
+
   function reset() {
-    setDealType(defaultDealType);
+    const kind: LeadKind = defaultDealType === 'rent' ? 'renter' : 'buyer';
+    setLeadKind(kind);
+    setDealType(KIND_MAP[kind].deal);
     setFullName('');
     setPhone('');
     setEmail('');
@@ -116,7 +130,25 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     setMoveInDate('');
     setRooms('');
     setNotes('');
+    setSource('manual');
     setPendingOutOfArea(false);
+  }
+
+  /** Resolve which account the contact belongs to (workspace owner or self). */
+  async function resolveOwnerId(): Promise<string | null> {
+    const uid = user?.id ?? null;
+    if (!activeWorkspaceId || !uid || activeWorkspaceId === uid) return uid;
+    try {
+      const { data } = await supabase
+        .from('workspace_memberships')
+        .select('workspace_owner_id')
+        .eq('user_id', uid)
+        .eq('workspace_owner_id', activeWorkspaceId)
+        .maybeSingle();
+      return data ? activeWorkspaceId : uid;
+    } catch {
+      return uid;
+    }
   }
 
   async function handleSave(opts: { force?: boolean } = {}) {
