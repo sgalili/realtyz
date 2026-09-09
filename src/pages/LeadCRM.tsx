@@ -422,6 +422,27 @@ function EditableInlineText({
 const LeadCRM = () => {
   const { user } = useAuth();
   const activeWorkspaceId = useActiveWorkspaceOwnerId();
+
+  /**
+   * Owner id used when saving contacts. Falls back to the signed-in user when the
+   * cached active workspace is one this user is not actually a member of, otherwise
+   * the saved row would be invisible to them and the write is rejected.
+   */
+  const resolveOwnerId = async (): Promise<string | null> => {
+    const uid = user?.id ?? null;
+    if (!activeWorkspaceId || !uid || activeWorkspaceId === uid) return uid;
+    try {
+      const { data } = await supabase
+        .from('workspace_memberships')
+        .select('workspace_owner_id')
+        .eq('user_id', uid)
+        .eq('workspace_owner_id', activeWorkspaceId)
+        .maybeSingle();
+      return data ? activeWorkspaceId : uid;
+    } catch {
+      return uid;
+    }
+  };
   const { isDemoMode, demoCandidateId } = useDemoMode();
   const blockDemoAction = useDemoGuard();
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
