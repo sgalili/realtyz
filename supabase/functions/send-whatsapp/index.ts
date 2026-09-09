@@ -218,10 +218,12 @@ async function resolveProvider(
     }
   }
 
-  // Cron/server-to-server paths sometimes only know the recipient phone. If the
-  // project has a single active authorized WBA row, use it instead of failing
-  // silently because no user JWT was present.
-  if (!ids.length) {
+  // Shared platform number: the official Meta WABA number is the same for every
+  // workspace, so a workspace whose own row is only partially registered (no
+  // phone_number_id / access_token yet) must still send through the platform
+  // row instead of failing with "WhatsApp not connected". This also covers
+  // cron/server-to-server paths where no user JWT was present.
+  {
     const { data: rows } = await admin
       .from("wa_providers")
       .select("provider_name, config, is_active, is_official, updated_at")
