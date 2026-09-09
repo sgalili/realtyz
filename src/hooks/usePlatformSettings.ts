@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { LISTINGS_ENABLED } from '@/config/workspaceMode';
 
 export interface PlatformSettings {
   enable_auto_followups: boolean;
