@@ -53,7 +53,8 @@ export function isValidIsraeliPhone(phone: string | null | undefined): boolean {
   let local = digits;
   if (local.startsWith('972')) local = '0' + local.slice(3);
   else if (!local.startsWith('0')) local = '0' + local;
-  return /^05\d{8}$/.test(local) || /^07\d{8}$/.test(local) || /^0[2-489]\d{6,7}$/.test(local);
+  // Lenient: any standard length (8-11 digits after cleaning) counts as valid.
+  return /^0\d{7,10}$/.test(local);
 }
 
 /** Canonical global alias — use this everywhere phones are displayed. */
