@@ -101,6 +101,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   const [notes, setNotes] = useState('');
   const [source, setSource] = useState('manual');
   const [saving, setSaving] = useState(false);
+  const [linkedListings, setLinkedListings] = useState<string[]>([]);
   /** When user attempts to save an out-of-area lead, we hold the action and ask to confirm. */
   const [pendingOutOfArea, setPendingOutOfArea] = useState(false);
 
