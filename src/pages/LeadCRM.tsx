@@ -1814,19 +1814,11 @@ const LeadCRM = () => {
                 <SelectValue placeholder="שנה סטטוס" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(statusHebrew).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select onValueChange={handleBulkInterestTag}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
-                <SelectValue placeholder="שנה תגית" />
-              </SelectTrigger>
-              <SelectContent>
-                {uniqueInterests.map(t => (
-                  <SelectItem key={t} value={t!}>{t}</SelectItem>
-                ))}
+                {Object.entries(statusHebrew)
+                  .filter(([, v], i, arr) => arr.findIndex(([, v2]) => v2 === v) === i)
+                  .map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             {BROKER_RECRUITMENT_MODE && (
