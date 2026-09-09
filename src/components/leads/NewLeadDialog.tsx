@@ -352,11 +352,32 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             />
           </div>
 
-          {/* DYNAMIC: Sale-only fields */}
-          {dealType === 'sale' && (
+          {/* Arrival channel — keeps the CRM "ערוץ הגעה" field filled from day one */}
+          <div>
+            <Label>ערוץ הגעה</Label>
+            <Select value={source} onValueChange={setSource}>
+              <SelectTrigger className="h-10 text-sm">
+                <SelectValue placeholder="בחר ערוץ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual">הוזן ידנית</SelectItem>
+                <SelectItem value="whatsapp">וואטסאפ</SelectItem>
+                <SelectItem value="facebook">פייסבוק</SelectItem>
+                <SelectItem value="facebook_groups">פייסבוק קבוצות</SelectItem>
+                <SelectItem value="instagram">אינסטגרם</SelectItem>
+                <SelectItem value="inbound_call">שיחה נכנסת</SelectItem>
+                <SelectItem value="yad2">יד2</SelectItem>
+                <SelectItem value="website">אתר</SelectItem>
+                <SelectItem value="homely">הומלי</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* DYNAMIC: sale side (buyer budget / owner asking price) */}
+          {!isRental && (
             <>
               <div>
-                <Label htmlFor="nl-budget">תקציב מקסימום (₪)</Label>
+                <Label htmlFor="nl-budget">{isOwner ? 'מחיר מבוקש (₪)' : 'תקציב מקסימום (₪)'}</Label>
                 <Input
                   id="nl-budget"
                   type="number"
@@ -366,27 +387,29 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
                   placeholder="2500000"
                 />
               </div>
-              <div>
-                <Label htmlFor="nl-fin">מימון</Label>
-                <select
-                  id="nl-fin"
-                  value={financing}
-                  onChange={(e) => setFinancing(e.target.value as any)}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="unknown">לא ידוע עדיין</option>
-                  <option value="cash">מזומן</option>
-                  <option value="mortgage">משכנתא</option>
-                </select>
-              </div>
+              {!isOwner && (
+                <div>
+                  <Label htmlFor="nl-fin">מימון</Label>
+                  <select
+                    id="nl-fin"
+                    value={financing}
+                    onChange={(e) => setFinancing(e.target.value as any)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="unknown">לא ידוע עדיין</option>
+                    <option value="cash">מזומן</option>
+                    <option value="mortgage">משכנתא</option>
+                  </select>
+                </div>
+              )}
             </>
           )}
 
-          {/* DYNAMIC: Rent-only fields */}
-          {dealType === 'rent' && (
+          {/* DYNAMIC: rental side (renter budget / landlord asking rent) */}
+          {isRental && (
             <>
               <div>
-                <Label htmlFor="nl-monthly">שכ״ד חודשי מקסימום (₪)</Label>
+                <Label htmlFor="nl-monthly">{isOwner ? 'שכ״ד מבוקש (₪ לחודש)' : 'שכ״ד חודשי מקסימום (₪)'}</Label>
                 <Input
                   id="nl-monthly"
                   type="number"
@@ -397,7 +420,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
                 />
               </div>
               <div>
-                <Label htmlFor="nl-movein">תאריך כניסה רצוי</Label>
+                <Label htmlFor="nl-movein">{isOwner ? 'תאריך פינוי / כניסה' : 'תאריך כניסה רצוי'}</Label>
                 <Input
                   id="nl-movein"
                   type="date"
@@ -407,6 +430,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               </div>
             </>
           )}
+
 
           <div className="col-span-2">
             <div className="flex items-center justify-between">
