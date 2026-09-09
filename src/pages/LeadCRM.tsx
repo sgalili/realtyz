@@ -37,7 +37,7 @@ import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import { BROKER_RECRUITMENT_MODE } from '@/config/workspaceMode';
-import { renderBrokerFirstOutreach } from '@/lib/brokerOutreachTemplates';
+import { renderBrokerFirstOutreach, BROKER_WA_TEMPLATE_NAME } from '@/lib/brokerOutreachTemplates';
 import VoterAvatar from '@/components/VoterAvatar';
 import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
 import { BrandIcon } from '@/components/BrandIcon';
@@ -1097,17 +1097,31 @@ const LeadCRM = () => {
           continue;
         }
         try {
-          const { data, error } = await supabase.functions.invoke('send-message', {
-            body: {
-              lead_id: lead.id,
-              content: renderBrokerFirstOutreach(name),
-              channel: 'whatsapp',
-              phone_number: phone,
-            },
-          });
-          const res = data as { success?: boolean; error?: string; details?: string } | null;
-          if (error || (res && res.success === false)) {
-            throw new Error(res?.details || res?.error || error?.message || 'שליחה נכשלה');
+          // Official Meta template: invitation_to_realestate_brokers ({{1}} = broker full name).
+          const sendTemplate = async (body: Record<string, unknown>) => {
+            const { data, error } = await supabase.functions.invoke('send-whatsapp', { body });
+            const res = data as { success?: boolean; error?: string; details?: unknown } | null;
+            if (error || !res || res.success === false) {
+              throw new Error(res?.error || error?.message || 'שליחה נכשלה');
+            }
+          };
+          const base = {
+            lead_id: lead.id,
+            phone_number: phone,
+            template_id: BROKER_WA_TEMPLATE_NAME,
+            message: renderBrokerFirstOutreach(name),
+          };
+          try {
+            await sendTemplate({ ...base, template_variables: { '1': name || 'שלום' } });
+          } catch {
+            // Cache miss on the template body: build {{1}} explicitly.
+            await sendTemplate({
+              ...base,
+              template_language: 'he',
+              template_components: [
+                { type: 'body', parameters: [{ type: 'text', text: name || 'שלום' }] },
+              ],
+            });
           }
           sent += 1;
         } catch {
@@ -1857,7 +1871,8 @@ const LeadCRM = () => {
             {BROKER_RECRUITMENT_MODE && (
               <Button
                 size="sm"
-                className="gap-1.5 h-8 !bg-emerald-600 hover:!bg-emerald-700 !text-white border-0"
+                variant="default"
+                className="gap-1.5 h-8 border-0 !bg-green-600 hover:!bg-green-700 !text-white disabled:!opacity-100 disabled:!bg-green-600"
                 onClick={handleBrokerFirstOutreach}
                 disabled={sendingFirstOutreach}
               >

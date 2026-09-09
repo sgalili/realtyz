@@ -86,3 +86,10 @@ export const BROKER_OUTREACH_TEMPLATES: BrokerOutreachTemplate[] = [
       'זום של 15 דקות + ליווי אישי בהקמה. מתי נוח? {{agent}}',
   },
 ];
+
+/**
+ * Official Meta WhatsApp template used for the broker first-outreach blast.
+ * Template ID: 1543480823752149. Variable {{1}} = broker full name.
+ */
+export const BROKER_WA_TEMPLATE_NAME = 'invitation_to_realestate_brokers';
+export const BROKER_WA_TEMPLATE_ID = '1543480823752149';
