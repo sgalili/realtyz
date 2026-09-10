@@ -2502,6 +2502,8 @@ const LeadCRM = () => {
                           <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
                           <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v, lead_source: v })} />
                           <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
+                          {/* Gender drives the Hebrew grammatical form of every message */}
+                          <SelectCell icon={<UserRoundPlus className="h-3.5 w-3.5 text-slate-700" />} label="מגדר (לשון הפנייה)" value={String((selectedVoter as any).gender ?? '')} placeholder="בחר מגדר" options={[{ v: 'male', l: 'זכר' }, { v: 'female', l: 'נקבה' }]} onChange={(v) => saveLead({ gender: v })} />
                           {/* Buyer/renter preference fields — hidden entirely for property owners */}
                           {!ownerLead && (
                             <>
