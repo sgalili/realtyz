@@ -29,6 +29,7 @@ import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
+import { resolveWaContext } from "../_shared/waContextRouter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -702,17 +703,32 @@ async function handleLeadInboxInbound(
       digits.startsWith("972") ? `0${digits.slice(3)}` : digits,
       digits.startsWith("0") ? `972${digits.slice(1)}` : digits,
     ].filter(Boolean)));
+    // The official WhatsApp number is shared by every workspace, so the same
+    // phone can exist as a lead in several of them. Pick the tenant whose
+    // conversation with this phone is the most recent (last outbound session).
     try {
-      const r = await admin
-        .from("leads")
-        .select(LEAD_COLS)
-        .in("phone_number", variants)
-        .limit(1)
-        .maybeSingle();
-      lead = r.data;
-      if (r.error) console.warn("lead lookup soft-fail:", r.error.message);
+      const ctx = await resolveWaContext(admin, senderPhone);
+      if (ctx.leadId) {
+        const r = await admin.from("leads").select(LEAD_COLS).eq("id", ctx.leadId).maybeSingle();
+        lead = r.data;
+        if (lead?.id) console.log("[whatsapp-webhook] context routed lead", { reason: ctx.reason });
+      }
     } catch (e) {
-      console.warn("lead lookup threw:", e instanceof Error ? e.message : e);
+      console.warn("context routing threw:", e instanceof Error ? e.message : e);
+    }
+    if (!lead?.id) {
+      try {
+        const r = await admin
+          .from("leads")
+          .select(LEAD_COLS)
+          .in("phone_number", variants)
+          .limit(1)
+          .maybeSingle();
+        lead = r.data;
+        if (r.error) console.warn("lead lookup soft-fail:", r.error.message);
+      } catch (e) {
+        console.warn("lead lookup threw:", e instanceof Error ? e.message : e);
+      }
     }
   }
 
