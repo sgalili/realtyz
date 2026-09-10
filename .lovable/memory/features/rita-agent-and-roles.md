@@ -10,3 +10,5 @@ type: feature
 **Registration roles**: only מתווך (broker) or שותף (partner) — never buyer/seller/renter/landlord (those are CRM contact kinds). `src/lib/signupRole.ts` stores the pick, `ProtectedRoute` in `App.tsx` applies it after first login: partner → RPC `register_as_affiliate` + `/affiliate` portal; broker → RPC `register_as_broker` (grants `agent` only when the account has no role). Partner-only accounts stay locked to `AFFILIATE_ALLOWED_PATHS`.
 
 Note: Meta template `invitation_to_realestate_brokers` is PENDING approval at Meta; sync itself works.
+
+**Dual-role switcher**: `src/hooks/useAppMode.tsx` (localStorage `realtyz-app-mode`, values `broker`|`partner`, `PARTNER_MODE_PATHS`) + `src/components/header/AppModeSwitcher.tsx` in the app header. Broker mode = full CRM/properties/Rita nav; partner mode = affiliate nav only (`/affiliate`, `/affiliate-network`, `/referral`) and `ProtectedRoute` redirects broker paths to `/affiliate`. Switching to partner calls `register_as_affiliate` (idempotent) — same session, never a second login. The switcher is hidden for partner-only accounts.

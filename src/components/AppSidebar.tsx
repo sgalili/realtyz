@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useAppMode } from '@/hooks/useAppMode';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
@@ -129,6 +130,20 @@ const AFFILIATE_NAV_ITEMS: NavItem[] = [
     iconColor: 'text-emerald-600',
     badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   },
+  {
+    title: 'גיוס ומעקב רשת',
+    url: '/affiliate-network',
+    icon: Share2,
+    iconColor: 'text-teal-600',
+    badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
+  },
+  {
+    title: 'הזמן חברים',
+    url: '/referral',
+    icon: Gift,
+    iconColor: 'text-amber-600',
+    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
+  },
 ];
 
 
@@ -139,10 +154,12 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isSuperAdmin, isAffiliateOnly } = useUserRole();
+  const { isPartnerMode } = useAppMode();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
 
-  const navItems = isAffiliateOnly ? AFFILIATE_NAV_ITEMS : NAV_ITEMS;
+  // Partner mode shows the same single-purpose menu an affiliate-only account gets.
+  const navItems = isAffiliateOnly || isPartnerMode ? AFFILIATE_NAV_ITEMS : NAV_ITEMS;
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
