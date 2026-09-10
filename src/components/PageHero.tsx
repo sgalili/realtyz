@@ -185,6 +185,41 @@ function CampaignsHeroAddButton() {
   );
 }
 
+/**
+ * Live Facebook sync for the posts feed. Fires `rz:campaigns-sync`; the feed
+ * pulls fresh native posts, counters and comment trees, then answers with
+ * `rz:campaigns-sync:done` so the spinner stops.
+ */
+function CampaignsHeroSyncButton() {
+  const [busy, setBusy] = React.useState(false);
+  React.useEffect(() => {
+    const done = () => setBusy(false);
+    window.addEventListener('rz:campaigns-sync:done', done as EventListener);
+    return () => window.removeEventListener('rz:campaigns-sync:done', done as EventListener);
+  }, []);
+  const handleClick = () => {
+    if (busy) return;
+    setBusy(true);
+    window.dispatchEvent(new CustomEvent('rz:campaigns-sync'));
+    // Safety net: never leave the icon spinning forever.
+    window.setTimeout(() => setBusy(false), 45_000);
+  };
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      onClick={handleClick}
+      disabled={busy}
+      aria-label="סנכרון פוסטים מפייסבוק"
+      title="סנכרון פוסטים מפייסבוק"
+      className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white disabled:opacity-100"
+    >
+      <RefreshCw className={cn('!h-5 !w-5', busy && 'animate-spin')} strokeWidth={2.5} />
+    </Button>
+  );
+}
+
+
 
 
 
