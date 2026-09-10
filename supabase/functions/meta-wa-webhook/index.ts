@@ -18,6 +18,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
 import { transcribeWaVoiceNote } from "../_shared/waMediaTranscribe.ts";
+import { resolveWaContext } from "../_shared/waContextRouter.ts";
 
 
 const json = (body: Record<string, unknown>, status = 200) =>
