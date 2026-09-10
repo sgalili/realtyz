@@ -114,3 +114,43 @@ function matchesRecruitment(row: { content?: string; metadata?: Record<string, u
   const content = String(row.content ?? "");
   return RECRUITMENT_ANCHORS.some((a) => content.includes(a));
 }
+
+/**
+ * True when the MOST RECENT outbound message to this phone is the broker
+ * recruitment outreach. That makes the inbound message a direct reply to it, so
+ * Rita takes the conversation even if the phone also belongs to a workspace
+ * owner (self-tests, brokers who are also users).
+ */
+export async function isReplyToRecruitmentOutreach(
+  admin: { from: (t: string) => any },
+  phone: string,
+): Promise<boolean> {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  if (!digits) return false;
+  const variants = Array.from(new Set([
+    digits,
+    `+${digits}`,
+    digits.startsWith("972") ? `0${digits.slice(3)}` : digits,
+    digits.startsWith("0") ? `972${digits.slice(1)}` : digits,
+  ]));
+  try {
+    const { data: leadRows } = await admin
+      .from("leads")
+      .select("id")
+      .in("phone_number", variants)
+      .limit(5);
+    const ids = ((leadRows ?? []) as Array<{ id: string }>).map((r) => r.id);
+    if (!ids.length) return false;
+    const { data: msgs } = await admin
+      .from("messages")
+      .select("content, metadata, created_at")
+      .in("lead_id", ids)
+      .eq("direction", "outbound")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const last = ((msgs ?? []) as any[])[0];
+    return matchesRecruitment(last ?? null);
+  } catch (_) {
+    return false;
+  }
+}
