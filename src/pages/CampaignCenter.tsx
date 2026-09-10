@@ -4969,6 +4969,80 @@ const PublishedFeed = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId, userId, expanded]);
 
+  // MANUAL full live sync, fired by the refresh button in the page hero.
+  // Pulls every recent native post (bypassing the session throttle), prunes
+  // posts deleted on Facebook, repaints from the DB, refreshes live counters
+  // and re-pulls the comments trees of the open cards.
+  useEffect(() => {
+    const scope = workspaceOwnerId ?? userId;
+    let running = false;
+
+    const runFullSync = async () => {
+      if (running) return;
+      running = true;
+      const toastId = 'campaigns-hero-sync';
+      toast.loading('מסנכרן פוסטים חיים מפייסבוק…', { id: toastId });
+      let ok = false;
+      try {
+        if (scope) {
+          // 1) Provider pull — force it, never honour the session throttle.
+          try {
+            const importKey = `realtyz.fb_native_import.${FIRST_VISIT_IMPORT_KEY_VERSION}.${scope}`;
+            sessionStorage.removeItem(importKey);
+            sessionStorage.removeItem(`realtyz.fb_native_reconcile.${scope}`);
+          } catch { /* storage unavailable */ }
+          await supabase.functions.invoke('fb-recent-posts', {
+            body: {
+              lastRecords: 500,
+              pageSize: 50,
+              user_id: scope,
+              persist: true,
+              sync_comments: true,
+              prune_missing: true,
+              force_provider_probe: true,
+            },
+          });
+        }
+        // 2) Repaint the feed straight from the database.
+        await load({ skipFbImport: true });
+        // 3) Live counters.
+        if (scope) await refreshMetrics(scope);
+        // 4) Comments trees of the cards currently open.
+        const openIds = Object.entries(expanded).filter(([, o]) => o).map(([id]) => id);
+        if (scope && openIds.length > 0) {
+          const liveRows = FEED_ROWS_CACHE.get(scope) ?? [];
+          const postIds = liveRows
+            .filter((r) => openIds.includes(r.id) && r.provider_message_id)
+            .map((r) => String(r.provider_message_id))
+            .slice(0, 10);
+          if (postIds.length > 0) {
+            await supabase.functions.invoke('meta-comments-sync', { body: { post_ids: postIds, user_id: scope } });
+            setRefreshSignals((prev) => {
+              const next = { ...prev };
+              for (const id of openIds) next[id] = (next[id] ?? 0) + 1;
+              return next;
+            });
+          }
+        }
+        ok = true;
+        toast.success('הפוסטים עודכנו מפייסבוק', { id: toastId });
+      } catch (err) {
+        console.warn('[campaign] manual facebook sync failed', err);
+        toast.error('הסנכרון מפייסבוק נכשל, נסו שוב', { id: toastId });
+      } finally {
+        running = false;
+        window.dispatchEvent(new CustomEvent('rz:campaigns-sync:done', { detail: { ok } }));
+      }
+    };
+
+    const onSync = () => { void runFullSync(); };
+    window.addEventListener('rz:campaigns-sync', onSync as EventListener);
+    return () => window.removeEventListener('rz:campaigns-sync', onSync as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceOwnerId, userId, expanded]);
+
+
+
 
 
   // Realtime: live-patch counters into rows as soon as the edge function
