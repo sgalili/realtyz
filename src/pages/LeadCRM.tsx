@@ -38,6 +38,7 @@ import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import { BROKER_RECRUITMENT_MODE } from '@/config/workspaceMode';
 import { renderBrokerFirstOutreach, BROKER_WA_TEMPLATE_NAME } from '@/lib/brokerOutreachTemplates';
+import { resolveLeadGender } from '@/lib/hebrewGender';
 import VoterAvatar from '@/components/VoterAvatar';
 import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
 import { BrandIcon } from '@/components/BrandIcon';
@@ -1082,7 +1083,8 @@ const LeadCRM = () => {
             lead_id: lead.id,
             phone_number: phone,
             template_id: BROKER_WA_TEMPLATE_NAME,
-            message: renderBrokerFirstOutreach(name),
+            // Hebrew inflects for the recipient: pick the male/female wording.
+            message: renderBrokerFirstOutreach(name, resolveLeadGender(lead as any)),
           };
           try {
             await sendTemplate({ ...base, template_variables: { '1': name || 'שלום' } });
