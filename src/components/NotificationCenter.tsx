@@ -236,11 +236,22 @@ export default function NotificationCenter() {
     localStorage.setItem('realtyz_dismissed_budgets', JSON.stringify([...next]));
   };
 
-  const handleClick = (voterId: string | null, id: string) => {
+  const markManyViewed = (ids: string[]) => {
+    const next = new Set(viewedIds);
+    ids.forEach((i) => i && next.add(i));
+    setViewedIds(next);
+    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
+  };
+
+  /**
+   * Opens the exact conversation in the inbox and scrolls to / highlights the
+   * message that triggered the notification.
+   */
+  const handleClick = (voterId: string | null, id: string, extraIds: string[] = []) => {
     if (!voterId) return;
-    markViewed(id);
+    markManyViewed([id, ...extraIds]);
     setOpen(false);
-    navigate(`/live-conversations?lead=${voterId}`);
+    navigate(`/inbox?chat=${voterId}&message=${id}`);
   };
 
   const markAllRead = () => {
