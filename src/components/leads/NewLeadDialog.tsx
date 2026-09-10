@@ -188,6 +188,11 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     // Build pipeline-specific preferences. We deliberately omit the OTHER
     // pipeline's fields so the AI never sees, e.g., a mortgage flag on a
     // rental lead.
+    // 'auto' falls back to the Hebrew first-name heuristic so messages are
+    // still written in the right grammatical form when nothing is picked.
+    const resolvedGender =
+      gender === 'auto' ? guessGenderFromHebrewName(fullName) : gender;
+
     const preferences: Record<string, unknown> = {
       lead_kind: leadKind!,
       gender: resolvedGender ?? undefined,
@@ -215,11 +220,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     Object.keys(preferences).forEach(
       (k) => preferences[k] === undefined && delete preferences[k],
     );
-
-    // 'auto' falls back to the Hebrew first-name heuristic so messages are
-    // still written in the right form when the user does not pick.
-    const resolvedGender =
-      gender === 'auto' ? guessGenderFromHebrewName(fullName) : gender;
 
     setSaving(true);
     try {
@@ -405,6 +405,22 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               onChange={(e) => { setCity(e.target.value); setPendingOutOfArea(false); }}
               placeholder="תל אביב"
             />
+          </div>
+          <div>
+            <Label>מגדר</Label>
+            <Select value={gender} onValueChange={(v) => setGender(v as 'male' | 'female' | 'auto')}>
+              <SelectTrigger className="h-10 text-sm">
+                <SelectValue placeholder="בחר מגדר" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">זיהוי אוטומטי לפי השם</SelectItem>
+                <SelectItem value="male">זכר</SelectItem>
+                <SelectItem value="female">נקבה</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              קובע את לשון הפנייה בעברית בהודעות ובשיחות של ריטה
+            </p>
           </div>
           <div>
             <Label htmlFor="nl-hood">שכונה</Label>
