@@ -893,7 +893,7 @@ async function handleLeadInboxInbound(
 
   // ALWAYS persist the inbound message row, even if lead_id is null.
   // The inbox UI falls back to a phone-anchored synthetic thread for these.
-  if (!skipStore) {
+  if (!skipStore && !alreadyStored) {
     try {
       const { error: insertErr } = await admin.from("messages").insert({
         lead_id: lead?.id ?? null,
