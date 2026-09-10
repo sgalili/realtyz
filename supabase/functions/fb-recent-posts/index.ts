@@ -521,9 +521,10 @@ Deno.serve(async (req) => {
         "comments.summary(true).limit(0)",
         "shares",
       ].join(",");
-      // Import window: everything from 2026-07-27 onward unless the caller
-      // asked for a different `since`. Keeps the feed complete + fast.
-      const sinceParam = since || "2026-07-27";
+      // Import window: default to the last 365 days so a manual refresh really
+      // pulls the whole recent history of the Page, not a fixed cut-off date.
+      const sinceParam = since ||
+        new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const untilParam = until || "";
       // `/posts` only returns posts authored by the Page itself and silently
       // hides native/other-authored items. Walk BOTH edges and merge so a full
@@ -558,6 +559,18 @@ Deno.serve(async (req) => {
         const json = await resp.json().catch(() => ({} as any));
         if (!resp.ok) {
           error = json?.error ?? json;
+          // Explicit, actionable logging: a permission/expiry problem must be
+          // visible in the function logs instead of silently returning zero.
+          console.error("[fb-recent-posts] graph error", {
+            edge: edges[edgeIndex],
+            page_id: cred.pageId,
+            token_source: cred.source,
+            http_status: status,
+            code: (error as any)?.code ?? null,
+            subcode: (error as any)?.error_subcode ?? null,
+            type: (error as any)?.type ?? null,
+            message: (error as any)?.message ?? null,
+          });
           // Try the next edge — one blocked edge shouldn't abort the import.
           edgeIndex += 1;
           if (edgeIndex >= edges.length) break;
@@ -612,6 +625,10 @@ Deno.serve(async (req) => {
      * whenever the workspace's own token is rejected with a permission error
      * such as `#10 pages_read_engagement`.
      */
+    // The credential that actually worked for the feed read. Reused for the
+    // enrichment pass so counters/media never fail with a different token.
+    let workingCred: { token: string; pageId: string | null; source: string | null } | null = null;
+
     const fetchGraphHistory = async (): Promise<
       { posts: RawPost[]; status: number; error: any; source: string | null; blocked: boolean }
     > => {
@@ -619,6 +636,12 @@ Deno.serve(async (req) => {
       const ordered = candidates.length
         ? candidates.map((c) => ({ token: c.token, pageId: c.pageId, source: c.scope }))
         : [await resolveGraphCredential()];
+      if (!ordered.some((c) => c.token && c.pageId)) {
+        console.error("[fb-recent-posts] no usable Page access token", {
+          owner_id: ownerId,
+          candidates: ordered.length,
+        });
+      }
       let last: { posts: RawPost[]; status: number; error: any; source: string | null } = {
         posts: [],
         status: 0,
@@ -627,7 +650,10 @@ Deno.serve(async (req) => {
       };
       for (const cred of ordered) {
         const res = await fetchGraphHistoryWith(cred);
-        if (res.posts.length > 0) return { ...res, blocked: false };
+        if (res.posts.length > 0) {
+          workingCred = cred;
+          return { ...res, blocked: false };
+        }
         last = res;
         if (!isMetaPermissionError(res.error)) break;
       }
@@ -878,7 +904,7 @@ Deno.serve(async (req) => {
     let enrichedCounters = 0;
     let enrichedDates = 0;
     try {
-      const cred = await resolveGraphCredential();
+      const cred = workingCred ?? await resolveGraphCredential();
       if (cred.token) {
         const { data: allFbPosts } = await admin
           .from("campaign_logs")
@@ -898,7 +924,17 @@ Deno.serve(async (req) => {
           const ids = chunk.map((t: any) => String(t.provider_message_id)).join(",");
           const url = `https://graph.facebook.com/v26.0/?ids=${encodeURIComponent(ids)}&fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(cred.token)}`;
           const resp = await fetch(url);
-          if (!resp.ok) continue;
+          if (!resp.ok) {
+            const errJson: any = await resp.json().catch(() => ({}));
+            console.error("[fb-recent-posts] enrichment graph error", {
+              http_status: resp.status,
+              token_source: cred.source,
+              code: errJson?.error?.code ?? null,
+              subcode: errJson?.error?.error_subcode ?? null,
+              message: errJson?.error?.message ?? null,
+            });
+            continue;
+          }
           const json: any = await resp.json().catch(() => ({}));
           for (const t of chunk) {
             const pid = String(t.provider_message_id);
@@ -1004,6 +1040,14 @@ Deno.serve(async (req) => {
         graph_source: graphSource,
         permission_blocked: permissionBlocked,
         needs_extension: permissionBlocked && posts.length === 0,
+        // Clear, human-readable reason when a refresh returned nothing.
+        error: posts.length === 0
+          ? (lastError === "facebook_page_access_token_missing"
+            ? "לא נמצא חיבור פעיל לעמוד הפייסבוק — יש להתחבר מחדש בהגדרות הערוצים"
+            : (lastError as any)?.message
+            ? `Facebook Graph: ${(lastError as any).message}`
+            : null)
+          : null,
         diagnostics,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
