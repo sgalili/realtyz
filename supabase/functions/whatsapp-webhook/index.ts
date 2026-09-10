@@ -30,6 +30,12 @@ import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
+import { BROKER_RECRUITMENT_WORKSPACE } from "../_shared/persona.ts";
+import {
+  isRecruitmentThread,
+  looksLikeSystemErrorReply,
+  ritaRecruitmentFallback,
+} from "../_shared/brokerRecruitment.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
