@@ -762,8 +762,20 @@ const OmnichannelInbox = () => {
   });
 
   useEffect(() => {
+    if (highlightMessageId) return; // deep-linked view scrolls to the target instead
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+  }, [chatMessages, highlightMessageId]);
+
+  // Deep link from the notification center: scroll to the exact message and
+  // keep it highlighted for a few seconds.
+  useEffect(() => {
+    if (!highlightMessageId || !chatMessages?.length) return;
+    const el = document.querySelector(`[data-message-id="${highlightMessageId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const timer = setTimeout(() => setHighlightMessageId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [highlightMessageId, chatMessages]);
 
   const waitingCount = useMemo(() => {
     if (!voters || !lastMessages) return 0;
