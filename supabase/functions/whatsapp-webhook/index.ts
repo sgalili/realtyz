@@ -675,7 +675,7 @@ async function handleLeadInboxInbound(
   // and this call only runs the autopilot leg: lead resolution → AI → send.
   // `leadId` lets the upstream webhook hand us the exact lead it resolved so we
   // never lose the thread to a phone-format mismatch.
-  opts?: { skipStore?: boolean; leadId?: string | null; senderName?: string | null },
+  opts?: { skipStore?: boolean; leadId?: string | null; senderName?: string | null; recruitment?: boolean },
 ) {
   const skipStore = opts?.skipStore === true;
 
@@ -688,7 +688,7 @@ async function handleLeadInboxInbound(
   // workspace scoping, constraint) NEVER halts the AI reply path.
   // The inbox is restored by always inserting the message row with the
   // sender_phone in metadata, even when lead resolution fails.
-  const LEAD_COLS = "id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type";
+  const LEAD_COLS = "id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type, preferences";
   let lead: any = null;
   if (opts?.leadId) {
     try {
@@ -1075,6 +1075,7 @@ async function handleLeadInboxInbound(
       inboundText,
       history: aiMessages,
       contextBlock,
+      recruitment: recruitmentMode,
     });
     if (fast.text) {
       reply = sanitizeAiReply(fast.text);
@@ -1157,6 +1158,7 @@ async function handleLeadInboxInbound(
       lead: { id: lead.id, full_name: lead.full_name, deal_type: lead.deal_type },
       inboundText,
       history: aiMessages,
+      recruitment: recruitmentMode,
     });
     if (rescue.text) {
       reply = sanitizeAiReply(rescue.text);
