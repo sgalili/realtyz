@@ -913,9 +913,11 @@ async function handleLeadInboxInbound(
 
   if (lead?.id) {
     // Fire-and-forget bookkeeping — never block the reply on these writes.
-    admin.from("chat_history").insert({ lead_id: lead.id, role: "user", content: inboundText, is_demo: false })
-      .then(({ error }: any) => { if (error) console.warn("chat_history insert soft-fail:", error.message); })
-      .catch?.((e: unknown) => console.warn("chat_history insert threw:", e));
+    if (!alreadyStored) {
+      admin.from("chat_history").insert({ lead_id: lead.id, role: "user", content: inboundText, is_demo: false })
+        .then(({ error }: any) => { if (error) console.warn("chat_history insert soft-fail:", error.message); })
+        .catch?.((e: unknown) => console.warn("chat_history insert threw:", e));
+    }
     admin.from("leads").update({ last_interaction_at: now, status: "contacted" }).eq("id", lead.id)
       .then(({ error }: any) => { if (error) console.warn("lead touch soft-fail:", error.message); })
       .catch?.((e: unknown) => console.warn("lead touch threw:", e));
