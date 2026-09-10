@@ -64,6 +64,9 @@ export function buildRecruitmentReplyPrompt(lead: FastReplyLead, contextBlock?: 
 
 ${renderBrokerRecruitmentBlock(name || null)}
 
+${genderPromptBlock(resolveLeadGender(lead), name)}
+
+
 אתה כותב עכשיו הודעת וואטסאפ אחת בזמן אמת, בעברית, בלשון נקבה עבור ריטה.
 חוקי כתיבה:
 1. עד 70 מילים, משפטים קצרים, שורות קצרות, אפשר שורה ריקה בין רעיונות.
