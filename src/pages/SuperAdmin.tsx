@@ -107,22 +107,20 @@ const SuperAdmin = () => {
     },
   });
 
+  // Platform-wide totals come from a super-admin RPC: direct table reads are
+  // now strictly scoped to the active workspace, so they would under-count.
   const { data: stats } = useQuery({
     queryKey: ['admin-system-stats'],
     enabled: isSuperAdmin,
     refetchInterval: 15_000,
     queryFn: async () => {
-      const [v, m, c, s] = await Promise.all([
-        supabase.from('leads').select('id', { count: 'exact', head: true }),
-        supabase.from('messages').select('id', { count: 'exact', head: true }),
-        supabase.from('campaigns').select('id', { count: 'exact', head: true }),
-        supabase.from('social_connections').select('id', { count: 'exact', head: true }).eq('is_connected', true),
-      ]);
+      const { data } = await (supabase as any).rpc('get_platform_stats');
+      const row = (data ?? {}) as Record<string, number>;
       return {
-        voters: v.count ?? 0,
-        messages: m.count ?? 0,
-        campaigns: c.count ?? 0,
-        connections: s.count ?? 0,
+        voters: row.voters ?? 0,
+        messages: row.messages ?? 0,
+        campaigns: row.campaigns ?? 0,
+        connections: row.connections ?? 0,
       };
     },
   });

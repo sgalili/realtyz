@@ -5999,6 +5999,7 @@ export type Database = {
       crm_import_merge: { Args: never; Returns: string }
       crm_safe_int: { Args: { _t: string }; Returns: number }
       crm_safe_numeric: { Args: { _t: string }; Returns: number }
+      current_workspace_owner: { Args: never; Returns: string }
       dedupe_media_jsonb: {
         Args: { _arr: Json; _blocked?: Json }
         Returns: Json
@@ -6124,6 +6125,7 @@ export type Database = {
         Args: { _days?: number; _user_id: string }
         Returns: Json
       }
+      get_platform_stats: { Args: never; Returns: Json }
       get_system_status: {
         Args: never
         Returns: {
@@ -6170,6 +6172,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      in_current_workspace: { Args: { _row_owner: string }; Returns: boolean }
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }
       is_affiliate: { Args: { _user_id?: string }; Returns: boolean }
       is_ai_autopilot_enabled: { Args: { _user_id: string }; Returns: boolean }
