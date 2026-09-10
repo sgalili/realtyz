@@ -30,6 +30,13 @@ import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
+import { BROKER_RECRUITMENT_WORKSPACE } from "../_shared/persona.ts";
+import {
+  isRecruitmentThread,
+  isReplyToRecruitmentOutreach,
+  looksLikeSystemErrorReply,
+  ritaRecruitmentFallback,
+} from "../_shared/brokerRecruitment.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -669,7 +676,7 @@ async function handleLeadInboxInbound(
   // and this call only runs the autopilot leg: lead resolution → AI → send.
   // `leadId` lets the upstream webhook hand us the exact lead it resolved so we
   // never lose the thread to a phone-format mismatch.
-  opts?: { skipStore?: boolean; leadId?: string | null; senderName?: string | null },
+  opts?: { skipStore?: boolean; leadId?: string | null; senderName?: string | null; recruitment?: boolean },
 ) {
   const skipStore = opts?.skipStore === true;
 
@@ -682,7 +689,7 @@ async function handleLeadInboxInbound(
   // workspace scoping, constraint) NEVER halts the AI reply path.
   // The inbox is restored by always inserting the message row with the
   // sender_phone in metadata, even when lead resolution fails.
-  const LEAD_COLS = "id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type";
+  const LEAD_COLS = "id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type, preferences";
   let lead: any = null;
   if (opts?.leadId) {
     try {
@@ -908,6 +915,16 @@ async function handleLeadInboxInbound(
   // the AI agent so webtiv_search / Market Intel / CRM actions can run.
   const agentCommand = isAgentCommand(inboundText);
 
+  // Rita's recruitment mode: this workspace only talks to agents/brokers, so a
+  // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
+  // instead of property talk.
+  const leadPrefs = ((lead as any)?.preferences ?? {}) as Record<string, unknown>;
+  const recruitmentMode =
+    BROKER_RECRUITMENT_WORKSPACE ||
+    String(leadPrefs.lead_kind ?? "") === "broker" ||
+    opts?.recruitment === true;
+
+
   console.log("[autopilot] gates", JSON.stringify({
     lead_id: lead.id,
     lead_autopilot: lead.ai_autopilot,
@@ -928,7 +945,10 @@ async function handleLeadInboxInbound(
     console.warn("[autopilot] blocked: lead has no assigned_to owner", { lead_id: lead.id });
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "missing_owner_for_ai_autopilot" };
   }
-  if (!agentCommand) {
+  // A direct reply to the broker outreach we sent ourselves must always be
+  // answered by Rita, so it skips the workspace-wide autopilot switch. The
+  // per-contact toggle above still applies.
+  if (!agentCommand && !recruitmentMode) {
     try {
       const { data: globalAutopilot, error: gErr } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: aiOwnerId });
       if (gErr) {
@@ -1060,6 +1080,7 @@ async function handleLeadInboxInbound(
       inboundText,
       history: aiMessages,
       contextBlock,
+      recruitment: recruitmentMode,
     });
     if (fast.text) {
       reply = sanitizeAiReply(fast.text);
@@ -1142,11 +1163,28 @@ async function handleLeadInboxInbound(
       lead: { id: lead.id, full_name: lead.full_name, deal_type: lead.deal_type },
       inboundText,
       history: aiMessages,
+      recruitment: recruitmentMode,
     });
     if (rescue.text) {
       reply = sanitizeAiReply(rescue.text);
       console.log("[autopilot] fast lane rescue reply ready", { lead_id: lead.id, elapsedMs: rescue.elapsedMs });
     }
+  }
+
+  // A prospect must NEVER receive an internal failure sentence. In recruitment
+  // mode Rita always has something professional to say: acknowledge the reply,
+  // state the all-in-one advantage, ask for a Zoom slot.
+  if (recruitmentMode && looksLikeSystemErrorReply(reply)) {
+    console.warn("[autopilot] replacing internal-failure text with Rita recruitment reply", {
+      lead_id: lead.id,
+    });
+    await logIntegrationError({
+      integration: "ai_gateway",
+      functionName: "whatsapp-webhook",
+      errorMessage: "AI autopilot produced an empty/internal-error reply — Rita fallback sent",
+      context: { lead_id: lead.id, inbound_excerpt: inboundText.slice(0, 200) },
+    });
+    reply = ritaRecruitmentFallback(lead.full_name);
   }
 
   if (!reply) {
@@ -1596,6 +1634,38 @@ Deno.serve(async (req) => {
         return jsonResponse({ ok: false, error: message, soft_fail: true }, 200);
       }
     }
+
+    // ============================================================
+    // RECRUITMENT REPLY ANCHOR — an agent answering the approved
+    // broker-outreach template ("נשמע טוב") belongs to Rita, not to the
+    // owner command router. Detected either by an active recruitment
+    // thread or because the last outbound message to this phone WAS the
+    // outreach itself. Rita then keeps the conversation in recruitment
+    // mode: Realtyz all-in-one value + a short Zoom demo.
+    // ============================================================
+    try {
+      const replyToOutreach = await isReplyToRecruitmentOutreach(admin as any, senderPhone);
+      const recruitmentThread =
+        replyToOutreach || (await isRecruitmentThread(admin as any, senderPhone));
+      if (recruitmentThread) {
+        console.log(`[RECRUITMENT ANCHOR] agent reply from ${senderPhone} → Rita recruitment pipeline`);
+        const result = await handleLeadInboxInbound(
+          admin,
+          SUPABASE_URL,
+          SERVICE_KEY,
+          senderPhone,
+          messageId,
+          msg.text,
+          { senderName, recruitment: true },
+        );
+        return jsonResponse({ ...result, classified_as: "broker_recruitment_reply" });
+      }
+    } catch (e) {
+      console.warn("recruitment anchor check failed:", e instanceof Error ? e.message : e);
+      // fall through to the standard routing
+    }
+
+
 
     // ============================================================
     // GATEKEEPER — owner whitelist lookup runs FIRST and HARD BLOCKS

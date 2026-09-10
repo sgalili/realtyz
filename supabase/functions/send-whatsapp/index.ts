@@ -1004,6 +1004,11 @@ Deno.serve(async (req) => {
             status: "sent",
             ai_assisted: !!parsed.data.ai_assisted,
             disclosure_appended: disclosureAppended,
+            // Recorded so the inbound webhook can recognise a reply to the
+            // approved broker-recruitment template and hand it to Rita.
+            template_name: template?.id ?? null,
+            recruitment_outreach: template?.id === "invitation_to_realestate_brokers",
+            sender_phone: phone,
           },
         });
       }
