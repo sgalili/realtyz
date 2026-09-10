@@ -1030,6 +1030,15 @@ async function handleLeadInboxInbound(
     };
   } catch (_) { /* generic office wording is an acceptable fallback */ }
 
+  // Rita's recruitment mode: this workspace only talks to agents/brokers, so a
+  // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
+  // instead of property talk.
+  const leadPrefs = ((lead as any)?.preferences ?? {}) as Record<string, unknown>;
+  const recruitmentMode =
+    BROKER_RECRUITMENT_WORKSPACE ||
+    String(leadPrefs.lead_kind ?? "") === "broker" ||
+    opts?.recruitment === true;
+
   let reply = "";
   const aiStartedAt = Date.now();
   if (!agentCommand) {
