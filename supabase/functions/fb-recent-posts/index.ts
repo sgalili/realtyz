@@ -924,7 +924,17 @@ Deno.serve(async (req) => {
           const ids = chunk.map((t: any) => String(t.provider_message_id)).join(",");
           const url = `https://graph.facebook.com/v26.0/?ids=${encodeURIComponent(ids)}&fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(cred.token)}`;
           const resp = await fetch(url);
-          if (!resp.ok) continue;
+          if (!resp.ok) {
+            const errJson: any = await resp.json().catch(() => ({}));
+            console.error("[fb-recent-posts] enrichment graph error", {
+              http_status: resp.status,
+              token_source: cred.source,
+              code: errJson?.error?.code ?? null,
+              subcode: errJson?.error?.error_subcode ?? null,
+              message: errJson?.error?.message ?? null,
+            });
+            continue;
+          }
           const json: any = await resp.json().catch(() => ({}));
           for (const t of chunk) {
             const pid = String(t.provider_message_id);
