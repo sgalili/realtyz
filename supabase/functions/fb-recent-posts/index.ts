@@ -521,9 +521,10 @@ Deno.serve(async (req) => {
         "comments.summary(true).limit(0)",
         "shares",
       ].join(",");
-      // Import window: everything from 2026-07-27 onward unless the caller
-      // asked for a different `since`. Keeps the feed complete + fast.
-      const sinceParam = since || "2026-07-27";
+      // Import window: default to the last 365 days so a manual refresh really
+      // pulls the whole recent history of the Page, not a fixed cut-off date.
+      const sinceParam = since ||
+        new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const untilParam = until || "";
       // `/posts` only returns posts authored by the Page itself and silently
       // hides native/other-authored items. Walk BOTH edges and merge so a full
