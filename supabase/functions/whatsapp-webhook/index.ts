@@ -33,6 +33,7 @@ import { resolveWaContext } from "../_shared/waContextRouter.ts";
 import { BROKER_RECRUITMENT_WORKSPACE } from "../_shared/persona.ts";
 import {
   isRecruitmentThread,
+  isReplyToRecruitmentOutreach,
   looksLikeSystemErrorReply,
   ritaRecruitmentFallback,
 } from "../_shared/brokerRecruitment.ts";
