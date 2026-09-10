@@ -1631,6 +1631,38 @@ Deno.serve(async (req) => {
     }
 
     // ============================================================
+    // RECRUITMENT REPLY ANCHOR — an agent answering the approved
+    // broker-outreach template ("נשמע טוב") belongs to Rita, not to the
+    // owner command router. Detected either by an active recruitment
+    // thread or because the last outbound message to this phone WAS the
+    // outreach itself. Rita then keeps the conversation in recruitment
+    // mode: Realtyz all-in-one value + a short Zoom demo.
+    // ============================================================
+    try {
+      const replyToOutreach = await isReplyToRecruitmentOutreach(admin as any, senderPhone);
+      const recruitmentThread =
+        replyToOutreach || (await isRecruitmentThread(admin as any, senderPhone));
+      if (recruitmentThread) {
+        console.log(`[RECRUITMENT ANCHOR] agent reply from ${senderPhone} → Rita recruitment pipeline`);
+        const result = await handleLeadInboxInbound(
+          admin,
+          SUPABASE_URL,
+          SERVICE_KEY,
+          senderPhone,
+          messageId,
+          msg.text,
+          { senderName, recruitment: true },
+        );
+        return jsonResponse({ ...result, classified_as: "broker_recruitment_reply" });
+      }
+    } catch (e) {
+      console.warn("recruitment anchor check failed:", e instanceof Error ? e.message : e);
+      // fall through to the standard routing
+    }
+
+
+
+    // ============================================================
     // GATEKEEPER — owner whitelist lookup runs FIRST and HARD BLOCKS
     // any lead/autopilot handling for whitelisted phones. A
     // whitelisted owner must NEVER be treated as a client lead.
