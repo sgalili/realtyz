@@ -6287,6 +6287,7 @@ export type Database = {
         Args: { _display_name?: string; _phone?: string }
         Returns: Json
       }
+      register_as_broker: { Args: { _display_name?: string }; Returns: Json }
       register_referral: { Args: { _code: string }; Returns: Json }
       release_fb_group_post_slot: {
         Args: { _group: string; _owner: string }
