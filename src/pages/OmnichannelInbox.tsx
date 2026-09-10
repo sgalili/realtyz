@@ -1169,7 +1169,7 @@ const OmnichannelInbox = () => {
               {manualTakeoverWarning && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20 text-primary">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span className="text-xs font-medium">הבוט הופסק לצורך שיחה ידנית</span>
+                  <span className="text-xs font-medium">ריטה הושתקה לצורך שיחה ידנית</span>
                 </div>
               )}
 
