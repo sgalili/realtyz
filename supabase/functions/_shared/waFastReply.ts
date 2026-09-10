@@ -33,6 +33,8 @@ export interface FastReplyLead {
   preferences?: Record<string, unknown> | null;
   city?: string | null;
   neighborhood?: string | null;
+  /** 'male' | 'female' — drives Hebrew verb/pronoun forms in the reply. */
+  gender?: string | null;
 }
 
 export interface FastReplyInput {
