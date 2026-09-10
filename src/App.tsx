@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { DirectionProvider } from "@radix-ui/react-direction";
@@ -20,6 +21,7 @@ import { RealtyzLoader } from "@/components/RealtyzLoader";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { LISTINGS_ENABLED } from "@/config/workspaceMode";
+import { applyPendingSignupRole } from '@/lib/signupRole';
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -138,6 +140,21 @@ const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/profile'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
+  // A role picked during registration (מתווך / שותף) is applied on the first
+  // authenticated render, then the account lands on the matching product.
+  const [roleApplied, setRoleApplied] = React.useState(false);
+  React.useEffect(() => {
+    if (!user || roleApplied) return;
+    let alive = true;
+    void applyPendingSignupRole().then((path) => {
+      if (!alive) return;
+      setRoleApplied(true);
+      if (path === '/affiliate' && window.location.pathname !== '/affiliate') {
+        window.location.assign('/affiliate');
+      }
+    });
+    return () => { alive = false; };
+  }, [user, roleApplied]);
   const { isAffiliateOnly, loading: roleLoading } = useUserRole();
   const location = useLocation();
   if (loading) return (
