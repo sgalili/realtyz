@@ -1166,6 +1166,22 @@ async function handleLeadInboxInbound(
     }
   }
 
+  // A prospect must NEVER receive an internal failure sentence. In recruitment
+  // mode Rita always has something professional to say: acknowledge the reply,
+  // state the all-in-one advantage, ask for a Zoom slot.
+  if (recruitmentMode && looksLikeSystemErrorReply(reply)) {
+    console.warn("[autopilot] replacing internal-failure text with Rita recruitment reply", {
+      lead_id: lead.id,
+    });
+    await logIntegrationError({
+      integration: "ai_gateway",
+      functionName: "whatsapp-webhook",
+      errorMessage: "AI autopilot produced an empty/internal-error reply — Rita fallback sent",
+      context: { lead_id: lead.id, inbound_excerpt: inboundText.slice(0, 200) },
+    });
+    reply = ritaRecruitmentFallback(lead.full_name);
+  }
+
   if (!reply) {
     console.error("[autopilot] no AI text produced — nothing to send", { lead_id: lead.id });
     await logIntegrationError({
