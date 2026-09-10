@@ -44,7 +44,37 @@ export interface FastReplyInput {
   owner?: { name?: string | null; agency?: string | null };
   /** Business domain of the workspace, derived from its own persona/KB. */
   domain?: "real_estate" | "software" | "generic";
+  /**
+   * Rita's broker-recruitment mode: the contact is a real-estate agent replying
+   * to the Realtyz outreach, not a property seeker.
+   */
+  recruitment?: boolean;
 }
+
+/**
+ * Rita's recruitment prompt: she talks to an AGENT about Realtyz itself and
+ * closes on a short Zoom demo. No properties, no budgets, no viewings.
+ */
+export function buildRecruitmentReplyPrompt(lead: FastReplyLead, contextBlock?: string): string {
+  const name = (lead.full_name ?? "").trim();
+  return `${RITA_IDENTITY_RULES}
+
+${renderBrokerRecruitmentBlock(name || null)}
+
+אתה כותב עכשיו הודעת וואטסאפ אחת בזמן אמת, בעברית, בלשון נקבה עבור ריטה.
+חוקי כתיבה:
+1. עד 70 מילים, משפטים קצרים, שורות קצרות, אפשר שורה ריקה בין רעיונות.
+2. פותחים בהתייחסות אמיתית למה שהוא כתב עכשיו, בלי "אשמח לסייע" ובלי חזרה על השאלה.
+3. אחר כך יתרון ה-All-in-One של Realtyz במשפט או שניים: לידים, אנשי קשר, נכסים, מעקבים, התאמות, פרסום וכלי AI במערכת אחת במקום חמש מערכות.
+4. לסיים בשאלה אחת בלבד על מועד נוח לזום קצר של כ-15 דקות להדגמה חיה.
+5. בלי מקפים ארוכים, בלי markdown, בלי רשימות ממוספרות, עד אימוג'י אחד.
+6. לא להמציא מחירים, אחוזי הצלחה, שמות לקוחות או אינטגרציות. אם נשאלת ואין לך נתון, לומר שתבדקי ותעבירי תשובה מדויקת, ולהציע לכסות את זה בזום.
+7. אם הוא מסרב, להישאר חמה, להשאיר דלת פתוחה ולהציע לשלוח הקלטה קצרה של הדגמה.
+${contextBlock ? `\nנתונים מאושרים לשימוש:\n${contextBlock}` : ""}
+
+החזר טקסט הודעה בלבד, מוכן לשליחה בוואטסאפ. ללא JSON וללא כותרות.`;
+}
+
 
 /**
  * The WhatsApp lead-facing persona. Sharp Israeli real-estate expert speaking
@@ -128,7 +158,12 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
       body: JSON.stringify({
         model: FAST_MODEL,
         messages: [
-          { role: "system", content: buildFastReplyPrompt(input.lead, input.contextBlock, input.owner, input.domain ?? "real_estate") },
+          {
+            role: "system",
+            content: input.recruitment
+              ? buildRecruitmentReplyPrompt(input.lead, input.contextBlock)
+              : buildFastReplyPrompt(input.lead, input.contextBlock, input.owner, input.domain ?? "real_estate"),
+          },
           ...recent,
         ],
         temperature: 0.6,
