@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -466,6 +467,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2">
               <HeaderProfileLink />
               <NotificationCenter />
+              <AppModeSwitcher />
             </div>
 
             <div className="flex-1" />

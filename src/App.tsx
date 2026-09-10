@@ -22,6 +22,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { LISTINGS_ENABLED } from "@/config/workspaceMode";
 import { applyPendingSignupRole } from '@/lib/signupRole';
+import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -156,6 +157,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     return () => { alive = false; };
   }, [user, roleApplied]);
   const { isAffiliateOnly, loading: roleLoading } = useUserRole();
+  const { isPartnerMode } = useAppMode();
   const location = useLocation();
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -170,6 +172,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
       (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
     );
     if (!allowed) return <Navigate to="/affiliate" replace />;
+  }
+
+  // Partner mode (dual-role accounts) keeps broker tooling out of reach until
+  // the user switches back to מצב מתווך from the header.
+  if (isPartnerMode && !isPartnerModePath(location.pathname)) {
+    return <Navigate to="/affiliate" replace />;
   }
 
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
