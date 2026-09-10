@@ -73,14 +73,42 @@ Deno.serve(async (req) => {
       (prof as any)?.workspace_owner_id) as string | null;
     if (owner) ownerId = owner;
 
-    const { data: row } = await admin
+    /**
+     * Credential resolution, in order:
+     *   1. the workspace's own WBA row
+     *   2. the shared official platform WABA row (same verified Meta number
+     *      972537983832 for every workspace) — matches send-whatsapp
+     *   3. project-level Meta env secrets
+     * Without step 2 every workspace whose row is only partially registered
+     * failed the sync with "missing Meta connection details".
+     */
+    const usable = (c: Record<string, unknown> | null | undefined) =>
+      !!(c && String(c.waba_id ?? "").trim() && String(c.access_token ?? "").trim());
+
+    const { data: ownRow } = await admin
       .from("wa_providers")
       .select("config")
       .eq("user_id", ownerId)
       .eq("provider_name", "WBA")
       .maybeSingle();
 
-    const cfg = ((row?.config as Record<string, unknown>) ?? {});
+    let cfg = ((ownRow?.config as Record<string, unknown>) ?? {});
+
+    if (!usable(cfg)) {
+      const { data: sharedRows } = await admin
+        .from("wa_providers")
+        .select("config, updated_at")
+        .eq("provider_name", "WBA")
+        .eq("is_active", true)
+        .eq("is_official", true)
+        .order("updated_at", { ascending: false })
+        .limit(10);
+      const shared = (sharedRows ?? [])
+        .map((r: any) => (r?.config ?? {}) as Record<string, unknown>)
+        .find((c) => usable(c));
+      if (shared) cfg = shared;
+    }
+
     const wabaId = String(cfg.waba_id ?? Deno.env.get("META_WABA_ID") ?? "").trim();
     const accessToken = String(
       cfg.access_token ?? Deno.env.get("META_WA_ACCESS_TOKEN") ??
