@@ -625,6 +625,10 @@ Deno.serve(async (req) => {
      * whenever the workspace's own token is rejected with a permission error
      * such as `#10 pages_read_engagement`.
      */
+    // The credential that actually worked for the feed read. Reused for the
+    // enrichment pass so counters/media never fail with a different token.
+    let workingCred: { token: string; pageId: string | null; source: string | null } | null = null;
+
     const fetchGraphHistory = async (): Promise<
       { posts: RawPost[]; status: number; error: any; source: string | null; blocked: boolean }
     > => {
@@ -632,6 +636,12 @@ Deno.serve(async (req) => {
       const ordered = candidates.length
         ? candidates.map((c) => ({ token: c.token, pageId: c.pageId, source: c.scope }))
         : [await resolveGraphCredential()];
+      if (!ordered.some((c) => c.token && c.pageId)) {
+        console.error("[fb-recent-posts] no usable Page access token", {
+          owner_id: ownerId,
+          candidates: ordered.length,
+        });
+      }
       let last: { posts: RawPost[]; status: number; error: any; source: string | null } = {
         posts: [],
         status: 0,
@@ -640,7 +650,10 @@ Deno.serve(async (req) => {
       };
       for (const cred of ordered) {
         const res = await fetchGraphHistoryWith(cred);
-        if (res.posts.length > 0) return { ...res, blocked: false };
+        if (res.posts.length > 0) {
+          workingCred = cred;
+          return { ...res, blocked: false };
+        }
         last = res;
         if (!isMetaPermissionError(res.error)) break;
       }
