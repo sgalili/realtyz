@@ -1040,6 +1040,14 @@ Deno.serve(async (req) => {
         graph_source: graphSource,
         permission_blocked: permissionBlocked,
         needs_extension: permissionBlocked && posts.length === 0,
+        // Clear, human-readable reason when a refresh returned nothing.
+        error: posts.length === 0
+          ? (lastError === "facebook_page_access_token_missing"
+            ? "לא נמצא חיבור פעיל לעמוד הפייסבוק — יש להתחבר מחדש בהגדרות הערוצים"
+            : (lastError as any)?.message
+            ? `Facebook Graph: ${(lastError as any).message}`
+            : null)
+          : null,
         diagnostics,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
