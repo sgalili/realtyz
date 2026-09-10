@@ -18,6 +18,7 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 import { sanitizeReplyText } from "./replySanitize.ts";
 import { externalMasterPrompt, RITA_IDENTITY_RULES } from "./masterAgentPrompt.ts";
 import { renderBrokerRecruitmentBlock } from "./persona.ts";
+import { genderPromptBlock, resolveLeadGender } from "./hebrewGender.ts";
 
 // Fast tier — Gemini Flash. Do NOT swap to a pro/thinking model here:
 // this path is latency-critical.
