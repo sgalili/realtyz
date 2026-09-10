@@ -196,8 +196,27 @@ export default function NotificationCenter() {
 
 
 
+  // Group inbound messages per contact: only the newest message from each
+  // contact is shown, with a counter for the rest, so repeated replies from the
+  // same person never flood the drawer.
+  const groupedInbound = (() => {
+    const byLead = new Map<string, { row: any; count: number; extraIds: string[] }>();
+    inbound.forEach((m: any) => {
+      const key = String(m.lead_id ?? m.id);
+      const existing = byLead.get(key);
+      if (!existing) {
+        byLead.set(key, { row: m, count: 1, extraIds: [] });
+        return;
+      }
+      existing.count += 1;
+      // `inbound` is ordered newest first, so the first row stays as the head.
+      existing.extraIds.push(m.id);
+    });
+    return [...byLead.values()];
+  })();
+
   const unviewedAlerts = alerts.filter(a => !viewedIds.has(a.id));
-  const unviewedInbound = inbound.filter((m: any) => !viewedIds.has(m.id));
+  const unviewedInbound = groupedInbound.filter((g) => !viewedIds.has(g.row.id));
   const unviewedTours = tours.filter((t: any) => !viewedIds.has(t.id));
   const activeBudgetAlerts = budgetAlerts.filter(b => !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
   const badgeCount = unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + activeBudgetAlerts.length;
