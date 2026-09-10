@@ -147,10 +147,17 @@ const WhatsAppTicks = ({ status = 'delivered' }: { status?: 'sent' | 'delivered'
 
 const OmnichannelInbox = () => {
   const [searchParams] = useSearchParams();
-  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(searchParams.get('lead'));
+  // `chat` is the deep-link parameter used by the notification center; `lead`
+  // stays supported for existing links.
+  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(
+    searchParams.get('chat') || searchParams.get('lead'),
+  );
+  // Message to scroll to / highlight when arriving from a notification.
+  const [highlightMessageId, setHighlightMessageId] = useState<string | null>(searchParams.get('message'));
   useEffect(() => {
-    const v = searchParams.get('lead');
+    const v = searchParams.get('chat') || searchParams.get('lead');
     if (v) setSelectedVoterId(v);
+    setHighlightMessageId(searchParams.get('message'));
     const requestedChannel = searchParams.get('channel');
     if (requestedChannel && channelConfig[requestedChannel]) setSendChannel(requestedChannel);
   }, [searchParams]);
