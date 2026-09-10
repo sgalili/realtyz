@@ -915,6 +915,16 @@ async function handleLeadInboxInbound(
   // the AI agent so webtiv_search / Market Intel / CRM actions can run.
   const agentCommand = isAgentCommand(inboundText);
 
+  // Rita's recruitment mode: this workspace only talks to agents/brokers, so a
+  // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
+  // instead of property talk.
+  const leadPrefs = ((lead as any)?.preferences ?? {}) as Record<string, unknown>;
+  const recruitmentMode =
+    BROKER_RECRUITMENT_WORKSPACE ||
+    String(leadPrefs.lead_kind ?? "") === "broker" ||
+    opts?.recruitment === true;
+
+
   console.log("[autopilot] gates", JSON.stringify({
     lead_id: lead.id,
     lead_autopilot: lead.ai_autopilot,
@@ -1030,15 +1040,6 @@ async function handleLeadInboxInbound(
       agency: (ownerProfile as any)?.broker_byline ?? null,
     };
   } catch (_) { /* generic office wording is an acceptable fallback */ }
-
-  // Rita's recruitment mode: this workspace only talks to agents/brokers, so a
-  // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
-  // instead of property talk.
-  const leadPrefs = ((lead as any)?.preferences ?? {}) as Record<string, unknown>;
-  const recruitmentMode =
-    BROKER_RECRUITMENT_WORKSPACE ||
-    String(leadPrefs.lead_kind ?? "") === "broker" ||
-    opts?.recruitment === true;
 
   let reply = "";
   const aiStartedAt = Date.now();
