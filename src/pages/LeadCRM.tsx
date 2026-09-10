@@ -2042,7 +2042,7 @@ const LeadCRM = () => {
             const status = v?.status || 'cold';
             const cfg = getLoyalty(status);
             const descriptions: Record<string, string> = {
-              cold: 'איש קשר קר — נרשם במערכת אך עדיין לא הייתה אינטראקציה משמעותית. הסוכן הדיגיטלי ינסה ליצור קשר ראשוני.',
+              cold: 'איש קשר קר — נרשם במערכת אך עדיין לא הייתה אינטראקציה משמעותית. ריטה תנסה ליצור קשר ראשוני.',
               qualified: 'איש קשר מוסמך — נוצר קשר, אומתו צרכים בסיסיים (תקציב/אזור/סוג נכס). מוכן לשלב הצגת נכסים.',
               negotiation: 'במשא ומתן — התקיים סיור או הוצגה הצעה. שלב רגיש: הסוכן מעדיף תשובה אישית של הברוקר.',
               closed: 'נסגר — העסקה הושלמה. הלקוח עובר למאגר חיזוק קשר ולא ייפנה אוטומטית.',
@@ -2138,7 +2138,7 @@ const LeadCRM = () => {
               })();
               const isOut = msg.direction === 'outbound';
               const who = isOut
-                ? ((msg as any).sender_type === 'ai' ? 'הסוכן הדיגיטלי שלח' : 'נשלחה הודעה')
+                ? ((msg as any).sender_type === 'ai' ? 'ריטה שלחה' : 'נשלחה הודעה')
                 : 'הודעה מהלקוח';
               events.push({
                 id: `msg-${msg.id}`,
@@ -2155,7 +2155,7 @@ const LeadCRM = () => {
                 id: `chat-${ch.id}`,
                 date: ch.created_at || '',
                 type: ch.role === 'assistant' ? 'chat_ai' : 'chat_user',
-                label: ch.role === 'assistant' ? 'תיאום סיור / עדכון מהסוכן הדיגיטלי' : 'הערות לקוח עודכנו במערכת',
+                label: ch.role === 'assistant' ? 'תיאום סיור / עדכון מריטה' : 'הערות לקוח עודכנו במערכת',
                 detail: ch.content?.slice(0, 80) || '',
               });
             });
@@ -2355,10 +2355,10 @@ const LeadCRM = () => {
                                     .update({ ai_autopilot: checked } as any)
                                     .eq('id', selectedVoter.id);
                                   if (error) {
-                                    toast.error('שגיאה בעדכון הסוכן הדיגיטלי');
+                                    toast.error('שגיאה בעדכון ריטה');
                                     return;
                                   }
-                                  toast.success(checked ? 'הסוכן הדיגיטלי הופעל' : 'הסוכן הדיגיטלי כובה');
+                                  toast.success(checked ? 'ריטה הופעלה' : 'ריטה כובתה');
                                   queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
                                 }}
                               >

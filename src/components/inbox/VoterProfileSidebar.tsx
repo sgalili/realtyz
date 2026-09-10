@@ -157,10 +157,10 @@ const VoterProfileSidebar = ({ voter }: Props) => {
                 .update({ ai_autopilot: checked } as any)
                 .eq('id', voter.id);
               if (error) {
-                toast.error('שגיאה בעדכון הסוכן הדיגיטלי');
+                toast.error('שגיאה בעדכון ריטה');
                 return;
               }
-              toast.success(checked ? 'הסוכן הדיגיטלי הופעל' : 'הסוכן הדיגיטלי כובה');
+              toast.success(checked ? 'ריטה הופעלה' : 'ריטה כובתה');
               queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
             }}
           />
@@ -227,7 +227,7 @@ const VoterProfileSidebar = ({ voter }: Props) => {
                 : p.includes('email') ? 'אימייל'
                 : p.includes('sms') ? 'SMS' : '';
               const who = msg.direction === 'outbound'
-                ? (msg.sender_type === 'ai' ? 'הסוכן הדיגיטלי שלח' : 'נשלחה הודעה')
+                ? (msg.sender_type === 'ai' ? 'ריטה שלחה' : 'נשלחה הודעה')
                 : 'הודעה מהלקוח';
               const label = channelLabel ? `${who} · ${channelLabel}` : who;
               return (

@@ -586,7 +586,7 @@ ${shareUrl}
           <div className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center">
             <Bot className="h-5 w-5 text-primary" />
           </div>
-          <h3 className="text-[18px] font-bold text-center">קצין המודיעין של Realtyz</h3>
+          <h3 className="text-[18px] font-bold text-center">ריטה, סוכנת ה-AI של Realtyz</h3>
         </div>
 
         {/* Messages */}
@@ -595,7 +595,7 @@ ${shareUrl}
             <div className="space-y-5 py-2">
               <div className="text-center space-y-2 pb-1">
                 <Bot className="h-10 w-10 mx-auto text-muted-foreground/30" />
-                <p className="text-[18px] text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
+                <p className="text-[18px] text-muted-foreground">שלום! אני ריטה, סוכנת ה-AI של Realtyz.</p>
                 <p className="text-[16px] text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
               </div>
               <div className="space-y-1.5">
