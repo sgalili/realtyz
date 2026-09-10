@@ -471,14 +471,18 @@ Deno.serve(async (req) => {
           .maybeSingle();
         allowed = !!membership;
       }
-      if (!allowed) {
-        return new Response(JSON.stringify({ ok: false, error: "workspace_forbidden", posts: [], count: 0 }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (allowed) {
+        ownerId = requestedOwnerId;
+      } else {
+        // Stale/foreign workspace pointer coming from the browser cache: fall
+        // back to the caller's own workspace instead of blanking the page.
+        console.warn("[fb-recent-posts] ignoring non-member workspace request", {
+          caller: caller.userId,
+          requested: requestedOwnerId,
         });
       }
-      ownerId = requestedOwnerId;
     }
+
 
 
     const page = await resolveMetaPage(admin, ownerId);
