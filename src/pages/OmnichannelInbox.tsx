@@ -1208,7 +1208,15 @@ const OmnichannelInbox = () => {
                     const channelLabel = channelConfig[msg.channel || '']?.label || msg.channel;
 
                     return (
-                      <div key={msg.id}>
+                      <div
+                        key={msg.id}
+                        data-message-id={msg.id}
+                        className={
+                          msg.id === highlightMessageId
+                            ? 'rounded-lg ring-2 ring-primary/60 bg-primary/5 transition-colors'
+                            : undefined
+                        }
+                      >
                         {channelChanged && (
                           <div className="flex items-center gap-2 my-3">
                             <div className="flex-1 h-px bg-border" />
