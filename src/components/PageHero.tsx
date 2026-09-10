@@ -11,7 +11,7 @@
  */
 import * as React from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, DownloadCloud, Loader2 } from 'lucide-react';
+import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, DownloadCloud, Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { SidebarTrigger } from '@/components/ui/sidebar';
