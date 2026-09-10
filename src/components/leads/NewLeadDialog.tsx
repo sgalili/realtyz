@@ -31,6 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { guessGenderFromHebrewName } from '@/lib/hebrewGender';
 import { Textarea } from '@/components/ui/textarea';
 import { UserPlus } from 'lucide-react';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
@@ -87,6 +88,8 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   const [email, setEmail] = useState('');
   const [city, setCity] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
+  /** Hebrew is gendered: this drives how every message addresses the contact. */
+  const [gender, setGender] = useState<'male' | 'female' | 'auto'>('auto');
 
   // Sale-only fields
   const [budgetMax, setBudgetMax] = useState('');
@@ -124,6 +127,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     setEmail('');
     setCity('');
     setNeighborhood('');
+    setGender('auto');
     setBudgetMax('');
     setFinancing('unknown');
     setMonthlyMax('');
@@ -186,6 +190,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     // rental lead.
     const preferences: Record<string, unknown> = {
       lead_kind: leadKind!,
+      gender: resolvedGender ?? undefined,
       listing_type: isRental ? 'rent' : 'sale', // legacy mirror for older code paths
       deal_side: isOwner ? 'owner' : 'seeker',
       source,
@@ -211,6 +216,11 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
       (k) => preferences[k] === undefined && delete preferences[k],
     );
 
+    // 'auto' falls back to the Hebrew first-name heuristic so messages are
+    // still written in the right form when the user does not pick.
+    const resolvedGender =
+      gender === 'auto' ? guessGenderFromHebrewName(fullName) : gender;
+
     setSaving(true);
     try {
       const ownerId = await resolveOwnerId();
@@ -221,6 +231,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         city: city.trim() || null,
         neighborhood: neighborhood.trim() || null,
         deal_type: dealType,
+        gender: resolvedGender,
         preferences,
         lead_stage: 'new',
         status: 'new',
