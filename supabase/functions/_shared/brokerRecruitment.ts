@@ -27,14 +27,23 @@ const RECRUITMENT_ANCHORS = [
  * text. It still carries the all-in-one pitch and the Zoom ask, so the prospect
  * NEVER sees a system error.
  */
-export function ritaRecruitmentFallback(name?: string | null): string {
+export function ritaRecruitmentFallback(
+  name?: string | null,
+  gender?: "male" | "female" | null,
+): string {
   const clean = String(name ?? "").trim().split(/\s+/)[0] ?? "";
   const hello = clean ? `${clean}, ` : "";
+  // Hebrew inflects for the recipient: "שאראה לך" is identical, but the verb
+  // in the closing question changes ("נוח לך" is shared, "שלך" is shared),
+  // so the difference sits in the second-person phrasing below.
+  const closing = gender === "female"
+    ? "מתי נוח לך לזום קצר של כ-15 דקות כדי שאראה לך את זה על הנכסים שאת מנהלת?"
+    : "מתי נוח לך לזום קצר של כ-15 דקות כדי שאראה לך את זה על הנכסים שאתה מנהל?";
   return (
     `${hello}תודה על התגובה, שמחה לשמוע.\n` +
     "בקצרה: Realtyz מרכזת במקום אחד את הלידים, אנשי הקשר, הנכסים, המעקבים וההתאמות, " +
     "וגם את הפרסום וכלי ה-AI שעונים לפניות בשמך מסביב לשעון. במקום חמש מערכות נפרדות, מערכת אחת שבה שום פנייה לא נופלת.\n" +
-    "מתי נוח לך לזום קצר של כ-15 דקות כדי שאראה לך את זה על הנכסים שלך?"
+    closing
   );
 }
 
