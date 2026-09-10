@@ -29,6 +29,7 @@ import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
+import { resolveLeadGender } from "../_shared/hebrewGender.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
 import { BROKER_RECRUITMENT_WORKSPACE } from "../_shared/persona.ts";
 import {
@@ -689,7 +690,7 @@ async function handleLeadInboxInbound(
   // workspace scoping, constraint) NEVER halts the AI reply path.
   // The inbox is restored by always inserting the message row with the
   // sender_phone in metadata, even when lead resolution fails.
-  const LEAD_COLS = "id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type, preferences";
+  const LEAD_COLS = "id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type, preferences, gender";
   let lead: any = null;
   if (opts?.leadId) {
     try {
@@ -1100,6 +1101,9 @@ async function handleLeadInboxInbound(
         full_name: lead.full_name,
         deal_type: lead.deal_type,
         interest_tag: lead.interest_tag,
+        // Hebrew is gendered: Rita must address this contact correctly.
+        gender: lead.gender ?? null,
+        preferences: lead.preferences ?? null,
       },
       inboundText,
       history: aiMessages,
@@ -1184,7 +1188,7 @@ async function handleLeadInboxInbound(
     const rescue = await generateFastReply({
       owner: ownerIdentity,
       domain: ownerDomain,
-      lead: { id: lead.id, full_name: lead.full_name, deal_type: lead.deal_type },
+      lead: { id: lead.id, full_name: lead.full_name, deal_type: lead.deal_type, gender: lead.gender ?? null, preferences: lead.preferences ?? null },
       inboundText,
       history: aiMessages,
       recruitment: recruitmentMode,
@@ -1208,7 +1212,7 @@ async function handleLeadInboxInbound(
       errorMessage: "AI autopilot produced an empty/internal-error reply — Rita fallback sent",
       context: { lead_id: lead.id, inbound_excerpt: inboundText.slice(0, 200) },
     });
-    reply = ritaRecruitmentFallback(lead.full_name);
+    reply = ritaRecruitmentFallback(lead.full_name, resolveLeadGender(lead));
   }
 
   if (!reply) {

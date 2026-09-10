@@ -31,6 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { guessGenderFromHebrewName } from '@/lib/hebrewGender';
 import { Textarea } from '@/components/ui/textarea';
 import { UserPlus } from 'lucide-react';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
@@ -87,6 +88,8 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   const [email, setEmail] = useState('');
   const [city, setCity] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
+  /** Hebrew is gendered: this drives how every message addresses the contact. */
+  const [gender, setGender] = useState<'male' | 'female' | 'auto'>('auto');
 
   // Sale-only fields
   const [budgetMax, setBudgetMax] = useState('');
@@ -124,6 +127,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     setEmail('');
     setCity('');
     setNeighborhood('');
+    setGender('auto');
     setBudgetMax('');
     setFinancing('unknown');
     setMonthlyMax('');
@@ -184,8 +188,14 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     // Build pipeline-specific preferences. We deliberately omit the OTHER
     // pipeline's fields so the AI never sees, e.g., a mortgage flag on a
     // rental lead.
+    // 'auto' falls back to the Hebrew first-name heuristic so messages are
+    // still written in the right grammatical form when nothing is picked.
+    const resolvedGender =
+      gender === 'auto' ? guessGenderFromHebrewName(fullName) : gender;
+
     const preferences: Record<string, unknown> = {
       lead_kind: leadKind!,
+      gender: resolvedGender ?? undefined,
       listing_type: isRental ? 'rent' : 'sale', // legacy mirror for older code paths
       deal_side: isOwner ? 'owner' : 'seeker',
       source,
@@ -221,6 +231,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         city: city.trim() || null,
         neighborhood: neighborhood.trim() || null,
         deal_type: dealType,
+        gender: resolvedGender,
         preferences,
         lead_stage: 'new',
         status: 'new',
@@ -394,6 +405,22 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               onChange={(e) => { setCity(e.target.value); setPendingOutOfArea(false); }}
               placeholder="תל אביב"
             />
+          </div>
+          <div>
+            <Label>מגדר</Label>
+            <Select value={gender} onValueChange={(v) => setGender(v as 'male' | 'female' | 'auto')}>
+              <SelectTrigger className="h-10 text-sm">
+                <SelectValue placeholder="בחר מגדר" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">זיהוי אוטומטי לפי השם</SelectItem>
+                <SelectItem value="male">זכר</SelectItem>
+                <SelectItem value="female">נקבה</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              קובע את לשון הפנייה בעברית בהודעות ובשיחות של ריטה
+            </p>
           </div>
           <div>
             <Label htmlFor="nl-hood">שכונה</Label>

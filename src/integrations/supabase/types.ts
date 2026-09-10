@@ -3267,6 +3267,7 @@ export type Database = {
           expected_close_date: string | null
           fts: unknown
           full_name: string | null
+          gender: string | null
           id: string
           identity_number: string | null
           instagram_handle: string | null
@@ -3319,6 +3320,7 @@ export type Database = {
           expected_close_date?: string | null
           fts?: unknown
           full_name?: string | null
+          gender?: string | null
           id?: string
           identity_number?: string | null
           instagram_handle?: string | null
@@ -3371,6 +3373,7 @@ export type Database = {
           expected_close_date?: string | null
           fts?: unknown
           full_name?: string | null
+          gender?: string | null
           id?: string
           identity_number?: string | null
           instagram_handle?: string | null

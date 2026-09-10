@@ -18,6 +18,7 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 import { sanitizeReplyText } from "./replySanitize.ts";
 import { externalMasterPrompt, RITA_IDENTITY_RULES } from "./masterAgentPrompt.ts";
 import { renderBrokerRecruitmentBlock } from "./persona.ts";
+import { genderPromptBlock, resolveLeadGender } from "./hebrewGender.ts";
 
 // Fast tier — Gemini Flash. Do NOT swap to a pro/thinking model here:
 // this path is latency-critical.
@@ -32,6 +33,8 @@ export interface FastReplyLead {
   preferences?: Record<string, unknown> | null;
   city?: string | null;
   neighborhood?: string | null;
+  /** 'male' | 'female' — drives Hebrew verb/pronoun forms in the reply. */
+  gender?: string | null;
 }
 
 export interface FastReplyInput {
@@ -60,6 +63,9 @@ export function buildRecruitmentReplyPrompt(lead: FastReplyLead, contextBlock?: 
   return `${RITA_IDENTITY_RULES}
 
 ${renderBrokerRecruitmentBlock(name || null)}
+
+${genderPromptBlock(resolveLeadGender(lead), name)}
+
 
 אתה כותב עכשיו הודעת וואטסאפ אחת בזמן אמת, בעברית, בלשון נקבה עבור ריטה.
 חוקי כתיבה:
@@ -119,6 +125,8 @@ ${expertiseLine}
 6. ללא אימוג'ים מוגזמים (עד אחד, ורק אם זה מתאים), ללא בולטים אלא אם באמת מציגים 2-3 אופציות נכסים, ללא מקפים ארוכים (— או --), ללא markdown כבד.
 7. אם המתעניין כותב אנגלית או רוסית, ענה באותה שפה באותו סגנון.
 8. לא להבטיח מחיר סופי, תשואה מובטחת או אישור משכנתא. אפשר לתת טווחים והערכות מקצועיות ולסמן אותן כהערכה.
+
+${genderPromptBlock(resolveLeadGender(lead), name)}
 
 פרטי המתעניין:
 - שם: ${name || "לא ידוע (אל תמציא שם, אפשר לשאול)"}

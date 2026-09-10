@@ -38,6 +38,7 @@ import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import { BROKER_RECRUITMENT_MODE } from '@/config/workspaceMode';
 import { renderBrokerFirstOutreach, BROKER_WA_TEMPLATE_NAME } from '@/lib/brokerOutreachTemplates';
+import { resolveLeadGender } from '@/lib/hebrewGender';
 import VoterAvatar from '@/components/VoterAvatar';
 import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
 import { BrandIcon } from '@/components/BrandIcon';
@@ -1082,7 +1083,8 @@ const LeadCRM = () => {
             lead_id: lead.id,
             phone_number: phone,
             template_id: BROKER_WA_TEMPLATE_NAME,
-            message: renderBrokerFirstOutreach(name),
+            // Hebrew inflects for the recipient: pick the male/female wording.
+            message: renderBrokerFirstOutreach(name, resolveLeadGender(lead as any)),
           };
           try {
             await sendTemplate({ ...base, template_variables: { '1': name || 'שלום' } });
@@ -2500,6 +2502,8 @@ const LeadCRM = () => {
                           <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
                           <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v, lead_source: v })} />
                           <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
+                          {/* Gender drives the Hebrew grammatical form of every message */}
+                          <SelectCell icon={<UserRoundPlus className="h-3.5 w-3.5 text-slate-700" />} label="מגדר (לשון הפנייה)" value={String((selectedVoter as any).gender ?? '')} placeholder="בחר מגדר" options={[{ v: 'male', l: 'זכר' }, { v: 'female', l: 'נקבה' }]} onChange={(v) => saveLead({ gender: v })} />
                           {/* Buyer/renter preference fields — hidden entirely for property owners */}
                           {!ownerLead && (
                             <>

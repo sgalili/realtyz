@@ -26,10 +26,31 @@ export const BROKER_FIRST_OUTREACH_BODY =
   'חשבתי שיהיה לי מעניין במיוחד שתראה אותה ותיתן לי גם את נקודת המבט המקצועית שלך.\n\n' +
   'ההתנסות בחינם, ואם זה מסקרן אותך בוא נתאם שיחת זום קצרה להדגמה בזמן שנוח לך.';
 
-/** Fill the agent's real name into the first-outreach message. */
-export function renderBrokerFirstOutreach(name?: string | null): string {
+/**
+ * Feminine version of the same message. Hebrew inflects every verb, adjective
+ * and pronoun for the recipient, so a female agent gets her own wording
+ * (את עובדת / שתראי / בואי) instead of the masculine default.
+ */
+export const BROKER_FIRST_OUTREACH_BODY_FEMALE =
+  'היי {{name}}, מה שלומך?\n\n' +
+  'כאן אודי ויטמן מאנגלו סכסון הרצליה רמת השרון.\n\n' +
+  'אני פונה אליך באופן אישי כי אני מאוד מעריך אותך כאשת מקצוע ואת הדרך שבה את עובדת.\n\n' +
+  'בתקופה האחרונה אני שותף בפיתוח של RealtyZ, מערכת AI שנבנתה במיוחד למתווכים ולסוכנויות נדל״ן, מתוך העבודה והצרכים שאנחנו פוגשים ביום יום.\n\n' +
+  'המערכת מרכזת במקום אחד לידים, לקוחות, נכסים, מעקבים, התאמות, פרסום וכלי AI שנועדו לחסוך זמן ולעזור לעבוד בצורה הרבה יותר יעילה.\n\n' +
+  'חשבתי שיהיה לי מעניין במיוחד שתראי אותה ותיתני לי גם את נקודת המבט המקצועית שלך.\n\n' +
+  'ההתנסות בחינם, ואם זה מסקרן אותך בואי נתאם שיחת זום קצרה להדגמה בזמן שנוח לך.';
+
+/**
+ * Fill the agent's real name into the first-outreach message, in the Hebrew
+ * grammatical form that matches the recipient's gender.
+ */
+export function renderBrokerFirstOutreach(
+  name?: string | null,
+  gender?: 'male' | 'female' | null,
+): string {
   const clean = String(name ?? '').trim();
-  return BROKER_FIRST_OUTREACH_BODY.replace(/\{\{name\}\}/g, clean || 'שלום');
+  const body = gender === 'female' ? BROKER_FIRST_OUTREACH_BODY_FEMALE : BROKER_FIRST_OUTREACH_BODY;
+  return body.replace(/\{\{name\}\}/g, clean || 'שלום');
 }
 
 export const BROKER_OUTREACH_TEMPLATES: BrokerOutreachTemplate[] = [
