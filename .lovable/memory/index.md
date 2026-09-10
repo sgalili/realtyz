@@ -19,6 +19,7 @@
 - **FB groups (HARD)**: group posts ONLY via the Chrome extension (`enqueueExtensionPosts` → localStorage rzPostQueue, or `fb_group_post` queue rows). Never Graph `/feed` for groups; `fb-group-publish` deleted.
 
 ## Memories
+- [Rita agent, WA routing, roles](mem://features/rita-agent-and-roles) — ריטה is the sole AI identity (feminine); shared-number inbound routed by last outbound session; מתווך/שותף registration roles.
 - [Visual Identity](mem://style/visual-identity) — Realtyz branding: minimalist, no icons/emojis in headers.
 - [Localization & Typography](mem://style/localization) — RTL Hebrew layout, Assistant/Inter fonts, specific Hebrew terminology.
 - [AI Personality Style](mem://ai/personality-style) — AI tone: 'Sharren Haskel' (Liberal-Right, sharp). Addresses voters warmly in Hebrew by full name.
