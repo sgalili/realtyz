@@ -821,40 +821,62 @@ async function handleLeadInboxInbound(
     }
   }
 
-  // Duplicate guard (best-effort). Skipped in autopilot-only mode — the row was
-  // stored upstream on purpose, so it must not be mistaken for a retry.
-  if (!skipStore && messageId && lead?.id) {
-    try {
-      const { data: existing } = await admin
+  // ============================================================
+  // DEDUP — the same inbound row is often already persisted upstream by
+  // `meta-wa-webhook`. That is NOT a provider retry, so it must never cancel
+  // the AI leg (that silently killed every Rita auto-reply). We only skip the
+  // insert; the reply still runs. A true retry is one where the stored inbound
+  // ALREADY has an outbound reply after it — only then do we bail out.
+  // ============================================================
+  let alreadyStored = false;
+  if (!skipStore && lead?.id) {
+    const findExisting = async () => {
+      if (messageId) {
+        const { data } = await admin
+          .from("messages")
+          .select("id, created_at")
+          .eq("lead_id", lead.id)
+          .eq("direction", "inbound")
+          .contains("metadata", { message_id: messageId })
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data?.id) return data as { id: string; created_at: string };
+      }
+      if (!inboundText) return null;
+      const since = new Date(Date.now() - 60_000).toISOString();
+      const { data } = await admin
         .from("messages")
-        .select("id")
-        .eq("lead_id", lead.id)
-        .eq("direction", "inbound")
-        .contains("metadata", { message_id: messageId })
-        .maybeSingle();
-      if (existing?.id) return { ok: true, duplicate: true, lead_id: lead.id };
-    } catch (e) {
-      console.warn("dup-check soft-fail:", e instanceof Error ? e.message : e);
-    }
-  }
-
-  // Content-signature dedup: drop identical inbound text from the same lead
-  // within a 5-second window (provider retries, double webhooks, etc.).
-  if (!skipStore && lead?.id && inboundText) {
-    try {
-      const since = new Date(Date.now() - 5000).toISOString();
-      const { data: recent } = await admin
-        .from("messages")
-        .select("id")
+        .select("id, created_at")
         .eq("lead_id", lead.id)
         .eq("direction", "inbound")
         .eq("content", inboundText)
         .gte("created_at", since)
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (recent?.id) return { ok: true, duplicate: true, lead_id: lead.id };
+      return (data as { id: string; created_at: string } | null) ?? null;
+    };
+    try {
+      const existing = await findExisting();
+      if (existing?.id) {
+        alreadyStored = true;
+        const { data: laterOutbound } = await admin
+          .from("messages")
+          .select("id")
+          .eq("lead_id", lead.id)
+          .eq("direction", "outbound")
+          .gte("created_at", existing.created_at)
+          .limit(1)
+          .maybeSingle();
+        if (laterOutbound?.id) {
+          console.log("[autopilot] duplicate inbound already answered — skipping", { lead_id: lead.id });
+          return { ok: true, duplicate: true, lead_id: lead.id };
+        }
+        console.log("[autopilot] inbound already stored upstream — continuing to AI leg", { lead_id: lead.id });
+      }
     } catch (e) {
-      console.warn("content-dedup soft-fail:", e instanceof Error ? e.message : e);
+      console.warn("dup-check soft-fail:", e instanceof Error ? e.message : e);
     }
   }
 
