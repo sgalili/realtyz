@@ -147,10 +147,17 @@ const WhatsAppTicks = ({ status = 'delivered' }: { status?: 'sent' | 'delivered'
 
 const OmnichannelInbox = () => {
   const [searchParams] = useSearchParams();
-  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(searchParams.get('lead'));
+  // `chat` is the deep-link parameter used by the notification center; `lead`
+  // stays supported for existing links.
+  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(
+    searchParams.get('chat') || searchParams.get('lead'),
+  );
+  // Message to scroll to / highlight when arriving from a notification.
+  const [highlightMessageId, setHighlightMessageId] = useState<string | null>(searchParams.get('message'));
   useEffect(() => {
-    const v = searchParams.get('lead');
+    const v = searchParams.get('chat') || searchParams.get('lead');
     if (v) setSelectedVoterId(v);
+    setHighlightMessageId(searchParams.get('message'));
     const requestedChannel = searchParams.get('channel');
     if (requestedChannel && channelConfig[requestedChannel]) setSendChannel(requestedChannel);
   }, [searchParams]);
@@ -755,8 +762,20 @@ const OmnichannelInbox = () => {
   });
 
   useEffect(() => {
+    if (highlightMessageId) return; // deep-linked view scrolls to the target instead
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+  }, [chatMessages, highlightMessageId]);
+
+  // Deep link from the notification center: scroll to the exact message and
+  // keep it highlighted for a few seconds.
+  useEffect(() => {
+    if (!highlightMessageId || !chatMessages?.length) return;
+    const el = document.querySelector(`[data-message-id="${highlightMessageId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const timer = setTimeout(() => setHighlightMessageId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [highlightMessageId, chatMessages]);
 
   const waitingCount = useMemo(() => {
     if (!voters || !lastMessages) return 0;
@@ -1189,7 +1208,15 @@ const OmnichannelInbox = () => {
                     const channelLabel = channelConfig[msg.channel || '']?.label || msg.channel;
 
                     return (
-                      <div key={msg.id}>
+                      <div
+                        key={msg.id}
+                        data-message-id={msg.id}
+                        className={
+                          msg.id === highlightMessageId
+                            ? 'rounded-lg ring-2 ring-primary/60 bg-primary/5 transition-colors'
+                            : undefined
+                        }
+                      >
                         {channelChanged && (
                           <div className="flex items-center gap-2 my-3">
                             <div className="flex-1 h-px bg-border" />
