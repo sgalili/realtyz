@@ -945,7 +945,10 @@ async function handleLeadInboxInbound(
     console.warn("[autopilot] blocked: lead has no assigned_to owner", { lead_id: lead.id });
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "missing_owner_for_ai_autopilot" };
   }
-  if (!agentCommand) {
+  // A direct reply to the broker outreach we sent ourselves must always be
+  // answered by Rita, so it skips the workspace-wide autopilot switch. The
+  // per-contact toggle above still applies.
+  if (!agentCommand && !recruitmentMode) {
     try {
       const { data: globalAutopilot, error: gErr } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: aiOwnerId });
       if (gErr) {
