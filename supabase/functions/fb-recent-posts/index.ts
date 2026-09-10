@@ -904,7 +904,7 @@ Deno.serve(async (req) => {
     let enrichedCounters = 0;
     let enrichedDates = 0;
     try {
-      const cred = await resolveGraphCredential();
+      const cred = workingCred ?? await resolveGraphCredential();
       if (cred.token) {
         const { data: allFbPosts } = await admin
           .from("campaign_logs")
