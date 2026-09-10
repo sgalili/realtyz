@@ -559,6 +559,18 @@ Deno.serve(async (req) => {
         const json = await resp.json().catch(() => ({} as any));
         if (!resp.ok) {
           error = json?.error ?? json;
+          // Explicit, actionable logging: a permission/expiry problem must be
+          // visible in the function logs instead of silently returning zero.
+          console.error("[fb-recent-posts] graph error", {
+            edge: edges[edgeIndex],
+            page_id: cred.pageId,
+            token_source: cred.source,
+            http_status: status,
+            code: (error as any)?.code ?? null,
+            subcode: (error as any)?.error_subcode ?? null,
+            type: (error as any)?.type ?? null,
+            message: (error as any)?.message ?? null,
+          });
           // Try the next edge — one blocked edge shouldn't abort the import.
           edgeIndex += 1;
           if (edgeIndex >= edges.length) break;
