@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
           // Inbound messages MUST end up on a lead with `assigned_to` set —
           // RLS hides leads (and therefore their messages) whose owner is NULL,
           // which is exactly how replies "arrive but never show in the UI".
-          let ownerId: string | null = null;
+          let fallbackOwnerId: string | null = null;
           const { data: provRows } = await admin
             .from("wa_providers")
             .select("user_id, config")
@@ -146,21 +146,21 @@ Deno.serve(async (req) => {
               (wabaId && String(cfg.waba_id ?? "") === wabaId)
             );
           });
-          ownerId = prov?.user_id ?? null;
+          fallbackOwnerId = prov?.user_id ?? null;
 
           // Fallback: the central platform number serves every workspace, so an
           // unmatched phone_number_id must not orphan the lead. Use the single
           // configured WBA workspace when there is exactly one.
-          if (!ownerId && provs.length === 1) ownerId = provs[0].user_id ?? null;
-          if (!ownerId) {
+          if (!fallbackOwnerId && provs.length === 1) fallbackOwnerId = provs[0].user_id ?? null;
+          if (!fallbackOwnerId) {
             const { data: adminRoles } = await admin
               .from("user_roles")
               .select("user_id")
               .eq("role", "admin")
               .limit(1);
-            ownerId = (adminRoles ?? [])[0]?.user_id ?? null;
+            fallbackOwnerId = (adminRoles ?? [])[0]?.user_id ?? null;
           }
-          if (!ownerId) {
+          if (!fallbackOwnerId) {
             console.warn(
               "[meta-wa-webhook] no workspace owner resolved for inbound message",
               { phoneNumberId, wabaId },
@@ -172,6 +172,19 @@ Deno.serve(async (req) => {
             try {
               const from = String(m?.from ?? "").replace(/\D/g, "");
               if (!from) continue;
+
+              // Multi-tenant context routing: the official number is shared by
+              // every workspace, so the tenant is the one whose conversation
+              // with this phone is the most recent (last outbound session).
+              const waCtx = await resolveWaContext(admin, from);
+              const ownerId: string | null = waCtx.ownerId ?? fallbackOwnerId;
+              if (waCtx.ownerId) {
+                console.log("[meta-wa-webhook] context routed inbound", {
+                  from_last4: from.slice(-4),
+                  reason: waCtx.reason,
+                });
+              }
+
               const contact = contacts.find(
                 (c: any) => String(c?.wa_id ?? "").replace(/\D/g, "") === from,
               );
