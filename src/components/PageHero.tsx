@@ -340,6 +340,7 @@ export function PageHero() {
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
+          {location.pathname.startsWith('/campaigns') && !isCampaignsCreate && <CampaignsHeroSyncButton />}
           {location.pathname.startsWith('/campaigns') && <CampaignsHeroAddButton />}
           {isPropertyDetail && (
             <Button
