@@ -1803,18 +1803,25 @@ const LeadCRM = () => {
             {BROKER_RECRUITMENT_MODE && (
               <Button
                 size="sm"
-                variant="default"
-                className="gap-1.5 h-8 border-0 !bg-green-600 hover:!bg-green-700 !text-white disabled:!opacity-100 disabled:!bg-green-600 disabled:!cursor-wait"
+                className="gap-1.5 h-8 rounded-md px-3 text-sm font-medium bg-green-600 hover:bg-green-700 text-white border-0 shadow-none disabled:opacity-100 disabled:bg-green-600 disabled:cursor-wait"
                 onClick={handleBrokerFirstOutreach}
                 disabled={sendingFirstOutreach}
+                aria-label="הודעת פתיחה למתווכים"
+                title="הודעת פתיחה למתווכים"
               >
                 <Send className="h-3.5 w-3.5" />
                 {sendingFirstOutreach ? 'שולח…' : 'הודעת פתיחה למתווכים'}
               </Button>
             )}
-            <Button variant="outline" size="sm" className="gap-2 h-8 items-center" onClick={() => handleExportExcel('selected')}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 items-center justify-center"
+              onClick={() => handleExportExcel('selected')}
+              aria-label="ייצוא נבחרים"
+              title="ייצוא נבחרים"
+            >
               <ExcelIcon className="h-4 w-4" />
-              <span>ייצוא נבחרים</span>
             </Button>
             <Button variant="destructive" size="icon" className="h-8 w-8" aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}>
               <Trash2 className="h-4 w-4" />
