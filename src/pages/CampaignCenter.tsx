@@ -4530,7 +4530,7 @@ const PublishedFeed = ({
 
   const load = async (opts: { forceFb?: boolean; skipFbImport?: boolean } = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setRows([]); return { rows: [], ownerScope: null as string | null, importedCount: 0, importComplete: false }; }
+    if (!user) { setRows((prev) => prev ?? []); return { rows: rowsRef.current ?? [], ownerScope: null as string | null, importedCount: 0, importComplete: false }; }
     setUserId(user.id);
     // Scope by active workspace, not by the tenant's personal user id.
     const ownerScope = workspaceOwnerId ?? user.id;
@@ -4641,9 +4641,12 @@ const PublishedFeed = ({
       setColdLoading(false);
       return { rows: cachedForScope, ownerScope, importedCount: 0, importComplete: false };
     }
-    setRows(merged);
-    FEED_ROWS_CACHE.set(ownerScope, merged);
-    persistFeedCache(ownerScope, merged);
+    // Merge by id instead of replacing the array, so a background sync never
+    // blanks the list and untouched cards keep their identity (no flicker).
+    const mergedForState = mergeRowsById(rowsRef.current, merged);
+    setRows(mergedForState);
+    FEED_ROWS_CACHE.set(ownerScope, mergedForState);
+    persistFeedCache(ownerScope, mergedForState);
     setColdLoading(false);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
 
@@ -4859,8 +4862,10 @@ const PublishedFeed = ({
     // local campaign inserts append via the realtime INSERT handler below.
     const wsKey = workspaceOwnerId ?? 'anon';
     const cached = FEED_ROWS_CACHE.get(wsKey);
-    setRows(cached ?? null);
-    setColdLoading(!cached);
+    // Never clear the rendered feed here — an empty/None assignment on every
+    // workspace-effect run is exactly what made the cards flash.
+    if (cached && cached.length > 0) setRows(cached);
+    setColdLoading(!cached && !(rowsRef.current && rowsRef.current.length > 0));
     let cancelled = false;
     const hydrateAndRefresh = async () => {
       // 1) INSTANT paint from in-memory cache (same-session re-entry).
