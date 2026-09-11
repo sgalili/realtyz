@@ -4300,6 +4300,16 @@ const PublishedFeed = ({
 
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Stable mirror of the open-card map. Background sync loops read this ref so
+  // expanding/collapsing a card never tears down and recreates their timers
+  // and listeners (that churn was the source of the card flicker).
+  const expandedRef = useRef<Record<string, boolean>>({});
+  useEffect(() => { expandedRef.current = expanded; }, [expanded]);
+  // Same idea for the feed rows: the status-verification loop reads the latest
+  // rows through this ref instead of restarting on every row-count change.
+  const rowsRef = useRef<typeof rows>(null);
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
+  const hasRows = (rows?.length ?? 0) > 0;
   const [liveCommentCounts, setLiveCommentCounts] = useState<Record<string, number>>(() => {
     try {
       const raw = sessionStorage.getItem('realtyz.live_comment_counts');
@@ -4881,7 +4891,7 @@ const PublishedFeed = ({
   // is actually visible and is throttled, so nothing polls in the background.
   useEffect(() => {
     const scope = workspaceOwnerId ?? userId;
-    if (!scope || !rows || rows.length === 0) return;
+    if (!scope || !hasRows) return;
     const key = `realtyz.fb_status_sync.${scope}`;
     let cancelled = false;
 
@@ -4892,7 +4902,7 @@ const PublishedFeed = ({
         if (Number.isFinite(last) && Date.now() - last < 3 * 60_000) return;
         sessionStorage.setItem(key, String(Date.now()));
       } catch { /* sessionStorage unavailable — still run */ }
-      const ids = (rows ?? [])
+      const ids = (rowsRef.current ?? [])
         .filter((r) => String(r.channel || '').toLowerCase() === 'facebook')
         .slice(0, 40)
         .map((r) => r.id);
@@ -4909,7 +4919,7 @@ const PublishedFeed = ({
     document.addEventListener('visibilitychange', onVisible);
     return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceOwnerId, userId, rows?.length]);
+  }, [workspaceOwnerId, userId, hasRows]);
 
   // LIVE Facebook synchronization while the tab is open and visible: every 90s
   // pull fresh counters (likes / comments / shares / views) plus a fresh media
@@ -4929,7 +4939,7 @@ const PublishedFeed = ({
         await refreshMetrics(scope);
         // 2) Full comments tree only for the expanded cards — keeps us far
         //    below Meta's rate limits while open threads stay accurate.
-        const openIds = Object.entries(expanded)
+        const openIds = Object.entries(expandedRef.current)
           .filter(([, isOpen]) => isOpen)
           .map(([id]) => id);
         if (openIds.length > 0) {
@@ -4967,7 +4977,7 @@ const PublishedFeed = ({
       document.removeEventListener('visibilitychange', onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceOwnerId, userId, expanded]);
+  }, [workspaceOwnerId, userId]);
 
   // MANUAL full live sync, fired by the refresh button in the page hero.
   // Pulls every recent native post (bypassing the session throttle), prunes
@@ -5008,7 +5018,7 @@ const PublishedFeed = ({
         // 3) Live counters.
         if (scope) await refreshMetrics(scope);
         // 4) Comments trees of the cards currently open.
-        const openIds = Object.entries(expanded).filter(([, o]) => o).map(([id]) => id);
+        const openIds = Object.entries(expandedRef.current).filter(([, o]) => o).map(([id]) => id);
         if (scope && openIds.length > 0) {
           const liveRows = FEED_ROWS_CACHE.get(scope) ?? [];
           const postIds = liveRows
@@ -5039,7 +5049,7 @@ const PublishedFeed = ({
     window.addEventListener('rz:campaigns-sync', onSync as EventListener);
     return () => window.removeEventListener('rz:campaigns-sync', onSync as EventListener);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceOwnerId, userId, expanded]);
+  }, [workspaceOwnerId, userId]);
 
 
 

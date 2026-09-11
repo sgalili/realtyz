@@ -419,13 +419,15 @@ Deno.serve(async (req) => {
     // Keep our request at a pagination-friendly size, capped by Graph limits.
     // pagination-friendly size so maxPages is high enough to walk history.
     const pageSize = Math.min(
-      50,
+      100,
       Math.max(
         10,
         Number(body?.pageSize ?? url.searchParams.get("pageSize") ?? 50),
       ),
     );
-    const maxPages = Math.max(1, Math.ceil(lastRecords / pageSize));
+    // Always allow enough page walks to reach `lastRecords` even if Graph
+    // returns short batches (it often does when it filters hidden items).
+    const maxPages = Math.max(4, Math.ceil((lastRecords / pageSize) * 2));
     const dataType = asText(body?.dataType ?? url.searchParams.get("dataType")) ||
       "posts";
     const skipAnalytics = body?.skipAnalytics === true ||
