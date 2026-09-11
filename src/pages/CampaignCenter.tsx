@@ -4058,6 +4058,42 @@ const GlobalSocialFeed = ({
 // campaign_logs feed. Native Facebook posts are imported once into the database
 // and then read only from campaign_logs, never kept as transient synthetic rows.
 const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
+
+/**
+ * Immutable merge of a freshly read feed into the currently rendered one.
+ * Rows are keyed by id: unchanged rows keep their exact object reference so
+ * React never repaints an untouched card, and a background refresh can never
+ * wipe the list (no full array replacement, no transient empty state).
+ */
+const mergeRowsById = (prev: CampaignRow[] | null, next: CampaignRow[]): CampaignRow[] => {
+  if (!prev || prev.length === 0) return next;
+  const prevById = new Map(prev.map((r) => [r.id, r] as const));
+  let changed = prev.length !== next.length;
+  const merged = next.map((row) => {
+    const existing = prevById.get(row.id);
+    if (!existing) { changed = true; return row; }
+    const candidate = { ...existing, ...row };
+    const same = Object.keys(candidate).every((k) => {
+      const a = (candidate as any)[k];
+      const b = (existing as any)[k];
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return a.length === b.length && a.every((v, i) => v === b[i]);
+      }
+      if (a && b && typeof a === 'object' && typeof b === 'object') {
+        try { return JSON.stringify(a) === JSON.stringify(b); } catch { return a === b; }
+      }
+      return a === b;
+    });
+    if (same) return existing;
+    changed = true;
+    return candidate;
+  });
+  if (!changed) {
+    const orderSame = merged.every((r, i) => r === prev[i]);
+    if (orderSame) return prev;
+  }
+  return merged;
+};
 const FEED_LOAD_PROMISE_CACHE = new Map<string, Promise<{ rows: CampaignRow[]; ownerScope: string | null; importedCount: number; importComplete: boolean }>>();
 const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
 const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
