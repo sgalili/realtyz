@@ -5045,7 +5045,7 @@ const PublishedFeed = ({
             sessionStorage.removeItem(importKey);
             sessionStorage.removeItem(`realtyz.fb_native_reconcile.${scope}`);
           } catch { /* storage unavailable */ }
-          await supabase.functions.invoke('fb-recent-posts', {
+          const { data: syncData, error: syncError } = await supabase.functions.invoke('fb-recent-posts', {
             body: {
               lastRecords: 500,
               pageSize: 50,
@@ -5056,6 +5056,25 @@ const PublishedFeed = ({
               force_provider_probe: true,
             },
           });
+          const providerError = (syncData as any)?.error || (syncError as any)?.message || null;
+          const permissionBlocked = (syncData as any)?.permission_blocked === true;
+          const pulled = Number((syncData as any)?.count ?? 0);
+          if (providerError || (permissionBlocked && pulled === 0)) {
+            console.error('[campaign] facebook graph pull failed', {
+              providerError,
+              permissionBlocked,
+              raw_status: (syncData as any)?.raw_status,
+              raw_error: (syncData as any)?.raw_error,
+              graph_source: (syncData as any)?.graph_source,
+            });
+            setFbSyncWarning(
+              permissionBlocked
+                ? 'החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement). יש להתחבר מחדש לעמוד בהגדרות הערוצים כדי לשלוף פוסטים ותגובות.'
+                : String(providerError || 'שליפת הפוסטים מפייסבוק נכשלה — ייתכן שתוקף החיבור לעמוד פג. התחברו מחדש בהגדרות הערוצים.'),
+            );
+          } else {
+            setFbSyncWarning(null);
+          }
         }
         // 2) Repaint the feed straight from the database.
         await load({ skipFbImport: true });
