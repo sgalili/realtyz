@@ -33,7 +33,7 @@ import { SidebarIntelInput } from '@/components/SidebarIntelInput';
 import { useSidebarCounts } from '@/hooks/useSidebarCounts';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
-import { LISTINGS_ENABLED, SUPPORT_CONTACT } from '@/config/workspaceMode';
+import { LISTINGS_ENABLED } from '@/config/workspaceMode';
 
 
 type NavItem = {
@@ -48,7 +48,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    title: 'משימות היום',
+    title: 'משימות',
     url: '/',
     icon: ClipboardList,
     iconColor: 'text-sky-600',
@@ -183,8 +183,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     location.pathname === item.url ||
     item.aliases?.some((a) => location.pathname === a || location.pathname.startsWith(a + '/'));
 
-  // NOTE: personal profile name/avatar are intentionally NOT read here — the
-  // sidebar identity is the active workspace (see WorkspaceSwitcher).
+  // The top identity area shows the signed-in user's profile avatar and keeps
+  // the active workspace switcher next to it; clicking the avatar goes to /profile.
 
 
   return (
