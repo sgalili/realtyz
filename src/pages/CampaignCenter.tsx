@@ -4058,6 +4058,42 @@ const GlobalSocialFeed = ({
 // campaign_logs feed. Native Facebook posts are imported once into the database
 // and then read only from campaign_logs, never kept as transient synthetic rows.
 const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
+
+/**
+ * Immutable merge of a freshly read feed into the currently rendered one.
+ * Rows are keyed by id: unchanged rows keep their exact object reference so
+ * React never repaints an untouched card, and a background refresh can never
+ * wipe the list (no full array replacement, no transient empty state).
+ */
+const mergeRowsById = (prev: CampaignRow[] | null, next: CampaignRow[]): CampaignRow[] => {
+  if (!prev || prev.length === 0) return next;
+  const prevById = new Map(prev.map((r) => [r.id, r] as const));
+  let changed = prev.length !== next.length;
+  const merged = next.map((row) => {
+    const existing = prevById.get(row.id);
+    if (!existing) { changed = true; return row; }
+    const candidate = { ...existing, ...row };
+    const same = Object.keys(candidate).every((k) => {
+      const a = (candidate as any)[k];
+      const b = (existing as any)[k];
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return a.length === b.length && a.every((v, i) => v === b[i]);
+      }
+      if (a && b && typeof a === 'object' && typeof b === 'object') {
+        try { return JSON.stringify(a) === JSON.stringify(b); } catch { return a === b; }
+      }
+      return a === b;
+    });
+    if (same) return existing;
+    changed = true;
+    return candidate;
+  });
+  if (!changed) {
+    const orderSame = merged.every((r, i) => r === prev[i]);
+    if (orderSame) return prev;
+  }
+  return merged;
+};
 const FEED_LOAD_PROMISE_CACHE = new Map<string, Promise<{ rows: CampaignRow[]; ownerScope: string | null; importedCount: number; importComplete: boolean }>>();
 const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
 const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
@@ -4332,6 +4368,9 @@ const PublishedFeed = ({
   // Per-card refresh-signal counter. Bumping triggers a manual refresh inside
   // CampaignCommentsStream via its refreshSignal prop.
   const [refreshSignals, setRefreshSignals] = useState<Record<string, number>>({});
+  // Visible warning when the live Facebook pull fails (expired token / missing
+  // pages_read_engagement permission) instead of failing silently.
+  const [fbSyncWarning, setFbSyncWarning] = useState<string | null>(null);
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
   // Per-campaign cooldown timestamp (ms epoch). Button is disabled with a
   // MM:SS countdown until now >= cooldownUntil.
@@ -4494,7 +4533,7 @@ const PublishedFeed = ({
 
   const load = async (opts: { forceFb?: boolean; skipFbImport?: boolean } = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setRows([]); return { rows: [], ownerScope: null as string | null, importedCount: 0, importComplete: false }; }
+    if (!user) { setRows((prev) => prev ?? []); return { rows: rowsRef.current ?? [], ownerScope: null as string | null, importedCount: 0, importComplete: false }; }
     setUserId(user.id);
     // Scope by active workspace, not by the tenant's personal user id.
     const ownerScope = workspaceOwnerId ?? user.id;
@@ -4605,9 +4644,12 @@ const PublishedFeed = ({
       setColdLoading(false);
       return { rows: cachedForScope, ownerScope, importedCount: 0, importComplete: false };
     }
-    setRows(merged);
-    FEED_ROWS_CACHE.set(ownerScope, merged);
-    persistFeedCache(ownerScope, merged);
+    // Merge by id instead of replacing the array, so a background sync never
+    // blanks the list and untouched cards keep their identity (no flicker).
+    const mergedForState = mergeRowsById(rowsRef.current, merged);
+    setRows(mergedForState);
+    FEED_ROWS_CACHE.set(ownerScope, mergedForState);
+    persistFeedCache(ownerScope, mergedForState);
     setColdLoading(false);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
 
@@ -4823,8 +4865,10 @@ const PublishedFeed = ({
     // local campaign inserts append via the realtime INSERT handler below.
     const wsKey = workspaceOwnerId ?? 'anon';
     const cached = FEED_ROWS_CACHE.get(wsKey);
-    setRows(cached ?? null);
-    setColdLoading(!cached);
+    // Never clear the rendered feed here — an empty/None assignment on every
+    // workspace-effect run is exactly what made the cards flash.
+    if (cached && cached.length > 0) setRows(cached);
+    setColdLoading(!cached && !(rowsRef.current && rowsRef.current.length > 0));
     let cancelled = false;
     const hydrateAndRefresh = async () => {
       // 1) INSTANT paint from in-memory cache (same-session re-entry).
@@ -5001,7 +5045,7 @@ const PublishedFeed = ({
             sessionStorage.removeItem(importKey);
             sessionStorage.removeItem(`realtyz.fb_native_reconcile.${scope}`);
           } catch { /* storage unavailable */ }
-          await supabase.functions.invoke('fb-recent-posts', {
+          const { data: syncData, error: syncError } = await supabase.functions.invoke('fb-recent-posts', {
             body: {
               lastRecords: 500,
               pageSize: 50,
@@ -5012,6 +5056,25 @@ const PublishedFeed = ({
               force_provider_probe: true,
             },
           });
+          const providerError = (syncData as any)?.error || (syncError as any)?.message || null;
+          const permissionBlocked = (syncData as any)?.permission_blocked === true;
+          const pulled = Number((syncData as any)?.count ?? 0);
+          if (providerError || (permissionBlocked && pulled === 0)) {
+            console.error('[campaign] facebook graph pull failed', {
+              providerError,
+              permissionBlocked,
+              raw_status: (syncData as any)?.raw_status,
+              raw_error: (syncData as any)?.raw_error,
+              graph_source: (syncData as any)?.graph_source,
+            });
+            setFbSyncWarning(
+              permissionBlocked
+                ? 'החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement). יש להתחבר מחדש לעמוד בהגדרות הערוצים כדי לשלוף פוסטים ותגובות.'
+                : String(providerError || 'שליפת הפוסטים מפייסבוק נכשלה — ייתכן שתוקף החיבור לעמוד פג. התחברו מחדש בהגדרות הערוצים.'),
+            );
+          } else {
+            setFbSyncWarning(null);
+          }
         }
         // 2) Repaint the feed straight from the database.
         await load({ skipFbImport: true });
@@ -5570,6 +5633,19 @@ const PublishedFeed = ({
           <CalendarIcon className="h-4 w-4" />
         </Button>
       </div>
+
+      {fbSyncWarning ? (
+        <div className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-right">
+          <p className="text-xs font-medium leading-5 text-destructive">{fbSyncWarning}</p>
+          <button
+            type="button"
+            onClick={() => setFbSyncWarning(null)}
+            className="shrink-0 text-xs font-semibold text-destructive underline"
+          >
+            סגור
+          </button>
+        </div>
+      ) : null}
 
       <GlobalSocialFeed
         rows={rows ?? []}
