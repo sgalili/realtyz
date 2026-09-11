@@ -4368,6 +4368,9 @@ const PublishedFeed = ({
   // Per-card refresh-signal counter. Bumping triggers a manual refresh inside
   // CampaignCommentsStream via its refreshSignal prop.
   const [refreshSignals, setRefreshSignals] = useState<Record<string, number>>({});
+  // Visible warning when the live Facebook pull fails (expired token / missing
+  // pages_read_engagement permission) instead of failing silently.
+  const [fbSyncWarning, setFbSyncWarning] = useState<string | null>(null);
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
   // Per-campaign cooldown timestamp (ms epoch). Button is disabled with a
   // MM:SS countdown until now >= cooldownUntil.
