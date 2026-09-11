@@ -276,23 +276,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Personal support for brokers joining Realtyz */}
-        {!collapsed && (
-          <SidebarGroup className="pt-0">
-            <SidebarGroupContent className="px-3">
-              <a
-                href={`https://wa.me/${SUPPORT_CONTACT.waPhone}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={`תמיכה אישית – ${SUPPORT_CONTACT.name} ${SUPPORT_CONTACT.phone}`}
-                className="flex items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-[12px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
-              >
-                <MessageCircle className="h-4 w-4" />
-                תמיכה אישית – {SUPPORT_CONTACT.name}
-              </a>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
 
         {/* Super admin section moved BELOW the menu */}
         {isSuperAdmin && (
