@@ -105,7 +105,7 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/deals'],
   },
   {
-    title: 'רשת שותפים',
+    title: 'שותפים',
     url: '/affiliate-network',
     icon: Share2,
     iconColor: 'text-emerald-600',
@@ -222,12 +222,12 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   if (isMobile) setOpenMobile(false);
                   window.dispatchEvent(new Event('realtyz:start-tour'));
                 }}
-                title="הדרכה מהירה"
-                aria-label="הדרכה מהירה"
+                title="הדרכה"
+                aria-label="הדרכה"
                 className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-slate-200 px-2 py-1.5 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
               >
                 <HelpCircle className="h-4 w-4" />
-                הדרכה מהירה
+                הדרכה
               </button>
             </SidebarGroupContent>
           </SidebarGroup>

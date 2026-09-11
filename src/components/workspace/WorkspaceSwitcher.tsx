@@ -61,7 +61,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     <div className="min-w-0 flex-1 text-right">
       <div className="truncate text-sm font-bold text-slate-900">{identity.name}</div>
       <div className="truncate text-[11px] text-slate-500">
-        {identity.isTenant ? 'מרחב עבודה פעיל' : 'מרחב העבודה שלי'}
+        {identity.isTenant ? 'מרחב עבודה פעיל' : '\n'}
       </div>
     </div>
   );
