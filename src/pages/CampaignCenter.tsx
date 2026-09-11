@@ -5634,6 +5634,19 @@ const PublishedFeed = ({
         </Button>
       </div>
 
+      {fbSyncWarning ? (
+        <div className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-right">
+          <p className="text-xs font-medium leading-5 text-destructive">{fbSyncWarning}</p>
+          <button
+            type="button"
+            onClick={() => setFbSyncWarning(null)}
+            className="shrink-0 text-xs font-semibold text-destructive underline"
+          >
+            סגור
+          </button>
+        </div>
+      ) : null}
+
       <GlobalSocialFeed
         rows={rows ?? []}
         activeChannel={activeChannel}
