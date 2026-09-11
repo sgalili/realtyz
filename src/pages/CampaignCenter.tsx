@@ -4305,6 +4305,11 @@ const PublishedFeed = ({
   // and listeners (that churn was the source of the card flicker).
   const expandedRef = useRef<Record<string, boolean>>({});
   useEffect(() => { expandedRef.current = expanded; }, [expanded]);
+  // Same idea for the feed rows: the status-verification loop reads the latest
+  // rows through this ref instead of restarting on every row-count change.
+  const rowsRef = useRef<typeof rows>(null);
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
+  const hasRows = (rows?.length ?? 0) > 0;
   const [liveCommentCounts, setLiveCommentCounts] = useState<Record<string, number>>(() => {
     try {
       const raw = sessionStorage.getItem('realtyz.live_comment_counts');
