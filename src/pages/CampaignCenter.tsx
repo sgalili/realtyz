@@ -4300,6 +4300,11 @@ const PublishedFeed = ({
 
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Stable mirror of the open-card map. Background sync loops read this ref so
+  // expanding/collapsing a card never tears down and recreates their timers
+  // and listeners (that churn was the source of the card flicker).
+  const expandedRef = useRef<Record<string, boolean>>({});
+  useEffect(() => { expandedRef.current = expanded; }, [expanded]);
   const [liveCommentCounts, setLiveCommentCounts] = useState<Record<string, number>>(() => {
     try {
       const raw = sessionStorage.getItem('realtyz.live_comment_counts');
