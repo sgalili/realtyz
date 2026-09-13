@@ -334,7 +334,7 @@ export default function Landing() {
 
 
       {/* ───────── Features (image cards, no icons) ───────── */}
-      <section id="features" className="border-t border-border/60 py-20">
+      <section id="features" className="border-t border-border/60 pt-0 pb-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
