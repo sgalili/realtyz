@@ -1130,6 +1130,9 @@ Deno.serve(async (req) => {
         raw_error: lastError,
         graph_source: graphSource,
         permission_blocked: permissionBlocked,
+        // A stored Page binding stays a live connection even when a single read
+        // is refused, so the client must never flip to "disconnected" here.
+        page_connected: !!page?.pageId,
         needs_extension: permissionBlocked && posts.length === 0,
         // Clear, human-readable reason when a refresh returned nothing.
         error: posts.length === 0
