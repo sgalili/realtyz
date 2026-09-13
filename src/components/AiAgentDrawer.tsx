@@ -606,7 +606,9 @@ ${shareUrl}
       {/* Trigger is in AppLayout header */}
       <SheetContent side="left" className="w-full sm:max-w-md p-0 flex flex-col" dir="rtl">
         <div className="relative px-4 py-3 border-b bg-primary/5 flex flex-col items-center justify-center gap-1.5">
+          <RitaAvatar className="h-12 w-12 ring-2 ring-primary/20" />
           <h3 className="text-[18px] font-bold text-center">ריטה, סוכנת ה-AI של Realtyz</h3>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button type="button" variant="ghost" size="sm" className="absolute end-3 top-3 gap-1 text-muted-foreground" disabled={messages.length === 0}>
@@ -631,7 +633,19 @@ ${shareUrl}
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
           {messages.length === 0 && (
             <div className="space-y-5 py-2">
+              <div className="flex items-start gap-2.5 rounded-2xl border border-border bg-card px-3 py-3">
+                <RitaAvatar className="h-9 w-9 shrink-0" />
+                <div className="space-y-1 text-[16px] leading-relaxed">
+                  <p className="font-semibold">היי, אני ריטה 👋</p>
+                  <p className="text-muted-foreground">
+                    סוכנת ה-AI שלך ב-Realtyz. אני מכירה את אנשי הקשר, הנכסים והקמפיינים שלך,
+                    ואשמח לעזור לך לתעדף, לנסח הודעות ולסגור עסקאות.
+                  </p>
+                  <p className="text-muted-foreground">אפשר לשאול אותי כל דבר, או לבחור נושא מהרשימה למטה.</p>
+                </div>
+              </div>
               <div className="space-y-1.5">
+
                 <p className="text-[15px] font-semibold text-muted-foreground px-1">בחר נושא לקבלת 3 שאלות מומלצות:</p>
                 {TOPICS.map((topic, ti) => {
                   const isOpen = expandedTopic === ti;
