@@ -370,7 +370,12 @@ export default function AiAgentDrawer() {
     setPendingAttachments([]);
     setExpandedTopic(null);
     toast.success('הצ׳אט אופס');
+    window.requestAnimationFrame(() => document.getElementById('rita-chat-input')?.focus());
   }, [user?.id]);
+
+  const focusComposer = useCallback(() => {
+    window.requestAnimationFrame(() => document.getElementById('rita-chat-input')?.focus());
+  }, []);
 
 
   // Mint a share token via edge fn for a property card. Works for both local
@@ -591,6 +596,7 @@ ${shareUrl}
       persistMessage(errMsg);
     } finally {
       setIsLoading(false);
+      focusComposer();
     }
   };
 
