@@ -14,6 +14,7 @@ import CreditsSection from '@/components/landing/CreditsSection';
 import ScheduleDemoDialog from '@/components/landing/ScheduleDemoDialog';
 import { cn } from '@/lib/utils';
 import { BrandLogo } from '@/components/social/BrandLogo';
+import { RotatingHeadline } from '@/components/RotatingHeadline';
 
 
 import { PlatformTicker, StackTicker } from '@/components/landing/LogoTickers';
@@ -247,6 +248,11 @@ export default function Landing() {
   return (
     <div dir="rtl" className="realtyz-landing min-h-screen bg-background text-foreground antialiased">
       {/* ───────── Nav ───────── */}
+      <div className="flex h-8 w-full items-center justify-center bg-background px-4 text-center">
+        <div className="mx-auto flex w-full max-w-4xl justify-center">
+          <RotatingHeadline variant="onLight" />
+        </div>
+      </div>
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
           <ScheduleDemoDialog>
@@ -311,7 +317,7 @@ export default function Landing() {
       </section>
 
       {/* ───────── All-in-One: מחליף את כל הכלים החיצוניים ───────── */}
-      <section id="all-in-one" className="border-t border-border/60 pt-[15px] pb-5">
+      <section id="all-in-one" className="pt-[15px] pb-5">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">

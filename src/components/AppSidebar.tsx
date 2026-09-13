@@ -7,7 +7,6 @@ import {
   Handshake,
   ClipboardList,
   HelpCircle,
-  Share2,
   Gift,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -34,6 +33,8 @@ import { useSidebarCounts } from '@/hooks/useSidebarCounts';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
 import { LISTINGS_ENABLED } from '@/config/workspaceMode';
+import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
+import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
 
 
 type NavItem = {
@@ -107,7 +108,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     title: 'שותפים',
     url: '/affiliate-network',
-    icon: Share2,
+    icon: AffiliateFlowchartIcon,
     iconColor: 'text-emerald-600',
     badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   },
@@ -126,14 +127,14 @@ const AFFILIATE_NAV_ITEMS: NavItem[] = [
   {
     title: 'רשת השותפים',
     url: '/affiliate',
-    icon: Share2,
+    icon: AffiliateFlowchartIcon,
     iconColor: 'text-emerald-600',
     badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   },
   {
     title: 'גיוס ומעקב רשת',
     url: '/affiliate-network',
-    icon: Share2,
+    icon: AffiliateFlowchartIcon,
     iconColor: 'text-teal-600',
     badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
   },
@@ -215,20 +216,25 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               </div>
 
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isMobile) setOpenMobile(false);
-                  window.dispatchEvent(new Event('realtyz:start-tour'));
-                }}
-                title="הדרכה"
-                aria-label="הדרכה"
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-slate-200 px-2 py-1.5 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-              >
-                <HelpCircle className="h-4 w-4" />
-                הדרכה
-              </button>
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isMobile) setOpenMobile(false);
+                    window.dispatchEvent(new Event('realtyz:start-tour'));
+                  }}
+                  title="הדרכה"
+                  aria-label="הדרכה"
+                  className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-md border border-slate-200 px-2 py-1.5 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  הדרכה
+                </button>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <AppModeSwitcher />
+                </div>
+              </div>
             </SidebarGroupContent>
           </SidebarGroup>
         )}

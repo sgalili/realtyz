@@ -179,24 +179,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const setActiveWorkspace = useCallback(async (ownerId: string) => {
     if (!user) return;
-    // 1. Flip context + persist immediately so the shell (header/sidebar logo
-    //    and name) repaints on the very next frame.
+    // Change the server-side workspace first. Refetching before this completes
+    // can briefly return rows from the previous tenant under the new UI label.
+    const { error } = await supabase.rpc('set_active_workspace', { _owner: ownerId });
+    if (error) {
+      toast.error('לא ניתן לעבור למרחב העבודה שנבחר');
+      throw error;
+    }
+
     setActiveWorkspaceId(ownerId);
     window.localStorage.setItem(workspaceStorageKey(user.id), ownerId);
     writeWorkspaceCache(workspaces, ownerId);
 
-    // 2. Drop every cached query: all app data is workspace-scoped, so stale
-    //    rows from the previous tenant must never be shown.
+    // Remove old tenant results before any observer can repaint, then refetch
+    // active screens and sidebar counters against the newly committed scope.
     try {
       queryClient.removeQueries();
-      await queryClient.invalidateQueries();
+      await queryClient.refetchQueries({ type: 'active' });
     } catch { /* non-fatal */ }
-
-    try {
-      await supabase.rpc('set_active_workspace', { _owner: ownerId });
-    } catch {
-      // non-fatal
-    }
   }, [user, workspaces, queryClient]);
 
 
