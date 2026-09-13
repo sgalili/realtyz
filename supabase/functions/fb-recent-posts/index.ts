@@ -857,7 +857,16 @@ Deno.serve(async (req) => {
         error: "facebook_page_access_token_missing",
         source: null,
       };
-      for (const cred of ordered) {
+      for (const rawCred of ordered) {
+        // Enforce a real Page access token before hitting /{page-id}/...:
+        // if the stored value is a user token, mint the Page token first.
+        let cred = rawCred;
+        if (!(await verifyPageToken(cred))) {
+          const minted = await refreshPageTokenFromPersonal();
+          if (minted && minted.pageId === cred.pageId && await verifyPageToken(minted)) {
+            cred = minted;
+          }
+        }
         const res = await fetchGraphHistoryWith(cred);
         if (res.posts.length > 0) {
           workingCred = cred;
