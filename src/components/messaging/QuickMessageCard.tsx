@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MessageSquareText, Send, Copy, ExternalLink, Loader2, ChevronDown } from 'lucide-react';
+import { MessageSquareText, Send, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { openOfficialWhatsApp, sendViaOfficialWaba } from '@/lib/officialWa';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuickTemplates, fillTemplate, type TemplateVars } from '@/hooks/useQuickTemplates';
-import { BROKER_OUTREACH_TEMPLATES } from '@/lib/brokerOutreachTemplates';
+import { BROKER_OUTREACH_TEMPLATES, ONBOARDING_SHORT_TEMPLATES } from '@/lib/brokerOutreachTemplates';
 
 type Props = {
   scope: 'lead' | 'listing';
@@ -41,11 +40,16 @@ export default function QuickMessageCard({ scope, leadId, phone, vars, listingId
   const [open, setOpen] = useState(!collapsible);
   const queryClient = useQueryClient();
 
-  // Brokers get the Realtyz recruitment sequence on top of the workspace templates.
+  // Brokers get the Realtyz recruitment sequence on top of the workspace
+  // templates; every contact also gets the short onboarding messages for new
+  // brokers and new affiliate partners.
   const isBroker = leadKind === 'broker';
   const templates = useMemo(() => {
-    if (!isBroker) return dbTemplates as any[];
-    return [...BROKER_OUTREACH_TEMPLATES.map((t) => ({ ...t, scope: 'lead' })), ...(dbTemplates as any[])];
+    const onboarding = ONBOARDING_SHORT_TEMPLATES.map((t) => ({ ...t, scope: 'lead' }));
+    const recruitment = isBroker
+      ? BROKER_OUTREACH_TEMPLATES.map((t) => ({ ...t, scope: 'lead' }))
+      : [];
+    return [...recruitment, ...onboarding, ...(dbTemplates as any[])];
   }, [isBroker, dbTemplates]);
 
   useEffect(() => {
@@ -111,25 +115,6 @@ export default function QuickMessageCard({ scope, leadId, phone, vars, listingId
     }
   };
 
-  const handleCopy = async () => {
-    if (!text.trim()) return;
-    await navigator.clipboard.writeText(text.trim());
-    await logInteraction(text.trim(), channel, 'manual');
-    toast.success('הטקסט הועתק ונרשם בציר הזמן');
-  };
-
-  const handleOpenWa = async () => {
-    if (!text.trim()) return;
-    // Official Meta WBA gateway only — never a personal / Green API number.
-    if (intl) {
-      const res = await sendViaOfficialWaba({ lead_id: leadId ?? undefined, phone_number: intl, message: text.trim() });
-      if (!res.ok) { toast.error(res.error || 'שליחה בוואטסאפ הרשמי נכשלה'); return; }
-      toast.success('נשלח מהמספר הרשמי');
-    } else {
-      await openOfficialWhatsApp(text.trim());
-    }
-    await logInteraction(text.trim(), 'whatsapp', 'manual');
-  };
 
   return (
     <div className={`rounded-xl border border-border bg-card p-4 ${open ? 'space-y-3' : ''} ${className || ''}`} dir="rtl">
@@ -152,17 +137,18 @@ export default function QuickMessageCard({ scope, leadId, phone, vars, listingId
         {!isLoading && templates.length === 0 && (
           <span className="text-xs text-muted-foreground">אין תבניות. ניתן להוסיף בהגדרות ← אוטומציית תגובה מהירה</span>
         )}
-        {templates.map((t) => (
-          <Button
-            key={t.id}
-            size="sm"
-            variant={selectedId === t.id ? 'default' : 'outline'}
-            className="text-[12px] h-8"
-            onClick={() => pick(t.id)}
-          >
-            {t.title}
-          </Button>
-        ))}
+        {!isLoading && templates.length > 0 && (
+          <Select value={selectedId ?? undefined} onValueChange={pick}>
+            <SelectTrigger className="h-8 w-full text-xs">
+              <SelectValue placeholder="בחר תבנית הודעה" />
+            </SelectTrigger>
+            <SelectContent>
+              {templates.map((t) => (
+                <SelectItem key={t.id} value={t.id} className="text-xs">{t.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Textarea
@@ -183,12 +169,6 @@ export default function QuickMessageCard({ scope, leadId, phone, vars, listingId
         <Button size="sm" className="h-8" onClick={handleSend} disabled={sending || !text.trim()}>
           {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
           <span className="ms-1">שלח ורשום</span>
-        </Button>
-        <Button size="sm" variant="outline" className="h-8" onClick={handleOpenWa} disabled={!text.trim()}>
-          <ExternalLink className="h-3.5 w-3.5" /><span className="ms-1">פתח WhatsApp</span>
-        </Button>
-        <Button size="sm" variant="ghost" className="h-8" onClick={handleCopy} disabled={!text.trim()}>
-          <Copy className="h-3.5 w-3.5" /><span className="ms-1">העתק</span>
         </Button>
       </div>
       </>}

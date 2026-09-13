@@ -246,7 +246,7 @@ Deno.serve(async (req) => {
     const path = `${userId}/${docId}.pdf`;
     const { error: upErr } = await admin.storage.from("closing-docs").upload(path, pdfBytes, {
       contentType: "application/pdf",
-      upsert: false,
+      upsert: true,
     });
     if (upErr) throw upErr;
 

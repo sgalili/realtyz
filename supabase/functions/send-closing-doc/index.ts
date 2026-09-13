@@ -90,32 +90,53 @@ Deno.serve(async (req) => {
       `Hi ${doc.signer_name || "there"}, please review and sign your ${doc.title}. Secure link: ${signUrl}`) +
       (message?.includes(signUrl) ? "" : `\n\n${signUrl}`);
 
-    const pdfBase64 = await pdfToBase64(admin, doc.pdf_path!);
     const fileName = `${doc.title.replace(/[^\w\-. ]+/g, "_")}.pdf`;
+    // The PDF is a nice-to-have: if storage download fails we still deliver the
+    // secure signing link, so the signature flow never dead-ends.
+    let pdfBase64: string | null = null;
+    try {
+      pdfBase64 = await pdfToBase64(admin, doc.pdf_path!);
+    } catch (e) {
+      console.error("send-closing-doc pdf download failed", e);
+    }
 
-    // Send via existing unified gateway
-    const sendRes = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${SERVICE_ROLE}`,
-        apikey: SERVICE_ROLE,
-      },
-      body: JSON.stringify({
-        lead_id: doc.lead_id,
-        message: body,
-        ai_assisted: false,
-        file: {
-          base64: pdfBase64,
-          file_name: fileName,
-          mime_type: "application/pdf",
-          caption: doc.title,
+    const dispatch = async (withFile: boolean) => {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SERVICE_ROLE}`,
+          apikey: SERVICE_ROLE,
         },
-      }),
-    });
-    const sendJson = await sendRes.json().catch(() => ({}));
-    if (!sendRes.ok || !sendJson?.success) {
-      throw new Error(sendJson?.error || `WhatsApp send failed (${sendRes.status})`);
+        body: JSON.stringify({
+          lead_id: doc.lead_id,
+          message: body,
+          ai_assisted: false,
+          ...(withFile && pdfBase64
+            ? {
+              file: {
+                base64: pdfBase64,
+                file_name: fileName,
+                mime_type: "application/pdf",
+                caption: doc.title,
+              },
+            }
+            : {}),
+        }),
+      });
+      const json = await res.json().catch(() => ({} as any));
+      return { ok: res.ok && json?.success !== false, status: res.status, json };
+    };
+
+    let sent = await dispatch(!!pdfBase64);
+    if (!sent.ok && pdfBase64) {
+      console.error("send-closing-doc file send failed, retrying text only", sent.json);
+      sent = await dispatch(false);
+    }
+    if (!sent.ok) {
+      throw new Error(
+        sent.json?.details || sent.json?.error || `WhatsApp send failed (${sent.status})`,
+      );
     }
 
     // Update document + lead stage
