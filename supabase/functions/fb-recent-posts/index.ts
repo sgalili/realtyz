@@ -387,6 +387,18 @@ const parseMetaCredential = (
   }
 };
 
+/**
+ * A Page credential together with the DB row it came from, so any failure can
+ * be traced back to the exact messenger_page_bindings record in use.
+ */
+type GraphCred = {
+  token: string;
+  pageId: string | null;
+  source: string | null;
+  recordId?: string | null;
+  updatedAt?: string | null;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
