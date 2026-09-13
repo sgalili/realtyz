@@ -230,20 +230,11 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         // the review-free basic scopes instead of dead-ending the connection.
         if (e?.payload?.retry_basic) {
           try {
-            const retry = await callPageConnect<any>({
-              action: 'start',
-              scope_tier: 'basic',
-              redirect_uri: oauthRedirectUri(),
-              return_origin: oauthReturnOrigin(),
+            const url = await startMetaPageConnect({ scopeTier: 'basic' });
+            toast.message('מבקשים הרשאות בסיסיות מפייסבוק', {
+              description: 'אשרו שוב את החיבור כדי להשלים את ההתחברות.',
             });
-            if (retry?.auth_url) {
-              const url = String(retry.auth_url);
-              
-              toast.message('מבקשים הרשאות בסיסיות מפייסבוק', {
-                description: 'אשרו שוב את החיבור כדי להשלים את ההתחברות.',
-              });
-              if (openOAuthWindow(url)) return;
-            }
+            if (openOAuthWindow(url)) return;
           } catch {
             /* fall through to the manual path below */
           }
