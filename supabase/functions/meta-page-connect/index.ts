@@ -32,11 +32,26 @@ const PAGE_SCOPES = [
 ];
 
 /**
- * Permissions Meta grants to ANY user without App Review. Used as an automatic
- * second attempt so a brand-new workspace can always finish the login dialog
- * and bind its page identity, even before advanced access is approved.
+ * Scopes that MUST appear in every dialog request (including the "basic" retry),
+ * otherwise the resulting Page token cannot read posts/comments or publish.
  */
-const BASIC_PAGE_SCOPES = ["public_profile", "pages_show_list"];
+const REQUIRED_PAGE_SCOPES = [
+  "pages_show_list",
+  "pages_read_engagement",
+  "pages_manage_posts",
+];
+
+/**
+ * Reduced tier used as an automatic second attempt. It still asks for the
+ * required Page permissions — only optional/advanced extras are dropped.
+ */
+const BASIC_PAGE_SCOPES = ["public_profile", ...REQUIRED_PAGE_SCOPES];
+
+/** Union that guarantees the required Page scopes are always requested. */
+function withRequiredScopes(list: string[]): string[] {
+  return Array.from(new Set([...list, ...REQUIRED_PAGE_SCOPES]));
+}
+
 
 
 // A Login-for-Business config_id makes Meta IGNORE `scope`, which is why the
