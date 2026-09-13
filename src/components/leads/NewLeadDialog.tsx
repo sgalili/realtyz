@@ -384,6 +384,8 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               value={formatPhoneAsTyped(phone)}
               onChange={(e) => setPhone(formatPhoneAsTyped(e.target.value))}
               inputMode="tel"
+              placeholder="05X-XXXXXXX"
+              maxLength={11}
             />
           </div>
           <div>
@@ -422,7 +424,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               קובע את לשון הפנייה בעברית בהודעות ובשיחות של ריטה
             </p>
           </div>
-          <div>
+          {leadKind !== 'broker' && <div>
             <Label htmlFor="nl-hood">שכונה</Label>
             <Input
               id="nl-hood"
@@ -430,8 +432,8 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               onChange={(e) => { setNeighborhood(e.target.value); setPendingOutOfArea(false); }}
               placeholder="צפון הישן"
             />
-          </div>
-          <div>
+          </div>}
+          {leadKind !== 'broker' && <div>
             <Label htmlFor="nl-rooms">חדרים</Label>
             <Input
               id="nl-rooms"
@@ -442,7 +444,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               onChange={(e) => setRooms(e.target.value)}
               placeholder="3"
             />
-          </div>
+          </div>}
 
           {/* Arrival channel — keeps the CRM "ערוץ הגעה" field filled from day one */}
           <div>
@@ -466,7 +468,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           </div>
 
           {/* DYNAMIC: sale side (buyer budget / owner asking price) */}
-          {!isRental && (
+          {leadKind !== 'broker' && !isRental && (
             <>
               <div>
                 <Label htmlFor="nl-budget">{isOwner ? 'מחיר מבוקש (₪)' : 'תקציב מקסימום (₪)'}</Label>
@@ -498,7 +500,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           )}
 
           {/* DYNAMIC: rental side (renter budget / landlord asking rent) */}
-          {isRental && (
+          {leadKind !== 'broker' && isRental && (
             <>
               <div>
                 <Label htmlFor="nl-monthly">{isOwner ? 'שכ״ד מבוקש (₪ לחודש)' : 'שכ״ד חודשי מקסימום (₪)'}</Label>
@@ -543,9 +545,9 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           </div>
 
           {/* Property relation — link one or many properties to this contact */}
-          <div className="col-span-2">
+          {leadKind !== 'broker' && <div className="col-span-2">
             <LinkedPropertiesField value={linkedListings} onChange={setLinkedListings} />
-          </div>
+          </div>}
         </div>
 
 
