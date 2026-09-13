@@ -581,7 +581,7 @@ Deno.serve(async (req) => {
     };
 
     const fetchGraphHistoryWith = async (
-      cred: { token: string; pageId: string | null; source: string | null },
+      cred: GraphCred,
     ): Promise<
       { posts: RawPost[]; status: number; error: any; source: string | null }
     > => {
