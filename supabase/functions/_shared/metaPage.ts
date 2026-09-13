@@ -7,7 +7,15 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 export const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 export const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
-export type MetaPage = { pageId: string; pageName: string | null; token: string };
+export type MetaPage = {
+  pageId: string;
+  pageName: string | null;
+  token: string;
+  /** messenger_page_bindings.id of the row this token came from (diagnostics). */
+  recordId?: string | null;
+  /** messenger_page_bindings.updated_at of that row (diagnostics). */
+  updatedAt?: string | null;
+};
 
 export function metaAdminClient(): SupabaseClient {
   return createClient(
