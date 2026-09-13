@@ -783,13 +783,39 @@ Deno.serve(async (req) => {
       // then the platform-shared Page — otherwise a valid connection looks
       // like a permission/connection mismatch failure.
       const candidates = await resolveMetaPageCandidates(admin, ownerId);
-      const ordered = candidates.length
-        ? candidates.map((c) => ({ token: c.token, pageId: c.pageId, source: c.scope }))
+      const mapped: GraphCred[] = candidates.map((c) => ({
+        token: c.token,
+        pageId: c.pageId,
+        source: c.scope,
+        recordId: c.recordId ?? null,
+        updatedAt: c.updatedAt ?? null,
+      }));
+      // Never read through a stale duplicate: for each Page keep only the most
+      // recently written binding row (a reconnect always rewrites updated_at).
+      const freshestByPage = new Map<string, GraphCred>();
+      for (const cred of mapped) {
+        const key = String(cred.pageId ?? "");
+        const prev = freshestByPage.get(key);
+        const newer = !prev ||
+          new Date(cred.updatedAt ?? 0).getTime() > new Date(prev.updatedAt ?? 0).getTime();
+        if (newer) freshestByPage.set(key, cred);
+      }
+      const ordered: GraphCred[] = freshestByPage.size
+        ? [...freshestByPage.values()]
         : [await resolveGraphCredential()];
       if (!ordered.some((c) => c.token && c.pageId)) {
         console.error("[fb-recent-posts] no usable Page access token", {
           owner_id: ownerId,
           candidates: ordered.length,
+        });
+      } else {
+        console.log("[fb-recent-posts] using page bindings", {
+          owner_id: ownerId,
+          bindings: ordered.map((c) => ({
+            binding_record_id: c.recordId ?? null,
+            page_id: c.pageId,
+            updated_at: c.updatedAt ?? null,
+          })),
         });
       }
       let last: { posts: RawPost[]; status: number; error: any; source: string | null } = {
