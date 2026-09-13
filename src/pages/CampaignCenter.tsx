@@ -5094,6 +5094,7 @@ const PublishedFeed = ({
       const toastId = 'campaigns-hero-sync';
       toast.loading('מסנכרן פוסטים חיים מפייסבוק…', { id: toastId });
       let ok = false;
+      let refreshWarning: string | null = null;
       try {
         if (scope) {
           const { data: syncData, error: syncError } = await supabase.functions.invoke('fb-recent-posts', {
@@ -5121,7 +5122,8 @@ const PublishedFeed = ({
               raw_error: (syncData as any)?.raw_error,
               graph_source: (syncData as any)?.graph_source,
             });
-            setFacebookSyncWarning('רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.');
+            refreshWarning = 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
+            setFacebookSyncWarning(refreshWarning);
           } else {
             setFacebookSyncWarning(null);
           }
@@ -5129,11 +5131,13 @@ const PublishedFeed = ({
         // Repaint only from persisted rows. mergeRowsById keeps existing cards
         // if the provider returned nothing or timed out.
         await load({ skipFbImport: true });
-        ok = true;
-        toast.success('הפוסטים עודכנו מפייסבוק', { id: toastId });
+        ok = refreshWarning === null;
+        if (ok) toast.success('הפוסטים עודכנו מפייסבוק', { id: toastId });
+        else toast.warning('החיבור נשמר. הרענון לא הושלם כרגע.', { id: toastId });
       } catch (err) {
         console.warn('[campaign] manual facebook sync failed', err);
-        toast.error('הסנכרון מפייסבוק נכשל, נסו שוב', { id: toastId });
+        setFacebookSyncWarning('רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.');
+        toast.warning('החיבור נשמר. הרענון לא הושלם כרגע.', { id: toastId });
       } finally {
         fullSyncRunningRef.current = false;
         window.dispatchEvent(new CustomEvent('rz:campaigns-sync:done', { detail: { ok } }));
