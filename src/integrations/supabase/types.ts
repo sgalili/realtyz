@@ -53,6 +53,58 @@ export type Database = {
         }
         Relationships: []
       }
+      affiliate_conversation_access: {
+        Row: {
+          access_reason: string
+          affiliate_user_id: string
+          created_at: string
+          id: string
+          lead_id: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          access_reason: string
+          affiliate_user_id: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          access_reason?: string
+          affiliate_user_id?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_conversation_access_affiliate_user_id_fkey"
+            columns: ["affiliate_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_conversation_access_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_conversation_access_workspace_owner_id_fkey"
+            columns: ["workspace_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       affiliate_lead_submissions: {
         Row: {
           affiliate_id: string
@@ -5952,6 +6004,10 @@ export type Database = {
         Args: { _row_user: string }
         Returns: boolean
       }
+      can_access_lead_in_current_workspace: {
+        Args: { _assigned_to: string; _lead_id: string }
+        Returns: boolean
+      }
       can_access_workspace_owner: { Args: { _owner: string }; Returns: boolean }
       can_close_deal: { Args: { _user_id: string }; Returns: boolean }
       can_delete_leads: { Args: { _user_id: string }; Returns: boolean }
@@ -6027,6 +6083,10 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      ensure_affiliate_onboarding_access: {
+        Args: { _affiliate_user_id: string }
+        Returns: string
       }
       ensure_credit_wallet: { Args: { _user_id: string }; Returns: string }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
