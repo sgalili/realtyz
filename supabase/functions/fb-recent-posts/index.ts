@@ -773,7 +773,7 @@ Deno.serve(async (req) => {
      */
     // The credential that actually worked for the feed read. Reused for the
     // enrichment pass so counters/media never fail with a different token.
-    let workingCred: { token: string; pageId: string | null; source: string | null } | null = null;
+    let workingCred: GraphCred | null = null;
 
     const fetchGraphHistory = async (): Promise<
       { posts: RawPost[]; status: number; error: any; source: string | null; blocked: boolean }
