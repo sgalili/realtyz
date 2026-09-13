@@ -30,6 +30,10 @@ try { localStorage.removeItem('realtyz_demo_notifications'); } catch { /* noop *
 export default function NotificationCenter() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  // HARD ISOLATION: every notification query below is filtered by the ACTIVE
+  // workspace, so switching workspaces never shows another workspace's items.
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const scope = workspaceOwnerId ?? user?.id ?? null;
   const [open, setOpen] = useState(false);
   const [viewedIds, setViewedIds] = useState<Set<string>>(() => {
     try {
