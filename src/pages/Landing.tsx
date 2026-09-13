@@ -7,7 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { ArrowLeft, Check, Star } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import { FREE_CONTACTS, FREE_PROPERTIES } from '@/lib/pricing';
 import PricingSection from '@/components/landing/PricingSection';
 import CreditsSection from '@/components/landing/CreditsSection';
@@ -334,7 +334,7 @@ export default function Landing() {
 
 
       {/* ───────── Features (image cards, no icons) ───────── */}
-      <section id="features" className="border-t border-border/60 pt-0 pb-20">
+      <section id="features" className="pt-0 pb-20">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -465,13 +465,9 @@ export default function Landing() {
         <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-semibold">
           <Link to="/terms" className="transition-colors hover:text-foreground">תנאי שימוש</Link>
           <Link to="/privacy-policy" className="transition-colors hover:text-foreground">מדיניות פרטיות</Link>
-          <a href="mailto:support@realtyz.co.il" className="transition-colors hover:text-foreground">
+          <Link to="/dashboard" className="transition-colors hover:text-foreground">
             כניסה למתווכים
-          </a>
-        </p>
-        <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground/80">
-          <Star className="h-3 w-3 text-primary" aria-hidden />
-          
+          </Link>
         </p>
       </footer>
 

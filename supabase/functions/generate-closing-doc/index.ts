@@ -24,10 +24,12 @@ const corsHeaders = {
 
 const BodySchema = z.object({
   lead_id: z.string().uuid(),
-  template_key: z.enum(["offer_letter", "lease_agreement"]),
+  // tour_agreement = pre-tour broker representation form signed before showings.
+  template_key: z.enum(["offer_letter", "lease_agreement", "tour_agreement"]),
   listing_id: z.string().uuid().optional(),
   terms: z.string().max(4000).optional(),
   price_override: z.number().positive().optional(),
+  tour_date: z.string().max(40).optional(),
 });
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -45,7 +47,8 @@ function fmtMoney(n: number | null | undefined): string {
 }
 
 function buildPdf(opts: {
-  template: "offer_letter" | "lease_agreement";
+  template: "offer_letter" | "lease_agreement" | "tour_agreement";
+  tourDate?: string;
   leadName: string;
   agentName: string;
   agentEmail: string;
@@ -63,7 +66,15 @@ function buildPdf(opts: {
 
   // Header
   doc.setFont("helvetica", "bold").setFontSize(20);
-  doc.text(opts.template === "offer_letter" ? "Offer Letter" : "Residential Lease Agreement", margin, y);
+  doc.text(
+    opts.template === "offer_letter"
+      ? "Offer Letter"
+      : opts.template === "tour_agreement"
+        ? "Property Tour & Broker Representation Agreement"
+        : "Residential Lease Agreement",
+    margin,
+    y,
+  );
   y += 12;
   doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(120);
   doc.text(`Document ID: ${opts.documentId}`, margin, y + 12);
@@ -77,7 +88,12 @@ function buildPdf(opts: {
   doc.text("PARTIES", margin, y);
   y += 16;
   doc.setFont("helvetica", "normal").setFontSize(11);
-  doc.text(`Leadive ${opts.template === "lease_agreement" ? "Tenant" : "Buyer"}: ${opts.leadName}`, margin, y);
+  const partyLabel = opts.template === "lease_agreement"
+    ? "Tenant"
+    : opts.template === "tour_agreement"
+      ? "Client"
+      : "Buyer";
+  doc.text(`${partyLabel}: ${opts.leadName}`, margin, y);
   y += 16;
   doc.text(`Listing Agent: ${opts.agentName}  (${opts.agentEmail})`, margin, y);
   y += 28;
@@ -98,7 +114,11 @@ function buildPdf(opts: {
   y += 8;
 
   // Financial
-  doc.setFont("helvetica", "bold").text(opts.template === "offer_letter" ? "OFFER" : "RENT TERMS", margin, y);
+  doc.setFont("helvetica", "bold").text(
+    opts.template === "offer_letter" ? "OFFER" : opts.template === "tour_agreement" ? "TOUR DETAILS" : "RENT TERMS",
+    margin,
+    y,
+  );
   y += 16;
   doc.setFont("helvetica", "normal");
   if (opts.template === "offer_letter") {
@@ -107,6 +127,12 @@ function buildPdf(opts: {
     doc.text(`Earnest deposit: ${fmtMoney(opts.price ? opts.price * 0.01 : null)}`, margin, y);
     y += 16;
     doc.text(`Closing target: 45 days from acceptance`, margin, y);
+  } else if (opts.template === "tour_agreement") {
+    doc.text(`Scheduled tour: ${opts.tourDate || "to be coordinated with the Client"}`, margin, y);
+    y += 16;
+    doc.text(`Asking price (reference): ${fmtMoney(opts.price)}`, margin, y);
+    y += 16;
+    doc.text(`Representing broker: ${opts.agentName}`, margin, y);
   } else {
     doc.text(`Monthly rent: ${fmtMoney(opts.price ? Math.round(opts.price / 200) : null)}`, margin, y);
     y += 16;
@@ -122,7 +148,9 @@ function buildPdf(opts: {
   doc.setFont("helvetica", "normal").setFontSize(10);
   const terms = opts.terms || (opts.template === "offer_letter"
     ? "This non-binding letter of intent expresses the Buyer's interest in the Property under the terms above. Final terms are subject to a formal purchase agreement, financing approval, and standard inspections."
-    : "Tenant agrees to pay rent on the 1st of each month. Property to be used solely as a private residence. Subletting prohibited without written consent of the Landlord.");
+    : opts.template === "tour_agreement"
+      ? "The Client confirms the broker named above introduced the Property and will tour it with the Client. The Client agrees that if a transaction is completed on this Property, the broker is the introducing party and entitled to the agreed brokerage fee under applicable law. This document does not obligate the Client to purchase or rent the Property."
+      : "Tenant agrees to pay rent on the 1st of each month. Property to be used solely as a private residence. Subletting prohibited without written consent of the Landlord.");
   const termLines = doc.splitTextToSize(terms, w - margin * 2);
   doc.text(termLines, margin, y);
   y += termLines.length * 12 + 28;
@@ -171,7 +199,7 @@ Deno.serve(async (req) => {
     if (!parsed.success) {
       return new Response(JSON.stringify({ error: parsed.error.flatten() }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    const { lead_id, template_key, listing_id, terms, price_override } = parsed.data;
+    const { lead_id, template_key, listing_id, terms, price_override, tour_date } = parsed.data;
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
@@ -203,6 +231,7 @@ Deno.serve(async (req) => {
 
     const pdfBytes = buildPdf({
       template: template_key,
+      tourDate: tour_date,
       leadName,
       agentName: userEmail.split("@")[0],
       agentEmail: userEmail,
@@ -221,7 +250,11 @@ Deno.serve(async (req) => {
     });
     if (upErr) throw upErr;
 
-    const title = template_key === "offer_letter" ? "Offer Letter" : "Lease Agreement";
+    const title = template_key === "offer_letter"
+      ? "Offer Letter"
+      : template_key === "tour_agreement"
+        ? "Tour Agreement"
+        : "Lease Agreement";
 
     const { error: insErr } = await admin.from("closing_documents").insert({
       id: docId,
@@ -239,6 +272,7 @@ Deno.serve(async (req) => {
         property_title: propertyTitle,
         price,
         terms: terms ?? null,
+        tour_date: tour_date ?? null,
       },
     });
     if (insErr) throw insErr;
