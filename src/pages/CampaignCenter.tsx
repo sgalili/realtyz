@@ -4134,7 +4134,12 @@ const writeFbBindingFlag = (bound: boolean, scope?: string | null) => {
     const key = fbBindingFlagKey(scope);
     if (bound) localStorage.setItem(key, '1');
     else localStorage.removeItem(key);
+    window.dispatchEvent(new CustomEvent('realtyz:facebook-connection-changed', { detail: { bound, scope } }));
   } catch { /* ignore */ }
+};
+
+const readFbBindingFlag = (scope?: string | null) => {
+  try { return localStorage.getItem(fbBindingFlagKey(scope)) === '1'; } catch { return false; }
 };
 
 const connectionStorageKey = (base: string, userId?: string | null, workspaceId?: string | null) =>
@@ -4473,7 +4478,9 @@ const PublishedFeed = ({
 
 
   const [activeChannel, setActiveChannel] = useState<string>('all');
-  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(new Set());
+  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() =>
+    readFbBindingFlag(workspaceOwnerId) ? new Set(['facebook']) : new Set(),
+  );
 
   useEffect(() => {
     const handleDisconnect = () => {
@@ -4489,6 +4496,7 @@ const PublishedFeed = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const next = new Set<string>();
+      if (readFbBindingFlag(workspaceOwnerId)) next.add('facebook');
       // A bound Facebook Page (OAuth or manual token) is by itself a valid
       // connected state — the manual path never writes to social_connections.
       try {
@@ -4506,11 +4514,9 @@ const PublishedFeed = ({
         if (pageId) {
           next.add('facebook');
           writeFbBindingFlag(true, workspaceOwnerId);
-        } else {
-          writeFbBindingFlag(false, workspaceOwnerId);
         }
       } catch {
-        writeFbBindingFlag(false, workspaceOwnerId);
+        // Keep the last known connected state through temporary auth/network failures.
       }
 
       const { data } = await supabase
@@ -7340,7 +7346,8 @@ const CampaignCenter = () => {
     try {
       const key = connectionStorageKey('rz-connected-channels', user?.id, workspaceOwnerId);
       const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
-      if (raw) (JSON.parse(raw) as string[]).filter((id) => id !== 'facebook').forEach((id) => initial.add(id));
+       if (raw) (JSON.parse(raw) as string[]).forEach((id) => initial.add(id));
+       if (readFbBindingFlag(workspaceOwnerId)) initial.add('facebook');
     } catch { /* ignore */ }
     return initial.size > 0 ? initial : EMPTY_CONNECTED;
   });
@@ -7364,7 +7371,8 @@ const CampaignCenter = () => {
     try {
       const rawChannels = localStorage.getItem(channelsKey) || sessionStorage.getItem(channelsKey);
       const nextChannels = new Set<string>();
-      if (rawChannels) (JSON.parse(rawChannels) as string[]).filter((id) => id !== 'facebook').forEach((id) => nextChannels.add(id));
+       if (rawChannels) (JSON.parse(rawChannels) as string[]).forEach((id) => nextChannels.add(id));
+       if (readFbBindingFlag(workspaceOwnerId)) nextChannels.add('facebook');
       setConnectedChannels(nextChannels.size ? nextChannels : EMPTY_CONNECTED);
       const rawNames = localStorage.getItem(namesKey) || sessionStorage.getItem(namesKey);
       const nextNames = rawNames ? JSON.parse(rawNames) as Record<string, string> : {};
@@ -7481,10 +7489,7 @@ const CampaignCenter = () => {
             // Transient read failure (RLS blip / offline) — never downgrade a
             // known-good Facebook connection to "disconnected".
             console.warn('[CampaignCenter] page binding read failed:', wspErr.message);
-          } else {
-            writeFbBindingFlag(false, workspaceOwnerId);
-            if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
-          }
+           }
           // continue — still derive direct channels (IVR/email) below
         } else {
           if (wspFbName && !cancelled) {
@@ -7495,6 +7500,9 @@ const CampaignCenter = () => {
         if (cancelled) return;
 
         const set = new Set<string>();
+        // Preserve the workspace-scoped, last-known-good binding while the
+        // background resolver is unavailable. Only explicit disconnect clears it.
+        if (readFbBindingFlag(workspaceOwnerId)) set.add('facebook');
 
         if (hasOwnProfile) {
           // A bound Facebook Page is by itself a valid connected state — the

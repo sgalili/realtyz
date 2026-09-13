@@ -140,36 +140,35 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     // The stored page binding is the source of truth for "connected".
     // meta-publish/status is only an extra health probe: if it fails we must
     // NOT drop the binding-based connected state.
-    const [pubRes, pageRes] = await Promise.all([
-      supabase.functions.invoke('meta-publish', { body: { action: 'status' } }).catch((e: any) => ({ data: null, error: e })),
-      callPageConnect<PageStatus>({ action: 'status' }).catch(() => null),
-    ]);
+    const pageRes = await callPageConnect<PageStatus>({ action: 'status' }).catch(() => null);
     if (disconnectedRef.current) {
       setLoading(false);
       return;
     }
     setPage(pageRes);
 
-    const s = (pubRes as any).error ? null : ((pubRes as any).data as MetaStatus | null);
-    setStatus(s);
-    onStatus?.(s ?? (pageRes?.connected
+    const nextStatus = pageRes?.connected
       ? {
           connected: true,
           facebook: { id: pageRes.page?.id ?? '', name: pageRes.page?.name ?? null },
           instagram: pageRes.instagram ?? null,
         }
-      : null));
+      : null;
+    if (nextStatus) {
+      setStatus(nextStatus);
+      onStatus?.(nextStatus);
+    }
 
     refreshHealth();
 
     refreshBinding();
 
     if (notify) {
-      if (pageRes?.connected || s?.connected) toast.success('החיבור לפייסבוק תקין');
-      else toast.error(s?.message || 'דף הפייסבוק אינו מחובר');
+      if (pageRes?.connected || health?.pageConnected || binding?.hasToken) toast.success('החיבור לפייסבוק תקין');
+      else toast.error('דף הפייסבוק אינו מחובר');
     }
     setLoading(false);
-  }, [onStatus, refreshHealth, refreshBinding]);
+  }, [onStatus, refreshHealth, refreshBinding, health?.pageConnected, binding?.hasToken]);
 
 
   useEffect(() => { probe(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);

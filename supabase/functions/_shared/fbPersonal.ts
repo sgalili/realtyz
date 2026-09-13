@@ -85,13 +85,23 @@ export function scopeAdvisory(missing: string[]): string {
  */
 export async function checkTokenHealth(
   token: string | null | undefined,
-): Promise<{ valid: boolean; reason: string | null; fbUserId: string | null }> {
+): Promise<{ valid: boolean | null; authFailure: boolean; reason: string | null; fbUserId: string | null }> {
   const t = String(token ?? "").trim();
-  if (!t) return { valid: false, reason: "לא נמצא טוקן פייסבוק מחובר.", fbUserId: null };
-  const res = await fetch(`${GRAPH}/me?fields=id&access_token=${encodeURIComponent(t)}`);
-  const body = await res.json().catch(() => ({}));
-  if (res.ok && body?.id) return { valid: true, reason: null, fbUserId: String(body.id) };
-  return { valid: false, reason: humanizeGraphError(body, "החיבור לפייסבוק אינו תקין."), fbUserId: null };
+  if (!t) return { valid: false, authFailure: true, reason: "לא נמצא טוקן פייסבוק מחובר.", fbUserId: null };
+  const authCodes = new Set([190, 458, 459, 463, 464, 467, 492]);
+  let lastBody: any = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const res = await fetch(`${GRAPH}/me?fields=id&access_token=${encodeURIComponent(t)}`);
+      const body = await res.json().catch(() => ({}));
+      lastBody = body;
+      if (res.ok && body?.id) return { valid: true, authFailure: false, reason: null, fbUserId: String(body.id) };
+      const authFailure = authCodes.has(Number(body?.error?.code ?? 0));
+      if (authFailure) return { valid: false, authFailure: true, reason: humanizeGraphError(body, "תוקף החיבור לפייסבוק פג."), fbUserId: null };
+    } catch { /* retry transient network failures once */ }
+    if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  return { valid: null, authFailure: false, reason: lastBody ? humanizeGraphError(lastBody, "בדיקת החיבור נכשלה זמנית.") : "בדיקת החיבור נכשלה זמנית.", fbUserId: null };
 }
 
 

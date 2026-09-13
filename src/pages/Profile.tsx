@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus, Trash2, Pencil, Mail, Phone, MessageCircle, MapPin, User as UserIcon,
-  Building2, ImageIcon, LogOut,
+  Building2, ImageIcon, LogOut, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -400,7 +400,6 @@ function WorkspaceTab() {
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const { refresh: refreshBrand } = useWhiteLabel();
   const ownerId = activeWorkspaceId ?? user?.id ?? null;
-  const isOwner = !!user?.id && !!ownerId && user.id === ownerId;
 
   const [agencyName, setAgencyName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
@@ -444,8 +443,7 @@ function WorkspaceTab() {
   const onLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, kind: 'square' | 'landscape') => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !user?.id) return;
-    if (!isOwner) { toast.error('רק בעל החשבון יכול לעדכן את לוגו המשרד'); return; }
+    if (!file || !ownerId) return;
     if (!file.type.startsWith('image/')) { toast.error('יש לבחור קובץ תמונה (PNG, JPG, SVG או WEBP)'); return; }
     if (file.size === 0) { toast.error('הקובץ ריק – נסו לבחור תמונה אחרת'); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error('הקובץ גדול מדי (מקסימום 5MB)'); return; }
@@ -454,7 +452,7 @@ function WorkspaceTab() {
       const extFromName = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
       const extFromType = (file.type.split('/')[1] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const ext = extFromName || extFromType || 'png';
-      const path = `${user.id}/${kind}-logo-${Date.now()}.${ext}`;
+      const path = `${ownerId}/${kind}-logo-${Date.now()}.${ext}`;
 
       const { error: upErr } = await supabase.storage
         .from('agency-logos')
@@ -471,7 +469,7 @@ function WorkspaceTab() {
       const { error: wlErr } = await (supabase as any)
         .from('white_label_settings')
         .upsert({
-          user_id: user.id,
+          user_id: ownerId,
           agency_name: agencyName || null,
           logo_url: nextSquare,
           landscape_logo_url: nextLandscape,
@@ -491,7 +489,7 @@ function WorkspaceTab() {
 
 
   const removeLogo = async (kind: 'square' | 'landscape') => {
-    if (!isOwner || !user?.id) return;
+    if (!ownerId) return;
     const prevSquare = logoUrl;
     const prevLandscape = landscapeLogoUrl;
     if (kind === 'square') setLogoUrl('');
@@ -500,7 +498,7 @@ function WorkspaceTab() {
       const { error } = await (supabase as any)
         .from('white_label_settings')
         .upsert({
-          user_id: user.id,
+          user_id: ownerId,
           agency_name: agencyName || null,
           logo_url: kind === 'square' ? null : prevSquare || null,
           landscape_logo_url: kind === 'landscape' ? null : prevLandscape || null,
@@ -518,16 +516,19 @@ function WorkspaceTab() {
 
 
   const save = async () => {
-    if (!isOwner || !user?.id) { toast.error('רק בעל החשבון יכול לשמור את פרטי המשרד'); return; }
+    if (!ownerId) { toast.error('לא נמצא מרחב עבודה פעיל'); return; }
     setSaving(true);
     try {
       const { error } = await (supabase as any)
         .from('white_label_settings')
-          .upsert({ user_id: user.id, agency_name: agencyName || null, logo_url: logoUrl || null, landscape_logo_url: landscapeLogoUrl || null } as any, { onConflict: 'user_id' });
+          .upsert({ user_id: ownerId, agency_name: agencyName || null, logo_url: logoUrl || null, landscape_logo_url: landscapeLogoUrl || null } as any, { onConflict: 'user_id' });
       if (error) throw error;
-      const serviceAreas = serviceAreaRows.map((r) => r.value.trim()).filter(Boolean);
-      await supabase.from('profiles').update({ service_areas: serviceAreas } as any).eq('id', user.id);
-      await supabase.auth.updateUser({ data: { agency_name: agencyName, service_areas: serviceAreas } });
+      const serviceAreas = [...new Set(serviceAreaRows.map((r) => r.value.trim()).filter(Boolean))];
+      const { error: profileError } = await supabase.from('profiles').update({ service_areas: serviceAreas } as any).eq('id', ownerId);
+      if (profileError) throw profileError;
+      if (user?.id === ownerId) {
+        await supabase.auth.updateUser({ data: { agency_name: agencyName, service_areas: serviceAreas } });
+      }
       try { window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({ agency_name: agencyName, service_areas: serviceAreas })); } catch {}
       await refreshBrand();
       toast.success('פרטי המשרד נשמרו ושותפו לכל חברי המשרד');
@@ -540,18 +541,10 @@ function WorkspaceTab() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-right flex items-center justify-between gap-2">
-          <span></span>
-          {!isOwner && (
-            <span className="text-[11px] font-normal text-muted-foreground">לצפייה בלבד · מנוהל ע״י בעל החשבון</span>
-          )}
-        </CardTitle>
-      </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-3 rounded-lg border bg-card/40 p-3 text-right">
-          <LogoBox title="לוגו ריבוע" url={logoUrl} disabled={!isOwner || uploading} aspect="square" onUpload={(e) => onLogoUpload(e, 'square')} onRemove={() => removeLogo('square')} />
-          <LogoBox title="לוגו מלבן" url={landscapeLogoUrl} disabled={!isOwner || uploading} aspect="landscape" onUpload={(e) => onLogoUpload(e, 'landscape')} onRemove={() => removeLogo('landscape')} />
+          <LogoBox title="לוגו ריבוע" url={logoUrl} disabled={uploading} aspect="square" onUpload={(e) => onLogoUpload(e, 'square')} onRemove={() => removeLogo('square')} />
+          <LogoBox title="לוגו מלבן" url={landscapeLogoUrl} disabled={uploading} aspect="landscape" onUpload={(e) => onLogoUpload(e, 'landscape')} onRemove={() => removeLogo('landscape')} />
           </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -560,42 +553,41 @@ function WorkspaceTab() {
               <Building2 className="h-3.5 w-3.5" />
               <span>שם המשרד</span>
             </div>
-            <Input dir="rtl" value={agencyName} disabled={!isOwner || loading} onChange={(e) => setAgencyName(e.target.value)} className="h-9 text-right text-sm font-semibold" />
+            <Input dir="rtl" value={agencyName} disabled={loading} onChange={(e) => setAgencyName(e.target.value)} className="h-9 text-right text-sm font-semibold" />
           </div>
 
           <div className="rounded-lg border bg-card/40 p-3 text-right">
             <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
               <MapPin className="h-3.5 w-3.5" />
               <span>אזורי שירות</span>
-              {isOwner && (
-                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => setServiceAreaRows([...serviceAreaRows, newRow('')])} aria-label="הוסף אזור שירות">
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-              )}
             </div>
-            {isOwner ? (
-              <div className="space-y-2">
-                {serviceAreaRows.map((row) => (
-                  <div key={row.id} className="flex items-center gap-1.5">
-                    <IsraeliCityPicker value={row.value} onChange={(v) => setServiceAreaRows(serviceAreaRows.map((r) => r.id === row.id ? { ...r, value: v } : r))} placeholder="בחר עיר / אזור" />
-                    {serviceAreaRows.length > 1 && (
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setServiceAreaRows(serviceAreaRows.filter((r) => r.id !== row.id))} aria-label="הסר אזור שירות">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
+            <div className="space-y-2">
+              <IsraeliCityPicker
+                value=""
+                onChange={(value) => {
+                  if (!serviceAreaRows.some((row) => row.value === value)) {
+                    setServiceAreaRows([...serviceAreaRows.filter((row) => row.value), newRow(value)]);
+                  }
+                }}
+                placeholder="הוסף עיר / אזור"
+              />
+              <div className="flex min-h-9 flex-wrap gap-1.5">
+                {serviceAreaRows.filter((row) => row.value).map((row) => (
+                  <span key={row.id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
+                    {row.value}
+                    <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive" onClick={() => setServiceAreaRows(serviceAreaRows.filter((item) => item.id !== row.id))} aria-label={`הסר ${row.value}`}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </span>
                 ))}
+                {!serviceAreaRows.some((row) => row.value) && <span className="py-1 text-xs text-muted-foreground">לא נבחרו אזורי שירות</span>}
               </div>
-            ) : (
-              <Input dir="rtl" value={serviceAreaRows.map((r) => r.value).filter(Boolean).join(', ')} disabled className="h-9 text-right text-sm" />
-            )}
+            </div>
           </div>
         </div>
-        {isOwner && (
-          <Button onClick={save} size="lg" className="w-full" disabled={saving || loading}>
-            {saving ? 'שומר…' : 'שמירת פרטי המשרד'}
-          </Button>
-        )}
+        <Button onClick={save} size="lg" className="w-full" disabled={saving || loading}>
+          {saving ? 'שומר…' : 'שמירת פרטי המשרד'}
+        </Button>
       </CardContent>
     </Card>
   );

@@ -2,3 +2,6 @@
 - [ ] Rename משימות היום page title to משימות
 - [ ] Remove Office read-only banner and owner-only edit restrictions
 - [ ] Make service areas a multi-select field
+- [ ] Prevent Facebook connection false-disconnection and UI flashing on /campaigns
+- [ ] Add immediate workspace-wide Facebook connection synchronization/cache
+- [ ] Make Facebook connection verification return graceful successful responses for existing connections
