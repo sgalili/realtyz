@@ -222,6 +222,27 @@ Deno.serve(async (req) => {
       details: { lead_id: doc.lead_id, sign_url: signUrl },
     });
 
+    // CRM timeline entry so the broker sees the signature request in the
+    // contact's history, with its live status badge.
+    await admin.from("interaction_activity_log").insert({
+      user_id: workspaceOwnerId,
+      thread_key: `lead:${doc.lead_id}`,
+      platform: "whatsapp",
+      action_type: "signature_request",
+      actor_type: "ai",
+      actor_id: userId,
+      actor_label: "ריטה",
+      content: `נשלח מסמך לחתימה דיגיטלית: ${doc.title}`,
+      metadata: {
+        lead_id: doc.lead_id,
+        document_id: document_id,
+        document_title: doc.title,
+        signature_status: "pending",
+        sign_url: signUrl,
+      },
+    });
+
+
     return new Response(JSON.stringify({ success: true, sign_url: signUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
