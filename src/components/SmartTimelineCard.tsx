@@ -8,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Clock, Phone, MessageSquare, Home, StickyNote, Handshake, CalendarDays, Loader2,
-  Sparkles, Plus, CheckCircle2, X, ChevronDown,
+  Sparkles, Plus, CheckCircle2, X, ChevronDown, FileSignature,
 } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
