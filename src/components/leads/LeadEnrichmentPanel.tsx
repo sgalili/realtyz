@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import LeadEnrichmentDialog from '@/components/leads/LeadEnrichmentDialog';
+import { formatPhoneAsTyped, normalizePhoneForStorage } from '@/lib/formatPhone';
 
 
 
@@ -73,9 +74,9 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   const prefs = (lead.preferences ?? {}) as Record<string, any>;
 
   const [age, setAge] = useState<string>(prefs.age ? String(prefs.age) : '');
-  const [gender, setGender] = useState<string>(prefs.gender ?? '');
+  const [gender, setGender] = useState<string>(lead.gender ?? prefs.gender ?? '');
   const [email, setEmail] = useState<string>(lead.email ?? '');
-  const [phone, setPhone] = useState<string>(lead.phone_number ?? '');
+  const [phone, setPhone] = useState<string>(formatPhoneAsTyped(lead.phone_number));
   const [city, setCity] = useState<string>(lead.city ?? '');
   const [address, setAddress] = useState<string>(lead.address ?? '');
   const [savingField, setSavingField] = useState<string | null>(null);
@@ -88,12 +89,12 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
 
   useEffect(() => {
     setAge(prefs.age ? String(prefs.age) : '');
-    setGender(prefs.gender ?? '');
+    setGender(lead.gender ?? prefs.gender ?? '');
     setEmail(lead.email ?? '');
-    setPhone(lead.phone_number ?? '');
+    setPhone(formatPhoneAsTyped(lead.phone_number));
     setCity(lead.city ?? '');
     setAddress(lead.address ?? '');
-  }, [lead.id, prefs.age, prefs.gender, lead.email, lead.phone_number, lead.city, lead.address]);
+  }, [lead.id, lead.gender, prefs.age, prefs.gender, lead.email, lead.phone_number, lead.city, lead.address]);
 
   // Re-sync socials whenever the parent lead's preferences change (e.g. after
   // the enrichment dialog writes new social profiles to the DB), so the panel
@@ -171,22 +172,22 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
                 type="tel"
                 inputMode="tel"
                 value={phone}
-                placeholder=""
-                onChange={(e) => setPhone(e.target.value)}
+                placeholder="05X-XXXXXXX"
+                onChange={(e) => setPhone(formatPhoneAsTyped(e.target.value))}
                 onBlur={() => {
-                  const digits = phone.replace(/\D/g, '');
-                  if (digits && digits.length < 9) { toast.error('מספר טלפון לא תקין'); return; }
-                  // Stored canonically as 9725XXXXXXXX.
-                  const normalized = digits
-                    ? (digits.startsWith('0') ? '972' + digits.slice(1) : digits)
-                    : null;
+                  if (phone && !/^05\d-\d{7}$/.test(phone)) {
+                    toast.error('מספר טלפון לא תקין. יש להזין בפורמט 05X-XXXXXXX');
+                    setPhone(formatPhoneAsTyped(lead.phone_number));
+                    return;
+                  }
+                  const normalized = phone ? normalizePhoneForStorage(phone) : null;
                   if (normalized !== (lead.phone_number ?? null)) {
                     persist({ col: { phone_number: normalized } }, 'phone');
                   }
                 }}
                 className="h-8 text-sm"
                 dir="ltr"
-                maxLength={20}
+                maxLength={11}
               />
             </div>
             <div className="space-y-1">
@@ -280,13 +281,12 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
             </Label>
             <Select
               value={gender || undefined}
-              onValueChange={(v) => { setGender(v); persist({ pref: { gender: v } }, 'gender'); }}
+              onValueChange={(v) => { setGender(v); persist({ col: { gender: v } }, 'gender'); }}
             >
               <SelectTrigger className="h-8 text-sm font-semibold text-slate-900"><SelectValue placeholder="בחר מגדר" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="male">זכר</SelectItem>
                 <SelectItem value="female">נקבה</SelectItem>
-                <SelectItem value="other">אחר</SelectItem>
               </SelectContent>
             </Select>
           </div>

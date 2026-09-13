@@ -2224,8 +2224,8 @@ const LeadCRM = () => {
 
             return (
               <>
-                <SheetHeader>
-                  <SheetTitle className="flex items-center gap-3">
+                <SheetHeader className="relative pb-11">
+                  <SheetTitle className="relative flex items-center gap-3">
                     {(() => {
                       // Merge column-level social identifiers with the enrichment
                       // profile so the pic-fetch menu offers every channel we know
@@ -2299,7 +2299,7 @@ const LeadCRM = () => {
                                 : <Mail className="h-4 w-4" strokeWidth={1.8} />,
                           }));
                         return (
-                          <div className="flex flex-wrap items-center gap-1 mt-2">
+                          <div className="absolute left-1/2 top-full mt-2 flex w-max max-w-[calc(100vw-3rem)] -translate-x-1/2 items-center justify-center gap-1 overflow-x-auto whitespace-nowrap">
                             {/* Phone lives in the details panel below, not in the header */}
                             {channels.map((c) => {
                               const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55'}`;
@@ -2336,7 +2336,7 @@ const LeadCRM = () => {
                             >
                               <Trash2 className="h-4 w-4" strokeWidth={1.8} />
                             </button>
-                            <div className="flex items-center gap-1.5 mr-auto ps-2">
+                            <div className="flex items-center gap-1.5 ps-2">
                               <Switch
                                 className="group h-6 w-11 data-[state=checked]:bg-[#25D366]"
                                 checked={!!selectedVoter.ai_autopilot}
@@ -2479,18 +2479,19 @@ const LeadCRM = () => {
                     };
 
                     const ownerLead = isOwnerLead(selectedVoter);
+                    const leadKind = String(prefs.lead_kind ?? '');
+                    const isSeeker = leadKind === 'buyer' || leadKind === 'renter';
+                    const isPropertyContact = isSeeker || ownerLead;
 
                     return (
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
-                          <SelectCell icon={<UserRoundPlus className="h-3.5 w-3.5 text-slate-700" />} label="סוג איש קשר" value={(prefs.lead_kind as string) || ''} placeholder="בחר סוג" options={leadKindOpts} onChange={(v) => savePref({ lead_kind: v })} />
-                          <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
+                          <SelectCell icon={<UserRoundPlus className="h-3.5 w-3.5 text-slate-700" />} label="סוג איש קשר" value={leadKind} placeholder="בחר סוג" options={leadKindOpts} onChange={(v) => savePref({ lead_kind: v })} />
+                          {isPropertyContact && <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />}
                           <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v, lead_source: v })} />
                           <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
-                          {/* Gender drives the Hebrew grammatical form of every message */}
-                          <SelectCell icon={<UserRoundPlus className="h-3.5 w-3.5 text-slate-700" />} label="מגדר (לשון הפנייה)" value={String((selectedVoter as any).gender ?? '')} placeholder="בחר מגדר" options={[{ v: 'male', l: 'זכר' }, { v: 'female', l: 'נקבה' }]} onChange={(v) => saveLead({ gender: v })} />
-                          {/* Buyer/renter preference fields — hidden entirely for property owners */}
-                          {!ownerLead && (
+                          {/* Buyer/renter search preferences are irrelevant to brokers and owners. */}
+                          {isSeeker && (
                             <>
                               <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label={isRental ? 'שכר דירה חודשי' : 'תקציב מבוקש'} value={budgetRange} placeholder={isRental ? 'בחר טווח שכר' : 'בחר תקציב'} options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
                               <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
@@ -2498,9 +2499,11 @@ const LeadCRM = () => {
                           )}
                          </div>
                          {/* Property relation — link any number of properties to this contact */}
-                         <div className="p-3 rounded-lg bg-slate-100 border border-slate-200">
-                           <LinkedPropertiesField leadId={(selectedVoter as any).id} />
-                         </div>
+                         {isPropertyContact && (
+                           <div className="p-3 rounded-lg bg-slate-100 border border-slate-200">
+                             <LinkedPropertiesField leadId={(selectedVoter as any).id} />
+                           </div>
+                         )}
                          {/* Digital signature moved to the inline action icons in the header */}
                          {/* Owner-only: 13 Homely-style property fields, backed by the linked listing */}
                          {ownerLead && (
@@ -2514,8 +2517,7 @@ const LeadCRM = () => {
                   {(() => {
                     const lead: any = selectedVoter;
                     const isBroker = (lead?.preferences?.lead_kind ?? '') === 'broker';
-                    const hasAny = !!(lead.agency_name || lead.operating_area || lead.notes);
-                    if (!isBroker && !hasAny) return null;
+                    if (!isBroker) return null;
                     const saveField = async (field: string, value: string) => {
                       const next = value.trim() || null;
                       if ((lead[field] ?? null) === next) return;
