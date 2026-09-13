@@ -554,6 +554,7 @@ Deno.serve(async (req) => {
 
       // Persist the long-lived USER token too: group discovery (/me/groups)
       // requires a user token, and a page login already grants it.
+      let grantedScopes: string[] = [];
       try {
         const meRes = await graph(
           `/me?fields=id,name,picture.width(120).height(120)&access_token=${encodeURIComponent(userToken)}`,
@@ -564,6 +565,8 @@ Deno.serve(async (req) => {
             .filter((p: any) => p?.status === "granted")
             .map((p: any) => String(p.permission))
           : [];
+        grantedScopes = granted;
+        console.log("[meta-page-connect] granted scopes =", JSON.stringify(granted));
         if (meRes.ok && meRes.payload?.id) {
           await admin.from("fb_personal_connections").upsert(
             {
@@ -584,6 +587,27 @@ Deno.serve(async (req) => {
       } catch (e) {
         console.warn("[meta-page-connect] user token persist failed", e);
       }
+
+      // Never store a Page token that cannot read posts/comments: without
+      // pages_read_engagement every later refresh fails with a permission error.
+      if (grantedScopes.length > 0 && !grantedScopes.includes("pages_read_engagement")) {
+        console.error(
+          "[meta-page-connect] pages_read_engagement missing from granted scopes",
+          JSON.stringify(grantedScopes),
+        );
+        return json(
+          {
+            error:
+              "ההרשאה לקריאת פוסטים ותגובות (pages_read_engagement) לא אושרה. יש להתחבר מחדש ולסמן את כל ההרשאות במסך של פייסבוק.",
+            stage: "scope_validation",
+            missing_scopes: ["pages_read_engagement"],
+            granted_scopes: grantedScopes,
+            retry_basic: true,
+          },
+          400,
+        );
+      }
+
 
       const pagesRes = await graph(
         `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${
