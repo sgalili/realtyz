@@ -492,6 +492,65 @@ Deno.serve(async (req) => {
       return { token: "", pageId: null, source: null };
     };
 
+    /**
+     * Self-healing Page token: when the stored Page token is rejected for
+     * missing read scopes, mint a fresh Page token from the workspace's
+     * personal Facebook login (/me/accounts). The user-login token normally
+     * carries the freshly granted `pages_read_engagement`, so the refresh
+     * fixes the read WITHOUT sending the user through another OAuth round.
+     */
+    const refreshPageTokenFromPersonal = async (): Promise<
+      { token: string; pageId: string | null; source: string | null } | null
+    > => {
+      const wantedPageId = page?.pageId ?? null;
+      if (!wantedPageId) return null;
+      const { data: personal } = await admin
+        .from("fb_personal_connections")
+        .select("access_token")
+        .eq("workspace_owner_id", ownerId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const userToken = asText((personal as any)?.access_token);
+      if (!userToken) return null;
+      try {
+        const resp = await fetch(
+          `https://graph.facebook.com/v26.0/me/accounts?fields=id,name,access_token&limit=100&access_token=${encodeURIComponent(userToken)}`,
+        );
+        const json: any = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          console.warn("[fb-recent-posts] page token refresh failed", {
+            http_status: resp.status,
+            message: json?.error?.message ?? null,
+          });
+          return null;
+        }
+        const match = (Array.isArray(json?.data) ? json.data : []).find(
+          (row: any) => String(row?.id ?? "") === String(wantedPageId),
+        );
+        const fresh = asText(match?.access_token);
+        if (!fresh || fresh === page?.token) return null;
+        await admin
+          .from("messenger_page_bindings")
+          .upsert(
+            {
+              owner_id: ownerId,
+              page_id: String(wantedPageId),
+              page_name: asText(match?.name) || page?.pageName || null,
+              page_access_token: fresh,
+            },
+            { onConflict: "owner_id,page_id" },
+          );
+        console.log("[fb-recent-posts] refreshed page access token from personal login", {
+          page_id: wantedPageId,
+        });
+        return { token: fresh, pageId: String(wantedPageId), source: "refreshed_from_personal" };
+      } catch (e) {
+        console.warn("[fb-recent-posts] page token refresh threw", e instanceof Error ? e.message : e);
+        return null;
+      }
+    };
+
     const fetchGraphHistoryWith = async (
       cred: { token: string; pageId: string | null; source: string | null },
     ): Promise<
@@ -655,6 +714,20 @@ Deno.serve(async (req) => {
         }
         last = res;
         if (!isMetaPermissionError(res.error)) break;
+      }
+      // Last resort before giving up: mint a fresh Page token from the
+      // personal login and retry once. This turns the old "reconnect and try
+      // again later" workaround into an automatic, immediate recovery.
+      if (isMetaPermissionError(last.error)) {
+        const refreshed = await refreshPageTokenFromPersonal();
+        if (refreshed) {
+          const retry = await fetchGraphHistoryWith(refreshed);
+          if (retry.posts.length > 0) {
+            workingCred = refreshed;
+            return { ...retry, blocked: false };
+          }
+          last = retry;
+        }
       }
       return { ...last, blocked: isMetaPermissionError(last.error) };
     };
@@ -1057,6 +1130,9 @@ Deno.serve(async (req) => {
         raw_error: lastError,
         graph_source: graphSource,
         permission_blocked: permissionBlocked,
+        // A stored Page binding stays a live connection even when a single read
+        // is refused, so the client must never flip to "disconnected" here.
+        page_connected: !!page?.pageId,
         needs_extension: permissionBlocked && posts.length === 0,
         // Clear, human-readable reason when a refresh returned nothing.
         error: posts.length === 0

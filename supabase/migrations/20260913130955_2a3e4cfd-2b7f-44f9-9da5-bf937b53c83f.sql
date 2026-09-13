@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.route_landing_lead_to_rita() FROM PUBLIC, anon, authenticated;

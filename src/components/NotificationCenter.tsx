@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { Bell, AlertTriangle, ExternalLink, Wallet, MessageCircle, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -29,6 +30,10 @@ try { localStorage.removeItem('realtyz_demo_notifications'); } catch { /* noop *
 export default function NotificationCenter() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  // HARD ISOLATION: every notification query below is filtered by the ACTIVE
+  // workspace, so switching workspaces never shows another workspace's items.
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const scope = workspaceOwnerId ?? user?.id ?? null;
   const [open, setOpen] = useState(false);
   const [viewedIds, setViewedIds] = useState<Set<string>>(() => {
     try {
@@ -72,51 +77,55 @@ export default function NotificationCenter() {
     refetchInterval: 120_000,
   });
 
-  // Flagged inbound messages (negative-sentiment keywords)
+  // Flagged inbound messages (negative-sentiment keywords) — active workspace only
   const { data: alerts = [] } = useQuery({
-    queryKey: ['notification-alerts'],
+    queryKey: ['notification-alerts', scope],
+    enabled: !!scope,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('chat_history')
-        .select('id, content, created_at, lead_id, role')
+        .select('id, content, created_at, lead_id, role, leads!inner(id, assigned_to)')
         .eq('role', 'user')
+        .eq('leads.assigned_to', scope!)
         .order('created_at', { ascending: false })
         .limit(200);
       if (error) throw error;
-      const flagged = (data ?? []).filter(m =>
+      const flagged = ((data ?? []) as any[]).filter(m =>
         m.content && ALERT_KEYWORDS.some(kw => m.content!.includes(kw))
       );
-      return flagged.slice(0, 20);
+      return flagged.slice(0, 20) as any[];
     },
     refetchInterval: 60_000,
   });
 
-  const voterIds = [...new Set(alerts.map(a => a.lead_id).filter(Boolean))];
+  const voterIds = [...new Set(alerts.map((a: any) => a.lead_id).filter(Boolean))];
   const { data: voterMap = {} } = useQuery({
-    queryKey: ['notif-leads', voterIds.join(',')],
+    queryKey: ['notif-leads', scope, voterIds.join(',')],
     queryFn: async () => {
       if (!voterIds.length) return {};
       const { data } = await supabase
         .from('leads')
         .select('id, full_name')
+        .eq('assigned_to', scope!)
         .in('id', voterIds as string[]);
       return Object.fromEntries((data ?? []).map(v => [v.id, v.full_name]));
     },
-    enabled: voterIds.length > 0,
+    enabled: voterIds.length > 0 && !!scope,
   });
 
   // ---- Inbound WhatsApp / client messages (near real-time via short polling;
   // Realtime stays disabled on `messages` for privacy) ----
   const { data: inbound = [] } = useQuery({
-    queryKey: ['notif-inbound-messages', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['notif-inbound-messages', scope],
+    enabled: !!scope,
     refetchInterval: 15_000,
     queryFn: async () => {
       const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from('messages')
-        .select('id, content, created_at, lead_id, channel, platform, sender_type, leads!inner(id, full_name)')
+        .select('id, content, created_at, lead_id, channel, platform, sender_type, leads!inner(id, full_name, assigned_to)')
         .eq('sender_type', 'voter')
+        .eq('leads.assigned_to', scope!)
         .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(30);
@@ -127,13 +136,14 @@ export default function NotificationCenter() {
 
   // ---- New property tour bookings (Realtime enabled on property_tours) ----
   const { data: tours = [] } = useQuery({
-    queryKey: ['notif-tours', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['notif-tours', scope],
+    enabled: !!scope,
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('property_tours')
-        .select('id, client_name, client_phone, property_title, scheduled_at, created_at, status')
+        .select('id, client_name, client_phone, property_title, scheduled_at, created_at, status, owner_id')
+        .eq('owner_id', scope!)
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;

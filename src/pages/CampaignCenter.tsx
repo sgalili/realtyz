@@ -4833,12 +4833,12 @@ const PublishedFeed = ({
         const msg = await extractFunctionError(error, 'רענון מדדי פייסבוק נכשל');
         console.error('[refreshMetrics] analytics invoke error', { error, message: msg });
         const graphFailure = facebookGraphFailure(msg);
-        if (graphFailure) {
-          blockFacebookSync(
-            graphFailure === 'permission'
-              ? 'החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).'
-              : 'תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.',
-          );
+        if (graphFailure === 'token') {
+          blockFacebookSync('תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.');
+        } else if (graphFailure === 'permission') {
+          // A missing read permission is NOT a disconnection: keep the page
+          // connected and keep allowing refreshes, just explain the gap.
+          setFacebookSyncWarning('החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).');
         }
         return false;
       }
@@ -4907,7 +4907,7 @@ const PublishedFeed = ({
       console.warn('[refreshMetrics] analytics crashed (non-fatal)', err);
       return false;
     }
-  }, [blockFacebookSync, userId, workspaceOwnerId]);
+  }, [blockFacebookSync, setFacebookSyncWarning, userId, workspaceOwnerId]);
 
 
   useEffect(() => {
@@ -5123,12 +5123,10 @@ const PublishedFeed = ({
               raw_error: (syncData as any)?.raw_error,
               graph_source: (syncData as any)?.graph_source,
             });
-            if (graphFailure) {
-              blockFacebookSync(
-                graphFailure === 'permission'
-                  ? 'החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).'
-                  : 'תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.',
-              );
+            if (graphFailure === 'token') {
+              blockFacebookSync('תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.');
+            } else if (graphFailure === 'permission') {
+              setFacebookSyncWarning('החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).');
             } else {
               setFacebookSyncWarning(String(providerError || 'סנכרון הפוסטים מפייסבוק נכשל זמנית.'));
             }
