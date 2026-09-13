@@ -532,7 +532,7 @@ Deno.serve(async (req) => {
       // hides native/other-authored items. Walk BOTH edges and merge so a full
       // import really means every recent post on the Page.
       const edges = ["published_posts", "feed", "posts"];
-      const buildUrl = (edge: string) => `${
+      const buildUrl = (edge: string, after?: string | null) => `${
         new URL(`${cred.pageId}/${edge}`, "https://graph.facebook.com/v26.0/")
           .toString()
       }?${
@@ -541,6 +541,7 @@ Deno.serve(async (req) => {
           limit: String(Math.min(100, Math.max(10, pageSize))),
           since: sinceParam,
           ...(untilParam ? { until: untilParam } : {}),
+          ...(after ? { after } : {}),
           access_token: cred.token,
         }).toString()
       }`;
@@ -580,13 +581,6 @@ Deno.serve(async (req) => {
           continue;
         }
         const items: any[] = Array.isArray(json?.data) ? json.data : [];
-        if (!items.length) {
-          // Move on to the next edge instead of ending the whole import.
-          edgeIndex += 1;
-          if (edgeIndex >= edges.length) break;
-          nextUrl = buildUrl(edges[edgeIndex]);
-          continue;
-        }
         for (const it of items) {
           const id = asText(it?.id);
           if (!id || seen.has(id)) continue;
@@ -607,8 +601,13 @@ Deno.serve(async (req) => {
             fbName: ws?.facebook_page_name ?? null,
           });
         }
+        // Graph may return an empty filtered page with a valid cursor. Always
+        // advance by the opaque `after` cursor before deciding the edge ended.
+        const after = asText(json?.paging?.cursors?.after);
         const paging = typeof json?.paging?.next === "string" ? json.paging.next : "";
-        if (paging) {
+        if (after) {
+          nextUrl = buildUrl(edges[edgeIndex], after);
+        } else if (paging) {
           nextUrl = paging;
         } else {
           edgeIndex += 1;

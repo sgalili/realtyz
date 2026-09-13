@@ -3876,6 +3876,24 @@ const firstPipelineError = (data: any): string | null => {
   return null;
 };
 
+const facebookGraphFailure = (input: any): 'permission' | 'token' | null => {
+  const raw = input?.raw_error ?? input?.error ?? input;
+  const code = Number(input?.code ?? input?.raw_error?.code ?? input?.error?.code ?? 0);
+  const subcode = Number(input?.error_subcode ?? input?.raw_error?.error_subcode ?? input?.error?.error_subcode ?? 0);
+  const message = String(input?.message ?? raw?.message ?? (typeof raw === 'string' ? raw : ''));
+  if (code === 190 || subcode === 463 || subcode === 467 || /OAuthException.*190|error code 190/i.test(message)) {
+    return 'token';
+  }
+  if (
+    code === 10 || code === 200 ||
+    /pages_read_engagement/i.test(message) ||
+    /\b(?:code|error code)\s*[:#]?\s*(?:10|200)\b/i.test(message)
+  ) {
+    return 'permission';
+  }
+  return null;
+};
+
 // Derive the live native post URL from the Meta provider response, or build
 // a best-effort fallback URL from the platform + native post id.
 const derivePostUrl = (r: CampaignRow): string | null => {
@@ -4808,9 +4826,10 @@ const PublishedFeed = ({
       if (error) {
         const msg = await extractFunctionError(error, 'רענון מדדי פייסבוק נכשל');
         console.error('[refreshMetrics] analytics invoke error', { error, message: msg });
-        if (/pages_read_engagement|permission|הרשא|token|טוקן|expired|פג/i.test(msg)) {
+        const graphFailure = facebookGraphFailure(msg);
+        if (graphFailure) {
           blockFacebookSync(
-            /pages_read_engagement|permission|הרשא/i.test(msg)
+            graphFailure === 'permission'
               ? 'החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).'
               : 'תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.',
           );
@@ -5084,9 +5103,13 @@ const PublishedFeed = ({
             },
           });
           const providerError = (syncData as any)?.error || (syncError as any)?.message || null;
-          const permissionBlocked = (syncData as any)?.permission_blocked === true;
+          const graphFailure = facebookGraphFailure({
+            raw_error: (syncData as any)?.raw_error,
+            message: providerError,
+          });
+          const permissionBlocked = (syncData as any)?.permission_blocked === true && graphFailure === 'permission';
           const pulled = Number((syncData as any)?.count ?? 0);
-          if (providerError || (permissionBlocked && pulled === 0)) {
+          if (providerError || (graphFailure && pulled === 0)) {
             console.error('[campaign] facebook graph pull failed', {
               providerError,
               permissionBlocked,
@@ -5094,11 +5117,15 @@ const PublishedFeed = ({
               raw_error: (syncData as any)?.raw_error,
               graph_source: (syncData as any)?.graph_source,
             });
-            blockFacebookSync(
-              permissionBlocked
-                ? 'החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).'
-                : String(providerError || 'תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.'),
-            );
+            if (graphFailure) {
+              blockFacebookSync(
+                graphFailure === 'permission'
+                  ? 'החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).'
+                  : 'תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.',
+              );
+            } else {
+              setFacebookSyncWarning(String(providerError || 'סנכרון הפוסטים מפייסבוק נכשל זמנית.'));
+            }
           } else {
             setFacebookSyncWarning(null);
           }

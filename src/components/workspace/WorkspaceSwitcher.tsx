@@ -11,6 +11,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useSidebar } from '@/components/ui/sidebar';
 
 /**
  * Sidebar workspace switcher. The left circle shows the signed-in user's
@@ -25,6 +26,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const { isMobile, setOpenMobile } = useSidebar();
 
   useEffect(() => {
     if (!user?.id) {
@@ -74,7 +76,11 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     try {
       await setActiveWorkspace(ownerId);
       setOpen(false);
+      if (isMobile) setOpenMobile(false);
+      window.dispatchEvent(new CustomEvent('realtyz:workspace-changed', { detail: { ownerId } }));
       toast.success(`מרחב העבודה הוחלף ל${label}`);
+    } catch {
+      // The workspace provider already surfaces a friendly error.
     } finally {
       setBusy(false);
     }

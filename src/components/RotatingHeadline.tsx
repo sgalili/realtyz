@@ -88,7 +88,7 @@ export function RotatingHeadline({ variant = 'onDark' }: { variant?: 'onDark' | 
 
   return (
     <div
-      className="flex relative h-5 flex-1 min-w-0 items-center justify-start overflow-hidden"
+      className="relative flex h-5 min-w-0 flex-1 items-center justify-center overflow-hidden text-center"
       aria-live="polite"
       dir="rtl"
     >
@@ -97,7 +97,7 @@ export function RotatingHeadline({ variant = 'onDark' }: { variant?: 'onDark' | 
         return (
           <span
             key={line}
-            className={`absolute inset-0 flex items-center truncate text-[13px] lg:text-sm font-black tracking-tight transition-opacity ease-in-out ${
+            className={`absolute inset-0 flex items-center justify-center truncate text-center text-[13px] font-black tracking-tight transition-opacity ease-in-out lg:text-sm ${
               isActive ? 'opacity-100' : 'opacity-0'
             }`}
             style={{ ...gradientStyle, transitionDuration: `${FADE_MS}ms` }}

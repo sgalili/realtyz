@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 /**
  * Returns live row counts for sidebar nav badges.
@@ -9,10 +10,11 @@ import { useAuth } from '@/hooks/useAuth';
  */
 export function useSidebarCounts() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
 
   return useQuery({
-    queryKey: ['sidebar-counts', user?.id ?? 'anon'],
-    enabled: !!user,
+    queryKey: ['sidebar-counts', workspaceOwnerId ?? 'anon'],
+    enabled: !!user && !!workspaceOwnerId,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
