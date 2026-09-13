@@ -1169,7 +1169,7 @@ const OmnichannelInbox = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-48 text-right">
                     <DropdownMenuItem onClick={() => setManualTakeoverWarning(true)}>העברה לנציג</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setChatAutopilot(!chatAutopilotOn)}>{chatAutopilotOn ? 'כיבוי AI לשיחה זו' : 'הפעלת AI לשיחה זו'}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setChatAutopilot(!chatAutopilotOn)}>{chatAutopilotOn ? 'כיבוי ריטה לשיחה זו' : 'הפעלת ריטה לשיחה זו'}</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => toast.info('פרופיל הליד פתוח בצד')}>הצגת פרופיל מתעניין</DropdownMenuItem>
@@ -1309,7 +1309,7 @@ const OmnichannelInbox = () => {
                     {manualTakeoverWarning
                       ? 'מצב ידני - הטייס האוטומטי מושהה לשיחה זו'
                       : chatAutopilotOn
-                        ? 'טייס אוטומטי פעיל לשיחה זו - ה-AI עונה באופן אוטומטי'
+                        ? 'טייס אוטומטי פעיל לשיחה זו - ריטה עונה באופן אוטומטי'
                         : 'טייס אוטומטי כבוי לשיחה זו - המענה ידני'}
                   </span>
                 </div>
