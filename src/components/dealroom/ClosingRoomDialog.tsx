@@ -137,6 +137,25 @@ export function ClosingRoomDialog({
     }
   }, [selectedListing, price]);
 
+  /**
+   * Edge-function errors arrive as FunctionsHttpError with the real reason in
+   * the response body — read it so the broker sees why sending failed instead
+   * of a bare "non-2xx status code".
+   */
+  async function edgeMessage(err: any, fallback: string): Promise<string> {
+    try {
+      const res = err?.context;
+      if (res && typeof res.json === 'function') {
+        const j = await res.clone().json();
+        const e = j?.error;
+        if (typeof e === 'string') return e;
+        if (e?.fieldErrors) return Object.values(e.fieldErrors).flat().join(', ');
+        if (j?.details) return String(j.details);
+      }
+    } catch { /* body already consumed or not JSON */ }
+    return err?.message || fallback;
+  }
+
   async function generateAndSend() {
     if (!lead || busy) return;
     setBusy(true);
@@ -151,22 +170,26 @@ export function ClosingRoomDialog({
           tour_date: template === 'tour_agreement' && tourDate ? tourDate : undefined,
         },
       });
-      if (genErr) throw genErr;
+      if (genErr) throw new Error(await edgeMessage(genErr, 'הפקת המסמך נכשלה'));
       const documentId = (gen as any)?.document_id;
       if (!documentId) throw new Error('לא הוחזר מזהה מסמך');
 
       const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-closing-doc', {
         body: {
           document_id: documentId,
-          site_url: window.location.origin,
+          site_url: publicUrl('').replace(/\/$/, ''),
         },
       });
-      if (sendErr) throw sendErr;
+      if (sendErr) throw new Error(await edgeMessage(sendErr, 'שליחת המסמך נכשלה'));
+      if ((sendRes as any)?.success === false) {
+        throw new Error((sendRes as any)?.error || 'שליחת המסמך נכשלה');
+      }
 
       toast.success('המסמך נשלח לחתימה', {
         description: `${lead.full_name || 'הלקוח'} יקבל קישור ב-WhatsApp לעיון וחתימה.`,
       });
       queryClient.invalidateQueries({ queryKey: ['closing-docs', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['lead-signature-docs', lead.id] });
       queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
     } catch (e: any) {
       toast.error('שליחת המסמך נכשלה', { description: e?.message });
