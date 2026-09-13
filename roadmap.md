@@ -2,6 +2,8 @@
 
 ## Active Tasks
 
+- [DONE] Facebook campaigns: full `pages_read_engagement` reconnect, one-click reconnect banner, and blocked retry loops without card flicker
+
 1. [DONE] Show 3 metric cards in the same row on mobile view (`Landing.tsx`)
 2. [DONE] Auto-link Gmail, Calendar, and YouTube on initial Google Sign-In
    - Added `google_all` combined scope to `socialAutomationService.ts`

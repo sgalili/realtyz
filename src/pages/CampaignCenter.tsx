@@ -4371,6 +4371,21 @@ const PublishedFeed = ({
   // Visible warning when the live Facebook pull fails (expired token / missing
   // pages_read_engagement permission) instead of failing silently.
   const [fbSyncWarning, setFbSyncWarning] = useState<string | null>(null);
+  // A definitive token/scope failure pauses automatic provider calls until the
+  // user explicitly reconnects or starts a manual sync. This prevents the 90s
+  // poller, visibility handler and initial hydration from retrying together.
+  const fbSyncBlockedRef = useRef(false);
+  const fbSyncWarningRef = useRef<string | null>(null);
+  const fullSyncRunningRef = useRef(false);
+  const setFacebookSyncWarning = useCallback((message: string | null) => {
+    if (fbSyncWarningRef.current === message) return;
+    fbSyncWarningRef.current = message;
+    setFbSyncWarning(message);
+  }, []);
+  const blockFacebookSync = useCallback((message: string) => {
+    fbSyncBlockedRef.current = true;
+    setFacebookSyncWarning(message);
+  }, [setFacebookSyncWarning]);
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
   // Per-campaign cooldown timestamp (ms epoch). Button is disabled with a
   // MM:SS countdown until now >= cooldownUntil.
@@ -4495,7 +4510,7 @@ const PublishedFeed = ({
     })();
   }, [workspaceOwnerId]);
 
-  const handleFeedConnect = async (id: string) => {
+  const handleFeedConnect = useCallback(async (id: string) => {
     // Channels that still require a managed aggregator account cannot be
     // self-connected — surface the support popup instead of a dead redirect.
     if (!isNativeChannel(id)) {
@@ -4511,6 +4526,7 @@ const PublishedFeed = ({
       const { data, error } = await supabase.functions.invoke('meta-page-connect', {
         body: {
           action: 'start',
+          scope_tier: 'full',
           redirect_uri: oauthRedirectUri(),
           return_origin: oauthReturnOrigin(),
         },
@@ -4521,17 +4537,21 @@ const PublishedFeed = ({
       if (!url) { toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Meta'); return; }
       if (!openOAuthWindow(String(url))) {
         toast.error('הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים ונסו שוב.');
+      } else {
+        // The next explicit/manual refresh may probe the newly granted token.
+        fbSyncBlockedRef.current = false;
       }
     } catch (e: any) {
       toast.dismiss('meta-connect-feed');
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
     }
-  };
+  }, []);
 
 
 
 
-  const load = async (opts: { forceFb?: boolean; skipFbImport?: boolean } = {}) => {
+  const loadRef = useRef<(opts?: { forceFb?: boolean; skipFbImport?: boolean }) => Promise<{ rows: CampaignRow[]; ownerScope: string | null; importedCount: number; importComplete: boolean }>>(async () => ({ rows: [], ownerScope: null, importedCount: 0, importComplete: false }));
+  const load = useCallback(async (opts: { forceFb?: boolean; skipFbImport?: boolean } = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setRows((prev) => prev ?? []); return { rows: rowsRef.current ?? [], ownerScope: null as string | null, importedCount: 0, importComplete: false }; }
     setUserId(user.id);
@@ -4742,7 +4762,7 @@ const PublishedFeed = ({
               const removed = Number((data as any)?.pruned_missing) || 0;
               if (removed > 0 || Number((data as any)?.upserted) > 0) {
                 // Repaint from the DB (skip a second provider round-trip).
-                void load({ skipFbImport: true });
+                void loadRef.current({ skipFbImport: true });
               }
             } catch (err) {
               console.warn('[PublishedFeed] native reconcile failed (non-fatal)', err);
@@ -4753,7 +4773,8 @@ const PublishedFeed = ({
     }
 
     return { rows: merged, ownerScope, importedCount: shouldImport ? merged.length : 0, importComplete: merged.length >= EXPECTED_NATIVE_FACEBOOK_POSTS };
-  };
+  }, [queryClient, workspaceOwnerId]);
+  useEffect(() => { loadRef.current = load; }, [load]);
 
 
 
@@ -4761,9 +4782,10 @@ const PublishedFeed = ({
   // land back on campaign_logs and stream in via the realtime subscription below — and
   // (b) pull fresh inbound comments into engagement_events so the per-card comments tree
   // updates without a manual refresh.
-  const refreshMetrics = async (ownerOverride?: string | null): Promise<boolean> => {
+  const refreshMetrics = useCallback(async (ownerOverride?: string | null): Promise<boolean> => {
     const metricsOwner = ownerOverride ?? workspaceOwnerId ?? userId;
     if (!metricsOwner) return false;
+    if (fbSyncBlockedRef.current) return false;
     // Force a direct live page fetch every time — bypass any cached counters
     // so the UI mirrors the exact real-time Meta payload.
     const cacheBust = `${Date.now()}-${crypto.randomUUID()}`;
@@ -4786,7 +4808,13 @@ const PublishedFeed = ({
       if (error) {
         const msg = await extractFunctionError(error, 'רענון מדדי פייסבוק נכשל');
         console.error('[refreshMetrics] analytics invoke error', { error, message: msg });
-        toast.error(msg);
+        if (/pages_read_engagement|permission|הרשא|token|טוקן|expired|פג/i.test(msg)) {
+          blockFacebookSync(
+            /pages_read_engagement|permission|הרשא/i.test(msg)
+              ? 'החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).'
+              : 'תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.',
+          );
+        }
         return false;
       }
       const surfacedError = firstPipelineError(data);
@@ -4854,7 +4882,7 @@ const PublishedFeed = ({
       console.warn('[refreshMetrics] analytics crashed (non-fatal)', err);
       return false;
     }
-  };
+  }, [blockFacebookSync, userId, workspaceOwnerId]);
 
 
   useEffect(() => {
@@ -4976,7 +5004,7 @@ const PublishedFeed = ({
     let running = false;
 
     const syncLive = async () => {
-      if (cancelled || running || document.visibilityState !== 'visible') return;
+      if (cancelled || running || fbSyncBlockedRef.current || document.visibilityState !== 'visible') return;
       running = true;
       try {
         // 1) Headline counters straight from the live Page.
@@ -5029,11 +5057,10 @@ const PublishedFeed = ({
   // and re-pulls the comments trees of the open cards.
   useEffect(() => {
     const scope = workspaceOwnerId ?? userId;
-    let running = false;
-
     const runFullSync = async () => {
-      if (running) return;
-      running = true;
+      if (fullSyncRunningRef.current) return;
+      fullSyncRunningRef.current = true;
+      fbSyncBlockedRef.current = false;
       const toastId = 'campaigns-hero-sync';
       toast.loading('מסנכרן פוסטים חיים מפייסבוק…', { id: toastId });
       let ok = false;
@@ -5067,13 +5094,13 @@ const PublishedFeed = ({
               raw_error: (syncData as any)?.raw_error,
               graph_source: (syncData as any)?.graph_source,
             });
-            setFbSyncWarning(
+            blockFacebookSync(
               permissionBlocked
-                ? 'החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement). יש להתחבר מחדש לעמוד בהגדרות הערוצים כדי לשלוף פוסטים ותגובות.'
-                : String(providerError || 'שליפת הפוסטים מפייסבוק נכשלה — ייתכן שתוקף החיבור לעמוד פג. התחברו מחדש בהגדרות הערוצים.'),
+                ? 'החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).'
+                : String(providerError || 'תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.'),
             );
           } else {
-            setFbSyncWarning(null);
+            setFacebookSyncWarning(null);
           }
         }
         // 2) Repaint the feed straight from the database.
@@ -5103,7 +5130,7 @@ const PublishedFeed = ({
         console.warn('[campaign] manual facebook sync failed', err);
         toast.error('הסנכרון מפייסבוק נכשל, נסו שוב', { id: toastId });
       } finally {
-        running = false;
+        fullSyncRunningRef.current = false;
         window.dispatchEvent(new CustomEvent('rz:campaigns-sync:done', { detail: { ok } }));
       }
     };
@@ -5112,7 +5139,7 @@ const PublishedFeed = ({
     window.addEventListener('rz:campaigns-sync', onSync as EventListener);
     return () => window.removeEventListener('rz:campaigns-sync', onSync as EventListener);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceOwnerId, userId]);
+  }, [blockFacebookSync, load, refreshMetrics, setFacebookSyncWarning, workspaceOwnerId, userId]);
 
 
 
@@ -5635,15 +5662,26 @@ const PublishedFeed = ({
       </div>
 
       {fbSyncWarning ? (
-        <div className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-right">
-          <p className="text-xs font-medium leading-5 text-destructive">{fbSyncWarning}</p>
-          <button
-            type="button"
-            onClick={() => setFbSyncWarning(null)}
-            className="shrink-0 text-xs font-semibold text-destructive underline"
-          >
-            סגור
-          </button>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-right">
+          <p className="min-w-0 flex-1 text-xs font-medium leading-5 text-destructive">{fbSyncWarning}</p>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleFeedConnect('facebook')}
+            >
+              התחבר מחדש
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setFacebookSyncWarning(null)}
+              className="text-destructive hover:text-destructive"
+            >
+              סגור
+            </Button>
+          </div>
         </div>
       ) : null}
 
