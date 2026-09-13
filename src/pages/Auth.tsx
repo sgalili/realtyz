@@ -292,7 +292,7 @@ const Auth = () => {
                   index === headerHeadlineIndex ? 'opacity-100' : 'opacity-0',
                 )}
               >
-                {line.node}
+                {line.render()}
               </span>
             ))}
           </div>
