@@ -4907,7 +4907,7 @@ const PublishedFeed = ({
       console.warn('[refreshMetrics] analytics crashed (non-fatal)', err);
       return false;
     }
-  }, [blockFacebookSync, userId, workspaceOwnerId]);
+  }, [blockFacebookSync, setFacebookSyncWarning, userId, workspaceOwnerId]);
 
 
   useEffect(() => {
