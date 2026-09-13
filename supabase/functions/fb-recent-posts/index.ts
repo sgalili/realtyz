@@ -487,11 +487,17 @@ Deno.serve(async (req) => {
     const ws = { facebook_page_id: page?.pageId ?? null, facebook_page_name: page?.pageName ?? null };
     const profileKey: string | null = null;
 
-    const resolveGraphCredential = async (): Promise<
-      { token: string; pageId: string | null; source: string | null }
-    > => {
-      if (page?.token) return { token: page.token, pageId: page.pageId, source: "messenger_page_bindings" };
-      return { token: "", pageId: null, source: null };
+    const resolveGraphCredential = async (): Promise<GraphCred> => {
+      if (page?.token) {
+        return {
+          token: page.token,
+          pageId: page.pageId,
+          source: "messenger_page_bindings",
+          recordId: page.recordId ?? null,
+          updatedAt: page.updatedAt ?? null,
+        };
+      }
+      return { token: "", pageId: null, source: null, recordId: null, updatedAt: null };
     };
 
     /**
