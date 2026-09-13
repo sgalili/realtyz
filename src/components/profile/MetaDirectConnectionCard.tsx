@@ -345,20 +345,15 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     setConnecting(true);
     try {
       clearPendingOAuth();
-      const res = await withTimeout(
-        callPageConnect<any>({
-          action: 'start',
-          redirect_uri: oauthRedirectUri(),
-          return_origin: oauthReturnOrigin(),
-        }),
+      // Shared start path — identical function, scopes and DB upsert as the
+      // /campaigns banner.
+      const authUrl = await withTimeout(
+        startMetaPageConnect(),
         EXCHANGE_TIMEOUT_MS,
         'שירות החיבור לפייסבוק לא הגיב בזמן. נסה שוב.',
       );
-
-      if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       // Open in a popup / new tab. Assigning window.top.location throws a
       // sandbox permission error inside the preview iframe.
-      const authUrl = String(res.auth_url);
       const opened = openOAuthWindow(authUrl);
       if (!opened) {
         setConnecting(false);
