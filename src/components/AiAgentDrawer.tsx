@@ -631,11 +631,6 @@ ${shareUrl}
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
           {messages.length === 0 && (
             <div className="space-y-5 py-2">
-              <div className="text-center space-y-2 pb-1">
-                <RitaAvatar className="h-16 w-16 mx-auto" />
-                <p className="text-[18px] text-muted-foreground">שלום! אני ריטה, סוכנת ה-AI של Realtyz.</p>
-                <p className="text-[16px] text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
-              </div>
               <div className="space-y-1.5">
                 <p className="text-[15px] font-semibold text-muted-foreground px-1">בחר נושא לקבלת 3 שאלות מומלצות:</p>
                 {TOPICS.map((topic, ti) => {
