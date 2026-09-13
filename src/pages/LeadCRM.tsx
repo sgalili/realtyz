@@ -2340,9 +2340,12 @@ const LeadCRM = () => {
                           toast.success('השם עודכן');
                         }}
                       />
-                      <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground" title={contactSubtitle(selectedVoter, activeVoterMessages, activeVoterChatHistory as any[])}>
+                      {/* Absolutely centred against the whole header (not the name block),
+                          so the subtitle sits dead-centre on screen under the name. */}
+                      <span className="absolute inset-x-0 top-7 mx-auto block max-w-[90%] truncate text-center text-xs font-normal text-muted-foreground" title={contactSubtitle(selectedVoter, activeVoterMessages, activeVoterChatHistory as any[])}>
                         {contactSubtitle(selectedVoter, activeVoterMessages, activeVoterChatHistory as any[])}
                       </span>
+
                       {(() => {
                         const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
                         const email = (selectedVoter as any).email as string | undefined;
