@@ -172,18 +172,25 @@ export default function SmartTimelineCard({
           signatureDocIds.has(String(meta.document_id ?? ''))
         ) continue;
 
-        const kind: any = meta.note_category
-          ?? (r.action_type === 'note' ? 'note' : r.platform === 'phone' ? 'call' : r.action_type === 'interaction' ? 'message' : 'system');
+        const isSignature = String(r.action_type ?? '').startsWith('signature');
+        const kind: any = isSignature ? 'signature' : (meta.note_category
+          ?? (r.action_type === 'note' ? 'note' : r.platform === 'phone' ? 'call' : r.action_type === 'interaction' ? 'message' : 'system'));
         out.push({
           id: `act-${r.id}`,
           kind,
-          label: r.action_type === 'note'
-            ? `הערה · ${NOTE_CATEGORY_LABEL[(meta.note_category as NoteCategory) ?? 'note']}`
-            : `${r.action_type === 'interaction' ? 'אינטראקציה' : 'פעילות'} · ${r.platform}`,
+          label: isSignature
+            ? `חתימה דיגיטלית · ${meta.document_title ?? ''}`
+            : r.action_type === 'note'
+              ? `הערה · ${NOTE_CATEGORY_LABEL[(meta.note_category as NoteCategory) ?? 'note']}`
+              : `${r.action_type === 'interaction' ? 'אינטראקציה' : 'פעילות'} · ${r.platform}`,
           detail: String(r.content ?? ''),
           at: asDate(r.created_at),
           actor: r.actor_label ?? (r.actor_type === 'ai' ? 'AI' : null),
+          ...(isSignature
+            ? { signatureStatus: meta.signature_status === 'signed' ? 'signed' as const : 'pending' as const }
+            : {}),
         });
+
       }
 
       for (const r of (msgs?.data ?? []) as any[]) {
