@@ -311,7 +311,7 @@ export default function Landing() {
       </section>
 
       {/* ───────── All-in-One: מחליף את כל הכלים החיצוניים ───────── */}
-      <section id="all-in-one" className="border-t border-border/60 pt-[15px] pb-20">
+      <section id="all-in-one" className="border-t border-border/60 pt-[15px] pb-5">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
