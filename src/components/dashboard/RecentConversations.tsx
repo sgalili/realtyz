@@ -4,9 +4,10 @@ import { supabase } from '@/lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, User, MessageCircle } from 'lucide-react';
+import { User, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import VoterAvatar from '@/components/VoterAvatar';
+import { RitaAvatar } from '@/components/RitaAvatar';
 
 interface ChatRow {
   id: string;
@@ -138,7 +139,7 @@ const RecentConversations = () => {
                 return (
                   <div key={msg.id} className={`flex gap-2 ${isAI ? '' : 'flex-row-reverse'}`}>
                     <div className={`shrink-0 h-7 w-7 rounded-full flex items-center justify-center ${isAI ? 'bg-primary/15' : 'bg-accent'}`}>
-                      {isAI ? <Bot className="h-3.5 w-3.5 text-primary" /> : <User className="h-3.5 w-3.5" />}
+                      {isAI ? <RitaAvatar className="h-7 w-7 border-0 ring-0" /> : <User className="h-3.5 w-3.5" />}
                     </div>
                     <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${isAI ? 'bg-muted' : 'bg-primary/10'}`}>
                       <p className="whitespace-pre-wrap">{msg.content}</p>

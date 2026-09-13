@@ -8,13 +8,14 @@ import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown, Sparkles, MessageSquare, CornerDownLeft, MessageCircleMore } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown, Sparkles, MessageSquare, CornerDownLeft, MessageCircleMore } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { campaignMatchesExternalPost, getCampaignPostIds, platformForCampaignChannel } from "@/lib/campaignPostIds";
 import { learnFromEdit } from "@/lib/learnFromEdit";
 import { t as i18n } from "@/i18n/strings";
+import { RitaAvatar } from '@/components/RitaAvatar';
 
 const extractFunctionError = async (error: any, fallback = "שגיאת API חיצונית") => {
   const status = error?.context?.status ?? error?.status;
@@ -1432,7 +1433,7 @@ function CommentBubble({
             className="flex w-full items-start gap-1 text-right text-[12px] text-muted-foreground hover:text-foreground"
             aria-expanded={threadExpanded}
           >
-            <Bot className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <RitaAvatar className="h-4 w-4 shrink-0 mt-0.5 border-0 ring-0" />
             <span className="flex-1 whitespace-pre-wrap break-words">
               {cleanReplyPreview ?? row.ai_reply_text ?? ""}
             </span>
@@ -1447,7 +1448,7 @@ function CommentBubble({
         {alreadyReplied ? (
           (replyCount ?? 0) === 0 && (
             <div className="flex w-full items-start gap-1 text-right text-[12px] text-muted-foreground">
-              <Bot className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <RitaAvatar className="h-4 w-4 shrink-0 mt-0.5 border-0 ring-0" />
               <span className="flex-1 whitespace-pre-wrap break-words">
                 {cleanReplyPreview ?? row.ai_reply_text ?? row.inbound_text}
               </span>
@@ -1462,7 +1463,7 @@ function CommentBubble({
                 className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
                 aria-expanded={expanded}
               >
-                <Bot className="h-3.5 w-3.5" />
+                <RitaAvatar className="h-4 w-4 border-0 ring-0" />
                 {toggleLabel}
                 {expanded ? (
                   <ChevronUp className="h-3.5 w-3.5" />

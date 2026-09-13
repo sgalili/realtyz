@@ -7,12 +7,13 @@ import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import {
   MessageSquare, Smile, Meh, Frown, Instagram, Send as TelegramIcon,
-  Bot, MessageCircle, Wallet, Tag, Home as HomeIcon, Radio, Target, Compass,
+  MessageCircle, Wallet, Tag, Home as HomeIcon, Radio, Target, Compass,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import VoterAvatar from '@/components/VoterAvatar';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { RitaAvatar } from '@/components/RitaAvatar';
 
 const loyaltyConfig: Record<string, { label: string; color: string }> = {
   cold: { label: 'מתעניין קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
@@ -143,7 +144,7 @@ const VoterProfileSidebar = ({ voter }: Props) => {
         {/* AI Personal Digital Agent */}
         <div className="rounded-lg border border-primary/30 bg-gradient-to-l from-primary/10 to-transparent p-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <Bot className="h-5 w-5 text-primary shrink-0" />
+            <RitaAvatar className="h-8 w-8" />
             <div className="min-w-0">
               <p className="text-sm font-semibold">סוכן דיגיטלי אישי</p>
               <p className="text-[10px] text-muted-foreground">מנהל קשר, הצעות וסיורים</p>

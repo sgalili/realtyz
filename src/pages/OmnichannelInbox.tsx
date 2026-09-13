@@ -28,6 +28,7 @@ import VoterProfileSidebar from '@/components/inbox/VoterProfileSidebar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import VoterAvatar from '@/components/VoterAvatar';
+import { RitaAvatar } from '@/components/RitaAvatar';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { getDemoCandidateMessages, getDemoCandidateVoters } from '@/lib/demoData';
 import { useDemoTicker } from '@/hooks/useDemoTicker';
@@ -1225,7 +1226,9 @@ const OmnichannelInbox = () => {
                           </div>
                         )}
                         <div className={`flex min-w-0 items-end gap-2 ${isOutbound ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
-                          {isOutbound ? (
+                          {isAiMessage ? (
+                            <RitaAvatar className="h-7 w-7" />
+                          ) : isOutbound ? (
                             <VoterAvatar
                               fullName={agentProfile?.full_name ?? 'סוכן'}
                               profilePictureUrl={agentProfile?.avatar_url ?? null}
@@ -1258,7 +1261,7 @@ const OmnichannelInbox = () => {
                             <div className="mb-1 flex items-center justify-end gap-1.5">
                               {isAiMessage && (
                                 <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-background/60 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                                  <Bot className="h-3 w-3" />
+                                  <RitaAvatar className="h-4 w-4 border-0 ring-0" />
                                   AI
                                 </span>
                               )}
@@ -1300,9 +1303,7 @@ const OmnichannelInbox = () => {
                       if (v) setManualTakeoverWarning(false);
                     }}
                   >
-                    <Bot
-                      className={`pointer-events-none absolute left-1 top-1/2 z-20 h-3 w-3 -translate-y-1/2 transition-transform group-data-[state=checked]:translate-x-5 ${chatAutopilotOn ? 'text-whatsapp-header' : 'text-muted-foreground'}`}
-                    />
+                    <RitaAvatar className="pointer-events-none absolute left-1 top-1/2 z-20 h-3 w-3 -translate-y-1/2 border-0 ring-0 transition-transform group-data-[state=checked]:translate-x-5" />
                   </Switch>
                   <span className="text-xs font-medium">
                     {manualTakeoverWarning

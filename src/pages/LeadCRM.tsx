@@ -37,6 +37,7 @@ import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import { BROKER_RECRUITMENT_MODE } from '@/config/workspaceMode';
+import { RitaAvatar } from '@/components/RitaAvatar';
 import { renderBrokerFirstOutreach, BROKER_WA_TEMPLATE_NAME } from '@/lib/brokerOutreachTemplates';
 import { resolveLeadGender } from '@/lib/hebrewGender';
 import VoterAvatar from '@/components/VoterAvatar';
@@ -2273,7 +2274,7 @@ const LeadCRM = () => {
                 case 'created': return <UserPlus className="h-3.5 w-3.5" />;
                 case 'message_out': return <ArrowUpRight className="h-3.5 w-3.5" />;
                 case 'message_in': return <ArrowDownLeft className="h-3.5 w-3.5" />;
-                case 'chat_ai': return <Bot className="h-3.5 w-3.5" />;
+                case 'chat_ai': return <RitaAvatar className="h-4 w-4 border-0 ring-0" />;
                 case 'chat_user': return <MessageCircle className="h-3.5 w-3.5" />;
                 case 'status': return <Tag className="h-3.5 w-3.5" />;
                 default: return <Clock className="h-3.5 w-3.5" />;
@@ -2431,7 +2432,7 @@ const LeadCRM = () => {
                                 <span
                                   className="pointer-events-none absolute inset-y-0 left-0 z-20 flex w-5 items-center justify-center transition-transform group-data-[state=checked]:translate-x-5 group-data-[state=unchecked]:translate-x-0"
                                 >
-                                  <Bot className="h-3 w-3 text-[#25D366] group-data-[state=unchecked]:text-slate-400" strokeWidth={2.25} />
+                                  <RitaAvatar className="h-3 w-3 border-0 ring-0 grayscale group-data-[state=checked]:grayscale-0" />
                                 </span>
                               </Switch>
                             </div>
