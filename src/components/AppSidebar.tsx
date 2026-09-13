@@ -8,7 +8,9 @@ import {
   ClipboardList,
   HelpCircle,
   Gift,
+  type LucideProps,
 } from 'lucide-react';
+import type { ComponentType } from 'react';
 import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -40,7 +42,7 @@ import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIco
 type NavItem = {
   title: string;
   url: string;
-  icon: typeof Activity;
+  icon: ComponentType<LucideProps>;
   iconColor: string;
   badgeClass: string;
   aliases?: string[];
