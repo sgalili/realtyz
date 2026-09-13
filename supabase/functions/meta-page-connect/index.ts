@@ -448,7 +448,10 @@ Deno.serve(async (req) => {
         state: oauthState("facebook_page", returnOrigin),
         auth_type: "rerequest",
       });
-      if (CONFIG_ID) params.set("config_id", CONFIG_ID);
+      // Reconnection must honour the explicit scope list above. A Business
+      // Login config_id makes Meta ignore `scope`, so only use it when a caller
+      // deliberately opts into that preconfigured flow.
+      if (CONFIG_ID && body?.use_config_id === true) params.set("config_id", CONFIG_ID);
       return json({
         auth_url: `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params}`,
         scopes,
