@@ -2299,7 +2299,7 @@ const LeadCRM = () => {
                                 : <Mail className="h-4 w-4" strokeWidth={1.8} />,
                           }));
                         return (
-                          <div className="absolute left-1/2 top-full mt-2 flex max-w-full -translate-x-1/2 items-center justify-center gap-1 whitespace-nowrap">
+                          <div className="absolute left-1/2 top-full mt-2 flex w-max max-w-[calc(100vw-3rem)] -translate-x-1/2 items-center justify-center gap-1 overflow-x-auto whitespace-nowrap">
                             {/* Phone lives in the details panel below, not in the header */}
                             {channels.map((c) => {
                               const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55'}`;
@@ -2480,7 +2480,6 @@ const LeadCRM = () => {
 
                     const ownerLead = isOwnerLead(selectedVoter);
                     const leadKind = String(prefs.lead_kind ?? '');
-                    const isBroker = leadKind === 'broker';
                     const isSeeker = leadKind === 'buyer' || leadKind === 'renter';
                     const isPropertyContact = isSeeker || ownerLead;
 

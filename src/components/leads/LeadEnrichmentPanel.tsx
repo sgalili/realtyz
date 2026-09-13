@@ -287,7 +287,6 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
               <SelectContent>
                 <SelectItem value="male">זכר</SelectItem>
                 <SelectItem value="female">נקבה</SelectItem>
-                <SelectItem value="other">אחר</SelectItem>
               </SelectContent>
             </Select>
           </div>
