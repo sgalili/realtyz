@@ -51,47 +51,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
-function describeConnectError(payload: any): string {
-  const parts = [payload?.error, payload?.fb_message, payload?.error_detail?.details, payload?.error_detail?.hint]
-    .filter((p) => typeof p === 'string' && p.trim().length > 0);
-  const unique = Array.from(new Set(parts));
-  return unique.join(' — ');
-}
-
-/** Error that keeps the JSON body so callers can react to flags like retry_basic. */
-class PageConnectError extends Error {
-  payload: any;
-  constructor(message: string, payload: any) {
-    super(message);
-    this.payload = payload ?? null;
-  }
-}
-
-async function callPageConnect<T = any>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('meta-page-connect', { body });
-  if (error) {
-    // Non-2xx responses hide the JSON body behind error.context — read it so the
-    // user sees the real reason instead of "non-2xx status code".
-    let detailed = '';
-    let payload: any = null;
-    try {
-      const ctx: any = (error as any)?.context;
-      payload = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
-      detailed = describeConnectError(payload);
-    } catch {
-      detailed = '';
-    }
-    const raw = detailed || String(error?.message ?? error);
-    throw new PageConnectError(
-      /failed to (send|fetch)/i.test(raw) ? 'לא ניתן להגיע לשירות החיבור לפייסבוק. נסה שוב בעוד רגע.' : raw,
-      payload,
-    );
-  }
-  if (data && (data as any).error) {
-    throw new PageConnectError(describeConnectError(data) || String((data as any).error), data);
-  }
-  return data as T;
-}
+// Connect logic lives in `@/lib/facebookPageConnect` so this card, the
+// /campaigns banner and every other entry point share one code path and one
+// database upsert.
 
 
 
