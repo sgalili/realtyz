@@ -177,6 +177,51 @@ Deno.serve(async (req) => {
         details: { lead_id: doc.lead_id, signer_name: signer_name || null },
       });
 
+      // CRM timeline: mark the existing signature-request entries as signed and
+      // add a dedicated "signed" event.
+      try {
+        const { data: pendingRows } = await admin
+          .from("interaction_activity_log")
+          .select("id, metadata")
+          .eq("thread_key", `lead:${doc.lead_id}`)
+          .eq("action_type", "signature_request");
+        for (const row of (pendingRows ?? []) as any[]) {
+          if (String(row?.metadata?.document_id ?? "") !== doc.id) continue;
+          await admin
+            .from("interaction_activity_log")
+            .update({ metadata: { ...(row.metadata ?? {}), signature_status: "signed", signed_at: nowIso } })
+            .eq("id", row.id);
+        }
+        const { data: ownerProf } = await admin
+          .from("profiles")
+          .select("active_workspace_owner_id, workspace_owner_id")
+          .eq("id", doc.user_id)
+          .maybeSingle();
+        const wsOwner = String(
+          (ownerProf as any)?.active_workspace_owner_id ??
+            (ownerProf as any)?.workspace_owner_id ?? doc.user_id,
+        );
+        await admin.from("interaction_activity_log").insert({
+          user_id: wsOwner,
+          thread_key: `lead:${doc.lead_id}`,
+          platform: "internal",
+          action_type: "signature_signed",
+          actor_type: "system",
+          actor_label: signer_name || "הלקוח",
+          content: `המסמך נחתם דיגיטלית: ${doc.title}`,
+          metadata: {
+            lead_id: doc.lead_id,
+            document_id: doc.id,
+            document_title: doc.title,
+            signature_status: "signed",
+            signed_at: nowIso,
+          },
+        });
+      } catch (e) {
+        console.error("sign-closing-doc timeline log failed", e);
+      }
+
+
       // Notify the agent
       try {
         await fetch(`${SUPABASE_URL}/functions/v1/notify-agent`, {
