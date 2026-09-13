@@ -674,6 +674,11 @@ Deno.serve(async (req) => {
             request_url: nextUrl.replace(/access_token=[^&]+/, "access_token=REDACTED"),
             page_id: cred.pageId,
             token_source: cred.source,
+            // Exact DB row the token came from: makes a mismatch between the
+            // Connections tab binding and this fetch provable from the logs.
+            binding_record_id: cred.recordId ?? null,
+            binding_updated_at: cred.updatedAt ?? null,
+            token_tail: cred.token ? cred.token.slice(-6) : null,
             http_status: status,
             code: (error as any)?.code ?? null,
             subcode: (error as any)?.error_subcode ?? null,
