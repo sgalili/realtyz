@@ -14,8 +14,8 @@ import { Menu } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
-  { match: /^\/$/, title: 'משימות היום' },
-  { match: /^\/(command-center|tasks)/, title: 'משימות היום' },
+  { match: /^\/$/, title: 'משימות' },
+  { match: /^\/(command-center|tasks)/, title: 'משימות' },
   { match: /^\/dashboard$/, title: 'לוח בקרה' },
   { match: /^\/lead-crm/, title: 'אנשי קשר' },
   { match: /^\/inbox/, title: 'תיבת הודעות' },
@@ -44,6 +44,8 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/security/, title: 'אבטחה' },
   { match: /^\/privacy/, title: 'פרטיות וציות' },
   { match: /^\/team/, title: 'ניהול צוות' },
+  { match: /^\/affiliate-network/, title: 'שותפים' },
+  { match: /^\/referral/, title: 'הזמן חברים' },
   { match: /^\/settings\/branding/, title: 'מיתוג הסוכנות' },
   { match: /^\/settings\/system-health/, title: 'תקינות המערכת' },
   { match: /^\/leads/, title: 'פניות נכנסות' },
