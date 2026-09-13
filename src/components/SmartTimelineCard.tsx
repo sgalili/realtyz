@@ -19,11 +19,13 @@ import {
 
 type TimelineEvent = {
   id: string;
-  kind: NoteCategory | 'task' | 'system';
+  kind: NoteCategory | 'task' | 'system' | 'signature';
   label: string;
   detail: string;
   at: string;
   actor?: string | null;
+  /** Live signature status, rendered as a badge on the entry. */
+  signatureStatus?: 'pending' | 'signed';
 };
 
 const KIND_STYLE: Record<string, { icon: typeof Phone; cls: string }> = {
@@ -34,10 +36,12 @@ const KIND_STYLE: Record<string, { icon: typeof Phone; cls: string }> = {
   offer: { icon: Handshake, cls: 'bg-rose-100 text-rose-700' },
   note: { icon: StickyNote, cls: 'bg-slate-100 text-slate-700' },
   task: { icon: CheckCircle2, cls: 'bg-sky-100 text-sky-700' },
+  signature: { icon: FileSignature, cls: 'bg-indigo-100 text-indigo-700' },
   system: { icon: Clock, cls: 'bg-slate-100 text-slate-600' },
 };
 
 const CATEGORIES: NoteCategory[] = ['note', 'call', 'message', 'showing', 'meeting', 'offer'];
+
 
 function asDate(v: any) {
   return v ? new Date(v).toISOString() : new Date().toISOString();
