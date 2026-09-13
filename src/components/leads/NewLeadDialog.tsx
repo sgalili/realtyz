@@ -195,7 +195,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
 
     const preferences: Record<string, unknown> = {
       lead_kind: leadKind!,
-      gender: resolvedGender ?? undefined,
       listing_type: isRental ? 'rent' : 'sale', // legacy mirror for older code paths
       deal_side: isOwner ? 'owner' : 'seeker',
       source,
@@ -278,6 +277,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             city: payload.city,
             neighborhood: payload.neighborhood,
             deal_type: payload.deal_type,
+             gender: payload.gender,
             preferences: payload.preferences,
             interest_tag: payload.interest_tag,
           } as any)
