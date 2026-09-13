@@ -2517,8 +2517,7 @@ const LeadCRM = () => {
                   {(() => {
                     const lead: any = selectedVoter;
                     const isBroker = (lead?.preferences?.lead_kind ?? '') === 'broker';
-                    const hasAny = !!(lead.agency_name || lead.operating_area || lead.notes);
-                    if (!isBroker && !hasAny) return null;
+                    if (!isBroker) return null;
                     const saveField = async (field: string, value: string) => {
                       const next = value.trim() || null;
                       if ((lead[field] ?? null) === next) return;
