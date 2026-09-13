@@ -606,7 +606,9 @@ ${shareUrl}
       {/* Trigger is in AppLayout header */}
       <SheetContent side="left" className="w-full sm:max-w-md p-0 flex flex-col" dir="rtl">
         <div className="relative px-4 py-3 border-b bg-primary/5 flex flex-col items-center justify-center gap-1.5">
+          <RitaAvatar className="h-12 w-12 ring-2 ring-primary/20" />
           <h3 className="text-[18px] font-bold text-center">ריטה, סוכנת ה-AI של Realtyz</h3>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button type="button" variant="ghost" size="sm" className="absolute end-3 top-3 gap-1 text-muted-foreground" disabled={messages.length === 0}>
