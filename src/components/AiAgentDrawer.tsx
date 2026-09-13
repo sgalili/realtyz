@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidateLiveData } from '@/lib/liveSync';
 import { useLocation } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useAuth } from '@/hooks/useAuth';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Loader2, Database, X, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy, Trash2 } from 'lucide-react';
+import { Database, X, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy, Trash2, Send } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -276,7 +276,6 @@ export default function AiAgentDrawer() {
   // NOTE: quick-action pill bar was removed from the composer — we still keep
   // the topic accordion in the empty state above.
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -351,15 +350,6 @@ export default function AiAgentDrawer() {
   }, []);
 
   const { isListening, toggle: toggleVoice } = useVoiceInput(handleVoiceResult);
-
-  // Place the transcript at the newest turn before paint. No smooth scroll,
-  // no visible travel through old messages when the drawer opens.
-  useLayoutEffect(() => {
-    if (!open) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [messages, open, historyLoaded]);
 
   useEffect(() => {
     if (open && historyLoaded) inputRef.current?.focus();
@@ -630,7 +620,7 @@ ${shareUrl}
 
         {/* Messages */}
         <Conversation className="min-h-0" initial="instant" resize="instant">
-          <ConversationContent ref={scrollRef} className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
+          <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
           {messages.length === 0 && (
             <div className="space-y-5 py-2">
               <div className="text-center space-y-2 pb-1">
