@@ -276,7 +276,6 @@ export default function AiAgentDrawer() {
   // NOTE: quick-action pill bar was removed from the composer — we still keep
   // the topic accordion in the empty state above.
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -352,7 +351,11 @@ export default function AiAgentDrawer() {
   const { isListening, toggle: toggleVoice } = useVoiceInput(handleVoiceResult);
 
   useEffect(() => {
-    if (open && historyLoaded) inputRef.current?.focus();
+    if (!open || !historyLoaded) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById('rita-chat-input')?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [open, historyLoaded, isLoading]);
 
   const resetChat = useCallback(async () => {
@@ -972,7 +975,8 @@ ${shareUrl}
             className="bg-background"
           >
             <PromptInputTextarea
-              ref={inputRef}
+              id="rita-chat-input"
+              autoFocus
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={isListening ? '🎙️ מקשיב...' : researchMode ? 'מצב מחקר חי - שאל על שכונה/אזור/פרויקט' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
