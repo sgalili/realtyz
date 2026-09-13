@@ -1,8 +1,4 @@
-# Roadmap
-
-- [ ] Adjust landing alignment and remove the requested divider.
-- [ ] Move and simplify the broker/affiliate mode switch; replace affiliate icons globally.
-- [ ] Make workspace switching immediate and invalidate workspace-scoped data safely.
-- [ ] Correct Facebook permission detection and fetch all posts with cursor pagination.
-- [ ] Route affiliate onboarding conversations to Rita and the inviting broker without cross-workspace leakage.
-- [ ] Verify affected frontend and backend flows.
+- [ ] Add page titles for שותפים and הזמן חברים
+- [ ] Rename משימות היום page title to משימות
+- [ ] Remove Office read-only banner and owner-only edit restrictions
+- [ ] Make service areas a multi-select field
