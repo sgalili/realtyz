@@ -109,6 +109,32 @@ export const BROKER_OUTREACH_TEMPLATES: BrokerOutreachTemplate[] = [
 ];
 
 /**
+ * Short onboarding messages for people who just joined — a new broker on the
+ * platform and a new affiliate partner. Kept brief on purpose: one value line
+ * plus a single next step.
+ */
+export const ONBOARDING_SHORT_TEMPLATES: BrokerOutreachTemplate[] = [
+  {
+    id: 'new-broker-welcome',
+    title: 'ברוך הבא – מתווך חדש',
+    channel: 'whatsapp',
+    body:
+      'היי {{name}}, ברוך הבא ל-Realtyz.\n' +
+      'החשבון שלך פעיל: אנשי קשר, נכסים, מעקבים ופרסום במקום אחד, וריטה עונה בוואטסאפ במקומך.\n' +
+      'רוצה שנעלה יחד את הנכסים ואנשי הקשר שלך? 15 דקות בזום ואתה באוויר.',
+  },
+  {
+    id: 'new-affiliate-welcome',
+    title: 'ברוך הבא – שותף חדש',
+    channel: 'whatsapp',
+    body:
+      'היי {{name}}, ברוך הבא לרשת השותפים של Realtyz.\n' +
+      'יש לך קישור הפניה אישי, ואתה מקבל עמלה על כל מתווך שמצטרף דרכך.\n' +
+      'אשלח לך את הקישור והחומרים לשיתוף, ונקבע שיחה קצרה כדי להתחיל.',
+  },
+];
+
+/**
  * Official Meta WhatsApp template used for the broker first-outreach blast.
  * Template ID: 1543480823752149. Variable {{1}} = broker full name.
  */
