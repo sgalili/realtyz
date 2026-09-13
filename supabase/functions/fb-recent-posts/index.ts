@@ -548,7 +548,7 @@ Deno.serve(async (req) => {
         );
         const fresh = asText(match?.access_token);
         if (!fresh || fresh === page?.token) return null;
-        await admin
+        const { data: saved } = await admin
           .from("messenger_page_bindings")
           .upsert(
             {
@@ -556,13 +556,24 @@ Deno.serve(async (req) => {
               page_id: String(wantedPageId),
               page_name: asText(match?.name) || page?.pageName || null,
               page_access_token: fresh,
+              updated_at: new Date().toISOString(),
             },
             { onConflict: "owner_id,page_id" },
-          );
+          )
+          .select("id, updated_at")
+          .maybeSingle();
         console.log("[fb-recent-posts] refreshed page access token from personal login", {
           page_id: wantedPageId,
+          binding_record_id: (saved as any)?.id ?? null,
+          binding_updated_at: (saved as any)?.updated_at ?? null,
         });
-        return { token: fresh, pageId: String(wantedPageId), source: "refreshed_from_personal" };
+        return {
+          token: fresh,
+          pageId: String(wantedPageId),
+          source: "refreshed_from_personal",
+          recordId: (saved as any)?.id ?? null,
+          updatedAt: (saved as any)?.updated_at ?? null,
+        };
       } catch (e) {
         console.warn("[fb-recent-posts] page token refresh threw", e instanceof Error ? e.message : e);
         return null;
