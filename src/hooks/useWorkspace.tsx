@@ -195,7 +195,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     // active screens and sidebar counters against the newly committed scope.
     try {
       queryClient.removeQueries();
-      await queryClient.refetchQueries({ type: 'active' });
+      // Mounted observers are re-created after removal; invalidation schedules
+      // their reads while preserving a fully empty cache during the handoff.
+      await queryClient.invalidateQueries({ refetchType: 'active' });
     } catch { /* non-fatal */ }
   }, [user, workspaces, queryClient]);
 

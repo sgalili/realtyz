@@ -79,6 +79,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
       if (isMobile) setOpenMobile(false);
       window.dispatchEvent(new CustomEvent('realtyz:workspace-changed', { detail: { ownerId } }));
       toast.success(`מרחב העבודה הוחלף ל${label}`);
+    } catch {
+      // The workspace provider already surfaces a friendly error.
     } finally {
       setBusy(false);
     }
