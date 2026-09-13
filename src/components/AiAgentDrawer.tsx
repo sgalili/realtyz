@@ -606,11 +606,10 @@ ${shareUrl}
       {/* Trigger is in AppLayout header */}
       <SheetContent side="left" className="w-full sm:max-w-md p-0 flex flex-col" dir="rtl">
         <div className="relative px-4 py-3 border-b bg-primary/5 flex flex-col items-center justify-center gap-1.5">
-          <RitaAvatar className="h-11 w-11" />
           <h3 className="text-[18px] font-bold text-center">ריטה, סוכנת ה-AI של Realtyz</h3>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button type="button" variant="ghost" size="sm" className="absolute start-3 top-3 gap-1 text-muted-foreground" disabled={messages.length === 0}>
+              <Button type="button" variant="ghost" size="sm" className="absolute end-3 top-3 gap-1 text-muted-foreground" disabled={messages.length === 0}>
                 <Trash2 className="h-4 w-4" /> איפוס צ׳אט
               </Button>
             </AlertDialogTrigger>
@@ -632,11 +631,6 @@ ${shareUrl}
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
           {messages.length === 0 && (
             <div className="space-y-5 py-2">
-              <div className="text-center space-y-2 pb-1">
-                <RitaAvatar className="h-16 w-16 mx-auto" />
-                <p className="text-[18px] text-muted-foreground">שלום! אני ריטה, סוכנת ה-AI של Realtyz.</p>
-                <p className="text-[16px] text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
-              </div>
               <div className="space-y-1.5">
                 <p className="text-[15px] font-semibold text-muted-foreground px-1">בחר נושא לקבלת 3 שאלות מומלצות:</p>
                 {TOPICS.map((topic, ti) => {

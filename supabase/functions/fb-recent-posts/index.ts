@@ -634,13 +634,17 @@ Deno.serve(async (req) => {
         }
         if (!resp) break;
         status = resp.status;
-        json = await resp.json().catch(() => ({} as any));
+        // Keep the raw body: a truncated/parsed-away payload hides the real
+        // reason Graph rejected the read.
+        const bodyText = await resp.text().catch(() => "");
+        try { json = bodyText ? JSON.parse(bodyText) : {}; } catch { json = {}; }
         if (!resp.ok) {
           error = json?.error ?? json;
           // Explicit, actionable logging: a permission/expiry problem must be
           // visible in the function logs instead of silently returning zero.
           console.error("[fb-recent-posts] graph error", {
             edge: edges[edgeIndex],
+            request_url: nextUrl.replace(/access_token=[^&]+/, "access_token=REDACTED"),
             page_id: cred.pageId,
             token_source: cred.source,
             http_status: status,
@@ -648,11 +652,33 @@ Deno.serve(async (req) => {
             subcode: (error as any)?.error_subcode ?? null,
             type: (error as any)?.type ?? null,
             message: (error as any)?.message ?? null,
+            fbtrace_id: (error as any)?.fbtrace_id ?? null,
+            raw_body: bodyText.slice(0, 2000),
           });
           // A permission denial applies to every Page feed edge for this token.
           // Return immediately instead of issuing the same doomed request to
           // /feed and /posts and producing three identical errors.
-          if (isMetaPermissionError(error)) break;
+          if (isMetaPermissionError(error)) {
+            // Print exactly which scopes the login actually granted, so a
+            // missing `pages_read_engagement` is provable from the logs alone.
+            try {
+              const permRes = await fetch(
+                `https://graph.facebook.com/v26.0/me/permissions?access_token=${encodeURIComponent(cred.token)}`,
+              );
+              const permBody = await permRes.text().catch(() => "");
+              console.error("[fb-recent-posts] token scopes at failure", {
+                page_id: cred.pageId,
+                token_source: cred.source,
+                http_status: permRes.status,
+                raw_body: permBody.slice(0, 1500),
+              });
+            } catch (permErr) {
+              console.error("[fb-recent-posts] scope probe failed", {
+                message: permErr instanceof Error ? permErr.message : String(permErr),
+              });
+            }
+            break;
+          }
           // Try the next edge — one blocked edge shouldn't abort the import.
           edgeIndex += 1;
           if (edgeIndex >= edges.length) break;
