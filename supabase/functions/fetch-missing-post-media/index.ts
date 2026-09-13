@@ -235,16 +235,17 @@ Deno.serve(async (req) => {
       .filter((id) => /^\d{5,}(_\d{5,})?$/.test(id));
     if (token && nativeIds.length) {
       const fields = "full_picture,attachments{media,subattachments{media}}";
-      for (let i = 0; i < nativeIds.length; i += 25) {
-        const chunk = nativeIds.slice(i, i + 25);
-        const url =
-          `https://graph.facebook.com/v26.0/?ids=${encodeURIComponent(chunk.join(","))}` +
-          `&fields=${encodeURIComponent(fields)}&access_token=${encodeURIComponent(token)}`;
-        const resp = await fetch(url).catch(() => null);
-        if (!resp?.ok) continue;
-        const payload: any = await resp.json().catch(() => ({}));
-        for (const pid of chunk) {
-          const urls = collectFromGraphEntry(payload?.[pid]);
+      for (let i = 0; i < nativeIds.length; i += 8) {
+        const chunk = nativeIds.slice(i, i + 8);
+        const entries = await Promise.all(chunk.map(async (pid) => {
+          const url = `https://graph.facebook.com/v26.0/${encodeURIComponent(pid)}` +
+            `?fields=${encodeURIComponent(fields)}&access_token=${encodeURIComponent(token)}`;
+          const resp = await fetch(url).catch(() => null);
+          if (!resp?.ok) return { pid, payload: null };
+          return { pid, payload: await resp.json().catch(() => null) };
+        }));
+        for (const { pid, payload } of entries) {
+          const urls = collectFromGraphEntry(payload);
           if (urls.length) graphMedia.set(pid, urls);
         }
       }

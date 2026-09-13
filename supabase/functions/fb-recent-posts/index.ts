@@ -2,15 +2,9 @@
 // workspace's connected Page token) and persist every native Page post into
 // campaign_logs. campaign_logs is the permanent source of truth for the feed.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { isMetaPermissionError, resolveMetaPage, resolveMetaPageCandidates } from "../_shared/metaPage.ts";
 import { resolveCaller } from "../_shared/fbPersonal.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-};
 
 // No default owner: a missing user_id must NOT resolve to another tenant.
 const MIN_SAFE_PURGE_POSTS = 50;
@@ -574,6 +568,10 @@ Deno.serve(async (req) => {
             type: (error as any)?.type ?? null,
             message: (error as any)?.message ?? null,
           });
+          // A permission denial applies to every Page feed edge for this token.
+          // Return immediately instead of issuing the same doomed request to
+          // /feed and /posts and producing three identical errors.
+          if (isMetaPermissionError(error)) break;
           // Try the next edge — one blocked edge shouldn't abort the import.
           edgeIndex += 1;
           if (edgeIndex >= edges.length) break;
@@ -896,7 +894,7 @@ Deno.serve(async (req) => {
       commentSyncQueued = true;
     }
 
-    // Full Graph enrichment: for every stored native FB post, batch-fetch
+    // Full Graph enrichment: for every stored native FB post, fetch
     // full_picture + attachments (thumbnails), live engagement counters
     // (reactions/comments/shares) AND the true native created_time. This
     // guarantees UI cards show the real photo, real counters, and the
@@ -920,26 +918,45 @@ Deno.serve(async (req) => {
         );
         const graphFields =
           "full_picture,attachments{media,subattachments{media}},reactions.summary(true).limit(0),likes.summary(true).limit(0),comments.summary(true).limit(0),shares,created_time,insights.metric(post_impressions_unique,post_impressions)";
-        for (let i = 0; i < targets.length; i += 40) {
-          const chunk = targets.slice(i, i + 40);
-          const ids = chunk.map((t: any) => String(t.provider_message_id)).join(",");
-          const url = `https://graph.facebook.com/v26.0/?ids=${encodeURIComponent(ids)}&fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(cred.token)}`;
-          const resp = await fetch(url);
-          if (!resp.ok) {
-            const errJson: any = await resp.json().catch(() => ({}));
-            console.error("[fb-recent-posts] enrichment graph error", {
-              http_status: resp.status,
-              token_source: cred.source,
-              code: errJson?.error?.code ?? null,
-              subcode: errJson?.error?.error_subcode ?? null,
-              message: errJson?.error?.message ?? null,
-            });
-            continue;
-          }
-          const json: any = await resp.json().catch(() => ({}));
-          for (const t of chunk) {
+        let stopEnrichment = false;
+        for (let i = 0; i < targets.length && !stopEnrichment; i += 8) {
+          const chunk = targets.slice(i, i + 8);
+          const fetched = await Promise.all(chunk.map(async (t: any) => {
             const pid = String(t.provider_message_id);
-            const entry = json?.[pid];
+            const url = `https://graph.facebook.com/v26.0/${encodeURIComponent(pid)}?fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(cred.token)}`;
+            try {
+              const resp = await fetch(url);
+              const payload: any = await resp.json().catch(() => ({}));
+              return { t, pid, ok: resp.ok, status: resp.status, payload };
+            } catch (error) {
+              return {
+                t,
+                pid,
+                ok: false,
+                status: 0,
+                payload: { error: { message: error instanceof Error ? error.message : String(error) } },
+              };
+            }
+          }));
+
+          for (const result of fetched) {
+            if (!result.ok) {
+              const graphError = result.payload?.error ?? result.payload;
+              console.error("[fb-recent-posts] enrichment graph error", {
+                post_id: result.pid,
+                http_status: result.status,
+                token_source: cred.source,
+                code: graphError?.code ?? null,
+                subcode: graphError?.error_subcode ?? null,
+                message: graphError?.message ?? null,
+              });
+              if (isMetaPermissionError(graphError)) stopEnrichment = true;
+              continue;
+            }
+
+            const t = result.t;
+            const pid = result.pid;
+            const entry = result.payload;
             if (!entry) continue;
 
             // Media URLs

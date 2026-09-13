@@ -1,7 +1,9 @@
-- [ ] Add page titles for שותפים and הזמן חברים
-- [ ] Rename משימות היום page title to משימות
-- [ ] Remove Office read-only banner and owner-only edit restrictions
-- [ ] Make service areas a multi-select field
-- [ ] Prevent Facebook connection false-disconnection and UI flashing on /campaigns
-- [ ] Add immediate workspace-wide Facebook connection synchronization/cache
-- [ ] Make Facebook connection verification return graceful successful responses for existing connections
+- [x] Add page titles for שותפים and הזמן חברים
+- [x] Rename משימות היום page title to משימות
+- [x] Remove Office read-only banner and owner-only edit restrictions
+- [x] Make service areas a multi-select field
+- [x] Prevent Facebook connection false-disconnection and UI flashing on /campaigns
+- [x] Add immediate workspace-wide Facebook connection synchronization/cache
+- [x] Make Facebook connection verification return graceful successful responses for existing connections
+- [x] Replace the removed Meta Graph `ids` enrichment request
+- [x] Stop duplicate Facebook edge retries when `pages_read_engagement` is denied
