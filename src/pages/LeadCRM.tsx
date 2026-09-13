@@ -2339,9 +2339,9 @@ const LeadCRM = () => {
                           toast.success('השם עודכן');
                         }}
                       />
-                      <p className="mt-0.5 truncate text-xs font-normal text-muted-foreground" title={contactSubtitle(selectedVoter, activeVoterMessages, activeVoterChatHistory as any[])}>
+                      <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground" title={contactSubtitle(selectedVoter, activeVoterMessages, activeVoterChatHistory as any[])}>
                         {contactSubtitle(selectedVoter, activeVoterMessages, activeVoterChatHistory as any[])}
-                      </p>
+                      </span>
                       {(() => {
                         const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
                         const email = (selectedVoter as any).email as string | undefined;
@@ -2555,6 +2555,9 @@ const LeadCRM = () => {
                     const ownerLead = isOwnerLead(selectedVoter);
                     const leadKind = String(prefs.lead_kind ?? '');
                     const stageOpts = leadKind === 'broker' ? BROKER_STAGE_OPTIONS : defaultStageOpts;
+                    const displayedStage = leadKind === 'broker' && !BROKER_STAGE_OPTIONS.some((option) => option.v === stage)
+                      ? ''
+                      : stage;
                     const isSeeker = leadKind === 'buyer' || leadKind === 'renter';
                     const isPropertyContact = isSeeker || ownerLead;
 
@@ -2564,7 +2567,7 @@ const LeadCRM = () => {
                           <SelectCell icon={<UserRoundPlus className="h-3.5 w-3.5 text-slate-700" />} label="סוג איש קשר" value={leadKind} placeholder="בחר סוג" options={leadKindOpts} onChange={(v) => savePref({ lead_kind: v })} />
                           {isPropertyContact && <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />}
                           <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v, lead_source: v })} />
-                          <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
+                          <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={displayedStage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
                           {/* Buyer/renter search preferences are irrelevant to brokers and owners. */}
                           {isSeeker && (
                             <>
