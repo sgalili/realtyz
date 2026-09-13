@@ -282,8 +282,8 @@ export default function Landing() {
           {/* Metric cards */}
           <div className="mx-auto mt-5 grid w-full max-w-4xl grid-cols-3 gap-2 sm:gap-3">
             {[
-              { value: '320% +', label: 'מענה ללידים חדשים' },
-              { value: '15 שעות', label: 'חיסכון שבועי למתווך' },
+              { value: '+ 320%', label: 'מענה ללידים חדשים' },
+              { value: '\u00a0+15 שעות', label: 'חיסכון שבועי למתווך' },
               { value: '99.4%', label: 'מעורבות והמרה' },
             ].map((m) => (
               <div
