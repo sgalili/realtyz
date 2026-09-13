@@ -426,6 +426,8 @@ Deno.serve(async (req) => {
       "posts";
     const skipAnalytics = body?.skipAnalytics === true ||
       url.searchParams.get("skipAnalytics") === "true";
+    const manualRefresh = body?.manual_refresh === true ||
+      url.searchParams.get("manual_refresh") === "true";
     const purge = body?.purge === true || url.searchParams.get("purge") === "true";
     // Reconciliation: remove native-imported posts from OUR feed when they no
     // longer exist on the Facebook Page (deleted natively on Facebook).
@@ -715,10 +717,12 @@ Deno.serve(async (req) => {
     const fetchGraphHistory = async (): Promise<
       { posts: RawPost[]; status: number; error: any; source: string | null; blocked: boolean }
     > => {
-      const candidates = await resolveMetaPageCandidates(admin, ownerId);
-      const ordered = candidates.length
-        ? candidates.map((c) => ({ token: c.token, pageId: c.pageId, source: c.scope }))
-        : [await resolveGraphCredential()];
+      const candidates = manualRefresh ? [] : await resolveMetaPageCandidates(admin, ownerId);
+      const ordered = manualRefresh
+        ? [await resolveGraphCredential()]
+        : candidates.length
+          ? candidates.map((c) => ({ token: c.token, pageId: c.pageId, source: c.scope }))
+          : [await resolveGraphCredential()];
       if (!ordered.some((c) => c.token && c.pageId)) {
         console.error("[fb-recent-posts] no usable Page access token", {
           owner_id: ownerId,
@@ -743,7 +747,7 @@ Deno.serve(async (req) => {
       // Last resort before giving up: mint a fresh Page token from the
       // personal login and retry once. This turns the old "reconnect and try
       // again later" workaround into an automatic, immediate recovery.
-      if (isMetaPermissionError(last.error)) {
+      if (!manualRefresh && isMetaPermissionError(last.error)) {
         const refreshed = await refreshPageTokenFromPersonal();
         if (refreshed) {
           const retry = await fetchGraphHistoryWith(refreshed);
@@ -1002,7 +1006,7 @@ Deno.serve(async (req) => {
     let enrichedDates = 0;
     try {
       const cred = workingCred ?? await resolveGraphCredential();
-      if (cred.token) {
+      if (cred.token && !skipAnalytics) {
         const { data: allFbPosts } = await admin
           .from("campaign_logs")
           .select("id, provider_message_id, provider_response, media_urls, created_at, like_count, comment_count, share_count, view_count")

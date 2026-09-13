@@ -4391,8 +4391,8 @@ const PublishedFeed = ({
   // Per-card refresh-signal counter. Bumping triggers a manual refresh inside
   // CampaignCommentsStream via its refreshSignal prop.
   const [refreshSignals, setRefreshSignals] = useState<Record<string, number>>({});
-  // Visible warning when the live Facebook pull fails (expired token / missing
-  // pages_read_engagement permission) instead of failing silently.
+  // A refresh failure is informational only. It never changes the durable
+  // Page binding or removes posts already visible in the feed.
   const [fbSyncWarning, setFbSyncWarning] = useState<string | null>(null);
   // A definitive token/scope failure pauses automatic provider calls until the
   // user explicitly reconnects or starts a manual sync. This prevents the 90s
@@ -5083,36 +5083,29 @@ const PublishedFeed = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId, userId]);
 
-  // MANUAL full live sync, fired by the refresh button in the page hero.
-  // Pulls every recent native post (bypassing the session throttle), prunes
-  // posts deleted on Facebook, repaints from the DB, refreshes live counters
-  // and re-pulls the comments trees of the open cards.
+  // Manual post import, fired by the refresh button in the page hero. This path
+  // deliberately does not run connection validation, insights, pruning, or
+  // comments probes. A provider failure must never mutate connection state.
   useEffect(() => {
     const scope = workspaceOwnerId ?? userId;
     const runFullSync = async () => {
       if (fullSyncRunningRef.current) return;
       fullSyncRunningRef.current = true;
-      fbSyncBlockedRef.current = false;
       const toastId = 'campaigns-hero-sync';
       toast.loading('מסנכרן פוסטים חיים מפייסבוק…', { id: toastId });
       let ok = false;
       try {
         if (scope) {
-          // 1) Provider pull — force it, never honour the session throttle.
-          try {
-            const importKey = `realtyz.fb_native_import.${FIRST_VISIT_IMPORT_KEY_VERSION}.${scope}`;
-            sessionStorage.removeItem(importKey);
-            sessionStorage.removeItem(`realtyz.fb_native_reconcile.${scope}`);
-          } catch { /* storage unavailable */ }
           const { data: syncData, error: syncError } = await supabase.functions.invoke('fb-recent-posts', {
             body: {
               lastRecords: 500,
               pageSize: 50,
               user_id: scope,
               persist: true,
-              sync_comments: true,
-              prune_missing: true,
-              force_provider_probe: true,
+              sync_comments: false,
+              prune_missing: false,
+              skipAnalytics: true,
+              manual_refresh: true,
             },
           });
           const providerError = (syncData as any)?.error || (syncError as any)?.message || null;
@@ -5120,48 +5113,22 @@ const PublishedFeed = ({
             raw_error: (syncData as any)?.raw_error,
             message: providerError,
           });
-          const permissionBlocked = (syncData as any)?.permission_blocked === true && graphFailure === 'permission';
           const pulled = Number((syncData as any)?.count ?? 0);
           if (providerError || (graphFailure && pulled === 0)) {
-            console.error('[campaign] facebook graph pull failed', {
+            console.warn('[campaign] facebook post refresh was non-fatal', {
               providerError,
-              permissionBlocked,
               raw_status: (syncData as any)?.raw_status,
               raw_error: (syncData as any)?.raw_error,
               graph_source: (syncData as any)?.graph_source,
             });
-            if (graphFailure === 'token') {
-              blockFacebookSync('תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.');
-            } else if (graphFailure === 'permission') {
-              setFacebookSyncWarning('החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).');
-            } else {
-              setFacebookSyncWarning(String(providerError || 'סנכרון הפוסטים מפייסבוק נכשל זמנית.'));
-            }
+            setFacebookSyncWarning('רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.');
           } else {
             setFacebookSyncWarning(null);
           }
         }
-        // 2) Repaint the feed straight from the database.
+        // Repaint only from persisted rows. mergeRowsById keeps existing cards
+        // if the provider returned nothing or timed out.
         await load({ skipFbImport: true });
-        // 3) Live counters.
-        if (scope) await refreshMetrics(scope);
-        // 4) Comments trees of the cards currently open.
-        const openIds = Object.entries(expandedRef.current).filter(([, o]) => o).map(([id]) => id);
-        if (scope && openIds.length > 0) {
-          const liveRows = FEED_ROWS_CACHE.get(scope) ?? [];
-          const postIds = liveRows
-            .filter((r) => openIds.includes(r.id) && r.provider_message_id)
-            .map((r) => String(r.provider_message_id))
-            .slice(0, 10);
-          if (postIds.length > 0) {
-            await supabase.functions.invoke('meta-comments-sync', { body: { post_ids: postIds, user_id: scope } });
-            setRefreshSignals((prev) => {
-              const next = { ...prev };
-              for (const id of openIds) next[id] = (next[id] ?? 0) + 1;
-              return next;
-            });
-          }
-        }
         ok = true;
         toast.success('הפוסטים עודכנו מפייסבוק', { id: toastId });
       } catch (err) {
@@ -5177,7 +5144,7 @@ const PublishedFeed = ({
     window.addEventListener('rz:campaigns-sync', onSync as EventListener);
     return () => window.removeEventListener('rz:campaigns-sync', onSync as EventListener);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockFacebookSync, load, refreshMetrics, setFacebookSyncWarning, workspaceOwnerId, userId]);
+  }, [load, setFacebookSyncWarning, workspaceOwnerId, userId]);
 
 
 
@@ -5700,8 +5667,8 @@ const PublishedFeed = ({
       </div>
 
       {fbSyncWarning ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-right">
-          <p className="min-w-0 flex-1 text-xs font-medium leading-5 text-destructive">{fbSyncWarning}</p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/50 p-3 text-right">
+          <p className="min-w-0 flex-1 text-xs font-medium leading-5 text-muted-foreground">{fbSyncWarning}</p>
           <div className="flex shrink-0 items-center gap-2">
             <Button
               type="button"

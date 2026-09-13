@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Bot, User, Search, Hand, Send, Tag, MapPin, Hash, Zap, ChevronUp, ArrowRight, Instagram, Facebook, MessageCircle, Twitter, Youtube, Mail, Phone, Globe, ThumbsUp, AlertTriangle } from 'lucide-react';
+import { User, Search, Hand, Send, Tag, MapPin, Hash, Zap, ChevronUp, ArrowRight, Instagram, Facebook, MessageCircle, Twitter, Youtube, Mail, Phone, Globe, ThumbsUp, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import { useDemoMode } from '@/hooks/useDemoMode';
 import { useDemoTicker } from '@/hooks/useDemoTicker';
 import { DEMO_LIVE_ACTIONS, DEMO_MESSAGES, DEMO_VOTERS } from '@/lib/demoData';
 import { motion, AnimatePresence } from 'framer-motion';
+import { RitaAvatar } from '@/components/RitaAvatar';
 
 interface VoterWithLastMsg {
   id: string;
@@ -94,7 +95,7 @@ const ContentIcon = ({ text, voterId }: { text: string; voterId?: string }) => {
   if (t.includes('מייל') || t.includes('אימייל') || t.includes('email')) return <Mail className="h-4 w-4 shrink-0 mt-0.5 text-primary" />;
   if (t.includes('טלפון') || t.includes('שיחה') || t.includes('sms') || t.includes('סמס')) return <Phone className="h-4 w-4 shrink-0 mt-0.5 text-primary" />;
   if (t.includes('משבר') || t.includes('שלילי') || t.includes('כועס')) return <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />;
-  if (t.includes('ai') || t.includes('בינה') || t.includes('אוטומטי')) return <Bot className="h-4 w-4 shrink-0 mt-0.5 text-brand-blue" />;
+  if (t.includes('ai') || t.includes('בינה') || t.includes('אוטומטי')) return <RitaAvatar className="h-5 w-5 shrink-0 mt-0.5 border-0 ring-0" />;
   // Fallback: deterministic platform per lead so every card shows an icon and the list looks like a mix.
   const idx = hashString(voterId || text || 'x') % PLATFORM_OPTIONS.length;
   return PLATFORM_OPTIONS[idx].node;
@@ -409,7 +410,7 @@ const LiveConversations = () => {
                               return (
                                 <div key={msg.id} className={`flex gap-2 ${isAI ? '' : 'flex-row-reverse'}`}>
                                   <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${isAI ? 'bg-primary/15' : 'bg-accent/30'}`}>
-                                    {isAI ? <Bot className="h-4 w-4 text-brand-blue" /> : <User className="h-4 w-4 text-accent-foreground" />}
+                                    {isAI ? <RitaAvatar className="h-8 w-8 border-0 ring-0" /> : <User className="h-4 w-4 text-accent-foreground" />}
                                   </div>
                                   <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
                                     isAI
