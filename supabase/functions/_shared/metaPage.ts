@@ -7,7 +7,15 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 export const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 export const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
-export type MetaPage = { pageId: string; pageName: string | null; token: string };
+export type MetaPage = {
+  pageId: string;
+  pageName: string | null;
+  token: string;
+  /** messenger_page_bindings.id of the row this token came from (diagnostics). */
+  recordId?: string | null;
+  /** messenger_page_bindings.updated_at of that row (diagnostics). */
+  updatedAt?: string | null;
+};
 
 export function metaAdminClient(): SupabaseClient {
   return createClient(
@@ -44,14 +52,20 @@ export async function resolveMetaPage(
 export async function resolveSharedMetaPage(db: SupabaseClient): Promise<MetaPage | null> {
   const { data } = await db
     .from("messenger_page_bindings")
-    .select("page_id, page_name, page_access_token, updated_at")
+    .select("id, page_id, page_name, page_access_token, updated_at")
     .eq("is_platform_shared", true)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   const row: any = data;
   if (!row?.page_id || !row?.page_access_token) return null;
-  return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
+  return {
+    pageId: String(row.page_id),
+    pageName: row.page_name ?? null,
+    token: String(row.page_access_token),
+    recordId: row.id ? String(row.id) : null,
+    updatedAt: row.updated_at ?? null,
+  };
 }
 
 const tokenProbeCache = new Map<string, boolean>();
@@ -89,7 +103,7 @@ export async function resolveMetaPageCandidates(
   if (!ownerId) return [];
   const { data } = await db
     .from("messenger_page_bindings")
-    .select("page_id, page_name, page_access_token, is_selected, updated_at")
+    .select("id, page_id, page_name, page_access_token, is_selected, updated_at")
     .eq("owner_id", ownerId)
     .order("is_selected", { ascending: false })
     .order("updated_at", { ascending: false });
@@ -103,18 +117,25 @@ export async function resolveMetaPageCandidates(
       pageId: String(r.page_id),
       pageName: r.page_name ?? null,
       token: String(r.page_access_token),
+      recordId: r.id ? String(r.id) : null,
+      updatedAt: r.updated_at ?? null,
       scope: "workspace" as const,
     }));
 }
 
-/** The workspace's own default binding. */
+/**
+ * The workspace's own default binding — always the freshest stored token.
+ *
+ * `updated_at DESC` guarantees a reconnect that rewrote the Page token wins
+ * over any older row for the same Page, so readers never pick a stale token.
+ */
 export async function resolveOwnMetaPage(
   db: SupabaseClient,
   ownerId: string,
 ): Promise<MetaPage | null> {
   const { data } = await db
     .from("messenger_page_bindings")
-    .select("page_id, page_name, page_access_token, is_selected, updated_at")
+    .select("id, page_id, page_name, page_access_token, is_selected, updated_at")
     .eq("owner_id", ownerId)
     .order("is_selected", { ascending: false })
     .order("updated_at", { ascending: false })
@@ -122,7 +143,13 @@ export async function resolveOwnMetaPage(
     .maybeSingle();
   const row: any = data;
   if (!row?.page_id || !row?.page_access_token) return null;
-  return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
+  return {
+    pageId: String(row.page_id),
+    pageName: row.page_name ?? null,
+    token: String(row.page_access_token),
+    recordId: row.id ? String(row.id) : null,
+    updatedAt: row.updated_at ?? null,
+  };
 }
 
 

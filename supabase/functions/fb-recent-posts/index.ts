@@ -387,6 +387,18 @@ const parseMetaCredential = (
   }
 };
 
+/**
+ * A Page credential together with the DB row it came from, so any failure can
+ * be traced back to the exact messenger_page_bindings record in use.
+ */
+type GraphCred = {
+  token: string;
+  pageId: string | null;
+  source: string | null;
+  recordId?: string | null;
+  updatedAt?: string | null;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -487,11 +499,17 @@ Deno.serve(async (req) => {
     const ws = { facebook_page_id: page?.pageId ?? null, facebook_page_name: page?.pageName ?? null };
     const profileKey: string | null = null;
 
-    const resolveGraphCredential = async (): Promise<
-      { token: string; pageId: string | null; source: string | null }
-    > => {
-      if (page?.token) return { token: page.token, pageId: page.pageId, source: "messenger_page_bindings" };
-      return { token: "", pageId: null, source: null };
+    const resolveGraphCredential = async (): Promise<GraphCred> => {
+      if (page?.token) {
+        return {
+          token: page.token,
+          pageId: page.pageId,
+          source: "messenger_page_bindings",
+          recordId: page.recordId ?? null,
+          updatedAt: page.updatedAt ?? null,
+        };
+      }
+      return { token: "", pageId: null, source: null, recordId: null, updatedAt: null };
     };
 
     /**
@@ -501,9 +519,7 @@ Deno.serve(async (req) => {
      * carries the freshly granted `pages_read_engagement`, so the refresh
      * fixes the read WITHOUT sending the user through another OAuth round.
      */
-    const refreshPageTokenFromPersonal = async (): Promise<
-      { token: string; pageId: string | null; source: string | null } | null
-    > => {
+    const refreshPageTokenFromPersonal = async (): Promise<GraphCred | null> => {
       const wantedPageId = page?.pageId ?? null;
       if (!wantedPageId) return null;
       const { data: personal } = await admin
@@ -532,7 +548,7 @@ Deno.serve(async (req) => {
         );
         const fresh = asText(match?.access_token);
         if (!fresh || fresh === page?.token) return null;
-        await admin
+        const { data: saved } = await admin
           .from("messenger_page_bindings")
           .upsert(
             {
@@ -540,13 +556,24 @@ Deno.serve(async (req) => {
               page_id: String(wantedPageId),
               page_name: asText(match?.name) || page?.pageName || null,
               page_access_token: fresh,
+              updated_at: new Date().toISOString(),
             },
             { onConflict: "owner_id,page_id" },
-          );
+          )
+          .select("id, updated_at")
+          .maybeSingle();
         console.log("[fb-recent-posts] refreshed page access token from personal login", {
           page_id: wantedPageId,
+          binding_record_id: (saved as any)?.id ?? null,
+          binding_updated_at: (saved as any)?.updated_at ?? null,
         });
-        return { token: fresh, pageId: String(wantedPageId), source: "refreshed_from_personal" };
+        return {
+          token: fresh,
+          pageId: String(wantedPageId),
+          source: "refreshed_from_personal",
+          recordId: (saved as any)?.id ?? null,
+          updatedAt: (saved as any)?.updated_at ?? null,
+        };
       } catch (e) {
         console.warn("[fb-recent-posts] page token refresh threw", e instanceof Error ? e.message : e);
         return null;
@@ -554,7 +581,7 @@ Deno.serve(async (req) => {
     };
 
     const fetchGraphHistoryWith = async (
-      cred: { token: string; pageId: string | null; source: string | null },
+      cred: GraphCred,
     ): Promise<
       { posts: RawPost[]; status: number; error: any; source: string | null }
     > => {
@@ -647,6 +674,11 @@ Deno.serve(async (req) => {
             request_url: nextUrl.replace(/access_token=[^&]+/, "access_token=REDACTED"),
             page_id: cred.pageId,
             token_source: cred.source,
+            // Exact DB row the token came from: makes a mismatch between the
+            // Connections tab binding and this fetch provable from the logs.
+            binding_record_id: cred.recordId ?? null,
+            binding_updated_at: cred.updatedAt ?? null,
+            token_tail: cred.token ? cred.token.slice(-6) : null,
             http_status: status,
             code: (error as any)?.code ?? null,
             subcode: (error as any)?.error_subcode ?? null,
@@ -669,6 +701,9 @@ Deno.serve(async (req) => {
               console.error("[fb-recent-posts] token scopes at failure", {
                 page_id: cred.pageId,
                 token_source: cred.source,
+                binding_record_id: cred.recordId ?? null,
+                binding_updated_at: cred.updatedAt ?? null,
+                missing_scope_hint: "pages_read_engagement",
                 http_status: permRes.status,
                 raw_body: permBody.slice(0, 1500),
               });
@@ -738,7 +773,7 @@ Deno.serve(async (req) => {
      */
     // The credential that actually worked for the feed read. Reused for the
     // enrichment pass so counters/media never fail with a different token.
-    let workingCred: { token: string; pageId: string | null; source: string | null } | null = null;
+    let workingCred: GraphCred | null = null;
 
     const fetchGraphHistory = async (): Promise<
       { posts: RawPost[]; status: number; error: any; source: string | null; blocked: boolean }
@@ -748,13 +783,39 @@ Deno.serve(async (req) => {
       // then the platform-shared Page — otherwise a valid connection looks
       // like a permission/connection mismatch failure.
       const candidates = await resolveMetaPageCandidates(admin, ownerId);
-      const ordered = candidates.length
-        ? candidates.map((c) => ({ token: c.token, pageId: c.pageId, source: c.scope }))
+      const mapped: GraphCred[] = candidates.map((c) => ({
+        token: c.token,
+        pageId: c.pageId,
+        source: c.scope,
+        recordId: c.recordId ?? null,
+        updatedAt: c.updatedAt ?? null,
+      }));
+      // Never read through a stale duplicate: for each Page keep only the most
+      // recently written binding row (a reconnect always rewrites updated_at).
+      const freshestByPage = new Map<string, GraphCred>();
+      for (const cred of mapped) {
+        const key = String(cred.pageId ?? "");
+        const prev = freshestByPage.get(key);
+        const newer = !prev ||
+          new Date(cred.updatedAt ?? 0).getTime() > new Date(prev.updatedAt ?? 0).getTime();
+        if (newer) freshestByPage.set(key, cred);
+      }
+      const ordered: GraphCred[] = freshestByPage.size
+        ? [...freshestByPage.values()]
         : [await resolveGraphCredential()];
       if (!ordered.some((c) => c.token && c.pageId)) {
         console.error("[fb-recent-posts] no usable Page access token", {
           owner_id: ownerId,
           candidates: ordered.length,
+        });
+      } else {
+        console.log("[fb-recent-posts] using page bindings", {
+          owner_id: ownerId,
+          bindings: ordered.map((c) => ({
+            binding_record_id: c.recordId ?? null,
+            page_id: c.pageId,
+            updated_at: c.updatedAt ?? null,
+          })),
         });
       }
       let last: { posts: RawPost[]; status: number; error: any; source: string | null } = {
