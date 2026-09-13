@@ -123,7 +123,7 @@ export function ConnectionsTab() {
   const [waPhone, setWaPhone] = useState<string | null>(null);
   const [greenPhone, setGreenPhone] = useState<string | null>(null);
   const [voicePhone, setVoicePhone] = useState<string | null>(null);
-  const { data: fbHealth } = useFacebookHealth();
+  const { data: fbHealth, isPending: fbHealthPending } = useFacebookHealth();
   // Facebook / Instagram, WBA, Green API and Yad2 are account-level: connected
   // once, active in every workspace of this user.
   const { data: account } = useAccountIntegrations();
@@ -204,7 +204,11 @@ export function ConnectionsTab() {
   // card badge and the global banner. Facebook / Instagram are strictly
   // workspace-scoped: never fall back to another workspace's binding.
   const fbConnected = !!(fbHealth?.pageConnected || meta?.connected);
-  const metaStatus: [string, Tone] = fbConnected ? ['מחובר', 'ok'] : ['מנותק', 'idle'];
+  const metaStatus: [string, Tone] = fbConnected
+    ? ['מחובר', 'ok']
+    : fbHealthPending && !meta
+      ? ['בודק חיבור…', 'idle']
+      : ['מנותק', 'idle'];
 
   // WhatsApp / Yad2 stay account-level: connected once, live in every workspace.
   const officialPhone = waPhone ?? account?.waPhone ?? null;

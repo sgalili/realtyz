@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 export type FacebookHealth = {
   /** A Page binding exists AND its token still answers Graph. */
@@ -28,9 +29,22 @@ const FACEBOOK_STORAGE_KEYS = [
   'rz-connected-channel-names',
 ];
 
-function writeCache(userId: string | undefined, value: FacebookHealth | null) {
+function cacheKey(userId: string | undefined, workspaceOwnerId: string | null) {
+  return `${CACHE_KEY}:${userId ?? 'anon'}:${workspaceOwnerId ?? 'self'}`;
+}
+
+function readCache(userId: string | undefined, workspaceOwnerId: string | null): FacebookHealth | undefined {
   try {
-    const key = `${CACHE_KEY}:${userId ?? 'anon'}`;
+    const raw = localStorage.getItem(cacheKey(userId, workspaceOwnerId));
+    return raw ? JSON.parse(raw) as FacebookHealth : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeCache(userId: string | undefined, workspaceOwnerId: string | null, value: FacebookHealth | null) {
+  try {
+    const key = cacheKey(userId, workspaceOwnerId);
     if (value) localStorage.setItem(key, JSON.stringify(value));
     else localStorage.removeItem(key);
   } catch {
@@ -56,17 +70,19 @@ const DISCONNECTED_HEALTH: FacebookHealth = {
  */
 export function useFacebookHealth() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
 
   return useQuery<FacebookHealth>({
-    queryKey: [FACEBOOK_HEALTH_KEY, user?.id],
+    queryKey: [FACEBOOK_HEALTH_KEY, user?.id, workspaceOwnerId],
     enabled: !!user?.id,
-    staleTime: 0,
+    initialData: () => readCache(user?.id, workspaceOwnerId),
+    staleTime: 30_000,
     refetchInterval: 5 * 60_000,
     // Never poll while the tab is hidden/backgrounded — zero idle credit drain.
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
-    refetchOnMount: 'always',
-    retry: 1,
+    refetchOnMount: true,
+    retry: 2,
     queryFn: async () => {
       const [pageRes, personalRes] = await Promise.all([
         supabase.functions
@@ -80,8 +96,9 @@ export function useFacebookHealth() {
       const page = (pageRes as any)?.data ?? null;
       const personal = (personalRes as any)?.data ?? null;
       if (!page) {
-        writeCache(user?.id, null);
-        return DISCONNECTED_HEALTH;
+        const cached = readCache(user?.id, workspaceOwnerId);
+        if (cached) return cached;
+        throw new Error('facebook_health_unavailable');
       }
 
       const hasBinding = !!page?.page?.id;
@@ -106,7 +123,8 @@ export function useFacebookHealth() {
       };
 
       // Persist only a healthy state; a broken one should not survive a fix.
-      writeCache(user?.id, value.pageConnected ? value : null);
+      if (value.pageConnected) writeCache(user?.id, workspaceOwnerId, value);
+      else if (value.neverConnected || value.needsReconnect) writeCache(user?.id, workspaceOwnerId, null);
       return value;
     },
   });
@@ -117,6 +135,7 @@ export function useFacebookHealth() {
 export function useRefreshFacebookHealth() {
   const qc = useQueryClient();
   return useCallback(() => {
+    window.dispatchEvent(new CustomEvent('realtyz:facebook-connection-changed'));
     qc.invalidateQueries({ queryKey: [FACEBOOK_HEALTH_KEY] });
   }, [qc]);
 }
@@ -124,10 +143,11 @@ export function useRefreshFacebookHealth() {
 /** Atomically clear cached Facebook state so every badge/banner updates now. */
 export function useResetFacebookHealth() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const qc = useQueryClient();
   return useCallback(async () => {
     await qc.cancelQueries({ queryKey: [FACEBOOK_HEALTH_KEY] });
-    writeCache(user?.id, null);
+    writeCache(user?.id, workspaceOwnerId, null);
     try {
       FACEBOOK_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
       FACEBOOK_STORAGE_KEYS.forEach((key) => sessionStorage.removeItem(key));
@@ -143,6 +163,6 @@ export function useResetFacebookHealth() {
     qc.removeQueries({ queryKey: ['fb-personal-connection'] });
     qc.removeQueries({ queryKey: ['fb-user-groups'] });
     qc.removeQueries({ queryKey: ['custom-user-groups'] });
-    qc.setQueryData([FACEBOOK_HEALTH_KEY, user?.id], DISCONNECTED_HEALTH);
-  }, [qc, user?.id]);
+    qc.setQueryData([FACEBOOK_HEALTH_KEY, user?.id, workspaceOwnerId], DISCONNECTED_HEALTH);
+  }, [qc, user?.id, workspaceOwnerId]);
 }

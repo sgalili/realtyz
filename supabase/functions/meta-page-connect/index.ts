@@ -220,10 +220,14 @@ Deno.serve(async (req) => {
       // Lightweight token check: can this page token read its own page ID?
       const checkToken = async (pageId: string, token: string) => {
         const attempt = async () => {
-          const r = await graph(`/${pageId}?fields=id&access_token=${encodeURIComponent(token)}`);
-          const errCode = Number(r.payload?.error?.code ?? 0);
-          const ok = !!(r.ok && r.payload?.id);
-          return { ok, authFailure: !ok && AUTH_FAILURE_CODES.includes(errCode), errorPayload: r.payload };
+          try {
+            const r = await graph(`/${pageId}?fields=id&access_token=${encodeURIComponent(token)}`);
+            const errCode = Number(r.payload?.error?.code ?? 0);
+            const ok = !!(r.ok && r.payload?.id);
+            return { ok, authFailure: !ok && AUTH_FAILURE_CODES.includes(errCode), errorPayload: r.payload };
+          } catch (error) {
+            return { ok: false, authFailure: false, errorPayload: { error: { message: error instanceof Error ? error.message : String(error) } } };
+          }
         };
         let res = await attempt();
         // Retry once on a non-auth failure so a transient Graph hiccup can never
@@ -327,7 +331,14 @@ Deno.serve(async (req) => {
       }
 
 
-      const ident = await fetchPageIdentity(admin, ownerId, String(row.page_id), row.page_access_token ?? null);
+      const ident = await fetchPageIdentity(admin, ownerId, String(row.page_id), row.page_access_token ?? null).catch(() => ({
+        ok: false,
+        name: null,
+        picture: null,
+        instagram: null,
+        token: null,
+        errorPayload: null,
+      }));
       if (ident.ok && ident.name && ident.name !== row.page_name) {
         await admin
           .from("messenger_page_bindings")

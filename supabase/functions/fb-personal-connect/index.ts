@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
         const health = await checkTokenHealth(row.access_token);
         tokenValid = health.valid;
         tokenReason = health.reason;
-        if (!health.valid) {
+        if (health.authFailure) {
           await admin
             .from("fb_personal_connections")
             .update({ last_error: health.reason, updated_at: new Date().toISOString() })
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
         missing_scopes: missing,
         token_valid: tokenValid,
         token_error: tokenValid === false ? tokenReason : null,
-        needs_reconnect: tokenValid === false,
+        needs_reconnect: tokenValid === false && !!tokenReason,
         scope_advisory: missing.length ? scopeAdvisory(missing) : null,
       });
     }
