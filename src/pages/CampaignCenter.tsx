@@ -4575,8 +4575,17 @@ const PublishedFeed = ({
     }
   }, []);
 
-
-
+  // The callback window saves the binding through the same function; here we
+  // only drop the stale warning and refresh the shared connection caches so
+  // both screens agree instantly.
+  useEffect(() => onOAuthResult(FACEBOOK_PAGE_PROVIDER, (result) => {
+    if (!result.ok) return;
+    fbSyncBlockedRef.current = false;
+    setFacebookSyncWarning(null);
+    refreshFbHealth();
+    refreshFbBinding();
+    toast.success('עמוד הפייסבוק חובר', { description: result.name || undefined });
+  }), [refreshFbHealth, refreshFbBinding, setFacebookSyncWarning]);
 
   const loadRef = useRef<(opts?: { forceFb?: boolean; skipFbImport?: boolean }) => Promise<{ rows: CampaignRow[]; ownerScope: string | null; importedCount: number; importComplete: boolean }>>(async () => ({ rows: [], ownerScope: null, importedCount: 0, importComplete: false }));
   const load = useCallback(async (opts: { forceFb?: boolean; skipFbImport?: boolean } = {}) => {
