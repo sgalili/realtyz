@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { RitaAvatar } from '@/components/RitaAvatar';
 import ReactMarkdown from 'react-markdown';
 import { useQuery } from '@tanstack/react-query';
-import { Bot, Loader2, Send, Share2, Target } from 'lucide-react';
+import { Loader2, Send, Share2, Target } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,7 +136,7 @@ export default function PublicListingPage() {
         </div>
 
         <Card className="listing-landing-card h-fit">
-          <CardHeader><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5 text-primary" /> שאלו את ה-AI של הקמפיין</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><RitaAvatar className="h-7 w-7" /> שאלו את ריטה</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="max-h-[390px] space-y-3 overflow-y-auto rounded-lg bg-background/70 p-3">
               {messages.map((message, index) => (

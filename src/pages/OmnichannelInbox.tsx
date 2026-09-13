@@ -919,7 +919,7 @@ const OmnichannelInbox = () => {
             onClick={() => { setActiveTab('handling'); setSelectedVoterId(null); }}
             className={`h-10 inline-flex items-center gap-1 rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'handling' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
           >
-            <Bot className="h-3.5 w-3.5" />
+            <RitaAvatar className="h-4 w-4 border-0 ring-0" />
             <span>בטיפול ({handlingCount}) AI</span>
           </button>
           <button
