@@ -37,8 +37,15 @@ const DEFAULT_PERSONAL_SCOPES = [
   "groups_access_member_info",
 ];
 
+/** Page scopes that must always be requested, whatever the override says. */
+export const FB_REQUIRED_PAGE_SCOPES = [
+  "pages_show_list",
+  "pages_read_engagement",
+  "pages_manage_posts",
+];
+
 /** Minimal scope set used when Meta rejects the full dialog request. */
-export const FB_BASIC_SCOPES = ["public_profile"];
+export const FB_BASIC_SCOPES = ["public_profile", ...FB_REQUIRED_PAGE_SCOPES];
 
 const rawScopes = (Deno.env.get("FB_PERSONAL_SCOPES") || DEFAULT_PERSONAL_SCOPES.join(","))
   .split(",")
@@ -48,9 +55,15 @@ const rawScopes = (Deno.env.get("FB_PERSONAL_SCOPES") || DEFAULT_PERSONAL_SCOPES
 /**
  * Scopes requested during Facebook Login for the personal profile.
  * Meta rejects an empty scope list, so we always fall back to the basic
- * required `public_profile` scope even if the env override is malformed.
+ * required scopes even if the env override is malformed, and the required
+ * Page permissions are always unioned in.
  */
-export const FB_PERSONAL_SCOPES = rawScopes.length > 0 ? rawScopes : FB_BASIC_SCOPES;
+export const FB_PERSONAL_SCOPES = Array.from(new Set([
+  "public_profile",
+  ...(rawScopes.length > 0 ? rawScopes : FB_BASIC_SCOPES),
+  ...FB_REQUIRED_PAGE_SCOPES,
+]));
+
 
 /** Scopes that MUST be granted for the connection to be considered healthy. */
 export const FB_GROUP_REQUIRED_SCOPES = ["public_profile"];
