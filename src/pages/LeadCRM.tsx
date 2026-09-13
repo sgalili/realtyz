@@ -53,6 +53,7 @@ import {
 } from 'recharts';
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
 import LinkedPropertiesField from '@/components/leads/LinkedPropertiesField';
+import { LeadSignatureCard } from '@/components/signature/LeadSignatureCard';
 import LeadEnrichmentPanel, { LeadEnrichmentButton, LeadEnrichmentIconButton } from '@/components/leads/LeadEnrichmentPanel';
 import { ExcelIcon } from '@/components/icons/ExcelIcon';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
