@@ -466,12 +466,14 @@ Deno.serve(async (req) => {
       // (the UI retries with this tier when the full dialog is rejected).
       const basic = body?.scope_tier === "basic" || body?.basic === true;
       const scopes = withRequiredScopes(basic ? BASIC_PAGE_SCOPES : PAGE_SCOPES);
+      const scopeString = scopes.join(",");
+      console.log("[meta-page-connect] start scope string =", JSON.stringify(scopeString));
 
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: CANONICAL_REDIRECT_URI,
         response_type: "code",
-        scope: scopes.join(","),
+        scope: scopeString,
         state: oauthState("facebook_page", returnOrigin),
         // `rerequest` re-opens the consent dialog for permissions the user has
         // previously declined; `force_reauthorize` stops Meta from silently
@@ -479,6 +481,7 @@ Deno.serve(async (req) => {
         auth_type: "rerequest",
         force_reauthorize: "1",
       });
+
 
       // Reconnection must honour the explicit scope list above. A Business
       // Login config_id makes Meta ignore `scope`, so only use it when a caller

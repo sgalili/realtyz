@@ -122,14 +122,18 @@ Deno.serve(async (req) => {
       // `basic: true` is the retry path when Meta rejects the full scope dialog
       // (restricted group permissions pending App Review).
       const scopes = body?.basic === true ? FB_BASIC_SCOPES : FB_PERSONAL_SCOPES;
+      const scopeString = scopes.join(",");
+      console.log("[fb-personal-connect] start scope string =", JSON.stringify(scopeString));
+
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
         response_type: "code",
-        scope: scopes.join(","),
+        scope: scopeString,
         state: oauthState("facebook_personal", returnOrigin),
         auth_type: "rerequest",
       });
+
       // A Facebook Login-for-Business config_id makes Meta IGNORE `scope`, so it
       // is opt-in through env only — never hardcoded.
       const configId = Deno.env.get("META_PERSONAL_CONFIG_ID")?.trim();
