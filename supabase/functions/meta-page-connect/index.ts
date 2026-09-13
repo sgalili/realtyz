@@ -465,7 +465,8 @@ Deno.serve(async (req) => {
       // without App Review, so a brand-new user can always complete the dialog
       // (the UI retries with this tier when the full dialog is rejected).
       const basic = body?.scope_tier === "basic" || body?.basic === true;
-      const scopes = basic ? BASIC_PAGE_SCOPES : PAGE_SCOPES;
+      const scopes = withRequiredScopes(basic ? BASIC_PAGE_SCOPES : PAGE_SCOPES);
+
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: CANONICAL_REDIRECT_URI,
