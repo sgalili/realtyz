@@ -31,6 +31,18 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       onDone?.();
       window.location.assign(role === 'partner' ? '/affiliate' : '/dashboard');
     } catch (err: any) {
+      // The role itself may already have been granted; only block the user when
+      // no role landed on the account at all.
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: roles } = user
+        ? await supabase.from('user_roles').select('role').eq('user_id', user.id)
+        : { data: null };
+      if (roles && roles.length > 0) {
+        await queryClient.invalidateQueries({ queryKey: ['user-roles'] });
+        onDone?.();
+        window.location.assign(role === 'partner' ? '/affiliate' : '/dashboard');
+        return;
+      }
       toast.error(err?.message ?? 'לא ניתן להשלים את ההרשמה');
       setBusy(null);
     }
