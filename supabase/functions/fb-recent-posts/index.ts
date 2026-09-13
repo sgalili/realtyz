@@ -613,6 +613,55 @@ Deno.serve(async (req) => {
       }
     };
 
+    /**
+     * Logs the REAL scopes/type of the token that Graph just rejected.
+     *
+     * `/{page-id}/permissions` does not exist (Meta answers "#100 nonexisting
+     * field"), so the only reliable inspection is `debug_token` with an app
+     * access token: it returns `type`, `scopes`, `expires_at` and
+     * `granular_scopes` for any token, Page or user.
+     */
+    const logTokenScopes = async (cred: GraphCred) => {
+      try {
+        const appId = Deno.env.get("META_APP_ID") || "2885631568443536";
+        const appSecret = Deno.env.get("META_APP_SECRET") || "";
+        if (!appSecret) {
+          console.error("[fb-recent-posts] cannot inspect token: META_APP_SECRET missing");
+          return;
+        }
+        const res = await fetch(
+          `https://graph.facebook.com/v26.0/debug_token?input_token=${
+            encodeURIComponent(cred.token)
+          }&access_token=${encodeURIComponent(`${appId}|${appSecret}`)}`,
+        );
+        const body = await res.text().catch(() => "");
+        let parsed: any = {};
+        try { parsed = body ? JSON.parse(body) : {}; } catch { parsed = {}; }
+        const info = parsed?.data ?? {};
+        const scopes: string[] = Array.isArray(info?.scopes) ? info.scopes : [];
+        console.error("[fb-recent-posts] token inspection at failure", {
+          page_id: cred.pageId,
+          token_source: cred.source,
+          binding_record_id: cred.recordId ?? null,
+          binding_updated_at: cred.updatedAt ?? null,
+          token_type: info?.type ?? null,
+          token_profile_id: info?.profile_id ?? info?.user_id ?? null,
+          token_app_id: info?.app_id ?? null,
+          token_is_valid: info?.is_valid ?? null,
+          scopes,
+          has_pages_read_engagement: scopes.includes("pages_read_engagement"),
+          has_pages_show_list: scopes.includes("pages_show_list"),
+          granular_scopes: info?.granular_scopes ?? null,
+          http_status: res.status,
+          raw_body: body.slice(0, 1500),
+        });
+      } catch (e) {
+        console.error("[fb-recent-posts] token inspection failed", {
+          message: e instanceof Error ? e.message : String(e),
+        });
+      }
+    };
+
     const fetchGraphHistoryWith = async (
       cred: GraphCred,
     ): Promise<
@@ -724,27 +773,7 @@ Deno.serve(async (req) => {
           // Return immediately instead of issuing the same doomed request to
           // /feed and /posts and producing three identical errors.
           if (isMetaPermissionError(error)) {
-            // Print exactly which scopes the login actually granted, so a
-            // missing `pages_read_engagement` is provable from the logs alone.
-            try {
-              const permRes = await fetch(
-                `https://graph.facebook.com/v26.0/me/permissions?access_token=${encodeURIComponent(cred.token)}`,
-              );
-              const permBody = await permRes.text().catch(() => "");
-              console.error("[fb-recent-posts] token scopes at failure", {
-                page_id: cred.pageId,
-                token_source: cred.source,
-                binding_record_id: cred.recordId ?? null,
-                binding_updated_at: cred.updatedAt ?? null,
-                missing_scope_hint: "pages_read_engagement",
-                http_status: permRes.status,
-                raw_body: permBody.slice(0, 1500),
-              });
-            } catch (permErr) {
-              console.error("[fb-recent-posts] scope probe failed", {
-                message: permErr instanceof Error ? permErr.message : String(permErr),
-              });
-            }
+            await logTokenScopes(cred);
             break;
           }
           // Try the next edge — one blocked edge shouldn't abort the import.
