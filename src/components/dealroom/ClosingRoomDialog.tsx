@@ -202,6 +202,7 @@ export function ClosingRoomDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="tour_agreement">טופס חתימה לפני סיור בנכס</SelectItem>
                 <SelectItem value="offer_letter">הצעת רכישה</SelectItem>
                 <SelectItem value="lease_agreement">חוזה שכירות</SelectItem>
               </SelectContent>
