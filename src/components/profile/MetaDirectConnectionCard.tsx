@@ -21,7 +21,7 @@ import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 import {
   callMetaPageConnect as callPageConnect,
-  MetaPageConnectError as PageConnectError,
+  
   startMetaPageConnect,
 } from '@/lib/facebookPageConnect';
 
