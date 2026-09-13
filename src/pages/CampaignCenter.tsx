@@ -78,6 +78,10 @@ import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurren
 import { PostImage } from '@/components/campaigns/PostImage';
 import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/SupportRequiredDialog';
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
+import { startMetaPageConnect, FACEBOOK_PAGE_PROVIDER } from '@/lib/facebookPageConnect';
+import { onOAuthResult } from '@/lib/oauthPopupBridge';
+import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
+import { useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 
 import { searchAllSources } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
