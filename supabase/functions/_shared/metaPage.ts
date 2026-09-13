@@ -28,16 +28,30 @@ export async function graphCall(path: string, init?: RequestInit) {
 /**
  * Resolve the Page identity + token for a workspace owner.
  *
- * STRICT WORKSPACE ISOLATION: only bindings owned by this workspace are used.
- * A page connected in one workspace never leaks into another one, so there is
- * no platform-shared fallback and no env-based FB_PAGE_* fallback.
+ * Same order the UI (get_effective_meta_page) shows in the Connections tab:
+ * the workspace's own binding first, then the platform-shared Page. Env-based
+ * FB_PAGE_* fallbacks stay banned.
  */
 export async function resolveMetaPage(
   db: SupabaseClient,
   ownerId: string | null,
 ): Promise<MetaPage | null> {
   if (!ownerId) return null;
-  return await resolveOwnMetaPage(db, ownerId);
+  return (await resolveOwnMetaPage(db, ownerId)) ?? (await resolveSharedMetaPage(db));
+}
+
+/** The platform-shared Page binding, available to every workspace. */
+export async function resolveSharedMetaPage(db: SupabaseClient): Promise<MetaPage | null> {
+  const { data } = await db
+    .from("messenger_page_bindings")
+    .select("page_id, page_name, page_access_token, updated_at")
+    .eq("is_platform_shared", true)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const row: any = data;
+  if (!row?.page_id || !row?.page_access_token) return null;
+  return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
 }
 
 const tokenProbeCache = new Map<string, boolean>();
@@ -79,8 +93,12 @@ export async function resolveMetaPageCandidates(
     .eq("owner_id", ownerId)
     .order("is_selected", { ascending: false })
     .order("updated_at", { ascending: false });
-  return (data ?? [])
-    .filter((r: any) => r?.page_id && r?.page_access_token)
+  const own = (data ?? []).filter((r: any) => r?.page_id && r?.page_access_token);
+  if (own.length === 0) {
+    const shared = await resolveSharedMetaPage(db);
+    if (shared) return [{ ...shared, scope: "workspace" as const }];
+  }
+  return own
     .map((r: any) => ({
       pageId: String(r.page_id),
       pageName: r.page_name ?? null,

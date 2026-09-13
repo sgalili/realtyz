@@ -717,12 +717,14 @@ Deno.serve(async (req) => {
     const fetchGraphHistory = async (): Promise<
       { posts: RawPost[]; status: number; error: any; source: string | null; blocked: boolean }
     > => {
-      const candidates = manualRefresh ? [] : await resolveMetaPageCandidates(admin, ownerId);
-      const ordered = manualRefresh
-        ? [await resolveGraphCredential()]
-        : candidates.length
-          ? candidates.map((c) => ({ token: c.token, pageId: c.pageId, source: c.scope }))
-          : [await resolveGraphCredential()];
+      // The manual refresh button must use exactly the same credential set the
+      // Connections tab reports as connected — own workspace bindings first,
+      // then the platform-shared Page — otherwise a valid connection looks
+      // like a permission/connection mismatch failure.
+      const candidates = await resolveMetaPageCandidates(admin, ownerId);
+      const ordered = candidates.length
+        ? candidates.map((c) => ({ token: c.token, pageId: c.pageId, source: c.scope }))
+        : [await resolveGraphCredential()];
       if (!ordered.some((c) => c.token && c.pageId)) {
         console.error("[fb-recent-posts] no usable Page access token", {
           owner_id: ownerId,
@@ -747,7 +749,7 @@ Deno.serve(async (req) => {
       // Last resort before giving up: mint a fresh Page token from the
       // personal login and retry once. This turns the old "reconnect and try
       // again later" workaround into an automatic, immediate recovery.
-      if (!manualRefresh && isMetaPermissionError(last.error)) {
+      if (isMetaPermissionError(last.error)) {
         const refreshed = await refreshPageTokenFromPersonal();
         if (refreshed) {
           const retry = await fetchGraphHistoryWith(refreshed);
