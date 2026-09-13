@@ -260,7 +260,10 @@ export function SocialConnectionsTab() {
     }
 
     const redirect = getOAuthRedirectUri();
-    const scope = (OAUTH_SCOPES[def.platform] ?? []).join(' ');
+    // Meta's OAuth dialog preserves comma-separated scopes; space-separated
+    // lists are occasionally dropped when the popup reuses a cached grant.
+    const isMeta = def.platform === 'facebook';
+    const scope = (OAUTH_SCOPES[def.platform] ?? []).join(isMeta ? ',' : ' ');
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirect,
@@ -271,6 +274,7 @@ export function SocialConnectionsTab() {
       include_granted_scopes: 'true',
       state: `${def.platform}:${crypto.randomUUID()}`,
     });
+
     if (def.platform === 'gmail' && manual.workspace_domain) {
       params.set('hd', manual.workspace_domain);
     }

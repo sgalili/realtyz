@@ -676,7 +676,11 @@ export function ManualConfigModal({ open, platform, displayName, isConnected, on
           ? 'https://ai.realtyz.co.il/oauth/callback'
           : `${window.location.origin}/oauth/callback`;
 
-      const scopes = Array.from(new Set(oauthScopes)).join(' ');
+      // Meta's dialog is sensitive to scope formatting: a comma-separated list
+      // is preserved verbatim, whereas space-separated scopes are sometimes
+      // silently dropped when the popup reuses a cached grant.
+      const isMeta = platform === 'facebook' || sharedOauthPlatform === 'meta';
+      const scopes = Array.from(new Set(oauthScopes)).join(isMeta ? ',' : ' ');
       const stateTag = supportsOneClick ? `${platform}:oneclick:${crypto.randomUUID()}` : `${platform}:${crypto.randomUUID()}`;
 
       const params = new URLSearchParams({
@@ -686,6 +690,7 @@ export function ManualConfigModal({ open, platform, displayName, isConnected, on
         scope: scopes,
         state: stateTag,
       });
+
       if (sharedOauthPlatform === 'google') {
         params.set('access_type', 'offline');
         params.set('prompt', 'select_account consent');
