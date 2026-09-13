@@ -634,13 +634,17 @@ Deno.serve(async (req) => {
         }
         if (!resp) break;
         status = resp.status;
-        json = await resp.json().catch(() => ({} as any));
+        // Keep the raw body: a truncated/parsed-away payload hides the real
+        // reason Graph rejected the read.
+        const bodyText = await resp.text().catch(() => "");
+        try { json = bodyText ? JSON.parse(bodyText) : {}; } catch { json = {}; }
         if (!resp.ok) {
           error = json?.error ?? json;
           // Explicit, actionable logging: a permission/expiry problem must be
           // visible in the function logs instead of silently returning zero.
           console.error("[fb-recent-posts] graph error", {
             edge: edges[edgeIndex],
+            request_url: nextUrl.replace(/access_token=[^&]+/, "access_token=REDACTED"),
             page_id: cred.pageId,
             token_source: cred.source,
             http_status: status,
@@ -648,6 +652,8 @@ Deno.serve(async (req) => {
             subcode: (error as any)?.error_subcode ?? null,
             type: (error as any)?.type ?? null,
             message: (error as any)?.message ?? null,
+            fbtrace_id: (error as any)?.fbtrace_id ?? null,
+            raw_body: bodyText.slice(0, 2000),
           });
           // A permission denial applies to every Page feed edge for this token.
           // Return immediately instead of issuing the same doomed request to
