@@ -749,7 +749,7 @@ Deno.serve(async (req) => {
       // Last resort before giving up: mint a fresh Page token from the
       // personal login and retry once. This turns the old "reconnect and try
       // again later" workaround into an automatic, immediate recovery.
-      if (!manualRefresh && isMetaPermissionError(last.error)) {
+      if (isMetaPermissionError(last.error)) {
         const refreshed = await refreshPageTokenFromPersonal();
         if (refreshed) {
           const retry = await fetchGraphHistoryWith(refreshed);
