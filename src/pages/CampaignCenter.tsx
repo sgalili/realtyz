@@ -4554,18 +4554,11 @@ const PublishedFeed = ({
     }
     try {
       toast.loading('פותח חיבור לפייסבוק…', { id: 'meta-connect-feed' });
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', {
-        body: {
-          action: 'start',
-          scope_tier: 'full',
-          redirect_uri: oauthRedirectUri(),
-          return_origin: oauthReturnOrigin(),
-        },
-      });
+      // Shared connect path: identical edge function, scopes and Page
+      // token/Page id upsert as the Connections tab, so connecting here can
+      // never leave the other screen "disconnected".
+      const url = await startMetaPageConnect();
       toast.dismiss('meta-connect-feed');
-      if (error) throw new Error((error as any)?.message || 'יצירת חיבור נכשלה');
-      const url = (data as any)?.auth_url;
-      if (!url) { toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Meta'); return; }
       if (!openOAuthWindow(String(url))) {
         toast.error('הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים ונסו שוב.');
       } else {
