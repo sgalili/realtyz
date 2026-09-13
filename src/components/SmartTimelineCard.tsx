@@ -97,7 +97,7 @@ export default function SmartTimelineCard({
         ? `thread_key.eq.lead:${leadId},metadata->>lead_id.eq.${leadId}`
         : `thread_key.eq.listing:${listingId},metadata->>listing_id.eq.${listingId}`;
 
-      const [activity, msgs, meets, tours, tasks] = await Promise.all([
+      const [activity, msgs, meets, tours, tasks, docs] = await Promise.all([
         (supabase as any)
           .from('interaction_activity_log')
           .select('id, action_type, platform, content, actor_label, actor_type, created_at, metadata')
@@ -134,10 +134,44 @@ export default function SmartTimelineCard({
           .or(leadId ? `metadata->>lead_id.eq.${leadId}` : `metadata->>listing_id.eq.${listingId}`)
           .order('scheduled_for', { ascending: false })
           .limit(40),
+        leadId
+          ? (supabase as any)
+              .from('closing_documents')
+              .select('id, title, template_key, status, created_at, sent_at, signed_at, viewed_at')
+              .eq('lead_id', leadId)
+              .order('created_at', { ascending: false })
+              .limit(30)
+          : Promise.resolve({ data: [] }),
       ]);
+
+      // Digital-signature documents are rendered from the document table itself,
+      // so the badge always reflects the live status (pending → signed).
+      const signatureDocIds = new Set<string>();
+      for (const r of (docs?.data ?? []) as any[]) {
+        signatureDocIds.add(String(r.id));
+        const signed = String(r.status ?? '') === 'signed' || !!r.signed_at;
+        out.push({
+          id: `doc-${r.id}`,
+          kind: 'signature',
+          label: `חתימה דיגיטלית · ${r.title ?? ''}`,
+          detail: signed
+            ? 'המסמך נחתם דיגיטלית על ידי איש הקשר.'
+            : r.viewed_at
+              ? 'המסמך נשלח ונצפה, ממתין לחתימה.'
+              : 'המסמך נשלח לחתימה דיגיטלית בוואטסאפ.',
+          at: asDate(r.signed_at ?? r.sent_at ?? r.created_at),
+          signatureStatus: signed ? 'signed' : 'pending',
+        });
+      }
 
       for (const r of (activity?.data ?? []) as any[]) {
         const meta = (r.metadata ?? {}) as any;
+        // Skip signature log rows we already render from closing_documents.
+        if (
+          (r.action_type === 'signature_request' || r.action_type === 'signature_signed') &&
+          signatureDocIds.has(String(meta.document_id ?? ''))
+        ) continue;
+
         const kind: any = meta.note_category
           ?? (r.action_type === 'note' ? 'note' : r.platform === 'phone' ? 'call' : r.action_type === 'interaction' ? 'message' : 'system');
         out.push({
