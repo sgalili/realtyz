@@ -226,6 +226,17 @@ export function ClosingRoomDialog({
             </Select>
           </div>
 
+          {template === 'tour_agreement' && (
+            <div>
+              <Label className="text-xs">מועד הסיור</Label>
+              <Input
+                type="datetime-local"
+                value={tourDate}
+                onChange={(e) => setTourDate(e.target.value)}
+              />
+            </div>
+          )}
+
           <div>
             <Label className="text-xs">
               {template === 'offer_letter' ? 'מחיר הצעה (₪)' : 'מחיר ייחוס (₪)'}
