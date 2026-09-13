@@ -3877,9 +3877,10 @@ const firstPipelineError = (data: any): string | null => {
 };
 
 const facebookGraphFailure = (input: any): 'permission' | 'token' | null => {
+  const raw = input?.raw_error ?? input?.error ?? input;
   const code = Number(input?.code ?? input?.raw_error?.code ?? input?.error?.code ?? 0);
-  const subcode = Number(input?.error_subcode ?? input?.raw_error?.error_subcode ?? 0);
-  const message = String(input?.message ?? input?.error?.message ?? input ?? '');
+  const subcode = Number(input?.error_subcode ?? input?.raw_error?.error_subcode ?? input?.error?.error_subcode ?? 0);
+  const message = String(input?.message ?? raw?.message ?? (typeof raw === 'string' ? raw : ''));
   if (code === 190 || subcode === 463 || subcode === 467 || /OAuthException.*190|error code 190/i.test(message)) {
     return 'token';
   }
