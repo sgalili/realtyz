@@ -8,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Clock, Phone, MessageSquare, Home, StickyNote, Handshake, CalendarDays, Loader2,
-  Sparkles, Plus, CheckCircle2, X, ChevronDown,
+  Sparkles, Plus, CheckCircle2, X, ChevronDown, FileSignature,
 } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
@@ -19,11 +20,13 @@ import {
 
 type TimelineEvent = {
   id: string;
-  kind: NoteCategory | 'task' | 'system';
+  kind: NoteCategory | 'task' | 'system' | 'signature';
   label: string;
   detail: string;
   at: string;
   actor?: string | null;
+  /** Live signature status, rendered as a badge on the entry. */
+  signatureStatus?: 'pending' | 'signed';
 };
 
 const KIND_STYLE: Record<string, { icon: typeof Phone; cls: string }> = {
@@ -34,10 +37,12 @@ const KIND_STYLE: Record<string, { icon: typeof Phone; cls: string }> = {
   offer: { icon: Handshake, cls: 'bg-rose-100 text-rose-700' },
   note: { icon: StickyNote, cls: 'bg-slate-100 text-slate-700' },
   task: { icon: CheckCircle2, cls: 'bg-sky-100 text-sky-700' },
+  signature: { icon: FileSignature, cls: 'bg-indigo-100 text-indigo-700' },
   system: { icon: Clock, cls: 'bg-slate-100 text-slate-600' },
 };
 
 const CATEGORIES: NoteCategory[] = ['note', 'call', 'message', 'showing', 'meeting', 'offer'];
+
 
 function asDate(v: any) {
   return v ? new Date(v).toISOString() : new Date().toISOString();
@@ -81,6 +86,10 @@ export default function SmartTimelineCard({
     queryKey: ['smart-timeline', scopeKey],
     enabled: !!(leadId || listingId),
     staleTime: 15_000,
+    // Keeps signature badges (pending → signed) current without a page refresh.
+    refetchInterval: 20_000,
+    refetchOnWindowFocus: true,
+
     queryFn: async (): Promise<TimelineEvent[]> => {
       const out: TimelineEvent[] = [];
 
@@ -88,7 +97,7 @@ export default function SmartTimelineCard({
         ? `thread_key.eq.lead:${leadId},metadata->>lead_id.eq.${leadId}`
         : `thread_key.eq.listing:${listingId},metadata->>listing_id.eq.${listingId}`;
 
-      const [activity, msgs, meets, tours, tasks] = await Promise.all([
+      const [activity, msgs, meets, tours, tasks, docs] = await Promise.all([
         (supabase as any)
           .from('interaction_activity_log')
           .select('id, action_type, platform, content, actor_label, actor_type, created_at, metadata')
@@ -125,22 +134,63 @@ export default function SmartTimelineCard({
           .or(leadId ? `metadata->>lead_id.eq.${leadId}` : `metadata->>listing_id.eq.${listingId}`)
           .order('scheduled_for', { ascending: false })
           .limit(40),
+        leadId
+          ? (supabase as any)
+              .from('closing_documents')
+              .select('id, title, template_key, status, created_at, sent_at, signed_at, viewed_at')
+              .eq('lead_id', leadId)
+              .order('created_at', { ascending: false })
+              .limit(30)
+          : Promise.resolve({ data: [] }),
       ]);
+
+      // Digital-signature documents are rendered from the document table itself,
+      // so the badge always reflects the live status (pending → signed).
+      const signatureDocIds = new Set<string>();
+      for (const r of (docs?.data ?? []) as any[]) {
+        signatureDocIds.add(String(r.id));
+        const signed = String(r.status ?? '') === 'signed' || !!r.signed_at;
+        out.push({
+          id: `doc-${r.id}`,
+          kind: 'signature',
+          label: `חתימה דיגיטלית · ${r.title ?? ''}`,
+          detail: signed
+            ? 'המסמך נחתם דיגיטלית על ידי איש הקשר.'
+            : r.viewed_at
+              ? 'המסמך נשלח ונצפה, ממתין לחתימה.'
+              : 'המסמך נשלח לחתימה דיגיטלית בוואטסאפ.',
+          at: asDate(r.signed_at ?? r.sent_at ?? r.created_at),
+          signatureStatus: signed ? 'signed' : 'pending',
+        });
+      }
 
       for (const r of (activity?.data ?? []) as any[]) {
         const meta = (r.metadata ?? {}) as any;
-        const kind: any = meta.note_category
-          ?? (r.action_type === 'note' ? 'note' : r.platform === 'phone' ? 'call' : r.action_type === 'interaction' ? 'message' : 'system');
+        // Skip signature log rows we already render from closing_documents.
+        if (
+          (r.action_type === 'signature_request' || r.action_type === 'signature_signed') &&
+          signatureDocIds.has(String(meta.document_id ?? ''))
+        ) continue;
+
+        const isSignature = String(r.action_type ?? '').startsWith('signature');
+        const kind: any = isSignature ? 'signature' : (meta.note_category
+          ?? (r.action_type === 'note' ? 'note' : r.platform === 'phone' ? 'call' : r.action_type === 'interaction' ? 'message' : 'system'));
         out.push({
           id: `act-${r.id}`,
           kind,
-          label: r.action_type === 'note'
-            ? `הערה · ${NOTE_CATEGORY_LABEL[(meta.note_category as NoteCategory) ?? 'note']}`
-            : `${r.action_type === 'interaction' ? 'אינטראקציה' : 'פעילות'} · ${r.platform}`,
+          label: isSignature
+            ? `חתימה דיגיטלית · ${meta.document_title ?? ''}`
+            : r.action_type === 'note'
+              ? `הערה · ${NOTE_CATEGORY_LABEL[(meta.note_category as NoteCategory) ?? 'note']}`
+              : `${r.action_type === 'interaction' ? 'אינטראקציה' : 'פעילות'} · ${r.platform}`,
           detail: String(r.content ?? ''),
           at: asDate(r.created_at),
           actor: r.actor_label ?? (r.actor_type === 'ai' ? 'AI' : null),
+          ...(isSignature
+            ? { signatureStatus: meta.signature_status === 'signed' ? 'signed' as const : 'pending' as const }
+            : {}),
         });
+
       }
 
       for (const r of (msgs?.data ?? []) as any[]) {
@@ -353,6 +403,17 @@ export default function SmartTimelineCard({
                   <div className="mb-0.5 flex items-center gap-2">
                     <span className="text-xs font-semibold">{evt.label}</span>
                     {evt.actor && <span className="text-[10px] text-muted-foreground">· {evt.actor}</span>}
+                    {evt.signatureStatus && (
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${evt.signatureStatus === 'signed'
+                          ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                          : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+                      >
+                        {evt.signatureStatus === 'signed' ? 'נחתם' : 'ממתין לחתימה'}
+                      </Badge>
+                    )}
+
                     <span className="text-[10px] text-muted-foreground ms-auto">
                       {format(new Date(evt.at), 'dd/MM HH:mm')}
                     </span>

@@ -84,11 +84,72 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Document already signed" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const origin = site_url ?? req.headers.get("origin") ?? "https://app.realtyz.ai";
+    // ---- Workspace identity: the verified WhatsApp number of THIS workspace ----
+    // The document owner may be a team member, so resolve the workspace owner and
+    // pass it as `tenant_id`, forcing send-whatsapp to route through the
+    // workspace's own verified WABA credentials instead of a default sender.
+    const { data: ownerProf } = await admin
+      .from("profiles")
+      .select("id, full_name, active_workspace_owner_id, workspace_owner_id")
+      .eq("id", doc.user_id)
+      .maybeSingle();
+    const workspaceOwnerId = String(
+      (ownerProf as any)?.active_workspace_owner_id ??
+        (ownerProf as any)?.workspace_owner_id ??
+        doc.user_id,
+    );
+
+    let brokerName = String((ownerProf as any)?.full_name ?? "").trim();
+    if (workspaceOwnerId !== doc.user_id) {
+      const { data: wsProf } = await admin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", workspaceOwnerId)
+        .maybeSingle();
+      brokerName = String((wsProf as any)?.full_name ?? brokerName ?? "").trim();
+    }
+    if (!brokerName) brokerName = "המשרד";
+
+    // Confirm the workspace actually has a verified WhatsApp integration before
+    // dispatching, so we never silently fall back to another sender identity.
+    const { data: waSettings } = await admin
+      .from("workspace_whatsapp_settings")
+      .select("workspace_owner_id")
+      .eq("workspace_owner_id", workspaceOwnerId)
+      .maybeSingle();
+    const { data: waProviderRows } = await admin
+      .from("wa_providers")
+      .select("config, is_active")
+      .eq("provider_name", "WBA")
+      .eq("is_active", true)
+      .or(`tenant_id.eq.${workspaceOwnerId},user_id.eq.${workspaceOwnerId}`);
+    const hasWorkspaceWaba = (waProviderRows ?? []).some(
+      (r: any) => r?.config?.phone_number_id && r?.config?.access_token,
+    );
+    console.log("[send-closing-doc] wa routing", {
+      workspace_owner_id: workspaceOwnerId,
+      has_settings: !!(waSettings as any)?.workspace_owner_id,
+      has_workspace_waba: hasWorkspaceWaba,
+    });
+
+    const origin = site_url ?? req.headers.get("origin") ?? "https://realtyz.co.il";
     const signUrl = `${origin.replace(/\/$/, "")}/sign/${doc.sign_token}`;
-    const body = (message?.trim() ||
-      `Hi ${doc.signer_name || "there"}, please review and sign your ${doc.title}. Secure link: ${signUrl}`) +
-      (message?.includes(signUrl) ? "" : `\n\n${signUrl}`);
+    const signerName = (doc.signer_name || "").trim();
+    // Rita's persona always opens the message, on behalf of the active broker.
+    const personaLine = `ריטה, הסוכנת הדיגיטלית של ${brokerName}`;
+    const defaultBody = [
+      personaLine,
+      "",
+      `${signerName ? `שלום ${signerName},` : "שלום,"} מצורף המסמך לחתימה דיגיטלית:`,
+      `📄 ${doc.title}`,
+      "",
+      "לחתימה מאובטחת בקישור הבא:",
+      signUrl,
+    ].join("\n");
+    const body = message?.trim()
+      ? (message.startsWith(personaLine) ? message.trim() : `${personaLine}\n\n${message.trim()}`) +
+        (message.includes(signUrl) ? "" : `\n\n${signUrl}`)
+      : defaultBody;
 
     const fileName = `${doc.title.replace(/[^\w\-. ]+/g, "_")}.pdf`;
     // The PDF is a nice-to-have: if storage download fails we still deliver the
@@ -110,6 +171,8 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           lead_id: doc.lead_id,
+          // Route strictly through this workspace's verified WABA number.
+          tenant_id: workspaceOwnerId,
           message: body,
           ai_assisted: false,
           ...(withFile && pdfBase64
@@ -139,6 +202,7 @@ Deno.serve(async (req) => {
       );
     }
 
+
     // Update document + lead stage
     await admin
       .from("closing_documents")
@@ -157,6 +221,27 @@ Deno.serve(async (req) => {
       target_id: document_id,
       details: { lead_id: doc.lead_id, sign_url: signUrl },
     });
+
+    // CRM timeline entry so the broker sees the signature request in the
+    // contact's history, with its live status badge.
+    await admin.from("interaction_activity_log").insert({
+      user_id: workspaceOwnerId,
+      thread_key: `lead:${doc.lead_id}`,
+      platform: "whatsapp",
+      action_type: "signature_request",
+      actor_type: "ai",
+      actor_id: userId,
+      actor_label: "ריטה",
+      content: `נשלח מסמך לחתימה דיגיטלית: ${doc.title}`,
+      metadata: {
+        lead_id: doc.lead_id,
+        document_id: document_id,
+        document_title: doc.title,
+        signature_status: "pending",
+        sign_url: signUrl,
+      },
+    });
+
 
     return new Response(JSON.stringify({ success: true, sign_url: signUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
