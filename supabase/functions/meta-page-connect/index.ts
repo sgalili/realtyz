@@ -473,8 +473,13 @@ Deno.serve(async (req) => {
         response_type: "code",
         scope: scopes.join(","),
         state: oauthState("facebook_page", returnOrigin),
+        // `rerequest` re-opens the consent dialog for permissions the user has
+        // previously declined; `force_reauthorize` stops Meta from silently
+        // reusing an older cached grant that lacks pages_read_engagement.
         auth_type: "rerequest",
+        force_reauthorize: "1",
       });
+
       // Reconnection must honour the explicit scope list above. A Business
       // Login config_id makes Meta ignore `scope`, so only use it when a caller
       // deliberately opts into that preconfigured flow.
