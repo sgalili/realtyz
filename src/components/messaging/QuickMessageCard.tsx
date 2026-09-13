@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MessageSquareText, Send, Copy, ExternalLink, Loader2, ChevronDown } from 'lucide-react';
+import { MessageSquareText, Send, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { openOfficialWhatsApp, sendViaOfficialWaba } from '@/lib/officialWa';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -116,25 +115,6 @@ export default function QuickMessageCard({ scope, leadId, phone, vars, listingId
     }
   };
 
-  const handleCopy = async () => {
-    if (!text.trim()) return;
-    await navigator.clipboard.writeText(text.trim());
-    await logInteraction(text.trim(), channel, 'manual');
-    toast.success('הטקסט הועתק ונרשם בציר הזמן');
-  };
-
-  const handleOpenWa = async () => {
-    if (!text.trim()) return;
-    // Official Meta WBA gateway only — never a personal / Green API number.
-    if (intl) {
-      const res = await sendViaOfficialWaba({ lead_id: leadId ?? undefined, phone_number: intl, message: text.trim() });
-      if (!res.ok) { toast.error(res.error || 'שליחה בוואטסאפ הרשמי נכשלה'); return; }
-      toast.success('נשלח מהמספר הרשמי');
-    } else {
-      await openOfficialWhatsApp(text.trim());
-    }
-    await logInteraction(text.trim(), 'whatsapp', 'manual');
-  };
 
   return (
     <div className={`rounded-xl border border-border bg-card p-4 ${open ? 'space-y-3' : ''} ${className || ''}`} dir="rtl">
