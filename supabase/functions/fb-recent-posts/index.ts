@@ -658,7 +658,27 @@ Deno.serve(async (req) => {
           // A permission denial applies to every Page feed edge for this token.
           // Return immediately instead of issuing the same doomed request to
           // /feed and /posts and producing three identical errors.
-          if (isMetaPermissionError(error)) break;
+          if (isMetaPermissionError(error)) {
+            // Print exactly which scopes the login actually granted, so a
+            // missing `pages_read_engagement` is provable from the logs alone.
+            try {
+              const permRes = await fetch(
+                `https://graph.facebook.com/v26.0/me/permissions?access_token=${encodeURIComponent(cred.token)}`,
+              );
+              const permBody = await permRes.text().catch(() => "");
+              console.error("[fb-recent-posts] token scopes at failure", {
+                page_id: cred.pageId,
+                token_source: cred.source,
+                http_status: permRes.status,
+                raw_body: permBody.slice(0, 1500),
+              });
+            } catch (permErr) {
+              console.error("[fb-recent-posts] scope probe failed", {
+                message: permErr instanceof Error ? permErr.message : String(permErr),
+              });
+            }
+            break;
+          }
           // Try the next edge — one blocked edge shouldn't abort the import.
           edgeIndex += 1;
           if (edgeIndex >= edges.length) break;
