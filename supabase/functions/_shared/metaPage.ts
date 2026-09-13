@@ -93,8 +93,12 @@ export async function resolveMetaPageCandidates(
     .eq("owner_id", ownerId)
     .order("is_selected", { ascending: false })
     .order("updated_at", { ascending: false });
-  return (data ?? [])
-    .filter((r: any) => r?.page_id && r?.page_access_token)
+  const own = (data ?? []).filter((r: any) => r?.page_id && r?.page_access_token);
+  if (own.length === 0) {
+    const shared = await resolveSharedMetaPage(db);
+    if (shared) return [{ ...shared, scope: "workspace" as const }];
+  }
+  return own
     .map((r: any) => ({
       pageId: String(r.page_id),
       pageName: r.page_name ?? null,
