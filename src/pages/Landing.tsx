@@ -466,12 +466,12 @@ export default function Landing() {
           <Link to="/terms" className="transition-colors hover:text-foreground">תנאי שימוש</Link>
           <Link to="/privacy-policy" className="transition-colors hover:text-foreground">מדיניות פרטיות</Link>
           <a href="mailto:support@realtyz.co.il" className="transition-colors hover:text-foreground">
-            support@realtyz.co.il
+            כניסה למתווכים
           </a>
         </p>
         <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground/80">
           <Star className="h-3 w-3 text-primary" aria-hidden />
-          פותח בגאווה בישראל · Proudly made in Israel
+          
         </p>
       </footer>
 
