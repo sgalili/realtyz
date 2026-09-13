@@ -4530,7 +4530,14 @@ const PublishedFeed = ({
         else if (p.startsWith('facebook')) next.add('facebook');
         else next.add(p);
       });
-      setConnectedChannels(next);
+      // MERGE, never replace: a probe that comes back empty (RLS blip, function
+      // timeout, rate limit) must never downgrade a known-good connection.
+      setConnectedChannels((prev) => {
+        const merged = new Set(prev);
+        next.forEach((id) => merged.add(id));
+        return merged;
+      });
+
     })();
   }, [workspaceOwnerId]);
 
@@ -7611,7 +7618,14 @@ const CampaignCenter = () => {
             ...(voiceReady || direct?.ivr ? { ivr: VOICE_DIAL_NUMBER } : {}),
             ...(hasVapi || direct?.['ai-call'] ? { 'ai-call': VOICE_DIAL_NUMBER } : {}),
           }));
-          setConnectedChannels(set);
+          // Facebook stays connected once bound: probes that come back empty
+          // (transient RLS/Graph/network failure) must never disconnect it.
+          setConnectedChannels((prev) => {
+            const merged = new Set(set);
+            if (prev.has('facebook') && readFbBindingFlag(workspaceOwnerId)) merged.add('facebook');
+            return merged;
+          });
+
         }
       } catch (err) {
         console.error('[CampaignCenter] integration context load failed:', err);

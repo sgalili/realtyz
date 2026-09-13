@@ -601,6 +601,7 @@ Deno.serve(async (req) => {
 
       const rows: RawPost[] = [];
       const seen = new Set<string>();
+      const seenCursors = new Set<string>();
       let status = 0;
       let error: any = null;
       let edgeIndex = 0;
@@ -610,9 +611,28 @@ Deno.serve(async (req) => {
         page2 < maxPages * edges.length && nextUrl && rows.length < lastRecords;
         page2++
       ) {
-        const resp = await fetch(nextUrl);
+        // A transient network failure must never abort the whole import: retry
+        // the exact same cursor once before giving up on this edge.
+        let resp: Response | null = null;
+        let json: any = {};
+        for (let attempt = 0; attempt < 2 && !resp; attempt++) {
+          try {
+            resp = await fetch(nextUrl);
+          } catch (netErr) {
+            if (attempt === 1) {
+              console.error("[fb-recent-posts] graph network error", {
+                edge: edges[edgeIndex],
+                message: netErr instanceof Error ? netErr.message : String(netErr),
+              });
+              error = { message: "graph_network_error" };
+            } else {
+              await new Promise((r) => setTimeout(r, 500));
+            }
+          }
+        }
+        if (!resp) break;
         status = resp.status;
-        const json = await resp.json().catch(() => ({} as any));
+        json = await resp.json().catch(() => ({} as any));
         if (!resp.ok) {
           error = json?.error ?? json;
           // Explicit, actionable logging: a permission/expiry problem must be
@@ -658,19 +678,24 @@ Deno.serve(async (req) => {
             fbName: ws?.facebook_page_name ?? null,
           });
         }
-        // Graph may return an empty filtered page with a valid cursor. Always
-        // advance by the opaque `after` cursor before deciding the edge ended.
+        // Walk the history with Graph's own cursor. `paging.next` is the
+        // authoritative link; the raw `after` cursor is the fallback. A repeated
+        // cursor means this edge is exhausted, so move on instead of looping.
         const after = asText(json?.paging?.cursors?.after);
         const paging = typeof json?.paging?.next === "string" ? json.paging.next : "";
-        if (after) {
-          nextUrl = buildUrl(edges[edgeIndex], after);
-        } else if (paging) {
+        const cursorKey = after ? `${edges[edgeIndex]}:${after}` : "";
+        const cursorRepeated = !!cursorKey && seenCursors.has(cursorKey);
+        if (cursorKey) seenCursors.add(cursorKey);
+        if (paging && !cursorRepeated) {
           nextUrl = paging;
+        } else if (after && !cursorRepeated) {
+          nextUrl = buildUrl(edges[edgeIndex], after);
         } else {
           edgeIndex += 1;
           nextUrl = edgeIndex < edges.length ? buildUrl(edges[edgeIndex]) : "";
         }
       }
+
       if (error && rows.length > 0) {
         // A failing secondary edge must not void the posts we did fetch.
         error = null;
