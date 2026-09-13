@@ -519,9 +519,7 @@ Deno.serve(async (req) => {
      * carries the freshly granted `pages_read_engagement`, so the refresh
      * fixes the read WITHOUT sending the user through another OAuth round.
      */
-    const refreshPageTokenFromPersonal = async (): Promise<
-      { token: string; pageId: string | null; source: string | null } | null
-    > => {
+    const refreshPageTokenFromPersonal = async (): Promise<GraphCred | null> => {
       const wantedPageId = page?.pageId ?? null;
       if (!wantedPageId) return null;
       const { data: personal } = await admin
