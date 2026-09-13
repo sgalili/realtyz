@@ -4530,7 +4530,14 @@ const PublishedFeed = ({
         else if (p.startsWith('facebook')) next.add('facebook');
         else next.add(p);
       });
-      setConnectedChannels(next);
+      // MERGE, never replace: a probe that comes back empty (RLS blip, function
+      // timeout, rate limit) must never downgrade a known-good connection.
+      setConnectedChannels((prev) => {
+        const merged = new Set(prev);
+        next.forEach((id) => merged.add(id));
+        return merged;
+      });
+
     })();
   }, [workspaceOwnerId]);
 
