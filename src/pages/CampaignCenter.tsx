@@ -4682,20 +4682,20 @@ const PublishedFeed = ({
     // UPSERTS into campaign_logs; the realtime INSERT handler streams new
     // rows into the UI as they land.
     const importKey = `realtyz.fb_native_import.${FIRST_VISIT_IMPORT_KEY_VERSION}.${ownerScope}`;
-    let shouldImport = opts.forceFb === true;
+    let shouldImport = opts.forceFb === true && !fbSyncBlockedRef.current;
     if (!opts.skipFbImport) {
       const recentRowsNeedNativeRefresh = merged.slice(0, 20).some((r) =>
         String(r.channel || '').toLowerCase() === 'facebook' &&
         (!Array.isArray(r.media_urls) || r.media_urls.length === 0 || !r.external_url),
       );
-      if (!shouldImport && merged.length < EXPECTED_NATIVE_FACEBOOK_POSTS) {
+      if (!fbSyncBlockedRef.current && !shouldImport && merged.length < EXPECTED_NATIVE_FACEBOOK_POSTS) {
         try {
           const raw = sessionStorage.getItem(importKey);
           const importedAt = raw ? Number(raw) : 0;
           shouldImport = !Number.isFinite(importedAt) || Date.now() - importedAt > CAMPAIGN_CACHE_MS;
         } catch { shouldImport = true; }
       }
-      if (!shouldImport && recentRowsNeedNativeRefresh) {
+      if (!fbSyncBlockedRef.current && !shouldImport && recentRowsNeedNativeRefresh) {
         try {
           const raw = sessionStorage.getItem(importKey);
           const importedAt = raw ? Number(raw) : 0;
@@ -4738,7 +4738,7 @@ const PublishedFeed = ({
       // pulls brand-new native posts, refreshes live engagement counters and
       // removes from our feed anything that was deleted on Facebook itself.
       // Throttled per session so entering the page repeatedly stays cheap.
-      if (!shouldImport) {
+      if (!fbSyncBlockedRef.current && !shouldImport) {
         const syncKey = `realtyz.fb_native_reconcile.${ownerScope}`;
         let mayReconcile = true;
         try {
@@ -4968,7 +4968,7 @@ const PublishedFeed = ({
     let cancelled = false;
 
     const verify = async () => {
-      if (cancelled || document.visibilityState !== 'visible') return;
+      if (cancelled || fbSyncBlockedRef.current || document.visibilityState !== 'visible') return;
       try {
         const last = Number(sessionStorage.getItem(key) || 0);
         if (Number.isFinite(last) && Date.now() - last < 3 * 60_000) return;
