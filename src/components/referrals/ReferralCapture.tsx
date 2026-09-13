@@ -28,9 +28,13 @@ export function ReferralCapture() {
     const code = getStoredRefCode();
     if (!code) return;
     attributed.current = true;
-    db.rpc('register_referral', { _code: code }).catch(() => {
-      attributed.current = false;
-    });
+    void (async () => {
+      try {
+        await db.rpc('register_referral', { _code: code });
+      } catch {
+        attributed.current = false;
+      }
+    })();
   }, [user?.id]);
 
   return null;
