@@ -328,23 +328,6 @@ export default function Landing() {
             </div>
           </Reveal>
 
-          <Reveal delay={120}>
-            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                { t: 'תזמון ופרסום תוכן', d: 'יצירת פוסטים, תזמון ופרסום לכל הרשתות והקבוצות - בלי כלי חיצוני.' },
-                { t: 'ניהול לידים ועסקאות', d: 'CRM מלא עם פייפליין, מעקבים, סיכומי שיחה והתאמת נכסים.' },
-                { t: 'הודעות בכל הערוצים', d: 'ווטסאפ, SMS, אימייל ורשתות חברתיות מתיבה אחת מסונכרנת.' },
-                { t: 'יומן ותיאום צפיות', d: 'סנכרון יומן דו-כיווני, תיאום צפיות ותזכורות אוטומטיות.' },
-                { t: 'דוחות וניתוח עסקי', d: 'זמני תגובה, שיעורי המרה, עמלות ותחזית הכנסות בזמן אמת.' },
-                { t: 'כתיבה ותמלול AI', d: 'טקסטים שיווקיים, תשובות לאנשי קשר ותמלול הקלטות קוליות.' },
-              ].map((item) => (
-                <div key={item.t} className="rounded-2xl border border-border/60 bg-card/60 p-6 text-right">
-                  <h3 className="text-xl font-extrabold">{item.t}</h3>
-                  <p className="mt-2 text-base leading-relaxed text-muted-foreground">{item.d}</p>
-                </div>
-              ))}
-            </div>
-          </Reveal>
 
         </div>
       </section>
