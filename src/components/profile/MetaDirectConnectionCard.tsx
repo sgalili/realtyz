@@ -19,6 +19,11 @@ import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPa
 import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
+import {
+  callMetaPageConnect as callPageConnect,
+  
+  startMetaPageConnect,
+} from '@/lib/facebookPageConnect';
 
 
 export type MetaStatus = {
@@ -51,47 +56,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
-function describeConnectError(payload: any): string {
-  const parts = [payload?.error, payload?.fb_message, payload?.error_detail?.details, payload?.error_detail?.hint]
-    .filter((p) => typeof p === 'string' && p.trim().length > 0);
-  const unique = Array.from(new Set(parts));
-  return unique.join(' — ');
-}
-
-/** Error that keeps the JSON body so callers can react to flags like retry_basic. */
-class PageConnectError extends Error {
-  payload: any;
-  constructor(message: string, payload: any) {
-    super(message);
-    this.payload = payload ?? null;
-  }
-}
-
-async function callPageConnect<T = any>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('meta-page-connect', { body });
-  if (error) {
-    // Non-2xx responses hide the JSON body behind error.context — read it so the
-    // user sees the real reason instead of "non-2xx status code".
-    let detailed = '';
-    let payload: any = null;
-    try {
-      const ctx: any = (error as any)?.context;
-      payload = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
-      detailed = describeConnectError(payload);
-    } catch {
-      detailed = '';
-    }
-    const raw = detailed || String(error?.message ?? error);
-    throw new PageConnectError(
-      /failed to (send|fetch)/i.test(raw) ? 'לא ניתן להגיע לשירות החיבור לפייסבוק. נסה שוב בעוד רגע.' : raw,
-      payload,
-    );
-  }
-  if (data && (data as any).error) {
-    throw new PageConnectError(describeConnectError(data) || String((data as any).error), data);
-  }
-  return data as T;
-}
+// Connect logic lives in `@/lib/facebookPageConnect` so this card, the
+// /campaigns banner and every other entry point share one code path and one
+// database upsert.
 
 
 
@@ -263,20 +230,11 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         // the review-free basic scopes instead of dead-ending the connection.
         if (e?.payload?.retry_basic) {
           try {
-            const retry = await callPageConnect<any>({
-              action: 'start',
-              scope_tier: 'basic',
-              redirect_uri: oauthRedirectUri(),
-              return_origin: oauthReturnOrigin(),
+            const url = await startMetaPageConnect({ scopeTier: 'basic' });
+            toast.message('מבקשים הרשאות בסיסיות מפייסבוק', {
+              description: 'אשרו שוב את החיבור כדי להשלים את ההתחברות.',
             });
-            if (retry?.auth_url) {
-              const url = String(retry.auth_url);
-              
-              toast.message('מבקשים הרשאות בסיסיות מפייסבוק', {
-                description: 'אשרו שוב את החיבור כדי להשלים את ההתחברות.',
-              });
-              if (openOAuthWindow(url)) return;
-            }
+            if (openOAuthWindow(url)) return;
           } catch {
             /* fall through to the manual path below */
           }
@@ -387,20 +345,15 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     setConnecting(true);
     try {
       clearPendingOAuth();
-      const res = await withTimeout(
-        callPageConnect<any>({
-          action: 'start',
-          redirect_uri: oauthRedirectUri(),
-          return_origin: oauthReturnOrigin(),
-        }),
+      // Shared start path — identical function, scopes and DB upsert as the
+      // /campaigns banner.
+      const authUrl = await withTimeout(
+        startMetaPageConnect(),
         EXCHANGE_TIMEOUT_MS,
         'שירות החיבור לפייסבוק לא הגיב בזמן. נסה שוב.',
       );
-
-      if (!res?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
       // Open in a popup / new tab. Assigning window.top.location throws a
       // sandbox permission error inside the preview iframe.
-      const authUrl = String(res.auth_url);
       const opened = openOAuthWindow(authUrl);
       if (!opened) {
         setConnecting(false);

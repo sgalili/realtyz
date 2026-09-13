@@ -78,6 +78,10 @@ import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurren
 import { PostImage } from '@/components/campaigns/PostImage';
 import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/SupportRequiredDialog';
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
+import { startMetaPageConnect, FACEBOOK_PAGE_PROVIDER } from '@/lib/facebookPageConnect';
+import { onOAuthResult } from '@/lib/oauthPopupBridge';
+import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
+import { useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 
 import { searchAllSources } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
@@ -4554,18 +4558,11 @@ const PublishedFeed = ({
     }
     try {
       toast.loading('פותח חיבור לפייסבוק…', { id: 'meta-connect-feed' });
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', {
-        body: {
-          action: 'start',
-          scope_tier: 'full',
-          redirect_uri: oauthRedirectUri(),
-          return_origin: oauthReturnOrigin(),
-        },
-      });
+      // Shared connect path: identical edge function, scopes and Page
+      // token/Page id upsert as the Connections tab, so connecting here can
+      // never leave the other screen "disconnected".
+      const url = await startMetaPageConnect();
       toast.dismiss('meta-connect-feed');
-      if (error) throw new Error((error as any)?.message || 'יצירת חיבור נכשלה');
-      const url = (data as any)?.auth_url;
-      if (!url) { toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Meta'); return; }
       if (!openOAuthWindow(String(url))) {
         toast.error('הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים ונסו שוב.');
       } else {
@@ -4578,8 +4575,20 @@ const PublishedFeed = ({
     }
   }, []);
 
+  const refreshFbHealth = useRefreshFacebookHealth();
+  const refreshFbBinding = useRefreshMetaPageBinding();
 
-
+  // The callback window saves the binding through the same function; here we
+  // only drop the stale warning and refresh the shared connection caches so
+  // both screens agree instantly.
+  useEffect(() => onOAuthResult(FACEBOOK_PAGE_PROVIDER, (result) => {
+    if (!result.ok) return;
+    fbSyncBlockedRef.current = false;
+    setFacebookSyncWarning(null);
+    refreshFbHealth();
+    refreshFbBinding();
+    toast.success('עמוד הפייסבוק חובר', { description: result.name || undefined });
+  }), [refreshFbHealth, refreshFbBinding, setFacebookSyncWarning]);
 
   const loadRef = useRef<(opts?: { forceFb?: boolean; skipFbImport?: boolean }) => Promise<{ rows: CampaignRow[]; ownerScope: string | null; importedCount: number; importComplete: boolean }>>(async () => ({ rows: [], ownerScope: null, importedCount: 0, importComplete: false }));
   const load = useCallback(async (opts: { forceFb?: boolean; skipFbImport?: boolean } = {}) => {
