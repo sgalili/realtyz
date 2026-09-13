@@ -18,12 +18,12 @@ import { setPendingSignupRole, readPendingSignupRole, type SignupRole } from '@/
 
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
 
-const AUTH_HEADER_HEADLINES: { key: string; node: JSX.Element }[] = [
-  { key: 'h1', node: <>ה{ '\n' } <strong>פלטפורמה היחידה</strong>{ '\n' }שתצטרכו לקמפיין שלכם</> },
-  { key: 'h2', node: <>בלי צורך בספקים חיצוניים:{ '\n' }<strong>ווטסאפ, SMS ואימייל</strong>{ '\n' }- הכל בפנים</> },
-  { key: 'h3', node: <><strong>ניהול שטח, CRM ואסטרטגיה</strong>{ '\n' }במקום אחד - בלי פשרות</> },
-  { key: 'h4', node: <><strong>עליונות טכנולוגית</strong>{ '\n' }שמשאירה את המתחרים מאחור</> },
-  { key: 'h5', node: <>מערכת ה-AI היחידה בישראל ש{ '\n' }<strong>מנהלת את הליד מקצה לקצה</strong></> },
+const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
+  { key: 'h1', render: () => <>ה{ '\n' } <strong>פלטפורמה היחידה</strong>{ '\n' }שתצטרכו לקמפיין שלכם</> },
+  { key: 'h2', render: () => <>בלי צורך בספקים חיצוניים:{ '\n' }<strong>ווטסאפ, SMS ואימייל</strong>{ '\n' }- הכל בפנים</> },
+  { key: 'h3', render: () => <><strong>ניהול שטח, CRM ואסטרטגיה</strong>{ '\n' }במקום אחד - בלי פשרות</> },
+  { key: 'h4', render: () => <><strong>עליונות טכנולוגית</strong>{ '\n' }שמשאירה את המתחרים מאחור</> },
+  { key: 'h5', render: () => <>מערכת ה-AI היחידה בישראל ש{ '\n' }<strong>מנהלת את הליד מקצה לקצה</strong></> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;
