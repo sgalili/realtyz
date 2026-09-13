@@ -116,7 +116,7 @@ export default function PricingSection() {
         </div>
 
         <p className="mx-auto mt-8 max-w-3xl text-center text-sm text-muted-foreground">
-          המחירים אינם כוללים מע"מ.
+          {"\n"}
         </p>
       </div>
     </section>
