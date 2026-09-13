@@ -580,6 +580,39 @@ Deno.serve(async (req) => {
       }
     };
 
+    /**
+     * Guarantees the token we read posts with is a PAGE access token for the
+     * exact page_id we query (a user-level token silently fails the
+     * /{page-id}/published_posts read). `/me` resolved with a Page token
+     * returns the Page node, so id === page_id proves the token type.
+     */
+    const verifyPageToken = async (cred: GraphCred): Promise<boolean> => {
+      if (!cred.token || !cred.pageId) return false;
+      try {
+        const resp = await fetch(
+          `https://graph.facebook.com/v26.0/me?fields=id,name&access_token=${encodeURIComponent(cred.token)}`,
+        );
+        const payload: any = await resp.json().catch(() => ({}));
+        const tokenNodeId = String(payload?.id ?? "");
+        const isPageToken = resp.ok && tokenNodeId === String(cred.pageId);
+        if (!isPageToken) {
+          console.error("[fb-recent-posts] stored token is not a Page access token", {
+            page_id: cred.pageId,
+            token_source: cred.source,
+            binding_record_id: cred.recordId ?? null,
+            token_node_id: tokenNodeId || null,
+            http_status: resp.status,
+            message: payload?.error?.message ?? null,
+          });
+        }
+        return isPageToken;
+      } catch (e) {
+        console.warn("[fb-recent-posts] page token verification threw", e instanceof Error ? e.message : e);
+        // Network hiccup: don't block the read on the probe.
+        return true;
+      }
+    };
+
     const fetchGraphHistoryWith = async (
       cred: GraphCred,
     ): Promise<
@@ -824,7 +857,16 @@ Deno.serve(async (req) => {
         error: "facebook_page_access_token_missing",
         source: null,
       };
-      for (const cred of ordered) {
+      for (const rawCred of ordered) {
+        // Enforce a real Page access token before hitting /{page-id}/...:
+        // if the stored value is a user token, mint the Page token first.
+        let cred = rawCred;
+        if (!(await verifyPageToken(cred))) {
+          const minted = await refreshPageTokenFromPersonal();
+          if (minted && minted.pageId === cred.pageId && await verifyPageToken(minted)) {
+            cred = minted;
+          }
+        }
         const res = await fetchGraphHistoryWith(cred);
         if (res.posts.length > 0) {
           workingCred = cred;
