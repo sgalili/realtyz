@@ -701,6 +701,9 @@ Deno.serve(async (req) => {
               console.error("[fb-recent-posts] token scopes at failure", {
                 page_id: cred.pageId,
                 token_source: cred.source,
+                binding_record_id: cred.recordId ?? null,
+                binding_updated_at: cred.updatedAt ?? null,
+                missing_scope_hint: "pages_read_engagement",
                 http_status: permRes.status,
                 raw_body: permBody.slice(0, 1500),
               });
