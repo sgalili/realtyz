@@ -403,6 +403,17 @@ export default function SmartTimelineCard({
                   <div className="mb-0.5 flex items-center gap-2">
                     <span className="text-xs font-semibold">{evt.label}</span>
                     {evt.actor && <span className="text-[10px] text-muted-foreground">· {evt.actor}</span>}
+                    {evt.signatureStatus && (
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${evt.signatureStatus === 'signed'
+                          ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                          : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+                      >
+                        {evt.signatureStatus === 'signed' ? 'נחתם' : 'ממתין לחתימה'}
+                      </Badge>
+                    )}
+
                     <span className="text-[10px] text-muted-foreground ms-auto">
                       {format(new Date(evt.at), 'dd/MM HH:mm')}
                     </span>
