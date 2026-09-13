@@ -4496,6 +4496,7 @@ const PublishedFeed = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const next = new Set<string>();
+      if (readFbBindingFlag(workspaceOwnerId)) next.add('facebook');
       // A bound Facebook Page (OAuth or manual token) is by itself a valid
       // connected state — the manual path never writes to social_connections.
       try {
@@ -7499,6 +7500,9 @@ const CampaignCenter = () => {
         if (cancelled) return;
 
         const set = new Set<string>();
+        // Preserve the workspace-scoped, last-known-good binding while the
+        // background resolver is unavailable. Only explicit disconnect clears it.
+        if (readFbBindingFlag(workspaceOwnerId)) set.add('facebook');
 
         if (hasOwnProfile) {
           // A bound Facebook Page is by itself a valid connected state — the
