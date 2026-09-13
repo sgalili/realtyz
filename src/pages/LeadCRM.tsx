@@ -53,7 +53,7 @@ import {
 } from 'recharts';
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
 import LinkedPropertiesField from '@/components/leads/LinkedPropertiesField';
-import { LeadSignatureCard } from '@/components/signature/LeadSignatureCard';
+import { DigitalSignatureButton } from '@/components/signature/DigitalSignatureButton';
 import LeadEnrichmentPanel, { LeadEnrichmentButton, LeadEnrichmentIconButton } from '@/components/leads/LeadEnrichmentPanel';
 import { ExcelIcon } from '@/components/icons/ExcelIcon';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
@@ -2300,34 +2300,7 @@ const LeadCRM = () => {
                           }));
                         return (
                           <div className="flex flex-wrap items-center gap-1 mt-2">
-                            {/* Phone sits inline with the action buttons, middle-aligned */}
-                            <span className="shrink-0 pe-1 leading-none">
-                        <EditableInlineText
-                          value={formatPhoneDisplay(selectedVoter.phone_number) === '-' ? '' : formatPhoneDisplay(selectedVoter.phone_number)}
-                          placeholder="הוסף טלפון"
-                          ariaLabel="ערוך טלפון"
-                          inputMode="tel"
-                          dir="ltr"
-                          className="text-sm text-muted-foreground font-normal"
-                          validate={(v) => {
-                            if (!v) return null;
-                            const digits = v.replace(/\D/g, '');
-                            if (digits.length < 9) return 'מספר טלפון לא תקין';
-                            return null;
-                          }}
-                          onSave={async (next) => {
-                            let normalized: string | null = null;
-                            if (next) {
-                              const digits = next.replace(/\D/g, '');
-                              normalized = digits.startsWith('0') ? '972' + digits.slice(1) : digits.startsWith('972') ? digits : digits;
-                            }
-                            const { error } = await supabase.from('leads').update({ phone_number: normalized }).eq('id', selectedVoter.id);
-                            if (error) throw error;
-                            await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-                            toast.success('הטלפון עודכן');
-                          }}
-                         />
-                            </span>
+                            {/* Phone lives in the details panel below, not in the header */}
                             {channels.map((c) => {
                               const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55'}`;
                               const aria = { 'aria-label': c.label, title: c.label } as const;
@@ -2346,6 +2319,14 @@ const LeadCRM = () => {
                             {/* Homely / WebTiv are read-only sources — no push action. */}
 
                             <LeadEnrichmentIconButton lead={selectedVoter} />
+                            {/* Digital signature — sits right before the delete action */}
+                            <DigitalSignatureButton
+                              lead={selectedVoter as any}
+                              iconOnly
+                              variant="ghost"
+                              label="חתימה דיגיטלית"
+                              className="h-8 w-8 rounded-md bg-transparent text-slate-700 hover:bg-slate-100"
+                            />
                             <button
                               type="button"
                               aria-label="מחק איש קשר"
@@ -2389,6 +2370,9 @@ const LeadCRM = () => {
 
 
                 <div className="mt-6 space-y-6">
+
+                  {/* Contact details (phone, email, city, address, age, gender, socials) — top of the card */}
+                  <LeadEnrichmentPanel lead={selectedVoter} hideEnrichmentButton />
 
 
                   {/* Real Estate Sales Closer Grid — editable dropdowns, high-contrast labels */}
@@ -2517,8 +2501,7 @@ const LeadCRM = () => {
                          <div className="p-3 rounded-lg bg-slate-100 border border-slate-200">
                            <LinkedPropertiesField leadId={(selectedVoter as any).id} />
                          </div>
-                         {/* Pre-tour digital signature: send link, track status, signed PDF stays on the record */}
-                         <LeadSignatureCard lead={selectedVoter as any} />
+                         {/* Digital signature moved to the inline action icons in the header */}
                          {/* Owner-only: 13 Homely-style property fields, backed by the linked listing */}
                          {ownerLead && (
                            <OwnerPropertyGrid lead={selectedVoter as any} />
@@ -2564,22 +2547,10 @@ const LeadCRM = () => {
                             />
                           </div>
                         </div>
-                        <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
-                          <p className="text-xs font-bold text-slate-900">הערות</p>
-                          <textarea
-                            defaultValue={lead.notes ?? ''}
-                            placeholder="הערות"
-                            rows={3}
-                            className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
-                            onBlur={(e) => saveField('notes', e.target.value)}
-                          />
-                        </div>
                       </div>
                     );
                   })()}
 
-                  {/* Demographics + Social (collapsed) + GreenAPI */}
-                  <LeadEnrichmentPanel lead={selectedVoter} hideEnrichmentButton />
 
 
 
