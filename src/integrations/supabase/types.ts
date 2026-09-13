@@ -6357,6 +6357,16 @@ export type Database = {
         Returns: undefined
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
+      save_workspace_office: {
+        Args: {
+          _agency_name: string
+          _landscape_logo_url: string
+          _logo_url: string
+          _service_areas: string[]
+          _workspace_owner_id: string
+        }
+        Returns: Json
+      }
       seed_demo_data: { Args: never; Returns: Json }
       set_active_workspace: { Args: { _owner: string }; Returns: undefined }
       set_homely_broker_disabled: {
