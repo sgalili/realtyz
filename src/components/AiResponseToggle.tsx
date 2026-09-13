@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Bot } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAutoFlags } from '@/hooks/useAutoFlags';
 import { cn } from '@/lib/utils';
+import { RitaAvatar } from '@/components/RitaAvatar';
 
 /**
  * Collapsed robot button for the page hero.
@@ -35,7 +35,7 @@ export function AiResponseToggle() {
               : 'border-muted-foreground/30 bg-muted/40 text-muted-foreground opacity-60 grayscale hover:bg-muted/60 hover:text-muted-foreground'
           )}
         >
-          <Bot className="h-5 w-5" strokeWidth={2} />
+          <RitaAvatar className="h-7 w-7 border-0 ring-0" />
         </Button>
       </PopoverTrigger>
       <PopoverContent

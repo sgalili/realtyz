@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidateLiveData } from '@/lib/liveSync';
 import { useLocation } from 'react-router-dom';
@@ -7,12 +7,19 @@ import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useAuth } from '@/hooks/useAuth';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy } from 'lucide-react';
+import { Loader2, Database, X, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { RitaAvatar } from '@/components/RitaAvatar';
+import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation';
+import { Message as AiMessage, MessageContent, MessageResponse } from '@/components/ai-elements/message';
+import { PromptInput, PromptInputTextarea, PromptInputFooter, PromptInputTools, PromptInputButton, PromptInputSubmit } from '@/components/ai-elements/prompt-input';
+import { Shimmer } from '@/components/ai-elements/shimmer';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { openOfficialWhatsApp, sendViaOfficialWaba } from '@/lib/officialWa';
 import { publicUrl } from '@/lib/publicUrl';
 import {
@@ -270,6 +277,7 @@ export default function AiAgentDrawer() {
   // the topic accordion in the empty state above.
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -344,15 +352,32 @@ export default function AiAgentDrawer() {
 
   const { isListening, toggle: toggleVoice } = useVoiceInput(handleVoiceResult);
 
-  // Auto-scroll to the bottom whenever new messages arrive AND when the
-  // drawer is (re-)opened, so the operator lands on the freshest turn.
-  useEffect(() => {
+  // Place the transcript at the newest turn before paint. No smooth scroll,
+  // no visible travel through old messages when the drawer opens.
+  useLayoutEffect(() => {
     if (!open) return;
     const el = scrollRef.current;
     if (!el) return;
-    // Defer to next frame so layout is measured after the sheet opens.
-    requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+    el.scrollTop = el.scrollHeight;
   }, [messages, open, historyLoaded]);
+
+  useEffect(() => {
+    if (open && historyLoaded) inputRef.current?.focus();
+  }, [open, historyLoaded, isLoading]);
+
+  const resetChat = useCallback(async () => {
+    if (!user?.id) return;
+    const { error } = await supabase.from('ai_drawer_history').delete().eq('user_id', user.id);
+    if (error) {
+      toast.error('איפוס הצ׳אט נכשל');
+      return;
+    }
+    setMessages([]);
+    setInput('');
+    setPendingAttachments([]);
+    setExpandedTopic(null);
+    toast.success('הצ׳אט אופס');
+  }, [user?.id]);
 
 
   // Mint a share token via edge fn for a property card. Works for both local
@@ -581,20 +606,35 @@ ${shareUrl}
     <Sheet open={open} onOpenChange={setOpen}>
       {/* Trigger is in AppLayout header */}
       <SheetContent side="left" className="w-full sm:max-w-md p-0 flex flex-col" dir="rtl">
-        {/* Header — centered brand mark + title */}
-        <div className="px-4 py-3 border-b bg-primary/5 flex flex-col items-center justify-center gap-1.5">
-          <div className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center">
-            <Bot className="h-5 w-5 text-primary" />
-          </div>
+        <div className="relative px-4 py-3 border-b bg-primary/5 flex flex-col items-center justify-center gap-1.5">
+          <RitaAvatar className="h-11 w-11" />
           <h3 className="text-[18px] font-bold text-center">ריטה, סוכנת ה-AI של Realtyz</h3>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button type="button" variant="ghost" size="sm" className="absolute start-3 top-3 gap-1 text-muted-foreground" disabled={messages.length === 0}>
+                <Trash2 className="h-4 w-4" /> איפוס צ׳אט
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent dir="rtl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>לאפס את כל הצ׳אט עם ריטה?</AlertDialogTitle>
+                <AlertDialogDescription>כל היסטוריית השיחה שלך עם ריטה תימחק לצמיתות.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="gap-2">
+                <AlertDialogCancel>ביטול</AlertDialogCancel>
+                <AlertDialogAction onClick={() => void resetChat()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">איפוס צ׳אט</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        <Conversation className="min-h-0" initial="instant" resize="instant">
+          <ConversationContent ref={scrollRef} className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
           {messages.length === 0 && (
             <div className="space-y-5 py-2">
               <div className="text-center space-y-2 pb-1">
-                <Bot className="h-10 w-10 mx-auto text-muted-foreground/30" />
+                <RitaAvatar className="h-16 w-16 mx-auto" />
                 <p className="text-[18px] text-muted-foreground">שלום! אני ריטה, סוכנת ה-AI של Realtyz.</p>
                 <p className="text-[16px] text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
               </div>
@@ -635,15 +675,11 @@ ${shareUrl}
           )}
 
           {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
-              <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[18px] ${
-                msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                  : msg.type === 'error'
-                    ? 'bg-destructive/10 text-destructive border border-destructive/20 rounded-tl-sm'
-                    : 'bg-muted rounded-tl-sm'
-              }`}>
-                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+            <AiMessage key={i} from={msg.role} className={msg.role === 'user' ? 'ms-auto' : 'me-auto'}>
+              <div className="flex items-start gap-2">
+                {msg.role === 'assistant' && <RitaAvatar className="mt-0.5 h-7 w-7" />}
+                <MessageContent className={msg.role === 'user' ? 'bg-primary text-primary-foreground text-[18px]' : msg.type === 'error' ? 'text-destructive text-[18px]' : 'text-[18px]'}>
+                  <MessageResponse className="leading-relaxed">{msg.content}</MessageResponse>
 
                 {msg.data && Array.isArray(msg.data) && msg.data.length > 0 && (
                   <div className="mt-2 space-y-2">
@@ -897,19 +933,21 @@ ${shareUrl}
                     ))}
                   </div>
                 )}
+                </MessageContent>
               </div>
-            </div>
+            </AiMessage>
           ))}
 
           {isLoading && (
-            <div className="flex justify-end">
-              <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                <span className="text-[16px] text-muted-foreground">מנתח נתונים...</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <RitaAvatar className="h-7 w-7" />
+              <Shimmer className="text-[16px]">ריטה חושבת...</Shimmer>
             </div>
           )}
-        </div>
+            <div aria-hidden="true" className="h-px" style={{ overflowAnchor: 'auto' }} />
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
 
         {/* Quick-Actions pill bar removed by design — suggestions live in the
             empty-state topic list at the top of the transcript only. */}
@@ -939,54 +977,31 @@ ${shareUrl}
             className="hidden"
             onChange={(e) => onFilePick(e.target.files)}
           />
-          <form
-            onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
-            className="flex items-center gap-2"
+          <PromptInput
+            onSubmit={() => void sendMessage(input)}
+            className="bg-background"
           >
-            <Button
-              type="submit"
-              size="icon"
-              className="h-9 w-9 shrink-0 bg-slate-700 hover:bg-slate-800 text-white"
-              disabled={(!input.trim() && pendingAttachments.length === 0) || isLoading}
-              aria-label="שלח"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-            <Input
+            <PromptInputTextarea
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={isListening ? '🎙️ מקשיב...' : researchMode ? 'מצב מחקר חי - שאל על שכונה/אזור/פרויקט' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
-              className="flex-1 h-9 text-[18px]"
+              className="min-h-20 text-[18px]"
               disabled={isLoading}
-             />
-            <VoiceInputButton
-              disabled={isLoading}
-              title="דברו — ההקלטה תתומלל ותישלח לעוזר"
-              onTranscript={(t) => { setInput(''); void sendMessage(t); }}
             />
-            <Button
-              type="button"
-              size="icon"
-              variant={researchMode ? 'default' : 'outline'}
-              className="h-9 w-9 shrink-0"
-              onClick={() => setResearchMode((v) => !v)}
-              disabled={isLoading}
-              title={researchMode ? 'כבה מצב מחקר חי' : 'הפעל מצב מחקר חי (Firecrawl)'}
-            >
-              <Globe className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="h-9 w-9 shrink-0"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
-              title="צרף קבצים (PDF/תמונות)"
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-          </form>
+            <PromptInputFooter>
+              <PromptInputTools>
+                <VoiceInputButton disabled={isLoading} title="דברו — ההקלטה תתומלל ותישלח לעוזר" onTranscript={(t) => { setInput(''); void sendMessage(t); }} />
+                <PromptInputButton variant={researchMode ? 'default' : 'ghost'} onClick={() => setResearchMode((v) => !v)} disabled={isLoading} tooltip={researchMode ? 'כבה מצב מחקר חי' : 'הפעל מצב מחקר חי'}>
+                  <Globe className="h-4 w-4" />
+                </PromptInputButton>
+                <PromptInputButton onClick={() => fileInputRef.current?.click()} disabled={isLoading} tooltip="צרף קבצים">
+                  <Paperclip className="h-4 w-4" />
+                </PromptInputButton>
+              </PromptInputTools>
+              <PromptInputSubmit status={isLoading ? 'submitted' : 'ready'} disabled={(!input.trim() && pendingAttachments.length === 0) || isLoading} aria-label="שלח" />
+            </PromptInputFooter>
+          </PromptInput>
         </div>
       </SheetContent>
     </Sheet>

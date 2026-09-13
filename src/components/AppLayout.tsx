@@ -17,6 +17,7 @@ import { RotatingHeadline } from '@/components/RotatingHeadline';
 
 import NotificationCenter from '@/components/NotificationCenter';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
+import { RitaAvatar } from '@/components/RitaAvatar';
 import QuickActionDrawer from '@/components/QuickActionDrawer';
 import ProductTour from '@/components/tour/ProductTour';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
@@ -496,7 +497,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 onClick={() => window.dispatchEvent(new Event('open-ai-drawer'))}
                 aria-label="פתח עוזר AI"
               >
-                <Bot className="h-5 w-5" />
+                <RitaAvatar className="h-7 w-7" />
               </Button>
               <Button
                 variant="ghost"
