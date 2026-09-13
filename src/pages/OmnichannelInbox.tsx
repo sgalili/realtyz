@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
-import VoterProfileSidebar from '@/components/inbox/VoterProfileSidebar';
+
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import VoterAvatar from '@/components/VoterAvatar';
@@ -1010,7 +1010,7 @@ const OmnichannelInbox = () => {
 
 
 
-      <div className="grid h-[calc(100svh-300px)] min-h-[480px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-340px)] lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
+      <div className="grid h-[calc(100svh-300px)] min-h-[480px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-340px)] lg:grid-cols-[20rem_minmax(0,1fr)]">
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden border-l bg-card`}>
           <div className="p-3 border-b space-y-2">
@@ -1405,12 +1405,6 @@ const OmnichannelInbox = () => {
           )}
         </div>
 
-        {/* Left panel - Lead Profile Sidebar */}
-        {selectedVoter && (
-          <div className="hidden min-w-0 border-e bg-card xl:block">
-            <VoterProfileSidebar voter={selectedVoter} />
-          </div>
-        )}
       </div>
       <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => { if (!open) setDeleteTargetId(null); }}>
         <AlertDialogContent className="text-right" dir="rtl">
