@@ -25,7 +25,7 @@ import { FileSignature, Send, Clock, CheckCircle2, FileText } from 'lucide-react
 import { toast } from 'sonner';
 import { publicUrl } from '@/lib/publicUrl';
 
-type TemplateKey = 'offer_letter' | 'lease_agreement';
+type TemplateKey = 'offer_letter' | 'lease_agreement' | 'tour_agreement';
 
 type Lead = {
   id: string;
@@ -65,25 +65,36 @@ export function ClosingRoomDialog({
   lead,
   open,
   onOpenChange,
+  defaultTemplate = 'offer_letter',
+  defaultListingId,
 }: {
   lead: Lead | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Pre-selects a template — e.g. 'tour_agreement' for the pre-tour signature flow. */
+  defaultTemplate?: TemplateKey;
+  defaultListingId?: string | null;
 }) {
   const queryClient = useQueryClient();
-  const [template, setTemplate] = useState<TemplateKey>('offer_letter');
-  const [listingId, setListingId] = useState<string>('');
+  const [template, setTemplate] = useState<TemplateKey>(defaultTemplate);
+  const [listingId, setListingId] = useState<string>(defaultListingId ?? '');
   const [price, setPrice] = useState<string>('');
   const [terms, setTerms] = useState<string>('');
+  const [tourDate, setTourDate] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      setTemplate('offer_letter');
-      setListingId('');
+    if (open) {
+      setTemplate(defaultTemplate);
+      setListingId(defaultListingId ?? '');
+    } else {
+      setTemplate(defaultTemplate);
+      setListingId(defaultListingId ?? '');
       setPrice('');
       setTerms('');
+      setTourDate('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const { data: listings = [] } = useQuery({
@@ -137,6 +148,7 @@ export function ClosingRoomDialog({
           listing_id: listingId || undefined,
           terms: terms.trim() || undefined,
           price_override: price ? Number(price) : undefined,
+          tour_date: template === 'tour_agreement' && tourDate ? tourDate : undefined,
         },
       });
       if (genErr) throw genErr;
@@ -175,10 +187,10 @@ export function ClosingRoomDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSignature className="h-5 w-5 text-primary" />
-            חדר סגירה דיגיטלי
+            {template === 'tour_agreement' ? 'חתימה דיגיטלית לפני סיור' : 'חדר סגירה דיגיטלי'}
           </DialogTitle>
           <DialogDescription>
-            הפיקו מסמך מוכן עבור {lead?.full_name || 'הלקוח'} ושלחו אותו לחתימה מאובטחת ב-WhatsApp.
+            הפיקו מסמך מוכן עבור {lead?.full_name || 'איש הקשר'} ושלחו אותו לחתימה מאובטחת ב-WhatsApp.
           </DialogDescription>
         </DialogHeader>
 
@@ -190,6 +202,7 @@ export function ClosingRoomDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="tour_agreement">טופס חתימה לפני סיור בנכס</SelectItem>
                 <SelectItem value="offer_letter">הצעת רכישה</SelectItem>
                 <SelectItem value="lease_agreement">חוזה שכירות</SelectItem>
               </SelectContent>
@@ -212,6 +225,17 @@ export function ClosingRoomDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {template === 'tour_agreement' && (
+            <div>
+              <Label className="text-xs">מועד הסיור</Label>
+              <Input
+                type="datetime-local"
+                value={tourDate}
+                onChange={(e) => setTourDate(e.target.value)}
+              />
+            </div>
+          )}
 
           <div>
             <Label className="text-xs">

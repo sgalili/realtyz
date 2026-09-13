@@ -53,6 +53,7 @@ import {
 } from 'recharts';
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
 import LinkedPropertiesField from '@/components/leads/LinkedPropertiesField';
+import { LeadSignatureCard } from '@/components/signature/LeadSignatureCard';
 import LeadEnrichmentPanel, { LeadEnrichmentButton, LeadEnrichmentIconButton } from '@/components/leads/LeadEnrichmentPanel';
 import { ExcelIcon } from '@/components/icons/ExcelIcon';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
@@ -2516,6 +2517,8 @@ const LeadCRM = () => {
                          <div className="p-3 rounded-lg bg-slate-100 border border-slate-200">
                            <LinkedPropertiesField leadId={(selectedVoter as any).id} />
                          </div>
+                         {/* Pre-tour digital signature: send link, track status, signed PDF stays on the record */}
+                         <LeadSignatureCard lead={selectedVoter as any} />
                          {/* Owner-only: 13 Homely-style property fields, backed by the linked listing */}
                          {ownerLead && (
                            <OwnerPropertyGrid lead={selectedVoter as any} />

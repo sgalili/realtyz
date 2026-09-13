@@ -22,6 +22,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { LISTINGS_ENABLED } from "@/config/workspaceMode";
 import { applyPendingSignupRole } from '@/lib/signupRole';
+import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
 
 // Lazy load pages for better performance
@@ -156,7 +157,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     });
     return () => { alive = false; };
   }, [user, roleApplied]);
-  const { isAffiliateOnly, loading: roleLoading } = useUserRole();
+  const { roles, isAffiliateOnly, loading: roleLoading } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const location = useLocation();
   if (loading) return (
@@ -165,6 +166,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     </div>
   );
   if (!user) return <Navigate to="/auth" replace />;
+
+  // Brand-new account (no role yet): pick מתווך / שותף once, then continue.
+  if (!roleLoading && roleApplied && roles.length === 0) {
+    return <Suspense fallback={<PageLoader />}><RoleChoiceStep /></Suspense>;
+  }
+
 
   // Affiliate-only accounts are locked to the affiliate portal.
   if (!roleLoading && isAffiliateOnly) {

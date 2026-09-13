@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Building2, Check, ChevronsUpDown, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useUserRole } from '@/hooks/useUserRole';
 import { resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { cn } from '@/lib/utils';
@@ -37,8 +39,34 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
       .then(({ data }) => setProfileAvatarUrl((data as any)?.avatar_url ?? null));
   }, [user?.id]);
 
+  const { isSuperAdmin } = useUserRole();
+  const [query, setQuery] = useState('');
+
   const identity = resolveWorkspaceIdentity(activeWorkspace, settings as any);
-  const multi = workspaces.length > 1;
+
+  // Super admins may hop into any account on the platform. get_my_workspaces
+  // returns every membership row for them, so collapse to one row per account.
+  const uniqueWorkspaces = useMemo(() => {
+    const byOwner = new Map<string, typeof workspaces[number]>();
+    for (const w of workspaces) {
+      const prev = byOwner.get(w.workspace_owner_id);
+      if (!prev || (w.user_id === user?.id && prev.user_id !== user?.id)) {
+        byOwner.set(w.workspace_owner_id, w);
+      }
+    }
+    return Array.from(byOwner.values());
+  }, [workspaces, user?.id]);
+
+  const visibleWorkspaces = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return uniqueWorkspaces;
+    return uniqueWorkspaces.filter((w) =>
+      [w.workspace_name, w.owner_full_name, w.owner_email].some((v) => (v ?? '').toLowerCase().includes(q)),
+    );
+  }, [uniqueWorkspaces, query]);
+
+  // Super admins always get the switcher, even with a single own workspace.
+  const multi = isSuperAdmin || uniqueWorkspaces.length > 1;
 
   const pick = async (ownerId: string, label: string) => {
     if (ownerId === activeWorkspaceId) { setOpen(false); return; }
@@ -101,9 +129,25 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
             </button>
           </PopoverTrigger>
           <PopoverContent dir="rtl" align="end" side="bottom" sideOffset={6} className="w-72 p-1.5">
-            <p className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground">מרחבי עבודה</p>
+            <p className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground">
+              {isSuperAdmin ? 'כל החשבונות ומרחבי העבודה' : 'מרחבי עבודה'}
+            </p>
+            {isSuperAdmin && (
+              <div className="px-1.5 pb-1.5">
+                <Input
+                  dir="rtl"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="חיפוש לפי שם או אימייל"
+                  className="h-8 text-xs"
+                />
+              </div>
+            )}
             <div className="flex max-h-72 flex-col overflow-y-auto">
-              {workspaces.map((w) => {
+              {visibleWorkspaces.length === 0 && (
+                <p className="px-2 py-3 text-xs text-muted-foreground">לא נמצאו חשבונות</p>
+              )}
+              {visibleWorkspaces.map((w) => {
                 const label = resolveWorkspaceIdentity(w).name;
                 const active = w.workspace_owner_id === activeWorkspaceId;
                 return (
@@ -121,7 +165,14 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                         ? <img src={w.workspace_logo_url} alt={label} className="h-full w-full object-contain p-0.5" />
                         : <Building2 className="h-3.5 w-3.5 text-primary" />}
                     </span>
-                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="block truncate">{label}</span>
+                      {isSuperAdmin && w.owner_email && (
+                        <span dir="ltr" className="block truncate text-[10px] font-normal text-muted-foreground">
+                          {w.owner_email}
+                        </span>
+                      )}
+                    </span>
                     {active && <Check className="h-4 w-4 shrink-0 text-primary" />}
                   </button>
                 );
