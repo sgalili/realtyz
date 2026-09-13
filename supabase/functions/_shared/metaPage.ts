@@ -52,14 +52,20 @@ export async function resolveMetaPage(
 export async function resolveSharedMetaPage(db: SupabaseClient): Promise<MetaPage | null> {
   const { data } = await db
     .from("messenger_page_bindings")
-    .select("page_id, page_name, page_access_token, updated_at")
+    .select("id, page_id, page_name, page_access_token, updated_at")
     .eq("is_platform_shared", true)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   const row: any = data;
   if (!row?.page_id || !row?.page_access_token) return null;
-  return { pageId: String(row.page_id), pageName: row.page_name ?? null, token: String(row.page_access_token) };
+  return {
+    pageId: String(row.page_id),
+    pageName: row.page_name ?? null,
+    token: String(row.page_access_token),
+    recordId: row.id ? String(row.id) : null,
+    updatedAt: row.updated_at ?? null,
+  };
 }
 
 const tokenProbeCache = new Map<string, boolean>();
