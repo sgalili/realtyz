@@ -86,6 +86,10 @@ export default function SmartTimelineCard({
     queryKey: ['smart-timeline', scopeKey],
     enabled: !!(leadId || listingId),
     staleTime: 15_000,
+    // Keeps signature badges (pending → signed) current without a page refresh.
+    refetchInterval: 20_000,
+    refetchOnWindowFocus: true,
+
     queryFn: async (): Promise<TimelineEvent[]> => {
       const out: TimelineEvent[] = [];
 
