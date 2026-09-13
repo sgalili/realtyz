@@ -4575,6 +4575,9 @@ const PublishedFeed = ({
     }
   }, []);
 
+  const refreshFbHealth = useRefreshFacebookHealth();
+  const refreshFbBinding = useRefreshMetaPageBinding();
+
   // The callback window saves the binding through the same function; here we
   // only drop the stale warning and refresh the shared connection caches so
   // both screens agree instantly.
