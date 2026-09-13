@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner';
 import {
   Sparkles, Facebook, Instagram, Linkedin, Music2,
-  User, Users as GenderIcon, Loader2,
+  Bot, Users as GenderIcon, Loader2,
   ChevronDown, ChevronUp, Plus, Trash2, Globe,
   AtSign, MapPin, Building2, Phone as PhoneIcon,
 } from 'lucide-react';
@@ -73,7 +73,6 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   const qc = useQueryClient();
   const prefs = (lead.preferences ?? {}) as Record<string, any>;
 
-  const [age, setAge] = useState<string>(prefs.age ? String(prefs.age) : '');
   const [gender, setGender] = useState<string>(lead.gender ?? prefs.gender ?? '');
   const [email, setEmail] = useState<string>(lead.email ?? '');
   const [phone, setPhone] = useState<string>(formatPhoneAsTyped(lead.phone_number));
@@ -88,13 +87,12 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   const [socials, setSocials] = useState<SocialEntry[]>(() => buildInitialSocials(lead, prefs));
 
   useEffect(() => {
-    setAge(prefs.age ? String(prefs.age) : '');
     setGender(lead.gender ?? prefs.gender ?? '');
     setEmail(lead.email ?? '');
     setPhone(formatPhoneAsTyped(lead.phone_number));
     setCity(lead.city ?? '');
     setAddress(lead.address ?? '');
-  }, [lead.id, lead.gender, prefs.age, prefs.gender, lead.email, lead.phone_number, lead.city, lead.address]);
+  }, [lead.id, lead.gender, prefs.gender, lead.email, lead.phone_number, lead.city, lead.address]);
 
   // Re-sync socials whenever the parent lead's preferences change (e.g. after
   // the enrichment dialog writes new social profiles to the DB), so the panel
@@ -249,30 +247,25 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
         </div>
       </div>
 
-      {/* Demographics — age + gender side-by-side */}
+      {/* Conversation bot + gender side-by-side */}
       <div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5 text-slate-700" /> גיל
-              {savingField === 'age' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              <Bot className="h-3.5 w-3.5 text-slate-700" /> בוט
+              {savingField === 'bot' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
             </Label>
-            <Input
-              type="number"
-              value={age}
-              placeholder="—"
-              onChange={(e) => setAge(e.target.value)}
-              onBlur={() => {
-                const n = age.trim() === '' ? null : Number(age);
-                if (n !== null && (Number.isNaN(n) || n < 0 || n > 120)) {
-                  toast.error('גיל לא תקין'); return;
-                }
-                persist({ pref: { age: n } }, 'age');
-              }}
-              className="h-8 text-sm"
-              dir="ltr"
-            />
+            <Select
+              value={lead.ai_autopilot === false ? 'manual' : 'rita'}
+              onValueChange={(value) => persist({ col: { ai_autopilot: value === 'rita' } }, 'bot')}
+            >
+              <SelectTrigger className="h-8 text-sm font-semibold text-slate-900"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="rita">ריטה</SelectItem>
+                <SelectItem value="manual">ללא בוט</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">

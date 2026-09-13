@@ -129,7 +129,76 @@ const STAGE_LABEL_HE: Record<string, string> = {
   offer_pending: 'ממתין להצעה',
   negotiation: 'במשא ומתן',
   closed: 'סגר עסקה',
+  broker_new: 'מתווך חדש',
+  broker_contacted: 'נוצר קשר',
+  broker_interested: 'מתעניין במערכת',
+  broker_demo_scheduled: 'נקבעה הדגמה',
+  broker_trial: 'בתקופת ניסיון',
+  broker_paying: 'לקוח משלם',
+  broker_inactive: 'לא פעיל',
 };
+
+const BROKER_STAGE_OPTIONS = [
+  { v: 'broker_new', l: 'מתווך חדש' },
+  { v: 'broker_contacted', l: 'נוצר קשר' },
+  { v: 'broker_interested', l: 'מתעניין במערכת' },
+  { v: 'broker_demo_scheduled', l: 'נקבעה הדגמה' },
+  { v: 'broker_trial', l: 'בתקופת ניסיון' },
+  { v: 'broker_paying', l: 'לקוח משלם' },
+  { v: 'broker_inactive', l: 'לא פעיל' },
+];
+
+function contactSubtitle(lead: any, messages: any[] = [], chats: any[] = []): string {
+  const prefs = (lead?.preferences ?? {}) as Record<string, any>;
+  const listing = lead?.__listing ?? {};
+  const kind = String(prefs.lead_kind ?? '');
+  const corpus = [...messages, ...chats].map((row) => String(row?.content ?? '')).join(' ');
+  const first = (...values: unknown[]) => values
+    .map((value) => String(value ?? '').trim())
+    .find(Boolean) ?? '';
+  const chatMatch = (pattern: RegExp) => first(corpus.match(pattern)?.[1]);
+  const city = first(lead?.city, prefs.city, listing.city);
+  const neighborhood = first(
+    lead?.neighborhood,
+    prefs.neighborhood,
+    prefs.preferred_neighborhood,
+    chatMatch(/(?:בשכונת|שכונת)\s+([א-ת][א-ת\s'-]{1,30}?)(?=\s+(?:ב|שב)?(?:הרצליה|תל אביב|רמת גן|חיפה|ירושלים|נתניה|רעננה|כפר סבא)\b|[,.]|$)/i),
+  );
+  const address = first(
+    lead?.address,
+    prefs.property_address,
+    prefs.address,
+    listing.address,
+    chatMatch(/(?:ברחוב|רחוב)\s+([א-ת][א-ת\s'\-]+?\s+\d+[א-ת]?)(?=[,.]|\s+(?:ב)?[א-ת]{3,}|$)/i),
+  );
+  const agency = first(
+    lead?.agency_name,
+    prefs.agency_name,
+    prefs.office_name,
+    chatMatch(/(?:ממשרד|משרד(?:\s+התיווך)?)\s+([א-תA-Za-z0-9][א-תA-Za-z0-9\s'\-&]{1,40}?)(?=[,.]|$)/i),
+  );
+  const area = first(lead?.operating_area, prefs.operating_area, prefs.service_area, city);
+  const propertyTypeMap: Record<string, string> = {
+    apartment: 'דירה', house: 'בית', cottage: 'קוטג׳', penthouse: 'פנטהאוז',
+    studio: 'דירת סטודיו', office: 'משרד', land: 'מגרש',
+  };
+  const propertyType = propertyTypeMap[first(prefs.property_type, prefs.listing_type, listing.property_type)] || 'דירה';
+  const location = address
+    ? `${address.startsWith('רחוב') ? '' : 'רחוב '}${address}${city && !address.includes(city) ? `, ${city}` : ''}`
+    : neighborhood
+      ? `שכונת ${neighborhood}${city && neighborhood !== city ? ` ב${city}` : ''}`
+      : city;
+
+  if (kind === 'broker') {
+    if (agency) return `מתווך ממשרד ${agency}${area && !agency.includes(area) ? `, ${area}` : ''}`;
+    return area ? `מתווך הפועל באזור ${area}` : 'מתווך נדל״ן';
+  }
+  if (kind === 'seller') return location ? `מוכר ${propertyType} ב${location}` : `מוכר ${propertyType}`;
+  if (kind === 'landlord') return location ? `משכיר ${propertyType} ב${location}` : `משכיר ${propertyType}`;
+  if (kind === 'renter') return location ? `מחפש ${propertyType} להשכרה ב${location}` : `מחפש ${propertyType} להשכרה`;
+  if (kind === 'buyer') return location ? `מחפש ${propertyType} לקנייה ב${location}` : `מחפש ${propertyType} לקנייה`;
+  return city ? `איש קשר מ${city}` : 'איש קשר';
+}
 
 // Lenient phone cleaner. Accepts any standard-length number (8-11 digits),
 // with or without a leading zero / country code. Returns a stored form, or
@@ -2225,7 +2294,7 @@ const LeadCRM = () => {
             return (
               <>
                 <SheetHeader className="relative pb-11">
-                  <SheetTitle className="relative flex items-center gap-3">
+                  <SheetTitle className="relative flex min-h-12 items-start justify-center">
                     {(() => {
                       // Merge column-level social identifiers with the enrichment
                       // profile so the pic-fetch menu offers every channel we know
@@ -2237,30 +2306,32 @@ const LeadCRM = () => {
                       const fromArr = (platform: string) =>
                         socialArr.find((s) => (s?.platform || '').toLowerCase() === platform)?.handle || null;
                       return (
-                        <LeadProfilePictureMenu
-                          leadId={selectedVoter.id}
-                          fullName={selectedVoter.full_name}
-                          profilePictureUrl={(selectedVoter as any).profile_picture_url}
-                          phone={selectedVoter.phone_number}
-                          handles={{
-                            instagram: (selectedVoter as any).instagram_handle || fromArr('instagram'),
-                            facebook:  (selectedVoter as any).facebook_handle  || prefs.facebook_url || fromArr('facebook'),
-                            messenger: (selectedVoter as any).messenger_id,
-                            x:         (selectedVoter as any).x_username || (selectedVoter as any).twitter_username || prefs.x_handle || fromArr('x'),
-                            tiktok:    (selectedVoter as any).tiktok_handle || (selectedVoter as any).tiktok_username || prefs.tiktok_handle || fromArr('tiktok'),
-                            youtube:   (selectedVoter as any).youtube_handle || prefs.youtube_url || fromArr('youtube'),
-                            linkedin:  prefs.linkedin_url || fromArr('linkedin'),
-                          }}
-                          onUpdated={() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] })}
-                        />
+                        <div className="absolute right-0 top-0">
+                          <LeadProfilePictureMenu
+                            leadId={selectedVoter.id}
+                            fullName={selectedVoter.full_name}
+                            profilePictureUrl={(selectedVoter as any).profile_picture_url}
+                            phone={selectedVoter.phone_number}
+                            handles={{
+                              instagram: (selectedVoter as any).instagram_handle || fromArr('instagram'),
+                              facebook:  (selectedVoter as any).facebook_handle  || prefs.facebook_url || fromArr('facebook'),
+                              messenger: (selectedVoter as any).messenger_id,
+                              x:         (selectedVoter as any).x_username || (selectedVoter as any).twitter_username || prefs.x_handle || fromArr('x'),
+                              tiktok:    (selectedVoter as any).tiktok_handle || (selectedVoter as any).tiktok_username || prefs.tiktok_handle || fromArr('tiktok'),
+                              youtube:   (selectedVoter as any).youtube_handle || prefs.youtube_url || fromArr('youtube'),
+                              linkedin:  prefs.linkedin_url || fromArr('linkedin'),
+                            }}
+                            onUpdated={() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] })}
+                          />
+                        </div>
                       );
                     })()}
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 max-w-[calc(100%-6rem)] text-center">
                       <EditableInlineText
                         value={selectedVoter.full_name || ''}
                         placeholder="איש קשר לא ידוע"
                         ariaLabel="ערוך שם מלא"
-                        className="text-lg font-bold max-w-full"
+                        className="max-w-full justify-center text-center text-lg font-bold"
                         onSave={async (next) => {
                           const { error } = await supabase.from('leads').update({ full_name: next || null }).eq('id', selectedVoter.id);
                           if (error) throw error;
@@ -2268,6 +2339,9 @@ const LeadCRM = () => {
                           toast.success('השם עודכן');
                         }}
                       />
+                      <p className="mt-0.5 truncate text-xs font-normal text-muted-foreground" title={contactSubtitle(selectedVoter, activeVoterMessages, activeVoterChatHistory as any[])}>
+                        {contactSubtitle(selectedVoter, activeVoterMessages, activeVoterChatHistory as any[])}
+                      </p>
                       {(() => {
                         const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
                         const email = (selectedVoter as any).email as string | undefined;
@@ -2418,7 +2492,7 @@ const LeadCRM = () => {
                           { v: '6000000-10000000',l: '6M–10M ₪' },
                           { v: '10000000+',       l: 'מעל 10M ₪' },
                         ];
-                    const stageOpts = [
+                    const defaultStageOpts = [
                       { v: 'new', l: 'איש קשר חדש' },
                       { v: 'new_lead', l: 'איש קשר חדש' },
                       { v: 'contacted', l: 'יצר קשר' },
@@ -2480,6 +2554,7 @@ const LeadCRM = () => {
 
                     const ownerLead = isOwnerLead(selectedVoter);
                     const leadKind = String(prefs.lead_kind ?? '');
+                    const stageOpts = leadKind === 'broker' ? BROKER_STAGE_OPTIONS : defaultStageOpts;
                     const isSeeker = leadKind === 'buyer' || leadKind === 'renter';
                     const isPropertyContact = isSeeker || ownerLead;
 
