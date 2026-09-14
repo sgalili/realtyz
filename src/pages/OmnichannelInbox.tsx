@@ -528,6 +528,29 @@ const OmnichannelInbox = () => {
       : { ids: [selectedVoterId], phones: [] as string[] };
   }, [selectedVoterId, threadGroups]);
 
+  // Opening the CRM card must always land on a REAL contact row. A merged
+  // conversation may be displayed under a phone-anchored or social thread, so we
+  // resolve the contact id from the merged group (and fall back to a lookup by
+  // phone) instead of pushing a synthetic id into the URL.
+  const openCrmCard = async () => {
+    if (!selectedVoterId) return;
+    const realId = !selectedVoterId.startsWith('phone:')
+      ? selectedVoterId
+      : selectedThread.ids[0];
+    if (realId) { navigate(`/lead-crm/${realId}`); return; }
+    const phone = selectedThread.phones[0];
+    if (!phone) return;
+    const digits = String(phone).replace(/\D/g, '').slice(-9);
+    const { data } = await supabase
+      .from('leads')
+      .select('id')
+      .ilike('phone_number', `%${digits}%`)
+      .limit(1);
+    const found = (data ?? [])[0]?.id;
+    if (found) navigate(`/lead-crm/${found}`);
+    else toast.error('אין כרטיס איש קשר לשיחה הזו');
+  };
+
   const { data: dbChatMessages } = useQuery({
     queryKey: ['chat-messages', selectedVoterId, selectedThread.ids.join(','), selectedThread.phones.join(',')],
     enabled: !!selectedVoterId && !isDemoMode,
@@ -1233,7 +1256,7 @@ const OmnichannelInbox = () => {
                   </Button>
                   <button
                     type="button"
-                    onClick={() => selectedVoterId && navigate(`/lead-crm/${selectedVoterId}`)}
+                    onClick={openCrmCard}
                     className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50"
                     title="פתיחת כרטיס מתעניין"
                     aria-label="פתיחת כרטיס מתעניין"
@@ -1243,7 +1266,7 @@ const OmnichannelInbox = () => {
                   <div className="min-w-0">
                     <button
                       type="button"
-                      onClick={() => selectedVoterId && navigate(`/lead-crm/${selectedVoterId}`)}
+                      onClick={openCrmCard}
                       className="block truncate text-[15px] font-semibold leading-tight hover:underline text-right"
                       title="פתיחת כרטיס מתעניין"
                     >
