@@ -31,6 +31,7 @@ import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared
 import { generateFastReply } from "../_shared/waFastReply.ts";
 import { resolveLeadGender } from "../_shared/hebrewGender.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
+import { resolveWaSenderRole, type WaSenderRole } from "../_shared/waSenderRole.ts";
 import { BROKER_RECRUITMENT_WORKSPACE } from "../_shared/persona.ts";
 import {
   isRecruitmentThread,
@@ -677,7 +678,14 @@ async function handleLeadInboxInbound(
   // and this call only runs the autopilot leg: lead resolution → AI → send.
   // `leadId` lets the upstream webhook hand us the exact lead it resolved so we
   // never lose the thread to a phone-format mismatch.
-  opts?: { skipStore?: boolean; leadId?: string | null; senderName?: string | null; recruitment?: boolean },
+  opts?: {
+    skipStore?: boolean;
+    leadId?: string | null;
+    senderName?: string | null;
+    recruitment?: boolean;
+    /** Pre-resolved internal sender identity (owner / admin / manager / agent). */
+    senderRole?: WaSenderRole | null;
+  },
 ) {
   const skipStore = opts?.skipStore === true;
 
@@ -944,10 +952,37 @@ async function handleLeadInboxInbound(
   // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
   // instead of property talk.
   const leadPrefs = ((lead as any)?.preferences ?? {}) as Record<string, unknown>;
+
+  // Role recognition: if this phone belongs to a workspace owner / admin /
+  // manager / team member, Rita must answer as an internal assistant and never
+  // pitch a demo or qualify them like a new visitor.
+  let senderRole: WaSenderRole | null = opts?.senderRole ?? null;
+  if (!senderRole) {
+    try {
+      const resolved = await resolveWaSenderRole(admin as any, senderPhone);
+      senderRole = resolved.isStaff ? resolved : null;
+    } catch (e) {
+      console.warn("[autopilot] sender role lookup soft-fail:", e instanceof Error ? e.message : e);
+    }
+  }
+  const staffSender = senderRole?.isStaff ? senderRole : null;
+  if (staffSender) {
+    console.log("[autopilot] internal sender recognised", JSON.stringify({
+      role: staffSender.label,
+      reason: staffSender.reason,
+      user_id: staffSender.userId,
+    }));
+  }
+
+  // Rita's recruitment mode: this workspace only talks to agents/brokers, so a
+  // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
+  // instead of property talk. Internal staff are never in recruitment mode.
   const recruitmentMode =
-    BROKER_RECRUITMENT_WORKSPACE ||
-    String(leadPrefs.lead_kind ?? "") === "broker" ||
-    opts?.recruitment === true;
+    !staffSender &&
+    (BROKER_RECRUITMENT_WORKSPACE ||
+      String(leadPrefs.lead_kind ?? "") === "broker" ||
+      opts?.recruitment === true);
+
 
 
   console.log("[autopilot] gates", JSON.stringify({
@@ -1109,6 +1144,7 @@ async function handleLeadInboxInbound(
       history: aiMessages,
       contextBlock,
       recruitment: recruitmentMode,
+      staff: staffSender ? { role: staffSender.label, name: staffSender.displayName } : null,
     });
     if (fast.text) {
       reply = sanitizeAiReply(fast.text);
@@ -1192,6 +1228,7 @@ async function handleLeadInboxInbound(
       inboundText,
       history: aiMessages,
       recruitment: recruitmentMode,
+      staff: staffSender ? { role: staffSender.label, name: staffSender.displayName } : null,
     });
     if (rescue.text) {
       reply = sanitizeAiReply(rescue.text);
@@ -1664,6 +1701,25 @@ Deno.serve(async (req) => {
     }
 
     // ============================================================
+    // ROLE RECOGNITION — is this phone an internal owner / admin /
+    // manager / team member? Resolved once here and reused by every
+    // downstream branch so a manager is never treated as a new visitor.
+    // ============================================================
+    let senderRoleInfo: WaSenderRole | null = null;
+    try {
+      const resolved = await resolveWaSenderRole(admin as any, senderPhone);
+      senderRoleInfo = resolved.isStaff ? resolved : null;
+      console.log("[ROLE] inbound sender role", JSON.stringify({
+        phone: senderPhone,
+        role: resolved.label,
+        reason: resolved.reason,
+        user_id: resolved.userId,
+      }));
+    } catch (e) {
+      console.warn("sender role lookup failed:", e instanceof Error ? e.message : e);
+    }
+
+    // ============================================================
     // RECRUITMENT REPLY ANCHOR — an agent answering the approved
     // broker-outreach template ("נשמע טוב") belongs to Rita, not to the
     // owner command router. Detected either by an active recruitment
@@ -1671,7 +1727,8 @@ Deno.serve(async (req) => {
     // outreach itself. Rita then keeps the conversation in recruitment
     // mode: Realtyz all-in-one value + a short Zoom demo.
     // ============================================================
-    try {
+    // Internal staff are never recruitment targets.
+    if (!senderRoleInfo) try {
       const replyToOutreach = await isReplyToRecruitmentOutreach(admin as any, senderPhone);
       const recruitmentThread =
         replyToOutreach || (await isRecruitmentThread(admin as any, senderPhone));
@@ -1713,6 +1770,14 @@ Deno.serve(async (req) => {
       ownerLabel = (wl.data?.label as string | undefined) ?? null;
     } catch (e) {
       console.warn("wa-companion owner lookup failed:", e instanceof Error ? e.message : e);
+    }
+
+    // Any recognised internal user (owner / admin / manager) is treated as an
+    // owner-companion sender even without a kb_whitelist row.
+    if (!ownerUserId && senderRoleInfo?.userId && senderRoleInfo.kind !== "agent") {
+      ownerUserId = senderRoleInfo.workspaceOwnerId ?? senderRoleInfo.userId;
+      ownerLabel = senderRoleInfo.displayName ?? senderRoleInfo.label;
+      console.log(`[ADMIN FLOW] Internal ${senderRoleInfo.label} matched by profile phone → companion routing`);
     }
 
     if (!ownerUserId) {
