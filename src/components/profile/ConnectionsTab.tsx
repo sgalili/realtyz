@@ -221,17 +221,8 @@ export function ConnectionsTab() {
   const rememberedGoogle = (['gmail', 'google_calendar', 'youtube'] as StickyService[])
     .some((svc) => isRememberedConnected(svc, activeWorkspaceId));
   const someGoogleConnected = connectedGoogle.size > 0 || rememberedGoogle;
-  // Never show a vague "חלקי": the header shows the actual connected Google
-  // account (email / name) so the broker sees exactly which account is live.
-  const googleAccount = liveGoogle
-    .map((c) => String(c.credentials?.verified_identity?.email ?? c.credentials?.verified_identity?.name ?? '').trim())
-    .find((v) => !!v)
-    ?? (['gmail', 'google_calendar', 'youtube'] as StickyService[])
-      .map((svc) => rememberedLabel(svc, activeWorkspaceId))
-      .find((v) => !!v)
-    ?? null;
   const googleStatus: [string, Tone] = someGoogleConnected
-    ? [googleAccount ?? 'מחובר', 'ok']
+    ? ['מחובר', 'ok']
     : ['לא מחובר', 'idle'];
 
 
