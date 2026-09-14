@@ -351,7 +351,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              <h2 className="text-[15px] font-semibold">צ׳אטו עם הקמפיין שלך תוך 5 דקות</h2>
+              <h2 className="text-[15px] font-bold">{STEPS[step].label}</h2>
             </div>
             <span className="text-[11px] text-muted-foreground tabular-nums">
               שלב {step + 1} מתוך {STEPS.length}
@@ -392,12 +392,6 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
 
           {STEPS[step].key === 'knowledge' && (
             <div className="space-y-3">
-              <div>
-                <h3 className="text-base font-semibold">המוח של הקמפיין</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  העלה מסמך אחד (קורות חיים, מצע, נאומים) - ה-AI ילמד את הסגנון, העמדות והעובדות שלך כדי לדבר בקול שלך.
-                </p>
-              </div>
               <label
                 className={cn(
                   'block border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors',
@@ -416,7 +410,6 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
                 ) : (
                   <>
                     <p className="text-sm font-medium">גרור קובץ PDF / DOC / TXT לכאן</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">או לחץ למכירה</p>
                   </>
                 )}
               </label>
@@ -437,22 +430,12 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
 
           {STEPS[step].key === 'connect' && (
             <div className="space-y-3">
-              <div>
-                <h3 className="text-base font-semibold">חיבורים</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  חבר ערוץ אחד לפחות בלחיצה אחת. כל החיבורים נשמרים תחת החשבון שלך ואינם משפיעים על הסשן.
-                </p>
-              </div>
-
               {/* System WBA toggle */}
               <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
                 <div className="flex items-start gap-2.5">
                   <BrandLogo platform="whatsapp_green" size={18} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold">WhatsApp · System WBA Trial</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      100 הודעות חינם דרך מספר המערכת המשותף, ללא מיתוג. אין צורך לחבר חשבון WhatsApp עצמאי.
-                    </p>
                   </div>
                   <input
                     type="checkbox"
@@ -490,12 +473,6 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
 
           {STEPS[step].key === 'audience' && (
             <div className="space-y-3">
-              <div>
-                <h3 className="text-base font-semibold">קהל יעד</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  הדבק רשימה של אנשי קשר: שם וטלפון, מופרדים בפסיק. עד {TRIAL_RECORD_CAP} רשומות בניסיון. כעת יש לך {voterCount}/{TRIAL_RECORD_CAP}.
-                </p>
-              </div>
               <Textarea
                 value={recipientsText}
                 onChange={(e) => setRecipientsText(e.target.value)}
@@ -519,12 +496,6 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
 
           {STEPS[step].key === 'launch' && (
             <div className="space-y-3">
-              <div>
-                <h3 className="text-base font-semibold">הפצת ההודעה הראשונה</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  ההודעה תישלח דרך מספר המערכת בקצב בטוח (30-60 שניות בין הודעות) ללא מיתוג. תשובות נכנסות יענו אוטומטית ע״י ה-AI ולא ייספרו במכסה.
-                </p>
-              </div>
               <Textarea
                 value={welcomeMsg}
                 onChange={(e) => setWelcomeMsg(e.target.value)}

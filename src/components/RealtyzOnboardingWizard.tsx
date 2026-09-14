@@ -5,7 +5,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +18,6 @@ const TOTAL_STEPS = 3;
 type StepDef = {
   key: "whatsapp" | "strategy" | "goal";
   title: string;
-  description: string;
   icon: typeof MessageCircle;
 };
 
@@ -27,19 +25,16 @@ const STEPS: StepDef[] = [
   {
     key: "whatsapp",
     title: "חיבור WhatsApp",
-    description: "חבר את חשבון ה־WhatsApp שלך כדי להתחיל לתקשר עם אנשי קשר באופן אוטומטי.",
     icon: MessageCircle,
   },
   {
     key: "strategy",
     title: "העלאת נתוני אסטרטגיה",
-    description: "העלה קובץ אסטרטגיה (CSV/XLSX) כדי שה־AI יכיר את שוק היעד והנכסים שלך.",
     icon: Upload,
   },
   {
     key: "goal",
     title: "הגדרת יעד עסקאות סגורות",
-    description: "כמה עסקאות סגורות תרצה להשיג החודש? היעד יוצג בלוח הבקרה.",
     icon: Target,
   },
 ];
@@ -180,10 +175,7 @@ export function RealtyzOnboardingWizard() {
     <Dialog open={open} onOpenChange={(v) => !v && skip()}>
       <DialogContent className="max-w-xl" dir="rtl">
         <DialogHeader>
-          <DialogTitle className="text-xl">ברוכים הבאים ל־Realtyz AI</DialogTitle>
-          <DialogDescription>
-            שלושה שלבים קצרים כדי להתחיל בעבודה.
-          </DialogDescription>
+          <DialogTitle className="text-xl font-bold">{current.title}</DialogTitle>
         </DialogHeader>
 
         {/* Checkmark progress indicator */}
@@ -234,18 +226,10 @@ export function RealtyzOnboardingWizard() {
             );
           })}
         </ol>
-        <p className="text-xs text-muted-foreground text-right">
-          הושלמו {completedCount} מתוך {TOTAL_STEPS}
-        </p>
+        <span className="sr-only">הושלמו {completedCount} מתוך {TOTAL_STEPS}</span>
 
         {/* Step body */}
         <div className="space-y-4 pt-2">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <current.icon className="h-4 w-4 text-primary" aria-hidden="true" />
-            {current.title}
-          </div>
-          <p className="text-sm text-muted-foreground">{current.description}</p>
-
           {current.key === "whatsapp" && (
             <Button variant="outline" className="w-full justify-between" onClick={goToWhatsApp}>
               <span>פתח הגדרות WhatsApp</span>
@@ -273,9 +257,6 @@ export function RealtyzOnboardingWizard() {
                 onChange={(e) => setGoal(e.target.value)}
                 placeholder="לדוגמה: 5"
               />
-              <p className="text-xs text-muted-foreground">
-                ניתן לעדכן את היעד מאוחר יותר במסך לוח הבקרה.
-              </p>
             </div>
           )}
         </div>
