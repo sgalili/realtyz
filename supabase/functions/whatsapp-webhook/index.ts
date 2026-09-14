@@ -1772,6 +1772,14 @@ Deno.serve(async (req) => {
       console.warn("wa-companion owner lookup failed:", e instanceof Error ? e.message : e);
     }
 
+    // Any recognised internal user (owner / admin / manager) is treated as an
+    // owner-companion sender even without a kb_whitelist row.
+    if (!ownerUserId && senderRoleInfo?.userId && senderRoleInfo.kind !== "agent") {
+      ownerUserId = senderRoleInfo.workspaceOwnerId ?? senderRoleInfo.userId;
+      ownerLabel = senderRoleInfo.displayName ?? senderRoleInfo.label;
+      console.log(`[ADMIN FLOW] Internal ${senderRoleInfo.label} matched by profile phone → companion routing`);
+    }
+
     if (!ownerUserId) {
       console.log(`[ADMIN FLOW] No owner match for ${senderPhone} → falling through to lead pipeline`);
     } else {
