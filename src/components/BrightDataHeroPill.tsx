@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { BrightDataUsageDialog } from '@/components/BrightDataUsageDialog';
+import { useAuth } from '@/hooks/useAuth';
 
 type BalanceResponse = {
   ok?: boolean;
@@ -39,8 +40,11 @@ function readCache(): BalanceResponse | null {
 
 export function BrightDataHeroPill() {
   const [usageOpen, setUsageOpen] = useState(false);
+  const { session } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ['brightdata-balance-hero'],
+    // The edge function requires a signed-in caller; skip it while signed out.
+    enabled: !!session,
     staleTime: 5 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
     // Never poll while the tab is hidden/backgrounded — zero idle credit drain.
