@@ -79,6 +79,24 @@ export function ExtensionGroupSyncCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, workspaceOwnerId]);
 
+  // Fully automatic extension detection + pairing: whenever the companion
+  // extension is alive in this browser and not yet paired with the workspace,
+  // pair it silently and pull the groups. No manual "connect" step.
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      if (!alive || !isExtensionInstalled()) return;
+      const status = await readRunnerStatus();
+      if (!alive) return;
+      if (!status?.paired) await pairExtension();
+      if (alive) refresh();
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 20000);
+    return () => { alive = false; window.clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceOwnerId]);
+
   /** "בדוק שוב" — ask the extension, wait for the push, then persist + list. */
   const checkNow = async () => {
     if (checking) return;
