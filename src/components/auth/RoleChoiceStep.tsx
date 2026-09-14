@@ -6,7 +6,8 @@ import { cn } from '@/lib/utils';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { useAuth } from '@/hooks/useAuth';
-import { AppRole, userRolesQueryKey } from '@/hooks/useUserRole';
+import { userRolesQueryKey } from '@/hooks/useUserRole';
+import type { AppRole } from '@/hooks/useUserRole';
 import { useNavigate } from 'react-router-dom';
 
 /**
