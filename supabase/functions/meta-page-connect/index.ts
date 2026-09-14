@@ -211,24 +211,41 @@ Deno.serve(async (req) => {
       const state = String(body?.state ?? "").trim();
       if (state) {
         const now = new Date().toISOString();
+        // Idempotent consumption: the callback can legitimately fire twice
+        // (StrictMode remount, user pressing "try again"), so an already
+        // consumed-but-unexpired state must still resolve the caller.
         const { data: oauthStateRow } = await admin
           .from("oauth_connection_states")
-          .update({ consumed_at: now })
+          .select("user_id, workspace_owner_id")
           .eq("state", state)
           .eq("provider", "facebook_page")
-          .is("consumed_at", null)
           .gt("expires_at", now)
-          .select("user_id, workspace_owner_id")
           .maybeSingle();
         if (oauthStateRow) {
+          await admin
+            .from("oauth_connection_states")
+            .update({ consumed_at: now })
+            .eq("state", state)
+            .is("consumed_at", null);
           caller = {
             userId: String(oauthStateRow.user_id),
             workspaceOwnerId: String(oauthStateRow.workspace_owner_id),
           };
+        } else {
+          console.error("[meta-page-connect] no usable oauth state row for", state);
         }
       }
     }
-    if (!caller) return json({ error: "unauthorized", stage: "callback_state" }, 401);
+    if (!caller) {
+      return json(
+        {
+          error: "פג תוקף חיבור הפייסבוק. חזרו למערכת ולחצו שוב על חיבור עמוד הפייסבוק.",
+          stage: "callback_state",
+        },
+        401,
+      );
+    }
+
     const ownerId = caller.workspaceOwnerId;
 
     const redirectUri = String(body?.redirect_uri ?? "").trim();
