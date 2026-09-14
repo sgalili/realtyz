@@ -11,7 +11,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { DemoModeProvider } from "@/hooks/useDemoMode";
 import { ElectionTypeProvider } from "@/hooks/useElectionType";
 import { MandateProvider } from "@/hooks/useMandate";
-import { WorkspaceProvider } from "@/hooks/useWorkspace";
+import { WorkspaceProvider, useWorkspace } from "@/hooks/useWorkspace";
 import { ReferralCapture } from '@/components/referrals/ReferralCapture';
 import { WorkspaceSelectorModal } from "@/components/workspace/WorkspaceSelectorModal";
 import { toast } from "sonner";
@@ -227,6 +227,16 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
 }
 
+/**
+ * Remounts the whole app tree when the active workspace changes, so sidebar,
+ * dashboards, toggles and every tenant-scoped screen rebuild from scratch
+ * instead of lingering on the previous workspace's state.
+ */
+function WorkspaceScope({ children }: { children: React.ReactNode }) {
+  const { activeWorkspaceId } = useWorkspace();
+  return <React.Fragment key={activeWorkspaceId ?? 'no-workspace'}>{children}</React.Fragment>;
+}
+
 function AuthRoute() {
   const { user, loading } = useAuth();
   if (loading) return (
@@ -252,6 +262,7 @@ const App = () => (
             <MandateProvider>
             <ReferralCapture />
             <WorkspaceSelectorModal />
+            <WorkspaceScope>
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
               <Route path="/affiliates" element={<Suspense fallback={<PageLoader />}><AffiliateSignup /></Suspense>} />
@@ -345,6 +356,7 @@ const App = () => (
               <Route path="/contact" element={<Suspense fallback={<PageLoader />}><ContactForm /></Suspense>} />
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
+            </WorkspaceScope>
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>
