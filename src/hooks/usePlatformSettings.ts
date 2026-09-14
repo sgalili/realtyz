@@ -25,9 +25,9 @@ const DEFAULTS: PlatformSettings = {
   enable_broker_referrals: true,
   enable_ai_autopilot: false,
   enable_voice_calls: false,
-  // Listing management is off in broker-recruitment mode.
-  enable_featured_listings: LISTINGS_ENABLED,
-  enable_pending_extraction: LISTINGS_ENABLED,
+  // Overridden per active workspace below: off in Rita's recruitment workspace.
+  enable_featured_listings: true,
+  enable_pending_extraction: true,
   ai_paused: false,
   ai_paused_reason: null,
   ai_paused_at: null,
