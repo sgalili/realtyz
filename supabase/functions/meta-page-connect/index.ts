@@ -139,7 +139,10 @@ const PAGE_FIELDS = "id,name,access_token,picture.width(160).height(160)";
  * ticked the Page in the permissions dialog, which is why a checked Page looked
  * ignored. Fall back to the business portfolios before declaring "no Page".
  */
-async function discoverPages(userToken: string): Promise<{ pages: any[]; lastPayload: any; ok: boolean }> {
+async function discoverPages(
+  userToken: string,
+  app?: { clientId?: string | null; clientSecret?: string | null },
+): Promise<{ pages: any[]; lastPayload: any; ok: boolean }> {
   const tok = encodeURIComponent(userToken);
   const collected: any[] = [];
   const seen = new Set<string>();
