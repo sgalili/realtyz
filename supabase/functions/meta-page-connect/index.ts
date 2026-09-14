@@ -876,15 +876,22 @@ async function handleRequest(req: Request): Promise<Response> {
         const permissionBlocked = !pagesRes.ok &&
           ([200, 3, 10, 102, 190].includes(Number(detail.code)) ||
             /permission|scope|advanced access/i.test(detail.message ?? ""));
+        // `{"data":[]}` with HTTP 200 is Facebook saying "this profile approved
+        // no Page in the permissions dialog" — not an API failure. Flag it so the
+        // callback screen sends the user straight back to the Page-selection step.
+        const emptyPageList = pagesRes.ok && pages.length === 0;
         return json(
           {
-            error: pagesRes.ok
-              ? "לא נמצא עמוד פייסבוק שאתה מנהל. ודא שאישרת את העמוד במסך ההרשאות של פייסבוק."
+            error: emptyPageList
+              ? "לא אושר אף עמוד פייסבוק בחיבור הזה. במסך ההרשאות של פייסבוק יש לבחור את העמוד ולסמן אותו."
               : humanizeGraphError(pagesRes.payload, "לא הצלחנו לקרוא את רשימת העמודים שאתה מנהל. ודא שאישרת הרשאות ניהול עמוד (pages_show_list, pages_manage_posts)."),
             error_detail: detail,
             fb_message: detail.message,
             stage: "list_pages",
             retry_basic: permissionBlocked,
+            no_pages_selected: emptyPageList,
+            restart_login: emptyPageList,
+            granted_scopes: grantedScopes,
             pages: [],
           },
           200,
