@@ -13,10 +13,10 @@
 - [x] Restore Rita reply controls below every campaign comment and reply
 - [x] Add confirmed app-to-Facebook comment deletion
 - [x] Reconcile Facebook-native comment deletion into UI counters and caches
-- [ ] Replace legacy intelligence-officer naming with Rita everywhere active
-- [ ] Hide broker/partner mode switch in Rita workspace
-- [ ] Link every landing/contact/signup submission to an immediate Rita CRM contact
-- [ ] Show linked CRM names, local phones, and WhatsApp avatars on request cards
-- [ ] Open CRM contact cards from dashboard/submission links
-- [ ] Make WhatsApp manager CRM counts live and workspace-scoped
+- [x] Replace legacy intelligence-officer naming with Rita everywhere active
+- [x] Hide broker/partner mode switch in Rita workspace
+- [x] Link every landing/contact/signup submission to an immediate Rita CRM contact
+- [x] Show linked CRM names, local phones, and WhatsApp avatars on request cards
+- [x] Open CRM contact cards from dashboard/submission links
+- [x] Make WhatsApp manager CRM counts live and workspace-scoped
 - [ ] Verify database flow, UI, and deployed edge functions
