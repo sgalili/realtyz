@@ -112,36 +112,22 @@ Deno.serve(async (req) => {
       if (dlErr || !blob) throw new Error("Could not load source PDF");
       const srcBytes = new Uint8Array(await blob.arrayBuffer());
 
-      // Embed signature onto a new appended page (audit-friendly + immutable original)
+      // Hebrew signature certificate, appended as an extra page so the original
+      // form stays byte-identical. pdf-lib's standard fonts cannot encode
+      // Hebrew, so the page is drawn with jsPDF + the embedded Unicode font and
+      // then merged in.
+      const certBytes = await buildSignatureCertificate({
+        title: doc.title || "מסמך",
+        signerName: signer_name || "הלקוח",
+        signedAt: new Date(),
+        token: tk,
+        signatureDataUrl: signature_data,
+      });
+
       const pdfDoc = await PDFDocument.load(srcBytes);
-      const page = pdfDoc.addPage([612, 792]); // letter
-
-      page.drawText("Signature Certificate", { x: 56, y: 740, size: 18 });
-      page.drawText(`Document: ${doc.title}`, { x: 56, y: 712, size: 11 });
-      page.drawText(`Signer: ${signer_name || "Lead"}`, { x: 56, y: 696, size: 11 });
-      page.drawText(`Signed at: ${new Date().toISOString()}`, { x: 56, y: 680, size: 11 });
-      page.drawText(`Token: ${tk.slice(0, 12)}…${tk.slice(-6)}`, { x: 56, y: 664, size: 9 });
-
-      const sigBase64 = signature_data.split(",")[1];
-      if (sigBase64) {
-        try {
-          const sigBytes = base64ToBytes(sigBase64);
-          const png = await pdfDoc.embedPng(sigBytes);
-          const dims = png.scale(0.5);
-          const maxW = 320, maxH = 120;
-          const ratio = Math.min(maxW / dims.width, maxH / dims.height, 1);
-          page.drawImage(png, {
-            x: 56,
-            y: 520,
-            width: dims.width * ratio,
-            height: dims.height * ratio,
-          });
-          page.drawLine({ start: { x: 56, y: 510 }, end: { x: 56 + 320, y: 510 }, thickness: 0.5 });
-          page.drawText("Signed by signer above", { x: 56, y: 494, size: 9 });
-        } catch (_) {
-          page.drawText("[signature image could not be embedded]", { x: 56, y: 540, size: 10 });
-        }
-      }
+      const certDoc = await PDFDocument.load(certBytes);
+      const copied = await pdfDoc.copyPages(certDoc, certDoc.getPageIndices());
+      copied.forEach((p) => pdfDoc.addPage(p));
 
       const out = await pdfDoc.save();
       const signedPath = doc.pdf_path!.replace(/\.pdf$/, ".signed.pdf");
