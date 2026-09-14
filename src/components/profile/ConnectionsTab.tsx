@@ -55,6 +55,7 @@ function StatusPill({ label, tone }: { label: string; tone: Tone }) {
  */
 function ConnectionSection({
   title,
+  titleAside,
   status,
   tone,
   open,
@@ -63,6 +64,7 @@ function ConnectionSection({
   headerAside,
 }: {
   title: string;
+  titleAside?: ReactNode;
   status: string;
   tone: Tone;
   open: boolean;
