@@ -27,6 +27,8 @@ import { MatchProgressCard } from '@/components/dashboard/MatchProgressCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
 import { LISTINGS_ENABLED } from '@/config/workspaceMode';
 import { GlobalSearchTrigger } from '@/components/GlobalSearch';
+import { useIsRitaWorkspace } from '@/hooks/useIsRitaWorkspace';
+import { RecruitmentDashboard } from '@/components/dashboard/RecruitmentDashboard';
 
 
 /* ────────────────────────────────────────────────────────────────────
@@ -54,7 +56,7 @@ interface ActivityFeedItem {
   at: string;
 }
 
-const Dashboard = () => {
+const RealEstateDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -613,5 +615,14 @@ function KpiCard({
     </TooltipProvider>
   );
 }
+
+/**
+ * Rita's workspace markets Realtyz to new agents, so it gets an
+ * acquisition-only dashboard instead of the real-estate one.
+ */
+const Dashboard = () => {
+  const isRitaWorkspace = useIsRitaWorkspace();
+  return isRitaWorkspace ? <RecruitmentDashboard /> : <RealEstateDashboard />;
+};
 
 export default Dashboard;
