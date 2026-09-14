@@ -45,12 +45,19 @@ Deno.serve(async (req) => {
   try {
     const admin = adminClient();
     const caller = await resolveCaller(admin, req);
-    if (!caller) return json({ error: "unauthorized" }, 401);
 
     const body = await req.json().catch(() => ({} as any));
     const action = String(body?.action ?? "status");
     const redirectUri = String(body?.redirect_uri ?? "").trim();
     const returnOrigin = String(body?.return_origin ?? "").trim();
+
+    // Read-only state must never blank the connections screen when the session
+    // is not available (cross-domain OAuth return): answer "not connected".
+    if (!caller && (action === "status" || action === "health")) {
+      return json({ connected: false, groups: 0, connection: null, missing_scopes: [], error: null });
+    }
+    if (!caller) return json({ error: "unauthorized" }, 401);
+
 
     if (action === "status" || action === "health") {
       const { data } = await admin
