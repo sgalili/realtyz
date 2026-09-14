@@ -214,19 +214,13 @@ export default function SignDocument() {
 
       <div className="max-w-3xl mx-auto p-4 space-y-4">
         <Card className="overflow-hidden">
-          <div className="aspect-[8.5/11] sm:aspect-auto sm:h-[70vh] bg-muted">
-            {doc.pdf_url ? (
-              <iframe
-                src={doc.pdf_url}
-                title="תצוגה מקדימה של המסמך"
-                className="w-full h-full"
-              />
-            ) : (
-              <div className="h-full grid place-items-center text-sm text-muted-foreground">
-                תצוגה מקדימה לא זמינה
-              </div>
-            )}
-          </div>
+          {doc.pdf_url ? (
+            <PdfInlineViewer url={doc.pdf_url} className="h-[70vh]" />
+          ) : (
+            <div className="h-[40vh] grid place-items-center text-sm text-muted-foreground">
+              תצוגה מקדימה לא זמינה
+            </div>
+          )}
         </Card>
 
         <Card className="p-4 space-y-3">
