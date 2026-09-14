@@ -21,10 +21,9 @@ import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 import { purgeCachedPostsForPage } from '@/lib/campaignFeedCache';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 
-import {
 import { forgetConnected } from '@/lib/connectionStatusCache';
+import {
   callMetaPageConnect as callPageConnect,
-  
   startMetaPageConnect,
 } from '@/lib/facebookPageConnect';
 
