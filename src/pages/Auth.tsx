@@ -294,7 +294,7 @@ const Auth = () => {
               <span
                 key={line.key}
                 className={cn(
-                  'auth-header-ticker-line absolute inset-0 flex items-center justify-center gap-1 transition-opacity duration-[900ms] ease-in-out',
+                  'auth-header-ticker-line col-start-1 row-start-1 flex items-center justify-center gap-1 transition-opacity duration-[900ms] ease-in-out',
                   index === headerHeadlineIndex ? 'opacity-100' : 'opacity-0',
                 )}
               >
