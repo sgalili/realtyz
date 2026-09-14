@@ -621,7 +621,7 @@ serve(async (req) => {
     const requestAuthHeader = req.headers.get("Authorization") ?? "";
     const requestBearer = requestAuthHeader.replace(/^Bearer\s+/i, "").trim();
     const isServiceRequest = requestBearer === supabaseKey;
-    let currentOwnerId: string | null = isServiceRequest && workspace_owner_id ? String(workspace_owner_id) : null;
+    let currentOwnerId: string | null = workspace_owner_id ? String(workspace_owner_id) : null;
     if (!currentOwnerId && requestAuthHeader.startsWith("Bearer ")) {
       try {
         const authClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
