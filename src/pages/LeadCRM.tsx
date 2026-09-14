@@ -899,7 +899,21 @@ const LeadCRM = () => {
   });
 
 
-  const selectedVoter = leads?.find((v) => v.id === selectedVoterId);
+  // A contact opened straight from a URL (for example a Facebook chat card) is
+  // often NOT inside the paginated/filtered table, which used to render a blank
+  // sheet. Fetch that single row on demand so the card always populates.
+  const listedVoter = leads?.find((v) => v.id === selectedVoterId);
+  const { data: fetchedVoter } = useQuery({
+    queryKey: ['lead-single', selectedVoterId],
+    enabled: !!selectedVoterId && !listedVoter && !isDemoMode && !selectedVoterId.startsWith('demo-lead-'),
+    queryFn: async () => {
+      const { data, error } = await supabase.from('leads').select('*').eq('id', selectedVoterId!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 60_000,
+  });
+  const selectedVoter = (listedVoter ?? fetchedVoter ?? undefined) as any;
   const activeVoterMessages = (isDemoMode && selectedVoterId?.startsWith('demo-lead-')
     ? demoMessages.filter((m) => m.lead_id === selectedVoterId)
     : voterMessages) as any[];
