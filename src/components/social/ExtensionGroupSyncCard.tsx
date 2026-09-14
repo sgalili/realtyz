@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils';
 import { openExternal } from '@/lib/openExternal';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useExtensionGroups, readExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
-import { ExtensionDownloadButton } from '@/components/social/ExtensionDownloadButton';
-import { ExtensionPairingButton } from '@/components/social/ExtensionPairingButton';
+import { ExtensionDownloadButton, isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
+import { pairExtension, readRunnerStatus } from '@/lib/extensionPairing';
 
 const FB_GROUPS_URL = 'https://www.facebook.com/groups/joins/?nav_source=tab';
 
@@ -79,6 +79,24 @@ export function ExtensionGroupSyncCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, workspaceOwnerId]);
 
+  // Fully automatic extension detection + pairing: whenever the companion
+  // extension is alive in this browser and not yet paired with the workspace,
+  // pair it silently and pull the groups. No manual "connect" step.
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      if (!alive || !isExtensionInstalled()) return;
+      const status = await readRunnerStatus();
+      if (!alive) return;
+      if (!status?.paired) await pairExtension();
+      if (alive) refresh();
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 20000);
+    return () => { alive = false; window.clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceOwnerId]);
+
   /** "בדוק שוב" — ask the extension, wait for the push, then persist + list. */
   const checkNow = async () => {
     if (checking) return;
@@ -113,11 +131,16 @@ export function ExtensionGroupSyncCard({
         className,
       )}
     >
-      <Button type="button" size="sm" className="h-8 gap-1 text-[12px]" onClick={() => setOpen(true)} disabled={saving}>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-8 gap-1 text-[12px]"
+        onClick={() => setOpen(true)}
+      >
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />} סנכרון
       </Button>
       <ExtensionDownloadButton />
-      <ExtensionPairingButton />
       {actions}
 
       <Dialog open={open} onOpenChange={setOpen}>

@@ -14,14 +14,38 @@
     try { document.dispatchEvent(new CustomEvent(eventName, { detail: value })); } catch (e) { /* noop */ }
   };
 
+  /* Mirror the scraped groups from chrome.storage.local into the page so the app
+   * gets them through every channel (localStorage + postMessage + events).
+   * Never clears a previously delivered list. */
   const deliver = () => {
-    chrome.storage.local.get(['rzGroups'], (res) => {
-      const groups = res && res.rzGroups;
-      if (!Array.isArray(groups) || groups.length === 0) return;
-      try { localStorage.setItem(GROUPS_KEY, JSON.stringify(groups)); } catch (e) { /* noop */ }
-      emit('RZ_FB_GROUPS', 'groups', groups, 'rz:ext-fb-groups');
-    });
+    try {
+      if (!chrome || !chrome.storage || !chrome.storage.local) return;
+    } catch (e) { return; }
+    try {
+      chrome.storage.local.get(['rzGroups'], (res) => {
+        try { if (chrome.runtime && chrome.runtime.lastError) return; } catch (e) { /* noop */ }
+        const groups = res && res.rzGroups;
+        if (!Array.isArray(groups) || groups.length === 0) return;
+        const next = JSON.stringify(groups);
+        let prev = null;
+        try { prev = localStorage.getItem(GROUPS_KEY); } catch (e) { /* noop */ }
+        if (prev !== next) {
+          try { localStorage.setItem(GROUPS_KEY, next); } catch (e) { /* noop */ }
+        }
+        emit('RZ_FB_GROUPS', 'groups', groups, 'rz:ext-fb-groups');
+        try { window.postMessage({ source: 'realtyz-extension', type: 'REALTYZ_SYNC_GROUPS', groups: groups }, '*'); } catch (e) { /* noop */ }
+        try { window.dispatchEvent(new CustomEvent('rz:ext-fb-groups', { detail: groups })); } catch (e) { /* noop */ }
+      });
+    } catch (e) { /* noop */ }
   };
+
+  /* Instant push the moment the Facebook tab scrapes new groups. */
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local') return;
+      if (changes && (changes.rzGroups || changes.rzGroupsAt)) deliver();
+    });
+  } catch (e) { /* noop */ }
 
   const deliverPosts = () => {
     chrome.storage.local.get(['rzPosts'], (res) => {
