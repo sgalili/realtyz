@@ -4888,8 +4888,12 @@ const PublishedFeed = ({
           blockFacebookSync('תוקף החיבור לעמוד הפייסבוק פג. יש להתחבר מחדש.');
         } else if (graphFailure === 'permission') {
           // A missing read permission is NOT a disconnection: keep the page
-          // connected and keep allowing refreshes, just explain the gap.
-          setFacebookSyncWarning('החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).');
+          // connected and keep allowing refreshes. Only surface the banner if
+          // we have no bound Page; otherwise stay silent so a transient
+          // permission blip does not hijack the UI.
+          if (!connectedChannelsRef.current.has('facebook')) {
+            setFacebookSyncWarning('החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).');
+          }
         }
         return false;
       }
