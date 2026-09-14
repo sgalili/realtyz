@@ -592,8 +592,20 @@ Deno.serve(async (req) => {
 
     const { clientId, clientSecret } = await fbAppCredentials(admin);
     if (!clientId) {
-      return json({ error: "פייסבוק לא מוגדר: חסר Facebook App ID." }, 400);
+      console.error("[meta-page-connect] missing Facebook App ID (FACEBOOK_CLIENT_ID / platform_oauth_apps)");
+      return json({ error: "פייסבוק לא מוגדר: חסר Facebook App ID.", stage: "app_config" }, 200);
     }
+    // The exchange is the only action that cannot work without the secret.
+    // Fail with a descriptive 200 body so the callback shows the real reason
+    // instead of "Edge Function returned a non-2xx status code".
+    if (action === "exchange" && !clientSecret) {
+      console.error("[meta-page-connect] missing Facebook App Secret for exchange");
+      return json({
+        error: "פייסבוק לא מוגדר: חסר App Secret מערכתי. יש לעדכן אותו בהגדרות המערכת.",
+        stage: "app_config",
+      }, 200);
+    }
+
 
     // Read-only diagnostic: which Meta app the backend actually uses. The App ID
     // is public (it appears in every login URL), so returning it is safe and lets
