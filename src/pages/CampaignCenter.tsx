@@ -4487,6 +4487,8 @@ const PublishedFeed = ({
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() =>
     readFbBindingFlag(workspaceOwnerId) ? new Set(['facebook']) : new Set(),
   );
+  const connectedChannelsRef = useRef(connectedChannels);
+  useEffect(() => { connectedChannelsRef.current = connectedChannels; }, [connectedChannels]);
 
   useEffect(() => {
     const handleDisconnect = () => {
