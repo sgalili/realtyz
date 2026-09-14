@@ -46,11 +46,7 @@ type ClosingDoc = {
   created_at: string;
 };
 
-type Listing = {
-  id: string;
-  property_title: string;
-  asking_price: number | null;
-};
+type Listing = PropertyOption & { property_title: string };
 
 const STATUS_BADGE: Record<ClosingDoc['status'], { label: string; tone: string; icon: typeof Clock }> = {
   draft: { label: 'טיוטה', tone: 'bg-muted text-muted-foreground', icon: FileText },
@@ -103,7 +99,7 @@ export function ClosingRoomDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, asking_price')
+        .select('id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos')
         .eq('is_published', true)
         .order('created_at', { ascending: false })
         .limit(50);
