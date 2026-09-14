@@ -65,9 +65,9 @@ type SectionTab = 'tasks' | 'leads' | 'demos' | 'notes' | 'reminders' | 'calls';
 
 const TAB_LABEL: Record<SectionTab, string> = {
   tasks: 'משימות',
-  leads: 'פניות חדשות',
-  demos: 'הדגמות',
-  notes: 'הערות',
+  leads: 'לידים',
+  demos: 'דמו',
+  notes: '',
   reminders: 'תזכורות',
   calls: 'שיחות',
 };
@@ -229,7 +229,7 @@ export default function CommandCenter() {
 
               {(Object.keys(TAB_LABEL) as SectionTab[]).map((key) => (
                 <TabsTrigger key={key} value={key}>
-                  {TAB_LABEL[key]} ({counts[key]})
+                  {TAB_LABEL[key] ? `${TAB_LABEL[key]} (${counts[key]})` : ''}
                 </TabsTrigger>
               ))}
             </TabsList>
