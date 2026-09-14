@@ -88,6 +88,8 @@ import { autoImportResult } from '@/lib/propertyAutoImport';
 import { SourceBadge } from '@/components/properties/SourceBadge';
 
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
+import { FB_PAGE_REMOVED_EVENT, FEED_CACHE_STORAGE_KEY, rowBelongsToPage } from '@/lib/campaignFeedCache';
+
 import {
   type ComposerSession,
   type ComposerAssignment,
@@ -4126,8 +4128,8 @@ const CAMPAIGN_CACHE_MS = 5 * 60_000;
 // re-entering /campaigns (or a hard refresh, or a brand-new tab) renders the
 // previous post list instantly and never shows an empty white feed while the
 // DB/Meta refresh runs in the background.
-const FEED_CACHE_STORAGE_KEY = 'realtyz.campaigns.feed_rows.v1';
 const FEED_CACHE_MAX_PERSISTED = 120;
+
 
 // Remembers that this account has a bound Facebook Page so the card renders
 // "מחובר" instantly on mount, before the async DB verification resolves.
@@ -4494,6 +4496,21 @@ const PublishedFeed = ({
     window.addEventListener('realtyz:facebook-disconnected', handleDisconnect);
     return () => window.removeEventListener('realtyz:facebook-disconnected', handleDisconnect);
   }, [workspaceOwnerId]);
+
+  // A single Page was disconnected: its posts leave the feed and every cache now.
+  useEffect(() => {
+    const handlePageRemoved = (event: Event) => {
+      const pageId = String((event as CustomEvent)?.detail?.pageId ?? '').trim();
+      if (!pageId) return;
+      FEED_ROWS_CACHE.forEach((cachedRows, scope) => {
+        FEED_ROWS_CACHE.set(scope, cachedRows.filter((r) => !rowBelongsToPage(r, pageId)));
+      });
+      setRows((prev) => (prev ? prev.filter((r) => !rowBelongsToPage(r, pageId)) : prev));
+    };
+    window.addEventListener(FB_PAGE_REMOVED_EVENT, handlePageRemoved as EventListener);
+    return () => window.removeEventListener(FB_PAGE_REMOVED_EVENT, handlePageRemoved as EventListener);
+  }, []);
+
 
   useEffect(() => {
     (async () => {

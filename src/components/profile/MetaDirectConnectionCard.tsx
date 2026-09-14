@@ -18,7 +18,9 @@ import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } f
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 
+import { purgeCachedPostsForPage } from '@/lib/campaignFeedCache';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
+
 import {
   callMetaPageConnect as callPageConnect,
   
@@ -74,6 +76,8 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [connecting, setConnecting] = useState(false);
   const [bindings, setBindings] = useState<Array<{ id: string; name: string | null; picture: string | null; isDefault: boolean }>>([]);
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
+  const [removingPageId, setRemovingPageId] = useState<string | null>(null);
+
   const [igHelpOpen, setIgHelpOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
@@ -482,6 +486,39 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     }
   };
 
+  /** Disconnect a SINGLE page: its posts leave the workspace view immediately. */
+  const disconnectOnePage = async (pageId: string, name: string | null) => {
+    if (removingPageId) return;
+    if (!window.confirm(`לנתק את העמוד "${name || pageId}"? כל הפוסטים שלו יוסרו מסביבת העבודה.`)) return;
+    setRemovingPageId(pageId);
+    // Optimistic: drop the page and its cached posts before the server answers.
+    setBindings((prev) => prev.filter((b) => b.id !== pageId));
+    purgeCachedPostsForPage(pageId);
+    try {
+      const res = await callPageConnect<any>({ action: 'disconnect_page', page_id: pageId });
+      if (!res?.ok) throw new Error(res?.error || 'ניתוק העמוד נכשל');
+      purgeCachedPostsForPage(pageId);
+      if (Number(res?.remaining ?? 0) === 0) {
+        await resetHealth();
+        setPage({ connected: false, page: null });
+        setStatus(null);
+        onStatus?.(null);
+      }
+      refreshBinding();
+      refreshHealth();
+      void loadBindings();
+      toast.success('העמוד נותק', {
+        description: res?.removed_posts ? `${res.removed_posts} פוסטים הוסרו` : undefined,
+      });
+    } catch (e: any) {
+      toast.error('ניתוק העמוד נכשל', { description: e?.message });
+      void loadBindings();
+    } finally {
+      setRemovingPageId(null);
+    }
+  };
+
+
   const actionButtons = (
     <>
       {isConnected && (
@@ -516,14 +553,12 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           <div className="space-y-2 rounded-xl border p-3">
             <p className="text-[13px] font-semibold">חשבונות ועמודים מחוברים בסביבת העבודה</p>
             {bindings.length > 1 && (
-              <p className="text-[12px] text-muted-foreground">בחרו את עמוד ברירת המחדל לפרסום.</p>
+              <p className="text-[12px] text-muted-foreground">בחרו את עמוד ברירת המחדל לפרסום, או נתקו כל עמוד בנפרד.</p>
             )}
             <div className="space-y-1.5">
               {bindings.map((b) => (
-                <button
+                <div
                   key={b.id}
-                  type="button"
-                  onClick={() => (b.isDefault ? undefined : void makeDefault(b.id))}
                   className={`flex w-full items-center gap-2 rounded-lg border p-2 text-right transition ${
                     b.isDefault ? 'border-emerald-300 bg-emerald-50/60' : 'hover:bg-muted/50'
                   }`}
@@ -535,17 +570,34 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
                       <Facebook className="h-4 w-4 text-primary" />
                     </div>
                   )}
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{b.name || b.id}</span>
-                  {settingDefaultId === b.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : b.isDefault ? (
-                    <Badge className="border-0 bg-emerald-600 text-[11px] text-white">ברירת מחדל</Badge>
-                  ) : (
-                    <span className="text-[11px] text-muted-foreground">הגדר כברירת מחדל</span>
-                  )}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => (b.isDefault ? undefined : void makeDefault(b.id))}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-right"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{b.name || b.id}</span>
+                    {settingDefaultId === b.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : b.isDefault ? (
+                      <Badge className="border-0 bg-emerald-600 text-[11px] text-white">ברירת מחדל</Badge>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">הגדר כברירת מחדל</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`נתק את העמוד ${b.name || b.id}`}
+                    title="נתק עמוד זה"
+                    disabled={!!removingPageId}
+                    onClick={() => void disconnectOnePage(b.id, b.name)}
+                    className="shrink-0 rounded-md p-1 text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                  >
+                    {removingPageId === b.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
+                  </button>
+                </div>
               ))}
             </div>
+
             <Button
               variant="outline"
               size="sm"
