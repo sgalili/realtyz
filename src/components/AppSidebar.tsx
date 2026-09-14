@@ -239,9 +239,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <HelpCircle className="h-4 w-4" />
                   הדרכה
                 </button>
-                <div onClick={(e) => e.stopPropagation()}>
-                  <AppModeSwitcher />
-                </div>
+                {!isRitaWorkspace && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <AppModeSwitcher />
+                  </div>
+                )}
               </div>
             </SidebarGroupContent>
           </SidebarGroup>
