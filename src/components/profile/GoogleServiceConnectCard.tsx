@@ -84,6 +84,13 @@ export function GoogleServiceConnectCard({
   brand?: 'gmail' | 'calendar' | 'youtube';
 }) {
   const [configError, setConfigError] = useState(false);
+  const [explicitlyDisconnected, setExplicitlyDisconnected] = useState(() => {
+    try {
+      return window.localStorage.getItem(`realtyz:google-explicit-disconnect:${platform}`) === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const { data, refetch, isLoading } = useQuery({
     queryKey: ['google-service-conn', platform],
@@ -125,6 +132,7 @@ export function GoogleServiceConnectCard({
       try {
         window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
       } catch { /* storage may be unavailable */ }
+      setExplicitlyDisconnected(false);
     }
   }, [liveConnected, platform, credEmail]);
   const connected = liveConnected || isRememberedConnected(platform);
@@ -140,6 +148,7 @@ export function GoogleServiceConnectCard({
       try {
         window.localStorage.setItem(`realtyz:google-explicit-disconnect:${platform}`, '1');
       } catch { /* storage may be unavailable */ }
+      setExplicitlyDisconnected(true);
       toast.success('החיבור נותק');
       refetch();
     } catch {
@@ -161,6 +170,7 @@ export function GoogleServiceConnectCard({
         try {
           window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
         } catch { /* storage may be unavailable */ }
+        setExplicitlyDisconnected(false);
         toast.success('החיבור הושלם', { id: tId, description: connectedEmail });
         refetch();
       } catch (e: any) {
@@ -199,6 +209,7 @@ export function GoogleServiceConnectCard({
         try {
           window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
         } catch { /* storage may be unavailable */ }
+        setExplicitlyDisconnected(false);
         toast.success('החיבור הושלם', { description: res.name || undefined });
         refetch();
       } else if (res.reason && res.reason !== 'needs_page_selection') {
@@ -285,12 +296,16 @@ export function GoogleServiceConnectCard({
             <span className="inline-flex h-8 items-center gap-1 text-[13px] font-bold text-emerald-700">
               <CheckCircle2 className="h-3.5 w-3.5" /> מחובר
             </span>
-          ) : !isLoading ? (
+          ) : explicitlyDisconnected && !isLoading ? (
             <Button size="sm" className="h-8 gap-1 text-xs" onClick={connect}>
               {ctaLabel ?? 'חבר'}
             </Button>
-          ) : (
+          ) : isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label="בודק חיבור" />
+          ) : (
+            <span className="inline-flex h-8 items-center gap-1 text-[13px] font-bold text-destructive">
+              <AlertTriangle className="h-3.5 w-3.5" /> לא מחובר
+            </span>
           )}
           {connected && (
             <AlertDialog>
