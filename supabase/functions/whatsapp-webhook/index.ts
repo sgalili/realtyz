@@ -1728,8 +1728,7 @@ Deno.serve(async (req) => {
     // mode: Realtyz all-in-one value + a short Zoom demo.
     // ============================================================
     // Internal staff are never recruitment targets.
-    try {
-      if (senderRoleInfo) throw { skip: true };
+    if (!senderRoleInfo) try {
       const replyToOutreach = await isReplyToRecruitmentOutreach(admin as any, senderPhone);
       const recruitmentThread =
         replyToOutreach || (await isRecruitmentThread(admin as any, senderPhone));
