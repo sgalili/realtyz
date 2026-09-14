@@ -1701,6 +1701,25 @@ Deno.serve(async (req) => {
     }
 
     // ============================================================
+    // ROLE RECOGNITION — is this phone an internal owner / admin /
+    // manager / team member? Resolved once here and reused by every
+    // downstream branch so a manager is never treated as a new visitor.
+    // ============================================================
+    let senderRoleInfo: WaSenderRole | null = null;
+    try {
+      const resolved = await resolveWaSenderRole(admin as any, senderPhone);
+      senderRoleInfo = resolved.isStaff ? resolved : null;
+      console.log("[ROLE] inbound sender role", JSON.stringify({
+        phone: senderPhone,
+        role: resolved.label,
+        reason: resolved.reason,
+        user_id: resolved.userId,
+      }));
+    } catch (e) {
+      console.warn("sender role lookup failed:", e instanceof Error ? e.message : e);
+    }
+
+    // ============================================================
     // RECRUITMENT REPLY ANCHOR — an agent answering the approved
     // broker-outreach template ("נשמע טוב") belongs to Rita, not to the
     // owner command router. Detected either by an active recruitment
