@@ -270,7 +270,7 @@ export default function Landing() {
               <span className="landing-gradient-text block">טייס אוטומטי על סטרואידים.</span>
             </h1>
             <p className="mx-auto mt-5 max-w-3xl text-center text-base sm:text-xl leading-relaxed text-muted-foreground">
-              {'מפספסים לידים חמים רק כי לא מספיקים לענות בזמן?\nRealtyz עונה לכל ליד תוך שניות, מתאימה נכסים ללקוחות, יוצרת ומפרסמת פוסטים בכל הרשתות החברתיות ומרכזת את כל ערוצי התקשורת במקום אחד.'}
+              {' ריטה, סוכנת ה AI של רילטיז, זמינה 24/7, עונה לכל ליד תוך שניות, מתאימה נכסים ללקוחות, יוצרת ומפרסמת פוסטים בכל הרשתות ומרכזת את כל ערוצי התקשורת במקום אחד. וזאת רק ההתחלה...'}
             </p>
           </Reveal>
 
