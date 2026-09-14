@@ -1,26 +1,15 @@
-import { supabase } from '@/integrations/supabase/client';
-
+/**
+ * Campaign scoping is STRICTLY per workspace owner.
+ *
+ * Never expand this to workspace member user ids: a broker who is also a member
+ * of another workspace (super-admin, managing broker) would otherwise see their
+ * own posts inside that workspace's feed. Every campaign row carries
+ * `workspace_owner_id`, so the owner id alone is the correct and only scope.
+ */
 export async function getCampaignWorkspaceUserIds(
   workspaceOwnerId: string | null | undefined,
   fallbackUserId: string | null | undefined,
 ): Promise<string[]> {
   const ownerId = workspaceOwnerId ?? fallbackUserId ?? null;
-  if (!ownerId) return [];
-
-  const ids = new Set<string>([ownerId]);
-  if (fallbackUserId) ids.add(fallbackUserId);
-
-  try {
-    const { data, error } = await (supabase as any).rpc('get_workspace_member_ids', { _owner: ownerId });
-    if (!error && Array.isArray(data)) {
-      data.forEach((row: any) => {
-        const id = typeof row === 'string' ? row : row?.user_id;
-        if (typeof id === 'string' && id) ids.add(id);
-      });
-    }
-  } catch {
-    // Keep the explicit owner + current user fallback if the RPC is temporarily unavailable.
-  }
-
-  return Array.from(ids);
+  return ownerId ? [ownerId] : [];
 }

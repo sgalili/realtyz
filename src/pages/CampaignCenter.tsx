@@ -3185,7 +3185,7 @@ const ConfirmDispatchDialog = ({
           // server for the authoritative Page (it also auto-discovers via
           // /me/accounts when no binding row exists yet).
           if (!workspaceFbId) {
-            const resolved = await resolveMetaPageViaFunction();
+            const resolved = await resolveMetaPageViaFunction(workspaceOwnerId);
             workspaceFbId = resolved.pageId || '';
             workspaceFbName = workspaceFbName || resolved.pageName || '';
           }
@@ -4169,9 +4169,9 @@ const BLOCKED_FB_PAGE_IDS = new Set<string>();
 const isBlockedFbPage = (id?: string | null, _name?: string | null) =>
   !!id && BLOCKED_FB_PAGE_IDS.has(String(id));
 
-const resolveMetaPageViaFunction = async (): Promise<ResolvedMetaPage> => {
+const resolveMetaPageViaFunction = async (ownerId?: string | null): Promise<ResolvedMetaPage> => {
   const read = async (): Promise<ResolvedMetaPage> => {
-    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'status' } });
+    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'status', owner_id: ownerId ?? null } });
     const res = data as any;
     const id = res?.page?.id ? String(res.page.id) : null;
     if ((res?.connected || res?.ok) && id) {
@@ -4504,16 +4504,14 @@ const PublishedFeed = ({
       // A bound Facebook Page (OAuth or manual token) is by itself a valid
       // connected state — the manual path never writes to social_connections.
       try {
-        const { data: binding } = await supabase
-          .from('messenger_page_bindings')
-          .select('page_id')
-          .eq('owner_id', workspaceOwnerId ?? '')
-          .limit(1)
-          .maybeSingle();
-        let pageId = ((binding as any)?.page_id as string | null) ?? null;
+        // Same resolver the Connections tab uses: own binding first, then the
+        // platform-shared Page — so a live connection is never shown as missing.
+        const { data: effective } = await (supabase as any).rpc('get_effective_meta_page', { _owner: workspaceOwnerId });
+        const effectiveRow: any = Array.isArray(effective) ? effective[0] : effective;
+        let pageId = effectiveRow?.page_id ? String(effectiveRow.page_id) : null;
         if (!pageId) {
           // Fall back to the server-side resolver (workspace-owner scoped).
-          pageId = (await resolveMetaPageViaFunction()).pageId;
+          pageId = (await resolveMetaPageViaFunction(workspaceOwnerId)).pageId;
         }
         if (pageId) {
           next.add('facebook');
@@ -4602,10 +4600,13 @@ const PublishedFeed = ({
     // DB-first: read the persisted campaign_logs feed BEFORE any Meta
     // import. This is the whole point of the cache — the user should see
     // instantly whatever was previously stored, never waiting on the provider.
+    // STRICT tenant scope: the active workspace owner only. Scoping by member
+    // user ids leaked posts from a broker's own workspace into every workspace
+    // they are a member of.
     const { data } = await supabase
       .from('campaign_logs')
       .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids')
-      .in('user_id', scopedUserIds)
+      .eq('workspace_owner_id', ownerScope)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
       .limit(1000);
@@ -4742,8 +4743,16 @@ const PublishedFeed = ({
         } catch { shouldImport = true; }
       }
       if (shouldImport) {
-        const connectedPage = await resolveMetaPageViaFunction();
-        shouldImport = Boolean(connectedPage.pageId);
+        // Fast path: the stored binding of THIS workspace is the truth and comes
+        // straight from the database — no Graph round-trip, no waiting.
+        let connectedPageId: string | null = null;
+        try {
+          const { data: effective } = await (supabase as any).rpc('get_effective_meta_page', { _owner: ownerScope });
+          const row: any = Array.isArray(effective) ? effective[0] : effective;
+          connectedPageId = row?.page_id ? String(row.page_id) : null;
+        } catch { /* fall back to the server resolver below */ }
+        if (!connectedPageId) connectedPageId = (await resolveMetaPageViaFunction(ownerScope)).pageId;
+        shouldImport = Boolean(connectedPageId);
       }
       if (shouldImport) {
         // Fire-and-forget — the DB is already painted; we never await this.
@@ -5167,6 +5176,13 @@ const PublishedFeed = ({
   useEffect(() => {
     const scope = workspaceOwnerId ?? userId;
     if (!scope || campaignUserIds.length === 0) return;
+    // Strict tenant guard for every realtime payload: a row belongs to this
+    // feed only when its workspace matches the ACTIVE workspace.
+    const belongsToActiveWorkspace = (row: any): boolean => {
+      const owner = row?.workspace_owner_id ? String(row.workspace_owner_id) : null;
+      if (owner) return owner === scope;
+      return String(row?.user_id ?? '') === scope;
+    };
     void supabase.auth.getSession().then(({ data }) => {
       const token = data.session?.access_token;
       if (token) {
@@ -5179,7 +5195,7 @@ const PublishedFeed = ({
         { event: 'UPDATE', schema: 'public', table: 'campaign_logs' },
         (payload) => {
           const updated: any = payload.new;
-          if (!campaignUserIds.includes(updated?.user_id)) return;
+          if (!belongsToActiveWorkspace(updated)) return;
           setRows((prev) => prev?.map((r) => {
             if (r.id !== updated.id && !campaignMatchesExternalPost(r, updated.provider_message_id)) return r;
             // Protect-from-zero: a transient 0 from the provider must never
@@ -5221,7 +5237,7 @@ const PublishedFeed = ({
         { event: 'INSERT', schema: 'public', table: 'campaign_logs' },
         (payload) => {
           const inserted: any = payload.new;
-          if (campaignUserIds.includes(inserted?.user_id)) {
+          if (belongsToActiveWorkspace(inserted)) {
             setRows((prev) => {
               if (!prev) return prev;
               if (prev.some((row) => row.id === inserted.id)) return prev;
@@ -5248,7 +5264,7 @@ const PublishedFeed = ({
         { event: '*', schema: 'public', table: 'engagement_events' },
         async (payload) => {
           const changed: any = payload.new || payload.old;
-          if (!campaignUserIds.includes(changed?.user_id)) return;
+          if (!belongsToActiveWorkspace(changed)) return;
           const externalPostId = normalizePostId(changed?.external_post_id);
           if (!externalPostId) return;
 
@@ -7462,7 +7478,7 @@ const CampaignCenter = () => {
 
           // The client read is RLS-scoped to the workspace owner; the edge
           // function resolves the same binding for every workspace member.
-          const resolved = await resolveMetaPageViaFunction();
+          const resolved = await resolveMetaPageViaFunction(workspaceOwnerId);
           if (resolved.pageId) {
             wspFbId = resolved.pageId;
             wspFbName = wspFbName ?? resolved.pageName;
