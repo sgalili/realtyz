@@ -316,6 +316,13 @@ export function ConnectionsTab() {
     {
       id: 'google',
       title: 'חשבונות גוגל',
+      titleAside: (
+        <span className="flex items-center gap-1.5" aria-label="שירותי Google">
+          <GoogleBrandGlyph brand="gmail" connected={connectedGoogle.has('gmail') || isRememberedConnected('gmail', activeWorkspaceId)} />
+          <GoogleBrandGlyph brand="calendar" connected={connectedGoogle.has('google_calendar') || isRememberedConnected('google_calendar', activeWorkspaceId)} />
+          <GoogleBrandGlyph brand="youtube" connected={connectedGoogle.has('youtube') || isRememberedConnected('youtube', activeWorkspaceId)} />
+        </span>
+      ),
       status: googleStatus[0],
       tone: googleStatus[1],
       node: (
@@ -366,8 +373,6 @@ export function ConnectionsTab() {
           )}
         </div>
       ),
-      headerAside: googleHeader,
-
     },
     // The 019 SMS gateway is a PLATFORM service: every workspace sends OTP/SMS
     // through the global Realtyz 019 number automatically. Only Super Admin may
