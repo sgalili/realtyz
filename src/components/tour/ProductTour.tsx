@@ -20,89 +20,30 @@ import realtyzLogo from '@/assets/realtyz-logo.png';
 /* Realtyz — סיור מוצר לנרשמים חדשים.
    טקסט גדול, הסברים קצרים, וכולל מקטע תמחור לפי חבילות. */
 
+/** One short, bold line per slide — no eyebrow, no bullet duplication. */
 type TourStep = {
-  eyebrow: string;
   title: string;
-  bullets: string[];
   cta?: { label: string; to: string };
   connections?: boolean;
   profileForm?: boolean;
 };
 
 const STEPS: TourStep[] = [
-  {
-    eyebrow: 'ברוכים הבאים',
-    title: 'Realtyz מנהלת את הלידים שלך 24/7',
-    bullets: [
-      'כל פנייה נכנסת מקבלת מענה תוך שניות.',
-      'הכל במקום אחד: שיחות, נכסים, משימות ופרסום.',
-      'ההדרכה לוקחת דקה. אפשר לצאת בכל רגע.',
-    ],
-  },
-  {
-    eyebrow: 'הפרטים שלך',
-    title: 'נכיר אותך רגע לפני שמתחילים',
-    bullets: [
-      'השם שלך יופיע בהודעות, בפוסטים ובדפים המשותפים.',
-      'עיר הפעילות תהיה אזור החיפוש הקבוע שלך בכל האפליקציה.',
-    ],
-    profileForm: true,
-  },
-  {
-    eyebrow: 'משימות היום',
-    title: 'לוח הבקרה שאומר לך מה לעשות עכשיו',
-    bullets: [
-      'רשימת מעקבים לפי דחיפות, בלי לחפש כלום.',
-      'מדדים חיים: לידים פעילים ופניות שממתינות לתשובה.',
-      'לחיצה אחת ואתה בשיחה, בנכס או במשימה.',
-    ],
-    cta: { label: 'פתח את משימות היום', to: '/command-center' },
-  },
-  {
-    eyebrow: 'שיחות מכל האפליקציות',
-    title: 'תיבה אחת לכל הערוצים',
-    bullets: [
-      'ווטסאפ, פייסבוק, אינסטגרם, SMS ואימייל באותו מסך.',
-      'כל ההיסטוריה של הלקוח מרוכזת בכרטיס אחד.',
-      'ה-AI עונה בשמך, ואתה מאשר או משתלט מתי שתרצה.',
-    ],
-    cta: { label: 'פתח שיחות', to: '/live-conversations' },
-  },
-  {
-    eyebrow: 'נכסים ופרסום',
-    title: 'נכס נכנס - פוסט יוצא',
-    bullets: [
-      'הנכסים נטענים ונשמרים אצלך עם כל הפרטים והתמונות.',
-      'ה-AI כותב את הפוסט ומפרסם לקבוצות פייסבוק ולאינסטגרם.',
-    ],
-    cta: { label: 'פתח נכסים', to: '/properties' },
-  },
-  {
-    eyebrow: '',
-    title: 'חיבור חשבון Facebook',
-    bullets: [
-      'כתיבה ופרסום פוסטים AI בקבוצות ',
-      'מענה אוטומטי AI לתגובות בפייסבוק',
-      'צ׳אטים עם סוכני ה- AI ב-Messenger',
-    ],
-    connections: true,
-  },
+  { title: 'Realtyz מנהלת את הלידים שלך 24/7' },
+  { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
+  { title: 'לוח הבקרה אומר לך מה לעשות עכשיו', cta: { label: 'פתח את משימות היום', to: '/command-center' } },
+  { title: 'תיבה אחת לכל הערוצים', cta: { label: 'פתח שיחות', to: '/live-conversations' } },
+  { title: 'נכס נכנס - פוסט יוצא', cta: { label: 'פתח נכסים', to: '/properties' } },
+  { title: 'חיבור חשבון Facebook', connections: true },
 ];
 
 /**
- * Rita's marketing workspace has no properties, so the property step and the
- * property wording are dropped from the tour there.
+ * Rita's marketing workspace has no properties, so the property step is dropped
+ * from the tour there.
  */
 function buildSteps(listingsEnabled: boolean): TourStep[] {
   if (listingsEnabled) return STEPS;
-  return STEPS
-    .filter((s) => s.cta?.to !== '/properties')
-    .map((s) => ({
-      ...s,
-      bullets: s.bullets.map((b) => b
-        .replace('הכל במקום אחד: שיחות, נכסים, משימות ופרסום.', 'הכל במקום אחד: שיחות, משימות ופרסום.')
-        .replace('לחיצה אחת ואתה בשיחה, בנכס או במשימה.', 'לחיצה אחת ואתה בשיחה או במשימה.')),
-    }));
+  return STEPS.filter((s) => s.cta?.to !== '/properties');
 }
 
 const LOCAL_KEY = 'realtyz-product-tour-done';
@@ -252,24 +193,14 @@ export function ProductTour() {
               {index + 1} מתוך {steps.length}
             </span>
           </div>
-          <p className="mt-6 inline-flex items-center gap-2 text-base font-extrabold text-primary">
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
-            {step.eyebrow}
-          </p>
-          <h2 className="mt-2 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
-            {step.title}
+          <h2 className="mt-6 flex items-start gap-2 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+            <Sparkles className="mt-1.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+            <span>{step.title}</span>
           </h2>
         </div>
 
         <div className="px-8 py-6">
-          <ul className="space-y-4">
-            {step.bullets.map((b) => (
-              <li key={b} className="flex items-start gap-3 text-lg leading-relaxed sm:text-xl">
-                <Check className="mt-1.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-                <span>{b}</span>
-              </li>
-            ))}
-          </ul>
+
 
           {step.cta && (
             <Button
