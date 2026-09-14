@@ -105,7 +105,7 @@ export function ClosingRoomDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos')
+        .select('id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos, house_number, apartment_number')
         .eq('is_published', true)
         .order('created_at', { ascending: false })
         .limit(50);
