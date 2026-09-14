@@ -26,6 +26,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { threadIdentityKey, normalizePhoneKey } from '@/lib/threadIdentity';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import VoterAvatar from '@/components/VoterAvatar';
 import { RitaAvatar } from '@/components/RitaAvatar';
@@ -358,25 +359,8 @@ const OmnichannelInbox = () => {
     },
   });
 
-  const { data: dbChatMessages } = useQuery({
-    queryKey: ['chat-messages', selectedVoterId],
-    enabled: !!selectedVoterId && !isDemoMode,
-    refetchInterval: 3000,
-    queryFn: async () => {
-      // Phone-anchored synthetic thread (id = "phone:9725...").
-      if (selectedVoterId?.startsWith('phone:')) {
-        const phone = selectedVoterId.slice('phone:'.length);
-        const { data } = await supabase
-          .from('messages')
-          .select('*')
-          .is('lead_id', null)
-          .order('created_at', { ascending: true });
-        return (data ?? []).filter((m: any) => (m.metadata as any)?.sender_phone === phone);
-      }
-      const { data } = await supabase.from('messages').select('*').eq('lead_id', selectedVoterId!).order('created_at', { ascending: true });
-      return data ?? [];
-    },
-  });
+
+
 
   // Demo mode data interception
   const demoVoters = useMemo(() => getDemoCandidateVoters(demoCandidateId), [demoCandidateId]);
@@ -437,7 +421,11 @@ const OmnichannelInbox = () => {
     };
   }, [isDemoMode, selectedVoterId, demoVoters]);
 
-  const voters = useMemo(() => {
+  // === UNIFIED THREADS ===
+  // One row per person. Duplicate CRM contacts, phone-anchored orphan threads
+  // and social profiles that resolve to the same identity are merged into a
+  // single conversation with the latest preview + timestamp.
+  const { voters, threadGroups, groupLastMessages } = useMemo(() => {
     const base = isDemoMode
       ? (() => {
           const real = dbVoters ?? [];
@@ -455,9 +443,14 @@ const OmnichannelInbox = () => {
     });
     // Append phone-anchored synthetic voters for orphan inbound messages so
     // the broker can still open the thread when the lead row is missing/hidden.
-    const knownPhones = new Set(conversational.map((v: any) => v.phone_number).filter(Boolean));
+    const knownPhones = new Set(
+      conversational.map((v: any) => normalizePhoneKey(v.phone_number)).filter(Boolean) as string[]
+    );
     const synthetic = (orphanThreads ?? [])
-      .filter((t: any) => !knownPhones.has(t.phone))
+      .filter((t: any) => {
+        const key = normalizePhoneKey(t.phone);
+        return !key || !knownPhones.has(key);
+      })
       .map((t: any) => ({
         id: `phone:${t.phone}`,
         full_name: null,
@@ -468,15 +461,117 @@ const OmnichannelInbox = () => {
         status: 'contacted',
         _synthetic: true,
       }));
-    return [...synthetic, ...conversational];
+
+    const all = [...synthetic, ...conversational];
+
+    const lastMsgFor = (v: any) => {
+      if (String(v.id).startsWith('phone:')) {
+        const phone = String(v.id).slice('phone:'.length);
+        return (orphanThreads ?? []).find((t: any) => t.phone === phone)?.last ?? null;
+      }
+      return (dbLastMessages as Map<string, any> | undefined)?.get(v.id) ?? null;
+    };
+    const tsOf = (v: any) => {
+      const msg = lastMsgFor(v);
+      return new Date(msg?.created_at ?? v.last_interaction_at ?? 0).getTime();
+    };
+
+    const buckets = new Map<string, any[]>();
+    all.forEach((v: any) => {
+      const key = threadIdentityKey(v);
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key)!.push(v);
+    });
+
+    const merged: any[] = [];
+    const groups = new Map<string, { ids: string[]; phones: string[] }>();
+    const groupLast = new Map<string, any>();
+
+    buckets.forEach((rows) => {
+      // Pick the richest, most recent row as the visible one: a real contact
+      // always wins over a synthetic phone thread.
+      const sorted = [...rows].sort((a, b) => {
+        const syn = Number(!!a._synthetic) - Number(!!b._synthetic);
+        if (syn !== 0) return syn;
+        return tsOf(b) - tsOf(a);
+      });
+      const primary = { ...sorted[0] };
+      // Backfill details missing on the primary row from its duplicates.
+      sorted.slice(1).forEach((sib: any) => {
+        ['full_name', 'phone_number', 'email', 'profile_picture_url', 'city', 'avatar_url'].forEach((f) => {
+          if (!(primary as any)[f] && sib?.[f]) (primary as any)[f] = sib[f];
+        });
+      });
+      const ids = sorted.map((r: any) => r.id).filter((id: string) => !String(id).startsWith('phone:'));
+      const phones = sorted
+        .map((r: any) => (String(r.id).startsWith('phone:') ? String(r.id).slice('phone:'.length) : null))
+        .filter(Boolean) as string[];
+      if (sorted.length > 1) (primary as any)._mergedCount = sorted.length;
+      groups.set(primary.id, { ids, phones });
+
+      const latest = sorted
+        .map((r: any) => lastMsgFor(r))
+        .filter(Boolean)
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      if (latest) {
+        groupLast.set(primary.id, latest);
+        primary.last_interaction_at = latest.created_at ?? primary.last_interaction_at;
+      }
+      merged.push(primary);
+    });
+
+    merged.sort((a, b) => tsOf(b) - tsOf(a));
+    return { voters: merged, threadGroups: groups, groupLastMessages: groupLast };
   }, [isDemoMode, dbVoters, demoVoters, liveDemoVoters, orphanThreads, dbLastMessages]);
 
+  // Every row (lead id / phone thread) that belongs to the open conversation.
+  const selectedThread = useMemo(() => {
+    if (!selectedVoterId) return { ids: [] as string[], phones: [] as string[] };
+    const group = threadGroups.get(selectedVoterId);
+    if (group) return group;
+    return selectedVoterId.startsWith('phone:')
+      ? { ids: [] as string[], phones: [selectedVoterId.slice('phone:'.length)] }
+      : { ids: [selectedVoterId], phones: [] as string[] };
+  }, [selectedVoterId, threadGroups]);
+
+  const { data: dbChatMessages } = useQuery({
+    queryKey: ['chat-messages', selectedVoterId, selectedThread.ids.join(','), selectedThread.phones.join(',')],
+    enabled: !!selectedVoterId && !isDemoMode,
+    refetchInterval: 3000,
+    queryFn: async () => {
+      const out: any[] = [];
+      if (selectedThread.ids.length > 0) {
+        const { data } = await supabase
+          .from('messages')
+          .select('*')
+          .in('lead_id', selectedThread.ids)
+          .order('created_at', { ascending: true });
+        out.push(...(data ?? []));
+      }
+      if (selectedThread.phones.length > 0) {
+        const { data } = await supabase
+          .from('messages')
+          .select('*')
+          .is('lead_id', null)
+          .order('created_at', { ascending: true });
+        out.push(
+          ...(data ?? []).filter((m: any) =>
+            selectedThread.phones.includes((m.metadata as any)?.sender_phone)
+          )
+        );
+      }
+      return out.sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    },
+  });
 
   const lastMessages = useMemo(() => {
     const base = new Map(dbLastMessages ?? new Map());
     (orphanThreads ?? []).forEach((t: any) => {
       base.set(`phone:${t.phone}`, t.last);
     });
+    groupLastMessages.forEach((msg, id) => base.set(id, msg));
     if (isDemoMode) {
       voters.slice(0, 50).forEach(v => {
         const msgs = demoMessages.filter(m => m.lead_id === v.id);
@@ -487,7 +582,7 @@ const OmnichannelInbox = () => {
       });
     }
     return base;
-  }, [isDemoMode, dbLastMessages, voters, demoMessages, orphanThreads]);
+  }, [isDemoMode, dbLastMessages, voters, demoMessages, orphanThreads, groupLastMessages]);
 
   const chatMessages = useMemo(() => {
     const base = (isDemoMode && selectedVoterId?.startsWith('demo-lead-'))
@@ -498,6 +593,7 @@ const OmnichannelInbox = () => {
     if (channelFilter.size === 0) return base;
     return base.filter((m: any) => channelFilter.has(String(m?.channel || '')));
   }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages, channelFilter]);
+
 
   // `voters` only contains threads that already have messages. When the broker
   // opens a contact straight from search (no messages yet), fall back to the
