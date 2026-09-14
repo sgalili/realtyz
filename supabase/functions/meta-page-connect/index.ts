@@ -246,7 +246,36 @@ Deno.serve(async (req) => {
       );
     }
 
-    const ownerId = caller.workspaceOwnerId;
+    // The client tells us WHICH workspace it is rendering. Trusting the explicit
+    // (membership-verified) owner id removes the race right after a workspace
+    // switch, where profiles.active_workspace_owner_id can still be the old one.
+    let ownerId = caller.workspaceOwnerId;
+    const requestedOwnerId = String(body?.owner_id ?? body?.user_id ?? "").trim();
+    if (requestedOwnerId && requestedOwnerId !== ownerId) {
+      if (requestedOwnerId === caller.userId) {
+        ownerId = requestedOwnerId;
+      } else {
+        const { data: member } = await admin
+          .from("workspace_memberships")
+          .select("user_id")
+          .eq("workspace_owner_id", requestedOwnerId)
+          .eq("user_id", caller.userId)
+          .maybeSingle();
+        if (member) ownerId = requestedOwnerId;
+      }
+    }
+
+    /** The platform-shared Page every workspace may use when it has none. */
+    const sharedBinding = async () => {
+      const { data } = await admin
+        .from("messenger_page_bindings")
+        .select("page_id, page_name, page_avatar_url, page_access_token, updated_at")
+        .eq("is_platform_shared", true)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return (data as any) ?? null;
+    };
 
     const redirectUri = String(body?.redirect_uri ?? "").trim();
     const returnOrigin = String(body?.return_origin ?? "").trim();
