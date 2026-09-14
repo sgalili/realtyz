@@ -217,6 +217,48 @@ async function fetchPageIdentity(
 }
 
 
+/**
+ * Atomically claim the one-time login state BEFORE the authorization code is
+ * sent to Meta. A Facebook `code` may be exchanged exactly once: a second
+ * attempt (StrictMode remount, "try again", duplicate tab) gets
+ * `code 100 / subcode 36009 — This authorization code has been used`, which
+ * used to surface as a generic timeout. Claiming first turns that race into an
+ * explicit, actionable answer.
+ *
+ * Returns "claimed" for the single winning attempt, "already" for every later
+ * attempt on the same state, and "no_state" when there is nothing to claim
+ * (implicit token flows, states that predate this table).
+ */
+async function claimAuthCode(
+  admin: ReturnType<typeof adminClient>,
+  state: string,
+): Promise<"claimed" | "already" | "no_state"> {
+  if (!state) return "no_state";
+  try {
+    const { data, error } = await admin
+      .from("oauth_connection_states")
+      .update({ consumed_at: new Date().toISOString() })
+      .eq("state", state)
+      .eq("provider", "facebook_page")
+      .is("consumed_at", null)
+      .select("state");
+    if (error) {
+      console.warn("[meta-page-connect] code claim failed", error.message);
+      return "no_state";
+    }
+    if (Array.isArray(data) && data.length > 0) return "claimed";
+    const { data: existing } = await admin
+      .from("oauth_connection_states")
+      .select("state")
+      .eq("state", state)
+      .maybeSingle();
+    return existing ? "already" : "no_state";
+  } catch (e) {
+    console.warn("[meta-page-connect] code claim threw", String((e as any)?.message ?? e));
+    return "no_state";
+  }
+}
+
 const REQUEST_TIMEOUT_MS = 8_000;
 
 async function handleRequest(req: Request): Promise<Response> {
