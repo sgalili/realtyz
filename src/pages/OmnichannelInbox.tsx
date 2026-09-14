@@ -476,18 +476,12 @@ const OmnichannelInbox = () => {
       return new Date(msg?.created_at ?? v.last_interaction_at ?? 0).getTime();
     };
 
-    const buckets = new Map<string, any[]>();
-    all.forEach((v: any) => {
-      const key = threadIdentityKey(v);
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key)!.push(v);
-    });
-
     const merged: any[] = [];
     const groups = new Map<string, { ids: string[]; phones: string[] }>();
     const groupLast = new Map<string, any>();
 
-    buckets.forEach((rows) => {
+    groupByIdentity(all as any[]).forEach((rows) => {
+
       // Pick the richest, most recent row as the visible one: a real contact
       // always wins over a synthetic phone thread.
       const sorted = [...rows].sort((a, b) => {
