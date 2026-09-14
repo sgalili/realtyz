@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth, takeOAuthSessionHandoff } from '@/lib/oauthRedirect';
+import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from '@/lib/oauthRedirect';
 import { isOAuthPopup, notifyOAuthOpener } from '@/lib/oauthPopupBridge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ExternalLink } from 'lucide-react';
@@ -154,12 +154,6 @@ export default function OAuthCallback() {
         if (code) forward.set('code', code);
         if (accessToken) forward.set('access_token', accessToken);
         if (state) forward.set('state', state);
-        const { data: sessionData } = await supabase.auth.getSession();
-        const session = sessionData.session;
-        if (session) {
-          forward.set('_app_access_token', session.access_token);
-          forward.set('_app_refresh_token', session.refresh_token);
-        }
         forward.set('_oauth_redirect_uri', redirectUri);
         window.location.replace(`${returnOrigin}/oauth/callback?${forward.toString()}`);
         return;
@@ -266,24 +260,6 @@ export default function OAuthCallback() {
 
       setMessage('שומר את חיבור עמוד הפייסבוק...');
       try {
-        const handedAccessToken = pick('_app_access_token');
-        const handedRefreshToken = pick('_app_refresh_token');
-        const storedHandoff = takeOAuthSessionHandoff();
-        if (handedAccessToken && handedRefreshToken) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: handedAccessToken,
-            refresh_token: handedRefreshToken,
-          });
-          if (sessionError) throw new Error('לא ניתן לשחזר את ההתחברות למערכת. חזור למערכת והתחבר מחדש.');
-        } else if (storedHandoff) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: storedHandoff.accessToken,
-            refresh_token: storedHandoff.refreshToken,
-          });
-          if (sessionError) throw new Error('לא ניתן לשחזר את ההתחברות למערכת. חזור למערכת והתחבר מחדש.');
-        }
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData.user) throw new Error('החיבור למערכת פג. חזור למערכת, התחבר מחדש ונסה שוב.');
         const { data, error: fnError } = await withTimeout(
           supabase.functions.invoke('meta-page-connect', {
             body: {
@@ -291,6 +267,7 @@ export default function OAuthCallback() {
               code: code ?? undefined,
               user_access_token: accessToken ?? undefined,
               redirect_uri: redirectUri,
+              state,
             },
           }),
           EXCHANGE_TIMEOUT_MS,

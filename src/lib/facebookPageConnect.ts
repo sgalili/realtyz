@@ -8,7 +8,7 @@
  * while another still showed "disconnected".
  */
 import { supabase } from '@/integrations/supabase/client';
-import { oauthRedirectUri, oauthReturnOrigin, storeOAuthSessionHandoff } from '@/lib/oauthRedirect';
+import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 
 /** Provider key used by the OAuth popup bridge for page-binding logins. */
 export const FACEBOOK_PAGE_PROVIDER = 'facebook_page';
@@ -61,9 +61,6 @@ export async function callMetaPageConnect<T = any>(body: Record<string, unknown>
  * which upserts the Page ID + Page Access Token for the active workspace.
  */
 export async function startMetaPageConnect(opts: { scopeTier?: 'full' | 'basic' } = {}): Promise<string> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const session = sessionData.session;
-  if (session) storeOAuthSessionHandoff(session.access_token, session.refresh_token);
   const res = await callMetaPageConnect<{ auth_url?: string }>({
     action: 'start',
     scope_tier: opts.scopeTier ?? 'full',
