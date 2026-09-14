@@ -49,6 +49,15 @@ function markGrantConsumed(raw: string) {
   try { window.sessionStorage.setItem(grantKey(raw), String(Date.now())); } catch { /* private mode */ }
 }
 
+/**
+ * In-memory de-dupe for the CURRENT page load. A StrictMode remount (or any
+ * second render of this screen) must reuse the very same exchange promise
+ * instead of being told the code was already used — otherwise the flow dies
+ * before `/me/accounts` is read and the Page is never saved.
+ */
+let inFlightGrant: string | null = null;
+let inFlightExchange: Promise<any> | null = null;
+
 type OAuthError = {
   title: string;
   detail: string | null;
@@ -305,11 +314,12 @@ export default function OAuthCallback() {
         return;
       }
 
-      // A single exchange per grant. The marker is persisted BEFORE the request
-      // is fired, so a reload / remount / duplicate tab can never re-send the
-      // same code (Facebook: "This authorization code has been used", 100/36009).
+      // A grant is exchanged exactly once. Within this page load the in-flight
+      // promise is reused (StrictMode remounts, re-renders), so the flow always
+      // reaches `/me/accounts` and the Page save. Only a NEW page load on an
+      // already-exchanged code hits the "code used" card.
       const grantId = state || String(code || accessToken);
-      if (isGrantConsumed(grantId)) {
+      if (isGrantConsumed(grantId) && inFlightGrant !== grantId) {
         console.warn('[oauth-callback] grant already exchanged in this session', { state });
         setIsLoading(false);
         setError({
@@ -321,12 +331,13 @@ export default function OAuthCallback() {
         });
         return;
       }
-      markGrantConsumed(grantId);
 
       setMessage('שומר את חיבור עמוד הפייסבוק...');
       try {
-        const { data, error: fnError } = await withTimeout(
-          supabase.functions.invoke('meta-page-connect', {
+        if (inFlightGrant !== grantId || !inFlightExchange) {
+          inFlightGrant = grantId;
+          markGrantConsumed(grantId);
+          inFlightExchange = supabase.functions.invoke('meta-page-connect', {
             body: {
               action: 'exchange',
               code: code ?? undefined,
@@ -334,7 +345,10 @@ export default function OAuthCallback() {
               redirect_uri: redirectUri,
               state,
             },
-          }),
+          });
+        }
+        const { data, error: fnError } = await withTimeout(
+          inFlightExchange,
           EXCHANGE_TIMEOUT_MS,
           'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
         );

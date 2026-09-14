@@ -150,8 +150,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
+    // Keyed by the user id only: a refreshed session object must never retrigger
+    // the whole workspace fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user?.id]);
 
 
   useEffect(() => {

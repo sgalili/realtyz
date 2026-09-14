@@ -25,7 +25,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const apply = (session: Session | null) => {
       try {
         setSession(session);
-        setUser(session?.user ?? null);
+        // Token refreshes deliver a NEW user object for the SAME account. Keeping
+        // the previous reference stops every `useEffect([user])` in the app from
+        // re-running (which produced an endless profiles/workspaces refetch loop).
+        const nextUser = session?.user ?? null;
+        setUser((prev) => (prev && nextUser && prev.id === nextUser.id ? prev : nextUser));
         window.localStorage.setItem('realtyz-authenticated-session', session?.user ? 'true' : 'false');
       } catch {
         /* private-mode storage etc. must never bubble into the auth client */
