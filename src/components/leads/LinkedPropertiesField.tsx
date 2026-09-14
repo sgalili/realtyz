@@ -100,7 +100,7 @@ export function PropertyMeta({ p }: { p: PropertyOption }) {
   const bits = [propertyDealLabel(p), propertyPriceLabel(p), propertyRoomsLabel(p)].filter(Boolean) as string[];
   if (!bits.length) return null;
   return (
-    <p className="text-[11px] text-muted-foreground truncate">{bits.join(' · ')}</p>
+    <p className="text-[13px] text-muted-foreground truncate">{bits.join(' · ')}</p>
   );
 }
 
