@@ -501,7 +501,7 @@ function EditableInlineText({
 
 const LeadCRM = () => {
   const { user } = useAuth();
-  const { recruitmentMode } = useWorkspaceFeatures();
+  const { recruitmentMode, listingsEnabled } = useWorkspaceFeatures();
   const activeWorkspaceId = useActiveWorkspaceOwnerId();
 
   /**
@@ -2418,7 +2418,8 @@ const LeadCRM = () => {
                             {/* Homely / WebTiv are read-only sources — no push action. */}
 
                             <LeadEnrichmentIconButton lead={selectedVoter} />
-                            {/* Digital signature — sits right before the delete action */}
+                            {/* Digital signature (tour/brokerage forms) — property workspaces only */}
+                            {listingsEnabled && (
                             <DigitalSignatureButton
                               lead={selectedVoter as any}
                               iconOnly
@@ -2426,6 +2427,7 @@ const LeadCRM = () => {
                               label="חתימה דיגיטלית"
                               className="h-8 w-8 rounded-md bg-transparent text-slate-700 hover:bg-slate-100"
                             />
+                            )}
                             <button
                               type="button"
                               aria-label="מחק איש קשר"
@@ -2523,8 +2525,15 @@ const LeadCRM = () => {
                       { v: 'contacted', l: 'יצר קשר' },
                       { v: 'engaging', l: 'בטיפול' },
                       { v: 'cold', l: 'איש קשר קר' }, { v: 'qualified', l: 'איש קשר מוסמך' },
-                      { v: 'touring', l: 'בסיור נכסים' }, { v: 'offer_pending', l: 'ממתין להצעה' },
-                      { v: 'negotiation', l: 'במשא ומתן' }, { v: 'closed', l: 'סגר עסקה' },
+                      // Property-stage options belong to property workspaces only.
+                      ...(listingsEnabled
+                        ? [
+                            { v: 'touring', l: 'בסיור נכסים' },
+                            { v: 'offer_pending', l: 'ממתין להצעה' },
+                            { v: 'negotiation', l: 'במשא ומתן' },
+                          ]
+                        : []),
+                      { v: 'closed', l: 'סגר עסקה' },
                     ];
                     const sourceOpts = [
                       { v: 'homely', l: 'הומלי' },
@@ -2602,14 +2611,14 @@ const LeadCRM = () => {
                           )}
                          </div>
                          {/* Property relation — link any number of properties to this contact */}
-                         {isPropertyContact && (
+                         {isPropertyContact && listingsEnabled && (
                            <div className="p-3 rounded-lg bg-slate-100 border border-slate-200">
                              <LinkedPropertiesField leadId={(selectedVoter as any).id} />
                            </div>
                          )}
                          {/* Digital signature moved to the inline action icons in the header */}
                          {/* Owner-only: 13 Homely-style property fields, backed by the linked listing */}
-                         {ownerLead && (
+                         {ownerLead && listingsEnabled && (
                            <OwnerPropertyGrid lead={selectedVoter as any} />
                          )}
                       </div>
