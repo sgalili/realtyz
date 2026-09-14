@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
 
       const { data: doc, error } = await admin
         .from("closing_documents")
-        .select("id, user_id, lead_id, title, pdf_path, sign_token, status, expires_at")
+        .select("id, user_id, lead_id, listing_id, template_key, title, pdf_path, sign_token, status, expires_at, fields, workspace_owner_id")
         .eq("sign_token", tk)
         .maybeSingle();
       if (error || !doc) {
