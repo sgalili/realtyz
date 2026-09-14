@@ -94,15 +94,26 @@ export function GoogleServiceConnectCard({
     refetchOnWindowFocus: false,
   });
 
-  const identity = (data?.credentials as any)?.verified_identity;
+  const creds = (data?.credentials as any) ?? {};
+  const identity = creds.verified_identity ?? {};
+  // Different exchange versions stored the account under different keys, so we
+  // look through all of them to always surface the connected address.
+  const credEmail: string | null =
+    identity.email ??
+    creds.email ??
+    creds.account_email ??
+    creds.user_email ??
+    creds.channel_title ??
+    identity.name ??
+    null;
   const liveConnected = !!data?.is_connected;
   // A connected service stays connected in the UI until the broker disconnects
   // it explicitly — a pending query or a transient failure never flips it back.
   useEffect(() => {
-    if (liveConnected) rememberConnected(platform, null, identity?.email ?? identity?.name ?? null);
-  }, [liveConnected, platform, identity?.email, identity?.name]);
+    if (liveConnected) rememberConnected(platform, null, credEmail);
+  }, [liveConnected, platform, credEmail]);
   const connected = liveConnected || isRememberedConnected(platform);
-  const accountLabel = identity?.email ?? rememberedLabel(platform);
+  const accountLabel = credEmail ?? rememberedLabel(platform);
 
   /** Explicit, user-initiated disconnect — the only way to clear the status. */
   const disconnect = async () => {
@@ -241,9 +252,13 @@ export function GoogleServiceConnectCard({
               {connected ? 'מחובר' : 'לא מחובר'}
             </span>
           </div>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            {connected && accountLabel ? <span dir="ltr">{accountLabel}</span> : hint}
-          </p>
+          {connected && accountLabel ? (
+            <p className="mt-1 truncate text-[13px] font-medium" dir="ltr" style={{ color: 'hsl(220 9% 32%)' }}>
+              {accountLabel}
+            </p>
+          ) : (
+            <p className="mt-1 text-[13px] text-muted-foreground">{hint}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant={connected ? 'outline' : 'default'} className="h-8 gap-1 text-xs" onClick={connect}>
