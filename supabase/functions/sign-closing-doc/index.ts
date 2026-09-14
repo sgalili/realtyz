@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
 
       const { data: doc, error } = await admin
         .from("closing_documents")
-        .select("id, title, status, pdf_path, signed_pdf_path, signer_name, expires_at, signed_at, viewed_at")
+        .select("id, title, status, pdf_path, signed_pdf_path, signer_name, expires_at, signed_at, viewed_at, fields")
         .eq("sign_token", tk)
         .maybeSingle();
       if (error || !doc) {
