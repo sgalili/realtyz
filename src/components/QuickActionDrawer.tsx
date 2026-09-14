@@ -403,20 +403,36 @@ export default function QuickActionDrawer() {
                         placeholder="חיפוש נכס לפי כתובת, עיר או כותרת"
                       />
                       {listingResults.length > 0 && (
-                        <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border p-1">
+                        <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-border p-1">
                           {listingResults.map((r) => (
                             <button
                               key={r.id}
                               type="button"
                               onClick={() => { setListing(r); setListingResults([]); }}
-                              className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-right transition hover:bg-accent"
+                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-right transition hover:bg-accent"
                             >
-                              <span className="truncate text-sm font-semibold">
-                                {r.property_title || [r.neighborhood, r.city].filter(Boolean).join(', ') || 'נכס'}
+                              <PropertyThumb p={r} size={40} />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-semibold">{propertyFullAddress(r)}</span>
+                                {r.property_title && (
+                                  <span className="block truncate text-[11px] text-muted-foreground">{r.property_title}</span>
+                                )}
+                                <PropertyMeta p={r} />
                               </span>
-                              <span className="shrink-0 text-xs text-muted-foreground">{r.city ?? ''}</span>
                             </button>
                           ))}
+                        </div>
+                      )}
+                      {listing && (
+                        <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-2">
+                          <PropertyThumb p={listing} size={48} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold">{propertyFullAddress(listing)}</p>
+                            {listing.property_title && (
+                              <p className="truncate text-[11px] text-muted-foreground">{listing.property_title}</p>
+                            )}
+                            <PropertyMeta p={listing} />
+                          </div>
                         </div>
                       )}
                     </>
