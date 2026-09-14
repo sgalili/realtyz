@@ -24,6 +24,12 @@ import { Badge } from '@/components/ui/badge';
 import { FileSignature, Send, Clock, CheckCircle2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { publicUrl } from '@/lib/publicUrl';
+import {
+  PropertyMeta,
+  PropertyThumb,
+  propertyFullAddress,
+  type PropertyOption,
+} from '@/components/leads/LinkedPropertiesField';
 
 type TemplateKey = 'offer_letter' | 'lease_agreement' | 'tour_agreement';
 
