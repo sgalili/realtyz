@@ -125,7 +125,6 @@ export function GoogleServiceConnectCard({
       try {
         window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
       } catch { /* storage may be unavailable */ }
-      setExplicitlyDisconnected(false);
     }
   }, [liveConnected, platform, credEmail]);
   const connected = liveConnected || isRememberedConnected(platform);
