@@ -22,7 +22,7 @@ export default function PricingSection() {
   const price = yearly ? yearlyPrice(pkg.monthlyPrice) : pkg.monthlyPrice;
 
   return (
-    <section id="pricing" className="border-t border-border/60 py-20">
+    <section id="pricing" className="border-t border-border/60 py-10">
       <div className="mx-auto w-full max-w-3xl px-4">
         <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
           חבילות ומחירים

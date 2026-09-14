@@ -247,7 +247,7 @@ export default function Landing() {
   return (
     <div dir="rtl" className="realtyz-landing min-h-screen bg-background text-foreground antialiased">
       {/* ───────── Nav ───────── */}
-      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-xl">
+      <header className="relative z-30 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-center px-4">
           <Link to="/" aria-label="Realtyz AI" className="mt-5">
             <img src={realtyzLogo} alt="Realtyz AI" className="h-[3.12rem] w-auto object-contain" />
@@ -263,7 +263,7 @@ export default function Landing() {
           <div className="landing-grid absolute inset-0" />
         </div>
 
-        <div className="mx-auto w-full max-w-6xl px-4 pb-6 pt-3 text-center sm:pt-10">
+        <div className="mx-auto w-full max-w-6xl px-4 pb-3 pt-3 text-center sm:pt-5">
           <Reveal delay={80}>
             <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
               <span className="landing-title-gradient block">AI למתווכים וסוכנויות נדל״ן</span>
@@ -306,7 +306,7 @@ export default function Landing() {
       </section>
 
       {/* ───────── All-in-One: מחליף את כל הכלים החיצוניים ───────── */}
-      <section id="all-in-one" className="pt-[15px] pb-5">
+      <section id="all-in-one" className="pb-2.5 pt-2">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -329,7 +329,7 @@ export default function Landing() {
 
 
       {/* ───────── Features (image cards, no icons) ───────── */}
-      <section id="features" className="pt-0 pb-20">
+      <section id="features" className="pb-10 pt-0">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -366,7 +366,7 @@ export default function Landing() {
 
 
       {/* ───────── WhatsApp super assistant ───────── */}
-      <section id="whatsapp" className="relative overflow-hidden border-t border-border/60 py-20">
+      <section id="whatsapp" className="relative overflow-hidden border-t border-border/60 py-10">
         <div aria-hidden className="landing-aurora landing-aurora-c pointer-events-none absolute inset-0 -z-10" />
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 lg:grid-cols-2">
           <Reveal>
@@ -403,7 +403,7 @@ export default function Landing() {
 
 
       {/* ───────── Freemium ───────── */}
-      <section id="free" className="border-t border-border/60 py-20">
+      <section id="free" className="border-t border-border/60 py-10">
         <div className="mx-auto w-full max-w-4xl px-4 text-center">
           <Reveal>
             <h2 className="landing-title-gradient text-3xl font-extrabold tracking-tight sm:text-4xl">מסלול חינם</h2>
@@ -427,11 +427,18 @@ export default function Landing() {
 
       {/* ───────── Pricing ───────── */}
       <PricingSection />
+      <div className="pb-5 text-center">
+        <ScheduleDemoDialog>
+          <Button size="lg" className="h-14 px-10 text-base font-extrabold shadow-2xl shadow-primary/25">
+            להדגמה בזום
+          </Button>
+        </ScheduleDemoDialog>
+      </div>
       <CreditsSection />
 
 
       {/* ───────── FAQ ───────── */}
-      <section id="faq" className="border-t border-border/60 pb-20 pt-[60px]">
+      <section id="faq" className="border-t border-border/60 pb-10 pt-[30px]">
         <div className="mx-auto w-full max-w-3xl px-4">
           <Reveal>
             <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -452,10 +459,17 @@ export default function Landing() {
               ))}
             </Accordion>
           </Reveal>
+          <div className="mt-5 text-center">
+            <ScheduleDemoDialog>
+              <Button size="lg" className="h-14 px-10 text-base font-extrabold shadow-2xl shadow-primary/25">
+                להדגמה בזום
+              </Button>
+            </ScheduleDemoDialog>
+          </div>
         </div>
       </section>
 
-      <footer className="border-t border-border/60 py-10 text-center text-sm text-muted-foreground">
+      <footer className="border-t border-border/60 py-5 text-center text-sm text-muted-foreground">
         <p>Realtyz - מערכת ניהול נדל"ן מבוססת AI · כל הזכויות שמורות</p>
         <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-semibold">
           <Link to="/terms" className="transition-colors hover:text-foreground">תנאי שימוש</Link>
