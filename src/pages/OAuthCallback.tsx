@@ -331,7 +331,8 @@ export default function OAuthCallback() {
     };
   }, []);
 
-  const showFallback = !!error || hasTimedOut;
+  // Only a real failure shows the error state. A slow exchange keeps spinning.
+  const showFallback = !!error;
 
   return (
     <div dir="rtl" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
@@ -349,16 +350,19 @@ export default function OAuthCallback() {
         )}
         <h1 className="text-lg font-semibold">
           {showFallback
-            ? error?.title || 'החיבור אורך יותר מהצפוי'
+            ? error?.title || 'החיבור לא הושלם'
             : success
               ? 'החיבור הושלם'
               : 'מסיים אימות...'}
         </h1>
         <p className="text-sm text-muted-foreground break-words">
           {showFallback
-            ? error?.hint || error?.detail || 'הבקשה לא הושלמה תוך 4 שניות. ניתן לחזור למערכת ולנסות שוב.'
-            : message}
+            ? error?.hint || error?.detail || 'ניתן לחזור למערכת ולנסות שוב.'
+            : isSlow && !success
+              ? 'פייסבוק מאשר את החיבור, זה עשוי לקחת מספר שניות. אפשר להמתין כאן.'
+              : message}
         </p>
+
         {error?.enableUrl && (
           <a
             href={error.enableUrl}
