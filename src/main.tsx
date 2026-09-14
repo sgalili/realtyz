@@ -4,7 +4,9 @@ import { enableGlobalSilentMode } from "./lib/silentMode";
 import { installDemoToastFilter } from "./lib/demoToastFilter";
 import { installRealtimeAuthSync } from "./lib/realtimeAuth";
 import { captureRefFromLocation } from "./lib/referralAttribution";
+import { installDomRemovalGuard } from "./lib/domRemovalGuard";
 
+installDomRemovalGuard();
 enableGlobalSilentMode();
 installDemoToastFilter();
 installRealtimeAuthSync();
