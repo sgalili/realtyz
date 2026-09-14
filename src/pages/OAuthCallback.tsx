@@ -324,8 +324,41 @@ export default function OAuthCallback() {
           if (d.message && !String(payload.error).includes(String(d.message))) parts.push(String(d.message));
           if (d.code) parts.push(`code ${d.code}${d.subcode ? `/${d.subcode}` : ''}`);
           if (d.trace) parts.push(`trace ${d.trace}`);
+          if (payload.stage) parts.push(`stage ${payload.stage}`);
           console.error('[oauth-callback] facebook exchange failed', payload);
-          throw new Error(parts.join(' · '));
+          if (cancelled || exchangeDoneRef.current) return;
+          exchangeDoneRef.current = true;
+          setIsLoading(false);
+          // `/me/accounts` came back `{"data":[]}`: the login succeeded but no
+          // Page was approved. Send the user back to the Page-selection step.
+          if (payload.no_pages_selected) {
+            setError({
+              title: 'לא נבחר עמוד פייסבוק',
+              detail: parts.join(' · '),
+              hint: 'ההתחברות הצליחה, אבל לא אושר אף עמוד. חוזרים למסך ההרשאות של פייסבוק — יש לבחור את העמוד ולסמן "אישור".',
+              actionLabel: 'בחירת עמוד בפייסבוק',
+              restartLogin: true,
+            });
+            return;
+          }
+          if (payload.stage === 'code_reused' || Number(d.subcode) === 36009) {
+            setError({
+              title: 'קוד ההתחברות של פייסבוק כבר נוצל',
+              detail: parts.join(' · '),
+              hint: 'זהו קוד חד-פעמי. יש להתחיל חיבור חדש לפייסבוק.',
+              actionLabel: 'התחברות מחדש לפייסבוק',
+              restartLogin: true,
+            });
+            return;
+          }
+          setError({
+            title: 'החיבור לפייסבוק נכשל',
+            detail: parts.join(' · '),
+            hint: String(payload.error),
+            actionLabel: payload.restart_basic || payload.retry_basic ? 'התחברות מחדש לפייסבוק' : null,
+            restartLogin: !!(payload.restart_login || payload.retry_basic),
+          });
+          return;
         }
         // Automatic page selection failed — hand off to the picker in the card
         // instead of aborting the connection (the user token is already saved).
