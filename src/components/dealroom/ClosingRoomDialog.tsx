@@ -90,12 +90,14 @@ export function ClosingRoomDialog({
     if (open) {
       setTemplate(defaultTemplate);
       setListingId(defaultListingId ?? '');
+      setIdentityNumber(String((lead as any)?.identity_number ?? ''));
     } else {
       setTemplate(defaultTemplate);
       setListingId(defaultListingId ?? '');
       setPrice('');
       setTerms('');
       setTourDate('');
+      setIdentityNumber('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
