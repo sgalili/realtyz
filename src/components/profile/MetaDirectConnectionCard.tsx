@@ -21,9 +21,9 @@ import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 import { purgeCachedPostsForPage } from '@/lib/campaignFeedCache';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 
+import { forgetConnected } from '@/lib/connectionStatusCache';
 import {
   callMetaPageConnect as callPageConnect,
-  
   startMetaPageConnect,
 } from '@/lib/facebookPageConnect';
 
@@ -379,6 +379,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     if (disconnecting) return;
     setDisconnecting(true);
     disconnectedRef.current = true;
+    forgetConnected('facebook');
     // Optimistic atomic wipe: all badges and cached names disappear on the
     // click, while the backend performs the definitive credential deletion.
     setPage({ connected: false, page: null });
@@ -499,6 +500,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (!res?.ok) throw new Error(res?.error || 'ניתוק העמוד נכשל');
       purgeCachedPostsForPage(pageId);
       if (Number(res?.remaining ?? 0) === 0) {
+        forgetConnected('facebook');
         await resetHealth();
         setPage({ connected: false, page: null });
         setStatus(null);

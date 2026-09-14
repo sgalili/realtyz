@@ -1,0 +1,236 @@
+/**
+ * calendar-autosync
+ * ─────────────────
+ * One entry point that mirrors EVERY dated record in the system to the
+ * workspace owner's connected Google Calendar and then notifies the owner and
+ * the workspace managers on WhatsApp with the confirmed date, time and item
+ * description.
+ *
+ * Supported tables: meetings, property_tours, scheduled_items, demo_requests.
+ * Called by AFTER INSERT/UPDATE database triggers (pg_net) and directly from
+ * the app. Idempotent: a row that already carries a Google event id is skipped.
+ */
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createCalendarEvent, getFreshAccessToken } from "../_shared/google-calendar.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const MANAGER_ROLES = ["owner", "admin", "manager", "managing_broker"];
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+type Kind = "meetings" | "property_tours" | "scheduled_items" | "demo_requests";
+
+const SUPPORTED: Kind[] = ["meetings", "property_tours", "scheduled_items", "demo_requests"];
+
+/** Israeli phone → E.164 digits (9725XXXXXXXX). */
+function normalizePhone(raw: string | null | undefined): string | null {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("0")) return `972${digits.slice(1)}`;
+  if (digits.startsWith("972")) return digits;
+  return digits;
+}
+
+/** Hebrew day / date / time, Israel local time. */
+function formatSlot(iso: string | null): string {
+  if (!iso) return "מועד שיתואם";
+  const d = new Date(iso);
+  const opts: Intl.DateTimeFormatOptions = { timeZone: "Asia/Jerusalem" };
+  return `${d.toLocaleDateString("he-IL", { ...opts, weekday: "long" })} ` +
+    `${d.toLocaleDateString("he-IL", { ...opts, day: "2-digit", month: "2-digit" })} ` +
+    `בשעה ${d.toLocaleTimeString("he-IL", { ...opts, hour: "2-digit", minute: "2-digit" })}`;
+}
+
+async function sendWhatsApp(phone: string, message: string, tenantId: string) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
+      body: JSON.stringify({ phone_number: phone, message, tenant_id: tenantId }),
+    });
+    return { phone, ok: res.ok, status: res.status };
+  } catch (e) {
+    return { phone, ok: false, error: (e as Error).message };
+  }
+}
+
+type Normalized = {
+  ownerId: string | null;
+  startISO: string | null;
+  endISO: string | null;
+  title: string;
+  description: string;
+  location?: string | null;
+  eventIdColumn: string;
+  eventLinkColumn: string | null;
+  existingEventId: string | null;
+  /** Short Hebrew label of the item kind, used in the WhatsApp alert. */
+  kindLabel: string;
+};
+
+const HOUR = 60 * 60_000;
+
+function plusMinutes(iso: string, minutes: number) {
+  return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
+}
+
+function normalize(kind: Kind, row: Record<string, any>): Normalized {
+  if (kind === "meetings") {
+    const start = row.starts_at ? new Date(row.starts_at).toISOString() : null;
+    return {
+      ownerId: row.workspace_owner_id ?? row.user_id ?? null,
+      startISO: start,
+      endISO: row.ends_at ? new Date(row.ends_at).toISOString() : start ? plusMinutes(start, 45) : null,
+      title: String(row.title || "פגישה"),
+      description: [row.description, row.lead_name && `איש קשר: ${row.lead_name}`, row.lead_phone && `טלפון: ${row.lead_phone}`]
+        .filter(Boolean).join("\n"),
+      location: row.location ?? null,
+      eventIdColumn: "google_calendar_event_id",
+      eventLinkColumn: null,
+      existingEventId: row.google_calendar_event_id ?? null,
+      kindLabel: "פגישה",
+    };
+  }
+  if (kind === "property_tours") {
+    const start = row.scheduled_at ? new Date(row.scheduled_at).toISOString() : null;
+    return {
+      ownerId: row.owner_id ?? null,
+      startISO: start,
+      endISO: start ? plusMinutes(start, 45) : null,
+      title: `סיור בנכס — ${row.property_title || row.property_address || "נכס"}`,
+      description: [
+        row.property_address && `כתובת: ${row.property_address}`,
+        row.client_name && `לקוח: ${row.client_name}`,
+        row.client_phone && `טלפון: ${row.client_phone}`,
+        row.notes,
+      ].filter(Boolean).join("\n"),
+      location: row.property_address ?? null,
+      eventIdColumn: "google_event_id",
+      eventLinkColumn: "google_event_link",
+      existingEventId: row.google_event_id ?? null,
+      kindLabel: "סיור בנכס",
+    };
+  }
+  if (kind === "scheduled_items") {
+    const start = row.scheduled_for ? new Date(row.scheduled_for).toISOString() : null;
+    const typeLabel = row.item_type === "note" ? "הערה"
+      : row.item_type === "reminder" ? "תזכורת"
+      : row.item_type === "call" ? "שיחה"
+      : row.item_type === "task" ? "משימה"
+      : "פריט מתוזמן";
+    return {
+      ownerId: row.workspace_owner_id ?? row.user_id ?? null,
+      startISO: start,
+      endISO: start ? plusMinutes(start, 30) : null,
+      title: `${typeLabel}: ${String(row.title || "").trim() || "ללא כותרת"}`,
+      description: String(row.content ?? ""),
+      eventIdColumn: "google_event_id",
+      eventLinkColumn: "google_event_link",
+      existingEventId: row.google_event_id ?? null,
+      kindLabel: typeLabel,
+    };
+  }
+  const start = row.preferred_at ? new Date(row.preferred_at).toISOString() : null;
+  const leadName = [row.first_name, row.last_name].filter(Boolean).join(" ").trim();
+  return {
+    ownerId: row.workspace_owner_id ?? null,
+    startISO: start,
+    endISO: start ? plusMinutes(start, 15) : null,
+    title: `הדגמת Realtyz בזום — ${leadName || "ליד חדש"}`,
+    description: [leadName && `שם: ${leadName}`, row.phone && `טלפון: ${row.phone}`, row.notes].filter(Boolean).join("\n"),
+    eventIdColumn: "google_event_id",
+    eventLinkColumn: "google_event_link",
+    existingEventId: row.google_event_id ?? null,
+    kindLabel: "הדגמה",
+  };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const body = (await req.json().catch(() => ({}))) as { table?: string; record_id?: string; notify?: boolean };
+    const kind = String(body.table ?? "") as Kind;
+    if (!SUPPORTED.includes(kind) || !body.record_id) {
+      return json({ ok: false, error: "table and record_id are required" }, 400);
+    }
+
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+    const { data: row, error } = await admin.from(kind).select("*").eq("id", body.record_id).maybeSingle();
+    if (error || !row) return json({ ok: false, error: "record not found" }, 404);
+
+    const item = normalize(kind, row as Record<string, any>);
+    if (!item.startISO || !item.ownerId) return json({ ok: true, skipped: "no_schedule_or_owner" });
+    if (item.existingEventId) return json({ ok: true, skipped: "already_synced", event_id: item.existingEventId });
+
+    // Past items are never pushed to the calendar.
+    if (new Date(item.startISO).getTime() < Date.now() - HOUR) return json({ ok: true, skipped: "past_item" });
+
+    const token = await getFreshAccessToken(admin, item.ownerId);
+    if ("error" in token) return json({ ok: true, calendar: { created: false, reason: token.error } });
+
+    const event = await createCalendarEvent({
+      accessToken: token.accessToken,
+      calendarId: token.calendarId,
+      timezone: token.timezone,
+      summary: item.title,
+      description: item.description || undefined,
+      location: item.location ?? undefined,
+      startISO: item.startISO,
+      endISO: item.endISO ?? plusMinutes(item.startISO, 30),
+    });
+    if ("error" in event) {
+      console.error("[calendar-autosync] create failed", kind, body.record_id, event.error);
+      return json({ ok: false, calendar: { created: false, reason: event.error } }, 502);
+    }
+
+    const patch: Record<string, unknown> = { [item.eventIdColumn]: event.id };
+    if (item.eventLinkColumn) patch[item.eventLinkColumn] = event.htmlLink ?? null;
+    await admin.from(kind).update(patch).eq("id", body.record_id);
+
+    // ── WhatsApp confirmation to the owner + every workspace manager ─────────
+    const notifications: unknown[] = [];
+    if (body.notify !== false) {
+      const recipients = new Set<string>([item.ownerId]);
+      const { data: members } = await admin
+        .from("workspace_memberships")
+        .select("user_id, role")
+        .eq("workspace_owner_id", item.ownerId);
+      (members ?? []).forEach((m: { user_id: string; role: string }) => {
+        if (MANAGER_ROLES.includes(String(m.role))) recipients.add(m.user_id);
+      });
+      const { data: profiles } = await admin.from("profiles").select("id, phone").in("id", [...recipients]);
+
+      const message =
+        `נשמר ביומן Google — ${item.kindLabel}\n` +
+        `${item.title}\n` +
+        `מועד: ${formatSlot(item.startISO)}\n` +
+        (item.description ? `${item.description}\n` : "") +
+        (event.htmlLink ? `פתיחה ביומן: ${event.htmlLink}` : "");
+
+      const phones = new Set<string>();
+      (profiles ?? []).forEach((p: { phone: string | null }) => {
+        const normalized = normalizePhone(p.phone);
+        if (normalized) phones.add(normalized);
+      });
+      for (const phone of phones) notifications.push(await sendWhatsApp(phone, message, item.ownerId));
+    }
+
+    return json({
+      ok: true,
+      calendar: { created: true, event_id: event.id, link: event.htmlLink ?? null },
+      notifications,
+    });
+  } catch (e) {
+    console.error("[calendar-autosync]", e);
+    return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500);
+  }
+});
