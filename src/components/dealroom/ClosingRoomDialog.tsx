@@ -237,19 +237,22 @@ export function ClosingRoomDialog({
           <div>
             <Label className="text-xs">נכס מקושר</Label>
             <Select value={listingId || 'none'} onValueChange={(v) => setListingId(v === 'none' ? '' : v)}>
-              <SelectTrigger className="h-auto py-2">
-                <SelectValue placeholder="ללא" />
+              <SelectTrigger>
+                {/* Plain text only — the rich card is rendered once, below. */}
+                <span className="truncate text-sm">
+                  {selectedListing ? propertyFullAddress(selectedListing) : 'ללא'}
+                </span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— ללא —</SelectItem>
                 {listings.map((l) => (
                   <SelectItem key={l.id} value={l.id}>
                     <span className="flex items-center gap-2 text-right">
-                      <PropertyThumb p={l} size={36} />
+                      <PropertyThumb p={l} size={40} />
                       <span className="min-w-0">
-                        <span className="block truncate font-semibold text-xs">{propertyFullAddress(l)}</span>
+                        <span className="block truncate font-semibold text-sm">{propertyFullAddress(l)}</span>
                         {l.property_title && (
-                          <span className="block truncate text-[11px] text-slate-500">{l.property_title}</span>
+                          <span className="block truncate text-[13px] text-slate-500">{l.property_title}</span>
                         )}
                         <PropertyMeta p={l} />
                       </span>
@@ -260,19 +263,20 @@ export function ClosingRoomDialog({
             </Select>
             {selectedListing && (
               <div className="mt-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2">
-                <PropertyThumb p={selectedListing} size={48} />
+                <PropertyThumb p={selectedListing} size={52} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-slate-900 truncate">
+                  <p className="text-sm font-semibold text-slate-900 truncate">
                     {propertyFullAddress(selectedListing)}
                   </p>
                   {selectedListing.property_title && (
-                    <p className="text-[11px] text-slate-500 truncate">{selectedListing.property_title}</p>
+                    <p className="text-[13px] text-slate-500 truncate">{selectedListing.property_title}</p>
                   )}
                   <PropertyMeta p={selectedListing} />
                 </div>
               </div>
             )}
           </div>
+
 
           {template === 'tour_agreement' && (
             <div>
