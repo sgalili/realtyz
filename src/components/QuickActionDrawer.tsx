@@ -18,6 +18,7 @@ type TabKey = 'note' | 'reminder' | 'interaction' | 'matches';
 
 type LeadLite = { id: string; full_name: string | null; phone_number: string | null; city: string | null; deal_type: string | null };
 import { PropertyMeta, PropertyThumb, propertyFullAddress } from '@/components/leads/LinkedPropertiesField';
+import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 
 type ListingLite = { id: string; property_title: string | null; address: string | null; city: string | null; neighborhood: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null; image_url: string | null; media_photos: unknown };
 
@@ -52,6 +53,9 @@ function toLocalDateTime(value: string) {
 }
 
 export default function QuickActionDrawer() {
+  // Property matching and property links exist only in workspaces that manage
+  // properties; Rita's marketing workspace never shows them.
+  const { listingsEnabled } = useWorkspaceFeatures();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -361,7 +365,7 @@ export default function QuickActionDrawer() {
           </SheetHeader>
 
           <div className="grid grid-cols-4 gap-1 border-b border-border bg-background px-3 py-2">
-            {TABS.map((t) => {
+            {TABS.filter((t) => listingsEnabled || t.key !== 'matches').map((t) => {
               const Icon = t.icon;
               const active = tab === t.key;
               return (
@@ -385,7 +389,7 @@ export default function QuickActionDrawer() {
 
             {tab === 'note' && (
               <div className="space-y-3">
-                <div className="space-y-2">
+                <div className={listingsEnabled ? 'space-y-2' : 'hidden'}>
                   <Label className="text-sm font-semibold">נכס מקושר</Label>
                   {listing ? (
                     <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
