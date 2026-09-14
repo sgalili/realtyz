@@ -18,6 +18,12 @@ import { GoogleApiCredentialsCard } from '@/components/profile/GoogleApiCredenti
 import { GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAccountIntegrations } from '@/hooks/useAccountIntegrations';
+import {
+  isRememberedConnected,
+  rememberConnected,
+  rememberedLabel,
+  type StickyService,
+} from '@/lib/connectionStatusCache';
 
 type Tone = 'ok' | 'idle';
 
@@ -185,16 +191,36 @@ export function ConnectionsTab() {
         .in('platform', ['gmail', 'google_calendar', 'youtube']);
       return (data ?? []) as { platform: string; is_connected: boolean; credentials: any }[];
     },
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
+
+  // Once a Google service reported connected, remember it so a collapsed card
+  // or a slow query can never render it as "לא מחובר".
+  useEffect(() => {
+    (googleConns ?? []).forEach((c) => {
+      if (!c.is_connected) return;
+      const label = String(
+        c.credentials?.verified_identity?.email ?? c.credentials?.verified_identity?.name ?? '',
+      ).trim();
+      rememberConnected(c.platform as StickyService, activeWorkspaceId, label || null);
+    });
+  }, [googleConns, activeWorkspaceId]);
   const liveGoogle = (googleConns ?? []).filter((c) => c.is_connected);
   const connectedGoogle = new Set(liveGoogle.map((c) => c.platform));
   
-  const someGoogleConnected = connectedGoogle.size > 0;
+  const rememberedGoogle = (['gmail', 'google_calendar', 'youtube'] as StickyService[])
+    .some((svc) => isRememberedConnected(svc, activeWorkspaceId));
+  const someGoogleConnected = connectedGoogle.size > 0 || rememberedGoogle;
   // Never show a vague "חלקי": the header shows the actual connected Google
   // account (email / name) so the broker sees exactly which account is live.
   const googleAccount = liveGoogle
     .map((c) => String(c.credentials?.verified_identity?.email ?? c.credentials?.verified_identity?.name ?? '').trim())
-    .find((v) => !!v) ?? null;
+    .find((v) => !!v)
+    ?? (['gmail', 'google_calendar', 'youtube'] as StickyService[])
+      .map((svc) => rememberedLabel(svc, activeWorkspaceId))
+      .find((v) => !!v)
+    ?? null;
   const googleStatus: [string, Tone] = someGoogleConnected
     ? [googleAccount ?? 'מחובר', 'ok']
     : ['לא מחובר', 'idle'];
@@ -203,7 +229,11 @@ export function ConnectionsTab() {
   // Collapsed header badge reads the exact same shared state as the expanded
   // card badge and the global banner. Facebook / Instagram are strictly
   // workspace-scoped: never fall back to another workspace's binding.
-  const fbConnected = !!(fbHealth?.pageConnected || meta?.connected);
+  const fbLive = !!(fbHealth?.pageConnected || meta?.connected);
+  useEffect(() => {
+    if (fbLive) rememberConnected('facebook', activeWorkspaceId, null);
+  }, [fbLive, activeWorkspaceId]);
+  const fbConnected = fbLive || isRememberedConnected('facebook', activeWorkspaceId);
   const metaStatus: [string, Tone] = fbConnected
     ? ['מחובר', 'ok']
     : fbHealthPending && !meta
