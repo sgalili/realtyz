@@ -76,7 +76,9 @@ const MIRROR: Record<string, string> = {
 export function rtl(input: string): string {
   const text = String(input ?? "");
   if (!text) return "";
-  const tokens = text.match(/[0-9A-Za-z@._+\-/:%&'#]+|[\s\S]/g) ?? [];
+  // Numbers keep their internal separators (8,000 / 14/09/2026 / 052-2973500)
+  // so a thousands comma is never split off and mirrored.
+  const tokens = text.match(/[0-9]+(?:[.,:/\-][0-9]+)*(?:%|₪)?|[0-9A-Za-z@._+\-/:%&'#]+|[\s\S]/g) ?? [];
   return tokens
     .reverse()
     .map((t) => (t.length === 1 && MIRROR[t] ? MIRROR[t] : t))
