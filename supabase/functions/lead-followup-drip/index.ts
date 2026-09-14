@@ -43,7 +43,7 @@ const firstName = (n: string | null) => (n || "").trim().split(/\s+/)[0] || "";
 
 const STAGE_TEXT: Record<number, (name: string, city: string | null) => string> = {
   1: (name) =>
-    `היי ${name}, רק בודק שהכול ברור מהשיחה שלנו. יש משהו שתרצה שאבדוק בשבילך?`.trim(),
+    `היי ${name}, רק בודקת שהכול ברור מהשיחה שלנו. יש משהו שתרצה שאבדוק בשבילך?`.trim(),
   2: (name, city) =>
     `היי ${name}, עברו כמה ימים ורציתי לעדכן שיש תנועה בשוק${city ? ` ב${city}` : ""}. שווה שנעשה סבב קצר על מה שמתאים לך עכשיו?`.trim(),
 };
