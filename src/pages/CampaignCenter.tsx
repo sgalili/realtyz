@@ -4745,8 +4745,16 @@ const PublishedFeed = ({
         } catch { shouldImport = true; }
       }
       if (shouldImport) {
-        const connectedPage = await resolveMetaPageViaFunction(workspaceOwnerId);
-        shouldImport = Boolean(connectedPage.pageId);
+        // Fast path: the stored binding of THIS workspace is the truth and comes
+        // straight from the database — no Graph round-trip, no waiting.
+        let connectedPageId: string | null = null;
+        try {
+          const { data: effective } = await (supabase as any).rpc('get_effective_meta_page', { _owner: ownerScope });
+          const row: any = Array.isArray(effective) ? effective[0] : effective;
+          connectedPageId = row?.page_id ? String(row.page_id) : null;
+        } catch { /* fall back to the server resolver below */ }
+        if (!connectedPageId) connectedPageId = (await resolveMetaPageViaFunction(ownerScope)).pageId;
+        shouldImport = Boolean(connectedPageId);
       }
       if (shouldImport) {
         // Fire-and-forget — the DB is already painted; we never await this.
