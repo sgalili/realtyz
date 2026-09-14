@@ -27,6 +27,8 @@ import { MatchProgressCard } from '@/components/dashboard/MatchProgressCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
 import { LISTINGS_ENABLED } from '@/config/workspaceMode';
 import { GlobalSearchTrigger } from '@/components/GlobalSearch';
+import { useIsRitaWorkspace } from '@/hooks/useIsRitaWorkspace';
+import { RecruitmentDashboard } from '@/components/dashboard/RecruitmentDashboard';
 
 
 /* ────────────────────────────────────────────────────────────────────
