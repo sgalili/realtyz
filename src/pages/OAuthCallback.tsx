@@ -90,15 +90,8 @@ export default function OAuthCallback() {
   useEffect(() => {
     hardTimerRef.current = window.setTimeout(() => {
       if (exchangeDoneRef.current) return;
-      if (isOAuthPopup()) {
-        notifyOAuthOpener({ provider: 'oauth', ok: false, reason: 'timeout' });
-        window.setTimeout(() => {
-          if (!window.closed) window.location.replace(CONNECTIONS_PATH);
-        }, 400);
-        return;
-      }
-      // Main-window flow: stop the spinner and let the user retry or go back
-      // instead of silently bouncing away mid-connection.
+      exchangeDoneRef.current = true;
+      console.error('[oauth-callback] absolute callback timeout', { timeoutMs: HARD_TIMEOUT_MS });
       setIsLoading(false);
       setError({
         title: 'החיבור לא הושלם בזמן',
@@ -317,7 +310,7 @@ export default function OAuthCallback() {
           { ok: true, name: pageName || null },
         );
       } catch (e: any) {
-        if (cancelled) return;
+        if (cancelled || exchangeDoneRef.current) return;
         const reason = String(e?.message ?? 'unknown');
         console.error('[oauth-callback] facebook callback failed', e);
         setIsLoading(false);
@@ -328,7 +321,7 @@ export default function OAuthCallback() {
         });
       }
       } catch (e: any) {
-        if (cancelled) return;
+        if (cancelled || exchangeDoneRef.current) return;
         const reason = String(e?.message ?? e ?? 'unknown');
         console.error('[oauth-callback] callback failed', e);
         setIsLoading(false);
