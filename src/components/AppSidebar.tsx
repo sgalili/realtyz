@@ -130,8 +130,15 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
 
-  // Every workspace uses the same acquisition-focused navigation as Rita's workspace.
-  const navItems = NAV_ITEMS.filter((item) => item.url !== '/deal-room' && item.url !== '/affiliate-network');
+  // Navigation follows the ACTIVE workspace: Rita's marketing workspace hides
+  // properties, deals and partners; every other workspace shows them all.
+  const features = useWorkspaceFeatures();
+  const navItems = useMemo(() => NAV_ITEMS.filter((item) => {
+    if (item.url === '/properties') return features.listingsEnabled;
+    if (item.url === '/deal-room') return features.dealsEnabled;
+    if (item.url === '/affiliate-network') return features.partnersEnabled;
+    return true;
+  }), [features]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
