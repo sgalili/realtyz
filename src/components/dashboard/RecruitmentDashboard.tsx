@@ -29,6 +29,13 @@ export function RecruitmentDashboard() {
   const navigate = useNavigate();
   const ownerId = useActiveWorkspaceOwnerId();
 
+  const hydrateAvatar = async (leadId: string | null | undefined) => {
+    if (!leadId || !ownerId) return;
+    await supabase.functions.invoke('fetch-wa-avatars', {
+      body: { lead_ids: [leadId], owner_id: ownerId, limit: 1 },
+    }).catch(() => undefined);
+  };
+
   const { data: brokerContacts, isLoading: loadingContacts } = useQuery({
     queryKey: ['rita-broker-contacts', ownerId],
     enabled: !!ownerId,
@@ -223,7 +230,11 @@ export function RecruitmentDashboard() {
                       key={row.id}
                       type="button"
                       disabled={!row.lead_id}
-                      onClick={() => row.lead_id && navigate(`/lead-crm/${row.lead_id}`)}
+                      onClick={() => {
+                        if (!row.lead_id) return;
+                        void hydrateAvatar(row.lead_id);
+                        navigate(`/lead-crm/${row.lead_id}`);
+                      }}
                       className="flex w-full items-start gap-3 rounded-lg border border-border/40 p-2.5 text-right transition-colors hover:bg-muted/30 disabled:cursor-default"
                     >
                       <VoterAvatar fullName={name} profilePictureUrl={linkedLead?.profile_picture_url} className="h-9 w-9" textClassName="text-xs" />

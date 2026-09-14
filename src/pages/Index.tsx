@@ -29,6 +29,7 @@ import { LISTINGS_ENABLED } from '@/config/workspaceMode';
 import { GlobalSearchTrigger } from '@/components/GlobalSearch';
 import { useIsRitaWorkspace } from '@/hooks/useIsRitaWorkspace';
 import { RecruitmentDashboard } from '@/components/dashboard/RecruitmentDashboard';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 
 /* ────────────────────────────────────────────────────────────────────
@@ -209,7 +210,7 @@ const RealEstateDashboard = () => {
           id: `inq-${r.id}`,
           type: 'inquiry',
           title: 'פנייה חדשה לנכס',
-          detail: [r.full_name || 'איש קשר חדש', r.phone_number].filter(Boolean).join(' · '),
+          detail: [r.full_name || 'איש קשר חדש', formatPhoneDisplay(r.phone_number)].filter(Boolean).join(' · '),
           at: r.created_at,
           leadId: r.lead_id,
         });
@@ -239,6 +240,7 @@ const RealEstateDashboard = () => {
           title: 'איש קשר הגיב',
           detail: (r.content ?? '').slice(0, 60) || 'הודעה חדשה',
           at: r.created_at,
+          leadId: r.lead_id,
         });
       });
 
