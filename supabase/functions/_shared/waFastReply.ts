@@ -208,7 +208,11 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
         messages: [
           {
             role: "system",
-            content: input.recruitment
+            // Internal staff wins over every lead-facing mode: a manager must
+            // never be pitched a demo or qualified like a new visitor.
+            content: input.staff
+              ? buildStaffReplyPrompt(input.staff, input.contextBlock, input.owner)
+              : input.recruitment
               ? buildRecruitmentReplyPrompt(input.lead, input.contextBlock)
               : buildFastReplyPrompt(input.lead, input.contextBlock, input.owner, input.domain ?? "real_estate"),
           },
