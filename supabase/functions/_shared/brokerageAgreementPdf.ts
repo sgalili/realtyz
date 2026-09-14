@@ -105,13 +105,18 @@ export async function buildBrokerageAgreementPdf(opts: AgreementOptions): Promis
 
   // ---------- Header: seal + agency logo + broker block ----------
   const headerTop = y;
+  const badgeW = 120;
   if (opts.logo) {
     try {
-      doc.addImage(opts.logo.data, opts.logo.format, RIGHT - 90, headerTop, 90, 40);
+      doc.addImage(opts.logo.data, opts.logo.format, RIGHT - badgeW, headerTop, badgeW, 40);
     } catch { /* a bad logo must never break the document */ }
   } else {
-    doc.setDrawColor(30, 64, 120).setLineWidth(1).roundedRect(RIGHT - 90, headerTop, 90, 40, 6, 6);
-    heAt(opts.broker.office, RIGHT - 45, headerTop + 25, 12, true, "center");
+    doc.setDrawColor(30, 64, 120).setLineWidth(1).roundedRect(RIGHT - badgeW, headerTop, badgeW, 40, 6, 6);
+    const officeLines = rtlLines(doc, opts.broker.office, badgeW - 12).slice(0, 2);
+    doc.setFont(HE_FONT, "bold").setFontSize(9);
+    officeLines.forEach((line, i) =>
+      doc.text(line, RIGHT - badgeW / 2, headerTop + (officeLines.length === 1 ? 25 : 18) + i * 12, { align: "center" })
+    );
   }
 
   // Homely digital-signature seal
