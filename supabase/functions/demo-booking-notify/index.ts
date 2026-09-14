@@ -76,6 +76,8 @@ Deno.serve(async (req) => {
     const body = (await req.json().catch(() => ({}))) as {
       demo_request_id?: string;
       phone?: string;
+      /** Skip the WhatsApp messages and only create the calendar event. */
+      calendar_only?: boolean;
     };
     if (!body.demo_request_id && !body.phone) {
       return json({ ok: false, error: "demo_request_id or phone is required" }, 400);
@@ -108,7 +110,8 @@ Deno.serve(async (req) => {
       `אפשר לאשר לי שהמועד נוח לך? אם צריך מועד אחר, פשוט תכתוב לי מתי ואתאם מחדש.`;
 
     const results: unknown[] = [];
-    if (leadPhone) results.push(await sendWhatsApp(leadPhone, leadMessage, ownerId));
+    const calendarOnly = body.calendar_only === true;
+    if (leadPhone && !calendarOnly) results.push(await sendWhatsApp(leadPhone, leadMessage, ownerId));
 
     // ── 2. Alert to the workspace owner + managers ──────────────────────────
     const managerIds = new Set<string>([ownerId]);
@@ -134,7 +137,7 @@ Deno.serve(async (req) => {
       `ריטה שלחה כבר אישור ללקוח וממתינה לתשובתו.`;
 
     const managerPhones = new Set<string>();
-    (profiles ?? []).forEach((p: { phone: string | null }) => {
+    if (!calendarOnly) (profiles ?? []).forEach((p: { phone: string | null }) => {
       const normalized = normalizePhone(p.phone);
       if (normalized && normalized !== leadPhone) managerPhones.add(normalized);
     });
