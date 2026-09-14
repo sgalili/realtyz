@@ -110,6 +110,7 @@ export default function OAuthCallback() {
   // Absolute escape hatch: whatever happens, never sit on the loader.
   useEffect(() => {
     hardTimerRef.current = window.setTimeout(() => {
+      if (exchangeDoneRef.current) return;
       if (isOAuthPopup()) {
         notifyOAuthOpener({ provider: 'oauth', ok: false, reason: 'timeout' });
         window.setTimeout(() => {
@@ -117,13 +118,28 @@ export default function OAuthCallback() {
         }, 400);
         return;
       }
-      window.location.replace(CONNECTIONS_PATH);
+      // Main-window flow: stop the spinner and let the user retry or go back
+      // instead of silently bouncing away mid-connection.
+      setIsLoading(false);
+      setIsSlow(false);
+      setError({
+        title: 'החיבור לא הושלם בזמן',
+        detail: null,
+        hint: 'פייסבוק לא סיים את האישור. אפשר לנסות שוב או לחזור למערכת ולהתחבר מההגדרות.',
+      });
     }, HARD_TIMEOUT_MS);
 
     return () => {
       if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
     };
   }, []);
+
+  // Once we have a definitive outcome, kill both safety timers.
+  useEffect(() => {
+    if (!error && !success) return;
+    if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
+    if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
+  }, [error, success]);
 
   // Token exchange logic. Completely separate from the UI safety timer.
   useEffect(() => {
