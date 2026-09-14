@@ -859,17 +859,16 @@ async function handleRequest(req: Request): Promise<Response> {
       // Everything below only needs the user token, so the three Graph reads run
       // CONCURRENTLY. Sequential calls were the main reason the callback could
       // outrun the browser's patience.
-      const [meRes, permRes, pagesRes] = await Promise.all([
+      const [meRes, permRes, discovered] = await Promise.all([
         graph(`/me?fields=id,name,picture.width(120).height(120)&access_token=${encodeURIComponent(userToken)}`)
           .catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
         graph(`/me/permissions?access_token=${encodeURIComponent(userToken)}`)
           .catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
-        graph(
-          `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${
-            encodeURIComponent(userToken)
-          }`,
-        ).catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
+        discoverPages(userToken)
+          .catch((e) => ({ pages: [], ok: false, lastPayload: { error: { message: String(e) } } } as any)),
       ]);
+      const pagesRes = { ok: discovered.ok, payload: discovered.lastPayload ?? { data: discovered.pages } } as any;
+
 
       const grantedScopes: string[] = Array.isArray(permRes.payload?.data)
         ? permRes.payload.data
