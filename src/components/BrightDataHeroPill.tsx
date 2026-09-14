@@ -67,6 +67,7 @@ export function BrightDataHeroPill() {
   });
 
   const amount = fmt(data?.balance ?? data?.available);
+  if (!session) return null;
   // The pill is permanent — with no value yet we still render it (as a
   // clickable usage/top-up shortcut) instead of disappearing.
 
