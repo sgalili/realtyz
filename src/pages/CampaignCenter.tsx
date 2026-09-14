@@ -5170,6 +5170,13 @@ const PublishedFeed = ({
   useEffect(() => {
     const scope = workspaceOwnerId ?? userId;
     if (!scope || campaignUserIds.length === 0) return;
+    // Strict tenant guard for every realtime payload: a row belongs to this
+    // feed only when its workspace matches the ACTIVE workspace.
+    const belongsToActiveWorkspace = (row: any): boolean => {
+      const owner = row?.workspace_owner_id ? String(row.workspace_owner_id) : null;
+      if (owner) return owner === scope;
+      return String(row?.user_id ?? '') === scope;
+    };
     void supabase.auth.getSession().then(({ data }) => {
       const token = data.session?.access_token;
       if (token) {
