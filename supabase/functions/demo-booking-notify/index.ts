@@ -141,14 +141,57 @@ Deno.serve(async (req) => {
       results.push(await sendWhatsApp(phone, managerMessage, ownerId));
     }
 
+    // ── 3. Google Calendar event on the workspace owner's connected calendar ──
+    let calendar: Record<string, unknown> = { created: false };
+    if (row.preferred_at && !row.google_event_id) {
+      const token = await getFreshAccessToken(admin, ownerId);
+      if ("error" in token) {
+        calendar = { created: false, reason: token.error };
+      } else {
+        const startISO = new Date(row.preferred_at as string).toISOString();
+        const endISO = new Date(new Date(startISO).getTime() + 15 * 60_000).toISOString();
+        const event = await createCalendarEvent({
+          accessToken: token.accessToken,
+          calendarId: token.calendarId,
+          timezone: token.timezone,
+          summary: `הדגמת Realtyz בזום — ${leadName}`,
+          description:
+            `הדגמה אישית של Realtyz (15 דקות).\n` +
+            `שם: ${leadName}\n` +
+            `טלפון: ${row.phone}\n` +
+            `מקור: ${row.source ?? "landing"}\n` +
+            `מועד מבוקש: ${slot}\n` +
+            `ריטה שלחה ללקוח אישור בוואטסאפ וממתינה לתשובתו.`,
+          startISO,
+          endISO,
+        });
+        if ("error" in event) {
+          calendar = { created: false, reason: event.error };
+        } else {
+          calendar = { created: true, event_id: event.id, link: event.htmlLink ?? event.meetLink };
+          await admin
+            .from("demo_requests")
+            .update({ google_event_id: event.id, google_event_link: event.htmlLink ?? null })
+            .eq("id", row.id);
+        }
+      }
+    }
+
     console.log("[demo-booking-notify] dispatched", {
       demo_request_id: row.id,
       owner_id: ownerId,
       lead_notified: !!leadPhone,
       managers_notified: managerPhones.size,
+      calendar,
     });
 
-    return json({ ok: true, lead_notified: !!leadPhone, managers_notified: managerPhones.size, results });
+    return json({
+      ok: true,
+      lead_notified: !!leadPhone,
+      managers_notified: managerPhones.size,
+      calendar,
+      results,
+    });
   } catch (e) {
     console.error("[demo-booking-notify] fatal", e);
     return json({ ok: false, error: (e as Error).message }, 500);
