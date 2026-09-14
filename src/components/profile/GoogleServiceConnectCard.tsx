@@ -68,12 +68,17 @@ export function GoogleServiceConnectCard({
   const { data, refetch, isLoading } = useQuery({
     queryKey: ['google-service-conn', platform],
     queryFn: async () => {
+      // NEVER use .maybeSingle() here: more than one row for the same platform
+      // may be visible (e.g. super admin), which used to error out and render a
+      // live connection as "disconnected". Take the connected row first.
       const { data } = await supabase
         .from('social_connections')
-        .select('id, is_connected, credentials')
+        .select('id, is_connected, credentials, connected_at')
         .eq('platform', platform)
-        .maybeSingle();
-      return data;
+        .order('is_connected', { ascending: false })
+        .order('connected_at', { ascending: false })
+        .limit(1);
+      return (data ?? [])[0] ?? null;
     },
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
