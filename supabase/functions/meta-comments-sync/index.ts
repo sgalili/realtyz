@@ -268,7 +268,7 @@ Deno.serve(async (req) => {
           .eq("external_id", nativeId);
       }
 
-      return json({ ok: true, reply_id: replyId });
+      return json({ ok: true, reply_id: replyId, reply_comment_id: replyId });
     }
 
     // ---- Sync ---------------------------------------------------------------

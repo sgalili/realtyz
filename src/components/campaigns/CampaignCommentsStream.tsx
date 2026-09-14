@@ -304,7 +304,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
   const rowsRef = useRef<EngagementRow[] | null>(cached);
   useEffect(() => { rowsRef.current = rows; }, [rows]);
   const treeCount = (list: EngagementRow[] | null) =>
-    Math.max(0, list ? new Set(list.map((r) => r.id)).size : 0);
+    Math.max(0, list ? new Set(list.filter((r) => !r.is_archived).map((r) => r.id)).size : 0);
 
   // Surface live row count to the parent so the post-card header counter
   // reflects what the comment tree actually loaded (and matches Meta Graph
@@ -1499,7 +1499,7 @@ function CommentBubble({
             type="button"
             variant="ghost"
             size="icon"
-            disabled={deleting}
+            disabled={deleting || !row.external_id}
             onClick={() => onDelete(row)}
             className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             aria-label="מחק תגובה"
