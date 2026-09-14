@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Bell, AlertTriangle, ExternalLink, Wallet, MessageCircle, CalendarClock } from 'lucide-react';
+import { Bell, AlertTriangle, ExternalLink, Wallet, MessageCircle, CalendarClock, Trash2, UserPlus } from 'lucide-react';
+import { useNotificationStates } from '@/hooks/useNotificationStates';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -38,12 +39,8 @@ export default function NotificationCenter() {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const scope = workspaceOwnerId ?? user?.id ?? null;
   const [open, setOpen] = useState(false);
-  const [viewedIds, setViewedIds] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('realtyz_viewed_notifs');
-      return new Set(stored ? JSON.parse(stored) : []);
-    } catch { return new Set(); }
-  });
+  // Read / deleted state lives in the database so it never resets on refresh.
+  const { readKeys: viewedIds, deletedKeys, markRead, remove } = useNotificationStates();
   const [dismissedBudgets, setDismissedBudgets] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem('realtyz_dismissed_budgets');
@@ -154,6 +151,25 @@ export default function NotificationCenter() {
     },
   });
 
+  // ---- Brand-new incoming leads (near real-time, active workspace only) ----
+  const { data: newLeads = [] } = useQuery({
+    queryKey: ['notif-new-leads', scope],
+    enabled: !!scope,
+    refetchInterval: 20_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id, full_name, phone_number, interest_tag, created_at')
+        .eq('assigned_to', scope!)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -182,10 +198,11 @@ export default function NotificationCenter() {
     const items = [
       ...inbound.map((m: any) => ({ id: m.id, at: m.created_at, msg: `הודעה חדשה מ${m.leads?.full_name || 'מתעניין'}` })),
       ...tours.map((t: any) => ({ id: t.id, at: t.created_at, msg: `סיור חדש נקבע: ${t.client_name || 'לקוח'}` })),
+      ...newLeads.map((l: any) => ({ id: `lead-${l.id}`, at: l.created_at, msg: `ליד חדש נכנס: ${l.full_name || 'איש קשר חדש'}` })),
     ];
     // First pass after mount: remember everything without notifying.
     const baseline = !baselinedRef.current;
-    if (items.length > 0 || inbound.length + tours.length > 0) baselinedRef.current = true;
+    if (items.length > 0 || inbound.length + tours.length + newLeads.length > 0) baselinedRef.current = true;
 
     let changed = false;
     items.forEach((i) => {
@@ -205,7 +222,7 @@ export default function NotificationCenter() {
         localStorage.setItem(TOASTED_KEY, JSON.stringify(all));
       } catch { /* noop */ }
     }
-  }, [inbound, tours]);
+  }, [inbound, tours, newLeads]);
 
 
 
@@ -228,18 +245,28 @@ export default function NotificationCenter() {
     return [...byLead.values()];
   })();
 
-  const unviewedAlerts = alerts.filter(a => !viewedIds.has(a.id));
-  const unviewedInbound = groupedInbound.filter((g) => !viewedIds.has(g.row.id));
-  const unviewedTours = tours.filter((t: any) => !viewedIds.has(t.id));
-  const activeBudgetAlerts = budgetAlerts.filter(b => !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
-  const badgeCount = unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + activeBudgetAlerts.length;
+  const visibleAlerts = alerts.filter((a: any) => !deletedKeys.has(a.id));
+  const visibleInbound = groupedInbound.filter((g) => !deletedKeys.has(g.row.id));
+  const visibleTours = tours.filter((t: any) => !deletedKeys.has(t.id));
+  const visibleLeads = newLeads.filter((l: any) => !deletedKeys.has(`lead-${l.id}`));
 
-  const markViewed = (id: string) => {
-    const next = new Set(viewedIds);
-    next.add(id);
-    setViewedIds(next);
-    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
-  };
+  const unviewedAlerts = visibleAlerts.filter((a: any) => !viewedIds.has(a.id));
+  const unviewedInbound = visibleInbound.filter((g) => !viewedIds.has(g.row.id));
+  const unviewedTours = visibleTours.filter((t: any) => !viewedIds.has(t.id));
+  const unviewedLeads = visibleLeads.filter((l: any) => !viewedIds.has(`lead-${l.id}`));
+  const activeBudgetAlerts = budgetAlerts.filter(b => !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
+  const badgeCount =
+    unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + unviewedLeads.length + activeBudgetAlerts.length;
+
+  /** Every key currently rendered in the drawer. */
+  const allKeys = [
+    ...visibleAlerts.map((a: any) => a.id),
+    ...visibleInbound.flatMap((g) => [g.row.id, ...g.extraIds]),
+    ...visibleTours.map((t: any) => t.id),
+    ...visibleLeads.map((l: any) => `lead-${l.id}`),
+  ];
+
+  const markViewed = (id: string) => markRead([id]);
 
   const dismissBudget = (service: string) => {
     const key = `${service}-${new Date().getMonth()}`;
@@ -249,12 +276,7 @@ export default function NotificationCenter() {
     localStorage.setItem('realtyz_dismissed_budgets', JSON.stringify([...next]));
   };
 
-  const markManyViewed = (ids: string[]) => {
-    const next = new Set(viewedIds);
-    ids.forEach((i) => i && next.add(i));
-    setViewedIds(next);
-    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
-  };
+  const markManyViewed = (ids: string[]) => markRead(ids);
 
   /**
    * Opens the exact conversation in the inbox and scrolls to / highlights the
@@ -267,15 +289,13 @@ export default function NotificationCenter() {
     navigate(`/inbox?chat=${voterId}&message=${id}`);
   };
 
-  const markAllRead = () => {
-    const next = new Set([
-      ...viewedIds,
-      ...alerts.map(a => a.id),
-      ...inbound.map((m: any) => m.id),
-      ...tours.map((t: any) => t.id),
-    ]);
-    setViewedIds(next);
-    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
+  const markAllRead = () => markRead(allKeys);
+
+  const deleteOne = (keys: string[]) => remove(keys);
+
+  const deleteAll = () => {
+    remove(allKeys);
+    budgetAlerts.forEach((b) => dismissBudget(b.service));
   };
 
   const getMatchedKeyword = (content: string) =>
