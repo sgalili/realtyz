@@ -553,14 +553,12 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           <div className="space-y-2 rounded-xl border p-3">
             <p className="text-[13px] font-semibold">חשבונות ועמודים מחוברים בסביבת העבודה</p>
             {bindings.length > 1 && (
-              <p className="text-[12px] text-muted-foreground">בחרו את עמוד ברירת המחדל לפרסום.</p>
+              <p className="text-[12px] text-muted-foreground">בחרו את עמוד ברירת המחדל לפרסום, או נתקו כל עמוד בנפרד.</p>
             )}
             <div className="space-y-1.5">
               {bindings.map((b) => (
-                <button
+                <div
                   key={b.id}
-                  type="button"
-                  onClick={() => (b.isDefault ? undefined : void makeDefault(b.id))}
                   className={`flex w-full items-center gap-2 rounded-lg border p-2 text-right transition ${
                     b.isDefault ? 'border-emerald-300 bg-emerald-50/60' : 'hover:bg-muted/50'
                   }`}
@@ -572,17 +570,34 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
                       <Facebook className="h-4 w-4 text-primary" />
                     </div>
                   )}
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{b.name || b.id}</span>
-                  {settingDefaultId === b.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : b.isDefault ? (
-                    <Badge className="border-0 bg-emerald-600 text-[11px] text-white">ברירת מחדל</Badge>
-                  ) : (
-                    <span className="text-[11px] text-muted-foreground">הגדר כברירת מחדל</span>
-                  )}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => (b.isDefault ? undefined : void makeDefault(b.id))}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-right"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{b.name || b.id}</span>
+                    {settingDefaultId === b.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : b.isDefault ? (
+                      <Badge className="border-0 bg-emerald-600 text-[11px] text-white">ברירת מחדל</Badge>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">הגדר כברירת מחדל</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`נתק את העמוד ${b.name || b.id}`}
+                    title="נתק עמוד זה"
+                    disabled={!!removingPageId}
+                    onClick={() => void disconnectOnePage(b.id, b.name)}
+                    className="shrink-0 rounded-md p-1 text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                  >
+                    {removingPageId === b.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
+                  </button>
+                </div>
               ))}
             </div>
+
             <Button
               variant="outline"
               size="sm"
