@@ -67,9 +67,7 @@ export function WhatsAppConnectionModeCard() {
                 <Building2 className="h-4 w-4 text-blue-600" />
                 <span className="text-sm font-medium">WhatsApp Business API רשמי (Meta Cloud API)</span>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                שליחה וקבלה מתבצעות ישירות מול Meta. אין צורך בסריקת QR ואין ספק חלופי.
-              </p>
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{"\n"}</p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="gap-1 border-blue-300 text-blue-700">
                   <BadgeCheck className="h-3 w-3" /> פעיל
@@ -84,10 +82,7 @@ export function WhatsAppConnectionModeCard() {
 
             <div className="flex items-start gap-2 rounded-lg border border-dashed border-blue-300 bg-background p-3">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                לשליחה מחוץ לחלון 24 השעות יש להשתמש בתבניות מאושרות של Meta. ניהול התבניות מתבצע
-                בכרטיס סנכרון התבניות בהגדרות.
-              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{"\n"}</p>
             </div>
           </>
         )}

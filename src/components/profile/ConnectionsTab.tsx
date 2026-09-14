@@ -291,26 +291,26 @@ export function ConnectionsTab() {
             // irrelevant, so show a compact confirmation row instead.
             <section className="space-y-1">
               <h4 className="text-sm font-semibold">
-                WhatsApp רשמי (Meta Cloud API)
+                {"\n"}
                 <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
-                  {formatPhoneDisplay(officialPhone)}
+                  {"\n"}
                 </span>
               </h4>
-              <p className="text-xs text-muted-foreground">המספר הרשמי מחובר ומאושר מול Meta.</p>
+              <p className="text-xs text-muted-foreground">{"\n"}</p>
             </section>
           ) : (
             <section className="space-y-2">
-              <h4 className="text-sm font-semibold">WhatsApp רשמי (Meta Cloud API)</h4>
+              <h4 className="text-sm font-semibold">{"\n"}</h4>
               <MetaWhatsAppAuthCard />
             </section>
           )}
           <section className="space-y-2 border-t pt-4">
-            <h4 className="text-sm font-semibold">אופן חיבור WhatsApp</h4>
+            <h4 className="text-sm font-semibold">{"\n"}</h4>
             <WhatsAppConnectionModeCard />
           </section>
           <section className="space-y-2 border-t pt-4">
             <h4 className="text-sm font-semibold">
-              מספר אישי (Green API)
+              מספר ווטסאפ אישי
               {personalPhone && (
                 <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
                   {formatPhoneDisplay(personalPhone)}
