@@ -19,12 +19,12 @@ import realtyzLogo from '@/assets/realtyz-logo.png';
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
 
 const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
-  { key: 'h1', render: () => <>כלי העבודה היחיד שכל מתווך חייב בעידן ה{' '}<strong>AI</strong>{' '}— לניהול סוכנות בלי פשרות</> },
-  { key: 'h2', render: () => <>בלי צורך בספקים חיצוניים:{' '}<strong>ווטסאפ, SMS ואימייל</strong>{' '}במקום אחד</> },
-  { key: 'h3', render: () => <>ניהול לידים, נכסים ושיחות{' '}<strong>בלי בלאגן ובלי גיליונות</strong>{' '}במסך אחד</> },
-  { key: 'h4', render: () => <>ה-AI של ריטה{' '}<strong>מדבר, מדרג ומזכיר</strong>{' '}מתי לחזור ללקוח</> },
-  { key: 'h5', render: () => <>שיווק בכל הערוצים —{' '}<strong>פייסבוק, ווטסאפ ו-SMS</strong>{' '}ממסך אחד</> },
-  { key: 'h6', render: () => <>חתימות דיגיטליות, הסכמי סיור ושיתוף נכסים{' '}<strong>בקליק אחד</strong>{' '}</> },
+  { key: 'h1', render: () => <>כלי העבודה היחיד שכל מתווך חייב בעידן ה<strong>AI</strong>, לניהול סוכנות בלי פשרות</> },
+  { key: 'h2', render: () => <>בלי ספקים חיצוניים: <strong>ווטסאפ, SMS ואימייל</strong> במקום אחד</> },
+  { key: 'h3', render: () => <>ניהול אנשי קשר, נכסים ושיחות <strong>בלי בלאגן ובלי גיליונות</strong></> },
+  { key: 'h4', render: () => <>ריטה <strong>מדברת, מדרגת ומזכירה</strong> מתי לחזור לאיש הקשר</> },
+  { key: 'h5', render: () => <>שיווק בכל הערוצים: <strong>פייסבוק, ווטסאפ ו-SMS</strong> ממסך אחד</> },
+  { key: 'h6', render: () => <>חתימות דיגיטליות, הסכמי סיור ושיתוף נכסים <strong>בקליק אחד</strong></> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;

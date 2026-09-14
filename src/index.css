@@ -419,7 +419,9 @@
     position: relative;
     display: grid;
     width: 100%;
-    min-height: 28px;
+    max-width: 34rem;
+    margin-inline: auto;
+    min-height: 3.6rem;
     height: auto;
     place-items: center;
     overflow: visible;
