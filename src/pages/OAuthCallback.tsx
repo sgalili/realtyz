@@ -281,10 +281,23 @@ export default function OAuthCallback() {
         return;
       }
 
-      // A single exchange per grant: StrictMode remounts must not consume the
-      // one-time OAuth state twice.
-      if (exchangeStarted.has(state || String(code || accessToken))) return;
-      exchangeStarted.add(state || String(code || accessToken));
+      // A single exchange per grant. The marker is persisted BEFORE the request
+      // is fired, so a reload / remount / duplicate tab can never re-send the
+      // same code (Facebook: "This authorization code has been used", 100/36009).
+      const grantId = state || String(code || accessToken);
+      if (isGrantConsumed(grantId)) {
+        console.warn('[oauth-callback] grant already exchanged in this session', { state });
+        setIsLoading(false);
+        setError({
+          title: 'קוד ההתחברות של פייסבוק כבר נוצל',
+          detail: 'authorization code already exchanged (Facebook allows a single use per code)',
+          hint: 'זהו קוד חד-פעמי. יש להתחיל חיבור חדש לפייסבוק.',
+          actionLabel: 'התחברות מחדש לפייסבוק',
+          restartLogin: true,
+        });
+        return;
+      }
+      markGrantConsumed(grantId);
 
       setMessage('שומר את חיבור עמוד הפייסבוק...');
       try {
