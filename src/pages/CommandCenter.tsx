@@ -66,7 +66,7 @@ type SectionTab = 'tasks' | 'leads' | 'demos' | 'notes' | 'reminders' | 'calls';
 const TAB_LABEL: Record<SectionTab, string> = {
   tasks: 'משימות',
   leads: 'לידים',
-  demos: 'דמו',
+  demos: 'הדגמות',
   notes: '',
   reminders: 'תזכורות',
   calls: 'שיחות',
