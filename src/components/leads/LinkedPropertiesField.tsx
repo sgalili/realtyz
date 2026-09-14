@@ -17,6 +17,8 @@ export interface PropertyOption {
   rooms?: number | null;
   image_url?: string | null;
   media_photos?: unknown;
+  house_number?: string | number | null;
+  apartment_number?: string | number | null;
 }
 
 export function propertyLabel(p: PropertyOption) {
@@ -24,9 +26,22 @@ export function propertyLabel(p: PropertyOption) {
   return parts.join(' · ') || 'נכס ללא כותרת';
 }
 
-/** Street + city, as precise as the record allows. */
+/**
+ * Internal display address: street name + house number + apartment number when
+ * the record has them, then the city. Workspace-only — public pages keep using
+ * stripAddressNumbers.
+ */
 export function propertyFullAddress(p: PropertyOption) {
-  const parts = [p.address, p.city].filter(Boolean) as string[];
+  let line = String(p.address ?? '').replace(/\s+/g, ' ').trim();
+  const house = p.house_number != null ? String(p.house_number).trim() : '';
+  const apt = p.apartment_number != null ? String(p.apartment_number).trim() : '';
+  if (house && !new RegExp(`(^|[\\s,])${house.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([\\s,]|$)`).test(line)) {
+    line = line ? `${line} ${house}` : house;
+  }
+  if (apt && !/(דירה|יח["׳']|apt|unit)/i.test(line)) {
+    line = line ? `${line}, דירה ${apt}` : `דירה ${apt}`;
+  }
+  const parts = [line, p.city].filter(Boolean) as string[];
   return parts.join(', ') || p.property_title || 'כתובת לא הוזנה';
 }
 
@@ -61,7 +76,7 @@ export function propertyImage(p: PropertyOption): string | null {
   return null;
 }
 
-const LISTING_FIELDS = 'id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos';
+const LISTING_FIELDS = 'id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos, house_number, apartment_number';
 
 /** Every property available to the signed-in user's workspace. */
 export function useWorkspaceProperties() {
@@ -85,7 +100,7 @@ export function PropertyMeta({ p }: { p: PropertyOption }) {
   const bits = [propertyDealLabel(p), propertyPriceLabel(p), propertyRoomsLabel(p)].filter(Boolean) as string[];
   if (!bits.length) return null;
   return (
-    <p className="text-[11px] text-muted-foreground truncate">{bits.join(' · ')}</p>
+    <p className="text-[13px] text-muted-foreground truncate">{bits.join(' · ')}</p>
   );
 }
 
@@ -243,9 +258,9 @@ export default function LinkedPropertiesField({ leadId, value, onChange, label =
               >
                 <PropertyThumb p={p} size={48} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-slate-900 truncate">{propertyFullAddress(p)}</p>
+                  <p className="text-sm font-semibold text-slate-900 truncate">{propertyFullAddress(p)}</p>
                   {p.property_title && (
-                    <p className="text-[11px] text-slate-500 truncate">{p.property_title}</p>
+                    <p className="text-[13px] text-slate-500 truncate">{p.property_title}</p>
                   )}
                   <PropertyMeta p={p} />
                 </div>
@@ -283,13 +298,13 @@ export default function LinkedPropertiesField({ leadId, value, onChange, label =
                   type="button"
                   key={p.id}
                   onClick={() => toggle(p.id)}
-                  className={`w-full text-right text-xs p-2 rounded-md flex items-center gap-2 ${on ? 'bg-emerald-50 text-emerald-900' : 'hover:bg-slate-50'}`}
+                  className={`w-full text-right text-sm p-2 rounded-md flex items-center gap-2 ${on ? 'bg-emerald-50 text-emerald-900' : 'hover:bg-slate-50'}`}
                 >
-                  <PropertyThumb p={p} size={40} />
+                  <PropertyThumb p={p} size={44} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold">{propertyFullAddress(p)}</span>
                     {p.property_title && (
-                      <span className="block truncate text-[11px] text-slate-500">{p.property_title}</span>
+                      <span className="block truncate text-[13px] text-slate-500">{p.property_title}</span>
                     )}
                     <PropertyMeta p={p} />
                   </span>
