@@ -19,12 +19,12 @@ import realtyzLogo from '@/assets/realtyz-logo.png';
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
 
 const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
-  { key: 'h1', render: () => <>כלי העבודה היחיד שכל מתווך חייב בעידן ה<strong>AI</strong>, לניהול סוכנות בלי פשרות</> },
-  { key: 'h2', render: () => <>בלי ספקים חיצוניים: <strong>ווטסאפ, SMS ואימייל</strong> במקום אחד</> },
-  { key: 'h3', render: () => <>ניהול אנשי קשר, נכסים ושיחות <strong>בלי בלאגן ובלי גיליונות</strong></> },
-  { key: 'h4', render: () => <>ריטה <strong>מדברת, מדרגת ומזכירה</strong> מתי לחזור לאיש הקשר</> },
-  { key: 'h5', render: () => <>שיווק בכל הערוצים: <strong>פייסבוק, ווטסאפ ו-SMS</strong> ממסך אחד</> },
-  { key: 'h6', render: () => <>חתימות דיגיטליות, הסכמי סיור ושיתוף נכסים <strong>בקליק אחד</strong></> },
+  { key: 'h1', render: () => <>כלי העבודה היחיד שכל מתווך חייב<br />בעידן ה<strong>AI</strong></> },
+  { key: 'h2', render: () => <>בלי ספקים חיצוניים: <strong>ווטסאפ, SMS ואימייל</strong><br />במקום אחד</> },
+  { key: 'h3', render: () => <>ניהול אנשי קשר, נכסים ושיחות<br /><strong>בלי בלאגן ובלי גיליונות</strong></> },
+  { key: 'h4', render: () => <>ריטה <strong>מדברת, מדרגת ומזכירה</strong><br />מתי לחזור לאיש הקשר</> },
+  { key: 'h5', render: () => <>שיווק בכל הערוצים:<br /><strong>פייסבוק, ווטסאפ ו-SMS</strong> ממסך אחד</> },
+  { key: 'h6', render: () => <>חתימות דיגיטליות, הסכמי סיור ושיתוף נכסים<br /><strong>בקליק אחד</strong></> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;
@@ -287,14 +287,14 @@ const Auth = () => {
           <img
             src={realtyzLogo}
             alt="Realtyz AI"
-            className="auth-official-logo mx-auto mb-4 h-[3.6rem] w-auto object-contain"
+            className="auth-official-logo mx-auto mb-4 mt-[25px] h-[3.6rem] w-auto object-contain"
           />
           <div className="auth-header-ticker mx-auto" aria-live="polite">
             {AUTH_HEADER_HEADLINES.map((line, index) => (
               <span
                 key={line.key}
                 className={cn(
-                  'auth-header-ticker-line col-start-1 row-start-1 flex items-center justify-center gap-1 transition-opacity duration-[900ms] ease-in-out',
+                  'auth-header-ticker-line col-start-1 row-start-1 transition-opacity duration-[900ms] ease-in-out',
                   index === headerHeadlineIndex ? 'opacity-100' : 'opacity-0',
                 )}
               >
