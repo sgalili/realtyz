@@ -1,20 +1,23 @@
 /**
  * generate-closing-doc
  * --------------------
- * Generates a pre-filled PDF (offer letter or lease agreement) for a lead
- * using their Deal Room data + (optionally) a listing, uploads it to the
- * private `closing-docs` bucket, and creates a `closing_documents` row in
+ * Generates the Hebrew, fully right-to-left brokerage services order form
+ * (טופס הזמנת שירותי תיווך) for a lead using the active workspace broker's
+ * verified details, the CRM contact record and the property row, uploads it to
+ * the private `closing-docs` bucket and creates a `closing_documents` row in
  * status='draft' with a unique sign_token.
  *
- * Body: { lead_id: uuid, template_key: 'offer_letter'|'lease_agreement',
- *         listing_id?: uuid, terms?: string, price_override?: number }
+ * Body: { lead_id, template_key: 'offer_letter'|'lease_agreement'|'tour_agreement',
+ *         listing_id?, terms?, price_override?, tour_date? }
  *
  * Returns: { document_id, sign_token, pdf_path, sign_url }
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
-// jsPDF works in Deno via esm.sh
-import { jsPDF } from "https://esm.sh/jspdf@2.5.1";
+import {
+  buildBrokerageAgreementPdf,
+  type AgreementProperty,
+} from "../_shared/brokerageAgreementPdf.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,140 +44,27 @@ function token(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function fmtMoney(n: number | null | undefined): string {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+/** Strips an already-prefixed license value so we never print "מ.ר: מ.ר: 123". */
+function cleanLicense(raw: string | null | undefined): string {
+  const v = String(raw ?? "").trim();
+  if (!v) return "—";
+  return v.replace(/^מ\.?\s?ר\.?\s*:?\s*/, "").trim() || "—";
 }
 
-function buildPdf(opts: {
-  template: "offer_letter" | "lease_agreement" | "tour_agreement";
-  tourDate?: string;
-  leadName: string;
-  agentName: string;
-  agentEmail: string;
-  propertyTitle: string;
-  propertyDescription: string;
-  price: number | null;
-  terms: string;
-  date: string;
-  documentId: string;
-}): Uint8Array {
-  const doc = new jsPDF({ unit: "pt", format: "letter" });
-  const w = doc.internal.pageSize.getWidth();
-  const margin = 56;
-  let y = margin;
-
-  // Header
-  doc.setFont("helvetica", "bold").setFontSize(20);
-  doc.text(
-    opts.template === "offer_letter"
-      ? "Offer Letter"
-      : opts.template === "tour_agreement"
-        ? "Property Tour & Broker Representation Agreement"
-        : "Residential Lease Agreement",
-    margin,
-    y,
-  );
-  y += 12;
-  doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(120);
-  doc.text(`Document ID: ${opts.documentId}`, margin, y + 12);
-  doc.text(`Date: ${opts.date}`, w - margin, y + 12, { align: "right" });
-  y += 36;
-  doc.setDrawColor(220).line(margin, y, w - margin, y);
-  y += 24;
-
-  // Parties
-  doc.setTextColor(0).setFont("helvetica", "bold").setFontSize(11);
-  doc.text("PARTIES", margin, y);
-  y += 16;
-  doc.setFont("helvetica", "normal").setFontSize(11);
-  const partyLabel = opts.template === "lease_agreement"
-    ? "Tenant"
-    : opts.template === "tour_agreement"
-      ? "Client"
-      : "Buyer";
-  doc.text(`${partyLabel}: ${opts.leadName}`, margin, y);
-  y += 16;
-  doc.text(`Listing Agent: ${opts.agentName}  (${opts.agentEmail})`, margin, y);
-  y += 28;
-
-  // Property
-  doc.setFont("helvetica", "bold").text("PROPERTY", margin, y);
-  y += 16;
-  doc.setFont("helvetica", "normal");
-  doc.text(opts.propertyTitle, margin, y);
-  y += 14;
-  if (opts.propertyDescription) {
-    const lines = doc.splitTextToSize(opts.propertyDescription, w - margin * 2);
-    doc.setFontSize(10).setTextColor(80);
-    doc.text(lines, margin, y);
-    y += lines.length * 12 + 6;
-    doc.setFontSize(11).setTextColor(0);
+async function fetchLogo(url: string | null | undefined) {
+  if (!url || !/^https:\/\//i.test(url)) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const type = (res.headers.get("content-type") || "").toLowerCase();
+    const format = type.includes("jpeg") || type.includes("jpg") ? "JPEG" : type.includes("png") ? "PNG" : null;
+    if (!format) return null;
+    const data = new Uint8Array(await res.arrayBuffer());
+    if (data.byteLength > 2_000_000) return null;
+    return { data, format } as { data: Uint8Array; format: "PNG" | "JPEG" };
+  } catch {
+    return null;
   }
-  y += 8;
-
-  // Financial
-  doc.setFont("helvetica", "bold").text(
-    opts.template === "offer_letter" ? "OFFER" : opts.template === "tour_agreement" ? "TOUR DETAILS" : "RENT TERMS",
-    margin,
-    y,
-  );
-  y += 16;
-  doc.setFont("helvetica", "normal");
-  if (opts.template === "offer_letter") {
-    doc.text(`Offer price: ${fmtMoney(opts.price)}`, margin, y);
-    y += 16;
-    doc.text(`Earnest deposit: ${fmtMoney(opts.price ? opts.price * 0.01 : null)}`, margin, y);
-    y += 16;
-    doc.text(`Closing target: 45 days from acceptance`, margin, y);
-  } else if (opts.template === "tour_agreement") {
-    doc.text(`Scheduled tour: ${opts.tourDate || "to be coordinated with the Client"}`, margin, y);
-    y += 16;
-    doc.text(`Asking price (reference): ${fmtMoney(opts.price)}`, margin, y);
-    y += 16;
-    doc.text(`Representing broker: ${opts.agentName}`, margin, y);
-  } else {
-    doc.text(`Monthly rent: ${fmtMoney(opts.price ? Math.round(opts.price / 200) : null)}`, margin, y);
-    y += 16;
-    doc.text(`Security deposit: equal to one month's rent`, margin, y);
-    y += 16;
-    doc.text(`Lease term: 12 months`, margin, y);
-  }
-  y += 28;
-
-  // Terms
-  doc.setFont("helvetica", "bold").text("TERMS & CONDITIONS", margin, y);
-  y += 16;
-  doc.setFont("helvetica", "normal").setFontSize(10);
-  const terms = opts.terms || (opts.template === "offer_letter"
-    ? "This non-binding letter of intent expresses the Buyer's interest in the Property under the terms above. Final terms are subject to a formal purchase agreement, financing approval, and standard inspections."
-    : opts.template === "tour_agreement"
-      ? "The Client confirms the broker named above introduced the Property and will tour it with the Client. The Client agrees that if a transaction is completed on this Property, the broker is the introducing party and entitled to the agreed brokerage fee under applicable law. This document does not obligate the Client to purchase or rent the Property."
-      : "Tenant agrees to pay rent on the 1st of each month. Property to be used solely as a private residence. Subletting prohibited without written consent of the Landlord.");
-  const termLines = doc.splitTextToSize(terms, w - margin * 2);
-  doc.text(termLines, margin, y);
-  y += termLines.length * 12 + 28;
-
-  // Signature block
-  doc.setFontSize(11).setFont("helvetica", "bold").text("SIGNATURES", margin, y);
-  y += 22;
-  doc.setFont("helvetica", "normal").setFontSize(10);
-  // Two signature lines
-  const colW = (w - margin * 2 - 24) / 2;
-  doc.setDrawColor(0).line(margin, y + 30, margin + colW, y + 30);
-  doc.line(margin + colW + 24, y + 30, w - margin, y + 30);
-  doc.setTextColor(120);
-  doc.text(opts.leadName, margin, y + 44);
-  doc.text("Signed via Realtyz secure link", margin, y + 56);
-  doc.text(opts.agentName, margin + colW + 24, y + 44);
-  doc.text(opts.agentEmail, margin + colW + 24, y + 56);
-
-  // Footer
-  doc.setFontSize(8).setTextColor(150);
-  doc.text("Generated by Realtyz Digital Closing Room — secure e-signature", margin, doc.internal.pageSize.getHeight() - 24);
-
-  const ab = doc.output("arraybuffer");
-  return new Uint8Array(ab);
 }
 
 Deno.serve(async (req) => {
@@ -193,7 +83,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const userId = userRes.user.id;
-    const userEmail = userRes.user.email || "agent@realtyz";
+    const userEmail = userRes.user.email || "";
 
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -203,44 +93,100 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+    // ---------- Client (CRM contact) ----------
     const { data: lead, error: leadErr } = await admin
       .from("leads")
-      .select("id, full_name, phone_number, city, interest_tag")
+      .select("id, full_name, phone_number, email, city, address, identity_number, interest_tag, deal_type")
       .eq("id", lead_id)
       .maybeSingle();
     if (leadErr || !lead) {
       return new Response(JSON.stringify({ error: "Lead not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    let listing: { property_title?: string; description?: string; asking_price?: number } = {};
+    // ---------- Broker (active workspace owner, verified profile) ----------
+    const { data: me } = await admin
+      .from("profiles")
+      .select("id, full_name, email, phone, broker_license_number, broker_byline, active_workspace_owner_id, workspace_owner_id")
+      .eq("id", userId)
+      .maybeSingle();
+    const wsOwner = String((me as any)?.active_workspace_owner_id ?? (me as any)?.workspace_owner_id ?? userId);
+    const { data: ownerProfile } = wsOwner && wsOwner !== userId
+      ? await admin
+        .from("profiles")
+        .select("id, full_name, email, phone, broker_license_number, broker_byline")
+        .eq("id", wsOwner)
+        .maybeSingle()
+      : { data: me as any };
+    const brokerProfile = (ownerProfile ?? me) as any;
+
+    const { data: brand } = await admin
+      .from("white_label_settings")
+      .select("agency_name, logo_url")
+      .eq("user_id", wsOwner)
+      .maybeSingle();
+
+    // ---------- Property ----------
+    let listing: any = {};
     if (listing_id) {
       const { data } = await admin
         .from("listings")
-        .select("property_title, description, asking_price")
+        .select("property_title, description, asking_price, address, city, rooms, floor, deal_type")
         .eq("id", listing_id)
         .maybeSingle();
-      if (data) listing = data as any;
+      if (data) listing = data;
     }
+
+    const dealType: "rent" | "sale" =
+      (template_key === "lease_agreement" ? "rent" : null) ??
+        (String(listing.deal_type ?? lead.deal_type ?? "").toLowerCase() === "sale" ? "sale" : "rent");
+
+    const price = price_override ?? listing.asking_price ?? null;
+    const propertyAddress = [listing.address, listing.city].filter(Boolean).join(", ") ||
+      listing.property_title || lead.interest_tag || "—";
+
+    const property: AgreementProperty = {
+      ownerName: "—",
+      address: propertyAddress,
+      kind: "דירה",
+      block: "—",
+      parcel: "—",
+      apartment: "—",
+      floor: listing.floor != null ? String(listing.floor) : "—",
+      rooms: listing.rooms != null ? String(listing.rooms) : "—",
+      price,
+    };
 
     const docId = crypto.randomUUID();
     const signToken = token();
-    const leadName = lead.full_name || lead.phone_number || "Lead";
-    const propertyTitle = listing.property_title || lead.interest_tag || "Subject Property";
-    const propertyDescription = listing.description || "";
-    const price = price_override ?? listing.asking_price ?? null;
+    const leadName = lead.full_name || lead.phone_number || "לקוח";
+    const brokerName = brokerProfile?.full_name || userEmail.split("@")[0] || "המתווך";
 
-    const pdfBytes = buildPdf({
-      template: template_key,
-      tourDate: tour_date,
-      leadName,
-      agentName: userEmail.split("@")[0],
-      agentEmail: userEmail,
-      propertyTitle,
-      propertyDescription,
-      price,
-      terms: terms ?? "",
-      date: new Date().toISOString().slice(0, 10),
+    const noteParts = [terms?.trim(), tour_date ? `סיור מתוכנן בנכס: ${tour_date}` : ""].filter(Boolean);
+
+    const pdfBytes = await buildBrokerageAgreementPdf({
+      dealType,
       documentId: docId,
+      formNumber: String(Math.floor(Date.now() / 1000)).slice(-5),
+      broker: {
+        name: brokerName,
+        license: cleanLicense(brokerProfile?.broker_license_number),
+        phone: brokerProfile?.phone || "",
+        email: brokerProfile?.email || userEmail,
+        office: brand?.agency_name || brokerProfile?.broker_byline || "אנגלו סכסון הרצליה",
+      },
+      client: {
+        name: leadName,
+        identityNumber: lead.identity_number || "—",
+        phone: lead.phone_number || "",
+        address: [lead.address, lead.city].filter(Boolean).join(" ") || "—",
+        email: lead.email || "—",
+      },
+      properties: [property],
+      note: noteParts.join(" | ") || undefined,
+      feeText: dealType === "rent"
+        ? "חודש שכירות אחד"
+        : "2% ממחיר העסקה",
+      logo: await fetchLogo(brand?.logo_url),
     });
 
     const path = `${userId}/${docId}.pdf`;
@@ -250,11 +196,9 @@ Deno.serve(async (req) => {
     });
     if (upErr) throw upErr;
 
-    const title = template_key === "offer_letter"
-      ? "Offer Letter"
-      : template_key === "tour_agreement"
-        ? "Tour Agreement"
-        : "Lease Agreement";
+    const title = dealType === "rent"
+      ? "הזמנת שירותי תיווך לשכירת נכס"
+      : "הזמנת שירותי תיווך לרכישת נכס";
 
     const { error: insErr } = await admin.from("closing_documents").insert({
       id: docId,
@@ -269,8 +213,10 @@ Deno.serve(async (req) => {
       signer_name: leadName,
       fields: {
         lead_name: leadName,
-        property_title: propertyTitle,
+        broker_name: brokerName,
+        property_address: propertyAddress,
         price,
+        deal_type: dealType,
         terms: terms ?? null,
         tour_date: tour_date ?? null,
       },
@@ -284,7 +230,7 @@ Deno.serve(async (req) => {
       action: "closing_document.generated",
       target_table: "closing_documents",
       target_id: docId,
-      details: { template_key, lead_id, listing_id: listing_id ?? null },
+      details: { template_key, lead_id, listing_id: listing_id ?? null, deal_type: dealType },
     });
 
     return new Response(
