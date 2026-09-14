@@ -157,8 +157,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                     )}
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background">
-                      {w.workspace_logo_url
-                        ? <img src={w.workspace_logo_url} alt={label} className="h-full w-full object-contain p-0.5" />
+                      {w.workspace_logo_url || w.owner_avatar_url
+                        ? <img src={w.workspace_logo_url ?? w.owner_avatar_url ?? undefined} alt={label} className={cn('h-full w-full', w.workspace_logo_url ? 'object-contain p-0.5' : 'object-cover')} />
                         : <Building2 className="h-3.5 w-3.5 text-primary" />}
                     </span>
                     <span className="min-w-0 flex-1 truncate">
