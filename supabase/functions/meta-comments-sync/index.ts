@@ -10,6 +10,7 @@
 //            mirrors every comment into public.engagement_events, plus
 //            public.fb_comments for posts tracked in fb_engagement_posts.
 //   reply  → { ok, reply_id }   POST /{comment-id}/comments
+//   delete → { ok, deleted_ids } DELETE /{comment-id}, then archive locally
 //   status → { connected, page }
 import { corsHeaders } from "../_shared/cors.ts";
 import {
@@ -34,6 +35,40 @@ const json = (b: unknown, s = 200) =>
 const isUuid = (v: unknown) =>
   typeof v === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.trim());
+
+const parentIdOf = (row: any): string | null =>
+  safeStr(row?.metadata?.parent_id, 200) ?? safeStr(row?.metadata?.parent_event_id, 200);
+
+async function archiveCommentTree(admin: any, ownerId: string, nativeId: string) {
+  const { data } = await admin
+    .from("engagement_events")
+    .select("id, external_id, metadata")
+    .eq("user_id", ownerId)
+    .eq("platform", "facebook")
+    .limit(2000);
+  const rows = data ?? [];
+  const removed = new Set<string>([nativeId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const row of rows) {
+      const externalId = safeStr(row?.external_id, 200);
+      const parentId = parentIdOf(row);
+      if (parentId && removed.has(parentId) && externalId && !removed.has(externalId)) {
+        removed.add(externalId);
+        changed = true;
+      }
+    }
+  }
+  const ids = rows
+    .filter((row: any) => removed.has(String(row?.external_id ?? "")))
+    .map((row: any) => String(row.id));
+  if (ids.length > 0) {
+    await admin.from("engagement_events").update({ is_archived: true }).in("id", ids).eq("user_id", ownerId);
+  }
+  await admin.from("fb_comments").delete().in("ayr_comment_id", Array.from(removed));
+  return Array.from(removed);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -94,6 +129,42 @@ Deno.serve(async (req) => {
         error: "page_not_connected",
         message: "עמוד הפייסבוק לא מחובר. חבר אותו בעמוד החיבורים.",
       }, 200);
+    }
+
+    // ---- Delete a comment/reply from Meta and archive the local tree -------
+    if (action === "delete") {
+      const target = String(body?.comment_id ?? body?.event_id ?? "").trim();
+      if (!target) return json({ ok: false, error: "comment_id is required" }, 400);
+
+      let nativeId = target;
+      if (isUuid(target)) {
+        const { data: event } = await admin
+          .from("engagement_events")
+          .select("external_id")
+          .eq("id", target)
+          .eq("user_id", ownerId)
+          .eq("platform", "facebook")
+          .maybeSingle();
+        if (!event?.external_id) return json({ ok: false, error: "comment_not_found" }, 404);
+        nativeId = String(event.external_id);
+      } else {
+        const { data: event } = await admin
+          .from("engagement_events")
+          .select("id")
+          .eq("user_id", ownerId)
+          .eq("platform", "facebook")
+          .eq("external_id", nativeId)
+          .maybeSingle();
+        if (!event?.id) return json({ ok: false, error: "comment_not_found" }, 404);
+      }
+
+      const r = await graphCall(`/${nativeId}?access_token=${encodeURIComponent(page.token)}`, { method: "DELETE" });
+      if (!r.ok) {
+        console.error("[meta-comments-sync] Meta comment delete failed", { nativeId, status: r.status, payload: r.payload });
+        return json({ ok: false, error: humanizeMetaError(r.payload, "מחיקת התגובה מפייסבוק נכשלה"), meta: r.payload?.error ?? null }, 200);
+      }
+      const deletedIds = await archiveCommentTree(admin, ownerId, nativeId);
+      return json({ ok: true, deleted_ids: deletedIds });
     }
 
     // ---- Reply to a comment (POST /{comment-id}/comments) -------------------
@@ -197,7 +268,7 @@ Deno.serve(async (req) => {
           .eq("external_id", nativeId);
       }
 
-      return json({ ok: true, reply_id: replyId });
+      return json({ ok: true, reply_id: replyId, reply_comment_id: replyId });
     }
 
     // ---- Sync ---------------------------------------------------------------
@@ -246,10 +317,41 @@ Deno.serve(async (req) => {
         if (res === "inserted") inserted++;
         else if (res === "updated") updated++;
       }
+      // A successful full-tree pull is authoritative. Archive rows that used
+      // to belong to this post but no longer exist on the native Facebook tree.
+      if (!error) {
+        const liveIds = new Set(comments.map((c) => c.id));
+        const { data: stored } = await admin
+          .from("engagement_events")
+          .select("id, external_id")
+          .eq("user_id", ownerId)
+          .eq("platform", "facebook")
+          .eq("external_post_id", postId)
+          .eq("is_archived", false);
+        const staleIds = (stored ?? [])
+          .filter((row: any) => row?.external_id && !liveIds.has(String(row.external_id)))
+          .map((row: any) => String(row.id));
+        if (staleIds.length > 0) {
+          await admin.from("engagement_events").update({ is_archived: true }).in("id", staleIds).eq("user_id", ownerId);
+        }
+      }
       const rowId = trackedMap.get(postId) ??
         trackedMap.get(postId.includes("_") ? postId.split("_")[1] : postId);
-      if (rowId && comments.length > 0) {
-        await persistTrackedComments(admin, rowId, comments, page);
+      if (rowId) {
+        if (comments.length > 0) await persistTrackedComments(admin, rowId, comments, page);
+        if (!error) {
+          const liveIds = new Set(comments.map((comment) => comment.id));
+          const { data: trackedComments } = await admin
+            .from("fb_comments")
+            .select("id, ayr_comment_id")
+            .eq("post_id", rowId);
+          const staleTrackedIds = (trackedComments ?? [])
+            .filter((row: any) => row?.ayr_comment_id && !liveIds.has(String(row.ayr_comment_id)))
+            .map((row: any) => String(row.id));
+          if (staleTrackedIds.length > 0) {
+            await admin.from("fb_comments").delete().in("id", staleTrackedIds);
+          }
+        }
         await admin
           .from("fb_engagement_posts")
           .update({ last_synced_at: new Date().toISOString() })

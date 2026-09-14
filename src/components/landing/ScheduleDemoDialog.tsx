@@ -97,7 +97,7 @@ export function ScheduleDemoDialog({ children }: { children: React.ReactNode }) 
         ) : (
           <>
             <DialogHeader className="text-right">
-              <DialogTitle>תיאום דמו בזום</DialogTitle>
+              <DialogTitle>להדגמה בזום</DialogTitle>
               <DialogDescription>
                 השאירו פרטים ובחרו מועד נוח - דמו אישי של 15 דקות.
               </DialogDescription>

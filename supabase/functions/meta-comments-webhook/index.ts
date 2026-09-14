@@ -76,11 +76,37 @@ Deno.serve(async (req) => {
           if (!commentId) continue;
 
           if (verb === "remove") {
-            await admin
+            const { data: removed } = await admin
               .from("engagement_events")
               .update({ is_archived: true })
               .eq("user_id", binding.ownerId)
-              .eq("external_id", commentId);
+              .eq("external_id", commentId)
+              .select("id");
+            const parentIds = new Set<string>([commentId, ...((removed ?? []).map((row: any) => String(row.id)))]);
+            let changed = true;
+            while (changed) {
+              changed = false;
+              const { data: candidates } = await admin
+                .from("engagement_events")
+                .select("id, external_id, metadata")
+                .eq("user_id", binding.ownerId)
+                .eq("platform", "facebook")
+                .eq("is_archived", false)
+                .limit(2000);
+              const childIds = (candidates ?? []).filter((row: any) => {
+                const parent = safeStr(row?.metadata?.parent_id, 200) ?? safeStr(row?.metadata?.parent_event_id, 200);
+                return !!parent && parentIds.has(parent);
+              });
+              if (childIds.length > 0) {
+                await admin.from("engagement_events").update({ is_archived: true }).in("id", childIds.map((row: any) => row.id));
+                for (const row of childIds) {
+                  const external = safeStr(row?.external_id, 200);
+                  if (external && !parentIds.has(external)) { parentIds.add(external); changed = true; }
+                  parentIds.add(String(row.id));
+                }
+              }
+            }
+            await admin.from("fb_comments").delete().eq("ayr_comment_id", commentId);
             continue;
           }
 
