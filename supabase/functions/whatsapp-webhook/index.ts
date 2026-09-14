@@ -952,10 +952,37 @@ async function handleLeadInboxInbound(
   // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
   // instead of property talk.
   const leadPrefs = ((lead as any)?.preferences ?? {}) as Record<string, unknown>;
+
+  // Role recognition: if this phone belongs to a workspace owner / admin /
+  // manager / team member, Rita must answer as an internal assistant and never
+  // pitch a demo or qualify them like a new visitor.
+  let senderRole: WaSenderRole | null = opts?.senderRole ?? null;
+  if (!senderRole) {
+    try {
+      const resolved = await resolveWaSenderRole(admin as any, senderPhone);
+      senderRole = resolved.isStaff ? resolved : null;
+    } catch (e) {
+      console.warn("[autopilot] sender role lookup soft-fail:", e instanceof Error ? e.message : e);
+    }
+  }
+  const staffSender = senderRole?.isStaff ? senderRole : null;
+  if (staffSender) {
+    console.log("[autopilot] internal sender recognised", JSON.stringify({
+      role: staffSender.label,
+      reason: staffSender.reason,
+      user_id: staffSender.userId,
+    }));
+  }
+
+  // Rita's recruitment mode: this workspace only talks to agents/brokers, so a
+  // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
+  // instead of property talk. Internal staff are never in recruitment mode.
   const recruitmentMode =
-    BROKER_RECRUITMENT_WORKSPACE ||
-    String(leadPrefs.lead_kind ?? "") === "broker" ||
-    opts?.recruitment === true;
+    !staffSender &&
+    (BROKER_RECRUITMENT_WORKSPACE ||
+      String(leadPrefs.lead_kind ?? "") === "broker" ||
+      opts?.recruitment === true);
+
 
 
   console.log("[autopilot] gates", JSON.stringify({
