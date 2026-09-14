@@ -15,7 +15,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
-import { GlobalSearchTrigger } from '@/components/GlobalSearch';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import VoterAvatar from '@/components/VoterAvatar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';

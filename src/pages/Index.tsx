@@ -26,7 +26,6 @@ import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
 import { MatchProgressCard } from '@/components/dashboard/MatchProgressCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
-import { GlobalSearchTrigger } from '@/components/GlobalSearch';
 import { RecruitmentDashboard } from '@/components/dashboard/RecruitmentDashboard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 
