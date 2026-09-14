@@ -32,7 +32,7 @@ import { generateFastReply } from "../_shared/waFastReply.ts";
 import { resolveLeadGender } from "../_shared/hebrewGender.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
 import { resolveWaSenderRole, type WaSenderRole } from "../_shared/waSenderRole.ts";
-import { asksForCrmCounts, fetchWorkspaceCrmCounts, renderCrmCountsBlock } from "../_shared/crmSnapshot.ts";
+import { asksForCrmCounts, fetchWorkspaceCrmCounts, renderCrmCountsBlock } from "../_shared/crmCounts.ts";
 import { BROKER_RECRUITMENT_WORKSPACE } from "../_shared/persona.ts";
 import {
   isRecruitmentThread,

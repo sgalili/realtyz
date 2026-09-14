@@ -1,5 +1,5 @@
 import { safeTool, logToolFailure, GRACEFUL_TOOL_FALLBACK_HE, GRACEFUL_ACTION_FALLBACK_HE } from "../_shared/safeToolError.ts";
-import { fetchWorkspaceCrmCounts, renderCrmCountsAnswer } from "../_shared/crmSnapshot.ts";
+import { fetchWorkspaceCrmCounts, renderCrmCountsAnswer } from "../_shared/crmCounts.ts";
 import { cleanSqm } from "../_shared/measures.ts";
 import { CRM_ACTIONS_CONTRACT, executeCrmActions } from "../_shared/crmActions.ts";
 import { extractActionEnvelopes, stripRawJson, summarizeCrmResults } from "../_shared/agentOutput.ts";
