@@ -262,20 +262,7 @@ export function ConnectionsTab() {
 
   const [sms019Sender, setSms019Sender] = useState<string | null>(null);
 
-  const googleHeader = (
-    <div className="flex min-w-0 items-center gap-3">
-      <div className="flex items-center gap-1.5" aria-label="שירותי Google">
-        <GoogleBrandGlyph brand="gmail" connected={connectedGoogle.has('gmail') || isRememberedConnected('gmail', activeWorkspaceId)} />
-        <GoogleBrandGlyph brand="calendar" connected={connectedGoogle.has('google_calendar') || isRememberedConnected('google_calendar', activeWorkspaceId)} />
-        <GoogleBrandGlyph brand="youtube" connected={connectedGoogle.has('youtube') || isRememberedConnected('youtube', activeWorkspaceId)} />
-      </div>
-      <span className="max-w-[170px] truncate text-[13px] font-semibold text-foreground/70" dir="ltr">
-        {googleAccount ?? 'לא מחובר'}
-      </span>
-    </div>
-  );
-
-  const sections: Array<{ id: string; title: string; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode }> = [
+  const sections: Array<{ id: string; title: string; titleAside?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode }> = [
     {
       id: 'meta',
       title: 'פייסבוק / אינסטגרם',
