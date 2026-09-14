@@ -311,7 +311,7 @@ const App = () => (
               <Route path="/lead-crm/:leadId" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/communication" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
-              <Route path="/deal-room" element={<ProtectedRoute allowGuestDemo><DealRoom /></ProtectedRoute>} />
+              <Route path="/deal-room" element={<DealsRoute><ProtectedRoute allowGuestDemo><DealRoom /></ProtectedRoute></DealsRoute>} />
               <Route path="/properties" element={<ListingsRoute><ProtectedRoute allowGuestDemo><Properties /></ProtectedRoute></ListingsRoute>} />
               <Route path="/properties-hub" element={<ListingsRoute><ProtectedRoute allowGuestDemo><PropertiesHub /></ProtectedRoute></ListingsRoute>} />
               <Route path="/properties/:id" element={<ListingsRoute><ProtectedRoute allowGuestDemo><PropertyDetail /></ProtectedRoute></ListingsRoute>} />
@@ -321,7 +321,7 @@ const App = () => (
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
               <Route path="/affiliate" element={<ProtectedRoute><AffiliatePortal /></ProtectedRoute>} />
-              <Route path="/affiliate-network" element={<ProtectedRoute><AffiliateNetwork /></ProtectedRoute>} />
+              <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
               <Route path="/referral" element={<ProtectedRoute><PartnerNetwork /></ProtectedRoute>} />
 
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />
