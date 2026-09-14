@@ -122,7 +122,13 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: string | null }) {
-  const { state, isMobile, setOpenMobile } = useSidebar();
+  const { state, isMobile, setOpen, setOpenMobile } = useSidebar();
+
+  /** Collapse the sidebar on both mobile (sheet) and desktop (offcanvas). */
+  const closeSidebar = () => {
+    setOpenMobile(false);
+    setOpen(false);
+  };
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const navigate = useNavigate();
