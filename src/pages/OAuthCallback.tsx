@@ -139,8 +139,10 @@ export default function OAuthCallback() {
       setIsLoading(false);
       setError({
         title: 'החיבור לא הושלם בזמן',
-        detail: null,
-        hint: 'פייסבוק לא סיים את האישור. אפשר לנסות שוב או לחזור למערכת ולהתחבר מההגדרות.',
+        detail: `callback exceeded ${HARD_TIMEOUT_MS}ms without a server answer`,
+        hint: 'פייסבוק לא סיים את האישור. הקוד הנוכחי חד-פעמי, לכן יש להתחיל חיבור חדש.',
+        actionLabel: 'התחברות מחדש לפייסבוק',
+        restartLogin: true,
       });
     }, HARD_TIMEOUT_MS);
 
