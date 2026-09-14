@@ -108,6 +108,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(cachedInit.activeId);
   const [loading, setLoading] = useState(cachedInit.list.length === 0);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const initializedUserRef = useRef<string | null>(null);
 
 
   const refresh = useCallback(async () => {
@@ -157,8 +158,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    const userId = user?.id ?? null;
+    if (!userId) {
+      initializedUserRef.current = null;
+      void refresh();
+      return;
+    }
+    // Auth token refreshes and parent renders must not repeat the profile and
+    // workspace initialization queries for the same signed-in account.
+    if (initializedUserRef.current === userId) return;
+    initializedUserRef.current = userId;
+    void refresh();
+  }, [user?.id, refresh]);
 
   // Social-connection sentinel. Only warns when EVERY signal says there is no
   // usable connection (a bound Meta Page or a personal Facebook token).
@@ -204,7 +215,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         },
       });
     })().catch(() => {});
-  }, [user, loading, activeWorkspaceId]);
+  }, [user?.id, loading, activeWorkspaceId]);
 
   const setActiveWorkspace = useCallback(async (ownerId: string) => {
     if (!user) return;
