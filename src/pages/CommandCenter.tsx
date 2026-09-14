@@ -72,6 +72,14 @@ const TAB_LABEL: Record<SectionTab, string> = {
   calls: 'שיחות',
 };
 
+/** Standard workspaces keep the full tab set. */
+const DEFAULT_TABS: SectionTab[] = ['tasks', 'leads', 'demos', 'notes', 'reminders', 'calls'];
+/**
+ * Rita's marketing workspace: demos come first, and the לידים / הערות tabs are
+ * hidden there (they stay available in every other workspace).
+ */
+const RITA_TABS: SectionTab[] = ['demos', 'tasks', 'reminders', 'calls'];
+
 /** Which section a card belongs to. */
 function sectionOf(task: CommandTask): SectionTab {
   if (task.source === 'note') return task.actionType === 'interaction' ? 'calls' : 'notes';
