@@ -390,7 +390,7 @@ export function ConnectionsTab() {
     // see or override the credentials.
     ...(isSuperAdmin ? [{
       id: 'sms019',
-      title: 'SMS (019) של מרחב העבודה',
+      title: 'SMS ',
       status: sms019Sender ? sms019Sender : 'לא הוגדר',
       tone: (sms019Sender ? 'ok' : 'idle') as Tone,
       node: <WorkspaceSmsCard onStatus={setSms019Sender} />,
@@ -399,7 +399,7 @@ export function ConnectionsTab() {
 
     {
       id: 'voice',
-      title: 'שיחות טלפון (Vapi / Twilio)',
+      title: 'שיחות טלפון',
       status: voicePhone ? formatPhoneDisplay(voicePhone) : voiceReady ? 'מחובר' : 'לא הוגדר',
       tone: voicePhone || voiceReady ? 'ok' : 'idle',
       node: <VoiceGatewayCard />,
