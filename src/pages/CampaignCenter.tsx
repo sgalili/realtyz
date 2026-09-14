@@ -88,6 +88,8 @@ import { autoImportResult } from '@/lib/propertyAutoImport';
 import { SourceBadge } from '@/components/properties/SourceBadge';
 
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
+import { FB_PAGE_REMOVED_EVENT, FEED_CACHE_STORAGE_KEY, rowBelongsToPage } from '@/lib/campaignFeedCache';
+
 import {
   type ComposerSession,
   type ComposerAssignment,
