@@ -56,7 +56,7 @@ interface ActivityFeedItem {
   at: string;
 }
 
-const Dashboard = () => {
+const RealEstateDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
