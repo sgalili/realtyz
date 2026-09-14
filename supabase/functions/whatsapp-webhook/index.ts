@@ -678,7 +678,14 @@ async function handleLeadInboxInbound(
   // and this call only runs the autopilot leg: lead resolution → AI → send.
   // `leadId` lets the upstream webhook hand us the exact lead it resolved so we
   // never lose the thread to a phone-format mismatch.
-  opts?: { skipStore?: boolean; leadId?: string | null; senderName?: string | null; recruitment?: boolean },
+  opts?: {
+    skipStore?: boolean;
+    leadId?: string | null;
+    senderName?: string | null;
+    recruitment?: boolean;
+    /** Pre-resolved internal sender identity (owner / admin / manager / agent). */
+    senderRole?: WaSenderRole | null;
+  },
 ) {
   const skipStore = opts?.skipStore === true;
 
