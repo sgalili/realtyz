@@ -74,6 +74,8 @@ Deno.serve(async (req) => {
           signer_name: doc.signer_name,
           signed_at: doc.signed_at,
           pdf_url: signed?.signedUrl ?? null,
+          property_address: (doc.fields as any)?.property_address ?? null,
+          tour_date: (doc.fields as any)?.tour_date ?? null,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
