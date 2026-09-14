@@ -168,7 +168,13 @@ export default function OAuthCallback() {
       if (providerError || !hasGrant) {
         const reason = errorDescription || providerError || 'הספק לא החזיר קוד אימות. נסה להתחבר שוב.';
         if (isFacebook) {
-          finish(`${CONNECTIONS_PATH}&fb=error&fb_reason=${encodeURIComponent(reason)}`, { ok: false, reason });
+          console.error('[oauth-callback] facebook provider rejected callback', { providerError, reason });
+          setIsLoading(false);
+          setError({
+            title: 'החיבור לפייסבוק לא אושר',
+            detail: reason,
+            hint: 'אפשר לנסות שוב או לחזור למערכת.',
+          });
           return;
         }
         if (googlePlatform) {

@@ -1077,8 +1077,9 @@ async function handleRequest(req: Request): Promise<Response> {
 Deno.serve((req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  let timeoutId: number | undefined;
   const timeout = new Promise<Response>((resolve) => {
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       console.error("[meta-page-connect] absolute request timeout", { timeout_ms: REQUEST_TIMEOUT_MS });
       resolve(json({
         error: "החיבור לפייסבוק לא הושלם בתוך 8 שניות. יש לנסות שוב.",
@@ -1087,5 +1088,7 @@ Deno.serve((req) => {
     }, REQUEST_TIMEOUT_MS);
   });
 
-  return Promise.race([handleRequest(req), timeout]);
+  return Promise.race([handleRequest(req), timeout]).finally(() => {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  });
 });
