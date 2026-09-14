@@ -1,6 +1,8 @@
 project_id = "gvylyghwfysvydygqdtf"
 
 [functions]
+  [functions.demo-booking-notify]
+    verify_jwt = false
   [functions.auth-email-hook]
     verify_jwt = false
   [functions.elevenlabs-call-webhook]

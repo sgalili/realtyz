@@ -62,10 +62,11 @@ export function ScheduleDemoDialog({ children }: { children: React.ReactNode }) 
       return;
     }
     setSaving(true);
+    const storedPhone = normalizePhoneForStorage(parsed.data.phone);
     const { error: dbError } = await supabase.from('demo_requests').insert({
       first_name: parsed.data.firstName,
       last_name: parsed.data.lastName,
-      phone: normalizePhoneForStorage(parsed.data.phone),
+      phone: storedPhone,
       preferred_at: new Date(parsed.data.preferredAt).toISOString(),
       source: 'landing',
     });
@@ -74,6 +75,10 @@ export function ScheduleDemoDialog({ children }: { children: React.ReactNode }) 
       setError('השליחה נכשלה, נסו שוב בעוד רגע');
       return;
     }
+    // Rita confirms the slot with the lead and alerts the workspace managers.
+    void supabase.functions
+      .invoke('demo-booking-notify', { body: { phone: storedPhone } })
+      .catch(() => undefined);
     setDone(true);
   };
 

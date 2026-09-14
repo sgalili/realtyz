@@ -43,6 +43,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PropertyNotesCard } from '@/components/tasks/PropertyNotesCard';
+import {
+  IncomingLeadsPanel,
+  useIncomingLeadsCount,
+  useScheduledDemosCount,
+} from '@/components/tasks/IncomingLeadsPanel';
 
 const PRIORITY_STYLE: Record<CommandTask['priority'], string> = {
   high: 'bg-destructive/10 text-destructive ring-1 ring-destructive/20',
@@ -56,10 +61,12 @@ const PRIORITY_LABEL: Record<CommandTask['priority'], string> = {
   low: 'נמוך',
 };
 
-type SectionTab = 'tasks' | 'notes' | 'reminders' | 'calls';
+type SectionTab = 'tasks' | 'leads' | 'demos' | 'notes' | 'reminders' | 'calls';
 
 const TAB_LABEL: Record<SectionTab, string> = {
   tasks: 'משימות',
+  leads: 'פניות חדשות',
+  demos: 'הדגמות',
   notes: 'הערות',
   reminders: 'תזכורות',
   calls: 'שיחות',
@@ -91,6 +98,8 @@ function dueLabel(dueAt: string | null) {
 
 const ADD_LABEL: Record<SectionTab, string> = {
   tasks: 'משימה חדשה',
+  leads: 'איש קשר חדש',
+  demos: 'הדגמה חדשה',
   notes: 'הערה חדשה',
   reminders: 'תזכורת חדשה',
   calls: 'סיכום שיחה',
@@ -133,6 +142,9 @@ export default function CommandCenter() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: tasks = [], isLoading } = useCommandCenterTasks();
+  // Incoming leads and scheduled demos now live inside this page.
+  const leadsCount = useIncomingLeadsCount();
+  const demosCount = useScheduledDemosCount();
   
   const [tab, setTab] = useState<SectionTab>('tasks');
   // Every card starts COLLAPSED when entering the page.
@@ -148,13 +160,19 @@ export default function CommandCenter() {
     });
 
   const counts = useMemo(() => {
-    const base: Record<SectionTab, number> = { tasks: 0, notes: 0, reminders: 0, calls: 0 };
+    const base: Record<SectionTab, number> = {
+      tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, reminders: 0, calls: 0,
+    };
     for (const t of tasks) base[sectionOf(t)] += 1;
     return base;
-  }, [tasks]);
+  }, [tasks, leadsCount, demosCount]);
 
   /** Opens the quick-action drawer on the right form for the active tab. */
   const addNew = (section: SectionTab) => {
+    if (section === 'leads' || section === 'demos') {
+      navigate('/lead-crm');
+      return;
+    }
     const quickTab = section === 'notes' ? 'note' : section === 'calls' ? 'interaction' : 'reminder';
     window.dispatchEvent(new CustomEvent('open-quick-actions', { detail: { tab: quickTab } }));
   };
@@ -223,7 +241,9 @@ export default function CommandCenter() {
         </div>
 
 
-        {isLoading ? (
+        {tab === 'leads' || tab === 'demos' ? (
+          <IncomingLeadsPanel mode={tab} />
+        ) : isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-16 w-full" />

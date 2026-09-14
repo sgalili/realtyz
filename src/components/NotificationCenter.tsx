@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Bell, AlertTriangle, ExternalLink, Wallet, MessageCircle, CalendarClock } from 'lucide-react';
+import { Bell, AlertTriangle, ExternalLink, Wallet, MessageCircle, CalendarClock, Trash2, UserPlus } from 'lucide-react';
+import { useNotificationStates } from '@/hooks/useNotificationStates';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -38,12 +39,8 @@ export default function NotificationCenter() {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const scope = workspaceOwnerId ?? user?.id ?? null;
   const [open, setOpen] = useState(false);
-  const [viewedIds, setViewedIds] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('realtyz_viewed_notifs');
-      return new Set(stored ? JSON.parse(stored) : []);
-    } catch { return new Set(); }
-  });
+  // Read / deleted state lives in the database so it never resets on refresh.
+  const { readKeys: viewedIds, deletedKeys, markRead, remove } = useNotificationStates();
   const [dismissedBudgets, setDismissedBudgets] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem('realtyz_dismissed_budgets');
@@ -154,6 +151,25 @@ export default function NotificationCenter() {
     },
   });
 
+  // ---- Brand-new incoming leads (near real-time, active workspace only) ----
+  const { data: newLeads = [] } = useQuery({
+    queryKey: ['notif-new-leads', scope],
+    enabled: !!scope,
+    refetchInterval: 20_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id, full_name, phone_number, interest_tag, created_at')
+        .eq('assigned_to', scope!)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -182,10 +198,11 @@ export default function NotificationCenter() {
     const items = [
       ...inbound.map((m: any) => ({ id: m.id, at: m.created_at, msg: `הודעה חדשה מ${m.leads?.full_name || 'מתעניין'}` })),
       ...tours.map((t: any) => ({ id: t.id, at: t.created_at, msg: `סיור חדש נקבע: ${t.client_name || 'לקוח'}` })),
+      ...newLeads.map((l: any) => ({ id: `lead-${l.id}`, at: l.created_at, msg: `ליד חדש נכנס: ${l.full_name || 'איש קשר חדש'}` })),
     ];
     // First pass after mount: remember everything without notifying.
     const baseline = !baselinedRef.current;
-    if (items.length > 0 || inbound.length + tours.length > 0) baselinedRef.current = true;
+    if (items.length > 0 || inbound.length + tours.length + newLeads.length > 0) baselinedRef.current = true;
 
     let changed = false;
     items.forEach((i) => {
@@ -205,7 +222,7 @@ export default function NotificationCenter() {
         localStorage.setItem(TOASTED_KEY, JSON.stringify(all));
       } catch { /* noop */ }
     }
-  }, [inbound, tours]);
+  }, [inbound, tours, newLeads]);
 
 
 
@@ -228,18 +245,28 @@ export default function NotificationCenter() {
     return [...byLead.values()];
   })();
 
-  const unviewedAlerts = alerts.filter(a => !viewedIds.has(a.id));
-  const unviewedInbound = groupedInbound.filter((g) => !viewedIds.has(g.row.id));
-  const unviewedTours = tours.filter((t: any) => !viewedIds.has(t.id));
-  const activeBudgetAlerts = budgetAlerts.filter(b => !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
-  const badgeCount = unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + activeBudgetAlerts.length;
+  const visibleAlerts = alerts.filter((a: any) => !deletedKeys.has(a.id));
+  const visibleInbound = groupedInbound.filter((g) => !deletedKeys.has(g.row.id));
+  const visibleTours = tours.filter((t: any) => !deletedKeys.has(t.id));
+  const visibleLeads = newLeads.filter((l: any) => !deletedKeys.has(`lead-${l.id}`));
 
-  const markViewed = (id: string) => {
-    const next = new Set(viewedIds);
-    next.add(id);
-    setViewedIds(next);
-    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
-  };
+  const unviewedAlerts = visibleAlerts.filter((a: any) => !viewedIds.has(a.id));
+  const unviewedInbound = visibleInbound.filter((g) => !viewedIds.has(g.row.id));
+  const unviewedTours = visibleTours.filter((t: any) => !viewedIds.has(t.id));
+  const unviewedLeads = visibleLeads.filter((l: any) => !viewedIds.has(`lead-${l.id}`));
+  const activeBudgetAlerts = budgetAlerts.filter(b => !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
+  const badgeCount =
+    unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + unviewedLeads.length + activeBudgetAlerts.length;
+
+  /** Every key currently rendered in the drawer. */
+  const allKeys = [
+    ...visibleAlerts.map((a: any) => a.id),
+    ...visibleInbound.flatMap((g) => [g.row.id, ...g.extraIds]),
+    ...visibleTours.map((t: any) => t.id),
+    ...visibleLeads.map((l: any) => `lead-${l.id}`),
+  ];
+
+  const markViewed = (id: string) => markRead([id]);
 
   const dismissBudget = (service: string) => {
     const key = `${service}-${new Date().getMonth()}`;
@@ -249,12 +276,7 @@ export default function NotificationCenter() {
     localStorage.setItem('realtyz_dismissed_budgets', JSON.stringify([...next]));
   };
 
-  const markManyViewed = (ids: string[]) => {
-    const next = new Set(viewedIds);
-    ids.forEach((i) => i && next.add(i));
-    setViewedIds(next);
-    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
-  };
+  const markManyViewed = (ids: string[]) => markRead(ids);
 
   /**
    * Opens the exact conversation in the inbox and scrolls to / highlights the
@@ -267,15 +289,13 @@ export default function NotificationCenter() {
     navigate(`/inbox?chat=${voterId}&message=${id}`);
   };
 
-  const markAllRead = () => {
-    const next = new Set([
-      ...viewedIds,
-      ...alerts.map(a => a.id),
-      ...inbound.map((m: any) => m.id),
-      ...tours.map((t: any) => t.id),
-    ]);
-    setViewedIds(next);
-    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
+  const markAllRead = () => markRead(allKeys);
+
+  const deleteOne = (keys: string[]) => remove(keys);
+
+  const deleteAll = () => {
+    remove(allKeys);
+    budgetAlerts.forEach((b) => dismissBudget(b.service));
   };
 
   const getMatchedKeyword = (content: string) =>
@@ -307,6 +327,16 @@ export default function NotificationCenter() {
             {badgeCount > 0 && (
               <Button variant="ghost" size="sm" className="text-xs h-6 px-2" onClick={markAllRead}>
                 סמן הכל כנקרא
+              </Button>
+            )}
+            {allKeys.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-6 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={deleteAll}
+              >
+                מחק הכל
               </Button>
             )}
           </div>
@@ -357,97 +387,157 @@ export default function NotificationCenter() {
             </div>
           ))}
 
-          {tours.map((t: any) => {
+          {visibleLeads.map((l: any) => {
+            const key = `lead-${l.id}`;
+            const isUnread = !viewedIds.has(key);
+            return (
+              <NotifRow key={key} unread={isUnread} onDelete={() => deleteOne([key])}>
+                <button
+                  onClick={() => { markViewed(key); setOpen(false); navigate(`/lead-crm/${l.id}`); }}
+                  className="flex min-w-0 flex-1 items-start gap-3 text-right"
+                >
+                  <UserPlus className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">
+                      ליד חדש: {l.full_name || 'איש קשר חדש'}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      {l.interest_tag || 'פנייה חדשה'}
+                    </span>
+                    <span className="mt-1 block text-[10px] text-muted-foreground/60">
+                      {l.created_at ? formatDistanceToNow(new Date(l.created_at), { addSuffix: true, locale: he }) : ''}
+                    </span>
+                  </span>
+                </button>
+              </NotifRow>
+            );
+          })}
+
+          {visibleTours.map((t: any) => {
             const isUnread = !viewedIds.has(t.id);
             return (
-              <button
-                key={t.id}
-                onClick={() => { markViewed(t.id); setOpen(false); navigate('/dashboard#tours'); }}
-                className={`w-full text-right px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors flex gap-3 items-start ${isUnread ? 'bg-primary/5' : ''}`}
-              >
-                <CalendarClock className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">סיור חדש: {t.client_name || 'לקוח'}</p>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {t.property_title || 'נכס'}
-                    {t.scheduled_at ? ` · ${new Date(t.scheduled_at).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">
-                    {t.created_at ? formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: he }) : ''}
-                  </p>
-                </div>
-                <ExternalLink className="h-3 w-3 text-muted-foreground/40 mt-1 shrink-0" />
-              </button>
+              <NotifRow key={t.id} unread={isUnread} onDelete={() => deleteOne([t.id])}>
+                <button
+                  onClick={() => { markViewed(t.id); setOpen(false); navigate('/command-center'); }}
+                  className="flex min-w-0 flex-1 items-start gap-3 text-right"
+                >
+                  <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">סיור חדש: {t.client_name || 'לקוח'}</span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      {t.property_title || 'נכס'}
+                      {t.scheduled_at ? ` · ${new Date(t.scheduled_at).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}
+                    </span>
+                    <span className="mt-1 block text-[10px] text-muted-foreground/60">
+                      {t.created_at ? formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: he }) : ''}
+                    </span>
+                  </span>
+                </button>
+              </NotifRow>
             );
           })}
 
-          {groupedInbound.map(({ row: m, count, extraIds }) => {
+          {visibleInbound.map(({ row: m, count, extraIds }) => {
             const isUnread = !viewedIds.has(m.id);
             return (
-              <button
+              <NotifRow
                 key={m.lead_id ?? m.id}
-                onClick={() => handleClick(m.lead_id, m.id, extraIds)}
-                className={`w-full text-right px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors flex gap-3 items-start ${isUnread ? 'bg-primary/5' : ''}`}
+                unread={isUnread}
+                onDelete={() => deleteOne([m.id, ...extraIds])}
               >
-                <MessageCircle className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium truncate">{m.leads?.full_name || 'מתעניין'}</span>
-                    {count > 1 && (
-                      <span className="text-[10px] shrink-0 rounded-full bg-emerald-600/15 px-1.5 py-0.5 font-bold text-emerald-700">
-                        {count}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{(m.content || '').slice(0, 70)}</p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">
-                    {m.created_at ? formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: he }) : ''}
-                  </p>
-                </div>
-                <ExternalLink className="h-3 w-3 text-muted-foreground/40 mt-1 shrink-0" />
-              </button>
+                <button
+                  onClick={() => handleClick(m.lead_id, m.id, extraIds)}
+                  className="flex min-w-0 flex-1 items-start gap-3 text-right"
+                >
+                  <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium">{m.leads?.full_name || 'איש קשר'}</span>
+                      {count > 1 && (
+                        <span className="shrink-0 rounded-full bg-emerald-600/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                          {count}
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">{(m.content || '').slice(0, 70)}</span>
+                    <span className="mt-1 block text-[10px] text-muted-foreground/60">
+                      {m.created_at ? formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: he }) : ''}
+                    </span>
+                  </span>
+                </button>
+              </NotifRow>
             );
           })}
 
-          {alerts.length === 0 && activeBudgetAlerts.length === 0 && inbound.length === 0 && tours.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">אין התראות</p>
-          ) : (
-
-            alerts.map(a => {
-              const isUnread = !viewedIds.has(a.id);
-              const keyword = a.content ? getMatchedKeyword(a.content) : '';
-              return (
+          {visibleAlerts.map((a: any) => {
+            const isUnread = !viewedIds.has(a.id);
+            const keyword = a.content ? getMatchedKeyword(a.content) : '';
+            return (
+              <NotifRow key={a.id} unread={isUnread} onDelete={() => deleteOne([a.id])}>
                 <button
-                  key={a.id}
                   onClick={() => handleClick(a.lead_id, a.id)}
-                  className={`w-full text-right px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors flex gap-3 items-start ${isUnread ? 'bg-primary/5' : ''}`}
+                  className="flex min-w-0 flex-1 items-start gap-3 text-right"
                 >
-                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium truncate">
-                        {voterMap[a.lead_id ?? ''] || 'מתעניין'}
-                      </span>
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium">{voterMap[a.lead_id ?? ''] || 'איש קשר'}</span>
                       {keyword && (
-                        <span className="text-[10px] bg-destructive/15 text-destructive px-1.5 py-0.5 rounded-full font-medium shrink-0">
+                        <span className="shrink-0 rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
                           {keyword}
                         </span>
                       )}
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                       {a.content?.slice(0, 60)}...
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">
+                    </span>
+                    <span className="mt-1 block text-[10px] text-muted-foreground/60">
                       {a.created_at ? formatDistanceToNow(new Date(a.created_at), { addSuffix: true, locale: he }) : ''}
-                    </p>
-                  </div>
-                  <ExternalLink className="h-3 w-3 text-muted-foreground/40 mt-1 shrink-0" />
+                    </span>
+                  </span>
                 </button>
-              );
-            })
+              </NotifRow>
+            );
+          })}
+
+          {allKeys.length === 0 && activeBudgetAlerts.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">אין התראות</p>
           )}
         </ScrollArea>
       </PopoverContent>
     </Popover>
+  );
+}
+
+/**
+ * One notification row: a clickable body plus an always-available trash button
+ * that removes just this notification (persisted in the database).
+ */
+function NotifRow({
+  unread,
+  onDelete,
+  children,
+}: {
+  unread: boolean;
+  onDelete: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`flex items-start gap-1 border-b border-border/30 px-3 py-3 transition-colors hover:bg-muted/50 ${
+        unread ? 'bg-primary/5' : ''
+      }`}
+    >
+      {children}
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="מחיקת ההתראה"
+        onClick={onDelete}
+        className="h-7 w-7 shrink-0 text-muted-foreground/60 hover:bg-destructive/10 hover:text-destructive"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 }
