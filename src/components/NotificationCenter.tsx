@@ -3,6 +3,7 @@ import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { Bell, AlertTriangle, ExternalLink, Wallet, MessageCircle, CalendarClock } from 'lucide-react';
@@ -28,6 +29,8 @@ const SERVICE_LABELS: Record<string, string> = {
 try { localStorage.removeItem('realtyz_demo_notifications'); } catch { /* noop */ }
 
 export default function NotificationCenter() {
+  // Property-tour notifications exist only in workspaces that manage properties.
+  const { listingsEnabled } = useWorkspaceFeatures();
   const navigate = useNavigate();
   const { user } = useAuth();
   // HARD ISOLATION: every notification query below is filtered by the ACTIVE
@@ -137,7 +140,7 @@ export default function NotificationCenter() {
   // ---- New property tour bookings (Realtime enabled on property_tours) ----
   const { data: tours = [] } = useQuery({
     queryKey: ['notif-tours', scope],
-    enabled: !!scope,
+    enabled: !!scope && listingsEnabled,
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -154,14 +157,14 @@ export default function NotificationCenter() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !listingsEnabled) return;
     const channel = safeChannel('notif-tours-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'property_tours' }, () => {
         queryClient.invalidateQueries({ queryKey: ['notif-tours', user.id] });
       })
       .subscribe();
     return () => { removeChannelSafe(channel); };
-  }, [user?.id, queryClient]);
+  }, [user?.id, queryClient, listingsEnabled]);
 
   // Toast policy: only a brand-new notification that arrives while the app is
   // open produces a toast, and only once ever. Everything already present on
