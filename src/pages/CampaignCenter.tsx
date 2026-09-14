@@ -4504,13 +4504,11 @@ const PublishedFeed = ({
       // A bound Facebook Page (OAuth or manual token) is by itself a valid
       // connected state — the manual path never writes to social_connections.
       try {
-        const { data: binding } = await supabase
-          .from('messenger_page_bindings')
-          .select('page_id')
-          .eq('owner_id', workspaceOwnerId ?? '')
-          .limit(1)
-          .maybeSingle();
-        let pageId = ((binding as any)?.page_id as string | null) ?? null;
+        // Same resolver the Connections tab uses: own binding first, then the
+        // platform-shared Page — so a live connection is never shown as missing.
+        const { data: effective } = await (supabase as any).rpc('get_effective_meta_page', { _owner: workspaceOwnerId });
+        const effectiveRow: any = Array.isArray(effective) ? effective[0] : effective;
+        let pageId = effectiveRow?.page_id ? String(effectiveRow.page_id) : null;
         if (!pageId) {
           // Fall back to the server-side resolver (workspace-owner scoped).
           pageId = (await resolveMetaPageViaFunction(workspaceOwnerId)).pageId;
