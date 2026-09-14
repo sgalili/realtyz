@@ -14,6 +14,13 @@ export const LISTINGS_ENABLED = !BROKER_RECRUITMENT_MODE;
 /** All plan/credit/contact limits are disabled for this workspace. */
 export const LIMITS_ENABLED = !BROKER_RECRUITMENT_MODE;
 
+/**
+ * Rita's own workspace. This workspace exists only to market Realtyz to new
+ * real-estate agents, so it hides deal/partner surfaces and shows an
+ * acquisition-focused dashboard.
+ */
+export const RITA_WORKSPACE_OWNER_ID = 'dc819834-1aa9-4aca-bb27-ec2c8cebde69';
+
 /** Personal support contact for brokers joining Realtyz. */
 export const SUPPORT_CONTACT = {
   name: 'ריטה',
