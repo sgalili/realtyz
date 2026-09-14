@@ -12,6 +12,7 @@
  * accepted input is a demo_requests row id — all content is read server-side.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createCalendarEvent, getFreshAccessToken } from "../_shared/google-calendar.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
     // public landing form cannot read back its own inserted row).
     let query = admin
       .from("demo_requests")
-      .select("id, first_name, last_name, phone, preferred_at, workspace_owner_id, source");
+      .select("id, first_name, last_name, phone, preferred_at, workspace_owner_id, source, google_event_id");
     query = body.demo_request_id
       ? query.eq("id", body.demo_request_id)
       : query.eq("phone", String(body.phone)).order("created_at", { ascending: false });
