@@ -16,9 +16,42 @@ export const OAUTH_CALLBACK_PATH = '/oauth/callback';
 const APPROVED_ORIGINS = [
   'https://realtyz.co.il',
   'https://www.realtyz.co.il',
+  'https://realtyz.kalpiz.co.il',
+  'https://realestate.omniai.co.il',
   'https://realtyzai.lovable.app',
   'http://localhost:8080',
 ];
+
+const OAUTH_SESSION_HANDOFF_KEY = 'realtyz:oauth-session-handoff';
+
+/** Persist the current app session before leaving for the canonical callback. */
+export function storeOAuthSessionHandoff(accessToken: string, refreshToken: string): void {
+  if (!accessToken || !refreshToken) return;
+  try {
+    localStorage.setItem(OAUTH_SESSION_HANDOFF_KEY, JSON.stringify({
+      accessToken,
+      refreshToken,
+      at: Date.now(),
+    }));
+  } catch {
+    /* storage can be unavailable in private browsing */
+  }
+}
+
+/** Restore and consume the short-lived cross-domain OAuth session handoff. */
+export function takeOAuthSessionHandoff(): { accessToken: string; refreshToken: string } | null {
+  try {
+    const raw = localStorage.getItem(OAUTH_SESSION_HANDOFF_KEY);
+    if (!raw) return null;
+    localStorage.removeItem(OAUTH_SESSION_HANDOFF_KEY);
+    const parsed = JSON.parse(raw) as { accessToken?: string; refreshToken?: string; at?: number };
+    if (!parsed.at || Date.now() - parsed.at > PENDING_TTL_MS) return null;
+    if (!parsed.accessToken || !parsed.refreshToken) return null;
+    return { accessToken: parsed.accessToken, refreshToken: parsed.refreshToken };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The single production origin whose callback URI is whitelisted in Meta.
