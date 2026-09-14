@@ -228,14 +228,12 @@ export default function AffiliateNetwork() {
             { label: 'עסקאות דרך שותפים', value: String(totals.signed), icon: Handshake, color: 'text-emerald-600' },
             { label: 'תגמול לתשלום', value: fmtILS(totals.owed), icon: Banknote, color: 'text-amber-600' },
           ].map((s) => (
-            <Card key={s.label} className="border-slate-200">
-              <CardContent className="flex items-center gap-3 p-3.5">
-                <s.icon className={`h-5 w-5 shrink-0 ${s.color}`} />
-                <div className="min-w-0">
-                  <div className="truncate text-[11px] text-slate-500">{s.label}</div>
-                  <div className="text-base font-bold text-slate-900">
-                    <bdi dir="ltr">{s.value}</bdi>
-                  </div>
+            <Card key={s.label} className="realtyz-affiliate-kpi border-slate-200">
+              <CardContent className="flex flex-col items-center justify-center gap-1.5 p-3.5 text-center">
+                <s.icon className={`h-6 w-6 shrink-0 ${s.color}`} />
+                <div className="kpi-label text-slate-500">{s.label}</div>
+                <div className="kpi-value font-bold text-slate-900">
+                  <bdi dir="ltr">{s.value}</bdi>
                 </div>
               </CardContent>
             </Card>
