@@ -199,7 +199,6 @@ export function GoogleServiceConnectCard({
         try {
           window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
         } catch { /* storage may be unavailable */ }
-        setExplicitlyDisconnected(false);
         toast.success('החיבור הושלם', { description: res.name || undefined });
         refetch();
       } else if (res.reason && res.reason !== 'needs_page_selection') {
