@@ -270,45 +270,41 @@ export default function AffiliateNetwork() {
               <div className="space-y-2.5">
                 {filteredListings.map((l) => (
                   <Card key={l.id} className="border-slate-200">
-                    <CardContent className="flex flex-wrap items-center gap-3 p-3.5">
-                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100">
-                        {l.image_url ? (
-                          <img src={l.image_url} alt={l.property_title ?? 'נכס'} loading="lazy" className="h-12 w-12 object-cover" />
-                        ) : (
-                          <div className="flex h-12 w-12 items-center justify-center">
-                            <Building2 className="h-5 w-5 text-slate-300" />
+                    <CardContent className="space-y-3 p-3.5">
+                      {/* Name + full address always sit above the pills and actions. */}
+                      <div className="flex items-center gap-3">
+                        <PropertyThumb p={l as any} size={56} />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-base font-bold text-slate-900">
+                            {l.property_title || 'נכס ללא כותרת'}
                           </div>
+                          <div className="flex items-center gap-1.5 truncate text-[13px] text-slate-500">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            {propertyFullAddress(l as any) || 'כתובת לא צוינה'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        {l.asking_price ? (
+                          <Badge variant="outline" className="text-[12px]">
+                            <bdi dir="ltr">{fmtILS(l.asking_price)}</bdi>
+                          </Badge>
+                        ) : null}
+
+                        {l.affiliate_enabled && (
+                          <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                            {formatReward(l.affiliate_reward_type, l.affiliate_reward_amount)}
+                          </Badge>
                         )}
+
+                        <Button size="sm" variant="outline" className="ms-auto" onClick={() => setEditing(l)}>
+                          קביעת תגמול
+                        </Button>
                       </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-bold text-slate-900">
-                          {l.property_title || 'נכס ללא כותרת'}
-                        </div>
-                        <div className="flex items-center gap-1.5 truncate text-[11px] text-slate-500">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          {[l.address, l.city].filter(Boolean).join(', ') || 'כתובת לא צוינה'}
-                        </div>
-                      </div>
-
-                      {l.asking_price ? (
-                        <Badge variant="outline" className="text-[11px]">
-                          <bdi dir="ltr">{fmtILS(l.asking_price)}</bdi>
-                        </Badge>
-                      ) : null}
-
-                      {l.affiliate_enabled ? (
-                        <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
-                          {formatReward(l.affiliate_reward_type, l.affiliate_reward_amount)}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[11px] text-slate-500">סגור לשותפים</Badge>
-                      )}
-
-                      <Button size="sm" variant="outline" onClick={() => setEditing(l)}>
-                        קביעת תגמול
-                      </Button>
                     </CardContent>
+                  </Card>
+
                   </Card>
                 ))}
               </div>
