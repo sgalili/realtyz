@@ -52,6 +52,7 @@ import {
   type SettlementStatus,
 } from '@/hooks/useAffiliate';
 import { fmtILS } from '@/lib/formatCurrency';
+import { PropertyThumb, propertyFullAddress } from '@/components/leads/LinkedPropertiesField';
 
 function RewardDialog({
   listing,
