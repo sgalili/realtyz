@@ -27,20 +27,30 @@ import { forgetConnected, isRememberedConnected, rememberConnected, rememberedLa
 type GooglePlatform = 'gmail' | 'google_calendar' | 'youtube';
 
 /** Official Google service marks, rendered in their brand colors. */
-function GoogleBrandGlyph({ brand }: { brand?: 'gmail' | 'calendar' | 'youtube' }) {
+export function GoogleBrandGlyph({
+  brand,
+  connected = true,
+  className,
+}: {
+  brand?: 'gmail' | 'calendar' | 'youtube';
+  connected?: boolean;
+  className?: string;
+}) {
+  const stateClass = connected ? '' : 'grayscale opacity-40';
+  const iconClass = `h-5 w-5 shrink-0 ${stateClass} ${className ?? ''}`;
   if (brand === 'youtube') {
-    return <BrandIcon name="youtube" className="h-4 w-4 shrink-0 text-[#FF0000]" />;
+    return <BrandIcon name="youtube" className={`${iconClass} text-[#FF0000]`} />;
   }
   if (brand === 'gmail') {
     return (
-      <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden="true">
+      <svg viewBox="0 0 24 24" className={iconClass} aria-hidden="true">
         <path fill="#EA4335" d="M2 6.5A2.5 2.5 0 0 1 6.02 4.5L12 9l5.98-4.5A2.5 2.5 0 0 1 22 6.5V19a1 1 0 0 1-1 1h-2.5v-8.2L12 16.4 5.5 11.8V20H3a1 1 0 0 1-1-1z" />
       </svg>
     );
   }
   if (brand === 'calendar') {
     return (
-      <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden="true">
+      <svg viewBox="0 0 24 24" className={iconClass} aria-hidden="true">
         <rect x="3" y="4" width="18" height="17" rx="2.5" fill="#4285F4" />
         <rect x="6" y="7" width="12" height="11" rx="1.5" fill="#fff" />
         <path fill="#4285F4" d="M9.6 15.6v-1.1c.5.3 1 .5 1.6.5.7 0 1.1-.3 1.1-.8s-.4-.8-1.2-.8h-.6v-1h.5c.7 0 1.1-.3 1.1-.7 0-.4-.3-.7-.9-.7-.5 0-1 .2-1.4.5v-1.1c.5-.3 1-.4 1.6-.4 1.2 0 2 .6 2 1.5 0 .6-.3 1-.9 1.2.7.2 1.1.7 1.1 1.4 0 1-.9 1.7-2.2 1.7-.7 0-1.3-.1-1.8-.2z" />
@@ -74,6 +84,13 @@ export function GoogleServiceConnectCard({
   brand?: 'gmail' | 'calendar' | 'youtube';
 }) {
   const [configError, setConfigError] = useState(false);
+  const [explicitlyDisconnected, setExplicitlyDisconnected] = useState(() => {
+    try {
+      return window.localStorage.getItem(`realtyz:google-explicit-disconnect:${platform}`) === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const { data, refetch, isLoading } = useQuery({
     queryKey: ['google-service-conn', platform],
@@ -110,7 +127,13 @@ export function GoogleServiceConnectCard({
   // A connected service stays connected in the UI until the broker disconnects
   // it explicitly — a pending query or a transient failure never flips it back.
   useEffect(() => {
-    if (liveConnected) rememberConnected(platform, null, credEmail);
+    if (liveConnected) {
+      rememberConnected(platform, null, credEmail);
+      try {
+        window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
+      } catch { /* storage may be unavailable */ }
+      setExplicitlyDisconnected(false);
+    }
   }, [liveConnected, platform, credEmail]);
   const connected = liveConnected || isRememberedConnected(platform);
   const accountLabel = credEmail ?? rememberedLabel(platform);
@@ -122,6 +145,10 @@ export function GoogleServiceConnectCard({
         await supabase.from('social_connections').update({ is_connected: false }).eq('id', data.id);
       }
       forgetConnected(platform);
+      try {
+        window.localStorage.setItem(`realtyz:google-explicit-disconnect:${platform}`, '1');
+      } catch { /* storage may be unavailable */ }
+      setExplicitlyDisconnected(true);
       toast.success('החיבור נותק');
       refetch();
     } catch {
@@ -138,7 +165,13 @@ export function GoogleServiceConnectCard({
           body: { platform, code, redirect_uri: redirectUri },
         });
         if (error || !(resp as any)?.ok) throw new Error((resp as any)?.error || error?.message || 'נכשל');
-        toast.success('החיבור הושלם', { id: tId, description: (resp as any).identity?.email });
+        const connectedEmail = (resp as any).identity?.email ?? null;
+        rememberConnected(platform, null, connectedEmail);
+        try {
+          window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
+        } catch { /* storage may be unavailable */ }
+        setExplicitlyDisconnected(false);
+        toast.success('החיבור הושלם', { id: tId, description: connectedEmail });
         refetch();
       } catch (e: any) {
         const friendly = friendlyGoogleError(e, platform);
@@ -172,6 +205,11 @@ export function GoogleServiceConnectCard({
   useEffect(() => {
     const unsubscribe = onOAuthResult(platform, (res) => {
       if (res.ok) {
+        rememberConnected(platform, null, res.name || null);
+        try {
+          window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
+        } catch { /* storage may be unavailable */ }
+        setExplicitlyDisconnected(false);
         toast.success('החיבור הושלם', { description: res.name || undefined });
         refetch();
       } else if (res.reason && res.reason !== 'needs_page_selection') {
@@ -237,34 +275,38 @@ export function GoogleServiceConnectCard({
 
   return (
     <div dir="rtl" className="rounded-xl border bg-muted/30 p-3 text-right">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <GoogleBrandGlyph brand={brand} />
-            <span>{title}</span>
-            {/* Inline colors on purpose: global CSS overrides utility color
-                classes, which washed out this status text. */}
-            <span
-              className="inline-flex items-center gap-1 text-[13px] font-bold"
-              style={{ color: connected ? 'hsl(152 62% 30%)' : 'hsl(0 72% 45%)' }}
-            >
-              {connected ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-              {connected ? 'מחובר' : 'לא מחובר'}
-            </span>
-          </div>
-          {connected && accountLabel ? (
-            <p className="mt-1 truncate text-[13px] font-medium" dir="ltr" style={{ color: 'hsl(220 9% 32%)' }}>
-              {accountLabel}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <GoogleBrandGlyph brand={brand} connected={connected} className="mt-0.5" />
+          <div className="min-w-0">
+            <h4 className="text-sm font-semibold">{title}</h4>
+            <p className="mt-1 truncate text-[13px] font-medium text-foreground/70" dir={accountLabel ? 'ltr' : 'rtl'}>
+              {accountLabel ?? 'לא מחובר חשבון'}
             </p>
-          ) : (
-            <p className="mt-1 text-[13px] text-muted-foreground">{hint}</p>
-          )}
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{hint}</p>
+            {platform === 'gmail' && (
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                Gmail משמש לשליחה, קבלה ותיעוד של התכתבויות ישירות בכרטיס איש הקשר.
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant={connected ? 'outline' : 'default'} className="h-8 gap-1 text-xs" onClick={connect}>
-            {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-            {connected ? 'חבר מחדש' : (ctaLabel ?? 'חיבור מהיר בקליק')}
-          </Button>
+          {connected ? (
+            <span className="inline-flex h-8 items-center gap-1 text-[13px] font-bold text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" /> מחובר
+            </span>
+          ) : explicitlyDisconnected && !isLoading ? (
+            <Button size="sm" className="h-8 gap-1 text-xs" onClick={connect}>
+              {ctaLabel ?? 'חבר'}
+            </Button>
+          ) : isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label="בודק חיבור" />
+          ) : (
+            <span className="inline-flex h-8 items-center gap-1 text-[13px] font-bold text-destructive">
+              <AlertTriangle className="h-3.5 w-3.5" /> לא מחובר
+            </span>
+          )}
           {connected && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
