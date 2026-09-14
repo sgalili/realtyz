@@ -155,7 +155,7 @@ export default function CommandCenter() {
   const leadsCount = useIncomingLeadsCount();
   const demosCount = useScheduledDemosCount();
   
-  const [tab, setTab] = useState<SectionTab>('tasks');
+  const [tab, setTab] = useState<SectionTab>(isRitaWorkspace ? 'demos' : 'tasks');
   // Every card starts COLLAPSED when entering the page.
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
 
