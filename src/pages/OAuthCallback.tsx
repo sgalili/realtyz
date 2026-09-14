@@ -49,6 +49,15 @@ function markGrantConsumed(raw: string) {
   try { window.sessionStorage.setItem(grantKey(raw), String(Date.now())); } catch { /* private mode */ }
 }
 
+/**
+ * In-memory de-dupe for the CURRENT page load. A StrictMode remount (or any
+ * second render of this screen) must reuse the very same exchange promise
+ * instead of being told the code was already used — otherwise the flow dies
+ * before `/me/accounts` is read and the Page is never saved.
+ */
+let inFlightGrant: string | null = null;
+let inFlightExchange: Promise<any> | null = null;
+
 type OAuthError = {
   title: string;
   detail: string | null;
