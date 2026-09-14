@@ -111,7 +111,7 @@ export async function buildBrokerageAgreementPdf(opts: AgreementOptions): Promis
     } catch { /* a bad logo must never break the document */ }
   } else {
     doc.setDrawColor(30, 64, 120).setLineWidth(1).roundedRect(RIGHT - 90, headerTop, 90, 40, 6, 6);
-    heAt(opts.office(), RIGHT - 45, headerTop + 25, 12, true, "center");
+    heAt(opts.broker.office, RIGHT - 45, headerTop + 25, 12, true, "center");
   }
 
   // Homely digital-signature seal
