@@ -3900,6 +3900,14 @@ const facebookGraphFailure = (input: any): 'permission' | 'token' | null => {
   return null;
 };
 
+/** True when the failure looks like a transient network/API hiccup rather
+ *  than a definitive token or permission problem. Used to avoid showing the
+ *  reconnect banner while a valid Page is still bound. */
+const isTransientFacebookError = (input: any): boolean => {
+  const failure = facebookGraphFailure(input);
+  return failure !== 'token' && failure !== 'permission';
+};
+
 // Derive the live native post URL from the Meta provider response, or build
 // a best-effort fallback URL from the platform + native post id.
 const derivePostUrl = (r: CampaignRow): string | null => {
