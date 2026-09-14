@@ -76,7 +76,7 @@ export function propertyImage(p: PropertyOption): string | null {
   return null;
 }
 
-const LISTING_FIELDS = 'id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos';
+const LISTING_FIELDS = 'id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos, house_number, apartment_number';
 
 /** Every property available to the signed-in user's workspace. */
 export function useWorkspaceProperties() {
