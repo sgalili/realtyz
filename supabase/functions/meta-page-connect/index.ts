@@ -650,7 +650,7 @@ Deno.serve(async (req) => {
       });
       if (stateError) {
         console.error("[meta-page-connect] state persist failed", stateError.message);
-        return json({ error: "לא ניתן להתחיל את החיבור לפייסבוק. נסה שוב.", stage: "state_create" }, 500);
+        return json({ error: "לא ניתן להתחיל את החיבור לפייסבוק. נסה שוב.", stage: "state_create" }, 200);
       }
 
       const params = new URLSearchParams({
@@ -1061,7 +1061,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, page_id: pageId });
     }
 
-    return json({ error: "unknown_action" }, 400);
+    return json({ error: `פעולה לא מוכרת: ${action}`, stage: "unknown_action" }, 200);
 
   } catch (e) {
     const msg = e instanceof Error ? `${e.message}` : String(e);
