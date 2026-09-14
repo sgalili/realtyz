@@ -1351,6 +1351,7 @@ export type Database = {
           tag_associated: string | null
           total_clicks: number | null
           total_sent: number | null
+          workspace_owner_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -1361,6 +1362,7 @@ export type Database = {
           tag_associated?: string | null
           total_clicks?: number | null
           total_sent?: number | null
+          workspace_owner_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -1371,6 +1373,7 @@ export type Database = {
           tag_associated?: string | null
           total_clicks?: number | null
           total_sent?: number | null
+          workspace_owner_id?: string | null
         }
         Relationships: []
       }
@@ -1547,6 +1550,7 @@ export type Database = {
           updated_at: string
           user_id: string
           viewed_at: string | null
+          workspace_owner_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1569,6 +1573,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           viewed_at?: string | null
+          workspace_owner_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1591,6 +1596,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           viewed_at?: string | null
+          workspace_owner_id?: string | null
         }
         Relationships: []
       }
@@ -1607,6 +1613,7 @@ export type Database = {
           tag: string | null
           updated_at: string
           wa_sent: boolean | null
+          workspace_owner_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1620,6 +1627,7 @@ export type Database = {
           tag?: string | null
           updated_at?: string
           wa_sent?: boolean | null
+          workspace_owner_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1633,6 +1641,7 @@ export type Database = {
           tag?: string | null
           updated_at?: string
           wa_sent?: boolean | null
+          workspace_owner_id?: string | null
         }
         Relationships: [
           {
@@ -2012,6 +2021,7 @@ export type Database = {
           preferred_at: string
           source: string
           status: string
+          workspace_owner_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2024,6 +2034,7 @@ export type Database = {
           preferred_at: string
           source?: string
           status?: string
+          workspace_owner_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2036,6 +2047,7 @@ export type Database = {
           preferred_at?: string
           source?: string
           status?: string
+          workspace_owner_id?: string | null
         }
         Relationships: [
           {
@@ -2653,6 +2665,7 @@ export type Database = {
           label: string | null
           last_synced_at: string | null
           post_url: string
+          workspace_owner_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2661,6 +2674,7 @@ export type Database = {
           label?: string | null
           last_synced_at?: string | null
           post_url: string
+          workspace_owner_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2669,6 +2683,7 @@ export type Database = {
           label?: string | null
           last_synced_at?: string | null
           post_url?: string
+          workspace_owner_id?: string | null
         }
         Relationships: []
       }
@@ -3112,6 +3127,7 @@ export type Database = {
           source_citations: Json
           thread_key: string
           user_id: string
+          workspace_owner_id: string | null
         }
         Insert: {
           action_type?: string
@@ -3131,6 +3147,7 @@ export type Database = {
           source_citations?: Json
           thread_key: string
           user_id: string
+          workspace_owner_id?: string | null
         }
         Update: {
           action_type?: string
@@ -3150,6 +3167,7 @@ export type Database = {
           source_citations?: Json
           thread_key?: string
           user_id?: string
+          workspace_owner_id?: string | null
         }
         Relationships: [
           {
@@ -3384,6 +3402,7 @@ export type Database = {
           status: string | null
           telegram_username: string | null
           wa_opt_out: boolean
+          workspace_owner_id: string | null
         }
         Insert: {
           address?: string | null
@@ -3437,6 +3456,7 @@ export type Database = {
           status?: string | null
           telegram_username?: string | null
           wa_opt_out?: boolean
+          workspace_owner_id?: string | null
         }
         Update: {
           address?: string | null
@@ -3490,6 +3510,7 @@ export type Database = {
           status?: string | null
           telegram_username?: string | null
           wa_opt_out?: boolean
+          workspace_owner_id?: string | null
         }
         Relationships: [
           {
@@ -3562,6 +3583,7 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          workspace_owner_id: string | null
         }
         Insert: {
           additional_details?: Json
@@ -3623,6 +3645,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          workspace_owner_id?: string | null
         }
         Update: {
           additional_details?: Json
@@ -3684,6 +3707,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          workspace_owner_id?: string | null
         }
         Relationships: [
           {
@@ -3815,6 +3839,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          workspace_owner_id: string | null
         }
         Insert: {
           conference_link?: string | null
@@ -3836,6 +3861,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          workspace_owner_id?: string | null
         }
         Update: {
           conference_link?: string | null
@@ -3857,6 +3883,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          workspace_owner_id?: string | null
         }
         Relationships: []
       }
@@ -4793,6 +4820,7 @@ export type Database = {
           total_recipients: number
           updated_at: string
           user_id: string
+          workspace_owner_id: string | null
         }
         Insert: {
           approval_queue_id?: string | null
@@ -4816,6 +4844,7 @@ export type Database = {
           total_recipients?: number
           updated_at?: string
           user_id: string
+          workspace_owner_id?: string | null
         }
         Update: {
           approval_queue_id?: string | null
@@ -4839,6 +4868,7 @@ export type Database = {
           total_recipients?: number
           updated_at?: string
           user_id?: string
+          workspace_owner_id?: string | null
         }
         Relationships: [
           {
@@ -6486,6 +6516,9 @@ export type Database = {
         Returns: string
       }
       wipe_demo_data: { Args: never; Returns: Json }
+      ws_current_access: { Args: { _ws: string }; Returns: boolean }
+      ws_fb_comment_access: { Args: { _comment_id: string }; Returns: boolean }
+      ws_fb_post_access: { Args: { _post_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:
