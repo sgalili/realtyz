@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -318,9 +318,6 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
               <div className="mt-3">
                 <SliderBlock label="" value={mandateTarget} onChange={setMandateTarget} min={1} max={15} suffix=" עסקאות" />
               </div>
-              <p className="text-sm text-muted-foreground mt-3">
-                <strong>{mandateTarget} עסקאות</strong> = {mandatePlan.targetVotes.toLocaleString()} קולות בפועל לפי {VOTES_PER_MANDATE.toLocaleString()} קולות לעסקה.
-              </p>
             </div>
           </div>
         )}
@@ -394,9 +391,6 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
             <div className="flex items-center gap-2 text-foreground font-semibold">
               <Target className="h-4 w-4 text-primary" /> מתי המכירות?
             </div>
-            <p className="text-xs text-muted-foreground -mt-2">
-              יום המכירות הרשמי: {ELECTION_DATE_HE} · נשארו ~{maxMonthsToElection} חודשים
-            </p>
             <SliderBlock label="חודשים עד המכירות" value={monthsToElection} onChange={setMonthsToElection} min={1} max={maxMonthsToElection} suffix=" חודשים" />
           </div>
         )}
@@ -423,9 +417,6 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
             <div className="rounded-lg bg-muted/40 p-3">
               <Label className="text-xs">רשימה קרה נדרשת</Label>
               <Input type="number" value={coldList} onChange={(e) => setColdList(Number(e.target.value))} className="mt-1 font-black" />
-            </div>
-            <div className="bg-background border border-primary/20 rounded-lg p-3 text-sm text-foreground">
-              <p><span className="font-bold text-primary">תובנה:</span> שינוי אחוזי ההמרה משנה את גודל הרשימות הדרושות כדי להגיע ליעד.</p>
             </div>
           </div>
         )}
