@@ -927,7 +927,22 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
 
-      const pages: any[] = Array.isArray(pagesRes.payload?.data) ? pagesRes.payload.data : [];
+      const pages: any[] = Array.isArray(discovered.pages) ? discovered.pages : [];
+      // Business-portfolio edges omit the Page token: fetch it per Page so a
+      // ticked Page is never dropped for lacking `access_token`.
+      for (const p of pages) {
+        if (p?.access_token || !p?.id) continue;
+        const tokRes = await graph(
+          `/${String(p.id)}?fields=access_token,name&access_token=${encodeURIComponent(userToken)}`,
+        );
+        if (tokRes.ok && tokRes.payload?.access_token) {
+          p.access_token = String(tokRes.payload.access_token);
+          p.name = p.name ?? tokRes.payload?.name ?? null;
+        } else {
+          logGraphFailure("page_token_fetch", tokRes.payload);
+        }
+      }
+
       if (!pagesRes.ok || pages.length === 0) {
         const detail = logGraphFailure("list_pages", pagesRes.payload);
         // A permission/scope rejection means the platform app is not yet approved
