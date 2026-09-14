@@ -3185,7 +3185,7 @@ const ConfirmDispatchDialog = ({
           // server for the authoritative Page (it also auto-discovers via
           // /me/accounts when no binding row exists yet).
           if (!workspaceFbId) {
-            const resolved = await resolveMetaPageViaFunction();
+            const resolved = await resolveMetaPageViaFunction(workspaceOwnerId);
             workspaceFbId = resolved.pageId || '';
             workspaceFbName = workspaceFbName || resolved.pageName || '';
           }
@@ -4513,7 +4513,7 @@ const PublishedFeed = ({
         let pageId = ((binding as any)?.page_id as string | null) ?? null;
         if (!pageId) {
           // Fall back to the server-side resolver (workspace-owner scoped).
-          pageId = (await resolveMetaPageViaFunction()).pageId;
+          pageId = (await resolveMetaPageViaFunction(workspaceOwnerId)).pageId;
         }
         if (pageId) {
           next.add('facebook');
@@ -4745,7 +4745,7 @@ const PublishedFeed = ({
         } catch { shouldImport = true; }
       }
       if (shouldImport) {
-        const connectedPage = await resolveMetaPageViaFunction();
+        const connectedPage = await resolveMetaPageViaFunction(workspaceOwnerId);
         shouldImport = Boolean(connectedPage.pageId);
       }
       if (shouldImport) {
@@ -7472,7 +7472,7 @@ const CampaignCenter = () => {
 
           // The client read is RLS-scoped to the workspace owner; the edge
           // function resolves the same binding for every workspace member.
-          const resolved = await resolveMetaPageViaFunction();
+          const resolved = await resolveMetaPageViaFunction(workspaceOwnerId);
           if (resolved.pageId) {
             wspFbId = resolved.pageId;
             wspFbName = wspFbName ?? resolved.pageName;
