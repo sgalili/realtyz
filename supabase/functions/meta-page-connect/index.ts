@@ -705,40 +705,55 @@ Deno.serve(async (req) => {
       }
 
 
-      // Persist the long-lived USER token too: group discovery (/me/groups)
-      // requires a user token, and a page login already grants it.
-      let grantedScopes: string[] = [];
-      try {
-        const meRes = await graph(
-          `/me?fields=id,name,picture.width(120).height(120)&access_token=${encodeURIComponent(userToken)}`,
-        );
-        const permRes = await graph(`/me/permissions?access_token=${encodeURIComponent(userToken)}`);
-        const granted: string[] = Array.isArray(permRes.payload?.data)
-          ? permRes.payload.data
-            .filter((p: any) => p?.status === "granted")
-            .map((p: any) => String(p.permission))
-          : [];
-        grantedScopes = granted;
-        console.log("[meta-page-connect] granted scopes =", JSON.stringify(granted));
-        if (meRes.ok && meRes.payload?.id) {
-          await admin.from("fb_personal_connections").upsert(
-            {
-              workspace_owner_id: ownerId,
-              fb_user_id: String(meRes.payload.id),
-              fb_user_name: meRes.payload?.name ?? null,
-              fb_avatar_url: meRes.payload?.picture?.data?.url ?? null,
-              access_token: userToken,
-              scopes: granted,
-              connected_by: caller.userId,
-              connected_at: new Date().toISOString(),
-              last_error: null,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "workspace_owner_id" },
-          );
+      // Everything below only needs the user token, so the three Graph reads run
+      // CONCURRENTLY. Sequential calls were the main reason the callback could
+      // outrun the browser's patience.
+      const [meRes, permRes, pagesRes] = await Promise.all([
+        graph(`/me?fields=id,name,picture.width(120).height(120)&access_token=${encodeURIComponent(userToken)}`)
+          .catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
+        graph(`/me/permissions?access_token=${encodeURIComponent(userToken)}`)
+          .catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
+        graph(
+          `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${
+            encodeURIComponent(userToken)
+          }`,
+        ).catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
+      ]);
+
+      const grantedScopes: string[] = Array.isArray(permRes.payload?.data)
+        ? permRes.payload.data
+          .filter((p: any) => p?.status === "granted")
+          .map((p: any) => String(p.permission))
+        : [];
+      console.log("[meta-page-connect] granted scopes =", JSON.stringify(grantedScopes));
+
+      // Persist the long-lived USER token too (group discovery needs it), but
+      // never make the browser wait for this write: it is post-auth bookkeeping.
+      if (meRes.ok && meRes.payload?.id) {
+        const personalRow = {
+          workspace_owner_id: ownerId,
+          fb_user_id: String(meRes.payload.id),
+          fb_user_name: meRes.payload?.name ?? null,
+          fb_avatar_url: meRes.payload?.picture?.data?.url ?? null,
+          access_token: userToken,
+          scopes: grantedScopes,
+          connected_by: caller.userId,
+          connected_at: new Date().toISOString(),
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        };
+        const personalWrite = admin
+          .from("fb_personal_connections")
+          .upsert(personalRow, { onConflict: "workspace_owner_id" })
+          .then(({ error }) => {
+            if (error) console.warn("[meta-page-connect] user token persist failed", error.message);
+          });
+        // Keep the isolate alive for the deferred write without blocking the response.
+        try {
+          (globalThis as any).EdgeRuntime?.waitUntil?.(personalWrite);
+        } catch {
+          void personalWrite;
         }
-      } catch (e) {
-        console.warn("[meta-page-connect] user token persist failed", e);
       }
 
       // Never store a Page token that cannot read posts/comments: without
@@ -762,11 +777,6 @@ Deno.serve(async (req) => {
       }
 
 
-      const pagesRes = await graph(
-        `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${
-          encodeURIComponent(userToken)
-        }`,
-      );
       const pages: any[] = Array.isArray(pagesRes.payload?.data) ? pagesRes.payload.data : [];
       if (!pagesRes.ok || pages.length === 0) {
         const detail = logGraphFailure("list_pages", pagesRes.payload);
@@ -790,6 +800,7 @@ Deno.serve(async (req) => {
           400,
         );
       }
+
 
 
       const selectable = pages.filter((p) => !isBlockedPage(p) && p?.access_token);
