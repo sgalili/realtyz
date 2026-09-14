@@ -36,7 +36,7 @@ import * as XLSX from 'xlsx';
 import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
-import { BROKER_RECRUITMENT_MODE } from '@/config/workspaceMode';
+import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import { renderBrokerFirstOutreach, BROKER_WA_TEMPLATE_NAME } from '@/lib/brokerOutreachTemplates';
 import { resolveLeadGender } from '@/lib/hebrewGender';
@@ -501,6 +501,7 @@ function EditableInlineText({
 
 const LeadCRM = () => {
   const { user } = useAuth();
+  const { recruitmentMode } = useWorkspaceFeatures();
   const activeWorkspaceId = useActiveWorkspaceOwnerId();
 
   /**
@@ -1892,7 +1893,7 @@ const LeadCRM = () => {
               <Users className="h-3.5 w-3.5" /> {selectedIds.size} נבחרו
             </Badge>
             <Separator orientation="vertical" className="h-6" />
-            {BROKER_RECRUITMENT_MODE && (
+            {recruitmentMode && (
               <Button
                 size="sm"
                 className="gap-1.5 h-8 rounded-md px-3 text-sm font-medium bg-green-600 hover:bg-green-700 text-white border-0 shadow-none disabled:opacity-100 disabled:bg-green-600 disabled:cursor-wait"

@@ -20,7 +20,7 @@ import { lazyWithRetry as lazy } from "@/lib/lazyWithRetry";
 import { RealtyzLoader } from "@/components/RealtyzLoader";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
-import { LISTINGS_ENABLED } from "@/config/workspaceMode";
+import { useWorkspaceFeatures } from "@/hooks/useWorkspaceFeatures";
 import { applyPendingSignupRole } from '@/lib/signupRole';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
@@ -237,6 +237,29 @@ function WorkspaceScope({ children }: { children: React.ReactNode }) {
   return <React.Fragment key={activeWorkspaceId ?? 'no-workspace'}>{children}</React.Fragment>;
 }
 
+/**
+ * Route guards that follow the ACTIVE workspace. Rita's marketing workspace
+ * has no properties, deal room or partner network, so those routes bounce to
+ * the CRM there while staying fully available in every other workspace.
+ */
+function ListingsRoute({ children }: { children: React.ReactNode }) {
+  const { listingsEnabled } = useWorkspaceFeatures();
+  if (!listingsEnabled) return <Navigate to="/lead-crm" replace />;
+  return <>{children}</>;
+}
+
+function DealsRoute({ children }: { children: React.ReactNode }) {
+  const { dealsEnabled } = useWorkspaceFeatures();
+  if (!dealsEnabled) return <Navigate to="/lead-crm" replace />;
+  return <>{children}</>;
+}
+
+function PartnersRoute({ children }: { children: React.ReactNode }) {
+  const { partnersEnabled } = useWorkspaceFeatures();
+  if (!partnersEnabled) return <Navigate to="/lead-crm" replace />;
+  return <>{children}</>;
+}
+
 function AuthRoute() {
   const { user, loading } = useAuth();
   if (loading) return (
@@ -288,27 +311,17 @@ const App = () => (
               <Route path="/lead-crm/:leadId" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/communication" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
-              <Route path="/deal-room" element={<ProtectedRoute allowGuestDemo><DealRoom /></ProtectedRoute>} />
-              {LISTINGS_ENABLED ? (
-                <>
-                  <Route path="/properties" element={<ProtectedRoute allowGuestDemo><Properties /></ProtectedRoute>} />
-                  <Route path="/properties-hub" element={<ProtectedRoute allowGuestDemo><PropertiesHub /></ProtectedRoute>} />
-                  <Route path="/properties/:id" element={<ProtectedRoute allowGuestDemo><PropertyDetail /></ProtectedRoute>} />
-                </>
-              ) : (
-                <>
-                  <Route path="/properties" element={<Navigate to="/lead-crm" replace />} />
-                  <Route path="/properties-hub" element={<Navigate to="/lead-crm" replace />} />
-                  <Route path="/properties/:id" element={<Navigate to="/lead-crm" replace />} />
-                </>
-              )}
+              <Route path="/deal-room" element={<DealsRoute><ProtectedRoute allowGuestDemo><DealRoom /></ProtectedRoute></DealsRoute>} />
+              <Route path="/properties" element={<ListingsRoute><ProtectedRoute allowGuestDemo><Properties /></ProtectedRoute></ListingsRoute>} />
+              <Route path="/properties-hub" element={<ListingsRoute><ProtectedRoute allowGuestDemo><PropertiesHub /></ProtectedRoute></ListingsRoute>} />
+              <Route path="/properties/:id" element={<ListingsRoute><ProtectedRoute allowGuestDemo><PropertyDetail /></ProtectedRoute></ListingsRoute>} />
               <Route path="/crm/profile/:id" element={<ProtectedRoute><CrmProfile /></ProtectedRoute>} />
 
               <Route path="/automations" element={<ProtectedRoute allowGuestDemo><AutomationStudioPage /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
               <Route path="/affiliate" element={<ProtectedRoute><AffiliatePortal /></ProtectedRoute>} />
-              <Route path="/affiliate-network" element={<ProtectedRoute><AffiliateNetwork /></ProtectedRoute>} />
+              <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
               <Route path="/referral" element={<ProtectedRoute><PartnerNetwork /></ProtectedRoute>} />
 
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />

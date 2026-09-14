@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Activity,
   Users,
@@ -33,7 +34,8 @@ import { SidebarIntelInput } from '@/components/SidebarIntelInput';
 import { useSidebarCounts } from '@/hooks/useSidebarCounts';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
-import { LISTINGS_ENABLED } from '@/config/workspaceMode';
+import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
+import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
 import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
 
 
@@ -79,16 +81,14 @@ const NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
     aliases: ['/crm', '/leads'],
   },
-  ...(LISTINGS_ENABLED
-    ? [{
-        title: 'נכסים',
-        url: '/properties',
-        icon: Building2,
-        iconColor: 'text-amber-500',
-        badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
-        aliases: ['/property', '/listings'],
-      } as NavItem]
-    : []),
+  {
+    title: 'נכסים',
+    url: '/properties',
+    icon: Building2,
+    iconColor: 'text-amber-500',
+    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
+    aliases: ['/property', '/listings'],
+  },
   {
     title: 'צ׳אטים',
     url: '/inbox',
@@ -131,8 +131,15 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
 
-  // Every workspace uses the same acquisition-focused navigation as Rita's workspace.
-  const navItems = NAV_ITEMS.filter((item) => item.url !== '/deal-room' && item.url !== '/affiliate-network');
+  // Navigation follows the ACTIVE workspace: Rita's marketing workspace hides
+  // properties, deals and partners; every other workspace shows them all.
+  const features = useWorkspaceFeatures();
+  const navItems = useMemo(() => NAV_ITEMS.filter((item) => {
+    if (item.url === '/properties') return features.listingsEnabled;
+    if (item.url === '/deal-room') return features.dealsEnabled;
+    if (item.url === '/affiliate-network') return features.partnersEnabled;
+    return true;
+  }), [features]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
@@ -186,6 +193,14 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               <div onClick={(e) => e.stopPropagation()}>
                 <WorkspaceSwitcher />
               </div>
+
+              {/* Broker/partner toggle: hidden only in Rita's marketing workspace. */}
+              {features.modeSwitcherEnabled && (
+                <div className="mt-2 flex justify-center" onClick={(e) => e.stopPropagation()}>
+                  <AppModeSwitcher />
+                </div>
+              )}
+
 
 
               <div className="mt-2 flex items-center gap-2">

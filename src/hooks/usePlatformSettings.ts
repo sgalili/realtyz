@@ -2,7 +2,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { LISTINGS_ENABLED } from '@/config/workspaceMode';
+import { workspaceFeatures } from '@/config/workspaceMode';
 
 export interface PlatformSettings {
   enable_auto_followups: boolean;
@@ -25,9 +25,9 @@ const DEFAULTS: PlatformSettings = {
   enable_broker_referrals: true,
   enable_ai_autopilot: false,
   enable_voice_calls: false,
-  // Listing management is off in broker-recruitment mode.
-  enable_featured_listings: LISTINGS_ENABLED,
-  enable_pending_extraction: LISTINGS_ENABLED,
+  // Overridden per active workspace below: off in Rita's recruitment workspace.
+  enable_featured_listings: true,
+  enable_pending_extraction: true,
   ai_paused: false,
   ai_paused_reason: null,
   ai_paused_at: null,
@@ -77,8 +77,16 @@ export function usePlatformSettings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['platform-settings', targetUserId] }),
   });
 
+  // Listing features follow the ACTIVE workspace: hidden in Rita's marketing
+  // workspace, fully available in every broker or affiliate workspace.
+  const features = workspaceFeatures(activeOwnerId);
+  const resolved = query.data ?? { ...DEFAULTS, ...(cached ?? {}) };
+  const settings: PlatformSettings = features.listingsEnabled
+    ? resolved
+    : { ...resolved, enable_featured_listings: false, enable_pending_extraction: false };
+
   return {
-    settings: query.data ?? { ...DEFAULTS, ...(cached ?? {}) },
+    settings,
     isLoading: query.isLoading,
     update: update.mutateAsync,
     isUpdating: update.isPending,
