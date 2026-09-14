@@ -12,6 +12,7 @@ import { CalendarSyncCard } from '@/components/profile/CalendarSyncCard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
 import { useFacebookHealth } from '@/hooks/useFacebookHealth';
+import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
 import { WorkspaceSmsCard } from '@/components/profile/WorkspaceSmsCard';
 import { GoogleApiCredentialsCard } from '@/components/profile/GoogleApiCredentialsCard';
@@ -130,6 +131,7 @@ export function ConnectionsTab() {
   const [greenPhone, setGreenPhone] = useState<string | null>(null);
   const [voicePhone, setVoicePhone] = useState<string | null>(null);
   const { data: fbHealth, isPending: fbHealthPending } = useFacebookHealth();
+  const { data: fbBinding, isPending: fbBindingPending } = useMetaPageBinding();
   // Facebook / Instagram, WBA, Green API and Yad2 are account-level: connected
   // once, active in every workspace of this user.
   const { data: account } = useAccountIntegrations();
