@@ -83,6 +83,7 @@ function ConnectionSection({
         <span className="flex min-w-0 items-center gap-2">
           <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
           <span className="truncate text-sm font-semibold">{title}</span>
+          {titleAside}
         </span>
         {headerAside ?? <StatusPill label={status} tone={tone} />}
       </button>
