@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
     if (listing_id) {
       const { data } = await admin
         .from("listings")
-        .select("property_title, description, asking_price, address, city, rooms, floor, deal_type, owner_name")
+        .select("property_title, description, asking_price, address, city, rooms, floor, deal_type")
         .eq("id", listing_id)
         .maybeSingle();
       if (data) listing = data;
@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
       listing.property_title || lead.interest_tag || "—";
 
     const property: AgreementProperty = {
-      ownerName: listing.owner_name || "—",
+      ownerName: listing.property_title || "—",
       address: propertyAddress,
       kind: "דירה",
       block: "—",
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
     const leadName = lead.full_name || lead.phone_number || "לקוח";
     const brokerName = brokerProfile?.full_name || userEmail.split("@")[0] || "המתווך";
 
-    const noteParts = [terms?.trim(), tour_date ? `סיור מתוכם בנכס: ${tour_date}` : ""].filter(Boolean);
+    const noteParts = [terms?.trim(), tour_date ? `סיור מתוכנן בנכס: ${tour_date}` : ""].filter(Boolean);
 
     const pdfBytes = await buildBrokerageAgreementPdf({
       dealType,
