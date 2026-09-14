@@ -276,24 +276,6 @@ const Auth = () => {
     <div
       className="auth-gradient-shell min-h-screen relative flex flex-col overflow-hidden bg-background px-4 py-8"
     >
-      {/* Top header bar with auth-only rotating headline */}
-      <div className="absolute inset-x-0 top-0 z-20 h-7 bg-background" dir="rtl">
-        <div className="absolute right-4 left-4 top-[calc(50%+5px)] -translate-y-1/2 overflow-hidden text-center">
-          <div className="auth-header-ticker" aria-live="polite">
-            {AUTH_HEADER_HEADLINES.map((line, index) => (
-              <span
-                key={line.key}
-                className={cn(
-                  'auth-header-ticker-line absolute inset-0 flex items-center justify-center gap-1 transition-opacity duration-[900ms] ease-in-out',
-                  index === headerHeadlineIndex ? 'opacity-100' : 'opacity-0',
-                )}
-              >
-                {line.render()}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
       {codeSent && !isGoogleFlow && (
         <button type="button" aria-label="חזרה להתחברות" className="absolute right-4 top-16 z-20 border-0 bg-transparent p-0 text-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
           <ArrowRight className="h-10 w-10" />
@@ -307,7 +289,19 @@ const Auth = () => {
             alt="Realtyz AI"
             className="auth-official-logo mx-auto mb-4 h-[3.6rem] w-auto object-contain"
           />
-          <p className="auth-official-slogan">כלי העבודה היחיד שכל מתווך חייב בעידן ה AI.</p>
+          <div className="auth-header-ticker mx-auto" aria-live="polite">
+            {AUTH_HEADER_HEADLINES.map((line, index) => (
+              <span
+                key={line.key}
+                className={cn(
+                  'auth-header-ticker-line absolute inset-0 flex items-center justify-center gap-1 transition-opacity duration-[900ms] ease-in-out',
+                  index === headerHeadlineIndex ? 'opacity-100' : 'opacity-0',
+                )}
+              >
+                {line.render()}
+              </span>
+            ))}
+          </div>
         </div>
 
         {!codeSent && <h1 className="auth-login-title">הרשמה/התחברות</h1>}
