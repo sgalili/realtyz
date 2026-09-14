@@ -553,7 +553,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
         {isConnected && (
           <div className="space-y-2 rounded-xl border p-3">
-            <p className="text-[13px] font-semibold">חשבונות ועמודים מחוברים בסביבת העבודה</p>
+            <p className="text-[13px] font-semibold">{"\n"}</p>
             {bindings.length > 1 && (
               <p className="text-[12px] text-muted-foreground">בחרו את עמוד ברירת המחדל לפרסום, או נתקו כל עמוד בנפרד.</p>
             )}
