@@ -227,6 +227,16 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
 }
 
+/**
+ * Remounts the whole app tree when the active workspace changes, so sidebar,
+ * dashboards, toggles and every tenant-scoped screen rebuild from scratch
+ * instead of lingering on the previous workspace's state.
+ */
+function WorkspaceScope({ children }: { children: React.ReactNode }) {
+  const { activeWorkspaceId } = useWorkspace();
+  return <React.Fragment key={activeWorkspaceId ?? 'no-workspace'}>{children}</React.Fragment>;
+}
+
 function AuthRoute() {
   const { user, loading } = useAuth();
   if (loading) return (

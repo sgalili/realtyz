@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { writeAppMode } from '@/hooks/useAppMode';
 
 export type Workspace = {
   workspace_owner_id: string;
