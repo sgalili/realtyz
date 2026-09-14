@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Settings2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,7 +16,8 @@ import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
 import { WorkspaceSmsCard } from '@/components/profile/WorkspaceSmsCard';
 import { GoogleApiCredentialsCard } from '@/components/profile/GoogleApiCredentialsCard';
-import { GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
+import { GoogleBrandGlyph, GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
+import { Button } from '@/components/ui/button';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAccountIntegrations } from '@/hooks/useAccountIntegrations';
 import {
@@ -59,6 +60,7 @@ function ConnectionSection({
   open,
   onToggle,
   children,
+  headerAside,
 }: {
   title: string;
   status: string;
@@ -66,6 +68,7 @@ function ConnectionSection({
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
+  headerAside?: ReactNode;
 }) {
   return (
     <div dir="rtl" className="rounded-xl border bg-card text-right shadow-sm">
@@ -79,7 +82,7 @@ function ConnectionSection({
           <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
           <span className="truncate text-sm font-semibold">{title}</span>
         </span>
-        <StatusPill label={status} tone={tone} />
+        {headerAside ?? <StatusPill label={status} tone={tone} />}
       </button>
       {open && (
         <div
@@ -130,6 +133,7 @@ export function ConnectionsTab() {
   const [waPhone, setWaPhone] = useState<string | null>(null);
   const [greenPhone, setGreenPhone] = useState<string | null>(null);
   const [voicePhone, setVoicePhone] = useState<string | null>(null);
+  const [googleAdvancedOpen, setGoogleAdvancedOpen] = useState(false);
   const { data: fbHealth, isPending: fbHealthPending } = useFacebookHealth();
   const { data: fbBinding, isPending: fbBindingPending } = useMetaPageBinding();
   // Facebook / Instagram, WBA, Green API and Yad2 are account-level: connected
@@ -264,7 +268,20 @@ export function ConnectionsTab() {
 
   const [sms019Sender, setSms019Sender] = useState<string | null>(null);
 
-  const sections: Array<{ id: string; title: string; status: string; tone: Tone; node: ReactNode }> = [
+  const googleHeader = (
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="flex items-center gap-1.5" aria-label="שירותי Google">
+        <GoogleBrandGlyph brand="gmail" connected={connectedGoogle.has('gmail') || isRememberedConnected('gmail', activeWorkspaceId)} />
+        <GoogleBrandGlyph brand="calendar" connected={connectedGoogle.has('google_calendar') || isRememberedConnected('google_calendar', activeWorkspaceId)} />
+        <GoogleBrandGlyph brand="youtube" connected={connectedGoogle.has('youtube') || isRememberedConnected('youtube', activeWorkspaceId)} />
+      </div>
+      <span className="max-w-[170px] truncate text-[13px] font-semibold text-foreground/70" dir="ltr">
+        {googleAccount ?? 'לא מחובר'}
+      </span>
+    </div>
+  );
+
+  const sections: Array<{ id: string; title: string; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode }> = [
     {
       id: 'meta',
       title: 'פייסבוק / אינסטגרם',
@@ -347,11 +364,28 @@ export function ConnectionsTab() {
           />
           {isSuperAdmin && (
             <section className="border-t pt-3">
-              <GoogleApiCredentialsCard />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-2 px-1 text-xs text-muted-foreground"
+                aria-expanded={googleAdvancedOpen}
+                onClick={() => setGoogleAdvancedOpen((open) => !open)}
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+                הגדרות גוגל למתקדמים
+                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', googleAdvancedOpen && 'rotate-180')} />
+              </Button>
+              {googleAdvancedOpen && (
+                <div className="mt-3">
+                  <GoogleApiCredentialsCard />
+                </div>
+              )}
             </section>
           )}
         </div>
       ),
+      headerAside: googleHeader,
 
     },
     // The 019 SMS gateway is a PLATFORM service: every workspace sends OTP/SMS
@@ -392,6 +426,7 @@ export function ConnectionsTab() {
           tone={s.tone}
           open={openId === s.id}
           onToggle={() => toggle(s.id)}
+          headerAside={s.headerAside}
         >
           {s.node}
         </ConnectionSection>
