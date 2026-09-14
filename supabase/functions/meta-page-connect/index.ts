@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
           error: "פג תוקף חיבור הפייסבוק. חזרו למערכת ולחצו שוב על חיבור עמוד הפייסבוק.",
           stage: "callback_state",
         },
-        401,
+        action === "exchange" ? 200 : 401,
       );
     }
 
@@ -688,7 +688,7 @@ Deno.serve(async (req) => {
       // fragment instead of a code (e.g. "Continue as ..." on an existing grant).
       const suppliedToken = String(body?.user_access_token ?? "").trim();
       if (!suppliedToken && !code) {
-        return json({ error: "code or user_access_token is required" }, 400);
+        return json({ error: "לא התקבל קוד אימות מפייסבוק. יש לנסות להתחבר שוב.", stage: "missing_code" }, 200);
       }
       console.log(
         "[meta-page-connect] exchange redirect_uri received =",
@@ -701,7 +701,6 @@ Deno.serve(async (req) => {
 
       let userToken = suppliedToken;
       if (!userToken) {
-        if (!clientSecret) return json({ error: "פייסבוק לא מוגדר: חסר App Secret." }, 400);
         const tokenRes = await graph(
           `/oauth/access_token?${new URLSearchParams({
             client_id: clientId,
@@ -718,7 +717,7 @@ Deno.serve(async (req) => {
             fb_message: detail.message,
             stage: "code_exchange",
             redirect_uri_used: CANONICAL_REDIRECT_URI,
-          }, 400);
+          }, 200);
         }
         userToken = String(tokenRes.payload.access_token);
       }
@@ -806,7 +805,7 @@ Deno.serve(async (req) => {
             granted_scopes: grantedScopes,
             retry_basic: true,
           },
-          400,
+          200,
         );
       }
 
@@ -831,7 +830,7 @@ Deno.serve(async (req) => {
             retry_basic: permissionBlocked,
             pages: [],
           },
-          400,
+          200,
         );
       }
 
@@ -891,7 +890,7 @@ Deno.serve(async (req) => {
       }
       if (upsertErr) {
         console.error("[meta-page-connect] upsert failed", upsertErr);
-        return json({ error: upsertErr.message }, 500);
+        return json({ error: `שמירת חיבור העמוד נכשלה: ${upsertErr.message}`, stage: "db_save" }, 200);
       }
 
 
@@ -1065,7 +1064,10 @@ Deno.serve(async (req) => {
     return json({ error: "unknown_action" }, 400);
 
   } catch (e) {
-    console.error("[meta-page-connect] fatal", e);
-    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
+    const msg = e instanceof Error ? `${e.message}` : String(e);
+    console.error("[meta-page-connect] fatal", msg, e instanceof Error ? e.stack : "");
+    // Descriptive 200 body: a 500 would reach the browser as the opaque
+    // "Edge Function returned a non-2xx status code".
+    return json({ error: `החיבור לפייסבוק נכשל: ${msg}`, stage: "fatal" }, 200);
   }
 });
