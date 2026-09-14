@@ -403,6 +403,14 @@ export default function OAuthCallback() {
             </Button>
           </div>
         )}
+        {!showFallback && isSlow && !success && (
+          <div className="mt-2 flex items-center justify-center">
+            <Button onClick={returnToApp} variant="outline" size="sm">
+              חזרה למערכת
+            </Button>
+          </div>
+        )}
+
       </div>
     </div>
   );
