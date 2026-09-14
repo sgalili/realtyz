@@ -4602,10 +4602,13 @@ const PublishedFeed = ({
     // DB-first: read the persisted campaign_logs feed BEFORE any Meta
     // import. This is the whole point of the cache — the user should see
     // instantly whatever was previously stored, never waiting on the provider.
+    // STRICT tenant scope: the active workspace owner only. Scoping by member
+    // user ids leaked posts from a broker's own workspace into every workspace
+    // they are a member of.
     const { data } = await supabase
       .from('campaign_logs')
       .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids')
-      .in('user_id', scopedUserIds)
+      .eq('workspace_owner_id', ownerScope)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
       .limit(1000);
