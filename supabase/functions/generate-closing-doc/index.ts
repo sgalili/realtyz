@@ -33,6 +33,9 @@ const BodySchema = z.object({
   terms: z.string().max(4000).optional(),
   price_override: z.number().positive().optional(),
   tour_date: z.string().max(40).optional(),
+  // Client ID number captured in the signature form; persisted onto the CRM
+  // contact so future documents reuse it.
+  identity_number: z.string().max(20).optional(),
 });
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -176,7 +179,7 @@ Deno.serve(async (req) => {
       },
       client: {
         name: leadName,
-        identityNumber: lead.identity_number || "—",
+        identityNumber: identityNumber || "—",
         phone: lead.phone_number || "",
         address: [lead.address, lead.city].filter(Boolean).join(" ") || "—",
         email: lead.email || "—",
