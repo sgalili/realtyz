@@ -905,7 +905,7 @@ async function handleRequest(req: Request): Promise<Response> {
           .catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
         graph(`/me/permissions?access_token=${encodeURIComponent(userToken)}`)
           .catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
-        discoverPages(userToken)
+        discoverPages(userToken, { clientId, clientSecret })
           .catch((e) => ({ pages: [], ok: false, lastPayload: { error: { message: String(e) } } } as any)),
       ]);
       const pagesRes = { ok: discovered.ok, payload: discovered.lastPayload ?? { data: discovered.pages } } as any;
@@ -1109,7 +1109,7 @@ async function handleRequest(req: Request): Promise<Response> {
           // 200 so the client can read the message instead of a bare non-2xx.
           return json({ ok: false, error: "לא נמצא טוקן משתמש שמור. יש להתחבר מחדש לפייסבוק.", stage: "user_token" }, 200);
         }
-        const listed = await discoverPages(userToken);
+        const listed = await discoverPages(userToken, { clientId, clientSecret });
         const list: any[] = listed.pages;
         if (!listed.ok && list.length === 0) {
           const detail = logGraphFailure("list_pages", listed.lastPayload);
