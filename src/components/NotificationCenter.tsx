@@ -508,3 +508,36 @@ export default function NotificationCenter() {
     </Popover>
   );
 }
+
+/**
+ * One notification row: a clickable body plus an always-available trash button
+ * that removes just this notification (persisted in the database).
+ */
+function NotifRow({
+  unread,
+  onDelete,
+  children,
+}: {
+  unread: boolean;
+  onDelete: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`flex items-start gap-1 border-b border-border/30 px-3 py-3 transition-colors hover:bg-muted/50 ${
+        unread ? 'bg-primary/5' : ''
+      }`}
+    >
+      {children}
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="מחיקת ההתראה"
+        onClick={onDelete}
+        className="h-7 w-7 shrink-0 text-muted-foreground/60 hover:bg-destructive/10 hover:text-destructive"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+}
