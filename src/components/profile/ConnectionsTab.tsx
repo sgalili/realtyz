@@ -23,7 +23,6 @@ import { useAccountIntegrations } from '@/hooks/useAccountIntegrations';
 import {
   isRememberedConnected,
   rememberConnected,
-  rememberedLabel,
   type StickyService,
 } from '@/lib/connectionStatusCache';
 
