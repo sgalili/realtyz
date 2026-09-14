@@ -110,10 +110,10 @@ export function GoogleServiceConnectCard({
   // A connected service stays connected in the UI until the broker disconnects
   // it explicitly — a pending query or a transient failure never flips it back.
   useEffect(() => {
-    if (liveConnected) rememberConnected(platform, null, identity?.email ?? identity?.name ?? null);
-  }, [liveConnected, platform, identity?.email, identity?.name]);
+    if (liveConnected) rememberConnected(platform, null, credEmail);
+  }, [liveConnected, platform, credEmail]);
   const connected = liveConnected || isRememberedConnected(platform);
-  const accountLabel = identity?.email ?? rememberedLabel(platform);
+  const accountLabel = credEmail ?? rememberedLabel(platform);
 
   /** Explicit, user-initiated disconnect — the only way to clear the status. */
   const disconnect = async () => {
