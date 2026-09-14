@@ -1144,6 +1144,7 @@ async function handleLeadInboxInbound(
       history: aiMessages,
       contextBlock,
       recruitment: recruitmentMode,
+      staff: staffSender ? { role: staffSender.label, name: staffSender.displayName } : null,
     });
     if (fast.text) {
       reply = sanitizeAiReply(fast.text);
@@ -1227,6 +1228,7 @@ async function handleLeadInboxInbound(
       inboundText,
       history: aiMessages,
       recruitment: recruitmentMode,
+      staff: staffSender ? { role: staffSender.label, name: staffSender.displayName } : null,
     });
     if (rescue.text) {
       reply = sanitizeAiReply(rescue.text);
