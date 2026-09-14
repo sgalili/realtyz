@@ -229,16 +229,22 @@ export function ConnectionsTab() {
   // Collapsed header badge reads the exact same shared state as the expanded
   // card badge and the global banner. Facebook / Instagram are strictly
   // workspace-scoped: never fall back to another workspace's binding.
-  const fbLive = !!(fbHealth?.pageConnected || meta?.connected);
+  // The saved DB page binding is read here too, so the COLLAPSED header shows
+  // "מחובר" without waiting for the card to mount and probe Graph.
+  const fbLive = !!(
+    fbHealth?.pageConnected
+    || meta?.connected
+    || (fbBinding?.pageId && fbBinding?.hasToken)
+  );
   useEffect(() => {
     if (fbLive) rememberConnected('facebook', activeWorkspaceId, null);
   }, [fbLive, activeWorkspaceId]);
   const fbConnected = fbLive || isRememberedConnected('facebook', activeWorkspaceId);
   const metaStatus: [string, Tone] = fbConnected
     ? ['מחובר', 'ok']
-    : fbHealthPending && !meta
+    : (fbHealthPending || fbBindingPending) && !meta
       ? ['בודק חיבור…', 'idle']
-      : ['מנותק', 'idle'];
+      : ['לא מחובר', 'idle'];
 
   // WhatsApp / Yad2 stay account-level: connected once, live in every workspace.
   const officialPhone = waPhone ?? account?.waPhone ?? null;
