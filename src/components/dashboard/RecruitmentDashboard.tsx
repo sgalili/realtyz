@@ -210,61 +210,16 @@ export function RecruitmentDashboard() {
       </CollapsibleSection>
 
       <CollapsibleSection
-        id="rita-signups-and-replies"
-        title="הרשמות ותגובות"
-        description="מתווכים שהשאירו פרטים ותגובות אחרונות"
-        icon={<UserPlus className="h-4 w-4 text-primary" />}
+        id="rita-replies"
+        title="תקשורת אחרונה"
+        description="הודעות אחרונות בכל הערוצים. הפניות וההדגמות מנוהלות בעמוד המשימות"
+        icon={<MessageCircle className="h-4 w-4 text-primary" />}
       >
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <UserPlus className="h-4 w-4 text-primary" />
-                הרשמות אחרונות
-              </CardTitle>
-              <CardDescription>מתווכים שביקשו הדגמה או הרשמה לאפליקציה</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!recentSignups ? (
-                <Skeleton className="h-[220px] w-full" />
-              ) : recentSignups.length === 0 ? (
-                <p className="py-10 text-center text-sm text-muted-foreground">
-                  עדיין אין הרשמות. כל בקשת הדגמה חדשה תופיע כאן.
-                </p>
-              ) : (
-                <div className="max-h-[280px] space-y-2 overflow-y-auto pe-1">
-                  {recentSignups.map((row) => {
-                    const linkedLead = Array.isArray(row.lead) ? row.lead[0] : row.lead;
-                    const name = linkedLead?.full_name || [row.first_name, row.last_name].filter(Boolean).join(' ') || 'מתווך חדש';
-                    return (
-                    <button
-                      key={row.id}
-                      type="button"
-                      disabled={!row.lead_id}
-                      onClick={() => {
-                        if (!row.lead_id) return;
-                        void hydrateAvatar(row.lead_id);
-                        navigate(`/lead-crm/${row.lead_id}`);
-                      }}
-                      className="flex w-full items-start gap-3 rounded-lg border border-border/40 p-2.5 text-right transition-colors hover:bg-muted/30 disabled:cursor-default"
-                    >
-                      <VoterAvatar fullName={name} profilePictureUrl={linkedLead?.profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{name}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">
-                          {row.notes || formatPhoneDisplay(row.phone) || 'בקשת הדגמה'}
-                        </p>
-                      </div>
-                      <span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground">
-                        {formatDistanceToNow(new Date(row.created_at), { addSuffix: true, locale: he })}
-                      </span>
-                    </button>
-                  )})}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
+        <div className="space-y-3">
+          <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/command-center')}>
+            <UserPlus className="me-2 h-4 w-4 text-primary" />
+            פניות חדשות והדגמות מתוזמנות
+          </Button>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
