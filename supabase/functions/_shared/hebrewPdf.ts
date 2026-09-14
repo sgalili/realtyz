@@ -50,6 +50,17 @@ export async function useHebrewFont(doc: any): Promise<void> {
   doc.addFont("DejaVuSans-Bold.ttf", HE_FONT, "bold");
   doc.setFont(HE_FONT, "normal");
   doc.setLanguage?.("he");
+
+  // jsPDF runs its own bidi pass on every text() call, which re-orders the
+  // strings we already laid out visually (digit runs came out mirrored:
+  // 3251767 -> 7671523). Forcing isOutputVisual tells jsPDF the string is
+  // already in visual order, so it draws our glyphs untouched.
+  if (!doc.__heTextPatched) {
+    const nativeText = doc.text.bind(doc);
+    doc.text = (text: any, x: any, y: any, options: any = {}, ...rest: any[]) =>
+      nativeText(text, x, y, { ...options, isOutputVisual: true }, ...rest);
+    doc.__heTextPatched = true;
+  }
 }
 
 const MIRROR: Record<string, string> = {
