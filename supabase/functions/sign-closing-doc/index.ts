@@ -203,6 +203,129 @@ Deno.serve(async (req) => {
         console.error("sign-closing-doc timeline log failed", e);
       }
 
+      // ── Signed tour agreements become a real tour, a calendar event and an
+      // instant WhatsApp confirmation from Rita. Every step is best-effort:
+      // a failure here must never break the client's signing experience.
+      try {
+        const fields = (doc.fields ?? {}) as Record<string, any>;
+        const rawTour = fields.tour_date ? String(fields.tour_date) : "";
+        const tourStart = rawTour ? new Date(rawTour) : null;
+        const tourValid = tourStart && !Number.isNaN(tourStart.getTime());
+
+        const { data: leadRow } = await admin
+          .from("leads")
+          .select("id, full_name, phone_number, email, workspace_owner_id")
+          .eq("id", doc.lead_id)
+          .maybeSingle();
+
+        const ownerId = String(
+          (doc as any).workspace_owner_id ??
+            (leadRow as any)?.workspace_owner_id ??
+            doc.user_id,
+        );
+        const clientName = signer_name || (leadRow as any)?.full_name || "לקוח";
+        const address = String(fields.property_address ?? "") || null;
+
+        if (tourValid && doc.template_key === "tour_agreement") {
+          // Link the signature to a property tour (update the matching pending
+          // tour when one already exists, otherwise create it).
+          const startIso = tourStart!.toISOString();
+          const { data: existing } = await admin
+            .from("property_tours")
+            .select("id")
+            .eq("owner_id", ownerId)
+            .eq("scheduled_at", startIso)
+            .eq("client_phone", String((leadRow as any)?.phone_number ?? ""))
+            .maybeSingle();
+
+          const tourPayload = {
+            owner_id: ownerId,
+            listing_id: (doc as any).listing_id ?? null,
+            client_name: clientName,
+            client_phone: String((leadRow as any)?.phone_number ?? "") || "—",
+            client_email: (leadRow as any)?.email ?? null,
+            scheduled_at: startIso,
+            timezone: "Asia/Jerusalem",
+            property_address: address,
+            status: "confirmed",
+            notes: `נחתם הסכם סיור בנכס: ${doc.title}`,
+            metadata: {
+              lead_id: doc.lead_id,
+              document_id: doc.id,
+              signed_at: nowIso,
+              signer_name: clientName,
+            },
+          };
+          const tourId = (existing as any)?.id;
+          if (tourId) {
+            await admin.from("property_tours").update(tourPayload).eq("id", tourId);
+          } else {
+            await admin.from("property_tours").insert(tourPayload);
+          }
+
+          // Google Calendar sync for the broker who owns the workspace.
+          try {
+            const token = await getFreshAccessToken(admin, ownerId);
+            if (!("error" in token)) {
+              const end = new Date(tourStart!.getTime() + 45 * 60_000);
+              await createCalendarEvent({
+                accessToken: token.accessToken,
+                calendarId: token.calendarId,
+                timezone: token.timezone,
+                summary: `סיור בנכס — ${clientName}`,
+                description: `הסכם סיור נחתם דיגיטלית.\n${doc.title}`,
+                startISO: tourStart!.toISOString(),
+                endISO: end.toISOString(),
+                location: address ?? undefined,
+              });
+            }
+          } catch (e) {
+            console.error("sign-closing-doc calendar sync failed", e);
+          }
+        }
+
+        // Immediate WhatsApp confirmation in Rita's voice.
+        if ((leadRow as any)?.phone_number) {
+          const when = tourValid
+            ? new Intl.DateTimeFormat("he-IL", {
+              weekday: "long",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "Asia/Jerusalem",
+            }).format(tourStart!)
+            : null;
+          const lines = [
+            `תודה ${clientName}, קיבלתי את החתימה שלך על ${doc.title}.`,
+            address && when
+              ? `נתראה ב${address} ב-${when}.`
+              : address
+                ? `נתראה ב${address}.`
+                : null,
+            "אני כאן לכל שאלה עד אז.",
+          ].filter(Boolean);
+          await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SERVICE_ROLE}`,
+              apikey: SERVICE_ROLE,
+            },
+            body: JSON.stringify({
+              lead_id: doc.lead_id,
+              message: lines.join("\n"),
+              override_user_id: doc.user_id,
+            }),
+          }).catch(() => {});
+        }
+      } catch (e) {
+        console.error("sign-closing-doc post-signature automation failed", e);
+      }
+
+
+
 
       // Notify the agent
       try {
