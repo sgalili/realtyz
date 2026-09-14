@@ -21,7 +21,8 @@ import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 import { purgeCachedPostsForPage } from '@/lib/campaignFeedCache';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 
-import { forgetConnected } from '@/lib/connectionStatusCache';
+import { forgetConnected, rememberConnected } from '@/lib/connectionStatusCache';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import {
   callMetaPageConnect as callPageConnect,
   startMetaPageConnect,
@@ -70,6 +71,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
  * shows the live publishing status for direct Meta Graph publishing.
  */
 export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: (s: MetaStatus | null) => void }>(function MetaDirectConnectionCard({ onStatus }, ref) {
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [status, setStatus] = useState<MetaStatus | null>(null);
   const [page, setPage] = useState<PageStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -379,7 +381,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     if (disconnecting) return;
     setDisconnecting(true);
     disconnectedRef.current = true;
-    forgetConnected('facebook');
+    forgetConnected('facebook', workspaceOwnerId);
     // Optimistic atomic wipe: all badges and cached names disappear on the
     // click, while the backend performs the definitive credential deletion.
     setPage({ connected: false, page: null });
@@ -456,6 +458,16 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     ? false
     : !!health?.pageConnected || !!page?.connected || !!(binding?.hasToken && binding?.pageId);
 
+  useEffect(() => {
+    if (!isConnected) return;
+    rememberConnected('facebook', workspaceOwnerId, pageName);
+    onStatus?.({
+      connected: true,
+      facebook: { id: binding?.pageId ?? health?.pageId ?? page?.page?.id ?? '', name: pageName },
+      instagram: health?.instagram ?? page?.instagram ?? null,
+    });
+  }, [isConnected, workspaceOwnerId, pageName, binding?.pageId, health?.pageId, health?.instagram, page?.page?.id, page?.instagram, onStatus]);
+
 
   // MULTI-ACCOUNT: every Page bound to THIS workspace (strictly isolated).
   const loadBindings = useCallback(async () => {
@@ -500,7 +512,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (!res?.ok) throw new Error(res?.error || 'ניתוק העמוד נכשל');
       purgeCachedPostsForPage(pageId);
       if (Number(res?.remaining ?? 0) === 0) {
-        forgetConnected('facebook');
+        forgetConnected('facebook', workspaceOwnerId);
         await resetHealth();
         setPage({ connected: false, page: null });
         setStatus(null);

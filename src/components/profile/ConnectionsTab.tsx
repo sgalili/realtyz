@@ -216,6 +216,15 @@ export function ConnectionsTab() {
   }, [googleConns, activeWorkspaceId]);
   const liveGoogle = (googleConns ?? []).filter((c) => c.is_connected);
   const connectedGoogle = new Set(liveGoogle.map((c) => c.platform));
+  const googleAccountEmail = liveGoogle
+    .map((c) => String(
+      c.credentials?.verified_identity?.email
+      ?? c.credentials?.email
+      ?? c.credentials?.account_email
+      ?? c.credentials?.user_email
+      ?? '',
+    ).trim())
+    .find((value) => value.includes('@')) ?? null;
   
   const rememberedGoogle = (['gmail', 'google_calendar', 'youtube'] as StickyService[])
     .some((svc) => isRememberedConnected(svc, activeWorkspaceId));
@@ -315,7 +324,7 @@ export function ConnectionsTab() {
     {
       id: 'google',
       title: 'חשבונות גוגל',
-      titleAside: (
+      headerAside: (
         <span className="flex items-center gap-1.5" aria-label="שירותי Google">
           <GoogleBrandGlyph brand="gmail" connected={connectedGoogle.has('gmail') || isRememberedConnected('gmail', activeWorkspaceId)} />
           <GoogleBrandGlyph brand="calendar" connected={connectedGoogle.has('google_calendar') || isRememberedConnected('google_calendar', activeWorkspaceId)} />
@@ -341,6 +350,7 @@ export function ConnectionsTab() {
             hint="סנכרון פגישות וסיורים ליומן."
             ctaLabel="חיבור יומן"
             brand="calendar"
+            accountEmail={googleAccountEmail}
           />
           <GoogleServiceConnectCard
             platform="youtube"
@@ -348,6 +358,7 @@ export function ConnectionsTab() {
             hint="העלאת סרטוני נכסים לערוץ."
             ctaLabel="חיבור יוטיוב"
             brand="youtube"
+            accountEmail={googleAccountEmail}
           />
           {isSuperAdmin && (
             <section className="border-t pt-3">

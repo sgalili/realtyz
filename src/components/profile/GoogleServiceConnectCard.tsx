@@ -74,6 +74,7 @@ export function GoogleServiceConnectCard({
   hint,
   ctaLabel,
   brand,
+  accountEmail,
 }: {
   platform: GooglePlatform;
   title: string;
@@ -82,6 +83,8 @@ export function GoogleServiceConnectCard({
   ctaLabel?: string;
   /** Which official logo to render next to the title. */
   brand?: 'gmail' | 'calendar' | 'youtube';
+  /** Shared Google identity fallback for legacy service rows without email. */
+  accountEmail?: string | null;
 }) {
   const [configError, setConfigError] = useState(false);
 
@@ -113,8 +116,7 @@ export function GoogleServiceConnectCard({
     creds.email ??
     creds.account_email ??
     creds.user_email ??
-    creds.channel_title ??
-    identity.name ??
+    accountEmail ??
     null;
   const liveConnected = !!data?.is_connected;
   // A connected service stays connected in the UI until the broker disconnects

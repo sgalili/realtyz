@@ -109,11 +109,17 @@ async function fetchGmailIdentity(accessToken: string) {
 }
 
 async function fetchYouTubeIdentity(accessToken: string) {
-  const res = await timedFetch(
-    'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
+  const [res, userRes] = await Promise.all([
+    timedFetch(
+      'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    ),
+    timedFetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }).catch(() => null),
+  ]);
   const json = await res.json().catch(() => ({}));
+  const userJson = userRes?.ok ? await userRes.json().catch(() => ({})) : {};
   if (!res.ok) {
     return { error: json.error?.message || `youtube ${res.status}`, status: res.status };
   }
@@ -126,6 +132,7 @@ async function fetchYouTubeIdentity(accessToken: string) {
   return {
     platform: 'youtube' as const,
     account_name: subs != null ? `${title} · ${subs.toLocaleString()} subs` : title,
+    email: userJson.email,
     channel_id: item.id,
     channel_title: title,
     subscriber_count: subs,
