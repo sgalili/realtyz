@@ -290,19 +290,15 @@ export function GoogleServiceConnectCard({
         </div>
         <div className="flex items-center gap-2">
           {connected ? (
-            <span className="inline-flex h-8 items-center gap-1 text-[13px] font-bold text-emerald-700">
+            <span className="inline-flex h-8 items-center gap-1 text-[13px] font-bold" style={{ color: 'hsl(152 62% 28%)' }}>
               <CheckCircle2 className="h-3.5 w-3.5" /> מחובר
             </span>
-          ) : explicitlyDisconnected && !isLoading ? (
-            <Button size="sm" className="h-8 gap-1 text-xs" onClick={connect}>
-              {ctaLabel ?? 'חבר'}
-            </Button>
           ) : isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label="בודק חיבור" />
           ) : (
-            <span className="inline-flex h-8 items-center gap-1 text-[13px] font-bold text-destructive">
-              <AlertTriangle className="h-3.5 w-3.5" /> לא מחובר
-            </span>
+            <Button size="sm" className="h-8 gap-1 text-xs" onClick={connect}>
+              {ctaLabel ?? 'חבר'}
+            </Button>
           )}
           {connected && (
             <AlertDialog>
