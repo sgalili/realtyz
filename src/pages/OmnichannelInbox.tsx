@@ -26,7 +26,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 
 import { formatPhoneDisplay } from '@/lib/formatPhone';
-import { threadIdentityKey, normalizePhoneKey } from '@/lib/threadIdentity';
+import { groupByIdentity, normalizePhoneKey } from '@/lib/threadIdentity';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import VoterAvatar from '@/components/VoterAvatar';
 import { RitaAvatar } from '@/components/RitaAvatar';
