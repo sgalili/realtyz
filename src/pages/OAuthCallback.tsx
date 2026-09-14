@@ -113,6 +113,7 @@ export default function OAuthCallback() {
   const [message, setMessage] = useState('מסיים אימות...');
   const hardTimerRef = useRef<number | null>(null);
   const exchangeDoneRef = useRef(false);
+  const exchangeStartedRef = useRef(false);
   const [restarting, setRestarting] = useState(false);
 
   const returnToApp = () => {
@@ -168,6 +169,11 @@ export default function OAuthCallback() {
 
   // Token exchange logic. Completely separate from the UI safety timer.
   useEffect(() => {
+    // State updates must never restart a one-time authorization-code exchange.
+    // The module-level promise below additionally covers React development
+    // remounts, where component refs are intentionally recreated.
+    if (exchangeStartedRef.current) return;
+    exchangeStartedRef.current = true;
     let cancelled = false;
 
     const run = async () => {

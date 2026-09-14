@@ -234,7 +234,14 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
  */
 function WorkspaceScope({ children }: { children: React.ReactNode }) {
   const { activeWorkspaceId } = useWorkspace();
-  return <React.Fragment key={activeWorkspaceId ?? 'no-workspace'}>{children}</React.Fragment>;
+  const location = useLocation();
+  // OAuth authorization codes are single-use. Workspace initialization can
+  // change activeWorkspaceId while the callback is exchanging that code; using
+  // the workspace as a key here would then unmount and restart the callback.
+  const scopeKey = location.pathname === '/oauth/callback'
+    ? 'oauth-callback'
+    : activeWorkspaceId ?? 'no-workspace';
+  return <React.Fragment key={scopeKey}>{children}</React.Fragment>;
 }
 
 /**
