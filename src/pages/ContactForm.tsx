@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { normalizePhoneForStorage } from '@/lib/formatPhone';
 
 const ContactForm = () => {
   const [form, setForm] = useState({ full_name: '', phone_number: '', email: '', message: '' });
@@ -23,7 +24,7 @@ const ContactForm = () => {
     try {
       const { error } = await supabase.from('contact_submissions').insert({
         full_name: form.full_name.trim(),
-        phone_number: form.phone_number.trim(),
+        phone_number: normalizePhoneForStorage(form.phone_number),
         email: form.email.trim() || null,
         message: form.message.trim() || null,
         tag: 'New Potential Client',
