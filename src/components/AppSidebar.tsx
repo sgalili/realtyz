@@ -194,6 +194,14 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 <WorkspaceSwitcher />
               </div>
 
+              {/* Broker/partner toggle: hidden only in Rita's marketing workspace. */}
+              {features.modeSwitcherEnabled && (
+                <div className="mt-2 flex justify-center" onClick={(e) => e.stopPropagation()}>
+                  <AppModeSwitcher />
+                </div>
+              )}
+
+
 
               <div className="mt-2 flex items-center gap-2">
                 <button
