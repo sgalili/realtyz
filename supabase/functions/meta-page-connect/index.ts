@@ -191,6 +191,44 @@ async function discoverPages(
     console.log("[meta-page-connect] pages resolved via business portfolio", collected.length);
     return { pages: collected, lastPayload, ok: true };
   }
+
+  // 3) The user DID tick a Page in the permissions dialog but neither
+  // /me/accounts nor the business edges list it (common with the New Pages
+  // Experience). The ticked Page IDs are recorded on the grant itself, under
+  // `granular_scopes[].target_ids` — read them via /debug_token and resolve
+  // each Page directly.
+  if (app?.clientId && app?.clientSecret) {
+    const appToken = encodeURIComponent(`${app.clientId}|${app.clientSecret}`);
+    const dbg = await graph(
+      `/debug_token?input_token=${encodeURIComponent(userToken)}&access_token=${appToken}`,
+    );
+    const granular: any[] = Array.isArray(dbg.payload?.data?.granular_scopes)
+      ? dbg.payload.data.granular_scopes
+      : [];
+    const targetIds = new Set<string>();
+    for (const g of granular) {
+      if (!Array.isArray(g?.target_ids)) continue;
+      for (const id of g.target_ids) {
+        const s = String(id ?? "");
+        if (s) targetIds.add(s);
+      }
+    }
+    if (targetIds.size === 0) lastPayload = dbg.payload ?? lastPayload;
+    for (const id of Array.from(targetIds).slice(0, 25)) {
+      const r = await graph(`/${id}?fields=${PAGE_FIELDS}&access_token=${tok}`);
+      if (r.ok && r.payload?.id) {
+        ok = true;
+        push([r.payload]);
+      } else {
+        lastPayload = r.payload ?? lastPayload;
+      }
+    }
+    if (collected.length > 0) {
+      console.log("[meta-page-connect] pages resolved via granular_scopes", collected.length);
+      return { pages: collected, lastPayload, ok: true };
+    }
+  }
+
   return { pages: collected, lastPayload, ok };
 }
 
