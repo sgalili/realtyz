@@ -53,6 +53,16 @@ export interface AgreementOptions {
   logo?: { data: Uint8Array; format: "PNG" | "JPEG" } | null;
 }
 
+/** Accepts a number, a raw numeric string, or an already formatted price. */
+function formatPrice(value: unknown): string {
+  if (value == null || value === "") return "—";
+  if (typeof value === "number") return heShekel(value);
+  const text = String(value).trim();
+  const digits = text.replace(/[^\d.]/g, "");
+  if (!digits) return text;
+  return heShekel(Number(digits));
+}
+
 const CLAUSES_COMMON = (dealType: "rent" | "sale", feeText: string): string[] => {
   const verb = dealType === "rent" ? "שכירות" : "רכישה";
   const contract = dealType === "rent" ? "הסכם השכירות" : "הסכם המכר";
