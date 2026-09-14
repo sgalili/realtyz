@@ -620,7 +620,13 @@ function KpiCard({
   );
 }
 
-/** Every tenant uses the same broker-acquisition dashboard as Rita's workspace. */
-const Dashboard = () => <RecruitmentDashboard />;
+/**
+ * Rita's marketing workspace gets the broker-acquisition dashboard; every
+ * standard broker or affiliate workspace gets the full real-estate dashboard.
+ */
+const Dashboard = () => {
+  const { isRitaWorkspace } = useWorkspaceFeatures();
+  return isRitaWorkspace ? <RecruitmentDashboard /> : <RealEstateDashboard />;
+};
 
 export default Dashboard;
