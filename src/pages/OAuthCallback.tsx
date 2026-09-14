@@ -5,6 +5,7 @@ import { isOAuthPopup, notifyOAuthOpener } from '@/lib/oauthPopupBridge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ExternalLink } from 'lucide-react';
 import { friendlyGoogleError } from '@/lib/googleApiErrors';
+import { startMetaPageConnect } from '@/lib/facebookPageConnect';
 
 /**
  * Full-page OAuth landing page for Facebook / Google.
@@ -19,16 +20,34 @@ import { friendlyGoogleError } from '@/lib/googleApiErrors';
 /** Page-binding logins are exchanged here; other flows stash and hand back. */
 const FACEBOOK_PAGE_STATE_PREFIX = 'facebook_page';
 const CONNECTIONS_PATH = '/profile?tab=connections';
-/** Ceiling for the server-side exchange so the page never spins forever. */
-const EXCHANGE_TIMEOUT_MS = 8_000;
+/**
+ * Ceiling for the server-side exchange. It must stay ABOVE the edge function's
+ * own 8s budget, otherwise the client timer fires first and masks the real
+ * Facebook reason (empty Page list, reused code) behind a generic timeout.
+ */
+const EXCHANGE_TIMEOUT_MS = 15_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
-const HARD_TIMEOUT_MS = 8_000;
+const HARD_TIMEOUT_MS = 20_000;
 
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive', 'google_all'] as const;
-/** Grants already sent to the exchange endpoint in this page lifetime. */
-const exchangeStarted = new Set<string>();
 
+/**
+ * A Facebook authorization code can be exchanged exactly once. The marker is
+ * written to sessionStorage BEFORE the request leaves the browser, so a reload,
+ * a StrictMode remount or a second tab can never re-send the same grant and
+ * trigger `code 100 / subcode 36009`.
+ */
+const CONSUMED_KEY_PREFIX = 'realtyz-oauth-consumed:';
+function grantKey(raw: string) {
+  return `${CONSUMED_KEY_PREFIX}${raw.slice(0, 64)}`;
+}
+function isGrantConsumed(raw: string): boolean {
+  try { return !!window.sessionStorage.getItem(grantKey(raw)); } catch { return false; }
+}
+function markGrantConsumed(raw: string) {
+  try { window.sessionStorage.setItem(grantKey(raw), String(Date.now())); } catch { /* private mode */ }
+}
 
 type OAuthError = {
   title: string;
@@ -37,6 +56,10 @@ type OAuthError = {
   hint?: string | null;
   /** Google Cloud Console link that fixes a disabled API. */
   enableUrl?: string | null;
+  /** Primary recovery action label, e.g. back to Facebook's Page picker. */
+  actionLabel?: string | null;
+  /** True when the only way forward is a brand-new Facebook login. */
+  restartLogin?: boolean;
 } | null;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -81,9 +104,30 @@ export default function OAuthCallback() {
   const [message, setMessage] = useState('מסיים אימות...');
   const hardTimerRef = useRef<number | null>(null);
   const exchangeDoneRef = useRef(false);
+  const [restarting, setRestarting] = useState(false);
 
   const returnToApp = () => {
     window.location.replace(CONNECTIONS_PATH);
+  };
+
+  /**
+   * Starts a brand-new Facebook login (fresh code + the Page-selection step),
+   * which is the only valid recovery from a used code or an empty Page list.
+   */
+  const restartFacebookLogin = async () => {
+    setRestarting(true);
+    try {
+      const url = await startMetaPageConnect();
+      window.location.replace(url);
+    } catch (e: any) {
+      console.error('[oauth-callback] restart login failed', e);
+      setRestarting(false);
+      setError((prev) => ({
+        title: prev?.title ?? 'החיבור לפייסבוק נכשל',
+        detail: String(e?.message ?? e),
+        hint: 'לא ניתן להתחיל חיבור חדש כרגע. אפשר לחזור למערכת ולנסות מההגדרות.',
+      }));
+    }
   };
 
   // Absolute escape hatch: whatever happens, never sit on the loader.
@@ -95,8 +139,10 @@ export default function OAuthCallback() {
       setIsLoading(false);
       setError({
         title: 'החיבור לא הושלם בזמן',
-        detail: null,
-        hint: 'פייסבוק לא סיים את האישור. אפשר לנסות שוב או לחזור למערכת ולהתחבר מההגדרות.',
+        detail: `callback exceeded ${HARD_TIMEOUT_MS}ms without a server answer`,
+        hint: 'פייסבוק לא סיים את האישור. הקוד הנוכחי חד-פעמי, לכן יש להתחיל חיבור חדש.',
+        actionLabel: 'התחברות מחדש לפייסבוק',
+        restartLogin: true,
       });
     }, HARD_TIMEOUT_MS);
 
@@ -259,10 +305,23 @@ export default function OAuthCallback() {
         return;
       }
 
-      // A single exchange per grant: StrictMode remounts must not consume the
-      // one-time OAuth state twice.
-      if (exchangeStarted.has(state || String(code || accessToken))) return;
-      exchangeStarted.add(state || String(code || accessToken));
+      // A single exchange per grant. The marker is persisted BEFORE the request
+      // is fired, so a reload / remount / duplicate tab can never re-send the
+      // same code (Facebook: "This authorization code has been used", 100/36009).
+      const grantId = state || String(code || accessToken);
+      if (isGrantConsumed(grantId)) {
+        console.warn('[oauth-callback] grant already exchanged in this session', { state });
+        setIsLoading(false);
+        setError({
+          title: 'קוד ההתחברות של פייסבוק כבר נוצל',
+          detail: 'authorization code already exchanged (Facebook allows a single use per code)',
+          hint: 'זהו קוד חד-פעמי. יש להתחיל חיבור חדש לפייסבוק.',
+          actionLabel: 'התחברות מחדש לפייסבוק',
+          restartLogin: true,
+        });
+        return;
+      }
+      markGrantConsumed(grantId);
 
       setMessage('שומר את חיבור עמוד הפייסבוק...');
       try {
@@ -289,8 +348,41 @@ export default function OAuthCallback() {
           if (d.message && !String(payload.error).includes(String(d.message))) parts.push(String(d.message));
           if (d.code) parts.push(`code ${d.code}${d.subcode ? `/${d.subcode}` : ''}`);
           if (d.trace) parts.push(`trace ${d.trace}`);
+          if (payload.stage) parts.push(`stage ${payload.stage}`);
           console.error('[oauth-callback] facebook exchange failed', payload);
-          throw new Error(parts.join(' · '));
+          if (cancelled || exchangeDoneRef.current) return;
+          exchangeDoneRef.current = true;
+          setIsLoading(false);
+          // `/me/accounts` came back `{"data":[]}`: the login succeeded but no
+          // Page was approved. Send the user back to the Page-selection step.
+          if (payload.no_pages_selected) {
+            setError({
+              title: 'לא נבחר עמוד פייסבוק',
+              detail: parts.join(' · '),
+              hint: 'ההתחברות הצליחה, אבל לא אושר אף עמוד. חוזרים למסך ההרשאות של פייסבוק — יש לבחור את העמוד ולסמן "אישור".',
+              actionLabel: 'בחירת עמוד בפייסבוק',
+              restartLogin: true,
+            });
+            return;
+          }
+          if (payload.stage === 'code_reused' || Number(d.subcode) === 36009) {
+            setError({
+              title: 'קוד ההתחברות של פייסבוק כבר נוצל',
+              detail: parts.join(' · '),
+              hint: 'זהו קוד חד-פעמי. יש להתחיל חיבור חדש לפייסבוק.',
+              actionLabel: 'התחברות מחדש לפייסבוק',
+              restartLogin: true,
+            });
+            return;
+          }
+          setError({
+            title: 'החיבור לפייסבוק נכשל',
+            detail: parts.join(' · '),
+            hint: String(payload.error),
+            actionLabel: payload.restart_basic || payload.retry_basic ? 'התחברות מחדש לפייסבוק' : null,
+            restartLogin: !!(payload.restart_login || payload.retry_basic),
+          });
+          return;
         }
         // Automatic page selection failed — hand off to the picker in the card
         // instead of aborting the connection (the user token is already saved).
@@ -401,9 +493,15 @@ export default function OAuthCallback() {
         )}
         {showFallback && (
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-            <Button onClick={() => window.location.reload()} variant="default">
-              נסה שוב
-            </Button>
+            {error?.restartLogin ? (
+              <Button onClick={() => void restartFacebookLogin()} disabled={restarting} variant="default">
+                {restarting ? 'פותח את פייסבוק...' : error?.actionLabel || 'התחברות מחדש לפייסבוק'}
+              </Button>
+            ) : (
+              <Button onClick={() => window.location.reload()} variant="default">
+                נסה שוב
+              </Button>
+            )}
             <Button onClick={returnToApp} variant="outline">
               חזרה למערכת
             </Button>

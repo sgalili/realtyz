@@ -217,6 +217,48 @@ async function fetchPageIdentity(
 }
 
 
+/**
+ * Atomically claim the one-time login state BEFORE the authorization code is
+ * sent to Meta. A Facebook `code` may be exchanged exactly once: a second
+ * attempt (StrictMode remount, "try again", duplicate tab) gets
+ * `code 100 / subcode 36009 — This authorization code has been used`, which
+ * used to surface as a generic timeout. Claiming first turns that race into an
+ * explicit, actionable answer.
+ *
+ * Returns "claimed" for the single winning attempt, "already" for every later
+ * attempt on the same state, and "no_state" when there is nothing to claim
+ * (implicit token flows, states that predate this table).
+ */
+async function claimAuthCode(
+  admin: ReturnType<typeof adminClient>,
+  state: string,
+): Promise<"claimed" | "already" | "no_state"> {
+  if (!state) return "no_state";
+  try {
+    const { data, error } = await admin
+      .from("oauth_connection_states")
+      .update({ consumed_at: new Date().toISOString() })
+      .eq("state", state)
+      .eq("provider", "facebook_page")
+      .is("consumed_at", null)
+      .select("state");
+    if (error) {
+      console.warn("[meta-page-connect] code claim failed", error.message);
+      return "no_state";
+    }
+    if (Array.isArray(data) && data.length > 0) return "claimed";
+    const { data: existing } = await admin
+      .from("oauth_connection_states")
+      .select("state")
+      .eq("state", state)
+      .maybeSingle();
+    return existing ? "already" : "no_state";
+  } catch (e) {
+    console.warn("[meta-page-connect] code claim threw", String((e as any)?.message ?? e));
+    return "no_state";
+  }
+}
+
 const REQUEST_TIMEOUT_MS = 8_000;
 
 async function handleRequest(req: Request): Promise<Response> {
@@ -246,11 +288,9 @@ async function handleRequest(req: Request): Promise<Response> {
           .gt("expires_at", now)
           .maybeSingle();
         if (oauthStateRow) {
-          await admin
-            .from("oauth_connection_states")
-            .update({ consumed_at: now })
-            .eq("state", state)
-            .is("consumed_at", null);
+          // NOTE: the state row is NOT consumed here — the exchange handler
+          // claims it atomically right before the token call (see claimAuthCode)
+          // so a retry race can never send the same `code` to Meta twice.
           caller = {
             userId: String(oauthStateRow.user_id),
             workspaceOwnerId: String(oauthStateRow.workspace_owner_id),
@@ -701,6 +741,21 @@ async function handleRequest(req: Request): Promise<Response> {
         suppliedToken ? "implicit_token" : "code",
       );
 
+      // Claim the code BEFORE talking to Meta: whoever loses the race is told
+      // the grant was already used and to start a fresh login, instead of
+      // burning the code and returning OAuthException 100/36009.
+      if (!suppliedToken) {
+        const claim = await claimAuthCode(admin, String(body?.state ?? "").trim());
+        if (claim === "already") {
+          console.warn("[meta-page-connect] duplicate exchange blocked for state", String(body?.state ?? ""));
+          return json({
+            error: "קוד ההתחברות של פייסבוק כבר נוצל. יש להתחיל חיבור חדש.",
+            stage: "code_reused",
+            restart_login: true,
+          }, 200);
+        }
+      }
+
       let userToken = suppliedToken;
       if (!userToken) {
         const tokenRes = await graph(
@@ -821,15 +876,22 @@ async function handleRequest(req: Request): Promise<Response> {
         const permissionBlocked = !pagesRes.ok &&
           ([200, 3, 10, 102, 190].includes(Number(detail.code)) ||
             /permission|scope|advanced access/i.test(detail.message ?? ""));
+        // `{"data":[]}` with HTTP 200 is Facebook saying "this profile approved
+        // no Page in the permissions dialog" — not an API failure. Flag it so the
+        // callback screen sends the user straight back to the Page-selection step.
+        const emptyPageList = pagesRes.ok && pages.length === 0;
         return json(
           {
-            error: pagesRes.ok
-              ? "לא נמצא עמוד פייסבוק שאתה מנהל. ודא שאישרת את העמוד במסך ההרשאות של פייסבוק."
+            error: emptyPageList
+              ? "לא אושר אף עמוד פייסבוק בחיבור הזה. במסך ההרשאות של פייסבוק יש לבחור את העמוד ולסמן אותו."
               : humanizeGraphError(pagesRes.payload, "לא הצלחנו לקרוא את רשימת העמודים שאתה מנהל. ודא שאישרת הרשאות ניהול עמוד (pages_show_list, pages_manage_posts)."),
             error_detail: detail,
             fb_message: detail.message,
             stage: "list_pages",
             retry_basic: permissionBlocked,
+            no_pages_selected: emptyPageList,
+            restart_login: emptyPageList,
+            granted_scopes: grantedScopes,
             pages: [],
           },
           200,
