@@ -6,11 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Search, User, MapPin, Radio, LayoutDashboard, Building2, MessageSquare, CalendarClock, Loader2 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
+import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
+
+const PROPERTY_QUICK_LINK = { label: 'נכסים', path: '/properties', icon: Building2 };
 
 const QUICK_LINKS = [
   { label: 'לוח בקרה', path: '/', icon: LayoutDashboard },
   { label: 'אנשי קשר', path: '/lead-crm', icon: User },
-  { label: 'נכסים', path: '/properties', icon: Building2 },
+  PROPERTY_QUICK_LINK,
   { label: 'תיבת הודעות', path: '/inbox', icon: MessageSquare },
   { label: 'שידור לקהילה', path: '/broadcast', icon: Radio },
 ];
@@ -29,6 +32,9 @@ interface GlobalSearchProps {
 }
 
 export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps = {}) {
+  // Rita's marketing workspace has no properties at all, so property and tour
+  // results, quick links and labels are stripped from search there.
+  const { listingsEnabled } = useWorkspaceFeatures();
   const [openLocal, setOpenLocal] = useState(false);
   const open = openProp ?? openLocal;
   const setOpen = (v: boolean) => {
@@ -94,11 +100,13 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
             .select('id, full_name, phone_number, city, neighborhood')
             .or(leadOr)
             .limit(10),
-          (supabase as any)
-            .from('listings')
-            .select('id, property_title, city, neighborhood, slug, address, status')
-            .or(listingOr)
-            .limit(10),
+          listingsEnabled
+            ? (supabase as any)
+                .from('listings')
+                .select('id, property_title, city, neighborhood, slug, address, status')
+                .or(listingOr)
+                .limit(10)
+            : Promise.resolve({ data: [] }),
           (supabase as any)
             .from('messages')
             .select('id, content, lead_id, created_at')
@@ -125,7 +133,8 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
             )
             .order('starts_at', { ascending: false })
             .limit(6),
-          (supabase as any)
+          listingsEnabled
+            ? (supabase as any)
             .from('property_tours')
             .select('id, client_name, client_phone, property_title, property_address, scheduled_at')
             .or(
@@ -137,7 +146,8 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
               ].join(','),
             )
             .order('scheduled_at', { ascending: false })
-            .limit(6),
+            .limit(6)
+            : Promise.resolve({ data: [] }),
         ]);
 
       const leadResults: SearchResult[] = (leadsRes.data ?? []).map((v: any) => ({
@@ -198,6 +208,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
       }));
 
       const pageResults: SearchResult[] = QUICK_LINKS
+        .filter((l) => listingsEnabled || l.path !== PROPERTY_QUICK_LINK.path)
         .filter((l) => l.label.includes(term))
         .map((l) => ({ id: `page-${l.path}`, type: 'page', title: l.label, path: l.path }));
 
@@ -216,7 +227,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [listingsEnabled]);
 
   useEffect(() => {
     const timer = setTimeout(() => search(query), 250);
@@ -265,7 +276,9 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="חיפוש בכל המערכת — אנשי קשר, נכסים, פניות, פגישות, הודעות..."
+            placeholder={listingsEnabled
+              ? 'חיפוש בכל המערכת — אנשי קשר, נכסים, פניות, פגישות, הודעות...'
+              : 'חיפוש בכל המערכת — אנשי קשר, פניות, פגישות, הודעות...'}
             className="border-0 focus-visible:ring-0 h-12 text-base"
             autoFocus
            />
@@ -330,6 +343,7 @@ interface GlobalSearchTriggerProps {
 }
 
 export function GlobalSearchTrigger({ className }: GlobalSearchTriggerProps) {
+  const { listingsEnabled } = useWorkspaceFeatures();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -343,7 +357,9 @@ export function GlobalSearchTrigger({ className }: GlobalSearchTriggerProps) {
         dir="rtl"
       >
         <Search className="h-4 w-4 text-muted-foreground" />
-        <span className="flex-1 text-right">חיפוש גלובלי — אנשי קשר, נכסים, שיחות</span>
+        <span className="flex-1 text-right">
+          {listingsEnabled ? 'חיפוש גלובלי — אנשי קשר, נכסים, שיחות' : 'חיפוש גלובלי — אנשי קשר, שיחות'}
+        </span>
         <kbd className="hidden sm:inline-flex text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
       </button>
       <GlobalSearch open={open} onOpenChange={setOpen} />
