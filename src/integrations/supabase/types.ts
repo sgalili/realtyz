@@ -1600,6 +1600,7 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          lead_id: string | null
           message: string | null
           phone_number: string
           status: string | null
@@ -1612,6 +1613,7 @@ export type Database = {
           email?: string | null
           full_name: string
           id?: string
+          lead_id?: string | null
           message?: string | null
           phone_number: string
           status?: string | null
@@ -1624,6 +1626,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          lead_id?: string | null
           message?: string | null
           phone_number?: string
           status?: string | null
@@ -1631,7 +1634,15 @@ export type Database = {
           updated_at?: string
           wa_sent?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contact_submissions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       credit_transactions: {
         Row: {
@@ -1995,6 +2006,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string
+          lead_id: string | null
           notes: string | null
           phone: string
           preferred_at: string
@@ -2006,6 +2018,7 @@ export type Database = {
           first_name: string
           id?: string
           last_name: string
+          lead_id?: string | null
           notes?: string | null
           phone: string
           preferred_at: string
@@ -2017,13 +2030,22 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string
+          lead_id?: string | null
           notes?: string | null
           phone?: string
           preferred_at?: string
           source?: string
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "demo_requests_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       demo_sessions: {
         Row: {
@@ -6098,6 +6120,17 @@ export type Database = {
       }
       ensure_credit_wallet: { Args: { _user_id: string }; Returns: string }
       ensure_profile_row: { Args: { _uid: string }; Returns: undefined }
+      ensure_rita_crm_contact: {
+        Args: {
+          _email?: string
+          _full_name: string
+          _notes?: string
+          _origin?: string
+          _phone: string
+          _source_user_id?: string
+        }
+        Returns: string
+      }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       ext_claim_jobs: {
         Args: { _limit?: number; _token: string; _user_agent?: string }
