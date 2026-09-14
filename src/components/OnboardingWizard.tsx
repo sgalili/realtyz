@@ -13,8 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Target, MessageSquare, ArrowLeft, ArrowRight, Rocket, Loader2, CheckCircle2, FileText, Smartphone, Radio, Plug, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { StrategyBriefCard, StrategyBrief, StrategyStats } from '@/components/StrategyBriefCard';
-import { calculateMandatePlan, VOTES_PER_MANDATE } from '@/lib/mandateCalculator';
-import { monthsUntilElection as calcMonthsUntilElection, ELECTION_DATE_HE } from '@/lib/electionDate';
+import { calculateMandatePlan } from '@/lib/mandateCalculator';
+import { monthsUntilElection as calcMonthsUntilElection } from '@/lib/electionDate';
 
 interface OnboardingWizardProps {
   open: boolean;
