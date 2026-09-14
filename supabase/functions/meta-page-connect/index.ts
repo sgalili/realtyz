@@ -741,6 +741,21 @@ async function handleRequest(req: Request): Promise<Response> {
         suppliedToken ? "implicit_token" : "code",
       );
 
+      // Claim the code BEFORE talking to Meta: whoever loses the race is told
+      // the grant was already used and to start a fresh login, instead of
+      // burning the code and returning OAuthException 100/36009.
+      if (!suppliedToken) {
+        const claim = await claimAuthCode(admin, String(body?.state ?? "").trim());
+        if (claim === "already") {
+          console.warn("[meta-page-connect] duplicate exchange blocked for state", String(body?.state ?? ""));
+          return json({
+            error: "קוד ההתחברות של פייסבוק כבר נוצל. יש להתחיל חיבור חדש.",
+            stage: "code_reused",
+            restart_login: true,
+          }, 200);
+        }
+      }
+
       let userToken = suppliedToken;
       if (!userToken) {
         const tokenRes = await graph(
