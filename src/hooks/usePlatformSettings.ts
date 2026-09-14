@@ -77,8 +77,16 @@ export function usePlatformSettings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['platform-settings', targetUserId] }),
   });
 
+  // Listing features follow the ACTIVE workspace: hidden in Rita's marketing
+  // workspace, fully available in every broker or affiliate workspace.
+  const features = workspaceFeatures(activeOwnerId);
+  const resolved = query.data ?? { ...DEFAULTS, ...(cached ?? {}) };
+  const settings: PlatformSettings = features.listingsEnabled
+    ? resolved
+    : { ...resolved, enable_featured_listings: false, enable_pending_extraction: false };
+
   return {
-    settings: query.data ?? { ...DEFAULTS, ...(cached ?? {}) },
+    settings,
     isLoading: query.isLoading,
     update: update.mutateAsync,
     isUpdating: update.isPending,
