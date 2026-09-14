@@ -140,7 +140,6 @@ export function GoogleServiceConnectCard({
       try {
         window.localStorage.setItem(`realtyz:google-explicit-disconnect:${platform}`, '1');
       } catch { /* storage may be unavailable */ }
-      setExplicitlyDisconnected(true);
       toast.success('החיבור נותק');
       refetch();
     } catch {
