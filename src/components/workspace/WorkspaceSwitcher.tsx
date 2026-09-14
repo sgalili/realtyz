@@ -78,12 +78,15 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     navigate('/profile');
   };
 
+  // The line under the workspace name is the ACTIVE workspace owner's name.
+  const ownerLabel = (activeWorkspace?.owner_full_name ?? '').trim()
+    || (activeWorkspace?.owner_email ?? '').trim()
+    || (activeWorkspace?.workspace_name ?? '').trim();
+
   const workspaceInfo = (
     <div className="min-w-0 flex-1 text-right">
       <div className="truncate text-sm font-bold text-slate-900">{identity.name}</div>
-      <div className="truncate text-[11px] text-slate-500">
-        {identity.isTenant ? 'מרחב עבודה פעיל' : '\n'}
-      </div>
+      <div className="truncate text-[11px] text-slate-500">{ownerLabel || '\u00a0'}</div>
     </div>
   );
 

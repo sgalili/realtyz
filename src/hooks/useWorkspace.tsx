@@ -217,6 +217,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(workspaceStorageKey(user.id), ownerId);
     writeWorkspaceCache(workspaces, ownerId);
 
+    // A workspace hand-off always lands in broker mode, so the מתווך/שותף
+    // toggle and the routes it guards never keep the previous tenant's state.
+    writeAppMode('broker');
+
     // Remove old tenant results before any observer can repaint, then refetch
     // active screens and sidebar counters against the newly committed scope.
     try {
@@ -225,6 +229,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // their reads while preserving a fully empty cache during the handoff.
       await queryClient.invalidateQueries({ refetchType: 'active' });
     } catch { /* non-fatal */ }
+
+    // Every screen listening for a tenant change repaints from scratch.
+    window.dispatchEvent(new CustomEvent('realtyz:workspace-changed', { detail: { ownerId } }));
   }, [user, workspaces, queryClient]);
 
 
