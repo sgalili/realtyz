@@ -113,11 +113,16 @@ export function ExtensionGroupSyncCard({
         className,
       )}
     >
-      <Button type="button" size="sm" className="h-8 gap-1 text-[12px]" onClick={() => setOpen(true)} disabled={saving}>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-8 gap-1 text-[12px]"
+        onClick={() => setOpen(true)}
+      >
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />} סנכרון
       </Button>
       <ExtensionDownloadButton />
-      <ExtensionPairingButton />
       {actions}
 
       <Dialog open={open} onOpenChange={setOpen}>
