@@ -332,7 +332,7 @@ export default function Landing() {
       <section id="features" className="pb-10 pt-0">
         <div className="mx-auto w-full max-w-6xl px-4">
           <Reveal>
-            <h2 className="landing-title-gradient text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h2 className="landing-title-gradient pt-[15px] text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
               כל מה שמתווך צריך
             </h2>
           </Reveal>
