@@ -491,9 +491,15 @@ export default function OAuthCallback() {
         )}
         {showFallback && (
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-            <Button onClick={() => window.location.reload()} variant="default">
-              נסה שוב
-            </Button>
+            {error?.restartLogin ? (
+              <Button onClick={() => void restartFacebookLogin()} disabled={restarting} variant="default">
+                {restarting ? 'פותח את פייסבוק...' : error?.actionLabel || 'התחברות מחדש לפייסבוק'}
+              </Button>
+            ) : (
+              <Button onClick={() => window.location.reload()} variant="default">
+                נסה שוב
+              </Button>
+            )}
             <Button onClick={returnToApp} variant="outline">
               חזרה למערכת
             </Button>
