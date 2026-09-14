@@ -19,7 +19,7 @@ const ICONS: Record<ChannelKey, typeof Send> = {
 /** סקשן קצר וחד: מדיניות מגעי קרדיט + התעריפים הזולים בישראל. */
 export default function CreditsSection() {
   return (
-    <section id="credits" className="border-t border-border/60 py-16">
+    <section id="credits" className="border-t border-border/60 py-8">
       <div className="mx-auto w-full max-w-4xl px-4 text-center">
         <h2 className="landing-title-gradient text-3xl font-extrabold tracking-tight sm:text-4xl">
           מגעי קרדיט ותעריפי הפצה
