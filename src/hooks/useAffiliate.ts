@@ -250,6 +250,10 @@ export type BrokerAffiliateListing = {
   deal_type: string | null;
   asking_price: number | null;
   image_url: string | null;
+  media_photos?: unknown;
+  rooms?: number | null;
+  house_number?: string | null;
+  apartment_number?: string | null;
   status: string | null;
   affiliate_enabled: boolean;
   affiliate_reward_type: RewardType;
