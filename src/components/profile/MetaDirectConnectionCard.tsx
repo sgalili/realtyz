@@ -18,7 +18,9 @@ import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } f
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 
+import { purgeCachedPostsForPage } from '@/lib/campaignFeedCache';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
+
 import {
   callMetaPageConnect as callPageConnect,
   
@@ -74,6 +76,8 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [connecting, setConnecting] = useState(false);
   const [bindings, setBindings] = useState<Array<{ id: string; name: string | null; picture: string | null; isDefault: boolean }>>([]);
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
+  const [removingPageId, setRemovingPageId] = useState<string | null>(null);
+
   const [igHelpOpen, setIgHelpOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
@@ -481,6 +485,39 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       setSettingDefaultId(null);
     }
   };
+
+  /** Disconnect a SINGLE page: its posts leave the workspace view immediately. */
+  const disconnectOnePage = async (pageId: string, name: string | null) => {
+    if (removingPageId) return;
+    if (!window.confirm(`לנתק את העמוד "${name || pageId}"? כל הפוסטים שלו יוסרו מסביבת העבודה.`)) return;
+    setRemovingPageId(pageId);
+    // Optimistic: drop the page and its cached posts before the server answers.
+    setBindings((prev) => prev.filter((b) => b.id !== pageId));
+    purgeCachedPostsForPage(pageId);
+    try {
+      const res = await callPageConnect<any>({ action: 'disconnect_page', page_id: pageId });
+      if (!res?.ok) throw new Error(res?.error || 'ניתוק העמוד נכשל');
+      purgeCachedPostsForPage(pageId);
+      if (Number(res?.remaining ?? 0) === 0) {
+        await resetHealth();
+        setPage({ connected: false, page: null });
+        setStatus(null);
+        onStatus?.(null);
+      }
+      refreshBinding();
+      refreshHealth();
+      void loadBindings();
+      toast.success('העמוד נותק', {
+        description: res?.removed_posts ? `${res.removed_posts} פוסטים הוסרו` : undefined,
+      });
+    } catch (e: any) {
+      toast.error('ניתוק העמוד נכשל', { description: e?.message });
+      void loadBindings();
+    } finally {
+      setRemovingPageId(null);
+    }
+  };
+
 
   const actionButtons = (
     <>
