@@ -15,6 +15,8 @@ export type AppRole =
   | 'junior_agent'
   | 'affiliate';
 
+export const userRolesQueryKey = (userId: string | undefined) => ['user-roles', userId] as const;
+
 // Hardcoded super-admin override - bypasses any state delays.
 const SUPER_ADMIN_EMAILS = ['sgalili@gmail.com'];
 
@@ -22,15 +24,16 @@ export function useUserRole() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: roles = [], isLoading } = useQuery({
-    queryKey: ['user-roles', user?.id],
+  const { data: roles = [], isLoading, isFetched, isError, refetch } = useQuery({
+    queryKey: userRolesQueryKey(user?.id),
     enabled: !!user?.id,
     queryFn: async () => {
+      if (!user?.id) return [] as AppRole[];
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user!.id);
-      if (error) return [] as AppRole[];
+        .eq('user_id', user.id);
+      if (error) throw error;
       return (data ?? []).map((r) => r.role as AppRole);
     },
     staleTime: 0,
@@ -110,5 +113,8 @@ export function useUserRole() {
     canInviteTeam,
     canAssignLeads,
     loading: isLoading,
+    fetched: isFetched,
+    error: isError,
+    refetch,
   };
 }

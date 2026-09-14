@@ -4587,7 +4587,6 @@ const PublishedFeed = ({
     setFacebookSyncWarning(null);
     refreshFbHealth();
     refreshFbBinding();
-    toast.success('עמוד הפייסבוק חובר', { description: result.name || undefined });
   }), [refreshFbHealth, refreshFbBinding, setFacebookSyncWarning]);
 
   const loadRef = useRef<(opts?: { forceFb?: boolean; skipFbImport?: boolean }) => Promise<{ rows: CampaignRow[]; ownerScope: string | null; importedCount: number; importComplete: boolean }>>(async () => ({ rows: [], ownerScope: null, importedCount: 0, importComplete: false }));

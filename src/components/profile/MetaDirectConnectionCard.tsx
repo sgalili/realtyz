@@ -212,7 +212,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             instagram: res?.instagram ?? null,
           });
         }
-        toast.success('עמוד הפייסבוק חובר', { description: res?.page?.name ?? undefined });
         // Import the groups reachable from the fresh token so the targets list
         // is populated without an extra manual step. Meta deprecated the Graph
         // groups API for new apps, so the companion extension is asked in
@@ -263,7 +262,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (result.ok) {
         clearPendingOAuth();
         setManualOpen(false);
-        toast.success('עמוד הפייסבוק חובר', { description: result.name || undefined });
         refreshBinding();
         refreshHealth();
         void probe(false).catch(() => undefined);
@@ -295,7 +293,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       clearPendingOAuth();
       setConnecting(false);
       setManualOpen(false);
-      toast.success('עמוד הפייסבוק חובר', { description: params.get('fb_page') || undefined });
       refreshBinding();
       refreshHealth();
       void probe(false).catch(() => undefined);

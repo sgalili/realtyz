@@ -46,15 +46,14 @@ export function clearPendingSignupRole() {
 export async function applyPendingSignupRole(): Promise<string | null> {
   const role = readPendingSignupRole();
   if (!role) return null;
-  clearPendingSignupRole();
-  try {
-    if (role === 'partner') {
-      await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
-      return '/affiliate';
-    }
-    await supabase.rpc('register_as_broker', { _display_name: null });
-    return '/';
-  } catch {
-    return null;
+  if (role === 'partner') {
+    const { data, error } = await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
+    if (error || !(data as { ok?: boolean } | null)?.ok) return null;
+    clearPendingSignupRole();
+    return '/affiliate';
   }
+  const { data, error } = await supabase.rpc('register_as_broker', { _display_name: null });
+  if (error || !(data as { ok?: boolean } | null)?.ok) return null;
+  clearPendingSignupRole();
+  return '/dashboard';
 }
