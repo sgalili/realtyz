@@ -5142,6 +5142,7 @@ const PublishedFeed = ({
       const toastId = 'campaigns-hero-sync';
       toast.loading('מסנכרן פוסטים חיים מפייסבוק…', { id: toastId });
       let ok = false;
+      let hadTransientIssue = false;
       let refreshWarning: string | null = null;
       try {
         if (scope) {
@@ -5170,8 +5171,20 @@ const PublishedFeed = ({
               raw_error: (syncData as any)?.raw_error,
               graph_source: (syncData as any)?.graph_source,
             });
-            refreshWarning = 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
-            setFacebookSyncWarning(refreshWarning);
+            // If the workspace already has a bound Facebook Page, transient
+            // blips (timeouts, rate limits, empty responses) must not trigger
+            // the disruptive reconnect banner.
+            const isFbConnected = connectedChannelsRef.current.has('facebook');
+            const isTransient = isTransientFacebookError({
+              raw_error: (syncData as any)?.raw_error,
+              message: providerError,
+            });
+            if (isFbConnected && isTransient) {
+              hadTransientIssue = true;
+            } else {
+              refreshWarning = 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
+              setFacebookSyncWarning(refreshWarning);
+            }
           } else {
             setFacebookSyncWarning(null);
           }
@@ -5180,12 +5193,18 @@ const PublishedFeed = ({
         // if the provider returned nothing or timed out.
         await load({ skipFbImport: true });
         ok = refreshWarning === null;
-        if (ok) toast.success('הפוסטים עודכנו מפייסבוק', { id: toastId });
+        if (ok && !hadTransientIssue) toast.success('הפוסטים עודכנו מפייסבוק', { id: toastId });
+        else if (hadTransientIssue) toast.message('רענון הפוסטים נדחה לרגע — החיבור נשמר', { id: toastId });
         else toast.warning('החיבור נשמר. הרענון לא הושלם כרגע.', { id: toastId });
       } catch (err) {
         console.warn('[campaign] manual facebook sync failed', err);
-        setFacebookSyncWarning('רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.');
-        toast.warning('החיבור נשמר. הרענון לא הושלם כרגע.', { id: toastId });
+        // A raw network/edge crash while already connected is also transient.
+        if (connectedChannelsRef.current.has('facebook')) {
+          toast.message('רענון הפוסטים נדחה לרגע — החיבור נשמר', { id: toastId });
+        } else {
+          setFacebookSyncWarning('רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.');
+          toast.warning('החיבור נשמר. הרענון לא הושלם כרגע.', { id: toastId });
+        }
       } finally {
         fullSyncRunningRef.current = false;
         window.dispatchEvent(new CustomEvent('rz:campaigns-sync:done', { detail: { ok } }));
