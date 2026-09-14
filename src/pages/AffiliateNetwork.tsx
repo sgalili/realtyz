@@ -304,8 +304,6 @@ export default function AffiliateNetwork() {
                       </div>
                     </CardContent>
                   </Card>
-
-                  </Card>
                 ))}
               </div>
             )}
