@@ -18,5 +18,5 @@
 - [x] Link every landing/contact/signup submission to an immediate Rita CRM contact
 - [x] Show linked CRM names, local phones, and WhatsApp avatars on request cards
 - [x] Open CRM contact cards from dashboard/submission links
-- [x] Make WhatsApp manager CRM counts live and workspace-scoped
+- [ ] Make WhatsApp manager CRM counts live and workspace-scoped
 - [ ] Verify database flow, UI, and deployed edge functions
