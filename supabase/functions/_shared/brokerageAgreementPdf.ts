@@ -247,7 +247,7 @@ export async function buildBrokerageAgreementPdf(opts: AgreementOptions): Promis
     doc.setDrawColor(200).rect(M, y, contentW, rowH);
     let x = RIGHT;
     for (const col of cols) {
-      const raw = col.key === "price" ? heShekel(p.price) : String((p as any)[col.key] ?? "");
+      const raw = col.key === "price" ? formatPrice(p.price) : String((p as any)[col.key] ?? "");
       const value = raw && raw !== "undefined" ? raw : "—";
       doc.setFont(HE_FONT, "normal").setFontSize(8.5);
       doc.text(rtl(value), x - col.w / 2, y + 17, { align: "center", maxWidth: col.w - 4 });
