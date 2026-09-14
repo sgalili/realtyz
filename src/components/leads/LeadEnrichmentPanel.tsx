@@ -101,7 +101,9 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   // the enrichment dialog writes new social profiles to the DB), so the panel
   // reflects the update without waiting for a full page reload.
   useEffect(() => {
-    setSocials(buildInitialSocials(lead, prefs));
+    const next = buildInitialSocials(lead, prefs);
+    setSocials(next);
+    if (next.some((s) => String(s?.handle ?? '').trim().length > 0)) setSocialOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id, JSON.stringify(prefs.socials), prefs.facebook_url, prefs.linkedin_url, prefs.tiktok_handle, lead.instagram_handle]);
 
