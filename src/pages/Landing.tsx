@@ -263,7 +263,7 @@ export default function Landing() {
           <div className="landing-grid absolute inset-0" />
         </div>
 
-        <div className="mx-auto w-full max-w-6xl px-4 pb-6 pt-8 text-center sm:pt-10">
+        <div className="mx-auto w-full max-w-6xl px-4 pb-6 pt-3 text-center sm:pt-10">
           <Reveal delay={80}>
             <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-6xl">
               <span className="landing-title-gradient block">AI למתווכים וסוכנויות נדל״ן</span>
