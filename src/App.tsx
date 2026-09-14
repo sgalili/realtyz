@@ -237,6 +237,29 @@ function WorkspaceScope({ children }: { children: React.ReactNode }) {
   return <React.Fragment key={activeWorkspaceId ?? 'no-workspace'}>{children}</React.Fragment>;
 }
 
+/**
+ * Route guards that follow the ACTIVE workspace. Rita's marketing workspace
+ * has no properties, deal room or partner network, so those routes bounce to
+ * the CRM there while staying fully available in every other workspace.
+ */
+function ListingsRoute({ children }: { children: React.ReactNode }) {
+  const { listingsEnabled } = useWorkspaceFeatures();
+  if (!listingsEnabled) return <Navigate to="/lead-crm" replace />;
+  return <>{children}</>;
+}
+
+function DealsRoute({ children }: { children: React.ReactNode }) {
+  const { dealsEnabled } = useWorkspaceFeatures();
+  if (!dealsEnabled) return <Navigate to="/lead-crm" replace />;
+  return <>{children}</>;
+}
+
+function PartnersRoute({ children }: { children: React.ReactNode }) {
+  const { partnersEnabled } = useWorkspaceFeatures();
+  if (!partnersEnabled) return <Navigate to="/lead-crm" replace />;
+  return <>{children}</>;
+}
+
 function AuthRoute() {
   const { user, loading } = useAuth();
   if (loading) return (
