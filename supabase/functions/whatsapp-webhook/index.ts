@@ -1727,7 +1727,9 @@ Deno.serve(async (req) => {
     // outreach itself. Rita then keeps the conversation in recruitment
     // mode: Realtyz all-in-one value + a short Zoom demo.
     // ============================================================
+    // Internal staff are never recruitment targets.
     try {
+      if (senderRoleInfo) throw { skip: true };
       const replyToOutreach = await isReplyToRecruitmentOutreach(admin as any, senderPhone);
       const recruitmentThread =
         replyToOutreach || (await isRecruitmentThread(admin as any, senderPhone));
