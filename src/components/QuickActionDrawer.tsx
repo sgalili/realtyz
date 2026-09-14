@@ -18,7 +18,9 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 type TabKey = 'note' | 'reminder' | 'interaction' | 'matches';
 
 type LeadLite = { id: string; full_name: string | null; phone_number: string | null; city: string | null; deal_type: string | null };
-type ListingLite = { id: string; property_title: string | null; city: string | null; neighborhood: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null };
+type ListingLite = { id: string; property_title: string | null; address: string | null; city: string | null; neighborhood: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null; image_url: string | null; media_photos: unknown };
+
+const LISTING_LITE_FIELDS = 'id, property_title, address, city, neighborhood, rooms, asking_price, deal_type, image_url, media_photos';
 
 const TABS: Array<{ key: TabKey; label: string; icon: typeof StickyNote }> = [
   { key: 'note', label: 'פתק', icon: StickyNote },
