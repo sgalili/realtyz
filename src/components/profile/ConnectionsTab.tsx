@@ -31,8 +31,8 @@ function StatusPill({ label, tone }: { label: string; tone: Tone }) {
   // Inline styles on purpose: global CSS neutralizes utility color classes
   // (bg-emerald/bg-slate...) with !important, which washed these pills out.
   const style = tone === 'ok'
-    ? { backgroundColor: 'hsl(152 62% 30%)', color: '#ffffff', borderColor: 'hsl(152 62% 24%)' }
-    : { backgroundColor: 'hsl(215 28% 95%)', color: 'hsl(217 45% 22%)', borderColor: 'hsl(215 20% 78%)' };
+    ? { backgroundColor: 'hsl(152 62% 96%)', color: 'hsl(152 62% 28%)', borderColor: 'hsl(152 40% 75%)' }
+    : { backgroundColor: 'hsl(0 80% 97%)', color: 'hsl(0 72% 45%)', borderColor: 'hsl(0 60% 82%)' };
   return (
     <span
       className="shrink-0 rounded-full border px-3 py-1 text-[13px] font-bold"
