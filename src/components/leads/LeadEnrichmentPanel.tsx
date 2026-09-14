@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner';
 import {
   Sparkles, Facebook, Instagram, Linkedin, Music2,
-  Bot, Users as GenderIcon, Loader2,
+  Users as GenderIcon, Loader2,
   ChevronDown, ChevronUp, Plus, Trash2, Globe,
   AtSign, MapPin, Building2, Phone as PhoneIcon,
 } from 'lucide-react';
@@ -82,9 +82,12 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
 
   const [enriching, setEnriching] = useState(false);
 
-  // Collapsible social section
-  const [socialOpen, setSocialOpen] = useState(false);
+  // Collapsible social section — open by default when the contact already
+  // has at least one social profile, collapsed when there is nothing to show.
   const [socials, setSocials] = useState<SocialEntry[]>(() => buildInitialSocials(lead, prefs));
+  const [socialOpen, setSocialOpen] = useState(
+    () => buildInitialSocials(lead, prefs).some((s) => String(s?.handle ?? '').trim().length > 0),
+  );
 
   useEffect(() => {
     setGender(lead.gender ?? prefs.gender ?? '');
