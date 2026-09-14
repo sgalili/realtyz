@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
 
       const { data: doc, error } = await admin
         .from("closing_documents")
-        .select("id, title, status, pdf_path, signed_pdf_path, signer_name, expires_at, signed_at, viewed_at")
+        .select("id, title, status, pdf_path, signed_pdf_path, signer_name, expires_at, signed_at, viewed_at, fields")
         .eq("sign_token", tk)
         .maybeSingle();
       if (error || !doc) {
@@ -74,6 +74,8 @@ Deno.serve(async (req) => {
           signer_name: doc.signer_name,
           signed_at: doc.signed_at,
           pdf_url: signed?.signedUrl ?? null,
+          property_address: (doc.fields as any)?.property_address ?? null,
+          tour_date: (doc.fields as any)?.tour_date ?? null,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );

@@ -186,6 +186,8 @@ Deno.serve(async (req) => {
       feeText: dealType === "rent"
         ? "חודש שכירות אחד"
         : "2% ממחיר העסקה",
+      // The pre-tour form carries its own Hebrew name.
+      titleOverride: template_key === "tour_agreement" ? "הסכם סיור בנכס" : undefined,
       logo: await fetchLogo(brand?.logo_url),
     });
 
@@ -196,9 +198,11 @@ Deno.serve(async (req) => {
     });
     if (upErr) throw upErr;
 
-    const title = dealType === "rent"
-      ? "הזמנת שירותי תיווך לשכירת נכס"
-      : "הזמנת שירותי תיווך לרכישת נכס";
+    const title = template_key === "tour_agreement"
+      ? "הסכם סיור בנכס"
+      : dealType === "rent"
+        ? "הזמנת שירותי תיווך לשכירת נכס"
+        : "הזמנת שירותי תיווך לרכישת נכס";
 
     const { error: insErr } = await admin.from("closing_documents").insert({
       id: docId,

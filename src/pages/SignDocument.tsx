@@ -21,7 +21,20 @@ type Doc = {
   signer_name: string | null;
   signed_at: string | null;
   pdf_url: string | null;
+  property_address?: string | null;
+  tour_date?: string | null;
 };
+
+/** "יום שני, 14/09/2026, 17:30" from an ISO / datetime-local tour date. */
+function formatMeeting(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return String(raw);
+  const day = d.toLocaleDateString('he-IL', { weekday: 'long', timeZone: 'Asia/Jerusalem' });
+  const date = d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Jerusalem' });
+  const time = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+  return `${day}, ${date}, ${time}`;
+}
 
 export default function SignDocument() {
   const { token } = useParams<{ token: string }>();
@@ -161,14 +174,24 @@ export default function SignDocument() {
   }
 
   if (success || doc.status === 'signed') {
+    const meeting = formatMeeting(doc.tour_date);
     return (
-      <main className="min-h-screen grid place-items-center p-6 bg-background">
-        <Card className="p-8 max-w-md text-center space-y-3">
+      <main className="min-h-screen grid place-items-center p-6 bg-background" dir="rtl">
+        <Card className="p-8 max-w-md text-center space-y-4">
           <CheckCircle2 className="h-12 w-12 text-success mx-auto" />
-          <h1 className="text-xl font-semibold">הכל נחתם!</h1>
+          <h1 className="text-xl font-semibold">
+            {doc.property_address && meeting
+              ? `תודה, נתראה ב-${doc.property_address} ב-${meeting}`
+              : doc.property_address
+                ? `תודה, נתראה ב-${doc.property_address}`
+                : 'תודה, החתימה נרשמה'}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            תודה {doc.signer_name || signerName}. החתימה שלך על <strong>{doc.title}</strong> נרשמה. הסוכן/ת קיבל/ה הודעה.
+            החתימה שלך על <strong>{doc.title}</strong> נרשמה והמתווך/ת קיבל/ה עדכון.
           </p>
+          <Button variant="outline" onClick={() => window.close()}>
+            סגור
+          </Button>
         </Card>
       </main>
     );

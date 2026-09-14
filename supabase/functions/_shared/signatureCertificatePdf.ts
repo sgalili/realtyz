@@ -26,11 +26,11 @@ export async function buildSignatureCertificate(opts: CertificateOptions): Promi
   const RIGHT = W - M;
   let y = M + 20;
 
-  // Homely seal
+  // Realtyz digital-signature seal
   doc.setDrawColor(20, 110, 90).setLineWidth(1.2).circle(M + 32, M + 14, 28);
   doc.setDrawColor(20, 110, 90).setLineWidth(0.5).circle(M + 32, M + 14, 23);
-  doc.setTextColor(20, 110, 90).setFont(HE_FONT, "bold").setFontSize(11);
-  doc.text(rtl("הומלי"), M + 32, M + 11, { align: "center" });
+  doc.setTextColor(20, 110, 90).setFont(HE_FONT, "bold").setFontSize(10);
+  doc.text(rtl("Realtyz"), M + 32, M + 11, { align: "center" });
   doc.setFont(HE_FONT, "normal").setFontSize(6);
   doc.text(rtl("החתמה דיגיטלית"), M + 32, M + 24, { align: "center" });
   doc.setTextColor(0);
@@ -86,7 +86,7 @@ export async function buildSignatureCertificate(opts: CertificateOptions): Promi
 
   doc.setDrawColor(225).setLineWidth(0.5).line(M, H - 44, RIGHT, H - 44);
   doc.setTextColor(130).setFontSize(7.5);
-  doc.text(rtl("מסמך זה הופק על ידי מערכת ההחתמות הדיגיטליות של הומלי"), RIGHT, H - 30, { align: "right" });
+  doc.text(rtl("מסמך זה הופק על ידי מערכת ההחתמות הדיגיטליות של Realtyz"), RIGHT, H - 30, { align: "right" });
 
   return new Uint8Array(doc.output("arraybuffer"));
 }
