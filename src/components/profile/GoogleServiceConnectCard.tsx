@@ -84,13 +84,6 @@ export function GoogleServiceConnectCard({
   brand?: 'gmail' | 'calendar' | 'youtube';
 }) {
   const [configError, setConfigError] = useState(false);
-  const [explicitlyDisconnected, setExplicitlyDisconnected] = useState(() => {
-    try {
-      return window.localStorage.getItem(`realtyz:google-explicit-disconnect:${platform}`) === '1';
-    } catch {
-      return false;
-    }
-  });
 
   const { data, refetch, isLoading } = useQuery({
     queryKey: ['google-service-conn', platform],
@@ -132,7 +125,6 @@ export function GoogleServiceConnectCard({
       try {
         window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
       } catch { /* storage may be unavailable */ }
-      setExplicitlyDisconnected(false);
     }
   }, [liveConnected, platform, credEmail]);
   const connected = liveConnected || isRememberedConnected(platform);
@@ -148,7 +140,6 @@ export function GoogleServiceConnectCard({
       try {
         window.localStorage.setItem(`realtyz:google-explicit-disconnect:${platform}`, '1');
       } catch { /* storage may be unavailable */ }
-      setExplicitlyDisconnected(true);
       toast.success('החיבור נותק');
       refetch();
     } catch {
@@ -170,7 +161,6 @@ export function GoogleServiceConnectCard({
         try {
           window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
         } catch { /* storage may be unavailable */ }
-        setExplicitlyDisconnected(false);
         toast.success('החיבור הושלם', { id: tId, description: connectedEmail });
         refetch();
       } catch (e: any) {
@@ -209,7 +199,6 @@ export function GoogleServiceConnectCard({
         try {
           window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
         } catch { /* storage may be unavailable */ }
-        setExplicitlyDisconnected(false);
         toast.success('החיבור הושלם', { description: res.name || undefined });
         refetch();
       } else if (res.reason && res.reason !== 'needs_page_selection') {
@@ -280,32 +269,25 @@ export function GoogleServiceConnectCard({
           <GoogleBrandGlyph brand={brand} connected={connected} className="mt-0.5" />
           <div className="min-w-0">
             <h4 className="text-sm font-semibold">{title}</h4>
-            <p className="mt-1 truncate text-[13px] font-medium text-foreground/70" dir={accountLabel ? 'ltr' : 'rtl'}>
-              {accountLabel ?? 'לא מחובר חשבון'}
-            </p>
-            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{hint}</p>
-            {platform === 'gmail' && (
-              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                Gmail משמש לשליחה, קבלה ותיעוד של התכתבויות ישירות בכרטיס איש הקשר.
+            {accountLabel && (
+              <p className="mt-1 truncate text-[13px] font-medium text-foreground/70" dir="ltr">
+                {accountLabel}
               </p>
             )}
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{hint}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {connected ? (
-            <span className="inline-flex h-8 items-center gap-1 text-[13px] font-bold text-emerald-700">
+            <span className="inline-flex h-8 items-center gap-1 text-[13px] font-bold" style={{ color: 'hsl(152 62% 28%)' }}>
               <CheckCircle2 className="h-3.5 w-3.5" /> מחובר
             </span>
-          ) : explicitlyDisconnected && !isLoading ? (
-            <Button size="sm" className="h-8 gap-1 text-xs" onClick={connect}>
-              {ctaLabel ?? 'חבר'}
-            </Button>
           ) : isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label="בודק חיבור" />
           ) : (
-            <span className="inline-flex h-8 items-center gap-1 text-[13px] font-bold text-destructive">
-              <AlertTriangle className="h-3.5 w-3.5" /> לא מחובר
-            </span>
+            <Button size="sm" className="h-8 gap-1 text-xs" onClick={connect}>
+              {ctaLabel ?? 'חבר'}
+            </Button>
           )}
           {connected && (
             <AlertDialog>

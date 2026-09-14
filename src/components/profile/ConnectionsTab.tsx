@@ -23,7 +23,6 @@ import { useAccountIntegrations } from '@/hooks/useAccountIntegrations';
 import {
   isRememberedConnected,
   rememberConnected,
-  rememberedLabel,
   type StickyService,
 } from '@/lib/connectionStatusCache';
 
@@ -55,6 +54,7 @@ function StatusPill({ label, tone }: { label: string; tone: Tone }) {
  */
 function ConnectionSection({
   title,
+  titleAside,
   status,
   tone,
   open,
@@ -63,6 +63,7 @@ function ConnectionSection({
   headerAside,
 }: {
   title: string;
+  titleAside?: ReactNode;
   status: string;
   tone: Tone;
   open: boolean;
@@ -81,6 +82,7 @@ function ConnectionSection({
         <span className="flex min-w-0 items-center gap-2">
           <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
           <span className="truncate text-sm font-semibold">{title}</span>
+          {titleAside}
         </span>
         {headerAside ?? <StatusPill label={status} tone={tone} />}
       </button>
@@ -218,17 +220,8 @@ export function ConnectionsTab() {
   const rememberedGoogle = (['gmail', 'google_calendar', 'youtube'] as StickyService[])
     .some((svc) => isRememberedConnected(svc, activeWorkspaceId));
   const someGoogleConnected = connectedGoogle.size > 0 || rememberedGoogle;
-  // Never show a vague "חלקי": the header shows the actual connected Google
-  // account (email / name) so the broker sees exactly which account is live.
-  const googleAccount = liveGoogle
-    .map((c) => String(c.credentials?.verified_identity?.email ?? c.credentials?.verified_identity?.name ?? '').trim())
-    .find((v) => !!v)
-    ?? (['gmail', 'google_calendar', 'youtube'] as StickyService[])
-      .map((svc) => rememberedLabel(svc, activeWorkspaceId))
-      .find((v) => !!v)
-    ?? null;
   const googleStatus: [string, Tone] = someGoogleConnected
-    ? [googleAccount ?? 'מחובר', 'ok']
+    ? ['מחובר', 'ok']
     : ['לא מחובר', 'idle'];
 
 
@@ -268,20 +261,7 @@ export function ConnectionsTab() {
 
   const [sms019Sender, setSms019Sender] = useState<string | null>(null);
 
-  const googleHeader = (
-    <div className="flex min-w-0 items-center gap-3">
-      <div className="flex items-center gap-1.5" aria-label="שירותי Google">
-        <GoogleBrandGlyph brand="gmail" connected={connectedGoogle.has('gmail') || isRememberedConnected('gmail', activeWorkspaceId)} />
-        <GoogleBrandGlyph brand="calendar" connected={connectedGoogle.has('google_calendar') || isRememberedConnected('google_calendar', activeWorkspaceId)} />
-        <GoogleBrandGlyph brand="youtube" connected={connectedGoogle.has('youtube') || isRememberedConnected('youtube', activeWorkspaceId)} />
-      </div>
-      <span className="max-w-[170px] truncate text-[13px] font-semibold text-foreground/70" dir="ltr">
-        {googleAccount ?? 'לא מחובר'}
-      </span>
-    </div>
-  );
-
-  const sections: Array<{ id: string; title: string; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode }> = [
+  const sections: Array<{ id: string; title: string; titleAside?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode }> = [
     {
       id: 'meta',
       title: 'פייסבוק / אינסטגרם',
@@ -335,6 +315,13 @@ export function ConnectionsTab() {
     {
       id: 'google',
       title: 'חשבונות גוגל',
+      titleAside: (
+        <span className="flex items-center gap-1.5" aria-label="שירותי Google">
+          <GoogleBrandGlyph brand="gmail" connected={connectedGoogle.has('gmail') || isRememberedConnected('gmail', activeWorkspaceId)} />
+          <GoogleBrandGlyph brand="calendar" connected={connectedGoogle.has('google_calendar') || isRememberedConnected('google_calendar', activeWorkspaceId)} />
+          <GoogleBrandGlyph brand="youtube" connected={connectedGoogle.has('youtube') || isRememberedConnected('youtube', activeWorkspaceId)} />
+        </span>
+      ),
       status: googleStatus[0],
       tone: googleStatus[1],
       node: (
@@ -385,8 +372,6 @@ export function ConnectionsTab() {
           )}
         </div>
       ),
-      headerAside: googleHeader,
-
     },
     // The 019 SMS gateway is a PLATFORM service: every workspace sends OTP/SMS
     // through the global Realtyz 019 number automatically. Only Super Admin may
@@ -422,6 +407,7 @@ export function ConnectionsTab() {
         <ConnectionSection
           key={s.id}
           title={s.title}
+          titleAside={s.titleAside}
           status={s.status}
           tone={s.tone}
           open={openId === s.id}
