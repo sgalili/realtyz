@@ -72,16 +72,26 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const body = (await req.json().catch(() => ({}))) as { demo_request_id?: string };
-    if (!body.demo_request_id) return json({ ok: false, error: "demo_request_id is required" }, 400);
+    const body = (await req.json().catch(() => ({}))) as {
+      demo_request_id?: string;
+      phone?: string;
+    };
+    if (!body.demo_request_id && !body.phone) {
+      return json({ ok: false, error: "demo_request_id or phone is required" }, 400);
+    }
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const { data: row, error } = await admin
+    // Resolve the booking: by id, or the newest request for that phone (the
+    // public landing form cannot read back its own inserted row).
+    let query = admin
       .from("demo_requests")
-      .select("id, first_name, last_name, phone, preferred_at, workspace_owner_id, source")
-      .eq("id", body.demo_request_id)
-      .maybeSingle();
+      .select("id, first_name, last_name, phone, preferred_at, workspace_owner_id, source");
+    query = body.demo_request_id
+      ? query.eq("id", body.demo_request_id)
+      : query.eq("phone", String(body.phone)).order("created_at", { ascending: false });
+    const { data: rows, error } = await query.limit(1);
+    const row = (rows ?? [])[0];
     if (error || !row) return json({ ok: false, error: "demo request not found" }, 404);
 
     const ownerId = (row.workspace_owner_id as string | null) ?? RITA_WORKSPACE_OWNER_ID;
