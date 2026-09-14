@@ -19,6 +19,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { buildSignatureCertificate } from "../_shared/signatureCertificatePdf.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,13 +35,6 @@ const SignSchema = z.object({
   signature_data: z.string().startsWith("data:image/").max(500_000),
   signer_name: z.string().min(1).max(160).optional(),
 });
-
-function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
