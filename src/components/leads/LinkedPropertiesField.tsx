@@ -298,13 +298,13 @@ export default function LinkedPropertiesField({ leadId, value, onChange, label =
                   type="button"
                   key={p.id}
                   onClick={() => toggle(p.id)}
-                  className={`w-full text-right text-xs p-2 rounded-md flex items-center gap-2 ${on ? 'bg-emerald-50 text-emerald-900' : 'hover:bg-slate-50'}`}
+                  className={`w-full text-right text-sm p-2 rounded-md flex items-center gap-2 ${on ? 'bg-emerald-50 text-emerald-900' : 'hover:bg-slate-50'}`}
                 >
-                  <PropertyThumb p={p} size={40} />
+                  <PropertyThumb p={p} size={44} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold">{propertyFullAddress(p)}</span>
                     {p.property_title && (
-                      <span className="block truncate text-[11px] text-slate-500">{p.property_title}</span>
+                      <span className="block truncate text-[13px] text-slate-500">{p.property_title}</span>
                     )}
                     <PropertyMeta p={p} />
                   </span>
