@@ -24,6 +24,12 @@ import { Badge } from '@/components/ui/badge';
 import { FileSignature, Send, Clock, CheckCircle2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { publicUrl } from '@/lib/publicUrl';
+import {
+  PropertyMeta,
+  PropertyThumb,
+  propertyFullAddress,
+  type PropertyOption,
+} from '@/components/leads/LinkedPropertiesField';
 
 type TemplateKey = 'offer_letter' | 'lease_agreement' | 'tour_agreement';
 
@@ -46,11 +52,7 @@ type ClosingDoc = {
   created_at: string;
 };
 
-type Listing = {
-  id: string;
-  property_title: string;
-  asking_price: number | null;
-};
+type Listing = PropertyOption & { property_title: string };
 
 const STATUS_BADGE: Record<ClosingDoc['status'], { label: string; tone: string; icon: typeof Clock }> = {
   draft: { label: 'טיוטה', tone: 'bg-muted text-muted-foreground', icon: FileText },
@@ -103,7 +105,7 @@ export function ClosingRoomDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, asking_price')
+        .select('id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos')
         .eq('is_published', true)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -235,18 +237,41 @@ export function ClosingRoomDialog({
           <div>
             <Label className="text-xs">נכס מקושר</Label>
             <Select value={listingId || 'none'} onValueChange={(v) => setListingId(v === 'none' ? '' : v)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-auto py-2">
                 <SelectValue placeholder="ללא" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— ללא —</SelectItem>
                 {listings.map((l) => (
                   <SelectItem key={l.id} value={l.id}>
-                    {l.property_title}
+                    <span className="flex items-center gap-2 text-right">
+                      <PropertyThumb p={l} size={36} />
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold text-xs">{propertyFullAddress(l)}</span>
+                        {l.property_title && (
+                          <span className="block truncate text-[11px] text-slate-500">{l.property_title}</span>
+                        )}
+                        <PropertyMeta p={l} />
+                      </span>
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {selectedListing && (
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2">
+                <PropertyThumb p={selectedListing} size={48} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-slate-900 truncate">
+                    {propertyFullAddress(selectedListing)}
+                  </p>
+                  {selectedListing.property_title && (
+                    <p className="text-[11px] text-slate-500 truncate">{selectedListing.property_title}</p>
+                  )}
+                  <PropertyMeta p={selectedListing} />
+                </div>
+              </div>
+            )}
           </div>
 
           {template === 'tour_agreement' && (

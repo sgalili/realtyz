@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Zap, StickyNote, BellRing, MessageSquarePlus, Home, Loader2, Search, ArrowLeft, CalendarCheck2 } from 'lucide-react';
 import { invalidateLiveData } from '@/lib/liveSync';
@@ -18,7 +17,11 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 type TabKey = 'note' | 'reminder' | 'interaction' | 'matches';
 
 type LeadLite = { id: string; full_name: string | null; phone_number: string | null; city: string | null; deal_type: string | null };
-type ListingLite = { id: string; property_title: string | null; city: string | null; neighborhood: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null };
+import { PropertyMeta, PropertyThumb, propertyFullAddress } from '@/components/leads/LinkedPropertiesField';
+
+type ListingLite = { id: string; property_title: string | null; address: string | null; city: string | null; neighborhood: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null; image_url: string | null; media_photos: unknown };
+
+const LISTING_LITE_FIELDS = 'id, property_title, address, city, neighborhood, rooms, asking_price, deal_type, image_url, media_photos';
 
 const TABS: Array<{ key: TabKey; label: string; icon: typeof StickyNote }> = [
   { key: 'note', label: 'פתק', icon: StickyNote },
@@ -162,7 +165,7 @@ export default function QuickActionDrawer() {
     const t = setTimeout(async () => {
       const { data } = await (supabase as any)
         .from('listings')
-        .select('id, property_title, city, neighborhood, rooms, asking_price, deal_type')
+        .select(LISTING_LITE_FIELDS)
         .or(`property_title.ilike.%${q}%,address.ilike.%${q}%,city.ilike.%${q}%`)
         .limit(8);
       if (cancelled) return;
@@ -279,7 +282,7 @@ export default function QuickActionDrawer() {
     try {
       let q = (supabase as any)
         .from('listings')
-        .select('id, property_title, city, neighborhood, rooms, asking_price, deal_type')
+        .select(LISTING_LITE_FIELDS)
         .order('created_at', { ascending: false })
         .limit(10);
       if (lead?.city) q = q.ilike('city', `%${lead.city}%`);
@@ -401,20 +404,36 @@ export default function QuickActionDrawer() {
                         placeholder="חיפוש נכס לפי כתובת, עיר או כותרת"
                       />
                       {listingResults.length > 0 && (
-                        <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border p-1">
+                        <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-border p-1">
                           {listingResults.map((r) => (
                             <button
                               key={r.id}
                               type="button"
                               onClick={() => { setListing(r); setListingResults([]); }}
-                              className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-right transition hover:bg-accent"
+                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-right transition hover:bg-accent"
                             >
-                              <span className="truncate text-sm font-semibold">
-                                {r.property_title || [r.neighborhood, r.city].filter(Boolean).join(', ') || 'נכס'}
+                              <PropertyThumb p={r} size={40} />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-semibold">{propertyFullAddress(r)}</span>
+                                {r.property_title && (
+                                  <span className="block truncate text-[11px] text-muted-foreground">{r.property_title}</span>
+                                )}
+                                <PropertyMeta p={r} />
                               </span>
-                              <span className="shrink-0 text-xs text-muted-foreground">{r.city ?? ''}</span>
                             </button>
                           ))}
+                        </div>
+                      )}
+                      {listing && (
+                        <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-2">
+                          <PropertyThumb p={listing} size={48} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold">{propertyFullAddress(listing)}</p>
+                            {listing.property_title && (
+                              <p className="truncate text-[11px] text-muted-foreground">{listing.property_title}</p>
+                            )}
+                            <PropertyMeta p={listing} />
+                          </div>
                         </div>
                       )}
                     </>
@@ -543,18 +562,17 @@ export default function QuickActionDrawer() {
                       key={m.id}
                       type="button"
                       onClick={() => { setOpen(false); navigate(`/properties/${m.id}`); }}
-                      className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-right transition hover:border-primary hover:bg-accent"
+                      className="flex w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-right transition hover:border-primary hover:bg-accent"
                     >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-foreground">{m.property_title || 'נכס ללא כותרת'}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {[m.city, m.neighborhood, m.rooms ? `${m.rooms} חד׳` : null].filter(Boolean).join(' · ') || '—'}
-                        </p>
+                      <PropertyThumb p={m} size={52} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-foreground">{propertyFullAddress(m)}</p>
+                        {m.property_title && (
+                          <p className="truncate text-xs text-muted-foreground">{m.property_title}</p>
+                        )}
+                        <PropertyMeta p={m} />
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {m.asking_price ? <Badge variant="secondary" className="text-[11px]">₪{Number(m.asking_price).toLocaleString('he-IL')}</Badge> : null}
-                        <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                      <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
                     </button>
                   ))}
                 </div>

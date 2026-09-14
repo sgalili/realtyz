@@ -14,12 +14,54 @@ export interface PropertyOption {
   city: string | null;
   deal_type: string | null;
   asking_price: number | null;
+  rooms?: number | null;
+  image_url?: string | null;
+  media_photos?: unknown;
 }
 
 export function propertyLabel(p: PropertyOption) {
   const parts = [p.property_title, p.address, p.city].filter(Boolean) as string[];
   return parts.join(' · ') || 'נכס ללא כותרת';
 }
+
+/** Street + city, as precise as the record allows. */
+export function propertyFullAddress(p: PropertyOption) {
+  const parts = [p.address, p.city].filter(Boolean) as string[];
+  return parts.join(', ') || p.property_title || 'כתובת לא הוזנה';
+}
+
+/** "מכירה" / "השכרה". */
+export function propertyDealLabel(p: PropertyOption): string | null {
+  if (p.deal_type === 'rent') return 'השכרה';
+  if (p.deal_type === 'sale') return 'מכירה';
+  return null;
+}
+
+/** 8000 -> "8,000 ₪". */
+export function propertyPriceLabel(p: PropertyOption): string | null {
+  const n = Number(p.asking_price);
+  if (!p.asking_price || Number.isNaN(n)) return null;
+  return `${n.toLocaleString('he-IL', { maximumFractionDigits: 0 })} ₪`;
+}
+
+export function propertyRoomsLabel(p: PropertyOption): string | null {
+  const n = Number(p.rooms);
+  if (!p.rooms || Number.isNaN(n)) return null;
+  return `${n % 1 === 0 ? n : n.toFixed(1)} חדרים`;
+}
+
+/** First usable photo: explicit image, otherwise the first gallery photo. */
+export function propertyImage(p: PropertyOption): string | null {
+  if (p.image_url) return p.image_url;
+  const photos = p.media_photos;
+  if (Array.isArray(photos)) {
+    const first = photos.find((x) => typeof x === 'string' && x.startsWith('http'));
+    if (first) return first as string;
+  }
+  return null;
+}
+
+const LISTING_FIELDS = 'id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos';
 
 /** Every property available to the signed-in user's workspace. */
 export function useWorkspaceProperties() {
@@ -28,7 +70,7 @@ export function useWorkspaceProperties() {
     queryFn: async (): Promise<PropertyOption[]> => {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, address, city, deal_type, asking_price')
+        .select(LISTING_FIELDS)
         .order('created_at', { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -36,6 +78,38 @@ export function useWorkspaceProperties() {
     },
     staleTime: 5 * 60 * 1000,
   });
+}
+
+/** Details row shared by the dropdown and the linked-property cards. */
+export function PropertyMeta({ p }: { p: PropertyOption }) {
+  const bits = [propertyDealLabel(p), propertyPriceLabel(p), propertyRoomsLabel(p)].filter(Boolean) as string[];
+  if (!bits.length) return null;
+  return (
+    <p className="text-[11px] text-muted-foreground truncate">{bits.join(' · ')}</p>
+  );
+}
+
+/** Square thumbnail with a neutral placeholder when the listing has no photo. */
+export function PropertyThumb({ p, size = 44 }: { p: PropertyOption; size?: number }) {
+  const src = propertyImage(p);
+  return (
+    <div
+      className="shrink-0 rounded-md overflow-hidden bg-slate-100 grid place-items-center"
+      style={{ width: size, height: size }}
+    >
+      {src ? (
+        <img
+          src={src}
+          alt={propertyFullAddress(p)}
+          loading="lazy"
+          className="h-full w-full object-cover"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+        />
+      ) : (
+        <Building2 className="h-4 w-4 text-slate-400" />
+      )}
+    </div>
+  );
 }
 
 /** Properties already linked to a contact. */
@@ -149,15 +223,43 @@ export default function LinkedPropertiesField({ leadId, value, onChange, label =
       </div>
 
       {selected.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {selected.map((id) => (
-            <Badge key={id} variant="secondary" className="gap-1 text-xs max-w-full">
-              <span className="truncate">{byId.has(id) ? propertyLabel(byId.get(id)!) : 'נכס'}</span>
-              <button type="button" onClick={() => toggle(id)} aria-label="הסר נכס">
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
+        <div className="space-y-1.5">
+          {selected.map((id) => {
+            const p = byId.get(id);
+            if (!p) {
+              return (
+                <Badge key={id} variant="secondary" className="gap-1 text-xs max-w-full">
+                  <span className="truncate">נכס</span>
+                  <button type="button" onClick={() => toggle(id)} aria-label="הסר נכס">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              );
+            }
+            return (
+              <div
+                key={id}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2"
+              >
+                <PropertyThumb p={p} size={48} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-slate-900 truncate">{propertyFullAddress(p)}</p>
+                  {p.property_title && (
+                    <p className="text-[11px] text-slate-500 truncate">{p.property_title}</p>
+                  )}
+                  <PropertyMeta p={p} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggle(id)}
+                  aria-label="הסר נכס"
+                  className="shrink-0 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -169,7 +271,7 @@ export default function LinkedPropertiesField({ leadId, value, onChange, label =
             placeholder="חיפוש נכס לפי כותרת, כתובת או עיר"
             className="h-8 text-sm"
           />
-          <div className="max-h-52 overflow-y-auto space-y-1">
+          <div className="max-h-64 overflow-y-auto space-y-1">
             {isLoading && <p className="text-xs text-muted-foreground p-2">טוען נכסים…</p>}
             {!isLoading && filtered.length === 0 && (
               <p className="text-xs text-muted-foreground p-2">לא נמצאו נכסים במאגר.</p>
@@ -183,8 +285,15 @@ export default function LinkedPropertiesField({ leadId, value, onChange, label =
                   onClick={() => toggle(p.id)}
                   className={`w-full text-right text-xs p-2 rounded-md flex items-center gap-2 ${on ? 'bg-emerald-50 text-emerald-900' : 'hover:bg-slate-50'}`}
                 >
-                  {on ? <Check className="h-3.5 w-3.5 shrink-0" /> : <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
-                  <span className="truncate">{propertyLabel(p)}</span>
+                  <PropertyThumb p={p} size={40} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{propertyFullAddress(p)}</span>
+                    {p.property_title && (
+                      <span className="block truncate text-[11px] text-slate-500">{p.property_title}</span>
+                    )}
+                    <PropertyMeta p={p} />
+                  </span>
+                  {on && <Check className="h-4 w-4 shrink-0 text-emerald-600" />}
                 </button>
               );
             })}
