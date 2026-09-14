@@ -5,6 +5,7 @@ import { isOAuthPopup, notifyOAuthOpener } from '@/lib/oauthPopupBridge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ExternalLink } from 'lucide-react';
 import { friendlyGoogleError } from '@/lib/googleApiErrors';
+import { startMetaPageConnect } from '@/lib/facebookPageConnect';
 
 /**
  * Full-page OAuth landing page for Facebook / Google.
