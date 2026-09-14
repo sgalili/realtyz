@@ -4707,6 +4707,8 @@ export type Database = {
           client_name: string
           client_phone: string
           created_at: string
+          google_event_id: string | null
+          google_event_link: string | null
           id: string
           listing_id: string | null
           metadata: Json
@@ -4726,6 +4728,8 @@ export type Database = {
           client_name: string
           client_phone: string
           created_at?: string
+          google_event_id?: string | null
+          google_event_link?: string | null
           id?: string
           listing_id?: string | null
           metadata?: Json
@@ -4745,6 +4749,8 @@ export type Database = {
           client_name?: string
           client_phone?: string
           created_at?: string
+          google_event_id?: string | null
+          google_event_link?: string | null
           id?: string
           listing_id?: string | null
           metadata?: Json
@@ -4844,6 +4850,8 @@ export type Database = {
           created_at: string
           daily_limit: number
           drip_enabled: boolean
+          google_event_id: string | null
+          google_event_link: string | null
           id: string
           item_type: string
           metadata: Json
@@ -4868,6 +4876,8 @@ export type Database = {
           created_at?: string
           daily_limit?: number
           drip_enabled?: boolean
+          google_event_id?: string | null
+          google_event_link?: string | null
           id?: string
           item_type?: string
           metadata?: Json
@@ -4892,6 +4902,8 @@ export type Database = {
           created_at?: string
           daily_limit?: number
           drip_enabled?: boolean
+          google_event_id?: string | null
+          google_event_link?: string | null
           id?: string
           item_type?: string
           metadata?: Json
@@ -6215,6 +6227,10 @@ export type Database = {
         Returns: undefined
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      enqueue_calendar_autosync: {
+        Args: { _record_id: string; _table: string }
+        Returns: undefined
+      }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
