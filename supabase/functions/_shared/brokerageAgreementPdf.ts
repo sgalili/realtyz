@@ -49,6 +49,8 @@ export interface AgreementOptions {
   note?: string;
   /** Brokerage fee wording, e.g. "חודש שכירות אחד" or "2% ממחיר העסקה". */
   feeText: string;
+  /** Hebrew form name shown as the document title (e.g. "הסכם סיור בנכס"). */
+  titleOverride?: string;
   /** Optional agency logo (PNG/JPEG bytes) drawn at the top-right. */
   logo?: { data: Uint8Array; format: "PNG" | "JPEG" } | null;
 }
@@ -114,30 +116,27 @@ export async function buildBrokerageAgreementPdf(opts: AgreementOptions): Promis
   };
 
   // ---------- Header: seal + agency logo + broker block ----------
+  // No banner shape here: the agency name lives in the broker block only, so
+  // the header stays clean when the workspace has no uploaded logo.
   const headerTop = y;
   const badgeW = 120;
+  let brokerBlockRight = RIGHT;
   if (opts.logo) {
     try {
       doc.addImage(opts.logo.data, opts.logo.format, RIGHT - badgeW, headerTop, badgeW, 40);
+      brokerBlockRight = RIGHT - badgeW - 14;
     } catch { /* a bad logo must never break the document */ }
-  } else {
-    doc.setDrawColor(30, 64, 120).setLineWidth(1).roundedRect(RIGHT - badgeW, headerTop, badgeW, 40, 6, 6);
-    const officeLines = rtlLines(doc, opts.broker.office, badgeW - 12).slice(0, 2);
-    doc.setFont(HE_FONT, "bold").setFontSize(9);
-    officeLines.forEach((line, i) =>
-      doc.text(line, RIGHT - badgeW / 2, headerTop + (officeLines.length === 1 ? 25 : 18) + i * 12, { align: "center" })
-    );
   }
 
-  // Homely digital-signature seal
+  // Realtyz digital-signature seal
   doc.setDrawColor(20, 110, 90).setLineWidth(1.2).circle(M + 32, headerTop + 22, 30);
   doc.setDrawColor(20, 110, 90).setLineWidth(0.5).circle(M + 32, headerTop + 22, 25);
   doc.setTextColor(20, 110, 90);
-  heAt("הומלי", M + 32, headerTop + 18, 12, true, "center");
+  heAt("Realtyz", M + 32, headerTop + 18, 11, true, "center");
   heAt("החתמה דיגיטלית", M + 32, headerTop + 32, 6, false, "center");
   doc.setTextColor(0);
 
-  const textX = RIGHT - badgeW - 14;
+  const textX = brokerBlockRight;
   y = headerTop + 18;
   he(opts.broker.name, 12, true, textX);
   y += 14;
@@ -149,9 +148,9 @@ export async function buildBrokerageAgreementPdf(opts: AgreementOptions): Promis
   y += 26;
 
   // ---------- Title ----------
-  const title = opts.dealType === "rent"
+  const title = opts.titleOverride?.trim() || (opts.dealType === "rent"
     ? 'הזמנת שירותי תיווך לשכירת נכס נדל"ן'
-    : 'הזמנת שירותי תיווך לרכישת נכס נדל"ן';
+    : 'הזמנת שירותי תיווך לרכישת נכס נדל"ן');
   heAt(title, W / 2, y, 16, true, "center");
   y += 16;
   heAt(`טופס מספר ${opts.formNumber} | תאריך ${heDate()}`, W / 2, y, 9, false, "center");
@@ -290,7 +289,7 @@ export async function buildBrokerageAgreementPdf(opts: AgreementOptions): Promis
     doc.setPage(p);
     doc.setDrawColor(225).setLineWidth(0.5).line(M, H - 44, RIGHT, H - 44);
     doc.setTextColor(130);
-    heAt("מסמך זה הופק על ידי מערכת ההחתמות הדיגיטליות של הומלי", RIGHT, H - 30, 7.5);
+    heAt("מסמך זה הופק על ידי מערכת ההחתמות הדיגיטליות של Realtyz", RIGHT, H - 30, 7.5);
     doc.setFont(HE_FONT, "normal").setFontSize(7.5);
     doc.text(rtl(`עמוד ${p} מתוך ${pages}`), M, H - 30, { align: "left" });
     doc.setTextColor(0);
