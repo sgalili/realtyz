@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -87,6 +88,22 @@ const STEPS: TourStep[] = [
     connections: true,
   },
 ];
+
+/**
+ * Rita's marketing workspace has no properties, so the property step and the
+ * property wording are dropped from the tour there.
+ */
+function buildSteps(listingsEnabled: boolean): TourStep[] {
+  if (listingsEnabled) return STEPS;
+  return STEPS
+    .filter((s) => s.cta?.to !== '/properties')
+    .map((s) => ({
+      ...s,
+      bullets: s.bullets.map((b) => b
+        .replace('הכל במקום אחד: שיחות, נכסים, משימות ופרסום.', 'הכל במקום אחד: שיחות, משימות ופרסום.')
+        .replace('לחיצה אחת ואתה בשיחה, בנכס או במשימה.', 'לחיצה אחת ואתה בשיחה או במשימה.')),
+    }));
+}
 
 const LOCAL_KEY = 'realtyz-product-tour-done';
 
@@ -214,9 +231,11 @@ export function ProductTour() {
     navigate(navigateTo ?? '/profile?welcome=1');
   };
 
-  const step = STEPS[index];
-  const isLast = index === STEPS.length - 1;
-  const progress = useMemo(() => ((index + 1) / STEPS.length) * 100, [index]);
+  const { listingsEnabled } = useWorkspaceFeatures();
+  const steps = useMemo(() => buildSteps(listingsEnabled), [listingsEnabled]);
+  const step = steps[index];
+  const isLast = index === steps.length - 1;
+  const progress = useMemo(() => ((index + 1) / steps.length) * 100, [index, steps.length]);
 
   if (!open || !step) return null;
 
@@ -230,7 +249,7 @@ export function ProductTour() {
           <div className="flex items-center justify-between gap-4">
             <img src={realtyzLogo} alt="Realtyz AI" className="h-9 w-auto object-contain" />
             <span className="text-sm font-bold text-muted-foreground">
-              {index + 1} מתוך {STEPS.length}
+              {index + 1} מתוך {steps.length}
             </span>
           </div>
           <p className="mt-6 inline-flex items-center gap-2 text-base font-extrabold text-primary">

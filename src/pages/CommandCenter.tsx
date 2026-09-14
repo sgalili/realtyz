@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -127,6 +128,8 @@ function IconAction({
 }
 
 export default function CommandCenter() {
+  // Property card links only appear in workspaces that manage properties.
+  const { listingsEnabled } = useWorkspaceFeatures();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: tasks = [], isLoading } = useCommandCenterTasks();
@@ -329,7 +332,7 @@ export default function CommandCenter() {
                             <ChevronLeft className="h-4 w-4" />
                           </Button>
                         )}
-                        {task.listingId && (
+                        {task.listingId && listingsEnabled && (
                           <Button
                             size="sm"
                             variant="outline"
