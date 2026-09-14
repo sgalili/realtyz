@@ -27,6 +27,9 @@ const SAFETY_UI_TIMEOUT_MS = 4_000;
 const HARD_TIMEOUT_MS = 18_000;
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive', 'google_all'] as const;
+/** Grants already sent to the exchange endpoint in this page lifetime. */
+const exchangeStarted = new Set<string>();
+
 
 type OAuthError = {
   title: string;
@@ -258,8 +261,14 @@ export default function OAuthCallback() {
         return;
       }
 
+      // A single exchange per grant: StrictMode remounts must not consume the
+      // one-time OAuth state twice.
+      if (exchangeStarted.has(state || String(code || accessToken))) return;
+      exchangeStarted.add(state || String(code || accessToken));
+
       setMessage('שומר את חיבור עמוד הפייסבוק...');
       try {
+
         const { data, error: fnError } = await withTimeout(
           supabase.functions.invoke('meta-page-connect', {
             body: {
