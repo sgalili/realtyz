@@ -376,7 +376,7 @@ export function ConnectionsTab() {
                 <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', googleAdvancedOpen && 'rotate-180')} />
               </Button>
               {googleAdvancedOpen && (
-                <div className="mt-3">
+                <div data-keep className="mt-3">
                   <GoogleApiCredentialsCard />
                 </div>
               )}
