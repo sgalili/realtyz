@@ -19,16 +19,34 @@ import { friendlyGoogleError } from '@/lib/googleApiErrors';
 /** Page-binding logins are exchanged here; other flows stash and hand back. */
 const FACEBOOK_PAGE_STATE_PREFIX = 'facebook_page';
 const CONNECTIONS_PATH = '/profile?tab=connections';
-/** Ceiling for the server-side exchange so the page never spins forever. */
-const EXCHANGE_TIMEOUT_MS = 8_000;
+/**
+ * Ceiling for the server-side exchange. It must stay ABOVE the edge function's
+ * own 8s budget, otherwise the client timer fires first and masks the real
+ * Facebook reason (empty Page list, reused code) behind a generic timeout.
+ */
+const EXCHANGE_TIMEOUT_MS = 15_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
-const HARD_TIMEOUT_MS = 8_000;
+const HARD_TIMEOUT_MS = 20_000;
 
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive', 'google_all'] as const;
-/** Grants already sent to the exchange endpoint in this page lifetime. */
-const exchangeStarted = new Set<string>();
 
+/**
+ * A Facebook authorization code can be exchanged exactly once. The marker is
+ * written to sessionStorage BEFORE the request leaves the browser, so a reload,
+ * a StrictMode remount or a second tab can never re-send the same grant and
+ * trigger `code 100 / subcode 36009`.
+ */
+const CONSUMED_KEY_PREFIX = 'realtyz-oauth-consumed:';
+function grantKey(raw: string) {
+  return `${CONSUMED_KEY_PREFIX}${raw.slice(0, 64)}`;
+}
+function isGrantConsumed(raw: string): boolean {
+  try { return !!window.sessionStorage.getItem(grantKey(raw)); } catch { return false; }
+}
+function markGrantConsumed(raw: string) {
+  try { window.sessionStorage.setItem(grantKey(raw), String(Date.now())); } catch { /* private mode */ }
+}
 
 type OAuthError = {
   title: string;
@@ -37,6 +55,10 @@ type OAuthError = {
   hint?: string | null;
   /** Google Cloud Console link that fixes a disabled API. */
   enableUrl?: string | null;
+  /** Primary recovery action label, e.g. back to Facebook's Page picker. */
+  actionLabel?: string | null;
+  /** True when the only way forward is a brand-new Facebook login. */
+  restartLogin?: boolean;
 } | null;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
