@@ -194,6 +194,10 @@ function contactSubtitle(lead: any, messages: any[] = [], chats: any[] = []): st
     if (agency) return `מתווך ממשרד ${agency}${area && !agency.includes(area) ? `, ${area}` : ''}`;
     return area ? `מתווך הפועל באזור ${area}` : 'מתווך נדל״ן';
   }
+  if (kind === 'affiliate') {
+    if (agency) return `שותף מ${agency}${area && !agency.includes(area) ? `, ${area}` : ''}`;
+    return area ? `שותף הפועל באזור ${area}` : 'שותף';
+  }
   if (kind === 'seller') return location ? `מוכר ${propertyType} ב${location}` : `מוכר ${propertyType}`;
   if (kind === 'landlord') return location ? `משכיר ${propertyType} ב${location}` : `משכיר ${propertyType}`;
   if (kind === 'renter') return location ? `מחפש ${propertyType} להשכרה ב${location}` : `מחפש ${propertyType} להשכרה`;
@@ -539,7 +543,7 @@ const LeadCRM = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [profileFilter, setProfileFilter] = useState<string>('all');
   const [dealTypeFilter, setDealTypeFilter] = useState<string>('all');
-  const [leadKindFilter, setLeadKindFilter] = useState<'all' | 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker'>('all');
+  const [leadKindFilter, setLeadKindFilter] = useState<'all' | 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker' | 'affiliate'>('all');
   const [sentimentFilter, setSentimentFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [compactMode, setCompactMode] = useState<boolean>(() => {
@@ -610,7 +614,7 @@ const LeadCRM = () => {
   // Lead kind selected by the agent BEFORE confirming an import. Drives deal_type
   // and preferences.lead_kind on every inserted row so buyers/sellers/renters/landlords
   // stay in the right pipeline from day one.
-  const [importLeadKind, setImportLeadKind] = useState<'buyer' | 'seller' | 'renter' | 'landlord' | 'broker'>('buyer');
+  const [importLeadKind, setImportLeadKind] = useState<'buyer' | 'seller' | 'renter' | 'landlord' | 'broker' | 'affiliate'>('buyer');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [addVoterOpen, setAddVoterOpen] = useState(false);
   const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
@@ -1791,6 +1795,7 @@ const LeadCRM = () => {
                 { v: 'renter', label: 'שוכרים' },
                 { v: 'landlord', label: 'משכירים' },
                 { v: 'broker', label: 'מתווכים' },
+                { v: 'affiliate', label: 'שותפים' },
               ] as const).map((t) => (
                 <button
                   key={t.v}
@@ -2055,6 +2060,7 @@ const LeadCRM = () => {
                               renter:   { label: 'שוכר',   cls: 'bg-[#0b3982]/10 text-[#0b3982] border-[#0b3982]/40' },
                               landlord: { label: 'משכיר', cls: 'bg-purple-500/10 text-purple-700 border-purple-300' },
                               broker:   { label: 'מתווך', cls: 'bg-amber-500/10 text-amber-700 border-amber-300' },
+                              affiliate:{ label: 'שותף',  cls: 'bg-teal-500/10 text-teal-700 border-teal-300' },
                             };
                             const m = kind ? map[kind] : null;
                             return m
@@ -2485,7 +2491,7 @@ const LeadCRM = () => {
                     const leadKindOpts = [
                       { v: 'buyer', l: 'קונה' }, { v: 'seller', l: 'מוכר' },
                       { v: 'renter', l: 'שוכר' }, { v: 'landlord', l: 'משכיר' },
-                      { v: 'broker', l: 'מתווך' },
+                      { v: 'broker', l: 'מתווך' }, { v: 'affiliate', l: 'שותף' },
                     ];
                     const dealTypeOpts = [
                       { v: 'sale', l: 'קנייה' }, { v: 'rent', l: 'שכירות' },
@@ -2721,13 +2727,14 @@ const LeadCRM = () => {
               Buyer/Seller stay on the sale pipeline; Renter/Landlord move to rent. */}
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
             <div className="text-xs font-semibold">סוג הרשימה</div>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5" dir="rtl">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5" dir="rtl">
               {([
                 { v: 'buyer', label: 'קונים' },
                 { v: 'seller', label: 'מוכרים' },
                 { v: 'renter', label: 'שוכרים' },
                 { v: 'landlord', label: 'משכירים' },
                 { v: 'broker', label: 'מתווכים' },
+                { v: 'affiliate', label: 'שותפים' },
               ] as const).map((opt) => (
                 <button
                   key={opt.v}

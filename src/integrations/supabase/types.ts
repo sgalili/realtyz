@@ -6356,6 +6356,10 @@ export type Database = {
       is_workspace_member:
         | { Args: { _owner: string; _user: string }; Returns: boolean }
         | { Args: { _owner_id: string }; Returns: boolean }
+      lead_identity_keys: {
+        Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
+        Returns: string[]
+      }
       listing_embedding_text: {
         Args: { l: Database["public"]["Tables"]["listings"]["Row"] }
         Returns: string
@@ -6408,6 +6412,10 @@ export type Database = {
       merge_lead_into: {
         Args: { _source: string; _target: string }
         Returns: string
+      }
+      merge_lead_pair: {
+        Args: { _dup: string; _primary: string }
+        Returns: undefined
       }
       move_to_dlq: {
         Args: {
@@ -6479,6 +6487,7 @@ export type Database = {
         Args: { _row_user: string; _viewer: string }
         Returns: boolean
       }
+      social_identity_key: { Args: { _raw: string }; Returns: string }
       subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
       trigger_match_for_lead: {

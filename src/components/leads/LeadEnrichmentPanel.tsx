@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner';
 import {
   Sparkles, Facebook, Instagram, Linkedin, Music2,
-  Bot, Users as GenderIcon, Loader2,
+  Users as GenderIcon, Loader2,
   ChevronDown, ChevronUp, Plus, Trash2, Globe,
   AtSign, MapPin, Building2, Phone as PhoneIcon,
 } from 'lucide-react';
@@ -82,9 +82,12 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
 
   const [enriching, setEnriching] = useState(false);
 
-  // Collapsible social section
-  const [socialOpen, setSocialOpen] = useState(false);
+  // Collapsible social section — open by default when the contact already
+  // has at least one social profile, collapsed when there is nothing to show.
   const [socials, setSocials] = useState<SocialEntry[]>(() => buildInitialSocials(lead, prefs));
+  const [socialOpen, setSocialOpen] = useState(
+    () => buildInitialSocials(lead, prefs).some((s) => String(s?.handle ?? '').trim().length > 0),
+  );
 
   useEffect(() => {
     setGender(lead.gender ?? prefs.gender ?? '');
@@ -98,7 +101,9 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   // the enrichment dialog writes new social profiles to the DB), so the panel
   // reflects the update without waiting for a full page reload.
   useEffect(() => {
-    setSocials(buildInitialSocials(lead, prefs));
+    const next = buildInitialSocials(lead, prefs);
+    setSocials(next);
+    if (next.some((s) => String(s?.handle ?? '').trim().length > 0)) setSocialOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id, JSON.stringify(prefs.socials), prefs.facebook_url, prefs.linkedin_url, prefs.tiktok_handle, lead.instagram_handle]);
 
@@ -209,23 +214,8 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
               />
             </div>
           </div>
+          {/* Address sits before city, matching how brokers dictate a location. */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <Building2 className="h-3.5 w-3.5 text-slate-700" /> עיר
-                {savingField === 'city' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-              </Label>
-              <IsraeliCityPicker
-                value={city}
-                placeholder="—"
-                onChange={(v) => {
-                  setCity(v);
-                  if ((v || null) !== (lead.city ?? null)) persist({ col: { city: v || null } }, 'city');
-                }}
-                className="h-8 text-sm"
-              />
-
-            </div>
             <div className="space-y-1">
               <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-slate-700" /> כתובת
@@ -243,30 +233,30 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
                 maxLength={200}
               />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5 text-slate-700" /> עיר
+                {savingField === 'city' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              </Label>
+              <IsraeliCityPicker
+                value={city}
+                placeholder="—"
+                onChange={(v) => {
+                  setCity(v);
+                  if ((v || null) !== (lead.city ?? null)) persist({ col: { city: v || null } }, 'city');
+                }}
+                className="h-8 text-sm"
+              />
+
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Conversation bot + gender side-by-side */}
+      {/* Gender */}
       <div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <Bot className="h-3.5 w-3.5 text-slate-700" /> בוט
-              {savingField === 'bot' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-            </Label>
-            <Select
-              value={lead.ai_autopilot === false ? 'manual' : 'rita'}
-              onValueChange={(value) => persist({ col: { ai_autopilot: value === 'rita' } }, 'bot')}
-            >
-              <SelectTrigger className="h-8 text-sm font-semibold text-slate-900"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="rita">ריטה</SelectItem>
-                <SelectItem value="manual">ללא בוט</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <div className="space-y-1">
             <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
               <GenderIcon className="h-3.5 w-3.5 text-slate-700" /> מגדר

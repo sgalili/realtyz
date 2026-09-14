@@ -41,7 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 type DealType = 'sale' | 'rent';
 /** Contact kind — mirrors preferences.lead_kind used across the CRM. */
-type LeadKind = 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker';
+type LeadKind = 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker' | 'affiliate';
 
 const KIND_OPTIONS: { v: LeadKind; l: string }[] = [
   { v: 'buyer', l: 'קונה' },
@@ -49,6 +49,7 @@ const KIND_OPTIONS: { v: LeadKind; l: string }[] = [
   { v: 'renter', l: 'שוכר' },
   { v: 'landlord', l: 'משכיר' },
   { v: 'broker', l: 'מתווך' },
+  { v: 'affiliate', l: 'שותף' },
 ];
 
 /** Each contact kind pins its own deal_type + Hebrew interest tag. */
@@ -58,6 +59,7 @@ const KIND_MAP: Record<LeadKind, { deal: DealType; tag: string }> = {
   renter: { deal: 'rent', tag: 'דירה להשכרה' },
   landlord: { deal: 'rent', tag: 'משכיר נכס' },
   broker: { deal: 'sale', tag: 'מתווך' },
+  affiliate: { deal: 'sale', tag: 'שותף' },
 };
 
 function normalizeIsraeliPhone(raw: string): string | null {

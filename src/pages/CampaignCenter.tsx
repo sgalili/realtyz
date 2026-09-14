@@ -6214,6 +6214,8 @@ const ROLE_LABEL: Record<string, string> = {
   buyer: 'קונה',
   renter: 'שוכר',
   landlord: 'משכיר',
+  broker: 'מתווך',
+  affiliate: 'שותף',
 };
 
 const cleanName = (raw: string | null | undefined): string => {
