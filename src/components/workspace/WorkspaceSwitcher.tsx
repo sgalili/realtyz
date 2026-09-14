@@ -46,29 +46,16 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
 
   const identity = resolveWorkspaceIdentity(activeWorkspace, settings as any);
 
-  // Super admins may hop into any account on the platform. get_my_workspaces
-  // returns every membership row for them, so collapse to one row per account.
-  const uniqueWorkspaces = useMemo(() => {
-    const byOwner = new Map<string, typeof workspaces[number]>();
-    for (const w of workspaces) {
-      const prev = byOwner.get(w.workspace_owner_id);
-      if (!prev || (w.user_id === user?.id && prev.user_id !== user?.id)) {
-        byOwner.set(w.workspace_owner_id, w);
-      }
-    }
-    return Array.from(byOwner.values());
-  }, [workspaces, user?.id]);
-
   const visibleWorkspaces = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return uniqueWorkspaces;
-    return uniqueWorkspaces.filter((w) =>
+    if (!q) return workspaces;
+    return workspaces.filter((w) =>
       [w.workspace_name, w.owner_full_name, w.owner_email].some((v) => (v ?? '').toLowerCase().includes(q)),
     );
-  }, [uniqueWorkspaces, query]);
+  }, [workspaces, query]);
 
   // Super admins always get the switcher, even with a single own workspace.
-  const multi = isSuperAdmin || uniqueWorkspaces.length > 1;
+  const multi = isSuperAdmin || workspaces.length > 1;
 
   const pick = async (ownerId: string, label: string) => {
     if (ownerId === activeWorkspaceId) { setOpen(false); return; }

@@ -20,3 +20,5 @@
 - [x] Open CRM contact cards from dashboard/submission links
 - [x] Make WhatsApp manager CRM counts live and workspace-scoped
 - [x] Verify database flow, UI, and deployed edge functions
+- [x] Unify every tenant with Rita's dashboard and navigation
+- [x] Remove duplicate workspace entries from every workspace menu

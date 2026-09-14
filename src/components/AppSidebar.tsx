@@ -15,7 +15,6 @@ import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useAppMode } from '@/hooks/useAppMode';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
@@ -35,8 +34,6 @@ import { useSidebarCounts } from '@/hooks/useSidebarCounts';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
 import { LISTINGS_ENABLED } from '@/config/workspaceMode';
-import { useIsRitaWorkspace } from '@/hooks/useIsRitaWorkspace';
-import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
 import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
 
 
@@ -124,51 +121,18 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// Affiliate-only accounts get a single-purpose menu: no CRM, no properties,
-// no posts, no office settings.
-const AFFILIATE_NAV_ITEMS: NavItem[] = [
-  {
-    title: 'רשת השותפים',
-    url: '/affiliate',
-    icon: AffiliateFlowchartIcon,
-    iconColor: 'text-emerald-600',
-    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  },
-  {
-    title: 'גיוס ומעקב רשת',
-    url: '/affiliate-network',
-    icon: AffiliateFlowchartIcon,
-    iconColor: 'text-teal-600',
-    badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
-  },
-  {
-    title: 'הזמן חברים',
-    url: '/referral',
-    icon: Gift,
-    iconColor: 'text-amber-600',
-    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
-  },
-];
-
-
 export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: string | null }) {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin, isAffiliateOnly } = useUserRole();
-  const { isPartnerMode } = useAppMode();
+  const { isSuperAdmin } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
-  const isRitaWorkspace = useIsRitaWorkspace();
 
-  // Partner mode shows the same single-purpose menu an affiliate-only account gets.
-  const baseNavItems = isAffiliateOnly || isPartnerMode ? AFFILIATE_NAV_ITEMS : NAV_ITEMS;
-  // Rita's workspace is a broker-acquisition hub: no deals, no partners.
-  const navItems = isRitaWorkspace
-    ? baseNavItems.filter((item) => item.url !== '/deal-room' && item.url !== '/affiliate-network')
-    : baseNavItems;
+  // Every workspace uses the same acquisition-focused navigation as Rita's workspace.
+  const navItems = NAV_ITEMS.filter((item) => item.url !== '/deal-room' && item.url !== '/affiliate-network');
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
@@ -239,11 +203,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <HelpCircle className="h-4 w-4" />
                   הדרכה
                 </button>
-                {!isRitaWorkspace && (
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <AppModeSwitcher />
-                  </div>
-                )}
               </div>
             </SidebarGroupContent>
           </SidebarGroup>
