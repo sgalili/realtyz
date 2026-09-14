@@ -1,4 +1,5 @@
 import { safeTool, logToolFailure, GRACEFUL_TOOL_FALLBACK_HE, GRACEFUL_ACTION_FALLBACK_HE } from "../_shared/safeToolError.ts";
+import { fetchWorkspaceCrmCounts, renderCrmCountsAnswer } from "../_shared/crmSnapshot.ts";
 import { cleanSqm } from "../_shared/measures.ts";
 import { CRM_ACTIONS_CONTRACT, executeCrmActions } from "../_shared/crmActions.ts";
 import { extractActionEnvelopes, stripRawJson, summarizeCrmResults } from "../_shared/agentOutput.ts";
@@ -1114,7 +1115,7 @@ serve(async (req) => {
 ביצוע שקט של פעולות:
 - הרץ כלים ושליפות נתונים בשקט ברקע והצג רק את התוצאה הסופית, מסודרת ונקייה.
 - פתח בניסוח אנושי טבעי, לדוגמה: "בשמחה, הנה רשימת אנשי הקשר שחסרים להם מספרי טלפון במערכת:" ואחריו הרשימה.
-- אם כלי או שליפה נכשלו, אל תחשוף שגיאה גולמית. השב בנימה מקצועית: "אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודק את זה ומעדכן אותך."
+- אם כלי או שליפה נכשלו, אל תחשוף שגיאה גולמית. השב בנימה מקצועית: "אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודקת את זה ומעדכנת אותך."
 
 RESPONSE FORMAT (JSON בלבד, ללא markdown):
 - אם נדרשת שאילתת קריאה: {"type":"sql","query":"SELECT ... LIMIT 50","explanation":"הסבר קצר למנהל"}
@@ -1862,38 +1863,36 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     const rawContent = String(aiMessage.content ?? "").trim();
 
     if (hasNativeToolCall(aiMessage.tool_calls, "get_crm_counts")) {
-      try {
-        if (!currentOwnerId) throw new Error("missing_workspace_owner");
-        const { data: membershipRows, error: membershipError } = await supabase
-          .from("workspace_memberships")
-          .select("user_id")
-          .eq("workspace_owner_id", currentOwnerId);
-        if (membershipError) throw membershipError;
-        const memberIds = Array.from(new Set([
-          currentOwnerId,
-          ...((membershipRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id).filter(Boolean),
-        ]));
-        const [contacts, properties] = await Promise.all([
-          supabase.from("leads").select("id", { count: "exact", head: true }).eq("workspace_owner_id", currentOwnerId).eq("is_demo", false),
-          supabase.from("listings").select("id", { count: "exact", head: true }).eq("workspace_owner_id", currentOwnerId),
-        ]);
-        if (contacts.error) throw contacts.error;
-        if (properties.error) throw properties.error;
-        const content = `יש כרגע ${contacts.count ?? 0} אנשי קשר ו-${properties.count ?? 0} נכסים במרחב העבודה הפעיל.`;
+      // Counters are scoped to the active workspace owner only, and the tool
+      // never fails the turn: a counter error answers gracefully (HTTP 200) so
+      // callers such as the WhatsApp webhook don't drop into a generic reply.
+      const snapshot = await fetchWorkspaceCrmCounts(supabase as any, currentOwnerId);
+      if (snapshot.ok) {
         return new Response(JSON.stringify({
           type: "text",
-          content,
-          live_data: { contacts: contacts.count ?? 0, properties: properties.count ?? 0 },
+          content: renderCrmCountsAnswer(snapshot.counts),
+          live_data: {
+            contacts: snapshot.counts.contacts,
+            contacts_new_week: snapshot.counts.contactsNewWeek,
+            properties: snapshot.counts.properties,
+            properties_live: snapshot.counts.propertiesLive,
+          },
           sources: kbSources,
           escalation,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      } catch (e) {
-        console.error("[ai-agent] get_crm_counts failed", e instanceof Error ? e.message : String(e));
-        return new Response(JSON.stringify({ error: "לא הצלחתי לשלוף כרגע את נתוני ה-CRM החיים." }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
       }
+      logToolFailure({
+        functionName: "ai-agent",
+        tool: "get_crm_counts",
+        error: "crm_counts_unavailable",
+        context: { workspace_owner_id: currentOwnerId ?? null },
+      });
+      return new Response(JSON.stringify({
+        type: "text",
+        content: GRACEFUL_TOOL_FALLBACK_HE,
+        sources: kbSources,
+        escalation,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ─── NATIVE TOOL CALLS: execute server-side, report only real results ──
@@ -1920,7 +1919,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
         const reasons = failed.map((f) => f.error ?? "").join(", ");
         content = (content ? content + "\n\n" : "")
           + (reasons.includes("missing_phone")
-            ? "כדי לפתוח כרטיס לקוח חדש אני צריך מספר טלפון. שלח לי אותו ואשמור מיד."
+            ? "כדי לפתוח כרטיס לקוח חדש אני צריכה מספר טלפון. שלח לי אותו ואשמור מיד."
             : reasons.includes("contact_not_found")
               ? "לא מצאתי את הלקוח הזה במערכת. תגיד לי שם ומספר טלפון ואפתח כרטיס."
               : GRACEFUL_ACTION_FALLBACK_HE);
@@ -2002,7 +2001,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
           const reasons = failed.map((f) => f.error).join(", ");
           content = (content ? content + "\n\n" : "")
             + (reasons.includes("missing_phone")
-              ? "כדי לפתוח כרטיס לקוח חדש אני צריך מספר טלפון. שלח לי אותו ואשמור מיד."
+              ? "כדי לפתוח כרטיס לקוח חדש אני צריכה מספר טלפון. שלח לי אותו ואשמור מיד."
               : reasons.includes("contact_not_found")
                 ? "לא מצאתי את הלקוח הזה במערכת. תגיד לי שם ומספר טלפון ואפתח כרטיס."
                 : GRACEFUL_ACTION_FALLBACK_HE);
@@ -2040,7 +2039,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
         const reasons = failed.map((f) => f.error).join(", ");
         content = (content ? content + "\n\n" : "")
           + (reasons.includes("missing_phone")
-            ? "כדי לפתוח כרטיס לקוח חדש אני צריך מספר טלפון. שלח לי אותו ואשמור מיד."
+            ? "כדי לפתוח כרטיס לקוח חדש אני צריכה מספר טלפון. שלח לי אותו ואשמור מיד."
             : reasons.includes("contact_not_found")
               ? "לא מצאתי את הלקוח הזה במערכת. תגיד לי שם ומספר טלפון ואפתח כרטיס."
               : GRACEFUL_ACTION_FALLBACK_HE);

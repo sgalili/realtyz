@@ -32,6 +32,7 @@ import { generateFastReply } from "../_shared/waFastReply.ts";
 import { resolveLeadGender } from "../_shared/hebrewGender.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
 import { resolveWaSenderRole, type WaSenderRole } from "../_shared/waSenderRole.ts";
+import { asksForCrmCounts, fetchWorkspaceCrmCounts, renderCrmCountsBlock } from "../_shared/crmSnapshot.ts";
 import { BROKER_RECRUITMENT_WORKSPACE } from "../_shared/persona.ts";
 import {
   isRecruitmentThread,
@@ -1108,6 +1109,23 @@ async function handleLeadInboxInbound(
   const aiStartedAt = Date.now();
   if (!agentCommand) {
     let contextBlock = "";
+    // Live CRM counters. Staff always get them (they manage the workspace), and
+    // anyone explicitly asking "how many contacts do we have" gets the exact
+    // number instead of a fallback sentence.
+    if (staffSender || asksForCrmCounts(inboundText)) {
+      const snapshot = await fetchWorkspaceCrmCounts(admin as any, aiOwnerId);
+      if (snapshot.ok) {
+        contextBlock = renderCrmCountsBlock(snapshot.counts);
+      } else {
+        await logIntegrationError({
+          integration: "whatsapp",
+          functionName: "whatsapp-webhook",
+          errorCode: "crm_counts_failed",
+          errorMessage: "live CRM counters unavailable for WhatsApp reply",
+          context: { lead_id: lead.id, owner_id: aiOwnerId },
+        });
+      }
+    }
     try {
       if (lead.interest_tag) {
         const { data: listing } = await admin
@@ -1116,12 +1134,13 @@ async function handleLeadInboxInbound(
           .eq("id", lead.interest_tag)
           .maybeSingle();
         if (listing) {
-          contextBlock = [
+          const listingBlock = [
             `נכס שהמתעניין פנה לגביו: ${listing.property_title ?? "-"}`,
             listing.asking_price ? `מחיר מבוקש: ${Number(listing.asking_price).toLocaleString("he-IL")} ש"ח` : "",
             `${listing.city ?? ""} ${listing.neighborhood ?? ""}`.trim(),
             listing.description ? `תיאור: ${String(listing.description).slice(0, 600)}` : "",
           ].filter(Boolean).join("\n");
+          contextBlock = contextBlock ? `${contextBlock}\n\n${listingBlock}` : listingBlock;
         }
       }
     } catch (e) {

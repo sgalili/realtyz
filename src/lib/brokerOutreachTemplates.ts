@@ -95,7 +95,7 @@ export const BROKER_OUTREACH_TEMPLATES: BrokerOutreachTemplate[] = [
     title: 'תזכורת עדינה',
     channel: 'whatsapp',
     body:
-      'היי {{name}}, בודק אם ראית את ההודעה שלי על Realtyz.\n' +
+      'היי {{name}}, בודקת אם ראית את ההודעה שלי על Realtyz.\n' +
       'גם אם עכשיו לא הזמן, אשמח לשלוח לך הדגמה קצרה של איך המערכת עונה לאנשי קשר ב{{city}} במקומך. אין שום התחייבות.',
   },
   {

@@ -5,11 +5,11 @@ import { logIntegrationError } from "./logIntegrationError.ts";
 
 /** Professional Hebrew fallback shown when an internal tool fails. */
 export const GRACEFUL_TOOL_FALLBACK_HE =
-  "אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודק את זה ומעדכן אותך.";
+  "אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודקת את זה ומעדכנת אותך.";
 
 /** Slightly softer variant for write/CRM actions that did not complete. */
 export const GRACEFUL_ACTION_FALLBACK_HE =
-  "לא הצלחתי להשלים את הפעולה במערכת כרגע, אני בודק את זה ומעדכן אותך מיד.";
+  "לא הצלחתי להשלים את הפעולה במערכת כרגע, אני בודקת את זה ומעדכנת אותך מיד.";
 
 /**
  * Record a tool/DB failure for developer debugging.
