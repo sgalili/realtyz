@@ -280,15 +280,12 @@ export function GoogleServiceConnectCard({
           <GoogleBrandGlyph brand={brand} connected={connected} className="mt-0.5" />
           <div className="min-w-0">
             <h4 className="text-sm font-semibold">{title}</h4>
-            <p className="mt-1 truncate text-[13px] font-medium text-foreground/70" dir={accountLabel ? 'ltr' : 'rtl'}>
-              {accountLabel ?? 'לא מחובר חשבון'}
-            </p>
-            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{hint}</p>
-            {platform === 'gmail' && (
-              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                Gmail משמש לשליחה, קבלה ותיעוד של התכתבויות ישירות בכרטיס איש הקשר.
+            {accountLabel && (
+              <p className="mt-1 truncate text-[13px] font-medium text-foreground/70" dir="ltr">
+                {accountLabel}
               </p>
             )}
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{hint}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
