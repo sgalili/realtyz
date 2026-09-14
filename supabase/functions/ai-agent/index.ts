@@ -936,9 +936,12 @@ serve(async (req) => {
                   ? "sale"
                   : null;
 
+            // Tenant isolation: scope strictly by the active workspace, never by
+            // the personal rows of its members (a member may own another workspace).
+            void workspaceMemberIds;
             let listingsQ = userClient.from("listings")
               .select("id, property_title, asking_price, features, description, office_notes, is_published, created_at, deal_type")
-              .in("user_id", workspaceMemberIds)
+              .eq("workspace_owner_id", uid)
               .order("created_at", { ascending: false })
               .limit(25);
             if (snapIntent === "rent") {
@@ -952,11 +955,11 @@ serve(async (req) => {
               listingsQ,
               userClient.from("leads")
                 .select("id, full_name, city, interest_tag, engagement_score, status, lead_stage, deal_type, sentiment, preferences, last_interaction_at")
-                 .in("assigned_to", workspaceMemberIds)
+                .eq("workspace_owner_id", uid)
                 .order("last_interaction_at", { ascending: false, nullsFirst: false })
                 .limit(25),
-               userClient.from("leads").select("id", { count: "exact", head: true }).in("assigned_to", workspaceMemberIds),
-               userClient.from("listings").select("id", { count: "exact", head: true }).in("user_id", workspaceMemberIds),
+               userClient.from("leads").select("id", { count: "exact", head: true }).eq("workspace_owner_id", uid),
+               userClient.from("listings").select("id", { count: "exact", head: true }).eq("workspace_owner_id", uid),
             ]);
             let listingsArr = (listingsRes.data ?? []) as any[];
             // Belt-and-suspenders: strip any residual price-vs-deal_type
@@ -1871,8 +1874,8 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
           ...((membershipRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id).filter(Boolean),
         ]));
         const [contacts, properties] = await Promise.all([
-          supabase.from("leads").select("id", { count: "exact", head: true }).in("assigned_to", memberIds).eq("is_demo", false),
-          supabase.from("listings").select("id", { count: "exact", head: true }).in("user_id", memberIds),
+          supabase.from("leads").select("id", { count: "exact", head: true }).eq("workspace_owner_id", currentOwnerId).eq("is_demo", false),
+          supabase.from("listings").select("id", { count: "exact", head: true }).eq("workspace_owner_id", currentOwnerId),
         ]);
         if (contacts.error) throw contacts.error;
         if (properties.error) throw properties.error;
