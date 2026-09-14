@@ -86,7 +86,9 @@ export function useFacebookHealth() {
     queryFn: async () => {
       const [pageRes, personalRes] = await Promise.all([
         supabase.functions
-          .invoke('meta-page-connect', { body: { action: 'health' } })
+          // owner_id pins the probe to the workspace the UI is rendering, so a
+          // workspace switch can never read the previous tenant's page.
+          .invoke('meta-page-connect', { body: { action: 'health', owner_id: workspaceOwnerId } })
           .catch(() => ({ data: null, error: true as const })),
         supabase.functions
           .invoke('fb-personal-connect', { body: { action: 'health' } })
@@ -98,8 +100,32 @@ export function useFacebookHealth() {
       if (!page) {
         const cached = readCache(user?.id, workspaceOwnerId);
         if (cached) return cached;
+        // The probe is unavailable (timeout / rate limit), but the stored Page
+        // binding is the durable truth. A live binding must NEVER surface as
+        // "Facebook not connected".
+        try {
+          const { data } = await (supabase as any).rpc('get_effective_meta_page', { _owner: workspaceOwnerId });
+          const row: any = Array.isArray(data) ? data[0] : data;
+          if (row?.page_id) {
+            const fromDb: FacebookHealth = {
+              pageConnected: true,
+              needsReconnect: false,
+              reason: null,
+              pageName: row.page_name ?? null,
+              pageId: String(row.page_id),
+              pagePicture: row.page_avatar_url ?? null,
+              instagram: null,
+              neverConnected: false,
+            };
+            writeCache(user?.id, workspaceOwnerId, fromDb);
+            return fromDb;
+          }
+        } catch {
+          /* fall through */
+        }
         throw new Error('facebook_health_unavailable');
       }
+
 
       const hasBinding = !!page?.page?.id;
       // A stored page binding IS a live connection unless the backend proved a
