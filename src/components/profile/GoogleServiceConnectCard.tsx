@@ -84,13 +84,6 @@ export function GoogleServiceConnectCard({
   brand?: 'gmail' | 'calendar' | 'youtube';
 }) {
   const [configError, setConfigError] = useState(false);
-  const [explicitlyDisconnected, setExplicitlyDisconnected] = useState(() => {
-    try {
-      return window.localStorage.getItem(`realtyz:google-explicit-disconnect:${platform}`) === '1';
-    } catch {
-      return false;
-    }
-  });
 
   const { data, refetch, isLoading } = useQuery({
     queryKey: ['google-service-conn', platform],
