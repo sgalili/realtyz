@@ -108,7 +108,7 @@ export function SuperAdminLeadAlert({ collapsed }: { collapsed?: boolean }) {
       {!collapsed && (
         <span className="flex flex-1 items-center gap-1.5 font-semibold">
           <Sparkles className="h-3 w-3 text-gold" />
-          לידי שדרוג
+          סופר אדמין - ניהול
           {newCount > 0 && (
             <span className="ms-auto rounded-full bg-warning px-2 py-0.5 text-[10px] font-bold leading-none text-warning-foreground">
               {newCount > 99 ? '99+' : newCount}
