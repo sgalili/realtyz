@@ -10,6 +10,7 @@ import { OAUTH_AUTHORIZE_URLS, OAUTH_SCOPES } from '@/lib/socialAutomationServic
 import { clearPendingOAuth, currentOrigin, oauthRedirectUri, takePendingOAuth } from '@/lib/oauthRedirect';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { friendlyGoogleError } from '@/lib/googleApiErrors';
+import { forgetConnected, isRememberedConnected, rememberConnected, rememberedLabel } from '@/lib/connectionStatusCache';
 
 
 
@@ -74,10 +75,33 @@ export function GoogleServiceConnectCard({
         .maybeSingle();
       return data;
     },
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const identity = (data?.credentials as any)?.verified_identity;
-  const connected = !!data?.is_connected;
+  const liveConnected = !!data?.is_connected;
+  // A connected service stays connected in the UI until the broker disconnects
+  // it explicitly — a pending query or a transient failure never flips it back.
+  useEffect(() => {
+    if (liveConnected) rememberConnected(platform, null, identity?.email ?? identity?.name ?? null);
+  }, [liveConnected, platform, identity?.email, identity?.name]);
+  const connected = liveConnected || isRememberedConnected(platform);
+  const accountLabel = identity?.email ?? rememberedLabel(platform);
+
+  /** Explicit, user-initiated disconnect — the only way to clear the status. */
+  const disconnect = async () => {
+    try {
+      if (data?.id) {
+        await supabase.from('social_connections').update({ is_connected: false }).eq('id', data.id);
+      }
+      forgetConnected(platform);
+      toast.success('החיבור נותק');
+      refetch();
+    } catch {
+      toast.error('הניתוק נכשל, נסו שוב');
+    }
+  };
 
   /** Exchange an authorization code returned by Google for tokens. */
   const exchange = useCallback(
@@ -202,13 +226,20 @@ export function GoogleServiceConnectCard({
             )}
           </div>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            {connected && identity?.email ? <span dir="ltr">{identity.email}</span> : hint}
+            {connected && accountLabel ? <span dir="ltr">{accountLabel}</span> : hint}
           </p>
         </div>
-        <Button size="sm" variant={connected ? 'outline' : 'default'} className="h-8 gap-1 text-xs" onClick={connect}>
-          {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          {connected ? 'חבר מחדש' : (ctaLabel ?? 'חיבור מהיר בקליק')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant={connected ? 'outline' : 'default'} className="h-8 gap-1 text-xs" onClick={connect}>
+            {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            {connected ? 'חבר מחדש' : (ctaLabel ?? 'חיבור מהיר בקליק')}
+          </Button>
+          {connected && (
+            <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={disconnect}>
+              ניתוק
+            </Button>
+          )}
+        </div>
       </div>
 
       {configError && !connected && (
