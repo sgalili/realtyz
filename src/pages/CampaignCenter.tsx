@@ -4169,9 +4169,9 @@ const BLOCKED_FB_PAGE_IDS = new Set<string>();
 const isBlockedFbPage = (id?: string | null, _name?: string | null) =>
   !!id && BLOCKED_FB_PAGE_IDS.has(String(id));
 
-const resolveMetaPageViaFunction = async (): Promise<ResolvedMetaPage> => {
+const resolveMetaPageViaFunction = async (ownerId?: string | null): Promise<ResolvedMetaPage> => {
   const read = async (): Promise<ResolvedMetaPage> => {
-    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'status' } });
+    const { data } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'status', owner_id: ownerId ?? null } });
     const res = data as any;
     const id = res?.page?.id ? String(res.page.id) : null;
     if ((res?.connected || res?.ok) && id) {
