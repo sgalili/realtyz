@@ -16,6 +16,8 @@ export const OAUTH_CALLBACK_PATH = '/oauth/callback';
 const APPROVED_ORIGINS = [
   'https://realtyz.co.il',
   'https://www.realtyz.co.il',
+  'https://realtyz.kalpiz.co.il',
+  'https://realestate.omniai.co.il',
   'https://realtyzai.lovable.app',
   'http://localhost:8080',
 ];

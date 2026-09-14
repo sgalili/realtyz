@@ -200,12 +200,37 @@ Deno.serve(async (req) => {
 
   try {
     const admin = adminClient();
-    const caller = await resolveCaller(admin, req);
-    if (!caller) return json({ error: "unauthorized" }, 401);
-    const ownerId = caller.workspaceOwnerId;
-
     const body = await req.json().catch(() => ({} as any));
     const action = String(body?.action ?? "status");
+    let caller = await resolveCaller(admin, req);
+
+    // The canonical Facebook callback can be on a different Realtyz domain
+    // than the user's session. Resolve it through short-lived, single-use state
+    // stored when the authenticated user starts the flow.
+    if (!caller && action === "exchange") {
+      const state = String(body?.state ?? "").trim();
+      if (state) {
+        const now = new Date().toISOString();
+        const { data: oauthStateRow } = await admin
+          .from("oauth_connection_states")
+          .update({ consumed_at: now })
+          .eq("state", state)
+          .eq("provider", "facebook_page")
+          .is("consumed_at", null)
+          .gt("expires_at", now)
+          .select("user_id, workspace_owner_id")
+          .maybeSingle();
+        if (oauthStateRow) {
+          caller = {
+            userId: String(oauthStateRow.user_id),
+            workspaceOwnerId: String(oauthStateRow.workspace_owner_id),
+          };
+        }
+      }
+    }
+    if (!caller) return json({ error: "unauthorized", stage: "callback_state" }, 401);
+    const ownerId = caller.workspaceOwnerId;
+
     const redirectUri = String(body?.redirect_uri ?? "").trim();
     const returnOrigin = String(body?.return_origin ?? "").trim();
 
@@ -469,12 +494,25 @@ Deno.serve(async (req) => {
       const scopeString = scopes.join(",");
       console.log("[meta-page-connect] start scope string =", JSON.stringify(scopeString));
 
+      const state = oauthState("facebook_page", returnOrigin);
+      const { error: stateError } = await admin.from("oauth_connection_states").insert({
+        state,
+        provider: "facebook_page",
+        user_id: caller.userId,
+        workspace_owner_id: ownerId,
+        return_origin: returnOrigin || null,
+      });
+      if (stateError) {
+        console.error("[meta-page-connect] state persist failed", stateError.message);
+        return json({ error: "לא ניתן להתחיל את החיבור לפייסבוק. נסה שוב.", stage: "state_create" }, 500);
+      }
+
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: CANONICAL_REDIRECT_URI,
         response_type: "code",
         scope: scopeString,
-        state: oauthState("facebook_page", returnOrigin),
+        state,
         // `rerequest` re-opens the consent dialog for permissions the user has
         // previously declined; `force_reauthorize` stops Meta from silently
         // reusing an older cached grant that lacks pages_read_engagement.

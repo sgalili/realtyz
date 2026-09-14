@@ -4081,6 +4081,42 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_connection_states: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          provider: string
+          return_origin: string | null
+          state: string
+          updated_at: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          provider: string
+          return_origin?: string | null
+          state: string
+          updated_at?: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          provider?: string
+          return_origin?: string | null
+          state?: string
+          updated_at?: string
+          user_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       onboarding_progress: {
         Row: {
           completed_at: string | null

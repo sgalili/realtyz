@@ -267,6 +267,7 @@ export default function OAuthCallback() {
               code: code ?? undefined,
               user_access_token: accessToken ?? undefined,
               redirect_uri: redirectUri,
+              state,
             },
           }),
           EXCHANGE_TIMEOUT_MS,
