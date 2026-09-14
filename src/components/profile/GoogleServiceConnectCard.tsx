@@ -252,9 +252,13 @@ export function GoogleServiceConnectCard({
               {connected ? 'מחובר' : 'לא מחובר'}
             </span>
           </div>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            {connected && accountLabel ? <span dir="ltr">{accountLabel}</span> : hint}
-          </p>
+          {connected && accountLabel ? (
+            <p className="mt-1 truncate text-[13px] font-medium" dir="ltr" style={{ color: 'hsl(220 9% 32%)' }}>
+              {accountLabel}
+            </p>
+          ) : (
+            <p className="mt-1 text-[13px] text-muted-foreground">{hint}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant={connected ? 'outline' : 'default'} className="h-8 gap-1 text-xs" onClick={connect}>
