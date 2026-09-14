@@ -35,6 +35,7 @@ import { useSidebarCounts } from '@/hooks/useSidebarCounts';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
 import { LISTINGS_ENABLED } from '@/config/workspaceMode';
+import { useIsRitaWorkspace } from '@/hooks/useIsRitaWorkspace';
 import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
 import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
 
@@ -160,6 +161,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const { isPartnerMode } = useAppMode();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
+  const isRitaWorkspace = useIsRitaWorkspace();
 
   // Partner mode shows the same single-purpose menu an affiliate-only account gets.
   const baseNavItems = isAffiliateOnly || isPartnerMode ? AFFILIATE_NAV_ITEMS : NAV_ITEMS;
