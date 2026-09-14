@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, startOfDay, subDays } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -29,12 +30,12 @@ export function RecruitmentDashboard() {
   const navigate = useNavigate();
   const ownerId = useActiveWorkspaceOwnerId();
 
-  const hydrateAvatar = async (leadId: string | null | undefined) => {
+  const hydrateAvatar = useCallback(async (leadId: string | null | undefined) => {
     if (!leadId || !ownerId) return;
     await supabase.functions.invoke('fetch-wa-avatars', {
       body: { lead_ids: [leadId], owner_id: ownerId, limit: 1 },
     }).catch(() => undefined);
-  };
+  }, [ownerId]);
 
   const { data: brokerContacts, isLoading: loadingContacts } = useQuery({
     queryKey: ['rita-broker-contacts', ownerId],
@@ -118,6 +119,20 @@ export function RecruitmentDashboard() {
     },
     refetchInterval: 60_000,
   });
+
+  useEffect(() => {
+    const missingAvatarIds = (recentSignups ?? [])
+      .filter((row) => {
+        const linkedLead = Array.isArray(row.lead) ? row.lead[0] : row.lead;
+        return row.lead_id && !linkedLead?.profile_picture_url;
+      })
+      .map((row) => row.lead_id)
+      .filter(Boolean);
+    if (!missingAvatarIds.length || !ownerId) return;
+    void supabase.functions.invoke('fetch-wa-avatars', {
+      body: { lead_ids: missingAvatarIds, owner_id: ownerId, limit: missingAvatarIds.length },
+    });
+  }, [recentSignups, ownerId]);
 
   return (
     <div className="space-y-6" dir="rtl">
