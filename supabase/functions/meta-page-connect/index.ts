@@ -1068,21 +1068,30 @@ async function handleRequest(req: Request): Promise<Response> {
           // 200 so the client can read the message instead of a bare non-2xx.
           return json({ ok: false, error: "לא נמצא טוקן משתמש שמור. יש להתחבר מחדש לפייסבוק.", stage: "user_token" }, 200);
         }
-        const listRes = await graph(
-          `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${encodeURIComponent(userToken)}`,
-        );
-        const list: any[] = Array.isArray(listRes.payload?.data) ? listRes.payload.data : [];
-        if (!listRes.ok) {
-          const detail = logGraphFailure("list_pages", listRes.payload);
+        const listed = await discoverPages(userToken);
+        const list: any[] = listed.pages;
+        if (!listed.ok && list.length === 0) {
+          const detail = logGraphFailure("list_pages", listed.lastPayload);
           return json({
             ok: false,
-            error: humanizeGraphError(listRes.payload, "לא הצלחנו לקרוא את רשימת העמודים."),
+            error: humanizeGraphError(listed.lastPayload, "לא הצלחנו לקרוא את רשימת העמודים."),
             error_detail: detail,
             fb_message: detail.message,
             stage: "list_pages",
           }, 200);
         }
+        for (const p of list) {
+          if (p?.access_token || !p?.id) continue;
+          const tokRes = await graph(
+            `/${String(p.id)}?fields=access_token,name&access_token=${encodeURIComponent(userToken)}`,
+          );
+          if (tokRes.ok && tokRes.payload?.access_token) {
+            p.access_token = String(tokRes.payload.access_token);
+            p.name = p.name ?? tokRes.payload?.name ?? null;
+          }
+        }
         const selectable = list.filter((p) => !isBlockedPage(p) && p?.access_token);
+
 
         if (action === "list_pages") {
           return json({
