@@ -162,7 +162,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const { data: counts } = useSidebarCounts();
 
   // Partner mode shows the same single-purpose menu an affiliate-only account gets.
-  const navItems = isAffiliateOnly || isPartnerMode ? AFFILIATE_NAV_ITEMS : NAV_ITEMS;
+  const baseNavItems = isAffiliateOnly || isPartnerMode ? AFFILIATE_NAV_ITEMS : NAV_ITEMS;
+  // Rita's workspace is a broker-acquisition hub: no deals, no partners.
+  const navItems = isRitaWorkspace
+    ? baseNavItems.filter((item) => item.url !== '/deal-room' && item.url !== '/affiliate-network')
+    : baseNavItems;
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
