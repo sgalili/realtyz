@@ -37,6 +37,32 @@ const WS_LAST_ACTIVE_KEY = `${STORAGE_KEY}:last`;
 
 const workspaceStorageKey = (userId: string) => `${STORAGE_KEY}:${userId}`;
 
+function dedupeWorkspaces(rows: Workspace[], currentUserId?: string): Workspace[] {
+  const byOwner = new Map<string, Workspace>();
+
+  for (const workspace of rows) {
+    const previous = byOwner.get(workspace.workspace_owner_id);
+    if (!previous) {
+      byOwner.set(workspace.workspace_owner_id, workspace);
+      continue;
+    }
+
+    const workspaceIsCurrentUser = workspace.user_id === currentUserId;
+    const previousIsCurrentUser = previous.user_id === currentUserId;
+    const workspaceAccessedAt = workspace.last_accessed_at ? Date.parse(workspace.last_accessed_at) : 0;
+    const previousAccessedAt = previous.last_accessed_at ? Date.parse(previous.last_accessed_at) : 0;
+
+    if (
+      (workspaceIsCurrentUser && !previousIsCurrentUser)
+      || (workspaceIsCurrentUser === previousIsCurrentUser && workspaceAccessedAt > previousAccessedAt)
+    ) {
+      byOwner.set(workspace.workspace_owner_id, workspace);
+    }
+  }
+
+  return Array.from(byOwner.values());
+}
+
 /**
  * Workspaces (name + logo) are cached locally so the sidebar/header brand
  * paints on the FIRST frame after a refresh instead of flashing the default
@@ -46,7 +72,7 @@ function readWorkspaceCache(): { list: Workspace[]; activeId: string | null } {
   try {
     const list = JSON.parse(localStorage.getItem(WS_LIST_CACHE_KEY) ?? '[]') as Workspace[];
     const activeId = localStorage.getItem(WS_LAST_ACTIVE_KEY);
-    return { list: Array.isArray(list) ? list : [], activeId: activeId || null };
+    return { list: Array.isArray(list) ? dedupeWorkspaces(list) : [], activeId: activeId || null };
   } catch {
     return { list: [], activeId: null };
   }
@@ -97,7 +123,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         supabase.from('profiles').select('active_workspace_owner_id').eq('id', user.id).maybeSingle(),
       ]);
       if (error) throw error;
-      const rows = (data ?? []) as Workspace[];
+      const rows = dedupeWorkspaces((data ?? []) as Workspace[], user.id);
       setWorkspaces(rows);
 
       const stored = window.localStorage.getItem(workspaceStorageKey(user.id));

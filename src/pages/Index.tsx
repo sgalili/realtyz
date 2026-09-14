@@ -27,7 +27,6 @@ import { MatchProgressCard } from '@/components/dashboard/MatchProgressCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
 import { LISTINGS_ENABLED } from '@/config/workspaceMode';
 import { GlobalSearchTrigger } from '@/components/GlobalSearch';
-import { useIsRitaWorkspace } from '@/hooks/useIsRitaWorkspace';
 import { RecruitmentDashboard } from '@/components/dashboard/RecruitmentDashboard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 
@@ -620,13 +619,7 @@ function KpiCard({
   );
 }
 
-/**
- * Rita's workspace markets Realtyz to new agents, so it gets an
- * acquisition-only dashboard instead of the real-estate one.
- */
-const Dashboard = () => {
-  const isRitaWorkspace = useIsRitaWorkspace();
-  return isRitaWorkspace ? <RecruitmentDashboard /> : <RealEstateDashboard />;
-};
+/** Every tenant uses the same broker-acquisition dashboard as Rita's workspace. */
+const Dashboard = () => <RecruitmentDashboard />;
 
 export default Dashboard;
