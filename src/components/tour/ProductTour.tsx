@@ -199,10 +199,10 @@ export function ProductTour() {
           </h2>
         </div>
 
+        {/* Exactly one bold headline per slide — no subtitles, no descriptions. */}
         <div className="px-8 py-6">
-
-
           {step.cta && (
+
             <Button
               variant="outline"
               className="mt-6 h-12 w-full justify-between text-base font-bold"
