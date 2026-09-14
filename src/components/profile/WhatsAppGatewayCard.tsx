@@ -364,7 +364,7 @@ export function WhatsAppGatewayCard() {
             ) : (
               <ImageDown className="ml-1 h-3.5 w-3.5" />
             )}
-            סנכרון תמונות
+            תמונות
           </Button>
           <Button
             variant="outline"
@@ -375,7 +375,7 @@ export function WhatsAppGatewayCard() {
             className="px-2 text-xs whitespace-nowrap"
           >
             {creating ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <PlusCircle className="ml-1 h-3.5 w-3.5" />}
-            מכונה חדשה
+            חיבור
           </Button>
           <Button
             variant="outline"
@@ -385,12 +385,12 @@ export function WhatsAppGatewayCard() {
             className="px-2 text-xs whitespace-nowrap"
           >
             <QrCode className="ml-1 h-3.5 w-3.5" />
-            סרוק קוד QR
+            QR
           </Button>
           <Button variant="outline" size="sm" onClick={test} disabled={testing || loading}
             className="px-2 text-xs whitespace-nowrap">
             {testing ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : null}
-            בדיקת חיבור
+            בדיקה
           </Button>
           <Button size="sm" onClick={save} disabled={saving || loading}
             className="px-2 text-xs whitespace-nowrap">
