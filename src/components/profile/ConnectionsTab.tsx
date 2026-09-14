@@ -95,8 +95,8 @@ function ConnectionSection({
             '[&_[data-conn-body]>div:not([data-plain])>:first-child]:hidden',
             // grouped sections (e.g. all WhatsApp accounts in one card):
             // neutralize each nested card one level deeper instead
-            '[&_[data-plain]>section>div]:border-0 [&_[data-plain]>section>div]:bg-transparent [&_[data-plain]>section>div]:shadow-none',
-            '[&_[data-plain]>section>div>:first-child]:hidden',
+            '[&_[data-plain]>section>div:not([data-keep])]:border-0 [&_[data-plain]>section>div:not([data-keep])]:bg-transparent [&_[data-plain]>section>div:not([data-keep])]:shadow-none',
+            '[&_[data-plain]>section>div:not([data-keep])>:first-child]:hidden',
             // RTL text + label alignment for every field inside
             '[&_label]:block [&_label]:text-right',
             '[&_input:not([dir])]:text-right [&_textarea:not([dir])]:text-right',
