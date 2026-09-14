@@ -165,6 +165,7 @@ function personalize(message: string) {
 
 export default function SmsBlastSimulator() {
   const { user } = useAuth();
+  const { limitsEnabled } = useWorkspaceFeatures();
   const blockDemoAction = useDemoGuard();
   const trial = useTrialStatus();
   const { isDemoMode } = useDemoMode();

@@ -59,6 +59,7 @@ interface ActivityFeedItem {
 
 const RealEstateDashboard = () => {
   const navigate = useNavigate();
+  const { listingsEnabled } = useWorkspaceFeatures();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 

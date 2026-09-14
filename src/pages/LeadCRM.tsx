@@ -501,6 +501,7 @@ function EditableInlineText({
 
 const LeadCRM = () => {
   const { user } = useAuth();
+  const { recruitmentMode } = useWorkspaceFeatures();
   const activeWorkspaceId = useActiveWorkspaceOwnerId();
 
   /**
