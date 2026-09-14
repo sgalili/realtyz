@@ -186,6 +186,16 @@ const CRM_RULES = `שלמות נתונים ו-CRM:
 - כשמתקבל קובץ JSON או פקודה לנהל נתונים: בצע אותה דרך מעטפת הפעולות והחזר דוח מדויק (כמה נוספו, עודכנו, מוזגו, נדחו ומדוע). הסירוב היחיד המותר הוא בקשה לשדה חובה חסר.
 - כפילויות תמיד ממוזגות ולא נדחות: אותו טלפון מנורמל = אותו אדם; אותה כתובת בכתיב שונה = אותו נכס. ערך null לא דורס מידע קיים.`;
 
+const GENTLE_INTAKE_RULES = `איסוף פרטים עדין (חובה):
+- הפרטים החסרים בכרטיס (שם פרטי, עיר או שכונה, שלב חיים או גיל, מגדר, אימייל, תקציב, סוג עסקה) נאספים בעדינות תוך כדי שיחה, לא בתחקיר ולא בטופס.
+- שאלה אישית אחת לכל היותר בכל תשובה, ורק כשהיא מתחברת באופן טבעי למה שנאמר עכשיו.
+- לשאול דרך הקשר ולא כתשאול: "לאיזה אזור בהרצליה אתם מכוונים?" במקום "מה העיר שלך?", "בשביל מי הדירה, זוג או משפחה?" במקום שאלת גיל ישירה.
+- מגדר נלמד מהשם ומצורת הכתיבה של הנמען. אסור לשאול מגדר ישירות.
+- שאלה שלא נענתה לא חוזרת באותה שיחה. לכל היותר ניסיון אחד נוסף בזווית אחרת, בשיחה אחרת.
+- פרט שהופיע כבר בשיחה או בכרטיס אסור לשאול עליו שוב.
+- אסור לתלות התקדמות בקבלת פרטים ("אני צריכה קודם את הפרטים"). קודם ערך, הפרטים אחר כך.
+- כל פרט שנחשף נשמר לכרטיס איש הקשר בשקט, בלי להכריז על כך בפני הנמען.`;
+
 const BREVITY_RULES = `קיצור ומיקוד (חובה, קודם לכל סגנון אחר):
 - ענה רק על מה שנשאל. אין להוסיף סיכומי ניהול, סטטוסים כלליים, "עדכון יומי", טיפים או מידע שלא בוקש.
 - אורך מקסימלי: עד 60 מילים, לרוב 1-3 משפטים. אם נדרשת רשימה, פריטים קצרים בלבד.
@@ -287,7 +297,7 @@ export function buildMasterAgentPrompt(mode: AgentMode, ctx: MasterPromptContext
 - השתמשי אך ורק בתסריטי המכירה, מדרגות המחיר וטיפול בהתנגדויות שמופיעים במאגר הידע של החשבון. פרט שלא נמצא במאגר הידע: אמרי שתאמתי ותחזרי עם תשובה.`
     : "";
   const sections = (ctx.compact
-    ? [header, mode === "internal" ? INTERNAL_SECTION : EXTERNAL_SECTION, persona, saasRules, SILENT_EXECUTION_RULES, BREVITY_RULES, realEstate ? PROPERTY_LIST_RULES : "", PSYCHOLOGY_RULES, realEstate ? GEO_RULES : "", FORMAT_RULES]
+    ? [header, mode === "internal" ? INTERNAL_SECTION : EXTERNAL_SECTION, persona, saasRules, SILENT_EXECUTION_RULES, BREVITY_RULES, realEstate ? PROPERTY_LIST_RULES : "", PSYCHOLOGY_RULES, GENTLE_INTAKE_RULES, realEstate ? GEO_RULES : "", FORMAT_RULES]
     : [
         header,
         mode === "internal" ? INTERNAL_SECTION : EXTERNAL_SECTION,
@@ -297,6 +307,7 @@ export function buildMasterAgentPrompt(mode: AgentMode, ctx: MasterPromptContext
         BREVITY_RULES,
         realEstate ? PROPERTY_LIST_RULES : "",
         PSYCHOLOGY_RULES,
+        GENTLE_INTAKE_RULES,
         realEstate ? GEO_RULES : "",
         CRM_RULES,
         FORMAT_RULES,
