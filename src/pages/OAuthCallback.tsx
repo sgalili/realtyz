@@ -21,10 +21,14 @@ const FACEBOOK_PAGE_STATE_PREFIX = 'facebook_page';
 const CONNECTIONS_PATH = '/profile?tab=connections';
 /** Ceiling for the server-side exchange so the page never spins forever. */
 const EXCHANGE_TIMEOUT_MS = 15_000;
-/** UI safety timeout: show a manual return button if the exchange is not done. */
-const SAFETY_UI_TIMEOUT_MS = 4_000;
+/**
+ * After this long we tell the user it takes a few seconds and offer a manual
+ * way back — but the exchange keeps running and this is NOT an error.
+ */
+const SLOW_NOTICE_MS = 4_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
 const HARD_TIMEOUT_MS = 18_000;
+
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive', 'google_all'] as const;
 /** Grants already sent to the exchange endpoint in this page lifetime. */
@@ -77,30 +81,31 @@ function finish(
 
 export default function OAuthCallback() {
   const [isLoading, setIsLoading] = useState(true);
-  const [hasTimedOut, setHasTimedOut] = useState(false);
+  const [isSlow, setIsSlow] = useState(false);
   const [error, setError] = useState<OAuthError>(null);
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState('מסיים אימות...');
   const hardTimerRef = useRef<number | null>(null);
-  const safetyTimerRef = useRef<number | null>(null);
+  const slowTimerRef = useRef<number | null>(null);
   const exchangeDoneRef = useRef(false);
 
   const returnToApp = () => {
     window.location.replace(CONNECTIONS_PATH);
   };
 
-  // Independent mount timer: forces fallback UI after 4 seconds no matter
-  // what the async token exchange is doing.
+  // The exchange legitimately takes a few seconds (Facebook token exchange +
+  // page lookup). After 4s we reassure the user instead of declaring a failure.
   useEffect(() => {
-    safetyTimerRef.current = window.setTimeout(() => {
-      setIsLoading(false);
-      setHasTimedOut(true);
-    }, SAFETY_UI_TIMEOUT_MS);
+    slowTimerRef.current = window.setTimeout(() => {
+      if (exchangeDoneRef.current) return;
+      setIsSlow(true);
+    }, SLOW_NOTICE_MS);
 
     return () => {
-      if (safetyTimerRef.current) window.clearTimeout(safetyTimerRef.current);
+      if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
     };
   }, []);
+
 
   // Absolute escape hatch: whatever happens, never sit on the loader.
   useEffect(() => {
@@ -326,7 +331,8 @@ export default function OAuthCallback() {
     };
   }, []);
 
-  const showFallback = !!error || hasTimedOut;
+  // Only a real failure shows the error state. A slow exchange keeps spinning.
+  const showFallback = !!error;
 
   return (
     <div dir="rtl" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
@@ -344,16 +350,19 @@ export default function OAuthCallback() {
         )}
         <h1 className="text-lg font-semibold">
           {showFallback
-            ? error?.title || 'החיבור אורך יותר מהצפוי'
+            ? error?.title || 'החיבור לא הושלם'
             : success
               ? 'החיבור הושלם'
               : 'מסיים אימות...'}
         </h1>
         <p className="text-sm text-muted-foreground break-words">
           {showFallback
-            ? error?.hint || error?.detail || 'הבקשה לא הושלמה תוך 4 שניות. ניתן לחזור למערכת ולנסות שוב.'
-            : message}
+            ? error?.hint || error?.detail || 'ניתן לחזור למערכת ולנסות שוב.'
+            : isSlow && !success
+              ? 'פייסבוק מאשר את החיבור, זה עשוי לקחת מספר שניות. אפשר להמתין כאן.'
+              : message}
         </p>
+
         {error?.enableUrl && (
           <a
             href={error.enableUrl}
@@ -394,6 +403,14 @@ export default function OAuthCallback() {
             </Button>
           </div>
         )}
+        {!showFallback && isSlow && !success && (
+          <div className="mt-2 flex items-center justify-center">
+            <Button onClick={returnToApp} variant="outline" size="sm">
+              חזרה למערכת
+            </Button>
+          </div>
+        )}
+
       </div>
     </div>
   );
