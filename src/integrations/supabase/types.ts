@@ -2013,6 +2013,8 @@ export type Database = {
         Row: {
           created_at: string
           first_name: string
+          google_event_id: string | null
+          google_event_link: string | null
           id: string
           last_name: string
           lead_id: string | null
@@ -2026,6 +2028,8 @@ export type Database = {
         Insert: {
           created_at?: string
           first_name: string
+          google_event_id?: string | null
+          google_event_link?: string | null
           id?: string
           last_name: string
           lead_id?: string | null
@@ -2039,6 +2043,8 @@ export type Database = {
         Update: {
           created_at?: string
           first_name?: string
+          google_event_id?: string | null
+          google_event_link?: string | null
           id?: string
           last_name?: string
           lead_id?: string | null

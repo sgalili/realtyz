@@ -12,6 +12,7 @@
  * accepted input is a demo_requests row id — all content is read server-side.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createCalendarEvent, getFreshAccessToken } from "../_shared/google-calendar.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,6 +76,8 @@ Deno.serve(async (req) => {
     const body = (await req.json().catch(() => ({}))) as {
       demo_request_id?: string;
       phone?: string;
+      /** Skip the WhatsApp messages and only create the calendar event. */
+      calendar_only?: boolean;
     };
     if (!body.demo_request_id && !body.phone) {
       return json({ ok: false, error: "demo_request_id or phone is required" }, 400);
@@ -86,7 +89,7 @@ Deno.serve(async (req) => {
     // public landing form cannot read back its own inserted row).
     let query = admin
       .from("demo_requests")
-      .select("id, first_name, last_name, phone, preferred_at, workspace_owner_id, source");
+      .select("id, first_name, last_name, phone, preferred_at, workspace_owner_id, source, google_event_id");
     query = body.demo_request_id
       ? query.eq("id", body.demo_request_id)
       : query.eq("phone", String(body.phone)).order("created_at", { ascending: false });
@@ -107,7 +110,8 @@ Deno.serve(async (req) => {
       `אפשר לאשר לי שהמועד נוח לך? אם צריך מועד אחר, פשוט תכתוב לי מתי ואתאם מחדש.`;
 
     const results: unknown[] = [];
-    if (leadPhone) results.push(await sendWhatsApp(leadPhone, leadMessage, ownerId));
+    const calendarOnly = body.calendar_only === true;
+    if (leadPhone && !calendarOnly) results.push(await sendWhatsApp(leadPhone, leadMessage, ownerId));
 
     // ── 2. Alert to the workspace owner + managers ──────────────────────────
     const managerIds = new Set<string>([ownerId]);
@@ -133,7 +137,7 @@ Deno.serve(async (req) => {
       `ריטה שלחה כבר אישור ללקוח וממתינה לתשובתו.`;
 
     const managerPhones = new Set<string>();
-    (profiles ?? []).forEach((p: { phone: string | null }) => {
+    if (!calendarOnly) (profiles ?? []).forEach((p: { phone: string | null }) => {
       const normalized = normalizePhone(p.phone);
       if (normalized && normalized !== leadPhone) managerPhones.add(normalized);
     });
@@ -141,14 +145,57 @@ Deno.serve(async (req) => {
       results.push(await sendWhatsApp(phone, managerMessage, ownerId));
     }
 
+    // ── 3. Google Calendar event on the workspace owner's connected calendar ──
+    let calendar: Record<string, unknown> = { created: false };
+    if (row.preferred_at && !row.google_event_id) {
+      const token = await getFreshAccessToken(admin, ownerId);
+      if ("error" in token) {
+        calendar = { created: false, reason: token.error };
+      } else {
+        const startISO = new Date(row.preferred_at as string).toISOString();
+        const endISO = new Date(new Date(startISO).getTime() + 15 * 60_000).toISOString();
+        const event = await createCalendarEvent({
+          accessToken: token.accessToken,
+          calendarId: token.calendarId,
+          timezone: token.timezone,
+          summary: `הדגמת Realtyz בזום — ${leadName}`,
+          description:
+            `הדגמה אישית של Realtyz (15 דקות).\n` +
+            `שם: ${leadName}\n` +
+            `טלפון: ${row.phone}\n` +
+            `מקור: ${row.source ?? "landing"}\n` +
+            `מועד מבוקש: ${slot}\n` +
+            `ריטה שלחה ללקוח אישור בוואטסאפ וממתינה לתשובתו.`,
+          startISO,
+          endISO,
+        });
+        if ("error" in event) {
+          calendar = { created: false, reason: event.error };
+        } else {
+          calendar = { created: true, event_id: event.id, link: event.htmlLink ?? event.meetLink };
+          await admin
+            .from("demo_requests")
+            .update({ google_event_id: event.id, google_event_link: event.htmlLink ?? null })
+            .eq("id", row.id);
+        }
+      }
+    }
+
     console.log("[demo-booking-notify] dispatched", {
       demo_request_id: row.id,
       owner_id: ownerId,
       lead_notified: !!leadPhone,
       managers_notified: managerPhones.size,
+      calendar,
     });
 
-    return json({ ok: true, lead_notified: !!leadPhone, managers_notified: managerPhones.size, results });
+    return json({
+      ok: true,
+      lead_notified: !!leadPhone,
+      managers_notified: managerPhones.size,
+      calendar,
+      results,
+    });
   } catch (e) {
     console.error("[demo-booking-notify] fatal", e);
     return json({ ok: false, error: (e as Error).message }, 500);
