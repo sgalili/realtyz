@@ -72,6 +72,14 @@ const TAB_LABEL: Record<SectionTab, string> = {
   calls: 'שיחות',
 };
 
+/** Standard workspaces keep the full tab set. */
+const DEFAULT_TABS: SectionTab[] = ['tasks', 'leads', 'demos', 'notes', 'reminders', 'calls'];
+/**
+ * Rita's marketing workspace: demos come first, and the לידים / הערות tabs are
+ * hidden there (they stay available in every other workspace).
+ */
+const RITA_TABS: SectionTab[] = ['demos', 'tasks', 'reminders', 'calls'];
+
 /** Which section a card belongs to. */
 function sectionOf(task: CommandTask): SectionTab {
   if (task.source === 'note') return task.actionType === 'interaction' ? 'calls' : 'notes';
@@ -138,7 +146,8 @@ function IconAction({
 
 export default function CommandCenter() {
   // Property card links only appear in workspaces that manage properties.
-  const { listingsEnabled } = useWorkspaceFeatures();
+  const { listingsEnabled, isRitaWorkspace } = useWorkspaceFeatures();
+  const visibleTabs = isRitaWorkspace ? RITA_TABS : DEFAULT_TABS;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: tasks = [], isLoading } = useCommandCenterTasks();
@@ -146,7 +155,7 @@ export default function CommandCenter() {
   const leadsCount = useIncomingLeadsCount();
   const demosCount = useScheduledDemosCount();
   
-  const [tab, setTab] = useState<SectionTab>('tasks');
+  const [tab, setTab] = useState<SectionTab>(isRitaWorkspace ? 'demos' : 'tasks');
   // Every card starts COLLAPSED when entering the page.
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
 
@@ -223,11 +232,17 @@ export default function CommandCenter() {
 
 
       <Card className="p-4">
-        <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
+        <div
+          className={
+            isRitaWorkspace
+              ? 'mb-[30px] flex flex-col items-center justify-center gap-[50px] sm:mb-4 sm:flex-row sm:flex-wrap sm:gap-2'
+              : 'mb-4 flex flex-wrap items-center justify-center gap-2'
+          }
+        >
           <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)}>
             <TabsList className="justify-center overflow-x-auto">
 
-              {(Object.keys(TAB_LABEL) as SectionTab[]).map((key) => (
+              {visibleTabs.map((key) => (
                 <TabsTrigger key={key} value={key}>
                   {TAB_LABEL[key] ? `${TAB_LABEL[key]} (${counts[key]})` : ''}
                 </TabsTrigger>

@@ -2060,7 +2060,7 @@ const LeadCRM = () => {
                               seller:   { label: 'מוכר',   cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' },
                               renter:   { label: 'שוכר',   cls: 'bg-[#0b3982]/10 text-[#0b3982] border-[#0b3982]/40' },
                               landlord: { label: 'משכיר', cls: 'bg-purple-500/10 text-purple-700 border-purple-300' },
-                              broker:   { label: 'מתווך', cls: 'bg-amber-500/10 text-amber-700 border-amber-300' },
+                              broker:   { label: 'מתווך/ת', cls: 'bg-amber-500/10 text-amber-700 border-amber-300' },
                               affiliate:{ label: 'שותף',  cls: 'bg-teal-500/10 text-teal-700 border-teal-300' },
                             };
                             const m = kind ? map[kind] : null;
@@ -2494,7 +2494,7 @@ const LeadCRM = () => {
                     const leadKindOpts = [
                       { v: 'buyer', l: 'קונה' }, { v: 'seller', l: 'מוכר' },
                       { v: 'renter', l: 'שוכר' }, { v: 'landlord', l: 'משכיר' },
-                      { v: 'broker', l: 'מתווך' }, { v: 'affiliate', l: 'שותף' },
+                      { v: 'broker', l: 'מתווך/ת' }, { v: 'affiliate', l: 'שותף' },
                     ];
                     const dealTypeOpts = [
                       { v: 'sale', l: 'קנייה' }, { v: 'rent', l: 'שכירות' },
