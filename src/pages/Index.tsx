@@ -276,7 +276,7 @@ const RealEstateDashboard = () => {
   );
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="realtyz-dashboard-scale space-y-6" dir="rtl">
       <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight text-primary">לוח בקרה</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -284,10 +284,6 @@ const RealEstateDashboard = () => {
         </p>
       </div>
 
-      {/* Global search */}
-      <div className="space-y-3">
-        <GlobalSearchTrigger />
-      </div>
 
       {/* Scheduled tours (top of page) */}
       <CollapsibleSection
