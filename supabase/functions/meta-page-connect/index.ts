@@ -457,6 +457,60 @@ Deno.serve(async (req) => {
 
     }
 
+    // Disconnect ONE specific Page: removes only that binding and every post it
+    // brought into this workspace, so the feed loses those posts instantly.
+    if (action === "disconnect_page") {
+      const pageId = String(body?.page_id ?? "").trim();
+      if (!pageId) return json({ ok: false, error: "חסר מזהה עמוד." }, 200);
+
+      const { error: delErr } = await admin
+        .from("messenger_page_bindings")
+        .delete()
+        .eq("owner_id", ownerId)
+        .eq("page_id", pageId);
+      if (delErr) return json({ ok: false, error: delErr.message }, 200);
+
+      // Purge the cached posts of that Page from this workspace only.
+      let removedPosts = 0;
+      try {
+        const { data: rows } = await admin
+          .from("campaign_logs")
+          .select("id, provider_message_id, target_account_ref, source_account")
+          .eq("workspace_owner_id", ownerId);
+        const ids = (rows ?? [])
+          .filter((r: any) => {
+            const pid = String(r.provider_message_id ?? "");
+            return pid.startsWith(`${pageId}_`) || pid === pageId ||
+              String(r.target_account_ref ?? "") === pageId ||
+              String(r.source_account ?? "") === pageId;
+          })
+          .map((r: any) => r.id);
+        if (ids.length) {
+          const { error: postErr } = await admin.from("campaign_logs").delete().in("id", ids);
+          if (!postErr) removedPosts = ids.length;
+        }
+      } catch (e) {
+        console.error("[meta-page-connect] disconnect_page post purge failed", e);
+      }
+
+      // Keep a default page selected when others remain.
+      const { data: remaining } = await admin
+        .from("messenger_page_bindings")
+        .select("page_id, is_selected")
+        .eq("owner_id", ownerId)
+        .order("updated_at", { ascending: false });
+      const left = (remaining ?? []) as any[];
+      if (left.length > 0 && !left.some((r) => r.is_selected)) {
+        await admin
+          .from("messenger_page_bindings")
+          .update({ is_selected: true })
+          .eq("owner_id", ownerId)
+          .eq("page_id", String(left[0].page_id));
+      }
+
+      return json({ ok: true, page_id: pageId, removed_posts: removedPosts, remaining: left.length });
+    }
+
     if (action === "disconnect") {
       const failures = await purgeFacebookState(admin, ownerId);
       if (failures.length) return json({ error: `disconnect_failed: ${failures.join("; ")}` }, 500);
@@ -469,6 +523,7 @@ Deno.serve(async (req) => {
       }
       return json({ ok: true });
     }
+
 
     // Manual fallback: broker pastes a Page ID + Page access token directly.
     // Used when the Meta app is in development/testing mode and OAuth is blocked.
