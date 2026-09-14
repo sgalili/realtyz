@@ -317,7 +317,7 @@ Deno.serve(async (req) => {
             body: JSON.stringify({
               lead_id: doc.lead_id,
               message: lines.join("\n"),
-              override_user_id: doc.user_id,
+              tenant_id: ownerId,
             }),
           }).catch(() => {});
         }
