@@ -8,7 +8,7 @@ import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown, Sparkles, MessageSquare, CornerDownLeft, MessageCircleMore } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw, Send, Sparkles, MessageSquare, CornerDownLeft, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,16 @@ import { campaignMatchesExternalPost, getCampaignPostIds, platformForCampaignCha
 import { learnFromEdit } from "@/lib/learnFromEdit";
 import { t as i18n } from "@/i18n/strings";
 import { RitaAvatar } from '@/components/RitaAvatar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const extractFunctionError = async (error: any, fallback = "שגיאת API חיצונית") => {
   const status = error?.context?.status ?? error?.status;
@@ -740,7 +750,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       if (externalId) byRelationId.set(externalId, row);
     });
 
-    return all.map((row) => {
+    return all.filter((row) => !row.is_archived).map((row) => {
       const meta = (row.metadata as any) ?? {};
       const rawParentId = cleanRelationId((row as any).parent_id) ?? cleanRelationId(meta.parent_id);
       const parentRow = rawParentId ? byRelationId.get(rawParentId) : null;
@@ -894,6 +904,61 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
   };
 
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EngagementRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const rowRelationIds = (row: EngagementRow) => {
+    const meta = (row.metadata as any) ?? {};
+    return [row.id, cleanRelationId(row.external_id), cleanRelationId(meta.parent_event_id)].filter(Boolean) as string[];
+  };
+
+  const removeRowAndDescendants = (list: EngagementRow[], target: EngagementRow) => {
+    const removedIds = new Set(rowRelationIds(target));
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const row of list) {
+        const meta = (row.metadata as any) ?? {};
+        const parentId = cleanRelationId((row as any).parent_id) ?? cleanRelationId(meta.parent_id) ?? cleanRelationId(meta.parent_event_id);
+        if (parentId && removedIds.has(parentId) && !removedIds.has(row.id)) {
+          rowRelationIds(row).forEach((id) => removedIds.add(id));
+          changed = true;
+        }
+      }
+    }
+    return list.filter((row) => !rowRelationIds(row).some((id) => removedIds.has(id)));
+  };
+
+  const deleteComment = async () => {
+    const target = deleteTarget;
+    if (!target || deletingId) return;
+    const previous = rowsRef.current ?? [];
+    setDeletingId(target.id);
+    setDeleteTarget(null);
+    setRows(() => {
+      const next = removeRowAndDescendants(previous, target);
+      writeCache(campaign.id, next, postIds);
+      return next;
+    });
+    try {
+      const { data, error } = await supabase.functions.invoke('meta-comments-sync', {
+        body: {
+          action: 'delete',
+          user_id: commentOwnerId,
+          comment_id: target.external_id ?? target.id,
+        },
+      });
+      if (error) throw new Error(await extractFunctionError(error, 'מחיקת התגובה נכשלה'));
+      if (!(data as any)?.ok) throw new Error((data as any)?.error || 'מחיקת התגובה נכשלה');
+      toast.success('התגובה נמחקה מפייסבוק ומהמערכת');
+    } catch (e: any) {
+      setRows(previous);
+      writeCache(campaign.id, previous, postIds);
+      toast.error(e?.message ?? 'מחיקת התגובה נכשלה');
+    } finally {
+      setDeletingId(null);
+    }
+  };
   const regenerateInline = async (row: EngagementRow) => {
     if (!row.inbound_text) return;
     setRegeneratingId(row.id);
@@ -1227,6 +1292,8 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
           editor={replyOpen?.id === node.id ? renderEditor(node) : null}
           onRegenerate={regenerateInline}
           regenerating={regeneratingId === node.id}
+          onDelete={setDeleteTarget}
+          deleting={deletingId === node.id}
           isReply={depth > 0}
           embedded
         />
@@ -1312,6 +1379,22 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       <div className="space-y-4">
         {rootComments.map((parent) => renderCommentNode(parent))}
       </div>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open && !deletingId) setDeleteTarget(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת תגובה</AlertDialogTitle>
+            <AlertDialogDescription>
+              התגובה וכל תגובות ההמשך שלה יימחקו גם מהפוסט בפייסבוק. להמשיך?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void deleteComment()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              מחק תגובה
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1331,6 +1414,8 @@ function CommentBubble({
   threadExpanded,
   onToggleThread,
   embedded,
+  onDelete,
+  deleting,
 }: {
   row: EngagementRow;
   onToggleEditor: (r: EngagementRow) => void;
@@ -1346,6 +1431,8 @@ function CommentBubble({
   threadExpanded?: boolean;
   onToggleThread?: () => void;
   embedded?: boolean;
+  onDelete: (r: EngagementRow) => void;
+  deleting?: boolean;
 }) {
 
   const dt = new Date(row.created_at);
@@ -1410,7 +1497,21 @@ function CommentBubble({
           </Avatar>
           <span className="truncate font-medium text-foreground">{isPageAuthored ? "התגובה שלך" : senderName}</span>
         </div>
-        <span className="shrink-0">{when}</span>
+        <div className="flex shrink-0 items-center gap-1">
+          <span>{when}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={deleting}
+            onClick={() => onDelete(row)}
+            className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            aria-label="מחק תגובה"
+            title="מחק תגובה"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
       <p className="whitespace-pre-wrap text-sm text-foreground">
         {row.inbound_text}
@@ -1445,16 +1546,44 @@ function CommentBubble({
             )}
           </button>
         )}
-        {alreadyReplied ? (
-          (replyCount ?? 0) === 0 && (
+        {alreadyReplied && (replyCount ?? 0) === 0 && (
             <div className="flex w-full items-start gap-1 text-right text-[12px] text-muted-foreground">
               <RitaAvatar className="h-4 w-4 shrink-0 mt-0.5 border-0 ring-0" />
               <span className="flex-1 whitespace-pre-wrap break-words">
                 {cleanReplyPreview ?? row.ai_reply_text ?? row.inbound_text}
               </span>
             </div>
-          )
-        ) : isSelfAuthored ? null : (
+          )}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => onToggleEditor(row)}
+            className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
+            aria-expanded={expanded}
+          >
+            <RitaAvatar className="h-4 w-4 border-0 ring-0" />
+            {toggleLabel}
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+          {senderId && /^\d{5,}$/.test(String(senderId)) && String(row.platform).toLowerCase() === "facebook" && (
+            <a
+              href={`https://m.me/${senderId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[13px] font-medium text-[hsl(220,70%,25%)] hover:underline"
+              title="פתח צ'אט Messenger ישירות"
+            >
+              💬 פתח צ'אט
+            </a>
+          )}
+        </div>
+
+        {expanded && (
+          <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+            {editor}
+          </div>
+        )}
+        {false && (
           <>
             <div className="flex items-center gap-3 flex-wrap">
               <button

@@ -7,3 +7,9 @@
 - [x] Make Facebook connection verification return graceful successful responses for existing connections
 - [x] Replace the removed Meta Graph `ids` enrichment request
 - [x] Stop duplicate Facebook edge retries when `pages_read_engagement` is denied
+- [x] Remove the extra `/landing` top strip and header divider
+- [x] Rename landing Zoom demo actions to להדגמה בזום
+- [x] Audit AIZA product copy and preserve unrelated AIza API-key placeholders
+- [x] Restore Rita reply controls below every campaign comment and reply
+- [x] Add confirmed app-to-Facebook comment deletion
+- [x] Reconcile Facebook-native comment deletion into UI counters and caches

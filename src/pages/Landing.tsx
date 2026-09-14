@@ -14,7 +14,6 @@ import CreditsSection from '@/components/landing/CreditsSection';
 import ScheduleDemoDialog from '@/components/landing/ScheduleDemoDialog';
 import { cn } from '@/lib/utils';
 import { BrandLogo } from '@/components/social/BrandLogo';
-import { RotatingHeadline } from '@/components/RotatingHeadline';
 
 
 import { PlatformTicker, StackTicker } from '@/components/landing/LogoTickers';
@@ -248,16 +247,11 @@ export default function Landing() {
   return (
     <div dir="rtl" className="realtyz-landing min-h-screen bg-background text-foreground antialiased">
       {/* ───────── Nav ───────── */}
-      <div className="flex h-8 w-full items-center justify-center bg-background px-4 text-center">
-        <div className="mx-auto flex w-full max-w-4xl justify-center">
-          <RotatingHeadline variant="onLight" />
-        </div>
-      </div>
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
           <ScheduleDemoDialog>
             <Button className="h-11 px-5 text-sm font-extrabold shadow-lg shadow-primary/25">
-              תיאום דמו בזום
+              להדגמה בזום
             </Button>
           </ScheduleDemoDialog>
           <Link to="/" aria-label="Realtyz AI">
@@ -428,7 +422,7 @@ export default function Landing() {
             <div className="mt-10 inline-block">
               <ScheduleDemoDialog>
                 <Button size="lg" className="h-14 px-10 text-base font-extrabold shadow-2xl shadow-primary/25">
-                  תיאום דמו בזום
+                  להדגמה בזום
                 </Button>
               </ScheduleDemoDialog>
             </div>
