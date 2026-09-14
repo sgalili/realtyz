@@ -290,6 +290,17 @@ export function ClosingRoomDialog({
           )}
 
           <div>
+            <Label className="text-xs">תעודת זהות של הלקוח</Label>
+            <Input
+              inputMode="numeric"
+              placeholder="9 ספרות"
+              value={identityNumber}
+              onChange={(e) => setIdentityNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
+            />
+          </div>
+
+
+          <div>
             <Label className="text-xs">
               {template === 'offer_letter' ? 'מחיר הצעה (₪)' : 'מחיר ייחוס (₪)'}
             </Label>
