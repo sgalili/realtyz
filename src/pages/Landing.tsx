@@ -248,13 +248,8 @@ export default function Landing() {
     <div dir="rtl" className="realtyz-landing min-h-screen bg-background text-foreground antialiased">
       {/* ───────── Nav ───────── */}
       <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
-          <ScheduleDemoDialog>
-            <Button className="h-11 px-5 text-sm font-extrabold shadow-lg shadow-primary/25">
-              להדגמה בזום
-            </Button>
-          </ScheduleDemoDialog>
-          <Link to="/" aria-label="Realtyz AI">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-center px-4">
+          <Link to="/" aria-label="Realtyz AI" className="mt-5">
             <img src={realtyzLogo} alt="Realtyz AI" className="h-[3.12rem] w-auto object-contain" />
           </Link>
         </div>
