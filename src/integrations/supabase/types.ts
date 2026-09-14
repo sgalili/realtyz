@@ -6089,6 +6089,7 @@ export type Database = {
         Returns: string
       }
       ensure_credit_wallet: { Args: { _user_id: string }; Returns: string }
+      ensure_profile_row: { Args: { _uid: string }; Returns: undefined }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       ext_claim_jobs: {
         Args: { _limit?: number; _token: string; _user_agent?: string }

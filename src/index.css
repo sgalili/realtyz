@@ -411,7 +411,7 @@
     align-items: center;
     justify-content: center;
     gap: 1.25rem;
-    transform: translateY(-50px);
+    transform: translateY(-90px);
   }
 
   .auth-header-ticker {
@@ -826,6 +826,7 @@
     position: relative;
     inset-inline: 0;
     margin-top: auto;
+    transform: translateY(-50px);
     z-index: 10;
   }
 

@@ -19,11 +19,11 @@ import realtyzLogo from '@/assets/realtyz-logo.png';
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
 
 const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
-  { key: 'h1', render: () => <>ה{ '\n' } <strong>פלטפורמה היחידה</strong>{ '\n' }שתצטרכו לקמפיין שלכם</> },
-  { key: 'h2', render: () => <>בלי צורך בספקים חיצוניים:{ '\n' }<strong>ווטסאפ, SMS ואימייל</strong>{ '\n' }- הכל בפנים</> },
-  { key: 'h3', render: () => <><strong>ניהול שטח, CRM ואסטרטגיה</strong>{ '\n' }במקום אחד - בלי פשרות</> },
-  { key: 'h4', render: () => <><strong>עליונות טכנולוגית</strong>{ '\n' }שמשאירה את המתחרים מאחור</> },
-  { key: 'h5', render: () => <>מערכת ה-AI היחידה בישראל ש{ '\n' }<strong>מנהלת את הליד מקצה לקצה</strong></> },
+  { key: 'h1', render: () => <>ה{' '}<strong>פלטפורמה היחידה</strong>{' '}שתצטרכו לקמפיין שלכם</> },
+  { key: 'h2', render: () => <>בלי צורך בספקים חיצוניים:{' '}<strong>ווטסאפ, SMS ואימייל</strong>{' '}- הכל בפנים</> },
+  { key: 'h3', render: () => <>{' '}<strong>ניהול שטח, CRM ואסטרטגיה</strong>{' '}במקום אחד - בלי פשרות</> },
+  { key: 'h4', render: () => <>{' '}<strong>עליונות טכנולוגית</strong>{' '}שמשאירה את המתחרים מאחור</> },
+  { key: 'h5', render: () => <>מערכת ה-AI היחידה בישראל ש{' '}<strong>מנהלת את הליד מקצה לקצה</strong>{' '}</> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;
@@ -277,13 +277,13 @@ const Auth = () => {
     >
       {/* Top header bar with auth-only rotating headline */}
       <div className="absolute inset-x-0 top-0 z-20 h-7 bg-background" dir="rtl">
-        <div className="absolute right-4 left-4 top-[calc(50%+5px)] -translate-y-1/2 overflow-hidden text-right">
+        <div className="absolute right-4 left-4 top-[calc(50%+5px)] -translate-y-1/2 overflow-hidden text-center">
           <div className="auth-header-ticker" aria-live="polite">
             {AUTH_HEADER_HEADLINES.map((line, index) => (
               <span
                 key={line.key}
                 className={cn(
-                  'auth-header-ticker-line absolute inset-0 flex items-center justify-start transition-opacity duration-[900ms] ease-in-out',
+                  'auth-header-ticker-line absolute inset-0 flex items-center justify-center gap-1 transition-opacity duration-[900ms] ease-in-out',
                   index === headerHeadlineIndex ? 'opacity-100' : 'opacity-0',
                 )}
               >
