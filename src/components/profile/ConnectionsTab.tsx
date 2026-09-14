@@ -407,6 +407,7 @@ export function ConnectionsTab() {
         <ConnectionSection
           key={s.id}
           title={s.title}
+          titleAside={s.titleAside}
           status={s.status}
           tone={s.tone}
           open={openId === s.id}
