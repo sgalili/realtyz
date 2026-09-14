@@ -263,7 +263,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (result.ok) {
         clearPendingOAuth();
         setManualOpen(false);
-        toast.success('עמוד הפייסבוק חובר', { description: result.name || undefined });
         refreshBinding();
         refreshHealth();
         void probe(false).catch(() => undefined);
@@ -295,7 +294,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       clearPendingOAuth();
       setConnecting(false);
       setManualOpen(false);
-      toast.success('עמוד הפייסבוק חובר', { description: params.get('fb_page') || undefined });
       refreshBinding();
       refreshHealth();
       void probe(false).catch(() => undefined);

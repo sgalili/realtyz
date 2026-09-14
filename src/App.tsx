@@ -157,7 +157,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     });
     return () => { alive = false; };
   }, [user, roleApplied]);
-  const { roles, isAffiliateOnly, loading: roleLoading } = useUserRole();
+  const { roles, isAffiliateOnly, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const location = useLocation();
   if (loading) return (
@@ -168,7 +168,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   if (!user) return <Navigate to="/auth" replace />;
 
   // Brand-new account (no role yet): pick מתווך / שותף once, then continue.
-  if (!roleLoading && roleApplied && roles.length === 0) {
+  if (roleError) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <RealtyzLoader size="lg" label="מסנכרן הרשאות..." />
+    </div>
+  );
+
+  if (rolesFetched && !roleLoading && roleApplied && roles.length === 0) {
     return <Suspense fallback={<PageLoader />}><RoleChoiceStep /></Suspense>;
   }
 
