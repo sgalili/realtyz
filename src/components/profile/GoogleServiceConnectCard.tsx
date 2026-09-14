@@ -221,14 +221,15 @@ export function GoogleServiceConnectCard({
           <div className="flex items-center gap-2 text-sm font-semibold">
             <GoogleBrandGlyph brand={brand} />
             <span>{title}</span>
-            {connected && (
-              <Badge
-                variant="success"
-                className="gap-1 !border-transparent !bg-emerald-600 !text-white text-[11px] font-semibold [&>svg]:!text-white"
-              >
-                <CheckCircle2 className="h-3 w-3" /> מחובר
-              </Badge>
-            )}
+            {/* Inline colors on purpose: global CSS overrides utility color
+                classes, which washed out this status text. */}
+            <span
+              className="inline-flex items-center gap-1 text-[13px] font-bold"
+              style={{ color: connected ? 'hsl(152 62% 30%)' : 'hsl(0 72% 45%)' }}
+            >
+              {connected ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+              {connected ? 'מחובר' : 'לא מחובר'}
+            </span>
           </div>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {connected && accountLabel ? <span dir="ltr">{accountLabel}</span> : hint}
@@ -240,9 +241,37 @@ export function GoogleServiceConnectCard({
             {connected ? 'חבר מחדש' : (ctaLabel ?? 'חיבור מהיר בקליק')}
           </Button>
           {connected && (
-            <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={disconnect}>
-              ניתוק
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8"
+                  style={{ color: 'hsl(0 72% 45%)', borderColor: 'hsl(0 72% 70%)' }}
+                  aria-label="ניתוק החיבור"
+                  title="ניתוק החיבור"
+                >
+                  <Unlink className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent dir="rtl" className="text-right">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>לנתק את {title}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    החיבור יימחק והאוטומציות שתלויות בו יפסיקו לפעול. תמיד ניתן לחבר מחדש.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="gap-2 sm:justify-start">
+                  <AlertDialogCancel>ביטול</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => void disconnect()}
+                    style={{ backgroundColor: 'hsl(0 72% 45%)', color: '#fff' }}
+                  >
+                    ניתוק
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
       </div>
