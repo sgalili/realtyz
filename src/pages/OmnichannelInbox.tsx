@@ -358,25 +358,8 @@ const OmnichannelInbox = () => {
     },
   });
 
-  const { data: dbChatMessages } = useQuery({
-    queryKey: ['chat-messages', selectedVoterId],
-    enabled: !!selectedVoterId && !isDemoMode,
-    refetchInterval: 3000,
-    queryFn: async () => {
-      // Phone-anchored synthetic thread (id = "phone:9725...").
-      if (selectedVoterId?.startsWith('phone:')) {
-        const phone = selectedVoterId.slice('phone:'.length);
-        const { data } = await supabase
-          .from('messages')
-          .select('*')
-          .is('lead_id', null)
-          .order('created_at', { ascending: true });
-        return (data ?? []).filter((m: any) => (m.metadata as any)?.sender_phone === phone);
-      }
-      const { data } = await supabase.from('messages').select('*').eq('lead_id', selectedVoterId!).order('created_at', { ascending: true });
-      return data ?? [];
-    },
-  });
+
+
 
   // Demo mode data interception
   const demoVoters = useMemo(() => getDemoCandidateVoters(demoCandidateId), [demoCandidateId]);
