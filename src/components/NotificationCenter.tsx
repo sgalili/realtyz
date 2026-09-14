@@ -329,6 +329,16 @@ export default function NotificationCenter() {
                 סמן הכל כנקרא
               </Button>
             )}
+            {allKeys.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-6 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={deleteAll}
+              >
+                מחק הכל
+              </Button>
+            )}
           </div>
         </div>
 
