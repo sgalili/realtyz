@@ -164,7 +164,7 @@ export default function QuickActionDrawer() {
     const t = setTimeout(async () => {
       const { data } = await (supabase as any)
         .from('listings')
-        .select('id, property_title, city, neighborhood, rooms, asking_price, deal_type')
+        .select(LISTING_LITE_FIELDS)
         .or(`property_title.ilike.%${q}%,address.ilike.%${q}%,city.ilike.%${q}%`)
         .limit(8);
       if (cancelled) return;
@@ -281,7 +281,7 @@ export default function QuickActionDrawer() {
     try {
       let q = (supabase as any)
         .from('listings')
-        .select('id, property_title, city, neighborhood, rooms, asking_price, deal_type')
+        .select(LISTING_LITE_FIELDS)
         .order('created_at', { ascending: false })
         .limit(10);
       if (lead?.city) q = q.ilike('city', `%${lead.city}%`);
