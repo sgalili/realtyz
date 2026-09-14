@@ -19,11 +19,12 @@ import realtyzLogo from '@/assets/realtyz-logo.png';
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
 
 const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
-  { key: 'h1', render: () => <>ה{' '}<strong>פלטפורמה היחידה</strong>{' '}שתצטרכו לקמפיין שלכם</> },
-  { key: 'h2', render: () => <>בלי צורך בספקים חיצוניים:{' '}<strong>ווטסאפ, SMS ואימייל</strong>{' '}- הכל בפנים</> },
-  { key: 'h3', render: () => <>{' '}<strong>ניהול שטח, CRM ואסטרטגיה</strong>{' '}במקום אחד - בלי פשרות</> },
-  { key: 'h4', render: () => <>{' '}<strong>עליונות טכנולוגית</strong>{' '}שמשאירה את המתחרים מאחור</> },
-  { key: 'h5', render: () => <>מערכת ה-AI היחידה בישראל ש{' '}<strong>מנהלת את הליד מקצה לקצה</strong>{' '}</> },
+  { key: 'h1', render: () => <>כלי העבודה היחיד שכל מתווך חייב בעידן ה{' '}<strong>AI</strong>{' '}— לניהול סוכנות בלי פשרות</> },
+  { key: 'h2', render: () => <>בלי צורך בספקים חיצוניים:{' '}<strong>ווטסאפ, SMS ואימייל</strong>{' '}במקום אחד</> },
+  { key: 'h3', render: () => <>ניהול לידים, נכסים ושיחות{' '}<strong>בלי בלאגן ובלי גיליונות</strong>{' '}במסך אחד</> },
+  { key: 'h4', render: () => <>ה-AI של ריטה{' '}<strong>מדבר, מדרג ומזכיר</strong>{' '}מתי לחזור ללקוח</> },
+  { key: 'h5', render: () => <>שיווק בכל הערוצים —{' '}<strong>פייסבוק, ווטסאפ ו-SMS</strong>{' '}ממסך אחד</> },
+  { key: 'h6', render: () => <>חתימות דיגיטליות, הסכמי סיור ושיתוף נכסים{' '}<strong>בקליק אחד</strong>{' '}</> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;
@@ -275,24 +276,6 @@ const Auth = () => {
     <div
       className="auth-gradient-shell min-h-screen relative flex flex-col overflow-hidden bg-background px-4 py-8"
     >
-      {/* Top header bar with auth-only rotating headline */}
-      <div className="absolute inset-x-0 top-0 z-20 h-7 bg-background" dir="rtl">
-        <div className="absolute right-4 left-4 top-[calc(50%+5px)] -translate-y-1/2 overflow-hidden text-center">
-          <div className="auth-header-ticker" aria-live="polite">
-            {AUTH_HEADER_HEADLINES.map((line, index) => (
-              <span
-                key={line.key}
-                className={cn(
-                  'auth-header-ticker-line absolute inset-0 flex items-center justify-center gap-1 transition-opacity duration-[900ms] ease-in-out',
-                  index === headerHeadlineIndex ? 'opacity-100' : 'opacity-0',
-                )}
-              >
-                {line.render()}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
       {codeSent && !isGoogleFlow && (
         <button type="button" aria-label="חזרה להתחברות" className="absolute right-4 top-16 z-20 border-0 bg-transparent p-0 text-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
           <ArrowRight className="h-10 w-10" />
@@ -306,7 +289,19 @@ const Auth = () => {
             alt="Realtyz AI"
             className="auth-official-logo mx-auto mb-4 h-[3.6rem] w-auto object-contain"
           />
-          <p className="auth-official-slogan">כלי העבודה היחיד שכל מתווך חייב בעידן ה AI.</p>
+          <div className="auth-header-ticker mx-auto" aria-live="polite">
+            {AUTH_HEADER_HEADLINES.map((line, index) => (
+              <span
+                key={line.key}
+                className={cn(
+                  'auth-header-ticker-line col-start-1 row-start-1 flex items-center justify-center gap-1 transition-opacity duration-[900ms] ease-in-out',
+                  index === headerHeadlineIndex ? 'opacity-100' : 'opacity-0',
+                )}
+              >
+                {line.render()}
+              </span>
+            ))}
+          </div>
         </div>
 
         {!codeSent && <h1 className="auth-login-title">הרשמה/התחברות</h1>}
