@@ -292,11 +292,20 @@ Deno.serve(async (req) => {
         .eq("owner_id", ownerId)
         .order("updated_at", { ascending: false });
 
-      const bindings = (rows ?? []) as any[];
+      let bindings = (rows ?? []) as any[];
+
+      // Same fallback the UI shows (get_effective_meta_page): a workspace with
+      // no own binding still uses the platform-shared Page, so it must never be
+      // reported as "not connected".
+      if (bindings.length === 0) {
+        const shared = await sharedBinding();
+        if (shared?.page_id) bindings = [shared];
+      }
 
       if (bindings.length === 0) {
         return json({ connected: false, needs_reconnect: false, never_connected: true, page: null, error: null });
       }
+
 
       // Hard-expiry / revoked-token codes ONLY. Anything else (rate limits,
       // transient Graph errors, missing field permissions, network blips) must
