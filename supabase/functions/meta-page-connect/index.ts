@@ -217,7 +217,9 @@ async function fetchPageIdentity(
 }
 
 
-Deno.serve(async (req) => {
+const REQUEST_TIMEOUT_MS = 8_000;
+
+async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
@@ -1070,4 +1072,20 @@ Deno.serve(async (req) => {
     // "Edge Function returned a non-2xx status code".
     return json({ error: `החיבור לפייסבוק נכשל: ${msg}`, stage: "fatal" }, 200);
   }
+}
+
+Deno.serve((req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const timeout = new Promise<Response>((resolve) => {
+    setTimeout(() => {
+      console.error("[meta-page-connect] absolute request timeout", { timeout_ms: REQUEST_TIMEOUT_MS });
+      resolve(json({
+        error: "החיבור לפייסבוק לא הושלם בתוך 8 שניות. יש לנסות שוב.",
+        stage: "request_timeout",
+      }, 200));
+    }, REQUEST_TIMEOUT_MS);
+  });
+
+  return Promise.race([handleRequest(req), timeout]);
 });

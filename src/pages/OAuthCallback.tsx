@@ -20,14 +20,9 @@ import { friendlyGoogleError } from '@/lib/googleApiErrors';
 const FACEBOOK_PAGE_STATE_PREFIX = 'facebook_page';
 const CONNECTIONS_PATH = '/profile?tab=connections';
 /** Ceiling for the server-side exchange so the page never spins forever. */
-const EXCHANGE_TIMEOUT_MS = 15_000;
-/**
- * After this long we tell the user it takes a few seconds and offer a manual
- * way back — but the exchange keeps running and this is NOT an error.
- */
-const SLOW_NOTICE_MS = 4_000;
+const EXCHANGE_TIMEOUT_MS = 8_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
-const HARD_TIMEOUT_MS = 18_000;
+const HARD_TIMEOUT_MS = 8_000;
 
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive', 'google_all'] as const;
@@ -81,31 +76,15 @@ function finish(
 
 export default function OAuthCallback() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isSlow, setIsSlow] = useState(false);
   const [error, setError] = useState<OAuthError>(null);
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState('מסיים אימות...');
   const hardTimerRef = useRef<number | null>(null);
-  const slowTimerRef = useRef<number | null>(null);
   const exchangeDoneRef = useRef(false);
 
   const returnToApp = () => {
     window.location.replace(CONNECTIONS_PATH);
   };
-
-  // The exchange legitimately takes a few seconds (Facebook token exchange +
-  // page lookup). After 4s we reassure the user instead of declaring a failure.
-  useEffect(() => {
-    slowTimerRef.current = window.setTimeout(() => {
-      if (exchangeDoneRef.current) return;
-      setIsSlow(true);
-    }, SLOW_NOTICE_MS);
-
-    return () => {
-      if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
-    };
-  }, []);
-
 
   // Absolute escape hatch: whatever happens, never sit on the loader.
   useEffect(() => {
@@ -121,7 +100,6 @@ export default function OAuthCallback() {
       // Main-window flow: stop the spinner and let the user retry or go back
       // instead of silently bouncing away mid-connection.
       setIsLoading(false);
-      setIsSlow(false);
       setError({
         title: 'החיבור לא הושלם בזמן',
         detail: null,
@@ -134,11 +112,10 @@ export default function OAuthCallback() {
     };
   }, []);
 
-  // Once we have a definitive outcome, kill both safety timers.
+  // Once we have a definitive outcome, kill the safety timer.
   useEffect(() => {
     if (!error && !success) return;
     if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
-    if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
   }, [error, success]);
 
   // Token exchange logic. Completely separate from the UI safety timer.
@@ -146,6 +123,7 @@ export default function OAuthCallback() {
     let cancelled = false;
 
     const run = async () => {
+      try {
       const search = new URLSearchParams(window.location.search);
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
       const pick = (key: string) => search.get(key) ?? hash.get(key);
@@ -289,7 +267,6 @@ export default function OAuthCallback() {
 
       setMessage('שומר את חיבור עמוד הפייסבוק...');
       try {
-
         const { data, error: fnError } = await withTimeout(
           supabase.functions.invoke('meta-page-connect', {
             body: {
@@ -336,8 +313,24 @@ export default function OAuthCallback() {
       } catch (e: any) {
         if (cancelled) return;
         const reason = String(e?.message ?? 'unknown');
+        console.error('[oauth-callback] facebook callback failed', e);
         setIsLoading(false);
-        setError({ title: 'החיבור לפייסבוק נכשל', detail: reason });
+        setError({
+          title: 'החיבור לפייסבוק נכשל',
+          detail: reason,
+          hint: 'לא ניתן היה להשלים את החיבור. אפשר לנסות שוב או לחזור למערכת.',
+        });
+      }
+      } catch (e: any) {
+        if (cancelled) return;
+        const reason = String(e?.message ?? e ?? 'unknown');
+        console.error('[oauth-callback] callback failed', e);
+        setIsLoading(false);
+        setError({
+          title: 'החיבור לא הושלם',
+          detail: reason,
+          hint: 'אירעה שגיאה במהלך האימות. אפשר לנסות שוב או לחזור למערכת.',
+        });
       }
     };
 
@@ -374,9 +367,7 @@ export default function OAuthCallback() {
         <p className="text-sm text-muted-foreground break-words">
           {showFallback
             ? error?.hint || error?.detail || 'ניתן לחזור למערכת ולנסות שוב.'
-            : isSlow && !success
-              ? 'פייסבוק מאשר את החיבור, זה עשוי לקחת מספר שניות. אפשר להמתין כאן.'
-              : message}
+            : message}
         </p>
 
         {error?.enableUrl && (
@@ -419,14 +410,6 @@ export default function OAuthCallback() {
             </Button>
           </div>
         )}
-        {!showFallback && isSlow && !success && (
-          <div className="mt-2 flex items-center justify-center">
-            <Button onClick={returnToApp} variant="outline" size="sm">
-              חזרה למערכת
-            </Button>
-          </div>
-        )}
-
       </div>
     </div>
   );
