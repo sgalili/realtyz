@@ -1872,7 +1872,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
         ]));
         const [contacts, properties] = await Promise.all([
           supabase.from("leads").select("id", { count: "exact", head: true }).in("assigned_to", memberIds).eq("is_demo", false),
-          supabase.from("listings").select("id", { count: "exact", head: true }).in("user_id", memberIds).eq("is_demo", false),
+          supabase.from("listings").select("id", { count: "exact", head: true }).in("user_id", memberIds),
         ]);
         if (contacts.error) throw contacts.error;
         if (properties.error) throw properties.error;
