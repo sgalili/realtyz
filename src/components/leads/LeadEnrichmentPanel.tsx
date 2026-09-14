@@ -209,23 +209,8 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
               />
             </div>
           </div>
+          {/* Address sits before city, matching how brokers dictate a location. */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <Building2 className="h-3.5 w-3.5 text-slate-700" /> עיר
-                {savingField === 'city' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-              </Label>
-              <IsraeliCityPicker
-                value={city}
-                placeholder="—"
-                onChange={(v) => {
-                  setCity(v);
-                  if ((v || null) !== (lead.city ?? null)) persist({ col: { city: v || null } }, 'city');
-                }}
-                className="h-8 text-sm"
-              />
-
-            </div>
             <div className="space-y-1">
               <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-slate-700" /> כתובת
@@ -243,30 +228,30 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
                 maxLength={200}
               />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5 text-slate-700" /> עיר
+                {savingField === 'city' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              </Label>
+              <IsraeliCityPicker
+                value={city}
+                placeholder="—"
+                onChange={(v) => {
+                  setCity(v);
+                  if ((v || null) !== (lead.city ?? null)) persist({ col: { city: v || null } }, 'city');
+                }}
+                className="h-8 text-sm"
+              />
+
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Conversation bot + gender side-by-side */}
+      {/* Gender */}
       <div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <Bot className="h-3.5 w-3.5 text-slate-700" /> בוט
-              {savingField === 'bot' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-            </Label>
-            <Select
-              value={lead.ai_autopilot === false ? 'manual' : 'rita'}
-              onValueChange={(value) => persist({ col: { ai_autopilot: value === 'rita' } }, 'bot')}
-            >
-              <SelectTrigger className="h-8 text-sm font-semibold text-slate-900"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="rita">ריטה</SelectItem>
-                <SelectItem value="manual">ללא בוט</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <div className="space-y-1">
             <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
               <GenderIcon className="h-3.5 w-3.5 text-slate-700" /> מגדר
