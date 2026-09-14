@@ -81,30 +81,31 @@ function finish(
 
 export default function OAuthCallback() {
   const [isLoading, setIsLoading] = useState(true);
-  const [hasTimedOut, setHasTimedOut] = useState(false);
+  const [isSlow, setIsSlow] = useState(false);
   const [error, setError] = useState<OAuthError>(null);
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState('מסיים אימות...');
   const hardTimerRef = useRef<number | null>(null);
-  const safetyTimerRef = useRef<number | null>(null);
+  const slowTimerRef = useRef<number | null>(null);
   const exchangeDoneRef = useRef(false);
 
   const returnToApp = () => {
     window.location.replace(CONNECTIONS_PATH);
   };
 
-  // Independent mount timer: forces fallback UI after 4 seconds no matter
-  // what the async token exchange is doing.
+  // The exchange legitimately takes a few seconds (Facebook token exchange +
+  // page lookup). After 4s we reassure the user instead of declaring a failure.
   useEffect(() => {
-    safetyTimerRef.current = window.setTimeout(() => {
-      setIsLoading(false);
-      setHasTimedOut(true);
-    }, SAFETY_UI_TIMEOUT_MS);
+    slowTimerRef.current = window.setTimeout(() => {
+      if (exchangeDoneRef.current) return;
+      setIsSlow(true);
+    }, SLOW_NOTICE_MS);
 
     return () => {
-      if (safetyTimerRef.current) window.clearTimeout(safetyTimerRef.current);
+      if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
     };
   }, []);
+
 
   // Absolute escape hatch: whatever happens, never sit on the loader.
   useEffect(() => {
