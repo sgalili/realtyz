@@ -33,7 +33,8 @@ import { SidebarIntelInput } from '@/components/SidebarIntelInput';
 import { useSidebarCounts } from '@/hooks/useSidebarCounts';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
-import { LISTINGS_ENABLED } from '@/config/workspaceMode';
+import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
+import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
 import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
 
 

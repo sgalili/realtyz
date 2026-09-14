@@ -25,7 +25,7 @@ import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
 
 import { MatchProgressCard } from '@/components/dashboard/MatchProgressCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
-import { LISTINGS_ENABLED } from '@/config/workspaceMode';
+import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { GlobalSearchTrigger } from '@/components/GlobalSearch';
 import { RecruitmentDashboard } from '@/components/dashboard/RecruitmentDashboard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
@@ -437,7 +437,7 @@ const RealEstateDashboard = () => {
 
 
       {/* Listing management is hidden in broker-recruitment mode */}
-      {LISTINGS_ENABLED && (
+      {listingsEnabled && (
         <>
           <CollapsibleSection id="pending-listings" title="נכסים שזוהו אוטומטית" description="אישור, עריכה או מחיקה של נכסים שהופקו על ידי ה-AI">
             <PendingListingsCard />

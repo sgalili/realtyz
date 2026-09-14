@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
-import { LIMITS_ENABLED } from '@/config/workspaceMode';
+import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
 import confetti from 'canvas-confetti';
@@ -958,7 +958,7 @@ export default function SmsBlastSimulator() {
       }
       // Credit restrictions are disabled for this workspace (broker-recruitment hub):
       // sends are never blocked by balance.
-      const insufficientBalance = LIMITS_ENABLED && balance > 0 && estimatedCredits > balance * 1000;
+      const insufficientBalance = limitsEnabled && balance > 0 && estimatedCredits > balance * 1000;
 
       // 3) Pull real recipients from leads table
       const { data: voterRows, error: voterErr } = await supabase
