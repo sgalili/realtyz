@@ -17,6 +17,8 @@ export interface PropertyOption {
   rooms?: number | null;
   image_url?: string | null;
   media_photos?: unknown;
+  house_number?: string | number | null;
+  apartment_number?: string | number | null;
 }
 
 export function propertyLabel(p: PropertyOption) {
@@ -24,9 +26,22 @@ export function propertyLabel(p: PropertyOption) {
   return parts.join(' · ') || 'נכס ללא כותרת';
 }
 
-/** Street + city, as precise as the record allows. */
+/**
+ * Internal display address: street name + house number + apartment number when
+ * the record has them, then the city. Workspace-only — public pages keep using
+ * stripAddressNumbers.
+ */
 export function propertyFullAddress(p: PropertyOption) {
-  const parts = [p.address, p.city].filter(Boolean) as string[];
+  let line = String(p.address ?? '').replace(/\s+/g, ' ').trim();
+  const house = p.house_number != null ? String(p.house_number).trim() : '';
+  const apt = p.apartment_number != null ? String(p.apartment_number).trim() : '';
+  if (house && !new RegExp(`(^|[\\s,])${house.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([\\s,]|$)`).test(line)) {
+    line = line ? `${line} ${house}` : house;
+  }
+  if (apt && !/(דירה|יח["׳']|apt|unit)/i.test(line)) {
+    line = line ? `${line}, דירה ${apt}` : `דירה ${apt}`;
+  }
+  const parts = [line, p.city].filter(Boolean) as string[];
   return parts.join(', ') || p.property_title || 'כתובת לא הוזנה';
 }
 
