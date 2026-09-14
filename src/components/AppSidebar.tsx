@@ -15,7 +15,6 @@ import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useAppMode } from '@/hooks/useAppMode';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
@@ -155,15 +154,12 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin, isAffiliateOnly } = useUserRole();
-  const { isPartnerMode } = useAppMode();
+  const { isSuperAdmin } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
 
-  // Partner mode shows the same single-purpose menu an affiliate-only account gets.
-  const baseNavItems = isAffiliateOnly || isPartnerMode ? AFFILIATE_NAV_ITEMS : NAV_ITEMS;
   // Every workspace uses the same acquisition-focused navigation as Rita's workspace.
-  const navItems = baseNavItems.filter((item) => item.url !== '/deal-room' && item.url !== '/affiliate-network');
+  const navItems = NAV_ITEMS.filter((item) => item.url !== '/deal-room' && item.url !== '/affiliate-network');
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
