@@ -193,24 +193,14 @@ export function ProductTour() {
               {index + 1} מתוך {steps.length}
             </span>
           </div>
-          <p className="mt-6 inline-flex items-center gap-2 text-base font-extrabold text-primary">
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
-            {step.eyebrow}
-          </p>
-          <h2 className="mt-2 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
-            {step.title}
+          <h2 className="mt-6 flex items-start gap-2 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+            <Sparkles className="mt-1.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+            <span>{step.title}</span>
           </h2>
         </div>
 
         <div className="px-8 py-6">
-          <ul className="space-y-4">
-            {step.bullets.map((b) => (
-              <li key={b} className="flex items-start gap-3 text-lg leading-relaxed sm:text-xl">
-                <Check className="mt-1.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-                <span>{b}</span>
-              </li>
-            ))}
-          </ul>
+
 
           {step.cta && (
             <Button
