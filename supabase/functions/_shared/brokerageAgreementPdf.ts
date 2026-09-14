@@ -127,12 +127,13 @@ export async function buildBrokerageAgreementPdf(opts: AgreementOptions): Promis
   heAt("החתמה דיגיטלית", M + 32, headerTop + 32, 6, false, "center");
   doc.setTextColor(0);
 
+  const textX = RIGHT - badgeW - 14;
   y = headerTop + 18;
-  he(opts.broker.name, 12, true, RIGHT - 100);
+  he(opts.broker.name, 12, true, textX);
   y += 14;
-  he(`${opts.broker.office} | רישיון תיווך: ${opts.broker.license}`, 9, false, RIGHT - 100);
+  he(`${opts.broker.office} | רישיון תיווך: ${opts.broker.license}`, 9, false, textX);
   y += 12;
-  he(`${hePhone(opts.broker.phone)} | ${opts.broker.email}`, 9, false, RIGHT - 100);
+  he(`${hePhone(opts.broker.phone)} | ${opts.broker.email}`, 9, false, textX);
   y = headerTop + 62;
   doc.setDrawColor(210).setLineWidth(0.7).line(M, y, RIGHT, y);
   y += 26;
