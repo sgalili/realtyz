@@ -5182,7 +5182,7 @@ const PublishedFeed = ({
         { event: 'UPDATE', schema: 'public', table: 'campaign_logs' },
         (payload) => {
           const updated: any = payload.new;
-          if (!campaignUserIds.includes(updated?.user_id)) return;
+          if (!belongsToActiveWorkspace(updated)) return;
           setRows((prev) => prev?.map((r) => {
             if (r.id !== updated.id && !campaignMatchesExternalPost(r, updated.provider_message_id)) return r;
             // Protect-from-zero: a transient 0 from the provider must never
@@ -5224,7 +5224,7 @@ const PublishedFeed = ({
         { event: 'INSERT', schema: 'public', table: 'campaign_logs' },
         (payload) => {
           const inserted: any = payload.new;
-          if (campaignUserIds.includes(inserted?.user_id)) {
+          if (belongsToActiveWorkspace(inserted)) {
             setRows((prev) => {
               if (!prev) return prev;
               if (prev.some((row) => row.id === inserted.id)) return prev;
@@ -5251,7 +5251,7 @@ const PublishedFeed = ({
         { event: '*', schema: 'public', table: 'engagement_events' },
         async (payload) => {
           const changed: any = payload.new || payload.old;
-          if (!campaignUserIds.includes(changed?.user_id)) return;
+          if (!belongsToActiveWorkspace(changed)) return;
           const externalPostId = normalizePostId(changed?.external_post_id);
           if (!externalPostId) return;
 
