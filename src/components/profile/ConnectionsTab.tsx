@@ -243,6 +243,7 @@ export function ConnectionsTab() {
     fbHealth?.pageConnected
     || meta?.connected
     || (fbBinding?.pageId && fbBinding?.hasToken)
+    || (account?.facebook?.pageId && account.facebook.hasToken)
   );
   useEffect(() => {
     if (fbLive) rememberConnected('facebook', activeWorkspaceId, null);
