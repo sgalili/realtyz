@@ -146,7 +146,8 @@ function IconAction({
 
 export default function CommandCenter() {
   // Property card links only appear in workspaces that manage properties.
-  const { listingsEnabled } = useWorkspaceFeatures();
+  const { listingsEnabled, isRitaWorkspace } = useWorkspaceFeatures();
+  const visibleTabs = isRitaWorkspace ? RITA_TABS : DEFAULT_TABS;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: tasks = [], isLoading } = useCommandCenterTasks();
