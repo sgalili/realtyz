@@ -121,33 +121,6 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// Affiliate-only accounts get a single-purpose menu: no CRM, no properties,
-// no posts, no office settings.
-const AFFILIATE_NAV_ITEMS: NavItem[] = [
-  {
-    title: 'רשת השותפים',
-    url: '/affiliate',
-    icon: AffiliateFlowchartIcon,
-    iconColor: 'text-emerald-600',
-    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  },
-  {
-    title: 'גיוס ומעקב רשת',
-    url: '/affiliate-network',
-    icon: AffiliateFlowchartIcon,
-    iconColor: 'text-teal-600',
-    badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
-  },
-  {
-    title: 'הזמן חברים',
-    url: '/referral',
-    icon: Gift,
-    iconColor: 'text-amber-600',
-    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
-  },
-];
-
-
 export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: string | null }) {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === 'collapsed';
