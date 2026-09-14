@@ -12,6 +12,8 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import VoterAvatar from '@/components/VoterAvatar';
+import { useNavigate } from 'react-router-dom';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   new: { label: 'חדש', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
@@ -22,13 +24,14 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 
 const AdminLeads = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['admin-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contact_submissions')
-        .select('*')
+        .select('*, lead:leads!contact_submissions_lead_id_fkey(id, full_name, profile_picture_url)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -121,19 +124,17 @@ const AdminLeads = () => {
           ) : (
             <ScrollArea className="h-[500px]">
               <div className="space-y-3">
-                {leads?.map((lead) => {
+                {leads?.map((lead: any) => {
                   const st = statusConfig[lead.status || 'new'] || statusConfig.new;
+                  const linkedLead = Array.isArray(lead.lead) ? lead.lead[0] : lead.lead;
+                  const displayName = linkedLead?.full_name || lead.full_name;
                   return (
                     <div key={lead.id} className="p-4 rounded-xl border border-border/50 hover:border-border/80 transition-colors space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center">
-                            <span className="text-sm font-medium text-accent-foreground">
-                              {(lead.full_name || '?')[0].toUpperCase()}
-                            </span>
-                          </div>
+                          <VoterAvatar fullName={displayName} profilePictureUrl={linkedLead?.profile_picture_url} className="h-10 w-10" textClassName="text-sm" />
                           <div>
-                            <p className="font-medium text-sm">{lead.full_name}</p>
+                            <button type="button" disabled={!lead.lead_id} onClick={() => lead.lead_id && navigate(`/lead-crm/${lead.lead_id}`)} className="text-sm font-medium hover:text-primary hover:underline disabled:no-underline">{displayName}</button>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                               <span className="flex items-center gap-1">
                                 <Phone className="h-3 w-3" />

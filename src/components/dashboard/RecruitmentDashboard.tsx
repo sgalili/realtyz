@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, startOfDay, subDays } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -16,6 +17,8 @@ import {
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
 import { GlobalSearchTrigger } from '@/components/GlobalSearch';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import VoterAvatar from '@/components/VoterAvatar';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 /* ────────────────────────────────────────────────────────────────────
    Rita's workspace dashboard — marketing Realtyz to real-estate agents.
@@ -26,6 +29,13 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 export function RecruitmentDashboard() {
   const navigate = useNavigate();
   const ownerId = useActiveWorkspaceOwnerId();
+
+  const hydrateAvatar = useCallback(async (leadId: string | null | undefined) => {
+    if (!leadId || !ownerId) return;
+    await supabase.functions.invoke('fetch-wa-avatars', {
+      body: { lead_ids: [leadId], owner_id: ownerId, limit: 1 },
+    }).catch(() => undefined);
+  }, [ownerId]);
 
   const { data: brokerContacts, isLoading: loadingContacts } = useQuery({
     queryKey: ['rita-broker-contacts', ownerId],
@@ -88,7 +98,7 @@ export function RecruitmentDashboard() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from('demo_requests')
-        .select('id, first_name, last_name, phone, notes, status, created_at')
+        .select('id, first_name, last_name, phone, notes, status, created_at, lead_id, lead:leads!demo_requests_lead_id_fkey(id, full_name, profile_picture_url)')
         .order('created_at', { ascending: false })
         .limit(6);
       return (data ?? []) as any[];
@@ -109,6 +119,20 @@ export function RecruitmentDashboard() {
     },
     refetchInterval: 60_000,
   });
+
+  useEffect(() => {
+    const missingAvatarIds = (recentSignups ?? [])
+      .filter((row) => {
+        const linkedLead = Array.isArray(row.lead) ? row.lead[0] : row.lead;
+        return row.lead_id && !linkedLead?.profile_picture_url;
+      })
+      .map((row) => row.lead_id)
+      .filter(Boolean);
+    if (!missingAvatarIds.length || !ownerId) return;
+    void supabase.functions.invoke('fetch-wa-avatars', {
+      body: { lead_ids: missingAvatarIds, owner_id: ownerId, limit: missingAvatarIds.length },
+    });
+  }, [recentSignups, ownerId]);
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -213,22 +237,33 @@ export function RecruitmentDashboard() {
                 </p>
               ) : (
                 <div className="max-h-[280px] space-y-2 overflow-y-auto pe-1">
-                  {recentSignups.map((row) => (
-                    <div
+                  {recentSignups.map((row) => {
+                    const linkedLead = Array.isArray(row.lead) ? row.lead[0] : row.lead;
+                    const name = linkedLead?.full_name || [row.first_name, row.last_name].filter(Boolean).join(' ') || 'מתווך חדש';
+                    return (
+                    <button
                       key={row.id}
-                      className="flex items-start gap-3 rounded-lg border border-border/40 p-2.5 transition-colors hover:bg-muted/30"
+                      type="button"
+                      disabled={!row.lead_id}
+                      onClick={() => {
+                        if (!row.lead_id) return;
+                        void hydrateAvatar(row.lead_id);
+                        navigate(`/lead-crm/${row.lead_id}`);
+                      }}
+                      className="flex w-full items-start gap-3 rounded-lg border border-border/40 p-2.5 text-right transition-colors hover:bg-muted/30 disabled:cursor-default"
                     >
+                      <VoterAvatar fullName={name} profilePictureUrl={linkedLead?.profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{[row.first_name, row.last_name].filter(Boolean).join(' ') || 'מתווך חדש'}</p>
+                        <p className="truncate text-sm font-medium">{name}</p>
                         <p className="truncate text-[11px] text-muted-foreground">
-                          {row.notes || row.phone || 'בקשת הדגמה'}
+                          {row.notes || formatPhoneDisplay(row.phone) || 'בקשת הדגמה'}
                         </p>
                       </div>
                       <span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground">
                         {formatDistanceToNow(new Date(row.created_at), { addSuffix: true, locale: he })}
                       </span>
-                    </div>
-                  ))}
+                    </button>
+                  )})}
                 </div>
               )}
             </CardContent>

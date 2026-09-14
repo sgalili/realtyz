@@ -51,7 +51,6 @@ export function ritaRecruitmentFallback(
 const SYSTEM_ERROR_MARKERS = [
   "לא הצלחתי להשלים את הפעולה",
   "אירעה שגיאה קטנה בשליפת הנתונים",
-  "קצין המודיעין",
 ];
 
 export function looksLikeSystemErrorReply(text: string | null | undefined): boolean {

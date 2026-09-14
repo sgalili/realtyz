@@ -2,7 +2,7 @@ import { safeTool, logToolFailure, GRACEFUL_TOOL_FALLBACK_HE, GRACEFUL_ACTION_FA
 import { cleanSqm } from "../_shared/measures.ts";
 import { CRM_ACTIONS_CONTRACT, executeCrmActions } from "../_shared/crmActions.ts";
 import { extractActionEnvelopes, stripRawJson, summarizeCrmResults } from "../_shared/agentOutput.ts";
-import { CRM_TOOL_DEFS, NATIVE_TOOLS_CONTRACT, toolCallsToActions } from "../_shared/crmTools.ts";
+import { CRM_TOOL_DEFS, NATIVE_TOOLS_CONTRACT, hasNativeToolCall, toolCallsToActions } from "../_shared/crmTools.ts";
 
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -621,7 +621,7 @@ serve(async (req) => {
     const requestAuthHeader = req.headers.get("Authorization") ?? "";
     const requestBearer = requestAuthHeader.replace(/^Bearer\s+/i, "").trim();
     const isServiceRequest = requestBearer === supabaseKey;
-    let currentOwnerId: string | null = isServiceRequest && workspace_owner_id ? String(workspace_owner_id) : null;
+    let currentOwnerId: string | null = workspace_owner_id ? String(workspace_owner_id) : null;
     if (!currentOwnerId && requestAuthHeader.startsWith("Bearer ")) {
       try {
         const authClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -913,6 +913,15 @@ serve(async (req) => {
           global: { headers: { Authorization: requestAuthHeader } },
         });
         if (uid) {
+            const { data: membershipRows, error: membershipError } = await supabase
+              .from("workspace_memberships")
+              .select("user_id")
+              .eq("workspace_owner_id", uid);
+            if (membershipError) console.warn("workspace member scope lookup failed:", membershipError.message);
+            const workspaceMemberIds = Array.from(new Set([
+              uid,
+              ...((membershipRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id).filter(Boolean),
+            ]));
             // Detect rent/sale intent from the last user message so the
             // workspace snapshot never leaks a sale into a rental request
             // (and vice-versa). Israeli monthly rents never exceed ₪50k,
@@ -929,7 +938,7 @@ serve(async (req) => {
 
             let listingsQ = userClient.from("listings")
               .select("id, property_title, asking_price, features, description, office_notes, is_published, created_at, deal_type")
-              .eq("user_id", uid)
+              .in("user_id", workspaceMemberIds)
               .order("created_at", { ascending: false })
               .limit(25);
             if (snapIntent === "rent") {
@@ -943,11 +952,11 @@ serve(async (req) => {
               listingsQ,
               userClient.from("leads")
                 .select("id, full_name, city, interest_tag, engagement_score, status, lead_stage, deal_type, sentiment, preferences, last_interaction_at")
-                .eq("assigned_to", uid)
+                 .in("assigned_to", workspaceMemberIds)
                 .order("last_interaction_at", { ascending: false, nullsFirst: false })
                 .limit(25),
-              userClient.from("leads").select("id", { count: "exact", head: true }).eq("assigned_to", uid),
-              userClient.from("listings").select("id", { count: "exact", head: true }).eq("user_id", uid),
+               userClient.from("leads").select("id", { count: "exact", head: true }).in("assigned_to", workspaceMemberIds),
+               userClient.from("listings").select("id", { count: "exact", head: true }).in("user_id", workspaceMemberIds),
             ]);
             let listingsArr = (listingsRes.data ?? []) as any[];
             // Belt-and-suspenders: strip any residual price-vs-deal_type
@@ -1095,7 +1104,7 @@ serve(async (req) => {
 6. אסור להמציא נכסים, מתעניינים, מחירים או עסקאות שלא מופיעים ב-snapshot, בתוצאות ה-SQL או במקורות מחקר חיים. מותר להסיק המלצות מקצועיות ולסמן אותן כהמלצה.
 
 שפה אסורה (איסור מוחלט):
-- אסור להזכיר שמות מערכת פנימיים, כלים, טבלאות, שאילתות, קודי שגיאה או מונחים כמו "קצין המודיעין", "המערכת קלטה את הבקשה", "מבצע כלי", "SQL", "snapshot".
+- אסור להזכיר שמות מערכת פנימיים, כלים, טבלאות, שאילתות, קודי שגיאה או מונחים כמו "המערכת קלטה את הבקשה", "מבצעת כלי", "SQL", "snapshot".
 - אסור מטא-פרשנות על מה שאתה עושה או עומד לעשות ("אני מריץ שאילתה", "התהליך הושלם בהצלחה"), ואסור עדכוני סטטוס טכניים.
 - אסור אישורים רובוטיים. אתה מדבר כמו איש מקצוע בנדל"ן, לא כמו מערכת.
 
@@ -1848,6 +1857,41 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     const aiData = await aiResponse.json();
     const aiMessage = aiData.choices?.[0]?.message ?? {};
     const rawContent = String(aiMessage.content ?? "").trim();
+
+    if (hasNativeToolCall(aiMessage.tool_calls, "get_crm_counts")) {
+      try {
+        if (!currentOwnerId) throw new Error("missing_workspace_owner");
+        const { data: membershipRows, error: membershipError } = await supabase
+          .from("workspace_memberships")
+          .select("user_id")
+          .eq("workspace_owner_id", currentOwnerId);
+        if (membershipError) throw membershipError;
+        const memberIds = Array.from(new Set([
+          currentOwnerId,
+          ...((membershipRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id).filter(Boolean),
+        ]));
+        const [contacts, properties] = await Promise.all([
+          supabase.from("leads").select("id", { count: "exact", head: true }).in("assigned_to", memberIds).eq("is_demo", false),
+          supabase.from("listings").select("id", { count: "exact", head: true }).in("user_id", memberIds),
+        ]);
+        if (contacts.error) throw contacts.error;
+        if (properties.error) throw properties.error;
+        const content = `יש כרגע ${contacts.count ?? 0} אנשי קשר ו-${properties.count ?? 0} נכסים במרחב העבודה הפעיל.`;
+        return new Response(JSON.stringify({
+          type: "text",
+          content,
+          live_data: { contacts: contacts.count ?? 0, properties: properties.count ?? 0 },
+          sources: kbSources,
+          escalation,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (e) {
+        console.error("[ai-agent] get_crm_counts failed", e instanceof Error ? e.message : String(e));
+        return new Response(JSON.stringify({ error: "לא הצלחתי לשלוף כרגע את נתוני ה-CRM החיים." }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // ─── NATIVE TOOL CALLS: execute server-side, report only real results ──
     // The model asked for CRM writes through function calling. We run them

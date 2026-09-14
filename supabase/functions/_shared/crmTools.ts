@@ -68,6 +68,7 @@ const PROPERTY_FIELDS = {
 
 /** OpenAI-compatible tool list sent to the Lovable AI Gateway. */
 export const CRM_TOOL_DEFS: ToolDef[] = [
+  fn("get_crm_counts", "שליפת ספירות CRM חיות ומדויקות עבור סביבת העבודה הפעילה. יש להשתמש בכלי בכל שאלה על כמה אנשי קשר או נכסים קיימים כרגע.", {}),
   fn("create_contact", "פתיחת כרטיס איש קשר חדש ב-CRM. חובה טלפון.", CONTACT_FIELDS, ["full_name", "phone"]),
   fn("update_contact", "עדכון פרטי איש קשר קיים. זיהוי לפי lead_id, ואם אינו ידוע לפי phone.", {
     lead_id: str("מזהה איש הקשר אם ידוע"),
@@ -119,7 +120,7 @@ export const CRM_TOOL_DEFS: ToolDef[] = [
   fn("delete_task", "מחיקת משימה.", { task_id: str("מזהה המשימה") }, ["task_id"]),
 ];
 
-const TOOL_NAMES = new Set(CRM_TOOL_DEFS.map((t) => t.function.name));
+const WRITE_TOOL_NAMES = new Set(CRM_TOOL_DEFS.map((t) => t.function.name).filter((name) => name !== "get_crm_counts"));
 
 type RawToolCall = {
   id?: string;
@@ -136,7 +137,7 @@ export function toolCallsToActions(toolCalls: unknown): Record<string, any>[] {
   const out: Record<string, any>[] = [];
   for (const call of toolCalls as RawToolCall[]) {
     const name = String(call?.function?.name ?? "");
-    if (!TOOL_NAMES.has(name)) continue;
+    if (!WRITE_TOOL_NAMES.has(name)) continue;
     const rawArgs = call?.function?.arguments;
     let args: Record<string, any> = {};
     if (typeof rawArgs === "string") {
@@ -155,9 +156,15 @@ export function toolCallsToActions(toolCalls: unknown): Record<string, any>[] {
   return out;
 }
 
+export function hasNativeToolCall(toolCalls: unknown, name: string): boolean {
+  if (!Array.isArray(toolCalls)) return false;
+  return (toolCalls as RawToolCall[]).some((call) => call?.function?.name === name);
+}
+
 /** Extra system-prompt clause pinning the model to native tool calling. */
 export const NATIVE_TOOLS_CONTRACT = `
 [NATIVE TOOL CALLING - MANDATORY]
+כל בקשת ספירה עדכנית, כולל "כמה אנשי קשר יש", מחייבת קריאה ל-get_crm_counts. אין לנחש מספרים מהיסטוריית השיחה.
 כל כתיבה ל-CRM (הוספה, עדכון, מחיקה, איחוד, הערות, שיחות, תזכורות, משימות) מתבצעת
 אך ורק דרך קריאות הכלים הנייטיביות (function calling) שסופקו לך. אסור לחלוטין לכתוב
 JSON, מעטפת actions, code fences, SQL של כתיבה, שמות שדות או UUID בתוך הטקסט שהמשתמש רואה.

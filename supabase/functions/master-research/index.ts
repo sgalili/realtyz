@@ -1,5 +1,5 @@
 // master-research
-// Live web research for the Master Intelligence Officer ("קצין המודיעין").
+// Live web research for Rita, Realtyz's digital real-estate agent.
 // Uses Firecrawl (search + scrape) to gather sources for a neighborhood,
 // property type, or open question, then synthesizes a structured Hebrew
 // brief via Gemini. The final brief is auto-persisted into
@@ -75,7 +75,7 @@ async function synthesizeBrief(query: string, mode: string, sources: SearchResul
     })
     .join("\n\n---\n\n");
 
-  const system = `אתה "קצין המודיעין" של Realtyz - אנליסט נדל"ן בכיר.
+  const system = `את ריטה, סוכנת הנדל"ן הדיגיטלית של Realtyz ואנליסטית נדל"ן בכירה.
 המשתמש (בעל המשרד) ביקש מחקר עבור: "${query}" (מצב: ${mode}).
 בנה תקציר מודיעיני עברית, רהוט, ברור, ללא em-dash, ללא "--", ללא פתיחות AI גנריות.
 חובה לעגן את כל הקביעות במקורות שלמטה. אם פיסת מידע לא נמצאת במקורות, ציין במפורש "לא נמצא במקורות הזמינים".

@@ -1832,7 +1832,7 @@ Deno.serve(async (req) => {
               SUPABASE_URL,
               SERVICE_KEY,
               senderPhone,
-              `קצין המודיעין נכנס לפעולה.\nמתחיל מחקר חי על: ${subject}.\nאחזור אליך תוך כמה רגעים עם דוח מובנה.`,
+              `ריטה נכנסת לפעולה.\nמתחילה מחקר חי על: ${subject}.\nאחזור אליך תוך כמה רגעים עם דוח מובנה.`,
               { admin, ownerUserId, label: ownerLabel, action: "master_research_started", markAi: true },
             );
             const researchRes = await fetch(`${SUPABASE_URL}/functions/v1/master-research`, {
@@ -1940,7 +1940,7 @@ Deno.serve(async (req) => {
           const aiJson: any = await aiRes.json().catch(() => ({}));
           replyText = sanitizeAiReply(extractAiText(aiJson?.content ?? aiJson?.message ?? aiJson?.reply ?? aiJson));
           if (!aiRes.ok || !replyText) {
-            replyText = "קצין המודיעין קלט את הבקשה וממשיך לעבד אותה על בסיס נתוני המשרד. שלח עוד פרט אחד אם תרצה דיוק נוסף.";
+            replyText = "ריטה קלטה את הבקשה וממשיכה לעבד אותה על בסיס נתוני המשרד. שלח עוד פרט אחד אם תרצה דיוק נוסף.";
             companionAction = "intelligence_agent_soft_fallback";
           }
           meta = { ai_status: aiRes.status, sources: aiJson?.sources ?? null, research_sources: aiJson?.research_sources ?? null };
@@ -2166,7 +2166,7 @@ Deno.serve(async (req) => {
       }
 
       // MASTER MULTIMODAL ANALYSIS — forward the binary as an attachment to
-      // ai-agent so קצין המודיעין produces a clean, structured Hebrew analysis
+      // ai-agent so Rita produces a clean, structured Hebrew analysis
       // (key facts, action items, leads/listings to update) and reply with it
       // instead of a generic confirmation. Falls back to the standard
       // confirmation card if analysis fails.

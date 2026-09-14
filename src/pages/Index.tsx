@@ -29,6 +29,7 @@ import { LISTINGS_ENABLED } from '@/config/workspaceMode';
 import { GlobalSearchTrigger } from '@/components/GlobalSearch';
 import { useIsRitaWorkspace } from '@/hooks/useIsRitaWorkspace';
 import { RecruitmentDashboard } from '@/components/dashboard/RecruitmentDashboard';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 
 /* ────────────────────────────────────────────────────────────────────
@@ -54,6 +55,7 @@ interface ActivityFeedItem {
   title: string;
   detail: string;
   at: string;
+  leadId?: string | null;
 }
 
 const RealEstateDashboard = () => {
@@ -179,7 +181,7 @@ const RealEstateDashboard = () => {
       const [inquiries, showings, contracts, replies] = await Promise.all([
         (supabase as any)
           .from('contact_submissions')
-          .select('id, full_name, message, created_at')
+          .select('id, full_name, phone_number, message, created_at, lead_id')
           .order('created_at', { ascending: false })
           .limit(8),
         (supabase as any)
@@ -208,8 +210,9 @@ const RealEstateDashboard = () => {
           id: `inq-${r.id}`,
           type: 'inquiry',
           title: 'פנייה חדשה לנכס',
-          detail: r.full_name || 'איש קשר חדש',
+          detail: [r.full_name || 'איש קשר חדש', formatPhoneDisplay(r.phone_number)].filter(Boolean).join(' · '),
           at: r.created_at,
+          leadId: r.lead_id,
         });
       });
       (showings.data ?? []).forEach((r: any) => {
@@ -237,6 +240,7 @@ const RealEstateDashboard = () => {
           title: 'איש קשר הגיב',
           detail: (r.content ?? '').slice(0, 60) || 'הודעה חדשה',
           at: r.created_at,
+          leadId: r.lead_id,
         });
       });
 
@@ -368,7 +372,7 @@ const RealEstateDashboard = () => {
             ) : (
               <div className="space-y-2 max-h-[320px] overflow-y-auto pe-1">
                 {activityFeed.map((item) => (
-                  <ActivityRow key={item.id} item={item} />
+                  <ActivityRow key={item.id} item={item} onOpen={(leadId) => navigate(`/lead-crm/${leadId}`)} />
                 ))}
               </div>
             )}
@@ -497,7 +501,7 @@ const RealEstateDashboard = () => {
 
 /* ─── Helpers ─── */
 
-function ActivityRow({ item }: { item: ActivityFeedItem }) {
+function ActivityRow({ item, onOpen }: { item: ActivityFeedItem; onOpen: (leadId: string) => void }) {
   const config = {
     inquiry: { Icon: MessageCircle, color: 'text-primary', bg: 'bg-primary/10' },
     showing: { Icon: Eye, color: 'text-accent-foreground', bg: 'bg-accent/30' },
@@ -506,7 +510,7 @@ function ActivityRow({ item }: { item: ActivityFeedItem }) {
   }[item.type];
   const { Icon } = config;
   return (
-    <div className="flex items-start gap-3 p-2.5 rounded-lg border border-border/40 hover:bg-muted/30 transition-colors">
+    <button type="button" disabled={!item.leadId} onClick={() => item.leadId && onOpen(item.leadId)} className="flex w-full items-start gap-3 p-2.5 rounded-lg border border-border/40 text-right hover:bg-muted/30 transition-colors disabled:cursor-default">
       <div className={`shrink-0 w-8 h-8 rounded-full grid place-items-center ${config.bg}`}>
         <Icon className={`h-4 w-4 ${config.color}`} />
       </div>
@@ -517,7 +521,7 @@ function ActivityRow({ item }: { item: ActivityFeedItem }) {
       <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
         {formatDistanceToNow(new Date(item.at), { addSuffix: true, locale: he })}
       </span>
-    </div>
+    </button>
   );
 }
 

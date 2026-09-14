@@ -465,7 +465,7 @@ async function handleGreeting(ctx: RouterContext): Promise<RouterResult> {
   const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId, ctx.senderPhone);
   const greet = firstName ? `היי ${firstName}` : "היי";
   const reply = [
-    `${greet}, קצין המודיעין של Realtyz מוכן לפעולה.`,
+    `${greet}, ריטה מ-Realtyz מוכנה לפעולה.`,
     "אפשר לדבר איתי טבעי: בדיקת אזור, איתור נכסים, עדכון מתעניינים, הכנת פוסט, שליחת הודעה או ניתוח שיחה.",
     "מה תרצה שאבצע עכשיו?",
   ].join("\n");
