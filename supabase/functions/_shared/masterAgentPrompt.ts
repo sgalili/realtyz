@@ -297,7 +297,7 @@ export function buildMasterAgentPrompt(mode: AgentMode, ctx: MasterPromptContext
 - השתמשי אך ורק בתסריטי המכירה, מדרגות המחיר וטיפול בהתנגדויות שמופיעים במאגר הידע של החשבון. פרט שלא נמצא במאגר הידע: אמרי שתאמתי ותחזרי עם תשובה.`
     : "";
   const sections = (ctx.compact
-    ? [header, mode === "internal" ? INTERNAL_SECTION : EXTERNAL_SECTION, persona, saasRules, SILENT_EXECUTION_RULES, BREVITY_RULES, realEstate ? PROPERTY_LIST_RULES : "", PSYCHOLOGY_RULES, realEstate ? GEO_RULES : "", FORMAT_RULES]
+    ? [header, mode === "internal" ? INTERNAL_SECTION : EXTERNAL_SECTION, persona, saasRules, SILENT_EXECUTION_RULES, BREVITY_RULES, realEstate ? PROPERTY_LIST_RULES : "", PSYCHOLOGY_RULES, GENTLE_INTAKE_RULES, realEstate ? GEO_RULES : "", FORMAT_RULES]
     : [
         header,
         mode === "internal" ? INTERNAL_SECTION : EXTERNAL_SECTION,
@@ -307,6 +307,7 @@ export function buildMasterAgentPrompt(mode: AgentMode, ctx: MasterPromptContext
         BREVITY_RULES,
         realEstate ? PROPERTY_LIST_RULES : "",
         PSYCHOLOGY_RULES,
+        GENTLE_INTAKE_RULES,
         realEstate ? GEO_RULES : "",
         CRM_RULES,
         FORMAT_RULES,
