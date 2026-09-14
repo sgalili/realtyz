@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils';
 import { openExternal } from '@/lib/openExternal';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useExtensionGroups, readExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
-import { ExtensionDownloadButton } from '@/components/social/ExtensionDownloadButton';
-import { ExtensionPairingButton } from '@/components/social/ExtensionPairingButton';
+import { ExtensionDownloadButton, isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
+import { pairExtension, readRunnerStatus } from '@/lib/extensionPairing';
 
 const FB_GROUPS_URL = 'https://www.facebook.com/groups/joins/?nav_source=tab';
 
