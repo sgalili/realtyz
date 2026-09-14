@@ -246,11 +246,9 @@ async function handleRequest(req: Request): Promise<Response> {
           .gt("expires_at", now)
           .maybeSingle();
         if (oauthStateRow) {
-          await admin
-            .from("oauth_connection_states")
-            .update({ consumed_at: now })
-            .eq("state", state)
-            .is("consumed_at", null);
+          // NOTE: the state row is NOT consumed here — the exchange handler
+          // claims it atomically right before the token call (see claimAuthCode)
+          // so a retry race can never send the same `code` to Meta twice.
           caller = {
             userId: String(oauthStateRow.user_id),
             workspaceOwnerId: String(oauthStateRow.workspace_owner_id),
