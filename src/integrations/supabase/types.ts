@@ -4066,6 +4066,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_states: {
+        Row: {
+          created_at: string
+          id: string
+          is_deleted: boolean
+          is_read: boolean
+          notif_key: string
+          updated_at: string
+          user_id: string
+          workspace_owner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_deleted?: boolean
+          is_read?: boolean
+          notif_key: string
+          updated_at?: string
+          user_id?: string
+          workspace_owner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_deleted?: boolean
+          is_read?: boolean
+          notif_key?: string
+          updated_at?: string
+          user_id?: string
+          workspace_owner_id?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string
