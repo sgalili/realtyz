@@ -94,7 +94,18 @@ export function GoogleServiceConnectCard({
     refetchOnWindowFocus: false,
   });
 
-  const identity = (data?.credentials as any)?.verified_identity;
+  const creds = (data?.credentials as any) ?? {};
+  const identity = creds.verified_identity ?? {};
+  // Different exchange versions stored the account under different keys, so we
+  // look through all of them to always surface the connected address.
+  const credEmail: string | null =
+    identity.email ??
+    creds.email ??
+    creds.account_email ??
+    creds.user_email ??
+    creds.channel_title ??
+    identity.name ??
+    null;
   const liveConnected = !!data?.is_connected;
   // A connected service stays connected in the UI until the broker disconnects
   // it explicitly — a pending query or a transient failure never flips it back.

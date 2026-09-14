@@ -565,13 +565,19 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
                     className="flex min-w-0 flex-1 items-center gap-2 text-right"
                   >
                     <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{b.name || b.id}</span>
-                    {settingDefaultId === b.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : b.isDefault ? (
-                      <Badge className="border-0 bg-emerald-600 text-[11px] text-white">ברירת מחדל</Badge>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">הגדר כברירת מחדל</span>
-                    )}
+                    {/* The default-page control only matters with 2+ pages. */}
+                    {bindings.length > 1 &&
+                      (settingDefaultId === b.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : b.isDefault ? (
+                        <Badge className="border-0 bg-transparent text-[11px]" style={{ color: 'hsl(220 9% 32%)' }}>
+                          ברירת מחדל
+                        </Badge>
+                      ) : (
+                        <span className="text-[11px]" style={{ color: 'hsl(220 9% 46%)' }}>
+                          הגדר כברירת מחדל
+                        </span>
+                      ))}
                   </button>
                   <button
                     type="button"
