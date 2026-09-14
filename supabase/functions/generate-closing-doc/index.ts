@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
       listing.property_title || lead.interest_tag || "—";
 
     const property: AgreementProperty = {
-      ownerName: listing.property_title || "—",
+      ownerName: "—",
       address: propertyAddress,
       kind: "דירה",
       block: "—",
