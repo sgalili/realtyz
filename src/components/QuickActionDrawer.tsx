@@ -563,18 +563,17 @@ export default function QuickActionDrawer() {
                       key={m.id}
                       type="button"
                       onClick={() => { setOpen(false); navigate(`/properties/${m.id}`); }}
-                      className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-right transition hover:border-primary hover:bg-accent"
+                      className="flex w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-right transition hover:border-primary hover:bg-accent"
                     >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-foreground">{m.property_title || 'נכס ללא כותרת'}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {[m.city, m.neighborhood, m.rooms ? `${m.rooms} חד׳` : null].filter(Boolean).join(' · ') || '—'}
-                        </p>
+                      <PropertyThumb p={m} size={52} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-foreground">{propertyFullAddress(m)}</p>
+                        {m.property_title && (
+                          <p className="truncate text-xs text-muted-foreground">{m.property_title}</p>
+                        )}
+                        <PropertyMeta p={m} />
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {m.asking_price ? <Badge variant="secondary" className="text-[11px]">₪{Number(m.asking_price).toLocaleString('he-IL')}</Badge> : null}
-                        <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                      <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
                     </button>
                   ))}
                 </div>
