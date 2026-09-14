@@ -258,9 +258,9 @@ export default function LinkedPropertiesField({ leadId, value, onChange, label =
               >
                 <PropertyThumb p={p} size={48} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-slate-900 truncate">{propertyFullAddress(p)}</p>
+                  <p className="text-sm font-semibold text-slate-900 truncate">{propertyFullAddress(p)}</p>
                   {p.property_title && (
-                    <p className="text-[11px] text-slate-500 truncate">{p.property_title}</p>
+                    <p className="text-[13px] text-slate-500 truncate">{p.property_title}</p>
                   )}
                   <PropertyMeta p={p} />
                 </div>
