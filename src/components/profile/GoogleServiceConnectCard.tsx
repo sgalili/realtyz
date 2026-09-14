@@ -161,7 +161,6 @@ export function GoogleServiceConnectCard({
         try {
           window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
         } catch { /* storage may be unavailable */ }
-        setExplicitlyDisconnected(false);
         toast.success('החיבור הושלם', { id: tId, description: connectedEmail });
         refetch();
       } catch (e: any) {
