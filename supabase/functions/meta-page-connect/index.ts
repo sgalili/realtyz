@@ -131,6 +131,67 @@ async function graph(path: string) {
   }
 }
 
+const PAGE_FIELDS = "id,name,access_token,picture.width(160).height(160)";
+
+/**
+ * Resolve every Page the user can manage. `/me/accounts` alone comes back empty
+ * for Business-portfolio ("New Pages Experience") Pages even when the user
+ * ticked the Page in the permissions dialog, which is why a checked Page looked
+ * ignored. Fall back to the business portfolios before declaring "no Page".
+ */
+async function discoverPages(userToken: string): Promise<{ pages: any[]; lastPayload: any; ok: boolean }> {
+  const tok = encodeURIComponent(userToken);
+  const collected: any[] = [];
+  const seen = new Set<string>();
+  const push = (arr: any) => {
+    if (!Array.isArray(arr)) return;
+    for (const p of arr) {
+      const id = String(p?.id ?? "");
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      collected.push(p);
+    }
+  };
+
+  // 1) /me/accounts, following pagination.
+  let next: string | null = `${GRAPH}/me/accounts?limit=100&fields=${PAGE_FIELDS}&access_token=${tok}`;
+  let lastPayload: any = null;
+  let ok = false;
+  for (let i = 0; i < 5 && next; i++) {
+    const res = await graph(next.startsWith(GRAPH) ? next.slice(GRAPH.length) : next);
+    lastPayload = res.payload;
+    ok = ok || res.ok;
+    if (!res.ok) break;
+    push(res.payload?.data);
+    const nxt = res.payload?.paging?.next;
+    next = typeof nxt === "string" && nxt.startsWith(GRAPH) ? nxt : null;
+  }
+  if (collected.length > 0) return { pages: collected, lastPayload, ok: true };
+
+  // 2) Business portfolios: owned + client pages.
+  const bizRes = await graph(`/me/businesses?limit=50&fields=id,name&access_token=${tok}`);
+  const businesses: any[] = Array.isArray(bizRes.payload?.data) ? bizRes.payload.data : [];
+  for (const biz of businesses.slice(0, 10)) {
+    const bizId = String(biz?.id ?? "");
+    if (!bizId) continue;
+    for (const edge of ["owned_pages", "client_pages"]) {
+      const r = await graph(`/${bizId}/${edge}?limit=100&fields=${PAGE_FIELDS}&access_token=${tok}`);
+      if (r.ok) {
+        ok = true;
+        push(r.payload?.data);
+      } else {
+        lastPayload = r.payload ?? lastPayload;
+      }
+    }
+  }
+  if (collected.length > 0) {
+    console.log("[meta-page-connect] pages resolved via business portfolio", collected.length);
+    return { pages: collected, lastPayload, ok: true };
+  }
+  return { pages: collected, lastPayload, ok };
+}
+
+
 /** Deterministic Page avatar (works even when the field probe is rate limited). */
 function pageAvatar(pageId: string): string {
   return `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/picture?type=normal`;
@@ -798,17 +859,16 @@ async function handleRequest(req: Request): Promise<Response> {
       // Everything below only needs the user token, so the three Graph reads run
       // CONCURRENTLY. Sequential calls were the main reason the callback could
       // outrun the browser's patience.
-      const [meRes, permRes, pagesRes] = await Promise.all([
+      const [meRes, permRes, discovered] = await Promise.all([
         graph(`/me?fields=id,name,picture.width(120).height(120)&access_token=${encodeURIComponent(userToken)}`)
           .catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
         graph(`/me/permissions?access_token=${encodeURIComponent(userToken)}`)
           .catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
-        graph(
-          `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${
-            encodeURIComponent(userToken)
-          }`,
-        ).catch((e) => ({ ok: false, payload: { error: { message: String(e) } } } as any)),
+        discoverPages(userToken)
+          .catch((e) => ({ pages: [], ok: false, lastPayload: { error: { message: String(e) } } } as any)),
       ]);
+      const pagesRes = { ok: discovered.ok, payload: discovered.lastPayload ?? { data: discovered.pages } } as any;
+
 
       const grantedScopes: string[] = Array.isArray(permRes.payload?.data)
         ? permRes.payload.data
@@ -867,7 +927,22 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
 
-      const pages: any[] = Array.isArray(pagesRes.payload?.data) ? pagesRes.payload.data : [];
+      const pages: any[] = Array.isArray(discovered.pages) ? discovered.pages : [];
+      // Business-portfolio edges omit the Page token: fetch it per Page so a
+      // ticked Page is never dropped for lacking `access_token`.
+      for (const p of pages) {
+        if (p?.access_token || !p?.id) continue;
+        const tokRes = await graph(
+          `/${String(p.id)}?fields=access_token,name&access_token=${encodeURIComponent(userToken)}`,
+        );
+        if (tokRes.ok && tokRes.payload?.access_token) {
+          p.access_token = String(tokRes.payload.access_token);
+          p.name = p.name ?? tokRes.payload?.name ?? null;
+        } else {
+          logGraphFailure("page_token_fetch", tokRes.payload);
+        }
+      }
+
       if (!pagesRes.ok || pages.length === 0) {
         const detail = logGraphFailure("list_pages", pagesRes.payload);
         // A permission/scope rejection means the platform app is not yet approved
@@ -993,21 +1068,30 @@ async function handleRequest(req: Request): Promise<Response> {
           // 200 so the client can read the message instead of a bare non-2xx.
           return json({ ok: false, error: "לא נמצא טוקן משתמש שמור. יש להתחבר מחדש לפייסבוק.", stage: "user_token" }, 200);
         }
-        const listRes = await graph(
-          `/me/accounts?fields=id,name,access_token,picture.width(160).height(160)&access_token=${encodeURIComponent(userToken)}`,
-        );
-        const list: any[] = Array.isArray(listRes.payload?.data) ? listRes.payload.data : [];
-        if (!listRes.ok) {
-          const detail = logGraphFailure("list_pages", listRes.payload);
+        const listed = await discoverPages(userToken);
+        const list: any[] = listed.pages;
+        if (!listed.ok && list.length === 0) {
+          const detail = logGraphFailure("list_pages", listed.lastPayload);
           return json({
             ok: false,
-            error: humanizeGraphError(listRes.payload, "לא הצלחנו לקרוא את רשימת העמודים."),
+            error: humanizeGraphError(listed.lastPayload, "לא הצלחנו לקרוא את רשימת העמודים."),
             error_detail: detail,
             fb_message: detail.message,
             stage: "list_pages",
           }, 200);
         }
+        for (const p of list) {
+          if (p?.access_token || !p?.id) continue;
+          const tokRes = await graph(
+            `/${String(p.id)}?fields=access_token,name&access_token=${encodeURIComponent(userToken)}`,
+          );
+          if (tokRes.ok && tokRes.payload?.access_token) {
+            p.access_token = String(tokRes.payload.access_token);
+            p.name = p.name ?? tokRes.payload?.name ?? null;
+          }
+        }
         const selectable = list.filter((p) => !isBlockedPage(p) && p?.access_token);
+
 
         if (action === "list_pages") {
           return json({
