@@ -173,6 +173,7 @@ export function ClosingRoomDialog({
           terms: terms.trim() || undefined,
           price_override: price ? Number(price) : undefined,
           tour_date: template === 'tour_agreement' && tourDate ? tourDate : undefined,
+          identity_number: identityNumber.trim() || undefined,
         },
       });
       if (genErr) throw new Error(await edgeMessage(genErr, 'הפקת המסמך נכשלה'));
