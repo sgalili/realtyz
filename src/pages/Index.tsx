@@ -616,4 +616,13 @@ function KpiCard({
   );
 }
 
+/**
+ * Rita's workspace markets Realtyz to new agents, so it gets an
+ * acquisition-only dashboard instead of the real-estate one.
+ */
+const Dashboard = () => {
+  const isRitaWorkspace = useIsRitaWorkspace();
+  return isRitaWorkspace ? <RecruitmentDashboard /> : <RealEstateDashboard />;
+};
+
 export default Dashboard;
