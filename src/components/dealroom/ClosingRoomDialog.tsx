@@ -83,6 +83,7 @@ export function ClosingRoomDialog({
   const [price, setPrice] = useState<string>('');
   const [terms, setTerms] = useState<string>('');
   const [tourDate, setTourDate] = useState<string>('');
+  const [identityNumber, setIdentityNumber] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
