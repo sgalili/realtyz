@@ -4,7 +4,9 @@ import { enableGlobalSilentMode } from "./lib/silentMode";
 import { installDemoToastFilter } from "./lib/demoToastFilter";
 import { installRealtimeAuthSync } from "./lib/realtimeAuth";
 import { captureRefFromLocation } from "./lib/referralAttribution";
+import { installDomRemovalGuard } from "./lib/domRemovalGuard";
 
+installDomRemovalGuard();
 enableGlobalSilentMode();
 installDemoToastFilter();
 installRealtimeAuthSync();
@@ -192,6 +194,10 @@ async function bootstrap() {
       throw err;
     }
   }
+  // The OAuth bridge fast path may have written placeholder markup into #root.
+  // React must own an empty container, otherwise those leftover nodes confuse
+  // later DOM deletions.
+  rootEl.textContent = "";
   createRoot(rootEl).render(<AppMod.default />);
 }
 
