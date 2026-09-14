@@ -88,7 +88,7 @@ export function RecruitmentDashboard() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from('demo_requests')
-        .select('id, full_name, phone, note, created_at')
+        .select('id, first_name, last_name, phone, notes, status, created_at')
         .order('created_at', { ascending: false })
         .limit(6);
       return (data ?? []) as any[];
@@ -219,9 +219,9 @@ export function RecruitmentDashboard() {
                       className="flex items-start gap-3 rounded-lg border border-border/40 p-2.5 transition-colors hover:bg-muted/30"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{row.full_name || 'מתווך חדש'}</p>
+                        <p className="truncate text-sm font-medium">{[row.first_name, row.last_name].filter(Boolean).join(' ') || 'מתווך חדש'}</p>
                         <p className="truncate text-[11px] text-muted-foreground">
-                          {row.note || row.phone || 'בקשת הדגמה'}
+                          {row.notes || row.phone || 'בקשת הדגמה'}
                         </p>
                       </div>
                       <span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground">
