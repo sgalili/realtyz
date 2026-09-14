@@ -316,10 +316,6 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
     // This is the single source of truth for the collapsed card badge — it
     // must match "תגובות לקמפיין (N) + תגובות המשך (M)" that the user sees.
     const live = treeCount(rows);
-    // NEVER downgrade a known non-zero badge to 0. An empty tree only means the
-    // provider tree has not been imported yet (blocked circuit, rate limit,
-    // webhook lag) — it is not proof the post lost its comments.
-    if (live === 0 && (Number(commentCount ?? 0) || 0) > 0) return;
     onLiveCountResolved(campaign.id, live);
   }, [rows, campaign.id, commentCount, onLiveCountResolved]);
 
@@ -1558,7 +1554,7 @@ function CommentBubble({
           <button
             type="button"
             onClick={() => onToggleEditor(row)}
-            className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
+            className="inline-flex items-center gap-1 text-[14px] font-medium text-primary hover:underline"
             aria-expanded={expanded}
           >
             <RitaAvatar className="h-4 w-4 border-0 ring-0" />
@@ -1570,7 +1566,7 @@ function CommentBubble({
               href={`https://m.me/${senderId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[13px] font-medium text-[hsl(220,70%,25%)] hover:underline"
+              className="inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline"
               title="פתח צ'אט Messenger ישירות"
             >
               💬 פתח צ'אט
@@ -1583,44 +1579,6 @@ function CommentBubble({
             {editor}
           </div>
         )}
-        {false && (
-          <>
-            <div className="flex items-center gap-3 flex-wrap">
-              <button
-                type="button"
-                onClick={() => onToggleEditor(row)}
-                className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
-                aria-expanded={expanded}
-              >
-                <RitaAvatar className="h-4 w-4 border-0 ring-0" />
-                {toggleLabel}
-                {expanded ? (
-                  <ChevronUp className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                )}
-              </button>
-              {senderId && /^\d{5,}$/.test(String(senderId)) && String(row.platform).toLowerCase() === "facebook" && (
-                <a
-                  href={`https://m.me/${senderId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[13px] font-medium text-[hsl(220,70%,25%)] hover:underline"
-                  title="פתח צ'אט Messenger ישירות"
-                >
-                  💬 פתח צ'אט
-                </a>
-              )}
-            </div>
-
-            {expanded && (
-              <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-                {editor}
-              </div>
-            )}
-          </>
-        )}
-
       </div>
     </div>
   );

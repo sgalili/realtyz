@@ -337,8 +337,21 @@ Deno.serve(async (req) => {
       }
       const rowId = trackedMap.get(postId) ??
         trackedMap.get(postId.includes("_") ? postId.split("_")[1] : postId);
-      if (rowId && comments.length > 0) {
-        await persistTrackedComments(admin, rowId, comments, page);
+      if (rowId) {
+        if (comments.length > 0) await persistTrackedComments(admin, rowId, comments, page);
+        if (!error) {
+          const liveIds = new Set(comments.map((comment) => comment.id));
+          const { data: trackedComments } = await admin
+            .from("fb_comments")
+            .select("id, ayr_comment_id")
+            .eq("post_id", rowId);
+          const staleTrackedIds = (trackedComments ?? [])
+            .filter((row: any) => row?.ayr_comment_id && !liveIds.has(String(row.ayr_comment_id)))
+            .map((row: any) => String(row.id));
+          if (staleTrackedIds.length > 0) {
+            await admin.from("fb_comments").delete().in("id", staleTrackedIds);
+          }
+        }
         await admin
           .from("fb_engagement_posts")
           .update({ last_synced_at: new Date().toISOString() })
