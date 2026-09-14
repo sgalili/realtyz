@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Loader2, FileSignature, CheckCircle2, ShieldCheck, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
+import PdfInlineViewer from '@/components/PdfInlineViewer';
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sign-closing-doc`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
