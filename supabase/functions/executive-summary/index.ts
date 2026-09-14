@@ -17,6 +17,31 @@ serve(async (req) => {
 
     const sb = createClient(supabaseUrl, serviceKey);
 
+    // Tenant isolation: resolve the caller and their ACTIVE workspace, then scope
+    // every aggregate to that workspace only. Never aggregate across tenants.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: userData } = await sb.auth.getUser(token);
+    const callerId = userData?.user?.id ?? null;
+    if (!callerId) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: callerProfile } = await sb
+      .from("profiles")
+      .select("active_workspace_owner_id")
+      .eq("id", callerId)
+      .maybeSingle();
+    const workspaceOwnerId = (callerProfile?.active_workspace_owner_id as string | null) ?? callerId;
+
     // Try to read Mapbox token from api_configs table
     const { data: mapboxConfig } = await sb
       .from("api_configs")
@@ -35,12 +60,12 @@ serve(async (req) => {
       { data: settingsData },
       { data: recentGrowth },
     ] = await Promise.all([
-      sb.from("leads").select("*", { count: "exact", head: true }),
-      sb.from("leads").select("*", { count: "exact", head: true }).in("status", ["supporter", "active", "voted"]),
-      sb.from("leads").select("city, sentiment"),
-      sb.from("leads").select("sentiment"),
+      sb.from("leads").select("*", { count: "exact", head: true }).eq("workspace_owner_id", workspaceOwnerId),
+      sb.from("leads").select("*", { count: "exact", head: true }).eq("workspace_owner_id", workspaceOwnerId).in("status", ["supporter", "active", "voted"]),
+      sb.from("leads").select("city, sentiment").eq("workspace_owner_id", workspaceOwnerId),
+      sb.from("leads").select("sentiment").eq("workspace_owner_id", workspaceOwnerId),
       sb.from("campaign_settings").select("key, value"),
-      sb.from("leads").select("created_at, city").gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
+      sb.from("leads").select("created_at, city").eq("workspace_owner_id", workspaceOwnerId).gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
     ]);
 
     const settings = Object.fromEntries((settingsData ?? []).map((r: any) => [r.key, r.value]));
