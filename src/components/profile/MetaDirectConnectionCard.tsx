@@ -521,22 +521,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   };
 
 
-  const actionButtons = (
-    <>
-      {isConnected && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={disconnect}
-          disabled={disconnecting}
-          className="h-8 gap-1.5 text-[15px] text-destructive"
-          aria-label="נתק את עמוד הפייסבוק"
-        >
-          {disconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
-        </Button>
-      )}
-    </>
-  );
+  // The sync row holds only the clean action buttons; page disconnect lives on
+  // each connected page row above.
+  const actionButtons = null;
 
   return (
     <Card key={connectionEpoch} ref={ref} dir="rtl" className="text-right">
