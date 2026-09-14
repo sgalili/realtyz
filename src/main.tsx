@@ -194,6 +194,10 @@ async function bootstrap() {
       throw err;
     }
   }
+  // The OAuth bridge fast path may have written placeholder markup into #root.
+  // React must own an empty container, otherwise those leftover nodes confuse
+  // later DOM deletions.
+  rootEl.textContent = "";
   createRoot(rootEl).render(<AppMod.default />);
 }
 
