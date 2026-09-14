@@ -131,6 +131,67 @@ async function graph(path: string) {
   }
 }
 
+const PAGE_FIELDS = "id,name,access_token,picture.width(160).height(160)";
+
+/**
+ * Resolve every Page the user can manage. `/me/accounts` alone comes back empty
+ * for Business-portfolio ("New Pages Experience") Pages even when the user
+ * ticked the Page in the permissions dialog, which is why a checked Page looked
+ * ignored. Fall back to the business portfolios before declaring "no Page".
+ */
+async function discoverPages(userToken: string): Promise<{ pages: any[]; lastPayload: any; ok: boolean }> {
+  const tok = encodeURIComponent(userToken);
+  const collected: any[] = [];
+  const seen = new Set<string>();
+  const push = (arr: any) => {
+    if (!Array.isArray(arr)) return;
+    for (const p of arr) {
+      const id = String(p?.id ?? "");
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      collected.push(p);
+    }
+  };
+
+  // 1) /me/accounts, following pagination.
+  let next: string | null = `${GRAPH}/me/accounts?limit=100&fields=${PAGE_FIELDS}&access_token=${tok}`;
+  let lastPayload: any = null;
+  let ok = false;
+  for (let i = 0; i < 5 && next; i++) {
+    const res = await graph(next.startsWith(GRAPH) ? next.slice(GRAPH.length) : next);
+    lastPayload = res.payload;
+    ok = ok || res.ok;
+    if (!res.ok) break;
+    push(res.payload?.data);
+    const nxt = res.payload?.paging?.next;
+    next = typeof nxt === "string" && nxt.startsWith(GRAPH) ? nxt : null;
+  }
+  if (collected.length > 0) return { pages: collected, lastPayload, ok: true };
+
+  // 2) Business portfolios: owned + client pages.
+  const bizRes = await graph(`/me/businesses?limit=50&fields=id,name&access_token=${tok}`);
+  const businesses: any[] = Array.isArray(bizRes.payload?.data) ? bizRes.payload.data : [];
+  for (const biz of businesses.slice(0, 10)) {
+    const bizId = String(biz?.id ?? "");
+    if (!bizId) continue;
+    for (const edge of ["owned_pages", "client_pages"]) {
+      const r = await graph(`/${bizId}/${edge}?limit=100&fields=${PAGE_FIELDS}&access_token=${tok}`);
+      if (r.ok) {
+        ok = true;
+        push(r.payload?.data);
+      } else {
+        lastPayload = r.payload ?? lastPayload;
+      }
+    }
+  }
+  if (collected.length > 0) {
+    console.log("[meta-page-connect] pages resolved via business portfolio", collected.length);
+    return { pages: collected, lastPayload, ok: true };
+  }
+  return { pages: collected, lastPayload, ok };
+}
+
+
 /** Deterministic Page avatar (works even when the field probe is rate limited). */
 function pageAvatar(pageId: string): string {
   return `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/picture?type=normal`;
