@@ -101,12 +101,34 @@ function oauthState(prefix: string, returnOrigin: string): string {
   return `${prefix}:${crypto.randomUUID()}:${encoded}`;
 }
 
+/** Hard ceiling for a single Graph call so the callback can never hang. */
+const GRAPH_TIMEOUT_MS = 8_000;
+
 async function graph(path: string) {
-  const res = await fetch(`${GRAPH}${path}`);
-  const text = await res.text();
-  let payload: any = null;
-  try { payload = text ? JSON.parse(text) : null; } catch { payload = { raw: text }; }
-  return { ok: res.ok, payload };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GRAPH_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${GRAPH}${path}`, { signal: controller.signal });
+    const text = await res.text();
+    let payload: any = null;
+    try { payload = text ? JSON.parse(text) : null; } catch { payload = { raw: text }; }
+    return { ok: res.ok, payload };
+  } catch (e) {
+    const aborted = (e as any)?.name === "AbortError";
+    console.error("[meta-page-connect] graph call failed", aborted ? "timeout" : String(e));
+    return {
+      ok: false,
+      payload: {
+        error: {
+          message: aborted
+            ? "פייסבוק לא השיב בזמן. יש לנסות להתחבר שוב."
+            : String((e as any)?.message ?? e),
+        },
+      },
+    } as any;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Deterministic Page avatar (works even when the field probe is rate limited). */
