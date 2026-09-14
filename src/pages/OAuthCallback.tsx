@@ -103,9 +103,30 @@ export default function OAuthCallback() {
   const [message, setMessage] = useState('מסיים אימות...');
   const hardTimerRef = useRef<number | null>(null);
   const exchangeDoneRef = useRef(false);
+  const [restarting, setRestarting] = useState(false);
 
   const returnToApp = () => {
     window.location.replace(CONNECTIONS_PATH);
+  };
+
+  /**
+   * Starts a brand-new Facebook login (fresh code + the Page-selection step),
+   * which is the only valid recovery from a used code or an empty Page list.
+   */
+  const restartFacebookLogin = async () => {
+    setRestarting(true);
+    try {
+      const url = await startMetaPageConnect();
+      window.location.replace(url);
+    } catch (e: any) {
+      console.error('[oauth-callback] restart login failed', e);
+      setRestarting(false);
+      setError((prev) => ({
+        title: prev?.title ?? 'החיבור לפייסבוק נכשל',
+        detail: String(e?.message ?? e),
+        hint: 'לא ניתן להתחיל חיבור חדש כרגע. אפשר לחזור למערכת ולנסות מההגדרות.',
+      }));
+    }
   };
 
   // Absolute escape hatch: whatever happens, never sit on the loader.
