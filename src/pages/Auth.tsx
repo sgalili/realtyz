@@ -287,7 +287,7 @@ const Auth = () => {
           <img
             src={realtyzLogo}
             alt="Realtyz AI"
-            className="auth-official-logo mx-auto mb-4 mt-[25px] h-[3.6rem] w-auto object-contain"
+            className="auth-official-logo mx-auto mb-4 mt-[40px] h-[3.6rem] w-auto object-contain"
           />
           <div className="auth-header-ticker mx-auto" aria-live="polite">
             {AUTH_HEADER_HEADLINES.map((line, index) => (
