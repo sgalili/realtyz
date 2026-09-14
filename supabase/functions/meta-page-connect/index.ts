@@ -418,12 +418,14 @@ Deno.serve(async (req) => {
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      const row: any = data;
+      // Fall back to the platform-shared Page, exactly like the UI resolver.
+      const row: any = (data as any)?.page_id ? data : await sharedBinding();
 
 
       if (!row?.page_id) {
         return json({ connected: false, page: null, needs_reconnect: false });
       }
+
 
 
       const ident = await fetchPageIdentity(admin, ownerId, String(row.page_id), row.page_access_token ?? null).catch(() => ({
