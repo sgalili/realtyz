@@ -83,18 +83,21 @@ export function ClosingRoomDialog({
   const [price, setPrice] = useState<string>('');
   const [terms, setTerms] = useState<string>('');
   const [tourDate, setTourDate] = useState<string>('');
+  const [identityNumber, setIdentityNumber] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (open) {
       setTemplate(defaultTemplate);
       setListingId(defaultListingId ?? '');
+      setIdentityNumber(String((lead as any)?.identity_number ?? ''));
     } else {
       setTemplate(defaultTemplate);
       setListingId(defaultListingId ?? '');
       setPrice('');
       setTerms('');
       setTourDate('');
+      setIdentityNumber('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -170,6 +173,7 @@ export function ClosingRoomDialog({
           terms: terms.trim() || undefined,
           price_override: price ? Number(price) : undefined,
           tour_date: template === 'tour_agreement' && tourDate ? tourDate : undefined,
+          identity_number: identityNumber.trim() || undefined,
         },
       });
       if (genErr) throw new Error(await edgeMessage(genErr, 'הפקת המסמך נכשלה'));
@@ -288,6 +292,17 @@ export function ClosingRoomDialog({
               />
             </div>
           )}
+
+          <div>
+            <Label className="text-xs">תעודת זהות של הלקוח</Label>
+            <Input
+              inputMode="numeric"
+              placeholder="9 ספרות"
+              value={identityNumber}
+              onChange={(e) => setIdentityNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
+            />
+          </div>
+
 
           <div>
             <Label className="text-xs">

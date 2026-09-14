@@ -119,8 +119,9 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
   };
 
   // Avatar retrieval runs through the auxiliary Green API helper (Meta's Cloud
-  // API exposes no contact-photo endpoint). Every failure path is SILENT: we
-  // just dismiss the spinner and let the initials avatar stand.
+  // API exposes no contact-photo endpoint). The reason is surfaced so the
+  // broker knows whether the service is offline or the contact simply has no
+  // public photo.
   const fetchFromWA = async () => {
     if (!phone) return;
     setBusy('whatsapp');
@@ -129,13 +130,19 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
       const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', { body: { lead_ids: [leadId], force: true } });
       const d = (data as any) || {};
       if (!error && (d.updated ?? 0) > 0) {
-        toast.success('תמונה עודכנה מוואטסאפ', { id: toastId });
+        toast.success('תמונה עודכנה מוואטסאפ', { id: toastId, description: 'תמונת הפרופיל נשמרה בכרטיס ה-CRM' });
         onUpdated?.();
         return;
       }
+      const reason = error
+        ? extractReason(error, await readFunctionError(error))
+        : d.supported === false
+          ? d.reason || 'שירות תמונות הפרופיל אינו זמין כרגע'
+          : 'לאיש הקשר אין תמונת פרופיל ציבורית בוואטסאפ';
       toast.dismiss(toastId);
-    } catch {
-      toast.dismiss(toastId);
+      toast.error('שליפה מוואטסאפ לא הצליחה', { description: reason, duration: 8000 });
+    } catch (e: any) {
+      explainError(BRAND.whatsapp.label, e, null, toastId);
     } finally {
       setBusy(null);
     }

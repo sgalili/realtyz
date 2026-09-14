@@ -15,7 +15,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
-import { GlobalSearchTrigger } from '@/components/GlobalSearch';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import VoterAvatar from '@/components/VoterAvatar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
@@ -135,7 +134,7 @@ export function RecruitmentDashboard() {
   }, [recentSignups, ownerId]);
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="realtyz-dashboard-scale space-y-6" dir="rtl">
       <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight text-primary">לוח בקרה</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -143,9 +142,6 @@ export function RecruitmentDashboard() {
         </p>
       </div>
 
-      <div className="space-y-3">
-        <GlobalSearchTrigger />
-      </div>
 
       <CollapsibleSection
         id="rita-kpis"

@@ -33,6 +33,9 @@ const BodySchema = z.object({
   terms: z.string().max(4000).optional(),
   price_override: z.number().positive().optional(),
   tour_date: z.string().max(40).optional(),
+  // Client ID number captured in the signature form; persisted onto the CRM
+  // contact so future documents reuse it.
+  identity_number: z.string().max(20).optional(),
 });
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -90,6 +93,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: parsed.error.flatten() }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const { lead_id, template_key, listing_id, terms, price_override, tour_date } = parsed.data;
+    const identityInput = String(parsed.data.identity_number ?? "").replace(/\D/g, "");
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
@@ -101,6 +105,13 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (leadErr || !lead) {
       return new Response(JSON.stringify({ error: "Lead not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Client ID number: the form value wins and is written back to the CRM
+    // contact so it is available for every later document.
+    const identityNumber = identityInput || String((lead as any).identity_number ?? "").trim();
+    if (identityInput && identityInput !== String((lead as any).identity_number ?? "").trim()) {
+      await admin.from("leads").update({ identity_number: identityInput }).eq("id", lead_id);
     }
 
     // ---------- Broker (active workspace owner, verified profile) ----------
@@ -176,7 +187,7 @@ Deno.serve(async (req) => {
       },
       client: {
         name: leadName,
-        identityNumber: lead.identity_number || "—",
+        identityNumber: identityNumber || "—",
         phone: lead.phone_number || "",
         address: [lead.address, lead.city].filter(Boolean).join(" ") || "—",
         email: lead.email || "—",

@@ -171,7 +171,19 @@ Deno.serve(async (req) => {
       const { data } = await admin.auth.getUser(token).catch(() => ({ data: { user: null } } as any));
       userId = (data as any)?.user?.id ?? null;
     }
-    const ownerId: string | null = body?.owner_id ?? userId ?? null;
+    // The avatar service belongs to the ACTIVE workspace, not to the member row:
+    // resolve the workspace owner so a manager acting inside another workspace
+    // still reaches the right Green API instance.
+    let ownerId: string | null = body?.owner_id ?? null;
+    if (!ownerId && userId) {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("active_workspace_owner_id, workspace_owner_id")
+        .eq("id", userId)
+        .maybeSingle();
+      ownerId = (prof as any)?.active_workspace_owner_id ??
+        (prof as any)?.workspace_owner_id ?? userId;
+    }
 
     // ── Job status probe ────────────────────────────────────────────────────
     if (body?.action === "status") {
@@ -183,11 +195,16 @@ Deno.serve(async (req) => {
       return json({ success: true, job: (data ?? [])[0] ?? null });
     }
 
-    const creds = await resolveGreenCreds(admin, ownerId);
+    // Prefer the active workspace's own instance; when it has none (or it is
+    // offline) fall back to the platform's authorized avatar instance so photo
+    // lookups keep working everywhere.
+    let creds = await resolveGreenCreds(admin, ownerId);
+    if (creds && !(await instanceAuthorized(creds))) creds = null;
     if (!creds) {
-      return unsupported("שירות תמונות הפרופיל אינו מוגדר — מוצגות ראשי תיבות במקום");
+      const fallback = await resolveGreenCreds(admin, null);
+      if (fallback && await instanceAuthorized(fallback)) creds = fallback;
     }
-    if (!(await instanceAuthorized(creds))) {
+    if (!creds) {
       return unsupported("שירות תמונות הפרופיל אינו זמין כרגע — מוצגות ראשי תיבות במקום");
     }
 

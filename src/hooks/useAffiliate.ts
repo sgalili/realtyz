@@ -250,6 +250,10 @@ export type BrokerAffiliateListing = {
   deal_type: string | null;
   asking_price: number | null;
   image_url: string | null;
+  media_photos?: unknown;
+  rooms?: number | null;
+  house_number?: string | null;
+  apartment_number?: string | null;
   status: string | null;
   affiliate_enabled: boolean;
   affiliate_reward_type: RewardType;
@@ -271,7 +275,7 @@ export function useBrokerAffiliateListings() {
       const { data, error } = await supabase
         .from('listings')
         .select(
-          'id, property_title, address, city, deal_type, asking_price, image_url, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount',
+          'id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos, house_number, apartment_number, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount',
         )
         .eq('user_id', ownerId!)
         .order('affiliate_enabled', { ascending: false })

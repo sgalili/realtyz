@@ -1473,3 +1473,20 @@
 @media (prefers-reduced-motion: reduce) {
   .landing-aurora { animation: none; }
 }
+
+/* Dashboard readability scale: every text size inside the dashboard grows by
+   roughly 2px so the daily control screen is comfortable to read. */
+.realtyz-dashboard-scale .text-\[10px\] { font-size: 12px; }
+.realtyz-dashboard-scale .text-\[11px\] { font-size: 13px; }
+.realtyz-dashboard-scale .text-\[12px\] { font-size: 14px; }
+.realtyz-dashboard-scale .text-xs { font-size: 14px; line-height: 1.45; }
+.realtyz-dashboard-scale .text-sm { font-size: 16px; line-height: 1.5; }
+.realtyz-dashboard-scale .text-base { font-size: 18px; line-height: 1.55; }
+.realtyz-dashboard-scale .text-lg { font-size: 20px; line-height: 1.5; }
+.realtyz-dashboard-scale .text-xl { font-size: 22px; line-height: 1.45; }
+.realtyz-dashboard-scale .text-2xl { font-size: 26px; line-height: 1.35; }
+.realtyz-dashboard-scale .text-3xl { font-size: 32px; line-height: 1.3; }
+
+/* Affiliate KPI boxes: centred, icon above the label, +3px type. */
+.realtyz-affiliate-kpi .kpi-label { font-size: 14px; }
+.realtyz-affiliate-kpi .kpi-value { font-size: 21px; }
