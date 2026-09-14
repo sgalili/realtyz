@@ -12,6 +12,7 @@ import { CalendarSyncCard } from '@/components/profile/CalendarSyncCard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
 import { useFacebookHealth } from '@/hooks/useFacebookHealth';
+import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
 import { WorkspaceSmsCard } from '@/components/profile/WorkspaceSmsCard';
 import { GoogleApiCredentialsCard } from '@/components/profile/GoogleApiCredentialsCard';
@@ -31,8 +32,8 @@ function StatusPill({ label, tone }: { label: string; tone: Tone }) {
   // Inline styles on purpose: global CSS neutralizes utility color classes
   // (bg-emerald/bg-slate...) with !important, which washed these pills out.
   const style = tone === 'ok'
-    ? { backgroundColor: 'hsl(152 62% 30%)', color: '#ffffff', borderColor: 'hsl(152 62% 24%)' }
-    : { backgroundColor: 'hsl(215 28% 95%)', color: 'hsl(217 45% 22%)', borderColor: 'hsl(215 20% 78%)' };
+    ? { backgroundColor: 'hsl(152 62% 96%)', color: 'hsl(152 62% 28%)', borderColor: 'hsl(152 40% 75%)' }
+    : { backgroundColor: 'hsl(0 80% 97%)', color: 'hsl(0 72% 45%)', borderColor: 'hsl(0 60% 82%)' };
   return (
     <span
       className="shrink-0 rounded-full border px-3 py-1 text-[13px] font-bold"
@@ -130,6 +131,7 @@ export function ConnectionsTab() {
   const [greenPhone, setGreenPhone] = useState<string | null>(null);
   const [voicePhone, setVoicePhone] = useState<string | null>(null);
   const { data: fbHealth, isPending: fbHealthPending } = useFacebookHealth();
+  const { data: fbBinding, isPending: fbBindingPending } = useMetaPageBinding();
   // Facebook / Instagram, WBA, Green API and Yad2 are account-level: connected
   // once, active in every workspace of this user.
   const { data: account } = useAccountIntegrations();
@@ -229,16 +231,22 @@ export function ConnectionsTab() {
   // Collapsed header badge reads the exact same shared state as the expanded
   // card badge and the global banner. Facebook / Instagram are strictly
   // workspace-scoped: never fall back to another workspace's binding.
-  const fbLive = !!(fbHealth?.pageConnected || meta?.connected);
+  // The saved DB page binding is read here too, so the COLLAPSED header shows
+  // "מחובר" without waiting for the card to mount and probe Graph.
+  const fbLive = !!(
+    fbHealth?.pageConnected
+    || meta?.connected
+    || (fbBinding?.pageId && fbBinding?.hasToken)
+  );
   useEffect(() => {
     if (fbLive) rememberConnected('facebook', activeWorkspaceId, null);
   }, [fbLive, activeWorkspaceId]);
   const fbConnected = fbLive || isRememberedConnected('facebook', activeWorkspaceId);
   const metaStatus: [string, Tone] = fbConnected
     ? ['מחובר', 'ok']
-    : fbHealthPending && !meta
+    : (fbHealthPending || fbBindingPending) && !meta
       ? ['בודק חיבור…', 'idle']
-      : ['מנותק', 'idle'];
+      : ['לא מחובר', 'idle'];
 
   // WhatsApp / Yad2 stay account-level: connected once, live in every workspace.
   const officialPhone = waPhone ?? account?.waPhone ?? null;
