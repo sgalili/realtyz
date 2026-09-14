@@ -178,13 +178,13 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               tabIndex={0}
               title="הפרופיל שלי"
               onClick={() => {
-                if (isMobile) setOpenMobile(false);
+                closeSidebar();
                 navigate('/profile');
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  if (isMobile) setOpenMobile(false);
+                  closeSidebar();
                   navigate('/profile');
                 }
               }}
@@ -194,21 +194,13 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 <WorkspaceSwitcher />
               </div>
 
-              {/* Broker/partner toggle: hidden only in Rita's marketing workspace. */}
-              {features.modeSwitcherEnabled && (
-                <div className="mt-2 flex justify-center" onClick={(e) => e.stopPropagation()}>
-                  <AppModeSwitcher />
-                </div>
-              )}
-
-
-
-              <div className="mt-2 flex items-center gap-2">
+              {/* Tutorial + broker/partner toggle share one row. */}
+              <div className="mt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (isMobile) setOpenMobile(false);
+                    closeSidebar();
                     window.dispatchEvent(new Event('realtyz:start-tour'));
                   }}
                   title="הדרכה"
@@ -218,7 +210,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <HelpCircle className="h-4 w-4" />
                   הדרכה
                 </button>
+
+                {/* Broker/partner toggle: hidden only in Rita's marketing workspace. */}
+                {features.modeSwitcherEnabled && <AppModeSwitcher />}
               </div>
+
             </SidebarGroupContent>
           </SidebarGroup>
         )}
