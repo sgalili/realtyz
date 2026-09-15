@@ -142,7 +142,7 @@ export function WhatsAppGatewayCard() {
         ) : (
           <>
             <p className="text-xs text-muted-foreground">
-              מספר ווטסאפ אישי אחד לכל מרחב עבודה. החיבור נוצר אוטומטית ברגע שסורקים את קוד ה-QR.
+              
             </p>
 
             {connected && (

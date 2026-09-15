@@ -298,7 +298,7 @@ export function ConnectionsTab() {
             // explanation, no icon, no pills, no setup block.
             <section>
               <p className="text-xs text-muted-foreground">
-                זהו מספר ווטסאפ מאומת של Meta.
+                
               </p>
             </section>
           ) : (
@@ -312,7 +312,7 @@ export function ConnectionsTab() {
           </section>
           <section className="space-y-2 border-t pt-4">
             <h4 className="text-sm font-semibold">
-              מספר ווטסאפ אישי
+              
               {personalPhone && (
                 <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
                   {formatPhoneDisplay(personalPhone)}
