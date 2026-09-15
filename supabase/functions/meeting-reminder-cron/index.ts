@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
     const { data: meetings, error } = await admin
       .from('meetings')
-      .select('id, user_id, lead_id, title, starts_at, ends_at, timezone, conference_link, lead_name, lead_phone')
+      .select('id, user_id, lead_id, title, starts_at, ends_at, timezone, location, conference_link, lead_name, lead_phone')
       .eq('status', 'scheduled')
       .is('reminder_1h_sent_at', null)
       .gte('starts_at', lower)
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
       const agentPhone = (prof as any)?.phone as string | undefined;
       const startStr = fmt(new Date(m.starts_at as string), (m.timezone as string) || 'Asia/Jerusalem');
-      const link = m.conference_link ? `\nLink: ${m.conference_link}` : '';
+      const link = m.conference_link ? `🔗 קישור: ${m.conference_link}` : null;
 
       const promises: Promise<boolean>[] = [];
       if (m.lead_phone) {
@@ -88,7 +88,14 @@ Deno.serve(async (req) => {
       if (agentPhone) {
         promises.push(sendWA({
           phone_number: agentPhone,
-          message: `Reminder: ${m.title} with ${m.lead_name ?? 'lead'} starts at ${startStr}.${link}`,
+          message: [
+            "⏰ תזכורת: הפגישה מתחילה בעוד שעה",
+            `👤 איש קשר: ${m.lead_name ?? "לא שויך"}`,
+            ...(m.location ? [`🏠 נכס: ${m.location}`] : []),
+            `📅 אירוע: ${m.title || "פגישה"}`,
+            `🕒 מועד: ${startStr}`,
+            ...(link ? [link] : []),
+          ].join("\n"),
           user_id: m.user_id as string,
           lead_id: m.lead_id as string | null,
         }));

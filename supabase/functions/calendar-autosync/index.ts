@@ -79,6 +79,10 @@ type Normalized = {
   existingEventId: string | null;
   /** Short Hebrew label of the item kind, used in the WhatsApp alert. */
   kindLabel: string;
+  /** Related CRM contact, resolved server-side in the active workspace. */
+  contactName: string | null;
+  /** Related property title/address, when this event has one. */
+  propertyLabel: string | null;
   /** Calls are logged after they happen, so past timestamps are still mirrored. */
   allowPast?: boolean;
   /** Automatic logs (calls) never trigger a WhatsApp confirmation. */
@@ -106,6 +110,8 @@ function normalize(kind: Kind, row: Record<string, any>): Normalized {
       eventLinkColumn: null,
       existingEventId: row.google_calendar_event_id ?? null,
       kindLabel: "פגישה",
+      contactName: row.lead_name ?? null,
+      propertyLabel: row.property_label ?? row.location ?? null,
     };
   }
   if (kind === "property_tours") {
@@ -126,6 +132,8 @@ function normalize(kind: Kind, row: Record<string, any>): Normalized {
       eventLinkColumn: "google_event_link",
       existingEventId: row.google_event_id ?? null,
       kindLabel: "סיור בנכס",
+      contactName: row.client_name ?? null,
+      propertyLabel: row.property_title ?? row.property_address ?? null,
     };
   }
   if (kind === "scheduled_items") {
@@ -145,6 +153,8 @@ function normalize(kind: Kind, row: Record<string, any>): Normalized {
       eventLinkColumn: "google_event_link",
       existingEventId: row.google_event_id ?? null,
       kindLabel: typeLabel,
+      contactName: row.lead_name ?? null,
+      propertyLabel: row.property_label ?? null,
     };
   }
   if (kind === "call_records") {
@@ -172,6 +182,8 @@ function normalize(kind: Kind, row: Record<string, any>): Normalized {
       eventLinkColumn: "google_event_link",
       existingEventId: row.google_event_id ?? null,
       kindLabel: dirLabel,
+      contactName: row.lead_name ?? null,
+      propertyLabel: row.property_label ?? null,
       allowPast: true,
       silent: true,
     };
@@ -188,7 +200,13 @@ function normalize(kind: Kind, row: Record<string, any>): Normalized {
     eventLinkColumn: "google_event_link",
     existingEventId: row.google_event_id ?? null,
     kindLabel: "הדגמה",
+    contactName: leadName || null,
+    propertyLabel: null,
   };
+}
+
+function detailLines(value: string): string[] {
+  return value.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => `📝 ${line}`);
 }
 
 Deno.serve(async (req) => {
@@ -206,10 +224,34 @@ Deno.serve(async (req) => {
     if (error || !row) return json({ ok: false, error: "record not found" }, 404);
 
     const raw = row as Record<string, any>;
-    // Calls carry only lead_id; pull the contact name so the event title is readable.
-    if (kind === "call_records" && raw.lead_id) {
-      const { data: lead } = await admin.from("leads").select("full_name").eq("id", raw.lead_id).maybeSingle();
-      raw.lead_name = (lead as { full_name?: string } | null)?.full_name ?? null;
+    // Resolve contact/property details from linked records inside this event's
+    // workspace before generating calendar and broker notification text.
+    const metadata = (raw.metadata ?? {}) as Record<string, unknown>;
+    const eventOwnerId = String(raw.workspace_owner_id ?? raw.owner_id ?? raw.user_id ?? "");
+    const leadId = String(raw.lead_id ?? metadata.lead_id ?? "").trim();
+    if (leadId && eventOwnerId) {
+      const { data: lead } = await admin
+        .from("leads")
+        .select("full_name")
+        .eq("id", leadId)
+        .eq("workspace_owner_id", eventOwnerId)
+        .maybeSingle();
+      raw.lead_name = (lead as { full_name?: string } | null)?.full_name ?? raw.lead_name ?? null;
+    }
+
+    const listingId = String(raw.listing_id ?? metadata.listing_id ?? metadata.property_id ?? "").trim();
+    if (listingId && eventOwnerId) {
+      const { data: listing } = await admin
+        .from("listings")
+        .select("property_title, address, city")
+        .eq("id", listingId)
+        .eq("workspace_owner_id", eventOwnerId)
+        .maybeSingle();
+      if (listing) {
+        const listingRow = listing as { property_title?: string; address?: string; city?: string };
+        raw.property_label = listingRow.property_title ||
+          [listingRow.address, listingRow.city].filter(Boolean).join(", ") || null;
+      }
     }
 
     const item = normalize(kind, raw);
@@ -323,12 +365,15 @@ Deno.serve(async (req) => {
       });
       const { data: profiles } = await admin.from("profiles").select("id, phone").in("id", [...recipients]);
 
-      const message =
-        `נשמר ביומן Google — ${item.kindLabel}\n` +
-        `${item.title}\n` +
-        `מועד: ${formatSlot(item.startISO)}\n` +
-        (item.description ? `${item.description}\n` : "") +
-        (event.htmlLink ? `פתיחה ביומן: ${event.htmlLink}` : "");
+      const message = [
+        `📅 נשמר ביומן Google: ${item.kindLabel}`,
+        `👤 איש קשר: ${item.contactName || "לא שויך"}`,
+        ...(item.propertyLabel ? [`🏠 נכס: ${item.propertyLabel}`] : []),
+        `🗓️ אירוע: ${item.title}`,
+        `🕒 מועד: ${formatSlot(item.startISO)}`,
+        ...(item.description ? detailLines(item.description) : []),
+        ...(event.htmlLink ? [`🔗 פתיחה ביומן: ${event.htmlLink}`] : []),
+      ].join("\n");
 
       const phones = new Set<string>();
       (profiles ?? []).forEach((p: { phone: string | null }) => {

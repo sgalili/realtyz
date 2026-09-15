@@ -128,13 +128,14 @@ Deno.serve(async (req) => {
       .select("id, phone, full_name")
       .in("id", [...managerIds]);
 
-    const managerMessage =
-      `ליד חדש מהאתר — בקשת הדגמה בזום\n` +
-      `שם: ${leadName}\n` +
-      `טלפון: ${row.phone}\n` +
-      `מועד מבוקש: ${slot}\n` +
-      `מקור: ${row.source ?? "landing"}\n` +
-      `ריטה שלחה כבר אישור ללקוח וממתינה לתשובתו.`;
+    const managerMessage = [
+      "💻 בקשת הדגמה חדשה מהאתר",
+      `👤 איש קשר: ${leadName}`,
+      `📞 טלפון: ${row.phone}`,
+      `🕒 מועד מבוקש: ${slot}`,
+      `🌐 מקור: ${row.source ?? "landing"}`,
+      "⏳ ריטה שלחה אישור לאיש הקשר וממתינה לתשובה.",
+    ].join("\n");
 
     const managerPhones = new Set<string>();
     if (!calendarOnly) (profiles ?? []).forEach((p: { phone: string | null }) => {

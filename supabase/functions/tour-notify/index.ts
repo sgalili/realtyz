@@ -86,11 +86,14 @@ Deno.serve(async (req) => {
     // Broker reminder — the tour is saved but still waiting for the client.
     const { data: profile } = await admin.from("profiles").select("phone").eq("id", ownerId).maybeSingle();
     const brokerPhone = (profile as { phone?: string } | null)?.phone ?? null;
-    const brokerMsg =
-      `תזכורת: נקבע סיור ב${where}\n` +
-      `לקוח: ${row.client_name || "—"} · ${row.client_phone || "—"}\n` +
-      `מועד: ${when}\n` +
-      `הסטטוס: ממתין לאישור הלקוח. תישלח התראה מיד כשהלקוח יאשר.`;
+    const brokerMsg = [
+      "📅 נקבע סיור חדש",
+      `👤 איש קשר: ${row.client_name || "לא שויך"}`,
+      ...(row.client_phone ? [`📞 טלפון: ${row.client_phone}`] : []),
+      `🏠 נכס: ${where}`,
+      `🕒 מועד: ${when}`,
+      "⏳ סטטוס: ממתין לאישור הלקוח. תישלח התראה מיד כשהלקוח יאשר.",
+    ].join("\n");
     const broker = brokerPhone
       ? await sendWhatsApp({ phone_number: brokerPhone, message: brokerMsg, tenant_id: ownerId })
       : { ok: false, error: "no_broker_phone" };
