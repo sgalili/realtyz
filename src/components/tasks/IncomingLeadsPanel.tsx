@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 
 type Mode = 'leads' | 'demos';
 
@@ -155,11 +156,12 @@ export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
               onClick={() => navigate(target)}
               className="flex w-full items-start gap-3 rounded-lg border border-border bg-card p-3 text-right transition-colors hover:bg-accent/40"
             >
-              {isLead ? (
-                <UserPlus className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              ) : (
-                <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              )}
+              <ContactAvatar
+                name={name}
+                imageUrl={row.profile_picture_url ?? null}
+                className="mt-0.5 h-9 w-9 shrink-0"
+              />
+              {isLead ? null : <CalendarClock className="mt-1.5 h-4 w-4 shrink-0 text-primary" />}
               <span className="min-w-0 flex-1 space-y-1">
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="text-base font-semibold">{name}</span>
