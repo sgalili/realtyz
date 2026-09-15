@@ -29,7 +29,6 @@ import {
   Phone,
   Send,
   StickyNote,
-  User,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { sendViaOfficialWaba } from '@/lib/officialWa';

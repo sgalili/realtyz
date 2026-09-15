@@ -19,7 +19,6 @@ import { format, formatDistanceToNow, startOfMonth, subHours } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { PendingListingsCard } from '@/components/PendingListingsCard';
-import { ScheduledToursCard } from '@/components/dashboard/ScheduledToursCard';
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
 
 

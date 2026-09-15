@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { CalendarClock, CalendarPlus, ChevronLeft, ExternalLink, UserPlus } from 'lucide-react';
+import { CalendarClock, CalendarPlus, ChevronLeft, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
