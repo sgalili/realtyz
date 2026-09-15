@@ -420,20 +420,38 @@ export function ConnectionsTab() {
     }] : []),
 
 
-    {
+    // Voice calls and the real-estate portals are platform-level services:
+    // only a Super Admin may see or configure them.
+    ...(isSuperAdmin ? [{
       id: 'voice',
       title: 'שיחות טלפון',
+      titleAside: (
+        <Phone
+          className={cn('h-5 w-5 shrink-0 text-[#0B62F5]', !(voicePhone || voiceReady) && 'grayscale opacity-40')}
+          strokeWidth={2.25}
+        />
+      ),
       status: voicePhone ? formatPhoneDisplay(voicePhone) : voiceReady ? 'מחובר' : 'לא הוגדר',
-      tone: voicePhone || voiceReady ? 'ok' : 'idle',
+      tone: (voicePhone || voiceReady ? 'ok' : 'idle') as Tone,
       node: <VoiceGatewayCard />,
-    },
-    {
+      restricted: true,
+    }] : []),
+    ...(isSuperAdmin ? [{
       id: 'portals',
       title: 'פורטלי נדל"ן',
-      status: 'הגדרות',
-      tone: 'idle',
+      status: '',
+      tone: 'idle' as Tone,
+      // Portal brand marks replace the settings pill: full color when the
+      // portal is connected, grayscale when it is not.
+      headerAside: (
+        <span className="flex items-center gap-1.5" aria-label="portals">
+          <PortalBrandGlyph portal="yad2" connected={portalStatus.yad2} />
+          <PortalBrandGlyph portal="homely" connected={portalStatus.homely} />
+        </span>
+      ),
       node: <ListingPortalsCard />,
-    },
+      restricted: true,
+    }] : []),
   ];
 
   return (
