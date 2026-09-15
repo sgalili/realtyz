@@ -558,10 +558,15 @@ async function handle(req: Request): Promise<Response> {
       if (targetRow?.id) {
         try {
           const { error } = await withTimeout(
-            admin.from('social_connections').update(upd).eq('id', targetRow.id) as unknown as Promise<any>,
+            // Re-assert the workspace filter on the write itself: the row is
+            // only ever updated when it still belongs to the active workspace.
+            admin.from('social_connections').update(upd)
+              .eq('id', targetRow.id)
+              .eq('workspace_owner_id', workspaceOwnerId) as unknown as Promise<any>,
             8000, 'social_connections update',
           );
           if (error && !saveWarning) saveWarning = error.message;
+          else stored.push(targetPlatform);
         } catch (e: any) {
           if (!saveWarning) saveWarning = e?.message ?? 'db update failed';
         }
@@ -572,6 +577,7 @@ async function handle(req: Request): Promise<Response> {
             8000, 'social_connections upsert',
           );
           if (error && !saveWarning) saveWarning = error.message;
+          else stored.push(targetPlatform);
         } catch (e: any) {
           if (!saveWarning) saveWarning = e?.message ?? 'db upsert failed';
         }
@@ -579,8 +585,35 @@ async function handle(req: Request): Promise<Response> {
     }
 
     if (saveWarning) {
+      console.error('[google-oauth-exchange] persist stage failed', {
+        platform, workspace_owner_id: workspaceOwnerId, reason: saveWarning,
+      });
       return new Response(
-        JSON.stringify({ ok: false, error: `שמירת החיבור נכשלה: ${saveWarning}`, code: 'db_save_failed' }),
+        JSON.stringify({
+          ok: false,
+          error: `שמירת החיבור נכשלה: ${saveWarning}`,
+          code: 'db_save_failed',
+          stage: 'persist',
+          workspace_owner_id: workspaceOwnerId,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // A single-service request that stored nothing is a real failure, not a
+    // silent success — otherwise the UI shows a success toast over no row.
+    if (platform !== 'google_all' && stored.length === 0) {
+      console.error('[google-oauth-exchange] nothing stored for single-service request', {
+        platform, workspace_owner_id: workspaceOwnerId, skipped,
+      });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: 'החיבור לא נשמר עבור המשרד הפעיל. נסו שוב.',
+          code: 'not_stored',
+          stage: 'persist',
+          workspace_owner_id: workspaceOwnerId,
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
