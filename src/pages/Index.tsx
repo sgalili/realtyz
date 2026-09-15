@@ -284,15 +284,8 @@ const RealEstateDashboard = () => {
       </div>
 
 
-      {/* Scheduled tours (top of page) */}
-      <CollapsibleSection
-        id="scheduled-tours"
-        title="סיורים מתוזמנים"
-        
-        icon={<CalendarCheck2 className="h-4 w-4 text-primary" />}
-      >
-        <ScheduledToursCard />
-      </CollapsibleSection>
+      {/* Scheduled tours now live in the Tasks page (משימות → סיורים). */}
+
 
       {/* 4 KPI widgets */}
       <CollapsibleSection
