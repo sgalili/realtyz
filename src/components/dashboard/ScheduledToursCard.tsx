@@ -306,26 +306,15 @@ export function ScheduledToursCard() {
     <Card dir="rtl">
       <CardContent className="space-y-3 pt-4">
         <div className="flex items-center justify-between gap-2">
-          <div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
-            <Button
-              size="sm"
-              variant={view === 'list' ? 'default' : 'ghost'}
-              className="h-8 text-[12px]"
-              onClick={() => setView('list')}
-            >
-              <List className="me-1 h-3.5 w-3.5" />
-              רשימה
-            </Button>
-            <Button
-              size="sm"
-              variant={view === 'calendar' ? 'default' : 'ghost'}
-              className="h-8 text-[12px]"
-              onClick={() => setView('calendar')}
-            >
-              <CalendarDays className="me-1 h-3.5 w-3.5" />
-              לוח שנה
-            </Button>
-          </div>
+          <Button
+            size="icon"
+            variant={view === 'list' ? 'default' : 'ghost'}
+            aria-label="רשימה"
+            className="h-8 w-8"
+            onClick={() => setView('list')}
+          >
+            <List className="h-4 w-4" />
+          </Button>
           {view === 'calendar' && (
             <div className="flex items-center gap-1">
               <Button
@@ -349,7 +338,17 @@ export function ScheduledToursCard() {
               </Button>
             </div>
           )}
+          <Button
+            size="icon"
+            variant={view === 'calendar' ? 'default' : 'ghost'}
+            aria-label="לוח שנה"
+            className="h-8 w-8"
+            onClick={() => setView('calendar')}
+          >
+            <CalendarDays className="h-4 w-4" />
+          </Button>
         </div>
+
 
         {isLoading ? (
           <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>

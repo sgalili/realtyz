@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScheduledToursCard } from '@/components/dashboard/ScheduledToursCard';
+import { NewTourDialog } from '@/components/dashboard/NewTourDialog';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useNavigate } from 'react-router-dom';
@@ -172,6 +173,7 @@ export default function CommandCenter() {
   }, [visibleTabs, tab]);
 
   const [editing, setEditing] = useState<CommandTask | null>(null);
+  const [newTourOpen, setNewTourOpen] = useState(false);
   const toggleCard = (key: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
@@ -195,7 +197,7 @@ export default function CommandCenter() {
       return;
     }
     if (section === 'tours') {
-      navigate('/properties');
+      setNewTourOpen(true);
       return;
     }
     const quickTab = section === 'notes' ? 'note' : section === 'calls' ? 'interaction' : 'reminder';
@@ -238,6 +240,7 @@ export default function CommandCenter() {
   return (
     <div dir="rtl" className="space-y-6 p-4 md:p-6">
       <FirstTimeSyncDialog />
+      <NewTourDialog open={newTourOpen} onOpenChange={setNewTourOpen} />
 
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">משימות</h1>
@@ -269,7 +272,7 @@ export default function CommandCenter() {
               ))}
             </TabsList>
           </Tabs>
-          <Button size="sm" className="h-9 gap-1 text-sm" onClick={() => addNew(tab)}>
+          <Button size="sm" className="mt-[25px] h-9 gap-1 text-sm" onClick={() => addNew(tab)}>
             <Plus className="h-4 w-4" />
             {ADD_LABEL[tab]}
           </Button>
