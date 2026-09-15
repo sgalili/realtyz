@@ -23,3 +23,7 @@ FACEBOOK GROUPS (2026-09-15):
 - `fb_user_groups` RLS is strict: `ws_current_access(workspace_owner_id)` for select/insert/update/delete (no member/super-admin cross-workspace read).
 - Never query or update `fb_user_groups` / `fb_group_post_log` by `group_id` alone — always add `.eq('workspace_owner_id', owner)`.
 - The browser extension group push is browser-level: a pushed list is claimed by the first workspace that saves it (`rz-ext-fb-groups-claim`); other workspaces must sync explicitly. Never auto-persist a foreign claim.
+
+GROUPS ARE PAGE-BOUND (2026-09-15):
+- `fb_user_groups.page_id` + `.source` ('page' | 'personal' | 'extension') record which connected Page produced each group; every writer must set them, and pickers hide rows whose `page_id` differs from the workspace's current binding.
+- Extension group pushes: `rz-ext-fb-groups` is a browser inbox only. Cached lists live under `rz-ext-fb-groups:<workspaceOwnerId>`, the inbox is cleared on commit, and `useExtensionGroups(owner)` must always receive the active workspace owner. Never cache group lists globally.

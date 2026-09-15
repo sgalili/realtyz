@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { cn } from '@/lib/utils';
 import { openExternal } from '@/lib/openExternal';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { useExtensionGroups, readExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
 import { ExtensionDownloadButton, isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
 import { pairExtension, readRunnerStatus } from '@/lib/extensionPairing';
@@ -54,7 +55,8 @@ export function ExtensionGroupSyncCard({
   actions?: ReactNode;
 }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
-  const { groups, refresh } = useExtensionGroups();
+  const { data: pageBinding } = useMetaPageBinding();
+  const { groups, refresh } = useExtensionGroups(workspaceOwnerId);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [open, setOpen] = useState(false);
@@ -76,6 +78,9 @@ export function ExtensionGroupSyncCard({
           group_icon: g.group_icon,
           group_url: g.group_url,
           ...(g.member_count !== null ? { member_count: g.member_count } : {}),
+          // Bind every synced group to this workspace's connected Facebook page.
+          page_id: pageBinding?.pageId ?? null,
+          source: 'extension',
           is_selected: true,
           imported_at: now,
           updated_at: now,
@@ -138,7 +143,7 @@ export function ExtensionGroupSyncCard({
       let found: ExtensionGroup[] = [];
       for (let i = 0; i < 12; i++) {
         await new Promise((r) => setTimeout(r, 400));
-        found = readExtensionGroups();
+        found = readExtensionGroups(workspaceOwnerId);
         if (found.length > 0) break;
         if (i % 3 === 2) refresh();
       }

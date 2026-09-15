@@ -9,6 +9,7 @@ import { shortenName } from '@/lib/shortenName';
 import { openExternal } from '@/lib/openExternal';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean };
@@ -50,6 +51,7 @@ function readCache(owner: string | null): { groups: GroupTarget[] } | null {
  */
 export function FacebookTargetsCard({ className, actions }: { className?: string; actions?: ReactNode }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const { data: pageBinding } = useMetaPageBinding();
   const cached = readCache(workspaceOwnerId);
   const [groups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
   const [loading, setLoading] = useState(!cached);
@@ -66,11 +68,17 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     try {
       const { data } = await (supabase as any)
         .from('fb_user_groups')
-        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected')
+        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected, page_id')
         // Workspace-scoped so shared Facebook groups are identical for every member.
         .eq('workspace_owner_id', workspaceOwnerId)
         .order('group_name', { ascending: true });
-      const nextGroups: GroupTarget[] = ((data ?? []) as any[]).map((r) => ({
+      // TENANT ISOLATION: hide groups bound to a Facebook page this workspace is
+      // no longer connected to.
+      const connectedPage = pageBinding?.pageId ?? null;
+      const visible = ((data ?? []) as any[]).filter(
+        (r) => !r?.page_id || !connectedPage || String(r.page_id) === connectedPage,
+      );
+      const nextGroups: GroupTarget[] = visible.map((r) => ({
         id: String(r.id),
         groupId: String(r.group_id),
         name: String(r.group_name || r.group_id),
@@ -86,7 +94,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     } finally {
       setLoading(false);
     }
-  }, [workspaceOwnerId]);
+  }, [workspaceOwnerId, pageBinding?.pageId]);
 
   useEffect(() => { void load(); }, [load]);
 
