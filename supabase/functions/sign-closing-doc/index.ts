@@ -287,10 +287,12 @@ Deno.serve(async (req) => {
               },
               body: JSON.stringify({
                 phone_number: brokerPhone,
-                message:
-                  `הלקוח חתם על ${doc.title}\n` +
-                  `${clientName}${(leadRow as any)?.phone_number ? ` · ${(leadRow as any).phone_number}` : ""}` +
-                  (address ? `\n${address}` : ""),
+                message: [
+                  `✍️ איש הקשר חתם על ${doc.title}`,
+                  `👤 איש קשר: ${clientName}`,
+                  ...((leadRow as any)?.phone_number ? [`📞 טלפון: ${(leadRow as any).phone_number}`] : []),
+                  ...(address ? [`🏠 נכס: ${address}`] : []),
+                ].join("\n"),
                 tenant_id: ownerId,
               }),
             });

@@ -94,12 +94,14 @@ Deno.serve(async (req) => {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
           body: JSON.stringify({
             phone_number: phone,
-            message:
-              `הלקוח אישר את מועד הסיור\n` +
-              `${row.client_name || "לקוח"} · ${row.client_phone || "—"}\n` +
-              `${where}\n` +
-              `מועד סופי: ${formatSlot(row.scheduled_at ?? null)}\n` +
-              `האירוע נשמר ביומן Google.`,
+            message: [
+              "✅ הלקוח אישר את מועד הסיור",
+              `👤 איש קשר: ${row.client_name || "לא שויך"}`,
+              ...(row.client_phone ? [`📞 טלפון: ${row.client_phone}`] : []),
+              `🏠 נכס: ${where}`,
+              `🕒 מועד סופי: ${formatSlot(row.scheduled_at ?? null)}`,
+              "📅 האירוע נשמר ביומן Google.",
+            ].join("\n"),
             tenant_id: row.owner_id,
           }),
         });
