@@ -55,15 +55,28 @@ export function ScheduleViewToggle({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <Button
-        size="icon"
-        variant={view === 'list' ? 'default' : 'ghost'}
-        aria-label="רשימה"
-        className="h-8 w-8"
-        onClick={() => onViewChange('list')}
-      >
-        <List className="h-4 w-4" />
-      </Button>
+      <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label="מצב תצוגה">
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label="תצוגת רשימה"
+          aria-pressed={view === 'list'}
+          className={`h-8 w-8 border-0 bg-transparent shadow-none ${view === 'list' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => onViewChange('list')}
+        >
+          <List className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label="תצוגת לוח שנה"
+          aria-pressed={view === 'calendar'}
+          className={`h-8 w-8 border-0 bg-transparent shadow-none ${view === 'calendar' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => onViewChange('calendar')}
+        >
+          <CalendarDays className="h-4 w-4" />
+        </Button>
+      </div>
       {view === 'calendar' && (
         <div className="flex items-center gap-1">
           <Button
@@ -87,15 +100,7 @@ export function ScheduleViewToggle({
           </Button>
         </div>
       )}
-      <Button
-        size="icon"
-        variant={view === 'calendar' ? 'default' : 'ghost'}
-        aria-label="לוח שנה"
-        className="h-8 w-8"
-        onClick={() => onViewChange('calendar')}
-      >
-        <CalendarDays className="h-4 w-4" />
-      </Button>
+      {view !== 'calendar' ? <span aria-hidden="true" /> : null}
     </div>
   );
 }

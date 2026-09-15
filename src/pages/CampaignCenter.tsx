@@ -5754,11 +5754,11 @@ const PublishedFeed = ({
         </div>
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon"
           title="תצוגת לוח שנה"
           aria-label="תצוגת לוח שנה"
-          className="shrink-0"
+          className="shrink-0 border-0 bg-transparent shadow-none"
           onClick={() => window.dispatchEvent(new Event('rz:open-schedule-calendar'))}
         >
           <CalendarIcon className="h-4 w-4" />

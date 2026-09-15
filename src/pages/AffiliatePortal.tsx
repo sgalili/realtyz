@@ -616,11 +616,11 @@ export default function AffiliatePortal() {
               <TabsTrigger value="leads">אנשי הקשר שהגשתי</TabsTrigger>
               <TabsTrigger value="mine">השיווקים שלי</TabsTrigger>
             </TabsList>
-            <div className="flex shrink-0 rounded-md border bg-background p-0.5" aria-label="בחירת תצוגה">
-              <Button type="button" size="icon" variant={viewMode === 'grid' ? 'default' : 'ghost'} className="h-8 w-8" onClick={() => setViewMode('grid')} aria-label="תצוגת כרטיסיות" aria-pressed={viewMode === 'grid'}>
+            <div className="flex shrink-0 items-center gap-0.5" aria-label="בחירת תצוגה">
+              <Button type="button" size="icon" variant="ghost" className={`h-8 w-8 border-0 bg-transparent shadow-none ${viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setViewMode('grid')} aria-label="תצוגת כרטיסיות" aria-pressed={viewMode === 'grid'}>
                 <LayoutGrid className="h-4 w-4" />
               </Button>
-              <Button type="button" size="icon" variant={viewMode === 'list' ? 'default' : 'ghost'} className="h-8 w-8" onClick={() => setViewMode('list')} aria-label="תצוגת רשימה" aria-pressed={viewMode === 'list'}>
+              <Button type="button" size="icon" variant="ghost" className={`h-8 w-8 border-0 bg-transparent shadow-none ${viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setViewMode('list')} aria-label="תצוגת רשימה" aria-pressed={viewMode === 'list'}>
                 <List className="h-4 w-4" />
               </Button>
             </div>

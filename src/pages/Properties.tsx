@@ -970,27 +970,31 @@ export default function Properties() {
 
 
           {/* Side B — view toggle */}
-          <div className="ms-auto inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
-            <button
+          <div className="ms-auto inline-flex items-center gap-0.5" role="group" aria-label="מצב תצוגה">
+            <Button
               type="button"
+              size="icon"
+              variant="ghost"
               onClick={() => setViewMode('grid')}
               aria-pressed={viewMode === 'grid'}
               aria-label="תצוגת כרטיסיות"
               title="כרטיסיות"
-              className={`inline-flex items-center justify-center h-8 w-9 rounded-sm transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`h-8 w-9 border-0 bg-transparent shadow-none ${viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              size="icon"
+              variant="ghost"
               onClick={() => setViewMode('table')}
               aria-pressed={viewMode === 'table'}
               aria-label="תצוגת טבלה"
               title="טבלה"
-              className={`inline-flex items-center justify-center h-8 w-9 rounded-sm transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`h-8 w-9 border-0 bg-transparent shadow-none ${viewMode === 'table' ? 'text-primary' : 'text-muted-foreground'}`}
             >
               <FileSpreadsheet className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </div>
         </div>
 

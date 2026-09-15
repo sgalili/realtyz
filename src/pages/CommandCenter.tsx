@@ -31,6 +31,8 @@ import {
   Check,
   ChevronLeft,
   Megaphone,
+  MessageCircle,
+  Phone,
   Plus,
   Trash2,
   Users,
@@ -276,17 +278,25 @@ export default function CommandCenter() {
       : dueLabel(task.dueAt);
     const cardKey = `${task.source}-${task.id}`;
     const isOpen = openIds.has(cardKey);
+    const callSummary = isCallSummary(task);
     return (
       <li
         key={cardKey}
         className={`w-full rounded-lg border-2 bg-card p-3 transition-colors hover:bg-accent/40 ${PRIORITY_BORDER[task.priority]}`}
       >
         <div className="flex items-start gap-2">
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => toggleCard(cardKey)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggleCard(cardKey);
+              }
+            }}
             aria-expanded={isOpen}
-            className="flex min-w-0 flex-1 items-start gap-3 text-right"
+            className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-right"
           >
             {task.leadName || task.leadAvatar ? (
               <ContactAvatar
@@ -297,19 +307,42 @@ export default function CommandCenter() {
             ) : null}
             <span className="min-w-0 flex-1 space-y-1.5">
               {task.leadName && (
-                <span className="block truncate text-[15px] font-bold text-foreground">
-                  {task.leadName}
+                <span className="flex min-w-0 items-start gap-1.5">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-bold text-foreground">
+                      {task.leadName}
+                    </span>
+                    {callSummary && (
+                      <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                        {due.text}
+                      </span>
+                    )}
+                  </span>
+                  {callSummary && task.leadId && (
+                    <span className="flex shrink-0 items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
+                      <IconAction label="WhatsApp" onClick={() => navigate(`/inbox?lead=${task.leadId}&channel=whatsapp`)}>
+                        <MessageCircle className="h-4 w-4" />
+                      </IconAction>
+                      {task.leadPhone && (
+                        <Button asChild type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                          <a href={`tel:${task.leadPhone}`} aria-label="שיחת טלפון" title="שיחת טלפון">
+                            <Phone className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      )}
+                    </span>
+                  )}
                 </span>
               )}
               {/* Urgency is shown by the card border colour, not by a label. */}
               <span className="flex flex-wrap items-center gap-2">
-                <span className="break-words text-base font-semibold">{task.title}</span>
+                {!callSummary && <span className="break-words text-base font-semibold">{task.title}</span>}
                 {task.actionType && task.source !== 'note' && (
                   <Badge variant="secondary" className="text-[13px]">
                     {ACTION_TYPE_LABEL[task.actionType] ?? task.actionType}
                   </Badge>
                 )}
-                {task.source === 'note' && (
+                {task.source === 'note' && !callSummary && (
                   <Badge variant="outline" className="text-[13px]">
                     {NOTE_ACTION_LABEL[task.actionType ?? 'note'] ?? 'פתק'}
                   </Badge>
@@ -319,7 +352,7 @@ export default function CommandCenter() {
                     {TASK_STATUS_LABEL[task.status]}
                   </Badge>
                 )}
-                <span
+                {!callSummary && <span
                   className={`inline-flex items-center gap-1 text-[13px] ${
                     due.overdue
                       ? 'font-semibold text-destructive'
@@ -330,13 +363,13 @@ export default function CommandCenter() {
                 >
                   <CalendarClock className="h-3.5 w-3.5" />
                   {due.overdue ? `באיחור · ${due.text}` : due.text}
-                </span>
-                {task.leadPhone && (
+                </span>}
+                {task.leadPhone && !callSummary && (
                   <span className="text-[13px] text-muted-foreground">{formatPhoneDisplay(task.leadPhone)}</span>
                 )}
               </span>
             </span>
-          </button>
+          </div>
           <div className="flex shrink-0 items-center gap-1">
             <IconAction label="עריכה" onClick={() => setEditing(task)}>
               <Pencil className="h-4 w-4" />
@@ -351,7 +384,7 @@ export default function CommandCenter() {
               className="p-1 text-muted-foreground"
             >
               <ChevronDown
-                className={`h-4 w-4 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                className={`h-4 w-4 transition-transform ${isOpen ? '' : callSummary ? 'rotate-90' : '-rotate-90'}`}
               />
             </button>
           </div>
