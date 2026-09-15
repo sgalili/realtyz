@@ -186,11 +186,11 @@ export default function CommandCenter() {
 
   const counts = useMemo(() => {
     const base: Record<SectionTab, number> = {
-      tours: 0, tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, calls: 0,
+      tours: toursCount, tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, calls: 0,
     };
     for (const t of tasks) base[sectionOf(t)] += 1;
     return base;
-  }, [tasks, leadsCount, demosCount]);
+  }, [tasks, leadsCount, demosCount, toursCount]);
 
   /** Opens the quick-action drawer on the right form for the active tab. */
   const addNew = (section: SectionTab) => {
