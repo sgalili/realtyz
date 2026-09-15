@@ -9,6 +9,7 @@ import { shortenName } from '@/lib/shortenName';
 import { openExternal } from '@/lib/openExternal';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean };
@@ -50,6 +51,7 @@ function readCache(owner: string | null): { groups: GroupTarget[] } | null {
  */
 export function FacebookTargetsCard({ className, actions }: { className?: string; actions?: ReactNode }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const { data: pageBinding } = useMetaPageBinding();
   const cached = readCache(workspaceOwnerId);
   const [groups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
   const [loading, setLoading] = useState(!cached);
@@ -92,7 +94,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     } finally {
       setLoading(false);
     }
-  }, [workspaceOwnerId]);
+  }, [workspaceOwnerId, pageBinding?.pageId]);
 
   useEffect(() => { void load(); }, [load]);
 
