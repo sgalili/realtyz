@@ -127,7 +127,7 @@ export function ScheduledToursCard() {
       const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from('property_tours')
-        .select('id, client_name, client_phone, client_email, scheduled_at, property_title, property_address, status, notes, whatsapp_sent_at')
+        .select('id, client_name, client_phone, client_email, scheduled_at, property_title, property_address, status, notes, whatsapp_sent_at, listing_id, metadata')
         .eq('owner_id', ownerId!)
         .gte('scheduled_at', since)
         .neq('status', 'cancelled')
