@@ -401,12 +401,14 @@ Deno.serve(async (req) => {
       const payload: Record<string, unknown> = template
         ? {
             phone_number: phone,
+            force_official: true,
             template_id: template.name,
             template_language: template.language,
             template_components: template.components,
           }
         : {
             phone_number: phone,
+            force_official: true,
             message: `קוד האימות שלך ל-Realtyz: ${code}`,
           };
 
@@ -472,7 +474,7 @@ Deno.serve(async (req) => {
                 Authorization: `Bearer ${serviceRoleKey}`,
                 apikey: serviceRoleKey,
               },
-              body: JSON.stringify({ phone_number: phone, message: `קוד האימות שלך ל-Realtyz: ${code}` }),
+              body: JSON.stringify({ phone_number: phone, force_official: true, message: `קוד האימות שלך ל-Realtyz: ${code}` }),
             });
             const retryPayload: any = await retryRes.json().catch(() => ({}));
             if (retryRes.ok && retryPayload?.message_id) {
