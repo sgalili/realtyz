@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
   try {
     let q = admin.from("leads").select(LEAD_COLS).in("phone_number", phoneVariants(fromNormalized));
     if (workspaceOwnerId) q = q.eq("workspace_owner_id", workspaceOwnerId);
-    const { data } = await q.order("updated_at", { ascending: false }).limit(1).maybeSingle();
+    const { data } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
     lead = data ?? null;
   } catch (e) {
     console.warn("[sms-inbound] lead lookup soft-fail", e instanceof Error ? e.message : e);
@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
         .from("leads")
         .select(LEAD_COLS)
         .in("phone_number", phoneVariants(fromNormalized))
-        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       lead = data ?? null;
