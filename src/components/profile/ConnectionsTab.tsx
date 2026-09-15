@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronDown, Settings2 } from 'lucide-react';
+import { ChevronDown, MessageSquare, Phone, Settings2 } from 'lucide-react';
+import { BrandIcon } from '@/components/BrandIcon';
+import { PortalBrandGlyph } from '@/components/profile/PortalBrandGlyph';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
