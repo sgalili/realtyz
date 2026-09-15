@@ -139,7 +139,7 @@ function LeadsHeroAddButton() {
           <DownloadCloud className="h-4 w-4" /> משיכת אנשי קשר מ-Homely
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => dispatch("avatars")} className="gap-2" disabled={busy}>
-          <RefreshCw className="h-4 w-4" /> סנכרון תמונות פרופיל
+          <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> סנכרון תמונות פרופיל
         </DropdownMenuItem>
 
       </DropdownMenuContent>
