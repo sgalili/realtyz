@@ -597,7 +597,9 @@ Deno.serve(async (req) => {
     const greenRaw = providers.get("Green API");
     const fromAddress = "Realtyz <updates@realtyz.co.il>"; // legacy display only
 
-    const sms019Creds = sms019Raw ? sms019Raw.split(":") : null;
+    // 019 readiness is per workspace (own credentials first, platform fallback).
+    const sms019Cfg = await resolveSms019Config(admin as any, ownerUserId);
+    const smsReady = !!(sms019Cfg && sms019Cfg.username && (sms019Cfg.token || sms019Cfg.password) && sms019Cfg.sender);
     const greenSharedRaw = greenRaw ? greenRaw.split(":") : null;
     const greenShared =
       greenSharedRaw && greenSharedRaw.length >= 2 && greenSharedRaw[0]
