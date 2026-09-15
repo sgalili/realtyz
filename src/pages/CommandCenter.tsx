@@ -174,6 +174,7 @@ export default function CommandCenter() {
 
   const [editing, setEditing] = useState<CommandTask | null>(null);
   const [newTourOpen, setNewTourOpen] = useState(false);
+  const [newDemoOpen, setNewDemoOpen] = useState(false);
   const toggleCard = (key: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
@@ -184,7 +185,7 @@ export default function CommandCenter() {
 
   const counts = useMemo(() => {
     const base: Record<SectionTab, number> = {
-      tours: 0, tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, reminders: 0, calls: 0,
+      tours: 0, tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, calls: 0,
     };
     for (const t of tasks) base[sectionOf(t)] += 1;
     return base;
@@ -192,7 +193,11 @@ export default function CommandCenter() {
 
   /** Opens the quick-action drawer on the right form for the active tab. */
   const addNew = (section: SectionTab) => {
-    if (section === 'leads' || section === 'demos') {
+    if (section === 'demos') {
+      setNewDemoOpen(true);
+      return;
+    }
+    if (section === 'leads') {
       navigate('/lead-crm');
       return;
     }
