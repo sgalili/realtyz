@@ -3,6 +3,7 @@
 ## Core
 - **Platform roles (HARD)**: Shai Galili (sgalili@gmail.com, 054-6811841) is the ONLY `super_admin`. Udi Vitman (052-2973500, 8f66ac1a…) is a regular broker (`managing_broker`) who owns his workspace and is a full member of Rita's ws only — never re-grant him super_admin; `grant_super_admin_to_wa_owner()` is intentionally a no-op.
 - **Brand name (HARD)**: Hebrew brand is **רילטיז** — never "ריאלטיז" anywhere (UI, workspace names, prompts).
+- **Connections isolation (HARD)**: social_connections unique on (workspace_owner_id, platform) — the old (created_by, platform) unique index is dropped; all upserts use onConflict workspace_owner_id,platform; disconnect hard-deletes for the active workspace only; no created_by/global fallback. See mem://constraints/workspace-isolation-social-connections.
 - **Facebook/Instagram (HARD)**: strictly per-workspace. `get_effective_meta_page()` reads only the active workspace binding — no account-level or platform-shared fallback. WhatsApp (WBA/Green) + Yad2 stay account-level.
 - **OAuth callback (HARD)**: `src/main.tsx` may only render the popup bridge when a real `window.opener` exists; full-page redirects must boot the app so `/oauth/callback` finishes the exchange (otherwise it hangs on "מסיים אימות מאובטח").
 - **Realtyz AI** (full rebrand from Kalpiz, completed). Real-estate CRM. The codebase contains zero `Kalpiz` references in source — only the legacy DB column `hide_kalpiz_branding` (in `white_label_settings`) and the original SQL migration files retain the old name; treat that column as read-only legacy.
@@ -63,3 +64,4 @@
 - [Meta template compliance](mem://features/wa-template-compliance) — OTP AUTHENTICATION template, drip stage-2 UTILITY/MARKETING templates, template_rejected logging.
 - [FB groups extension-only](mem://constraints/fb-groups-extension-only) — No Graph API for group posts; rzPostQueue + campaign_activity_queue fb_group_post handled by the extension.
 - [Yad2 scrape rate limit](mem://constraints/yad2-scrape-rate-limit) — Bright Data scraped only 08:00/18:00 via properties-scheduled-sync slot claim; incremental watermarks; shared market_listings pool serves every workspace (never copy pool rows into listings).
+- [Connections isolation](mem://constraints/workspace-isolation-social-connections) — social_connections per-workspace uniqueness, onConflict rule, hard-delete disconnect, workspace-keyed sticky cache.
