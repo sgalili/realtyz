@@ -162,6 +162,8 @@ Deno.serve(async (req) => {
                 privacy: g?.privacy ? String(g.privacy) : null,
                 member_count: Number.isFinite(Number(g?.member_count)) ? Number(g.member_count) : null,
                 is_administrator: !!g?.administrator,
+                page_id: pageIds.has(node) ? node : null,
+                source: pageIds.has(node) ? "page" : "personal",
                 imported_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               });
