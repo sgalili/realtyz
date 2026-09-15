@@ -199,7 +199,8 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         property_address: [selectedListing?.address, selectedListing?.city].filter(Boolean).join(', ') || null,
         scheduled_at: scheduledAt.toISOString(),
         notes: notes.trim() || null,
-        status: 'confirmed',
+        // The client has NOT accepted yet — only an explicit acceptance confirms.
+        status: 'pending',
         timezone: 'Asia/Jerusalem',
       });
       if (error) throw error;
