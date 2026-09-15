@@ -316,7 +316,8 @@ export function ConnectionsTab() {
       const k = (keys.data ?? {}) as any;
       const h = (homely.data ?? {}) as any;
       return {
-        yad2: Boolean(String(k?.brightdata_api_token ?? '').trim() && String(k?.brightdata_zone ?? '').trim()),
+        // Yad2 shows in full color as soon as the BrightData API is connected.
+        yad2: Boolean(String(k?.brightdata_api_token ?? '').trim()),
         homely: h?.connection_status === 'ok' || Boolean(h?.homely_password_encrypted),
       };
     },
