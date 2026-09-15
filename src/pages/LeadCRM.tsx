@@ -1828,23 +1828,24 @@ const LeadCRM = () => {
                   {t.label}
                 </button>
               ))}
-            </div>
-            {(() => {
-              const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all' || leadKindFilter !== 'all';
-              const accountTotal = isDemoMode ? leads.length : realTotalCount;
-              const filteredTotal = isDemoMode ? filtered?.length ?? 0 : totalCount;
-              return (
-                <p className="text-xs text-muted-foreground tabular-nums">
-                  {selectedIds.size > 0
-                    ? `נבחרו ${selectedIds.size.toLocaleString('he-IL')} רשומות`
-                    : accountTotal === 0
-                      ? '\n'
+              {/* Total counter sits at the very end of the pills row */}
+              {(() => {
+                const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all' || leadKindFilter !== 'all';
+                const accountTotal = isDemoMode ? leads.length : realTotalCount;
+                const filteredTotal = isDemoMode ? filtered?.length ?? 0 : totalCount;
+                if (accountTotal === 0 && selectedIds.size === 0) return null;
+                return (
+                  <span className="self-center ms-1 text-[15px] leading-none text-muted-foreground tabular-nums whitespace-nowrap">
+                    {selectedIds.size > 0
+                      ? `נבחרו ${selectedIds.size.toLocaleString('he-IL')} רשומות`
                       : hasFilter
                         ? `מציג ${filteredTotal.toLocaleString('he-IL')} מתוך ${accountTotal.toLocaleString('he-IL')}`
                         : `סה״כ: ${accountTotal.toLocaleString('he-IL')} רשומות`}
-                </p>
-              );
-            })()}
+                  </span>
+                );
+              })()}
+            </div>
+
           </div>
           {filtersOpen && <div className="flex flex-wrap gap-2 pt-2 animate-fade-in">
             <Select value={interestFilter} onValueChange={setInterestFilter}>
