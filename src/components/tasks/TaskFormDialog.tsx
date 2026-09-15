@@ -159,10 +159,12 @@ export default function TaskFormDialog({
                     className="h-9 w-9 shrink-0"
                   />
                   <div className="min-w-0">
-                  <p className="truncate text-xs text-muted-foreground">
-                    {lead.phone_number ? formatPhoneDisplay(lead.phone_number) : '—'}
-                    {lead.city ? ` · ${lead.city}` : ''}
-                  </p>
+                    <p className="truncate text-sm font-bold text-foreground">{lead.full_name || 'ללא שם'}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {lead.phone_number ? formatPhoneDisplay(lead.phone_number) : '—'}
+                      {lead.city ? ` · ${lead.city}` : ''}
+                    </p>
+                  </div>
                 </div>
                 <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setLead(null); setLeadQuery(''); }}>
                   החלף
