@@ -6612,6 +6612,15 @@ export type Database = {
         Returns: string
       }
       listing_photo_pool: { Args: { _listing_id: string }; Returns: string[] }
+      market_pool_coverage: {
+        Args: { _since?: string }
+        Returns: {
+          city: string
+          deal_type: string
+          listings: number
+          newest_published_at: string
+        }[]
+      }
       match_knowledge_chunks: {
         Args: {
           match_count?: number
@@ -6729,10 +6738,6 @@ export type Database = {
       set_homely_password: {
         Args: { _password: string; _user_id: string }
         Returns: undefined
-      }
-      share_market_listings: {
-        Args: { _max_rows?: number; _since?: string }
-        Returns: number
       }
       shares_workspace_with: {
         Args: { _row_user: string; _viewer: string }
