@@ -312,8 +312,8 @@ export function ScheduledToursCard() {
             />
             {t.client_name}
           </div>
-          <Badge variant="outline" className={STATUS_CLASS[t.status] ?? ''}>
-            {STATUS_HE[t.status] ?? t.status}
+          <Badge variant="outline" className={STATUS_CLASS[displayStatus(t)] ?? ''}>
+            {STATUS_HE[displayStatus(t)] ?? t.status}
           </Badge>
         </div>
         <div className="mt-1.5 space-y-1 text-[13px] text-muted-foreground">
@@ -322,10 +322,20 @@ export function ScheduledToursCard() {
             {formatWhen(t.scheduled_at)}
           </p>
           {(t.property_title || t.property_address) && (
-            <p className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5" />
-              {t.property_title || t.property_address}
-            </p>
+            <div className="flex items-center gap-2">
+              {t.listing_id && listingPhotos?.get(t.listing_id) ? (
+                <img
+                  src={listingPhotos.get(t.listing_id) as string}
+                  alt={t.property_title ?? 'תמונת הנכס'}
+                  loading="lazy"
+                  className="h-12 w-12 shrink-0 rounded-md border object-cover"
+                />
+              ) : null}
+              <p className="flex min-w-0 items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{t.property_title || t.property_address}</span>
+              </p>
+            </div>
           )}
           <p className="flex items-center gap-1.5">
             <Phone className="h-3.5 w-3.5" />
