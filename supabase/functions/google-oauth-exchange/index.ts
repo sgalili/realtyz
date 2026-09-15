@@ -111,6 +111,12 @@ async function exchangeCode(params: {
         : baseMsg,
     };
   }
+  if (!json?.access_token) {
+    console.error('[google-oauth-exchange] token response missing access_token', {
+      keys: Object.keys(json ?? {}),
+    });
+    return { error: 'Google returned a token response without an access_token' };
+  }
   return json;
 }
 
