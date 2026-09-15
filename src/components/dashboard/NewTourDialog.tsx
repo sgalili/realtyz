@@ -202,24 +202,21 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         // The client has NOT accepted yet — only an explicit acceptance confirms.
         status: 'pending',
         timezone: 'Asia/Jerusalem',
-      });
+      }).select('id').maybeSingle();
       if (error) throw error;
 
       if (sendWa) {
-        const when = scheduledAt.toLocaleString('he-IL', {
-          timeZone: 'Asia/Jerusalem',
-          weekday: 'long',
-          day: '2-digit',
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
+        // Client gets the proposed time plus a one-tap approval link; the broker
+        // gets a reminder. The calendar event is written only once the client
+        // approves (tour-confirm).
+        const { data: notified, error: notifyErr } = await supabase.functions.invoke('tour-notify', {
+          body: { tour_id: (created as any)?.id },
         });
-        const where = propertyLabel || 'הנכס';
-        const res = await sendViaOfficialWaba({
-          phone_number: phone,
-          message: `שלום ${name}, קבענו סיור ב${where} ב${when}. נתראה!`,
-        });
-        if (!res.ok) toast.error(res.error || 'הסיור נשמר, אך שליחת האישור בוואטסאפ נכשלה');
+        if (notifyErr || (notified as any)?.ok === false) {
+          toast.error('הסיור נשמר, אך שליחת ההודעות בוואטסאפ נכשלה');
+        } else {
+          toast.success('נשלחה בקשת אישור מועד ללקוח ותזכורת למתווך');
+        }
       }
 
       if (sendSignature) {
