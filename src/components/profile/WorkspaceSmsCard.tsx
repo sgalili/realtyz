@@ -106,7 +106,7 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-1.5">
-          <Label htmlFor="sms019-user">שם משתמש 019</Label>
+          <Label htmlFor="sms019-user">שם משתמש</Label>
           <Input id="sms019-user" value={username} onChange={(e) => setUsername(e.target.value)} dir="ltr" />
         </div>
         <div className="space-y-1.5">
@@ -121,7 +121,7 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="sms019-sender">מספר / שולח מאושר</Label>
+          <Label htmlFor="sms019-sender">מספר שולח מאושר</Label>
           <Input id="sms019-sender" value={sender} onChange={(e) => setSender(e.target.value)} dir="ltr" />
         </div>
       </div>
