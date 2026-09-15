@@ -27,16 +27,19 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   CalendarClock,
+  Check,
+  X,
   Loader2,
   Mail,
   MapPin,
-  MessageSquare,
   Phone,
   StickyNote,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
+import { BrandIcon } from '@/components/BrandIcon';
+import { DigitalSignatureButton } from '@/components/signature/DigitalSignatureButton';
 import { SignatureStatusStrip } from '@/components/signature/SignatureStatusStrip';
 import {
   ScheduleMonthGrid,
@@ -278,89 +281,104 @@ export function ScheduledToursCard() {
     return map;
   }, [tours]);
 
-  /** Opens the omnichannel inbox on the matching lead (by phone). */
-  async function openOmnichat(t: Tour) {
-    const digits = (t.client_phone || '').replace(/\D/g, '');
-    const intl = digits.startsWith('0') ? `972${digits.slice(1)}` : digits;
-    try {
-      const { data } = await supabase
-        .from('leads')
-        .select('id')
-        .or(`phone_number.eq.${intl},phone_number.eq.0${intl.slice(3)}`)
-        .limit(1)
-        .maybeSingle();
-      const leadId = (data as any)?.id as string | undefined;
-      navigate(leadId ? `/inbox?lead=${leadId}&channel=whatsapp` : '/inbox');
-      if (!leadId) toast.info('לא נמצאה שיחה קיימת — נפתח האומני-צ׳אט');
-    } catch {
-      navigate('/inbox');
-    }
-  }
+  function DigiformAction({ t }: { t: Tour }) {
+    const leadId = leadIdOf(t.client_phone);
+    const { data: formSent = false } = useQuery({
+      queryKey: ['tour-digiform-sent', leadId, t.listing_id],
+      enabled: !!leadId,
+      queryFn: async () => {
+        let query = supabase
+          .from('closing_documents')
+          .select('id')
+          .eq('lead_id', leadId as string)
+          .eq('template_key', 'tour_agreement')
+          .not('sent_at', 'is', null)
+          .limit(1);
+        if (t.listing_id) query = query.eq('listing_id', t.listing_id);
+        const { data, error } = await query;
+        if (error) throw error;
+        return (data?.length ?? 0) > 0;
+      },
+    });
 
-  function TourActions({ t }: { t: Tour }) {
+    if (formSent) return null;
     return (
-      <div className="mt-2 space-y-1.5">
-        {/* Chat, call, done and cancel all share the SAME row. */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Button size="sm" variant="outline" className="h-8 text-[12px]" onClick={() => openOmnichat(t)}>
-            <MessageSquare className="me-1 h-3.5 w-3.5" />
-            צ׳אט
-          </Button>
-          <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
-            <a href={`tel:${t.client_phone}`}>
-              <Phone className="me-1 h-3.5 w-3.5" />
-              שיחה
-            </a>
-          </Button>
-          {t.status !== 'completed' && (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-8 text-[12px]"
-              onClick={() => setStatus.mutate({ id: t.id, status: 'completed' })}
-            >
-              בוצע
-            </Button>
-          )}
-          <Button size="sm" variant="ghost" className="h-8 text-[12px]" onClick={() => setCancelTarget(t)}>
-            ביטול
-          </Button>
-        </div>
-        {t.client_email ? (
-          <div className="flex flex-wrap gap-1.5">
-            <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
-              <a href={`mailto:${t.client_email}`}>
-                <Mail className="me-1 h-3.5 w-3.5" />
-                אימייל
-              </a>
-            </Button>
-          </div>
-        ) : null}
-      </div>
+      <DigitalSignatureButton
+        lead={leadId ? { id: leadId, full_name: t.client_name, phone_number: t.client_phone } : null}
+        listingId={t.listing_id}
+        label="שליחת טופס דיגיטלי"
+        className="mt-2"
+      />
     );
   }
 
   function TourRow({ t }: { t: Tour }) {
     return (
       <div className="rounded-lg border bg-muted/20 p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <ContactAvatar
-              name={t.client_name}
-              imageUrl={avatarOf(t.client_phone)}
-              className="h-8 w-8"
-            />
-            {t.client_name}
-          </div>
-          {/* The status pill itself opens the manual client-confirmation dialog. */}
-          <button type="button" onClick={() => setConfirmTarget(t)} title="לחיצה לעדכון אישור הלקוח">
-            <Badge
-              variant="outline"
-              className={`cursor-pointer transition-opacity hover:opacity-80 ${STATUS_CLASS[displayStatus(t)] ?? ''}`}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-foreground">
+            <button
+              type="button"
+              className="flex min-w-0 items-center gap-2 hover:text-primary"
+              onClick={() => {
+                const leadId = leadIdOf(t.client_phone);
+                if (leadId) navigate(`/lead-crm/${leadId}`);
+              }}
+              disabled={!leadIdOf(t.client_phone)}
+              aria-label={`פתיחת כרטיס איש קשר של ${t.client_name}`}
             >
-              {STATUS_HE[displayStatus(t)] ?? t.status}
-            </Badge>
-          </button>
+              <ContactAvatar name={t.client_name} imageUrl={avatarOf(t.client_phone)} className="h-8 w-8" />
+              <span className="truncate hover:underline">{t.client_name}</span>
+            </button>
+            {leadIdOf(t.client_phone) ? (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-[hsl(var(--social-whatsapp))]"
+                onClick={() => navigate(`/inbox?lead=${leadIdOf(t.client_phone)}&channel=whatsapp`)}
+                aria-label="פתיחת WhatsApp"
+                title="WhatsApp"
+              >
+                <BrandIcon name="whatsapp" className="h-4 w-4" />
+              </Button>
+            ) : null}
+            <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
+              <a href={`tel:${t.client_phone}`} aria-label="שיחת טלפון" title="שיחת טלפון">
+                <Phone className="h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <div className="flex items-center gap-1">
+              {t.status !== 'completed' ? (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-[hsl(var(--success))]"
+                  onClick={() => setStatus.mutate({ id: t.id, status: 'completed' })}
+                  aria-label="סימון הסיור כבוצע"
+                  title="בוצע"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+              ) : null}
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-destructive"
+                onClick={() => setCancelTarget(t)}
+                aria-label="ביטול הסיור"
+                title="ביטול"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <button type="button" onClick={() => setConfirmTarget(t)} title="לחיצה לעדכון אישור הלקוח">
+              <Badge variant="outline" className={`cursor-pointer transition-opacity hover:opacity-80 ${STATUS_CLASS[displayStatus(t)] ?? ''}`}>
+                {STATUS_HE[displayStatus(t)] ?? t.status}
+              </Badge>
+            </button>
+          </div>
         </div>
         <div className="mt-1.5 space-y-1 text-[13px] text-muted-foreground">
           <p className="flex items-center gap-1.5">
@@ -401,8 +419,8 @@ export function ScheduledToursCard() {
             </p>
           ) : null}
         </div>
-        <SignatureStatusStrip leadId={leadIdOf(t.client_phone)} />
-        <TourActions t={t} />
+        <SignatureStatusStrip leadId={leadIdOf(t.client_phone)} listingId={t.listing_id} />
+        <DigiformAction t={t} />
       </div>
     );
   }

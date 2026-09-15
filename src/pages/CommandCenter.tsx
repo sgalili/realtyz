@@ -299,19 +299,33 @@ export default function CommandCenter() {
             className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-right"
           >
             {task.leadName || task.leadAvatar ? (
-              <ContactAvatar
-                name={task.leadName}
-                imageUrl={task.leadAvatar}
-                className="mt-0.5 h-10 w-10 shrink-0"
-              />
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (task.leadId) navigate(`/lead-crm/${task.leadId}`);
+                }}
+                disabled={!task.leadId}
+                aria-label={`פתיחת כרטיס איש קשר של ${task.leadName ?? 'איש קשר'}`}
+              >
+                <ContactAvatar name={task.leadName} imageUrl={task.leadAvatar} className="mt-0.5 h-10 w-10 shrink-0" />
+              </button>
             ) : null}
             <span className="min-w-0 flex-1 space-y-1.5">
               {task.leadName && (
                 <span className="flex min-w-0 items-start gap-1.5">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-bold text-foreground">
+                    <button
+                      type="button"
+                      className="block max-w-full truncate text-[15px] font-bold text-foreground hover:text-primary hover:underline"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (task.leadId) navigate(`/lead-crm/${task.leadId}`);
+                      }}
+                      disabled={!task.leadId}
+                    >
                       {task.leadName}
-                    </span>
+                    </button>
                     {callSummary && (
                       <span className="mt-0.5 block text-[13px] text-muted-foreground">
                         {due.text}
