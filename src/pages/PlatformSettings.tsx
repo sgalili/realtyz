@@ -88,6 +88,39 @@ export default function PlatformSettingsPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">פייסבוק ומסנג'ר</CardTitle>
+          <CardDescription>מה קורה כשמישהו מגיב לפוסט של העמוד</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-start justify-between gap-4 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="auto_dm_commenters" className="text-sm font-medium cursor-pointer">
+                הודעה פרטית אוטומטית למגיבים
+              </Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                כל מי שמגיב לפוסט של העמוד מקבל הודעה פרטית במסנג'ר, פעם אחת לכל תגובה. דורש הרשאת הודעות מאושרת בפייסבוק.
+              </p>
+            </div>
+            <Switch
+              id="auto_dm_commenters"
+              checked={Boolean((settings.extra as Record<string, unknown> | null)?.auto_dm_commenters)}
+              disabled={isLoading || isUpdating}
+              onCheckedChange={async (v) => {
+                try {
+                  const extra = { ...((settings.extra as Record<string, unknown>) ?? {}), auto_dm_commenters: v };
+                  await update({ extra });
+                  toast.success('ההגדרה עודכנה');
+                } catch (e: any) {
+                  toast.error(e?.message ?? 'שגיאה בעדכון');
+                }
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {GROUPS.map((group) => (
         <Card key={group.label}>
           <CardHeader>

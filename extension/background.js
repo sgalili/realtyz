@@ -123,11 +123,87 @@ const absoluteGroupUrl = (value) => {
 };
 const groupUrl = (job) => absoluteGroupUrl(job.group_url) || absoluteGroupUrl(job.group_id);
 
+/* ── execution guards ────────────────────────────────────────────────────
+ * The worker must never act on the personal newsfeed / profile, never repeat
+ * a job, and never exceed a human posting pace. All three are enforced here,
+ * before a tab is ever opened.
+ */
+const AUTOMATION_FLAG = 'rzAutomationEnabled';
+const DONE_KEY = 'rzDoneJobs';
+const RATE_KEY = 'rzActionRate';
+const MAX_PER_HOUR = 12;
+const MAX_PER_DAY = 60;
+
+const BLOCKED_URL = /facebook\.com\/(?:$|\?|home|profile\.php|me(?:\/|$)|watch|marketplace|reels|stories|messages|notifications|friends|bookmarks|settings)/i;
+
+/** A post permalink we are allowed to comment on. */
+const isPostUrl = (value) => {
+  const url = String(value || '').trim();
+  if (!/^https:\/\/(?:www\.|m\.|mbasic\.)?facebook\.com\//i.test(url)) return false;
+  if (BLOCKED_URL.test(url)) return false;
+  return /(?:\/posts\/|\/permalink|permalink\.php|story_fbid=|multi_permalinks=|pfbid|\/photo|\/videos\/|comment_id=)/i.test(url);
+};
+
+const local = (keys) => new Promise((resolve) => chrome.storage.local.get(keys, (r) => resolve(r || {})));
+const localSet = (patch) => new Promise((resolve) => chrome.storage.local.set(patch, () => resolve()));
+
+const automationEnabled = async () => {
+  const r = await local([AUTOMATION_FLAG]);
+  return r[AUTOMATION_FLAG] !== false; // default on, explicit false stops everything
+};
+
+/** Persisted one-shot ledger keyed by job id and target post/group. */
+const jobKey = (entry) =>
+  [String((entry && entry.id) || ''), String((entry && (entry.postId || entry.post_id)) || ''), String((entry && (entry.postUrl || entry.groupUrl)) || '')]
+    .filter(Boolean)
+    .join('|');
+
+const alreadyDone = async (entry) => {
+  const key = jobKey(entry);
+  if (!key) return true; // no identity → refuse
+  const r = await local([DONE_KEY]);
+  const ledger = (r[DONE_KEY] && typeof r[DONE_KEY] === 'object') ? r[DONE_KEY] : {};
+  return Boolean(ledger[key]);
+};
+
+const markDone = async (entry) => {
+  const key = jobKey(entry);
+  if (!key) return;
+  const r = await local([DONE_KEY]);
+  const ledger = (r[DONE_KEY] && typeof r[DONE_KEY] === 'object') ? r[DONE_KEY] : {};
+  ledger[key] = Date.now();
+  // keep the ledger small: drop entries older than 30 days
+  const cutoff = Date.now() - 30 * 86400000;
+  for (const k of Object.keys(ledger)) if (Number(ledger[k]) < cutoff) delete ledger[k];
+  await localSet({ [DONE_KEY]: ledger });
+};
+
+/** Rolling rate limit so the automation can never spam in a loop. */
+const rateAllows = async () => {
+  const r = await local([RATE_KEY]);
+  const stamps = Array.isArray(r[RATE_KEY]) ? r[RATE_KEY].map(Number).filter(Boolean) : [];
+  const now = Date.now();
+  const hour = stamps.filter((t) => now - t < 3600000).length;
+  const day = stamps.filter((t) => now - t < 86400000).length;
+  return hour < MAX_PER_HOUR && day < MAX_PER_DAY;
+};
+
+const rateRecord = async () => {
+  const r = await local([RATE_KEY]);
+  const stamps = Array.isArray(r[RATE_KEY]) ? r[RATE_KEY].map(Number).filter(Boolean) : [];
+  const now = Date.now();
+  await localSet({ [RATE_KEY]: [...stamps.filter((t) => now - t < 86400000), now] });
+};
+
 /* ── one job ────────────────────────────────────────────────────────────── */
 
 async function runJob(token, job) {
   const url = groupUrl(job);
   if (!url) return report(token, job, false, 'כתובת הקבוצה חסרה');
+  if (BLOCKED_URL.test(url)) return report(token, job, false, 'הפעולה בוטלה: היעד אינו קבוצת פייסבוק');
+  if (!(await automationEnabled())) return report(token, job, false, 'האוטומציה בדפדפן מושבתת');
+  if (!(await rateAllows())) return report(token, job, false, 'הגעת לתקרת הפעולות לשעה — הפעולה תרוץ בהמשך');
+  await rateRecord();
   if (!String(job.message || '').trim()) return report(token, job, false, 'תוכן הפוסט ריק');
 
   let tabId = null;
@@ -186,6 +262,24 @@ async function runPageFirstComment(token, entry) {
     await report(token, { id: entry.id, local: true }, false, 'תוכן התגובה הראשונה ריק');
     return false;
   }
+  if (!isPostUrl(postUrl)) {
+    await report(token, { id: entry.id, local: true }, false, 'הפעולה בוטלה: היעד אינו כתובת של פוסט ספציפי');
+    return false;
+  }
+  if (!(await automationEnabled())) {
+    await report(token, { id: entry.id, local: true }, false, 'האוטומציה בדפדפן מושבתת');
+    return false;
+  }
+  if (await alreadyDone({ ...entry, postUrl })) {
+    await report(token, { id: entry.id, local: true }, false, 'התגובה הזו כבר בוצעה בעבר');
+    return false;
+  }
+  if (!(await rateAllows())) {
+    await report(token, { id: entry.id, local: true }, false, 'הגעת לתקרת התגובות לשעה — הפעולה תרוץ בהמשך');
+    return false;
+  }
+  await markDone({ ...entry, postUrl });
+  await rateRecord();
 
   let tabId = null;
   try {
@@ -337,6 +431,7 @@ const STALE_POSTING_MS = 6 * 60 * 1000;
 
 async function drainQueue() {
   if (queueRunning) return;
+  if (!(await automationEnabled())) return; // master kill switch
   queueRunning = true;
   try {
     const token = await getToken();

@@ -21,6 +21,91 @@ import {
   toFlatComment,
   type FlatComment,
 } from "../_shared/metaComments.ts";
+import { isOwnPageAuthor } from "../_shared/metaPage.ts";
+import { privateReplyConfig, sendPrivateReply } from "../_shared/metaPrivateReply.ts";
+
+/**
+ * Comment → private Messenger DM.
+ * Runs at most once per comment, never for our own Page/AI comments, and never
+ * breaks the webhook: every Meta rejection is logged and swallowed.
+ */
+async function maybePrivateReply(
+  admin: any,
+  binding: { ownerId: string; pageId: string; pageName: string | null; token: string },
+  flat: FlatComment,
+): Promise<void> {
+  try {
+    if (isOwnPageAuthor(flat.fromId, flat.fromName, { pageId: binding.pageId, pageName: binding.pageName })) return;
+
+    const { data: row } = await admin
+      .from("engagement_events")
+      .select("id, metadata, lead_id")
+      .eq("user_id", binding.ownerId)
+      .eq("external_id", flat.id)
+      .maybeSingle();
+    const meta = (row?.metadata && typeof row.metadata === "object") ? row.metadata as Record<string, unknown> : {};
+    if (meta.private_reply) return;           // one attempt per comment, ever
+    if (meta.is_ai_reply) return;
+
+    const cfg = await privateReplyConfig(admin, binding.ownerId);
+    if (!cfg.enabled) return;
+
+    const outcome = await sendPrivateReply(
+      { pageId: binding.pageId, pageName: binding.pageName, token: binding.token } as any,
+      flat.id,
+      cfg.text,
+    );
+
+    if (row?.id) {
+      await admin
+        .from("engagement_events")
+        .update({
+          metadata: {
+            ...meta,
+            private_reply: {
+              ok: outcome.ok,
+              at: new Date().toISOString(),
+              ...(outcome.ok
+                ? { via: outcome.via, message_id: outcome.messageId }
+                : { reason: outcome.reason, error: outcome.error, code: outcome.code }),
+            },
+          },
+        })
+        .eq("id", row.id)
+        .eq("user_id", binding.ownerId);
+    }
+
+    if (!outcome.ok) {
+      await logIntegrationError({
+        integration: "meta",
+        functionName: "meta-comments-webhook",
+        errorMessage: `private_reply_${outcome.reason}: ${outcome.error}`,
+        context: { comment_id: flat.id, page_id: binding.pageId, code: outcome.code, subcode: outcome.subcode },
+      });
+      return;
+    }
+
+    // Mirror the outbound DM into the inbox thread when we know the contact.
+    if (row?.lead_id) {
+      await admin.from("messages").insert({
+        lead_id: row.lead_id,
+        content: cfg.text,
+        direction: "outbound",
+        sender_type: "ai",
+        channel: "messenger",
+        platform: "messenger",
+        metadata: {
+          meta_message_id: outcome.messageId,
+          source: "comment_private_reply",
+          comment_id: flat.id,
+          page_id: binding.pageId,
+        },
+      } as any);
+    }
+  } catch (e) {
+    console.error("[meta-comments-webhook] private reply failed", e);
+  }
+}
 
 const verifyToken = () =>
   Deno.env.get("META_COMMENTS_VERIFY_TOKEN") ??
@@ -146,6 +231,9 @@ Deno.serve(async (req) => {
             return !!native && (native === flat!.postId || flat!.postId.endsWith(`_${native}`));
           });
           if (match) await persistTrackedComments(admin, String((match as any).id), [flat], page);
+
+          // Comment → private Messenger DM (opt-in per workspace).
+          await maybePrivateReply(admin, binding as any, flat);
         }
       }
     } catch (e) {

@@ -166,8 +166,36 @@
 
 
 
+  /* ── Execution guards ────────────────────────────────────────────────────
+   * Nothing here may ever fire on its own. Every action requires an explicit
+   * job from the app (with an id), and the current URL must be a legitimate
+   * target: a group for posting, a real post permalink for commenting.
+   * The personal newsfeed, personal profile, watch and marketplace are hard
+   * blocked so the automation can never loop over private content. */
+  const BLOCKED_CONTEXT = /^\/(?:$|\?|home|profile\.php|me\/?$|watch|marketplace|reels|stories|messages|notifications|friends|bookmarks|settings|gaming)/i;
+  const GROUP_CONTEXT = /^\/groups\/[^/]+/i;
+  const POST_CONTEXT = /(?:\/posts\/|\/permalink|permalink\.php|story_fbid=|multi_permalinks=|pfbid|\/photo|\/videos\/|comment_id=)/i;
+
+  const contextOf = () => `${location.pathname}${location.search}`;
+
+  const groupContextOk = () => GROUP_CONTEXT.test(location.pathname) && !BLOCKED_CONTEXT.test(location.pathname);
+  const postContextOk = () => POST_CONTEXT.test(contextOf()) && !BLOCKED_CONTEXT.test(location.pathname);
+
+  /* One run per job id inside this tab, forever. */
+  const doneJobs = new Set();
+  const claimJob = (job) => {
+    const id = String((job && job.id) || '').trim();
+    if (!id) return null;
+    if (doneJobs.has(id)) return null;
+    doneJobs.add(id);
+    return id;
+  };
+
   async function postToGroup(job) {
     if (isLoggedOut()) return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' };
+    if (!groupContextOk()) {
+      return { ok: false, reason: 'הפעולה בוטלה: העמוד הפתוח אינו קבוצת פייסבוק' };
+    }
 
     // 1. open the composer
     let box = textbox();
@@ -247,6 +275,9 @@
 
   async function postFirstCommentToPage(job) {
     if (isLoggedOut()) return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' };
+    if (!postContextOk() && !groupContextOk()) {
+      return { ok: false, reason: 'הפעולה בוטלה: העמוד הפתוח אינו פוסט ספציפי' };
+    }
 
     const postUrl = String(job.post_url || '').trim();
     const postId = String(job.post_id || '').trim();
@@ -324,14 +355,24 @@
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || msg.source !== 'realtyz-extension') return;
     if (msg.type === 'RZ_POST_TO_GROUP') {
-      currentJobId = (msg.job && msg.job.id) || null;
+      const claimed = claimJob(msg.job);
+      if (!claimed) {
+        sendResponse({ ok: false, reason: 'הפעולה בוטלה: אין מזהה עבודה תקף או שהעבודה כבר בוצעה' });
+        return true;
+      }
+      currentJobId = claimed;
       postToGroup(msg.job || {})
         .then((res) => sendResponse(res))
         .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
       return true;
     }
     if (msg.type === 'RZ_POST_FIRST_COMMENT') {
-      currentJobId = (msg.job && msg.job.id) || null;
+      const claimed = claimJob(msg.job);
+      if (!claimed) {
+        sendResponse({ ok: false, reason: 'הפעולה בוטלה: אין מזהה עבודה תקף או שהעבודה כבר בוצעה' });
+        return true;
+      }
+      currentJobId = claimed;
       reportStage('commenting');
       postFirstCommentToPage(msg.job || {})
         .then((res) => sendResponse(res))
