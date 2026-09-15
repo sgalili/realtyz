@@ -77,7 +77,7 @@ const TAB_LABEL: Record<SectionTab, string> = {
 };
 
 /** Tabs that never show a card count next to their label. */
-const TABS_WITHOUT_COUNT = new Set<SectionTab>(['tours']);
+const TABS_WITHOUT_COUNT = new Set<SectionTab>([]);
 
 /** Standard workspaces: tasks (incl. reminders) first, then tours and calls. */
 const DEFAULT_TABS: SectionTab[] = ['tasks', 'tours', 'calls'];
