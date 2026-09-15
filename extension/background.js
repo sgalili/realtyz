@@ -262,6 +262,24 @@ async function runPageFirstComment(token, entry) {
     await report(token, { id: entry.id, local: true }, false, 'תוכן התגובה הראשונה ריק');
     return false;
   }
+  if (!isPostUrl(postUrl)) {
+    await report(token, { id: entry.id, local: true }, false, 'הפעולה בוטלה: היעד אינו כתובת של פוסט ספציפי');
+    return false;
+  }
+  if (!(await automationEnabled())) {
+    await report(token, { id: entry.id, local: true }, false, 'האוטומציה בדפדפן מושבתת');
+    return false;
+  }
+  if (await alreadyDone({ ...entry, postUrl })) {
+    await report(token, { id: entry.id, local: true }, false, 'התגובה הזו כבר בוצעה בעבר');
+    return false;
+  }
+  if (!(await rateAllows())) {
+    await report(token, { id: entry.id, local: true }, false, 'הגעת לתקרת התגובות לשעה — הפעולה תרוץ בהמשך');
+    return false;
+  }
+  await markDone({ ...entry, postUrl });
+  await rateRecord();
 
   let tabId = null;
   try {
