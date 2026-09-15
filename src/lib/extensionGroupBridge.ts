@@ -179,7 +179,7 @@ export const useExtensionGroups = (owner?: string | null) => {
       window.removeEventListener("storage", onStorage);
       window.clearInterval(poll);
     };
-  }, []);
+  }, [owner]);
 
   return { groups, lastSyncAt, refresh: requestExtensionGroups };
 };
