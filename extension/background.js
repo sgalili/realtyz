@@ -431,6 +431,7 @@ const STALE_POSTING_MS = 6 * 60 * 1000;
 
 async function drainQueue() {
   if (queueRunning) return;
+  if (!(await automationEnabled())) return; // master kill switch
   queueRunning = true;
   try {
     const token = await getToken();
