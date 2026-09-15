@@ -78,6 +78,9 @@ export function ExtensionGroupSyncCard({
           group_icon: g.group_icon,
           group_url: g.group_url,
           ...(g.member_count !== null ? { member_count: g.member_count } : {}),
+          // Bind every synced group to this workspace's connected Facebook page.
+          page_id: pageBinding?.pageId ?? null,
+          source: 'extension',
           is_selected: true,
           imported_at: now,
           updated_at: now,
