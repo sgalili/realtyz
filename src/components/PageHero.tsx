@@ -106,10 +106,11 @@ function LeadsHeroAddButton() {
       window.removeEventListener("leads:busy:off", off);
     };
   }, []);
-  const dispatch = (action: "manual" | "import" | "homely") => {
+  const dispatch = (action: "manual" | "import" | "homely" | "avatars") => {
     if (busy) return;
     window.dispatchEvent(new CustomEvent("leads:add", { detail: { action } }));
   };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
