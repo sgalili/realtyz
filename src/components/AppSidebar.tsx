@@ -4,7 +4,7 @@ import {
   Users,
   Megaphone,
   MessageCircle,
-  Building2,
+  Home,
   Handshake,
   ClipboardList,
   HelpCircle,
