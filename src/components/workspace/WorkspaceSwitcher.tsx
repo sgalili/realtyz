@@ -148,7 +148,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
           </PopoverTrigger>
           <PopoverContent dir="rtl" align="end" side="bottom" sideOffset={6} className="w-72 p-1.5">
             <p className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground">
-              {isSuperAdmin ? 'כל החשבונות ומרחבי העבודה' : 'מרחבי עבודה'}
+              {isSuperAdmin ? '\n' : 'מרחבי עבודה'}
             </p>
             {isSuperAdmin && (
               <div className="px-1.5 pb-1.5">
