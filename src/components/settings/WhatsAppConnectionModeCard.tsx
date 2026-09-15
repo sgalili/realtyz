@@ -61,7 +61,7 @@ export function WhatsAppConnectionModeCard() {
     return () => { cancelled = true; };
   }, [ownerId]);
 
-  const choose = async (value: Mode) => {
+  const apply = async (value: Mode) => {
     if (!ownerId || value === mode) return;
     setSaving(value);
     const { error } = await supabase
