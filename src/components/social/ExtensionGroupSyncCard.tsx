@@ -14,6 +14,27 @@ import { pairExtension, readRunnerStatus } from '@/lib/extensionPairing';
 const FB_GROUPS_URL = 'https://www.facebook.com/groups/joins/?nav_source=tab';
 
 /**
+ * Which workspace owns a given pushed group list. Keeps a browser-level
+ * extension push from being copied into every workspace the user opens.
+ */
+const CLAIM_KEY = 'rz-ext-fb-groups-claim';
+
+function claimOwnerFor(signature: string): string | null {
+  try {
+    const raw = localStorage.getItem(CLAIM_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed?.signature === signature && typeof parsed?.owner === 'string') return parsed.owner;
+  } catch { /* noop */ }
+  return null;
+}
+
+function claimSignature(signature: string, owner: string) {
+  try {
+    localStorage.setItem(CLAIM_KEY, JSON.stringify({ signature, owner }));
+  } catch { /* noop */ }
+}
+
+/**
  * ExtensionGroupSyncCard — companion-extension group sync.
  *
  * The extension pushes the broker's real Facebook groups into the page (see
