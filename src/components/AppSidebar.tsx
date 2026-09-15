@@ -37,6 +37,7 @@ import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
+import { useAppMode } from '@/hooks/useAppMode';
 import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
 
 
