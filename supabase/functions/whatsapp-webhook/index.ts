@@ -31,6 +31,13 @@ import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared
 import { generateFastReply } from "../_shared/waFastReply.ts";
 import { resolveLeadGender } from "../_shared/hebrewGender.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
+import {
+  extractRefCode,
+  resolveAffiliateReferral,
+  attachAffiliateReferral,
+  referralPropertyLabel,
+  type InboundReferral,
+} from "../_shared/affiliateRef.ts";
 import { resolveWaSenderRole, type WaSenderRole } from "../_shared/waSenderRole.ts";
 import { asksForCrmCounts, fetchWorkspaceCrmCounts, renderCrmCountsBlock } from "../_shared/crmCounts.ts";
 import { BROKER_RECRUITMENT_WORKSPACE } from "../_shared/persona.ts";
@@ -694,6 +701,21 @@ async function handleLeadInboxInbound(
   const shortLink = await resolveShortLinkListing(admin, inboundText);
   const hasShortLinkSignature = SHORTLINK_ANCHOR_RE.test(inboundText);
 
+  // Affiliate referral tag `[ref:CODE]` from a public property page CTA.
+  // Resolution is best-effort: an unknown or malformed code is logged and
+  // ignored so the conversation always continues normally.
+  const refCode = extractRefCode(inboundText);
+  let referral: InboundReferral | null = null;
+  if (refCode) {
+    referral = await resolveAffiliateReferral(admin, refCode);
+    console.log("[whatsapp-webhook] inbound ref tag", {
+      code: refCode,
+      matched: !!referral,
+      listing_id: referral?.listing_id ?? null,
+      broker_id: referral?.broker_id ?? null,
+    });
+  }
+
   // === RESILIENT PIPELINE ===
   // Every DB mutation is wrapped in try/catch so a single failure (RLS,
   // workspace scoping, constraint) NEVER halts the AI reply path.
@@ -751,10 +773,10 @@ async function handleLeadInboxInbound(
 
 
   // Auto-create lead from short-link inbound when none exists yet.
-  if (!lead?.id && (shortLink || hasShortLinkSignature)) {
-    const dealType = (shortLink?.deal_type === "rent" ? "rent" : "sale");
+  if (!lead?.id && (shortLink || hasShortLinkSignature || referral)) {
+    const dealType = ((referral?.listing?.deal_type ?? shortLink?.deal_type) === "rent" ? "rent" : "sale");
     const category = dealType === "rent" ? "שוכר" : "קונה";
-    let assignTo: string | null = shortLink?.owner_id ?? null;
+    let assignTo: string | null = referral?.broker_id ?? shortLink?.owner_id ?? null;
     if (!assignTo) {
       try {
         const { data: adminRow } = await admin
@@ -774,9 +796,9 @@ async function handleLeadInboxInbound(
         .insert({
           phone_number: senderPhone,
           full_name: opts?.senderName?.trim() || "מתעניין/ת חדש/ה",
-          city: shortLink?.city ?? null,
-          neighborhood: shortLink?.neighborhood ?? null,
-          interest_tag: shortLink?.listing_id ?? null,
+          city: referral?.listing?.city ?? shortLink?.city ?? null,
+          neighborhood: referral?.listing?.neighborhood ?? shortLink?.neighborhood ?? null,
+          interest_tag: referral?.listing_id ?? shortLink?.listing_id ?? null,
           deal_type: dealType,
           lead_stage: "engaging",
           // New contacts start with the digital agent ON.
@@ -785,12 +807,15 @@ async function handleLeadInboxInbound(
           status: "contacted",
           sentiment: "positive",
           assigned_to: assignTo,
+          ...(referral?.broker_id ? { workspace_owner_id: referral.broker_id } : {}),
           preferences: {
             source: "whatsapp",
             shortlink_origin: shortLink ? "shortlink" : null,
             category,
-            listing_id: shortLink?.listing_id ?? null,
-            unresolved_listing: !shortLink,
+            listing_id: referral?.listing_id ?? shortLink?.listing_id ?? null,
+            referral_code: referral?.tracking_code ?? refCode ?? null,
+            affiliate_id: referral?.affiliate_id ?? null,
+            unresolved_listing: !shortLink && !referral,
             inbound_excerpt: inboundText.slice(0, 240),
           },
 
@@ -828,6 +853,26 @@ async function handleLeadInboxInbound(
         .eq("id", lead.id);
     } catch (e) {
       console.warn("lead tag update soft-fail:", e instanceof Error ? e.message : e);
+    }
+  }
+
+  // Bind the contact, the property and the affiliate together, and open the
+  // commission-tracking submission. Fully soft-failing (see affiliateRef.ts).
+  if (referral) {
+    try {
+      await attachAffiliateReferral(admin, {
+        referral,
+        leadId: lead?.id ?? null,
+        leadName: opts?.senderName ?? lead?.full_name ?? null,
+        leadPhone: senderPhone,
+        inboundText,
+      });
+      if (lead?.id) {
+        lead.interest_tag = lead.interest_tag || referral.listing_id;
+        lead.deal_type = lead.deal_type || referral.listing?.deal_type || lead.deal_type;
+      }
+    } catch (e) {
+      console.warn("[whatsapp-webhook] referral attach threw:", e instanceof Error ? e.message : e);
     }
   }
 
@@ -1192,7 +1237,7 @@ async function handleLeadInboxInbound(
         // System context: the webhook has no interactive user session, so we
         // hand ai-agent the verified workspace owner explicitly.
         workspace_owner_id: aiOwnerId || undefined,
-        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
+        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}${referral ? `\n[REFERRAL_CONTEXT] The contact arrived through an affiliate marketing link for this property: ${referralPropertyLabel(referral)}. It is ALREADY linked to their CRM card — never say you failed to find it. Greet warmly, confirm the property by name and offer a viewing.` : ""}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
         messages: aiMessages,
         enable_research: agentCommand ? true : undefined,
       }),
