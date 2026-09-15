@@ -1,5 +1,12 @@
 import { corsHeaders } from "../_shared/cors.ts";
 
+/**
+ * Verifies 019 SMS credentials by reading the account balance.
+ *
+ * 019 no longer issues API passwords: the account owner generates an API TOKEN
+ * on the 019 website, sent as `Authorization: Bearer <token>`. Legacy password
+ * credentials still work and are used as a fallback.
+ */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -7,56 +14,61 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const user = body.user;
-    const password = body.password || body.token;
+    const user = String(body.user ?? body.username ?? "").trim();
+    const token = String(body.token ?? "").trim();
+    const password = String(body.password ?? "").trim();
 
-    if (!user || !password) {
+    if (!user || (!token && !password)) {
       return new Response(
-        JSON.stringify({ error: "Missing user or password" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "חסר שם משתמש או טוקן" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 019 SMS XML API - check balance to verify credentials
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+    const attempt = async (useToken: boolean) => {
+      const secret = useToken ? token : password;
+      const headers: Record<string, string> = { "Content-Type": "application/xml; charset=UTF-8" };
+      if (useToken) headers.Authorization = `Bearer ${secret}`;
+      const userXml = useToken
+        ? `<user><username>${escapeXml(user)}</username></user>`
+        : `<user><username>${escapeXml(user)}</username><password>${escapeXml(secret)}</password></user>`;
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <balance>
-  <user>
-    <username>${escapeXml(user)}</username>
-    <password>${escapeXml(password)}</password>
-  </user>
+  ${userXml}
 </balance>`;
+      const res = await fetch("https://www.019sms.co.il:8090/api", {
+        method: "POST",
+        headers,
+        body: xml,
+      });
+      const text = await res.text();
+      console.log("019 SMS response:", useToken ? "token" : "password", res.status, text);
+      return {
+        status: parseInt(text.match(/<status>(-?\d+)<\/status>/)?.[1] ?? "-1", 10),
+        balance: text.match(/<balance>(\d+)<\/balance>/)?.[1] ?? null,
+        message: text.match(/<message>(.*?)<\/message>/)?.[1] ?? null,
+      };
+    };
 
-    const res = await fetch("https://www.019sms.co.il:8090/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/xml; charset=UTF-8" },
-      body: xml,
-    });
+    let result = token ? await attempt(true) : await attempt(false);
+    if (result.status !== 0 && token && password) result = await attempt(false);
 
-    const text = await res.text();
-    console.log("019 SMS response:", res.status, text);
-
-    const statusMatch = text.match(/<status>(\d+)<\/status>/);
-    const balanceMatch = text.match(/<balance>(\d+)<\/balance>/);
-    const messageMatch = text.match(/<message>(.*?)<\/message>/);
-    const status = statusMatch ? parseInt(statusMatch[1]) : -1;
-
-    if (status === 0 && balanceMatch) {
+    if (result.status === 0) {
       return new Response(
-        JSON.stringify({ success: true, credit: balanceMatch[1] }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: true, credit: result.balance ?? "0" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const errorMsg = messageMatch?.[1] || `Error code: ${status}`;
     return new Response(
-      JSON.stringify({ success: false, error: errorMsg }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: false, error: result.message || `Error code: ${result.status}` }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("Test SMS error:", err);
     return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: err instanceof Error ? err.message : "שגיאה" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });

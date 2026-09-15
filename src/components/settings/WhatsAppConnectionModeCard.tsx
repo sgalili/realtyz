@@ -1,90 +1,110 @@
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { BadgeCheck, Building2, ShieldCheck, Smartphone } from 'lucide-react';
-import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
+
+type Mode = 'official_meta' | 'qr_session';
+
+const OPTIONS: Array<{ value: Mode; title: string; hint: string }> = [
+  {
+    value: 'official_meta',
+    title: 'מספר Realtyz הרשמי (Meta)',
+    hint: 'שליחה וקבלה דרך המספר המאומת של Meta.',
+  },
+  {
+    value: 'qr_session',
+    title: 'מספר ווטסאפ אישי (סריקת QR)',
+    hint: 'שליחה וקבלה מהמספר האישי שחובר בסריקת QR.',
+  },
+];
 
 /**
- * WhatsApp messaging runs exclusively on the Official WhatsApp Business API
- * (Meta Cloud API). There is no alternative gateway and no QR-session mode:
- * every inbound message and every outbound reply flows through Meta only.
+ * Workspace-wide WhatsApp method selection. The chosen method applies to every
+ * message the workspace sends and receives across the app.
+ * Exception: verification codes (OTP) always ship from the official Realtyz
+ * Meta number, whatever is selected here.
  */
 export function WhatsAppConnectionModeCard() {
   const ownerId = useActiveWorkspaceOwnerId();
   const [loading, setLoading] = useState(true);
-  const [phone, setPhone] = useState<string>('');
+  const [saving, setSaving] = useState<Mode | null>(null);
+  const [mode, setMode] = useState<Mode>('official_meta');
 
   useEffect(() => {
     if (!ownerId) return;
     let cancelled = false;
-    (async () => {
-      // Pin the workspace to the official transport (idempotent).
-      await supabase
-        .from('workspace_whatsapp_settings' as never)
-        .upsert(
-          { workspace_owner_id: ownerId, connection_type: 'official_meta' } as never,
-          { onConflict: 'workspace_owner_id' } as never,
-        );
-
+    void (async () => {
       const { data } = await supabase
-        .from('wa_providers' as never)
-        .select('config')
-        .limit(1)
+        .from('workspace_whatsapp_settings' as never)
+        .select('connection_type')
+        .eq('workspace_owner_id', ownerId)
         .maybeSingle();
-      const cfg = (data as unknown as { config?: Record<string, unknown> } | null)?.config ?? {};
-      const display = String(cfg?.display_phone_number ?? cfg?.phone_number ?? '');
-      if (!cancelled) {
-        setPhone(display);
-        setLoading(false);
-      }
-    })().catch(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
+      if (cancelled) return;
+      const value = String((data as any)?.connection_type ?? 'official_meta');
+      setMode(value === 'qr_session' ? 'qr_session' : 'official_meta');
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, [ownerId]);
 
-  return (
-    <Card className="border-blue-200" dir="rtl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Smartphone className="h-5 w-5 text-blue-600" />
-          חיבור WhatsApp למרחב העבודה
-        </CardTitle>
-        <CardDescription>
-          כל ההודעות, הצ׳אטים ותיבת הדואר הנכנס פועלים דרך ה-WhatsApp Business API הרשמי של Meta.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {loading ? (
-          <Skeleton className="h-28 w-full" />
-        ) : (
-          <>
-            <div className="rounded-lg border border-blue-500 bg-blue-50/60 p-4 ring-1 ring-blue-300">
-              <div className="flex items-center justify-between">
-                <Building2 className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium">WhatsApp Business API רשמי (Meta Cloud API)</span>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{"\n"}</p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="gap-1 border-blue-300 text-blue-700">
-                  <BadgeCheck className="h-3 w-3" /> פעיל
-                </Badge>
-                {phone && (
-                  <Badge variant="outline" className="gap-1 border-emerald-300 bg-emerald-50 text-emerald-700">
-                    <span dir="ltr">{formatPhoneDisplay(phone)}</span>
-                  </Badge>
-                )}
-              </div>
-            </div>
+  const choose = async (value: Mode) => {
+    if (!ownerId || value === mode) return;
+    setSaving(value);
+    const { error } = await supabase
+      .from('workspace_whatsapp_settings' as never)
+      .upsert(
+        { workspace_owner_id: ownerId, connection_type: value } as never,
+        { onConflict: 'workspace_owner_id' } as never,
+      );
+    setSaving(null);
+    if (error) {
+      toast.error('שמירת אופן החיבור נכשלה', { description: error.message });
+      return;
+    }
+    setMode(value);
+    toast.success(
+      value === 'qr_session'
+        ? 'כל ההודעות במרחב העבודה יישלחו מהמספר האישי'
+        : 'כל ההודעות במרחב העבודה יישלחו מהמספר הרשמי של Meta',
+    );
+  };
 
-            <div className="flex items-start gap-2 rounded-lg border border-dashed border-blue-300 bg-background p-3">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-              <p className="text-xs text-muted-foreground leading-relaxed">{"\n"}</p>
-            </div>
-          </>
+  return (
+    <Card data-keep dir="rtl" className="border-0 bg-transparent shadow-none">
+      <CardContent className="space-y-2 p-0">
+        <p className="text-xs text-muted-foreground">
+          הבחירה חלה על כל ההודעות היוצאות והנכנסות במרחב העבודה. קודי אימות נשלחים תמיד מהמספר הרשמי של המערכת.
+        </p>
+        {loading ? (
+          <Skeleton className="h-20 w-full" />
+        ) : (
+          <div className="space-y-2">
+            {OPTIONS.map((opt) => {
+              const active = mode === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => choose(opt.value)}
+                  disabled={!!saving}
+                  className={cn(
+                    'flex w-full items-start justify-between gap-3 rounded-lg border p-3 text-right transition-colors',
+                    active ? 'border-primary bg-primary/5' : 'hover:bg-muted/40',
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">{opt.title}</span>
+                    <span className="block text-xs text-muted-foreground">{opt.hint}</span>
+                  </span>
+                  {active && <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
+                </button>
+              );
+            })}
+          </div>
         )}
       </CardContent>
     </Card>

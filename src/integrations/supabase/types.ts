@@ -6037,6 +6037,7 @@ export type Database = {
           password: string | null
           provider: string
           sender_id: string | null
+          token: string | null
           updated_at: string
           username: string | null
           workspace_owner_id: string
@@ -6048,6 +6049,7 @@ export type Database = {
           password?: string | null
           provider?: string
           sender_id?: string | null
+          token?: string | null
           updated_at?: string
           username?: string | null
           workspace_owner_id: string
@@ -6059,6 +6061,7 @@ export type Database = {
           password?: string | null
           provider?: string
           sender_id?: string | null
+          token?: string | null
           updated_at?: string
           username?: string | null
           workspace_owner_id?: string
