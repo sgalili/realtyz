@@ -138,28 +138,64 @@ export function ScheduledToursCard() {
     },
   });
 
-  /** Contact photos of this workspace, matched to a tour by phone number. */
-  const { data: avatars } = useQuery({
-    queryKey: ['tour-contact-avatars', ownerId],
+  /** Contacts of this workspace, matched to a tour by phone number. */
+  const { data: contacts } = useQuery({
+    queryKey: ['tour-contact-index', ownerId],
     enabled: !!ownerId,
     queryFn: async () => {
       const { data } = await supabase
         .from('leads')
-        .select('phone_number, profile_picture_url')
+        .select('id, phone_number, profile_picture_url')
         .eq('workspace_owner_id', ownerId!)
-        .not('profile_picture_url', 'is', null)
-        .limit(1000);
-      const map = new Map<string, string>();
+        .limit(2000);
+      const map = new Map<string, { id: string; avatar: string | null }>();
       for (const row of (data ?? []) as any[]) {
         const key = String(row.phone_number ?? '').replace(/\D/g, '').slice(-9);
-        if (key && row.profile_picture_url) map.set(key, row.profile_picture_url);
+        if (key) map.set(key, { id: String(row.id), avatar: row.profile_picture_url ?? null });
       }
       return map;
     },
   });
 
-  const avatarOf = (phone: string | null) =>
-    avatars?.get(String(phone ?? '').replace(/\D/g, '').slice(-9)) ?? null;
+  const phoneKey = (phone: string | null) => String(phone ?? '').replace(/\D/g, '').slice(-9);
+  const avatarOf = (phone: string | null) => contacts?.get(phoneKey(phone))?.avatar ?? null;
+  const leadIdOf = (phone: string | null) => contacts?.get(phoneKey(phone))?.id ?? null;
+
+  /**
+   * Cover photo of every property that has a scheduled tour, so each tour row
+   * shows the real thumbnail instead of an empty placeholder.
+   */
+  const listingIds = useMemo(
+    () => Array.from(new Set(tours.map((t) => t.listing_id).filter(Boolean) as string[])),
+    [tours],
+  );
+  const { data: listingPhotos } = useQuery({
+    queryKey: ['tour-listing-photos', ownerId, listingIds.join(',')],
+    enabled: listingIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('id, image_url, media_photos')
+        .in('id', listingIds);
+      const map = new Map<string, string>();
+      for (const row of (data ?? []) as any[]) {
+        const arr = Array.isArray(row.media_photos) ? row.media_photos : [];
+        const fromArray = arr
+          .map((item: any) =>
+            typeof item === 'string'
+              ? item
+              : item && typeof item === 'object'
+                ? (typeof item.url === 'string' ? item.url : typeof item.src === 'string' ? item.src : null)
+                : null,
+          )
+          .find((u: string | null) => !!u && /^(https?:\/\/|\/)/.test(u));
+        const url = (typeof row.image_url === 'string' && row.image_url.trim()) || fromArray || null;
+        if (url) map.set(String(row.id), url);
+      }
+      return map;
+    },
+  });
+
 
 
   const setStatus = useMutation({
