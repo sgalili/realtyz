@@ -159,7 +159,10 @@ Deno.serve(async (req) => {
   try {
     let q = admin.from("leads").select(LEAD_COLS).in("phone_number", phoneVariants(fromNormalized));
     if (workspaceOwnerId) q = q.eq("workspace_owner_id", workspaceOwnerId);
-    const { data } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const { data, error } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
+    // A failed lookup must be loud: silently treating it as "new number" would
+    // duplicate the contact and split the thread.
+    if (error) console.error("[sms-inbound] lead lookup failed", error.message);
     lead = data ?? null;
   } catch (e) {
     console.warn("[sms-inbound] lead lookup soft-fail", e instanceof Error ? e.message : e);
