@@ -74,6 +74,9 @@ export type MarketplaceListing = {
   tier2_amount: number;
   tier3_type: RewardType;
   tier3_amount: number;
+  broker_name: string | null;
+  office_name: string | null;
+  agency_logo_url: string | null;
 };
 
 export type AffiliateReferral = {

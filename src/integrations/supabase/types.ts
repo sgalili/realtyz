@@ -6468,14 +6468,17 @@ export type Database = {
         Args: never
         Returns: {
           address: string
+          agency_logo_url: string
           approved_at: string
           asking_price: number
           broker_id: string
+          broker_name: string
           city: string
           deal_type: string
           image_url: string
           listing_id: string
           media_photos: Json
+          office_name: string
           property_title: string
           reward_amount: number
           reward_type: string

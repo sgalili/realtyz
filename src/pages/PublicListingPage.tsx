@@ -14,7 +14,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bed, Building2, ImageIcon, Layers, Loader2, MapPin, Ruler, Share2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,8 +23,7 @@ import { officialWaLink } from '@/lib/officialWa';
 import { captureRefFromLocation, getStoredRefCode } from '@/lib/referralAttribution';
 import { toast } from 'sonner';
 import { publicUrl } from '@/lib/publicUrl';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import BrokerAttribution from '@/components/properties/BrokerAttribution';
 
 type PublicListing = {
   id: string | null;
@@ -40,6 +38,9 @@ type PublicListing = {
   floor: number | null;
   description: string;
   photos: string[];
+  brokerName: string;
+  officeName: string;
+  agencyLogoUrl: string | null;
 };
 
 /** Public pages must never expose house / apartment numbers. */
@@ -83,7 +84,7 @@ function collectPhotos(row: any): string[] {
 }
 
 /** Never throws: turns any DB row shape into safe display values. */
-function normalizeListing(row: any): PublicListing {
+function normalizeListing(row: any, attribution?: any): PublicListing {
   const address = publicAddress(row?.address);
   const city = typeof row?.city === 'string' ? row.city : '';
   const location = [address, row?.neighborhood, city].filter((v) => typeof v === 'string' && v.trim()).join(' · ');
@@ -110,6 +111,9 @@ function normalizeListing(row: any): PublicListing {
       (typeof row?.description === 'string' && row.description.trim()) ||
       '',
     photos: collectPhotos(row),
+    brokerName: typeof attribution?.broker_name === 'string' ? attribution.broker_name : 'שם המתווך לא צוין',
+    officeName: typeof attribution?.office_name === 'string' ? attribution.office_name : 'שם המשרד לא צוין',
+    agencyLogoUrl: typeof attribution?.agency_logo_url === 'string' ? attribution.agency_logo_url : null,
   };
 }
 
@@ -139,21 +143,12 @@ function PublicListingContent() {
     enabled: !!slug,
     retry: 1,
     queryFn: async (): Promise<PublicListing | null> => {
-      const columns =
-        'id, slug, property_title, address, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, image_url, media_photos, is_published, status';
-      const base = () => supabase.from('listings').select(columns).eq('is_published', true).limit(1);
-
-      let row: any = null;
-      if (UUID_RE.test(slug)) {
-        const byId = await base().eq('id', slug).maybeSingle();
-        if (!byId.error) row = byId.data;
-      }
-      if (!row) {
-        const bySlug = await base().eq('slug', slug).maybeSingle();
-        if (bySlug.error) throw bySlug.error;
-        row = bySlug.data;
-      }
-      return row ? normalizeListing(row) : null;
+      const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-listing-view?id=${encodeURIComponent(slug)}`;
+      const response = await fetch(endpoint, { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } });
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(`public listing failed: ${response.status}`);
+      const payload = await response.json();
+      return payload?.property ? normalizeListing(payload.property, payload.attribution) : null;
     },
   });
 
@@ -276,6 +271,8 @@ function PublicListingContent() {
               ))}
             </div>
           )}
+
+          <BrokerAttribution brokerName={data.brokerName} officeName={data.officeName} logoUrl={data.agencyLogoUrl} />
 
           <CardContent className="space-y-4 pt-4 text-right">
             <div className="space-y-1">
