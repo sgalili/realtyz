@@ -6472,6 +6472,7 @@ export type Database = {
           approved_at: string
           asking_price: number
           broker_id: string
+          broker_license_number: string
           broker_name: string
           city: string
           deal_type: string
@@ -6484,6 +6485,7 @@ export type Database = {
           reward_type: string
           rooms: number
           slug: string
+          sqm: number
           tier1_amount: number
           tier2_amount: number
           tier3_amount: number
