@@ -30,7 +30,7 @@ const PRIORITY_WEIGHT: Record<string, number> = { high: 0, medium: 1, low: 2 };
 const CLOSED_TASK_STATUSES = new Set(['completed', 'done', 'cancelled', 'sent', 'archived']);
 
 export const ACTION_TYPE_LABEL: Record<string, string> = {
-  follow_up: 'מעקב',
+  follow_up: '\n',
   property_search: 'איתור נכס',
   property_matching: 'התאמת נכסים',
   status_check: 'בדיקת סטטוס',
