@@ -355,14 +355,24 @@
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || msg.source !== 'realtyz-extension') return;
     if (msg.type === 'RZ_POST_TO_GROUP') {
-      currentJobId = (msg.job && msg.job.id) || null;
+      const claimed = claimJob(msg.job);
+      if (!claimed) {
+        sendResponse({ ok: false, reason: 'הפעולה בוטלה: אין מזהה עבודה תקף או שהעבודה כבר בוצעה' });
+        return true;
+      }
+      currentJobId = claimed;
       postToGroup(msg.job || {})
         .then((res) => sendResponse(res))
         .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
       return true;
     }
     if (msg.type === 'RZ_POST_FIRST_COMMENT') {
-      currentJobId = (msg.job && msg.job.id) || null;
+      const claimed = claimJob(msg.job);
+      if (!claimed) {
+        sendResponse({ ok: false, reason: 'הפעולה בוטלה: אין מזהה עבודה תקף או שהעבודה כבר בוצעה' });
+        return true;
+      }
+      currentJobId = claimed;
       reportStage('commenting');
       postFirstCommentToPage(msg.job || {})
         .then((res) => sendResponse(res))
