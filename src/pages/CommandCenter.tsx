@@ -323,10 +323,15 @@ export default function CommandCenter() {
                         <ContactAvatar
                           name={task.leadName}
                           imageUrl={task.leadAvatar}
-                          className="mt-0.5 h-9 w-9 shrink-0"
+                          className="mt-0.5 h-10 w-10 shrink-0"
                         />
                       ) : null}
                       <span className="min-w-0 flex-1 space-y-1.5">
+                        {task.leadName && (
+                          <span className="block truncate text-[15px] font-bold text-foreground">
+                            {task.leadName}
+                          </span>
+                        )}
                         <span className="flex flex-wrap items-center gap-2">
                           <span className={`rounded-full px-2 py-0.5 text-[13px] font-semibold ${PRIORITY_STYLE[task.priority]}`}>
                             {PRIORITY_LABEL[task.priority]}
