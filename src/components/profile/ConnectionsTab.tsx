@@ -221,6 +221,15 @@ export function ConnectionsTab() {
     })();
   }, [activeWorkspaceId]);
 
+  // Keep the WhatsApp expanded panel in sync when the user toggles the method.
+  useEffect(() => {
+    const onMode = (e: Event) => {
+      setWaMode((e as CustomEvent).detail as string);
+    };
+    window.addEventListener('realtyz:wa-mode-changed', onMode);
+    return () => window.removeEventListener('realtyz:wa-mode-changed', onMode);
+  }, []);
+
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
   // Live Google service statuses so the collapsed "חשבונות גוגל" header matches
