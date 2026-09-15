@@ -26,11 +26,17 @@ const escapeXml = (v: string) =>
   v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 
-/** 05XXXXXXXX local form required by the 019 XML API. */
+/**
+ * 05XXXXXXXX local form required by the 019 XML API. Accepts every shape a
+ * number can arrive in: 0546811841, 972546811841, +972-54-681-1841,
+ * 00972546811841 and the bare 546811841.
+ */
 export function toLocalIL(phone: string): string | null {
-  const digits = String(phone ?? "").replace(/\D/g, "");
+  let digits = String(phone ?? "").replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
   if (/^05\d{8}$/.test(digits)) return digits;
   if (/^9725\d{8}$/.test(digits)) return `0${digits.slice(3)}`;
+  if (/^5\d{8}$/.test(digits)) return `0${digits}`;
   return null;
 }
 
