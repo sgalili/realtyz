@@ -214,6 +214,62 @@ function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
   );
 }
 
+/** Metric box styled exactly like the dashboard KPI cards. */
+function AffiliateKpiCard({
+  icon: Icon,
+  label,
+  value,
+  tooltip,
+  accent = 'primary',
+}: {
+  icon: typeof Megaphone;
+  label: string;
+  value: string;
+  tooltip: string;
+  accent?: 'primary' | 'success' | 'warning';
+}) {
+  const accentColor = {
+    primary: 'text-primary',
+    success: 'text-success',
+    warning: 'text-warning',
+  }[accent];
+  const accentBg = {
+    primary: 'bg-primary/10',
+    success: 'bg-success/10',
+    warning: 'bg-warning/10',
+  }[accent];
+
+  return (
+    <TooltipProvider delayDuration={120}>
+      <UiTooltip>
+        <Card dir="rtl" className="relative overflow-hidden border border-border/80 bg-card shadow-sm">
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="מידע על המדד"
+              className="absolute left-2 top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <CardContent className="flex flex-col items-center gap-2 px-3 py-4 text-center sm:px-4">
+            <div className={`grid h-10 w-10 place-items-center rounded-full ${accentBg}`}>
+              <Icon className={`h-5 w-5 ${accentColor}`} />
+            </div>
+            <p className="text-sm font-medium leading-none text-muted-foreground sm:text-[15px]">{label}</p>
+            <p className={`text-2xl font-black tabular-nums sm:text-[28px] ${accentColor}`} dir="ltr">
+              {value}
+            </p>
+          </CardContent>
+        </Card>
+        <TooltipContent side="top" align="center">
+          <p className="max-w-56 text-center text-xs leading-relaxed">{tooltip}</p>
+        </TooltipContent>
+      </UiTooltip>
+    </TooltipProvider>
+  );
+}
+
 export default function AffiliatePortal() {
   const { isAffiliate, loading: roleLoading } = useUserRole();
   const { data: marketplace = [], isLoading: marketLoading } = useAffiliateMarketplace();
