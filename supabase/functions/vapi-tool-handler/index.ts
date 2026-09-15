@@ -4,34 +4,11 @@
 //
 // Routes:
 //   send_whatsapp   -> send-whatsapp edge fn (GreenAPI/WBA, preview_url=false)
-//   send_sms_019    -> 019 SMS XML gateway (inline, identical to dispatch-campaign)
+//   send_sms_019    -> shared workspace-scoped 019 SMS gateway (_shared/sms019.ts)
 //   schedule_followup -> writes a row to autopilot_queue for Twilio/Vapi cron pickup
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-
-function escapeXml(s: string) {
-  return String(s).replace(/[<>&'"]/g, (c) => (
-    { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" } as any
-  )[c]);
-}
-
-async function sendSms019(user: string, password: string, phone: string, body: string) {
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<sms>
-  <user><username>${escapeXml(user)}</username><password>${escapeXml(password)}</password></user>
-  <source>Realtyz</source>
-  <destinations><phone>${escapeXml(phone)}</phone></destinations>
-  <message>${escapeXml(body)}</message>
-</sms>`;
-  const res = await fetch("https://www.019sms.co.il:8090/api", {
-    method: "POST",
-    headers: { "Content-Type": "application/xml; charset=UTF-8" },
-    body: xml,
-  });
-  const text = await res.text();
-  const status = parseInt(text.match(/<status>(-?\d+)<\/status>/)?.[1] ?? "-1", 10);
-  return { ok: status === 0, raw: text };
-}
+import { sendSms019 } from "../_shared/sms019.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -68,19 +45,12 @@ Deno.serve(async (req) => {
           const json = await res.json().catch(() => ({}));
           results.push({ toolCallId: tc.id, result: json?.success ? "נשלח בוואטסאפ" : `כשל: ${json?.error ?? "unknown"}` });
         } else if (name === "send_sms_019") {
-          const { data: rows } = await admin
-            .from("api_configs")
-            .select("api_key")
-            .eq("service_name", "019 SMS")
-            .eq("is_active", true)
-            .maybeSingle();
-          const creds = String(rows?.api_key ?? "").split(":");
-          if (creds.length < 2) {
-            results.push({ toolCallId: tc.id, result: "019 SMS לא מוגדר" });
-          } else {
-            const r = await sendSms019(creds[0], creds.slice(1).join(":"), args.phone, args.message);
-            results.push({ toolCallId: tc.id, result: r.ok ? "נשלח ב-SMS" : "כשל בשליחת SMS" });
-          }
+          // Workspace-scoped 019 gateway (own sender number, platform fallback).
+          const r = await sendSms019(admin as any, args.phone, args.message, userId || null);
+          results.push({
+            toolCallId: tc.id,
+            result: r.ok ? "נשלח ב-SMS" : `כשל בשליחת SMS: ${r.error ?? "unknown"}`,
+          });
         } else if (name === "schedule_followup") {
           await admin.from("autopilot_queue").insert({
             user_id: userId,

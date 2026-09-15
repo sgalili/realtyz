@@ -187,3 +187,34 @@ export async function sendSms019(
   }
   return { ok: false, error: text.match(/<message>(.*?)<\/message>/)?.[1] || `019 status ${status}`, scope: cfg.scope };
 }
+
+/**
+ * Account balance for the resolved credentials. Used by the "בדיקה" button to
+ * prove the workspace credentials authenticate against 019 before any send.
+ */
+export async function sms019Balance(
+  cfg: Sms019Config,
+): Promise<{ ok: boolean; balance?: string | null; error?: string; raw?: string }> {
+  const attempt = async (useToken: boolean) => {
+    const auth = sms019Auth(useToken ? cfg : { ...cfg, token: null });
+    const res = await fetch("https://www.019sms.co.il:8090/api", {
+      method: "POST",
+      headers: auth.headers,
+      body: `<?xml version="1.0" encoding="UTF-8"?>\n<balance>\n  ${auth.userXml}\n</balance>`,
+    });
+    const text = await res.text();
+    return {
+      status: parseInt(text.match(/<status>(-?\d+)<\/status>/)?.[1] ?? "-1", 10),
+      balance: text.match(/<balance>(\d+)<\/balance>/)?.[1] ?? null,
+      message: text.match(/<message>(.*?)<\/message>/)?.[1] ?? null,
+      text,
+    };
+  };
+
+  let r = await attempt(!!cfg.token);
+  if (r.status !== 0 && cfg.token && cfg.password && cfg.token !== cfg.password) {
+    r = await attempt(false);
+  }
+  if (r.status === 0) return { ok: true, balance: r.balance, raw: r.text };
+  return { ok: false, error: r.message || `019 status ${r.status}`, raw: r.text };
+}

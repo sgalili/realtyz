@@ -87,53 +87,46 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
     toast.success('מספר ה-019 של מרחב העבודה נשמר');
   };
 
-  const test = async () => {
+  /**
+   * The token is NEVER sent from the browser: the backend resolves this
+   * workspace's own 019 credentials, so the masked "(שמור)" placeholder can
+   * never reach 019. `send=true` also dispatches a real test SMS.
+   */
+  const runTest = async (send: boolean) => {
     if (testing) return;
-    setTesting(true);
-    const tId = toast.loading('בודק חיבור 019...');
-    try {
-      // A typed value is used only when it is a REAL token: the masked
-      // placeholder (bullets / "(שמור)") must never be sent to 019.
-      const typed = token.trim();
-      let effectiveToken = isMaskedValue(typed) ? '' : typed;
-      if (!effectiveToken) effectiveToken = savedToken;
-      let effectiveUser = username.trim();
-      if ((!effectiveToken || !effectiveUser) && ownerId) {
-        const { data: row } = await supabase
-          .from('workspace_sms_settings')
-          .select('token, username')
-          .eq('workspace_owner_id', ownerId)
-          .maybeSingle();
-        const dbToken = String((row as any)?.token ?? '').trim();
-        if (!effectiveToken && dbToken) {
-          effectiveToken = dbToken;
-          setSavedToken(dbToken);
-        }
-        if (!effectiveUser) effectiveUser = String((row as any)?.username ?? '').trim();
-      }
-      if (!effectiveUser || !effectiveToken) {
-        toast.error('נדרשים שם משתמש 019 וטוקן שמור לפני בדיקה', {
-          id: tId,
-          description: 'שמרו את הפרטים ואז לחצו בדיקה.',
-        });
+    // Unsaved edits must be stored first, otherwise the backend tests old creds.
+    const typed = token.trim();
+    if ((typed && !isMaskedValue(typed)) || !hasToken) {
+      if (!savedToken && !typed) {
+        toast.error('נדרש טוקן API של 019 לפני בדיקה', { description: 'הדביקו את הטוקן, לחצו שמירה ואז בדיקה.' });
         return;
       }
+    }
+    setTesting(true);
+    const tId = toast.loading(send ? 'שולח SMS בדיקה דרך 019...' : 'בודק חיבור 019...');
+    try {
       const { data, error } = await supabase.functions.invoke('test-sms-connection', {
-        body: { user: effectiveUser, token: effectiveToken },
+        body: { mode: send ? 'send' : 'balance', workspace_owner_id: ownerId ?? undefined },
       });
-      const resp = (data ?? {}) as { success?: boolean; credit?: string; error?: string };
+      const resp = (data ?? {}) as {
+        success?: boolean; credit?: string; error?: string; sender?: string | null;
+        username?: string; scope?: string; sent_to?: string; message_id?: string | null;
+      };
       if (error || resp.success !== true) {
-        toast.error('בדיקת 019 נכשלה', {
+        toast.error(send ? 'שליחת SMS הבדיקה נכשלה' : 'בדיקת 019 נכשלה', {
           id: tId,
           description: resp.error ?? error?.message ?? 'לא התקבלה תשובה מ-019',
-          duration: 8000,
+          duration: 10000,
         });
         return;
       }
-      toast.success('חיבור 019 תקין', {
+      const scopeNote = resp.scope === 'platform' ? ' · חשבון 019 של המערכת' : '';
+      toast.success(send ? 'SMS הבדיקה נשלח' : 'חיבור 019 תקין', {
         id: tId,
-        description: `תשובת 019: יתרה ${resp.credit ?? '—'} הודעות · משתמש ${effectiveUser}`,
-        duration: 6000,
+        description: send
+          ? `תשובת 019: נשלח ל-${resp.sent_to ?? '—'} · יתרה ${resp.credit ?? '—'} הודעות${scopeNote}`
+          : `תשובת 019: יתרה ${resp.credit ?? '—'} הודעות · משתמש ${resp.username ?? username}${scopeNote}`,
+        duration: 8000,
       });
     } catch (e: any) {
       toast.error('בדיקת 019 נכשלה', { id: tId, description: e?.message ?? 'שגיאה לא צפויה' });
@@ -178,9 +171,13 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
           {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
           שמירה
         </Button>
-        <Button variant="outline" onClick={test} disabled={testing}>
+        <Button variant="outline" onClick={() => void runTest(false)} disabled={testing}>
           {testing ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
           בדיקה
+        </Button>
+        <Button variant="outline" onClick={() => void runTest(true)} disabled={testing}>
+          {testing ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
+          שליחת SMS בדיקה
         </Button>
       </div>
     </div>

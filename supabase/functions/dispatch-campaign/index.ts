@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolveSms019Config, sendSms019 } from "../_shared/sms019.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,41 +65,20 @@ type SendResult = {
   raw?: unknown;
 };
 
-async function sendSms019(
-  user: string,
-  password: string,
+/**
+ * SMS always goes through the shared, workspace-scoped 019 gateway so each
+ * workspace sends from its OWN approved 019 sender number.
+ */
+async function sendSmsWorkspace(
+  admin: any,
   phone: string,
   body: string,
-  source: string,
+  workspaceOwnerId: string | null,
 ): Promise<SendResult> {
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<sms>
-  <user>
-    <username>${escapeXml(user)}</username>
-    <password>${escapeXml(password)}</password>
-  </user>
-  <source>${escapeXml(source || "Realtyz")}</source>
-  <destinations>
-    <phone>${escapeXml(phone)}</phone>
-  </destinations>
-  <message>${escapeXml(body)}</message>
-</sms>`;
-
   try {
-    const res = await fetch("https://www.019sms.co.il:8090/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/xml; charset=UTF-8" },
-      body: xml,
-    });
-    const text = await res.text();
-    const status = parseInt(text.match(/<status>(-?\d+)<\/status>/)?.[1] ?? "-1", 10);
-    const messageId = text.match(/<message_id>(.*?)<\/message_id>/)?.[1] ?? null;
-    if (status === 0) {
-      return { ok: true, provider_message_id: messageId };
-    }
-    const errorMsg =
-      text.match(/<message>(.*?)<\/message>/)?.[1] ?? `019 status ${status}`;
-    return { ok: false, failure_reason: errorMsg };
+    const r = await sendSms019(admin, phone, body, workspaceOwnerId);
+    if (r.ok) return { ok: true, provider_message_id: r.message_id ?? null };
+    return { ok: false, failure_reason: r.error ?? "019 failed" };
   } catch (e: any) {
     return { ok: false, failure_reason: `019 network: ${e?.message ?? e}` };
   }
@@ -613,11 +593,12 @@ Deno.serve(async (req) => {
     for (const r of providerRows ?? []) {
       if (r.is_active && r.api_key) providers.set(r.service_name, r.api_key);
     }
-    const sms019Raw = providers.get("019 SMS");
     const greenRaw = providers.get("Green API");
     const fromAddress = "Realtyz <updates@realtyz.co.il>"; // legacy display only
 
-    const sms019Creds = sms019Raw ? sms019Raw.split(":") : null;
+    // 019 readiness is per workspace (own credentials first, platform fallback).
+    const sms019Cfg = await resolveSms019Config(admin as any, ownerUserId);
+    const smsReady = !!(sms019Cfg && sms019Cfg.username && (sms019Cfg.token || sms019Cfg.password) && sms019Cfg.sender);
     const greenSharedRaw = greenRaw ? greenRaw.split(":") : null;
     const greenShared =
       greenSharedRaw && greenSharedRaw.length >= 2 && greenSharedRaw[0]
@@ -651,7 +632,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           providers: {
-            sms: !!(sms019Creds && sms019Creds.length >= 2 && sms019Creds[0] && sms019Creds.slice(1).join(":")),
+            sms: smsReady,
             whatsapp: whatsappReady,
             email: gmailReady || resendReady,
             voice: false,
@@ -702,16 +683,9 @@ Deno.serve(async (req) => {
       if (channel === "sms") {
         const local = toLocalIL(recipient);
         if (!local) result = { ok: false, failure_reason: "מספר טלפון לא תקין" };
-        else if (!sms019Creds || sms019Creds.length < 2)
-          result = { ok: false, failure_reason: "019 SMS לא מוגדר" };
-        else
-          result = await sendSms019(
-            sms019Creds[0],
-            sms019Creds.slice(1).join(":"),
-            local,
-            personalized,
-            "Realtyz",
-          );
+        else if (!smsReady)
+          result = { ok: false, failure_reason: "019 SMS לא מוגדר למרחב העבודה" };
+        else result = await sendSmsWorkspace(admin, local, personalized, ownerUserId);
       } else if (channel === "whatsapp") {
         const intl = toIntlIL(recipient);
         const testTemplate = parseWaTemplate(body.wa_template);
@@ -886,16 +860,9 @@ Deno.serve(async (req) => {
       if (channel === "sms") {
         const local = toLocalIL(row.recipient_phone);
         if (!local) result = { ok: false, failure_reason: "missing_phone" };
-        else if (!sms019Creds || sms019Creds.length < 2)
+        else if (!smsReady)
           result = { ok: false, failure_reason: "provider_not_configured" };
-        else
-          result = await sendSms019(
-            sms019Creds[0],
-            sms019Creds.slice(1).join(":"),
-            local,
-            message,
-            "Realtyz",
-          );
+        else result = await sendSmsWorkspace(admin, local, message, ownerUserId);
       } else if (channel === "whatsapp") {
         const intl = toIntlIL(row.recipient_phone);
         if (!intl) result = { ok: false, failure_reason: "missing_phone" };
@@ -991,7 +958,7 @@ Deno.serve(async (req) => {
 
       // Source account labeling for non-email channels (email already set above).
       if (!sourceAccount) {
-        if (channel === "sms") sourceAccount = sms019Creds?.[0] ? `019 / ${sms019Creds[0]}` : "019 SMS";
+        if (channel === "sms") sourceAccount = sms019Cfg?.username ? `019 / ${sms019Cfg.username}` : "019 SMS";
         else if (channel === "whatsapp") {
           sourceAccount = campaignWaTemplate
             ? `Meta WABA / template:${campaignWaTemplate.name}`
