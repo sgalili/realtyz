@@ -183,7 +183,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
             <SidebarGroupContent
               role="button"
               tabIndex={0}
-              title="הפרופיל שלי"
+              title="הגדרות"
               onClick={() => {
                 closeSidebar();
                 navigate('/profile');
@@ -201,8 +201,23 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 <WorkspaceSwitcher />
               </div>
 
-              {/* Tutorial + broker/partner toggle share one row. */}
+              {/* Settings + Tutorial + broker/partner toggle share one row. */}
               <div className="mt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                {/* Settings shortcut: opens /profile and closes the sidebar. */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeSidebar();
+                    navigate('/profile');
+                  }}
+                  title="הגדרות"
+                  aria-label="הגדרות"
+                  className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 px-2 py-1.5 text-slate-600 transition-colors hover:bg-slate-50"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+
                 {/* Tutorial button: hidden in Rita's marketing workspace. */}
                 {!features.isRitaWorkspace && (
                   <button
