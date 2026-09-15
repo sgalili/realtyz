@@ -23,6 +23,8 @@ import {
   Copy,
   HelpCircle,
   Link2,
+  List,
+  LayoutGrid,
   MapPin,
   Megaphone,
   MousePointerClick,
@@ -55,6 +57,7 @@ import {
 } from '@/hooks/useAffiliate';
 import { useUserRole } from '@/hooks/useUserRole';
 import { fmtILS } from '@/lib/formatCurrency';
+import BrokerAttribution from '@/components/properties/BrokerAttribution';
 
 const DEAL_TYPE_LABELS: Record<string, string> = {
   sale: 'למכירה',
@@ -147,7 +150,7 @@ function allPhotos(listing: MarketplaceListing): string[] {
  * navigation, badges over the image, compact meta row, and an expandable
  * details section holding the full affiliate tooling.
  */
-function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
+function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceListing; compact?: boolean }) {
   const promote = useStartPromoting();
   const [link, setLink] = useState<string | null>(null);
   const photos = useMemo(() => allPhotos(listing), [listing]);
@@ -175,17 +178,17 @@ function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
 
   return (
     <Card
-      className="group relative flex cursor-pointer flex-col overflow-hidden transition-shadow hover:shadow-lg"
+      className={`group relative cursor-pointer overflow-hidden transition-shadow hover:shadow-lg ${compact ? 'grid grid-cols-[112px_minmax(0,1fr)] md:grid-cols-[180px_minmax(0,1fr)]' : 'flex flex-col'}`}
       onClick={() => setExpanded((v) => !v)}
     >
       {/* Dedicated full-width title row — always the first element of the card. */}
-      <div className="w-full border-b px-4 pb-2 pt-3">
+      <div className={`w-full border-b px-4 pb-2 pt-3 ${compact ? 'col-start-2 row-start-1' : ''}`}>
         <h3 className="w-full truncate text-base font-semibold leading-tight" title={title}>
           {title}
         </h3>
       </div>
 
-      <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+      <div className={`relative overflow-hidden bg-muted ${compact ? 'col-start-1 row-span-3 row-start-1 min-h-32' : 'aspect-[16/10]'}`}>
         {activePhoto ? (
           <img
             key={activePhoto}
@@ -250,6 +253,15 @@ function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
         )}
       </div>
 
+      <div className={compact ? 'col-start-2 row-start-2' : ''}>
+        <BrokerAttribution
+          brokerName={listing.broker_name}
+          officeName={listing.office_name}
+          logoUrl={listing.agency_logo_url}
+          compact={compact}
+        />
+      </div>
+
       {/* Thumbnail row — mounted only once the card is expanded */}
       {hasMany && expanded && (
         <div
@@ -272,7 +284,7 @@ function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-3 p-4">
+      <div className={`flex flex-1 flex-col gap-3 p-4 ${compact ? 'col-start-2 row-start-3' : ''}`}>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex min-w-0 items-center gap-1">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
@@ -444,6 +456,8 @@ export default function AffiliatePortal() {
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
   const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('marketplace');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -452,6 +466,26 @@ export default function AffiliatePortal() {
       [l.property_title, l.address, l.city].some((f) => (f ?? '').toLowerCase().includes(q)),
     );
   }, [marketplace, search]);
+
+  const filteredSubmissions = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return submissions;
+    return submissions.filter((s) => [s.lead_name, s.lead_phone, s.listing?.property_title]
+      .some((value) => (value ?? '').toLowerCase().includes(q)));
+  }, [submissions, search]);
+
+  const filteredReferrals = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return referrals;
+    return referrals.filter((r) => [r.tracking_code, REFERRAL_STATUS_LABELS[r.status], SETTLEMENT_LABELS[r.settlement_status]]
+      .some((value) => (value ?? '').toLowerCase().includes(q)));
+  }, [referrals, search]);
+
+  const searchPlaceholder = activeTab === 'leads'
+    ? 'חיפוש אנשי קשר שהגשתי'
+    : activeTab === 'mine'
+      ? 'חיפוש השיווקים שלי'
+      : 'חיפוש נכסים לשיווק';
 
   const stats = useMemo(() => {
     const clicks = referrals.reduce((sum, r) => sum + (r.clicks ?? 0), 0);
@@ -492,7 +526,7 @@ export default function AffiliatePortal() {
     <>
       <div className="space-y-5 p-4" dir="rtl">
         <header>
-          <h1 className="text-2xl font-bold text-slate-900">רשת השותפים</h1>
+          <h1 className="text-2xl font-bold text-slate-900">נכסים לשיווק</h1>
           <p className="text-sm text-slate-500">
             בחרו נכס, קבלו קישור שיווק אישי, וקבלו תגמול על כל עסקה שנסגרת דרככם.
           </p>
@@ -533,26 +567,29 @@ export default function AffiliatePortal() {
           ))}
         </div>
 
-        <Tabs defaultValue="marketplace">
-          <TabsList>
-            <TabsTrigger value="marketplace">נכסים לשיווק</TabsTrigger>
-            <TabsTrigger value="leads">אנשי הקשר שהגשתי</TabsTrigger>
-            <TabsTrigger value="mine">השיווקים שלי</TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
+          <div className="flex items-center justify-between gap-3">
+            <TabsList>
+              <TabsTrigger value="marketplace">נכסים לשיווק</TabsTrigger>
+              <TabsTrigger value="leads">אנשי הקשר שהגשתי</TabsTrigger>
+              <TabsTrigger value="mine">השיווקים שלי</TabsTrigger>
+            </TabsList>
+            <div className="flex shrink-0 rounded-md border bg-background p-0.5" aria-label="בחירת תצוגה">
+              <Button type="button" size="icon" variant={viewMode === 'grid' ? 'default' : 'ghost'} className="h-8 w-8" onClick={() => setViewMode('grid')} aria-label="תצוגת כרטיסיות" aria-pressed={viewMode === 'grid'}>
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="icon" variant={viewMode === 'list' ? 'default' : 'ghost'} className="h-8 w-8" onClick={() => setViewMode('list')} aria-label="תצוגת רשימה" aria-pressed={viewMode === 'list'}>
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="relative mt-4 max-w-sm">
+            <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="pe-9" />
+          </div>
 
           <TabsContent value="marketplace" className="space-y-4 pt-4">
-            <h2 className="text-xl font-bold text-slate-900">נכסים לשיווק</h2>
-            <div className="relative max-w-sm">
-              <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder="חיפוש נכסים לשיווק"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="ps-9"
-              />
-            </div>
-
-
             {marketLoading ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 w-full" />)}
@@ -564,8 +601,8 @@ export default function AffiliatePortal() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((l) => <MarketplaceCard key={l.listing_id} listing={l} />)}
+              <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3'}>
+                {filtered.map((l) => <MarketplaceCard key={l.listing_id} listing={l} compact={viewMode === 'list'} />)}
               </div>
             )}
           </TabsContent>
@@ -573,14 +610,14 @@ export default function AffiliatePortal() {
           <TabsContent value="leads" className="space-y-3 pt-4">
             {subsLoading ? (
               <Skeleton className="h-48 w-full" />
-            ) : submissions.length === 0 ? (
+            ) : filteredSubmissions.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
                   עוד לא הגשתם אנשי קשר. בחרו נכס ולחצו "הגשת איש קשר לנכס".
                 </CardContent>
               </Card>
             ) : (
-              submissions.map((s) => {
+              filteredSubmissions.map((s) => {
                 const stage = s.status === 'closed' ? 3 : s.status === 'verified' ? 2 : s.status === 'rejected' ? 0 : 1;
                 return (
                   <Card key={s.id} className="border-slate-200">
@@ -630,7 +667,7 @@ export default function AffiliatePortal() {
           <TabsContent value="mine" className="pt-4">
             {refLoading ? (
               <Skeleton className="h-48 w-full" />
-            ) : referrals.length === 0 ? (
+            ) : filteredReferrals.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
                   עוד לא התחלתם לשווק נכסים. עברו ללשונית "נכסים לשיווק".
@@ -638,7 +675,7 @@ export default function AffiliatePortal() {
               </Card>
             ) : (
               <div className="space-y-2.5">
-                {referrals.map((r) => (
+                {filteredReferrals.map((r) => (
                   <Card key={r.id} className="border-slate-200">
                     <CardContent className="flex flex-wrap items-center gap-3 p-3.5">
                       <Link2 className="h-4 w-4 shrink-0 text-slate-400" />
@@ -666,7 +703,7 @@ export default function AffiliatePortal() {
                           className="gap-1.5"
                           onClick={async () => {
                             await navigator.clipboard.writeText(
-                              affiliateTrackingLink(null, r.listing_id!, r.tracking_code),
+                              affiliateTrackingLink(null, r.listing_id, r.tracking_code),
                             );
                             toast.success('הקישור הועתק');
                           }}
