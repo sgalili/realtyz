@@ -105,13 +105,30 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
     setTesting(true);
     const tId = toast.loading(send ? 'שולח SMS בדיקה דרך 019...' : 'בודק חיבור 019...');
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast.error('נדרשת התחברות מחדש', { id: tId, description: 'ההתחברות פגה. התחברו מחדש ונסו שוב.' });
+        return;
+      }
       const { data, error } = await supabase.functions.invoke('test-sms-connection', {
-        body: { mode: send ? 'send' : 'balance', workspace_owner_id: ownerId ?? undefined },
+        body: {
+          mode: send ? 'send' : 'balance',
+          workspace_owner_id: ownerId ?? undefined,
+          recipient: send ? (recipient.trim() || undefined) : undefined,
+        },
       });
-      const resp = (data ?? {}) as {
+      let resp = (data ?? {}) as {
         success?: boolean; credit?: string; error?: string; sender?: string | null;
         username?: string; scope?: string; sent_to?: string; message_id?: string | null;
       };
+      // invoke() masks non-2xx bodies behind a generic error — read the real one.
+      if (error && (error as any)?.context?.text) {
+        try {
+          const raw = await (error as any).context.text();
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') resp = { ...parsed, ...resp };
+        } catch { /* keep generic error */ }
+      }
       if (error || resp.success !== true) {
         toast.error(send ? 'שליחת SMS הבדיקה נכשלה' : 'בדיקת 019 נכשלה', {
           id: tId,
