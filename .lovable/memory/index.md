@@ -1,6 +1,7 @@
 # Project Memory
 
 ## Core
+- **Platform roles (HARD)**: Shai Galili (sgalili@gmail.com, 054-6811841) is the ONLY `super_admin`. Udi Vitman (052-2973500, 8f66ac1a…) is a regular broker (`managing_broker`) who owns his workspace and is a full member of Rita's ws only — never re-grant him super_admin; `grant_super_admin_to_wa_owner()` is intentionally a no-op.
 - **Brand name (HARD)**: Hebrew brand is **רילטיז** — never "ריאלטיז" anywhere (UI, workspace names, prompts).
 - **Facebook/Instagram (HARD)**: strictly per-workspace. `get_effective_meta_page()` reads only the active workspace binding — no account-level or platform-shared fallback. WhatsApp (WBA/Green) + Yad2 stay account-level.
 - **OAuth callback (HARD)**: `src/main.tsx` may only render the popup bridge when a real `window.opener` exists; full-page redirects must boot the app so `/oauth/callback` finishes the exchange (otherwise it hangs on "מסיים אימות מאובטח").
