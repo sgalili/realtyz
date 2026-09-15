@@ -479,10 +479,26 @@ export default function CommandCenter() {
 
       {tab === 'notes' && <PropertyNotesCard />}
 
+      {/* The edit button routes by entity type: call summaries open the call
+          summary dialog, everything else opens the task form. */}
       <EditTaskDialog
-        task={editing}
+        task={editing && !isCallSummary(editing) ? editing : null}
         onClose={() => setEditing(null)}
         onSaved={() => qc.invalidateQueries({ queryKey: ['command-center-tasks'] })}
+      />
+      <CallSummaryDialog
+        logId={editing && isCallSummary(editing) ? editing.id : null}
+        initialLead={
+          editing?.leadId
+            ? { id: editing.leadId, full_name: editing.leadName, phone_number: editing.leadPhone }
+            : null
+        }
+        initialText={editing?.description ?? ''}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          qc.invalidateQueries({ queryKey: ['command-center-tasks'] });
+          invalidateLiveData(qc);
+        }}
       />
     </div>
   );
