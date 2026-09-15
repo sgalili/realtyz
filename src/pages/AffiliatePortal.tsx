@@ -178,17 +178,46 @@ function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceLis
 
   return (
     <Card
-      className={`group relative cursor-pointer overflow-hidden transition-shadow hover:shadow-lg ${compact ? 'grid grid-cols-[112px_minmax(0,1fr)] md:grid-cols-[180px_minmax(0,1fr)]' : 'flex flex-col'}`}
+      className="group relative flex cursor-pointer flex-col overflow-hidden transition-shadow hover:shadow-lg"
       onClick={() => setExpanded((v) => !v)}
     >
+      {compact ? (
+        <div className="flex min-h-12 items-center gap-3 px-3 py-2">
+          <div className="h-[25px] w-[25px] shrink-0 overflow-hidden rounded-sm bg-muted">
+            {activePhoto ? (
+              <img src={activePhoto} alt={title} loading="lazy" className="h-full w-full object-cover" />
+            ) : (
+              <ImageIcon className="m-[5px] h-[15px] w-[15px] text-muted-foreground" aria-hidden="true" />
+            )}
+          </div>
+          <div className="grid min-w-0 flex-1 grid-cols-1 gap-x-4 gap-y-0.5 text-xs sm:grid-cols-[minmax(180px,1fr)_auto_auto_auto] sm:items-center">
+            <span className="truncate font-semibold text-foreground" title={fullAddress}>{fullAddress}</span>
+            <span className="text-muted-foreground">{listing.rooms ? `${listing.rooms} חד׳` : '—'}</span>
+            <span className="text-muted-foreground">{listing.sqm ? `${listing.sqm} מ״ר` : '—'}</span>
+            <span className="font-bold text-foreground" dir="ltr">{listing.asking_price ? fmtILS(listing.asking_price) : '—'}</span>
+          </div>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={(e) => { stop(e); setExpanded((v) => !v); }}
+            className="h-9 w-9 shrink-0"
+            aria-label={expanded ? 'סגירת פרטי הנכס' : 'פתיחת פרטי הנכס'}
+            aria-expanded={expanded}
+          >
+            {expanded ? <ChevronUp className="h-[18px] w-[18px]" /> : <ChevronDown className="h-[18px] w-[18px]" />}
+          </Button>
+        </div>
+      ) : (
+        <>
       {/* Dedicated full-width title row — always the first element of the card. */}
-      <div className={`w-full border-b px-4 pb-2 pt-3 ${compact ? 'col-start-2 row-start-1' : ''}`}>
+      <div className="w-full border-b px-4 pb-2 pt-3">
         <h3 className="w-full truncate text-base font-semibold leading-tight" title={title}>
           {title}
         </h3>
       </div>
 
-      <div className={`relative overflow-hidden bg-muted ${compact ? 'col-start-1 row-span-3 row-start-1 min-h-32' : 'aspect-[16/10]'}`}>
+      <div className="relative aspect-[16/10] overflow-hidden bg-muted">
         {activePhoto ? (
           <img
             key={activePhoto}
@@ -253,14 +282,14 @@ function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceLis
         )}
       </div>
 
-      <div className={compact ? 'col-start-2 row-start-2' : ''}>
-        <BrokerAttribution
-          brokerName={listing.broker_name}
-          officeName={listing.office_name}
-          logoUrl={listing.agency_logo_url}
-          compact={compact}
-        />
-      </div>
+      <BrokerAttribution
+        brokerName={listing.broker_name}
+        officeName={listing.office_name}
+        licenceNumber={listing.broker_license_number}
+        logoUrl={listing.agency_logo_url}
+      />
+        </>
+      )}
 
       {/* Thumbnail row — mounted only once the card is expanded */}
       {hasMany && expanded && (
@@ -284,7 +313,17 @@ function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceLis
         </div>
       )}
 
-      <div className={`flex flex-1 flex-col gap-3 p-4 ${compact ? 'col-start-2 row-start-3' : ''}`}>
+      <div className={`flex flex-1 flex-col gap-3 ${compact ? (expanded ? 'border-t p-3' : 'hidden') : 'p-4'}`}>
+        {compact ? (
+          <BrokerAttribution
+            brokerName={listing.broker_name}
+            officeName={listing.office_name}
+            licenceNumber={listing.broker_license_number}
+            logoUrl={listing.agency_logo_url}
+            compact
+          />
+        ) : null}
+        {!compact ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex min-w-0 items-center gap-1">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
@@ -294,20 +333,23 @@ function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceLis
             <span className="inline-flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" /> {listing.rooms} חד'</span>
           ) : null}
         </div>
+        ) : null}
 
         <div className="flex items-center justify-between gap-2">
-          <div className="text-lg font-bold text-slate-900" dir="ltr">
+          <div className={compact ? 'hidden' : 'text-lg font-bold text-slate-900'} dir="ltr">
             {listing.asking_price ? <bdi>{fmtILS(listing.asking_price)}</bdi> : <span className="text-sm text-muted-foreground">מחיר לא צוין</span>}
           </div>
-          <button
+          <Button
             type="button"
+            size="icon"
+            variant="ghost"
             onClick={(e) => { stop(e); setExpanded((v) => !v); }}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+            className={compact ? 'hidden' : 'h-9 w-9 text-primary'}
+            aria-label={expanded ? 'סגירת פרטי הנכס' : 'פתיחת פרטי הנכס'}
             aria-expanded={expanded}
           >
-            {expanded ? 'הסתרת פרטים' : 'כל הפרטים'}
-            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-          </button>
+            {expanded ? <ChevronUp className="h-[18px] w-[18px]" /> : <ChevronDown className="h-[18px] w-[18px]" />}
+          </Button>
         </div>
 
         {expanded && (

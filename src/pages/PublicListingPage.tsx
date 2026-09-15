@@ -40,6 +40,7 @@ type PublicListing = {
   photos: string[];
   brokerName: string;
   officeName: string;
+  brokerLicenceNumber: string | null;
   agencyLogoUrl: string | null;
 };
 
@@ -113,6 +114,7 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
     photos: collectPhotos(row),
     brokerName: typeof attribution?.broker_name === 'string' ? attribution.broker_name : 'שם המתווך לא צוין',
     officeName: typeof attribution?.office_name === 'string' ? attribution.office_name : 'שם המשרד לא צוין',
+    brokerLicenceNumber: typeof attribution?.broker_license_number === 'string' ? attribution.broker_license_number : null,
     agencyLogoUrl: typeof attribution?.agency_logo_url === 'string' ? attribution.agency_logo_url : null,
   };
 }
@@ -272,7 +274,12 @@ function PublicListingContent() {
             </div>
           )}
 
-          <BrokerAttribution brokerName={data.brokerName} officeName={data.officeName} logoUrl={data.agencyLogoUrl} />
+          <BrokerAttribution
+            brokerName={data.brokerName}
+            officeName={data.officeName}
+            licenceNumber={data.brokerLicenceNumber}
+            logoUrl={data.agencyLogoUrl}
+          />
 
           <CardContent className="space-y-4 pt-4 text-right">
             <div className="space-y-1">

@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
 
     const ownerId = listing.workspace_owner_id ?? listing.user_id;
     const [{ data: profile }, { data: brand }, { data: workspace }] = await Promise.all([
-      admin.from("profiles").select("full_name, broker_byline").eq("id", ownerId).maybeSingle(),
+      admin.from("profiles").select("full_name, broker_byline, broker_license_number").eq("id", ownerId).maybeSingle(),
       admin.from("white_label_settings").select("agency_name, logo_url, landscape_logo_url").eq("user_id", ownerId).maybeSingle(),
       admin.from("workspace_memberships").select("workspace_name, workspace_logo_url").eq("workspace_owner_id", ownerId).order("created_at", { ascending: true }).limit(1).maybeSingle(),
     ]);
@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
       attribution: {
         broker_name: profile?.broker_byline || profile?.full_name || "שם המתווך לא צוין",
         office_name: brand?.agency_name || workspace?.workspace_name || "שם המשרד לא צוין",
+        broker_license_number: profile?.broker_license_number || null,
         agency_logo_url: brand?.landscape_logo_url || brand?.logo_url || workspace?.workspace_logo_url || null,
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
