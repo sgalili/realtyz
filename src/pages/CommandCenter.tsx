@@ -285,11 +285,18 @@ export default function CommandCenter() {
         className={`w-full rounded-lg border-2 bg-card p-3 transition-colors hover:bg-accent/40 ${PRIORITY_BORDER[task.priority]}`}
       >
         <div className="flex items-start gap-2">
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => toggleCard(cardKey)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggleCard(cardKey);
+              }
+            }}
             aria-expanded={isOpen}
-            className="flex min-w-0 flex-1 items-start gap-3 text-right"
+            className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-right"
           >
             {task.leadName || task.leadAvatar ? (
               <ContactAvatar
@@ -362,7 +369,7 @@ export default function CommandCenter() {
                 )}
               </span>
             </span>
-          </button>
+          </div>
           <div className="flex shrink-0 items-center gap-1">
             <IconAction label="עריכה" onClick={() => setEditing(task)}>
               <Pencil className="h-4 w-4" />
@@ -377,7 +384,7 @@ export default function CommandCenter() {
               className="p-1 text-muted-foreground"
             >
               <ChevronDown
-                className={`h-4 w-4 transition-transform ${isOpen ? '' : 'rotate-90'}`}
+                className={`h-4 w-4 transition-transform ${isOpen ? '' : callSummary ? 'rotate-90' : '-rotate-90'}`}
               />
             </button>
           </div>
