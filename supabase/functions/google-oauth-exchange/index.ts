@@ -433,7 +433,14 @@ async function handle(req: Request): Promise<Response> {
         .eq('platform', platform === 'google_all' ? 'gmail' : platform)
         .eq('workspace_owner_id', workspaceOwnerId);
       return new Response(
-        JSON.stringify({ ok: false, error: identity.error, google_status: identity.status, code: 'identity_failed' }),
+        JSON.stringify({
+          ok: false,
+          error: identity.error,
+          google_status: identity.status,
+          code: 'identity_failed',
+          stage: 'identity',
+          workspace_owner_id: workspaceOwnerId,
+        }),
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
