@@ -8,6 +8,7 @@ export type IntegrationName =
   | "homely"
   | "transcription"
   | "ai_gateway"
+  | "sms"
   | "email_queue";
 
 export async function logIntegrationError(params: {
