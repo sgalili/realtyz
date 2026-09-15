@@ -407,123 +407,90 @@ export function ScheduledToursCard() {
     );
   }
 
-  const monthGrid = useMemo(() => {
-    const first = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1);
-    const startOffset = first.getDay();
-    const daysInMonth = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0).getDate();
-    const cells: Array<Date | null> = Array.from({ length: startOffset }, () => null);
-    for (let d = 1; d <= daysInMonth; d += 1) {
-      cells.push(new Date(monthCursor.getFullYear(), monthCursor.getMonth(), d));
-    }
-    while (cells.length % 7 !== 0) cells.push(null);
-    return cells;
-  }, [monthCursor]);
-
-  const selectedDayTours = openDay ? byDay.get(openDay) ?? [] : [];
-
   return (
-    <Card dir="rtl">
-      <CardContent className="space-y-3 pt-4">
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            size="icon"
-            variant={view === 'list' ? 'default' : 'ghost'}
-            aria-label="רשימה"
-            className="h-8 w-8"
-            onClick={() => setView('list')}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          {view === 'calendar' && (
-            <div className="flex items-center gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8"
-                onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <span className="min-w-[7.5rem] text-center text-sm font-semibold">
-                {monthCursor.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
-              </span>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8"
-                onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-          <Button
-            size="icon"
-            variant={view === 'calendar' ? 'default' : 'ghost'}
-            aria-label="לוח שנה"
-            className="h-8 w-8"
-            onClick={() => setView('calendar')}
-          >
-            <CalendarDays className="h-4 w-4" />
-          </Button>
-        </div>
+    <div dir="rtl" className="space-y-3">
+      <ScheduleViewToggle
+        view={view}
+        onViewChange={setView}
+        monthCursor={monthCursor}
+        onMonthChange={setMonthCursor}
+      />
 
-
-        {isLoading ? (
-          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-        ) : view === 'list' ? (
-          tours.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">אין סיורים מתוזמנים כרגע</p>
-          ) : (
-            tours.map((t) => <TourRow key={t.id} t={t} />)
-          )
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+      ) : view === 'list' ? (
+        tours.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">אין סיורים מתוזמנים כרגע</p>
         ) : (
-          <div className="space-y-3">
-            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-muted-foreground">
-              {DAY_LABELS.map((d) => <div key={d}>{d}</div>)}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {monthGrid.map((d, i) => {
-                if (!d) return <div key={`e${i}`} className="h-16 rounded-md bg-muted/10" />;
-                const k = dayKey(d.toISOString());
-                const list = byDay.get(k) ?? [];
-                const isSelected = openDay === k;
-                const isToday = k === dayKey(new Date().toISOString());
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setOpenDay(k)}
-                    className={`h-16 rounded-md border p-1 text-right transition-colors ${
-                      isSelected ? 'border-primary bg-primary/10' : 'bg-muted/20 hover:bg-muted/40'
-                    } ${isToday ? 'ring-1 ring-primary/50' : ''}`}
-                  >
-                    <span className="block text-[11px] font-semibold text-foreground">{d.getDate()}</span>
-                    <span className="mt-0.5 block space-y-0.5">
-                      {list.slice(0, 2).map((t) => (
-                        <span key={t.id} className="block truncate rounded bg-primary/15 px-1 text-[10px] text-primary">
-                          {formatTime(t.scheduled_at)} {t.client_name}
-                        </span>
-                      ))}
-                      {list.length > 2 ? (
-                        <span className="block text-[10px] text-muted-foreground">+{list.length - 2}</span>
-                      ) : null}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="space-y-2">
-              {selectedDayTours.length === 0 ? (
-                <p className="py-2 text-center text-[13px] text-muted-foreground">אין סיורים ביום שנבחר</p>
-              ) : (
-                selectedDayTours.map((t) => <TourRow key={t.id} t={t} />)
-              )}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          tours.map((t) => <TourRow key={t.id} t={t} />)
+        )
+      ) : (
+        <ScheduleMonthGrid
+          items={tours.map((t) => ({ id: t.id, at: t.scheduled_at, label: t.client_name, tour: t }))}
+          monthCursor={monthCursor}
+          openDay={openDay}
+          onOpenDay={setOpenDay}
+          emptyLabel="אין סיורים ביום שנבחר"
+          renderItem={(item) => <TourRow key={item.id} t={item.tour} />}
+        />
+      )}
+
+      {/* Manual client confirmation, opened by clicking the status pill. */}
+      <AlertDialog open={!!confirmTarget} onOpenChange={(v) => { if (!v) setConfirmTarget(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>לסמן שהלקוח אישר את המועד?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmTarget
+                ? `${confirmTarget.client_name} · ${formatWhen(confirmTarget.scheduled_at)}`
+                : ''}
+              {' '}הסטטוס יתעדכן ל"מאושר" והאירוע יישמר ביומן.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>חזרה</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmTarget) confirmByClient.mutate({ id: confirmTarget.id });
+                setConfirmTarget(null);
+              }}
+            >
+              הלקוח אישר
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancellation, with an explicit "notify the client on WhatsApp?" choice. */}
+      <AlertDialog open={!!cancelTarget} onOpenChange={(v) => { if (!v) setCancelTarget(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>לבטל את הסיור?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cancelTarget ? `${cancelTarget.client_name} · ${formatWhen(cancelTarget.scheduled_at)}. ` : ''}
+              רוצה שנעדכן את הלקוח בוואטסאפ על הביטול?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel disabled={cancelTour.isPending}>חזרה</AlertDialogCancel>
+            <Button
+              variant="outline"
+              disabled={cancelTour.isPending}
+              onClick={() => { if (cancelTarget) cancelTour.mutate({ tour: cancelTarget, notify: false }); }}
+            >
+              בטל בלי להודיע
+            </Button>
+            <Button
+              disabled={cancelTour.isPending}
+              onClick={() => { if (cancelTarget) cancelTour.mutate({ tour: cancelTarget, notify: true }); }}
+            >
+              {cancelTour.isPending ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : null}
+              בטל והודע בוואטסאפ
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
 
