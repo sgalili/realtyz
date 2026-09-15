@@ -481,3 +481,27 @@ export function ScheduledToursCard() {
 }
 
 export default ScheduledToursCard;
+
+/**
+ * Live count of upcoming tours in the ACTIVE workspace only.
+ * Used by the tabs bar to show "סיורים (n)".
+ */
+export function useScheduledToursCount() {
+  const ownerId = useActiveWorkspaceOwnerId();
+  const { data } = useQuery({
+    queryKey: ['scheduled-tours-count', ownerId],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+      const { count, error } = await supabase
+        .from('property_tours')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', ownerId!)
+        .gte('scheduled_at', since)
+        .neq('status', 'cancelled');
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  return data ?? 0;
+}
