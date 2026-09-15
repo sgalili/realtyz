@@ -4059,7 +4059,7 @@ const GlobalSocialFeed = ({
             activeChannel === 'all' ? 'opacity-100' : 'opacity-70 hover:opacity-100',
           )}
         >
-          <span className={cn('text-xs sm:text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>הכל</span>
+          <span className={cn('text-xs sm:text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>\n</span>
         </button>
         {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
       </div>
