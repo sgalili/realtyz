@@ -22,6 +22,8 @@
  *   details?: unknown
  * }
  */
+import { resolveGreenCreds } from "../_shared/greenApiCreds.ts";
+import { sendGreenApiText } from "../_shared/greenApi.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { appendDisclosure } from "../_shared/compliance.ts";
@@ -91,6 +93,9 @@ const BodySchema = z
     // row + audit_logs so the agent can prove disclosure.
     ai_assisted: z.boolean().optional(),
     disclosure_language: z.enum(["he", "en"]).optional(),
+    // OTP / system messages: always leave through the official Meta number,
+    // whatever transport the workspace selected.
+    force_official: z.boolean().optional(),
   })
   .refine((v) => !!v.lead_id || !!v.phone_number, {
     message: "lead_id or phone_number is required",
@@ -101,7 +106,7 @@ const BodySchema = z
 
 type StdResponse = {
   success: boolean;
-  provider: "WBA";
+  provider: "WBA" | "GREEN_API";
   message_id: string | null;
   error?: string;
   details?: unknown;
@@ -253,7 +258,7 @@ async function resolveWorkspaceOwner(
   admin: ReturnType<typeof createClient>,
   userId: string | null,
   tenantId: string | null,
-): Promise<{ mode: "official_meta"; owner_id: string | null }> {
+): Promise<{ mode: "official_meta" | "qr_session"; owner_id: string | null }> {
   const ids = [tenantId, userId].filter(Boolean) as string[];
   const candidates = [...ids];
   for (const id of ids) {
@@ -268,10 +273,15 @@ async function resolveWorkspaceOwner(
   for (const id of candidates) {
     const { data } = await admin
       .from("workspace_whatsapp_settings")
-      .select("workspace_owner_id")
+      .select("workspace_owner_id, connection_type")
       .eq("workspace_owner_id", id)
       .maybeSingle();
-    if ((data as any)?.workspace_owner_id) return { mode: "official_meta", owner_id: id };
+    if ((data as any)?.workspace_owner_id) {
+      const mode = String((data as any)?.connection_type ?? "official_meta") === "qr_session"
+        ? "qr_session" as const
+        : "official_meta" as const;
+      return { mode, owner_id: id };
+    }
   }
   return { mode: "official_meta", owner_id: candidates[0] ?? null };
 }
