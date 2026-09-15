@@ -280,6 +280,27 @@ export function ConnectionsTab() {
 
   const [sms019Sender, setSms019Sender] = useState<string | null>(null);
 
+  // Portal connection state drives the Yad2 / Homely brand marks in the header.
+  const { data: portalStatus = { yad2: false, homely: false } } = useQuery({
+    queryKey: ['listing-portals-status'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return { yad2: false, homely: false };
+      const [keys, homely] = await Promise.all([
+        supabase.from('user_api_keys').select('brightdata_api_token, brightdata_zone').eq('user_id', user.id).maybeSingle(),
+        supabase.from('homely_broker_credentials' as never).select('connection_status, homely_password_encrypted').eq('user_id', user.id).maybeSingle(),
+      ]);
+      const k = (keys.data ?? {}) as any;
+      const h = (homely.data ?? {}) as any;
+      return {
+        yad2: Boolean(String(k?.brightdata_api_token ?? '').trim() && String(k?.brightdata_zone ?? '').trim()),
+        homely: h?.connection_status === 'ok' || Boolean(h?.homely_password_encrypted),
+      };
+    },
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
   const waLive = !!(officialPhone || personalPhone || greenLive || waMode);
 
   const sections: Array<{ id: string; title: string; titleAside?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
