@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScheduledToursCard } from '@/components/dashboard/ScheduledToursCard';
 import { NewTourDialog } from '@/components/dashboard/NewTourDialog';
+import { NewDemoDialog } from '@/components/dashboard/NewDemoDialog';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useNavigate } from 'react-router-dom';
@@ -246,6 +247,7 @@ export default function CommandCenter() {
     <div dir="rtl" className="space-y-6 p-4 md:p-6">
       <FirstTimeSyncDialog />
       <NewTourDialog open={newTourOpen} onOpenChange={setNewTourOpen} />
+      <NewDemoDialog open={newDemoOpen} onOpenChange={setNewDemoOpen} />
 
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">משימות</h1>
@@ -256,13 +258,9 @@ export default function CommandCenter() {
 
 
       <Card className="p-4">
-        <div
-          className={
-            isRitaWorkspace
-              ? 'mb-[30px] flex flex-col items-center justify-center gap-[50px] sm:mb-4 sm:flex-row sm:flex-wrap sm:gap-2'
-              : 'mb-4 flex flex-wrap items-center justify-center gap-2'
-          }
-        >
+        {/* Tabs first, then the "add new" button below them. Desktop keeps an
+            exact 50px gap under the tabs; mobile stays as it was. */}
+        <div className="mb-4 flex flex-col items-center justify-center gap-[25px] md:gap-0">
           <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)}>
             <TabsList className="justify-center overflow-x-auto">
 
@@ -277,7 +275,7 @@ export default function CommandCenter() {
               ))}
             </TabsList>
           </Tabs>
-          <Button size="sm" className="mt-[25px] h-9 gap-1 text-sm" onClick={() => addNew(tab)}>
+          <Button size="sm" className="h-9 gap-1 text-sm md:mt-[50px]" onClick={() => addNew(tab)}>
             <Plus className="h-4 w-4" />
             {ADD_LABEL[tab]}
           </Button>
