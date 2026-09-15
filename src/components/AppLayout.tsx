@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import realtyzLogo from '@/assets/realtyz-logo.png';
-import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, ChevronDown } from 'lucide-react';
+import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -36,7 +36,7 @@ import { toast } from 'sonner';
 import { DEMO_CANDIDATES, getDemoCandidateCrisisAlerts, type DemoCandidateId } from '@/lib/demoData';
 import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
-import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
+
 import { resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
 
 
@@ -53,23 +53,7 @@ const TUTORIAL_STEPS = [
 
 
 function HeaderProfileLink() {
-  const { user } = useAuth();
   const { setOpen, setOpenMobile, isMobile } = useSidebar();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user?.id) { setAvatarUrl(null); return; }
-    supabase
-      .from('profiles')
-      .select('avatar_url')
-      .eq('id', user.id)
-      .maybeSingle()
-      .then(({ data }) => setAvatarUrl((data as any)?.avatar_url ?? (user.user_metadata as any)?.avatar_url ?? null));
-  }, [user?.id]);
-
-  if (!user) return null;
-
-  const displayName = friendlyUserDisplayName(user, 'הגדרות');
 
   return (
     <button
@@ -82,16 +66,9 @@ function HeaderProfileLink() {
         }
       }}
       aria-label="פתח תפריט צדדי"
-      title={displayName}
-      className="relative inline-flex shrink-0 flex-col items-center justify-center gap-0 rounded-full text-xs font-bold text-primary-foreground transition hover:opacity-90"
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-foreground/80 transition hover:bg-muted hover:text-foreground"
     >
-      <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary ring-1 ring-border">
-        {avatarUrl
-          ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
-          : displayName.slice(0, 1)}
-      </span>
-      {/* Down arrow makes it obvious the avatar opens the side menu */}
-      <ChevronDown className="-mt-0.5 h-3.5 w-3.5 text-foreground/70" aria-hidden="true" />
+      <Menu className="h-5 w-5" aria-hidden="true" />
     </button>
   );
 }
