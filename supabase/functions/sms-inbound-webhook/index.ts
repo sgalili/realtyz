@@ -1,0 +1,464 @@
+/**
+ * sms-inbound-webhook
+ * ───────────────────
+ * PUBLIC endpoint (no JWT) for INBOUND SMS replies delivered by the 019 gateway.
+ *
+ * Flow, per inbound SMS:
+ *   1. Resolve the receiving workspace from the 019 sender/DID that was replied
+ *      to (workspace_sms_settings.sender_id) — never a global guess.
+ *   2. Resolve the CRM contact by phone (every IL phone format variant), or
+ *      CREATE a new contact card immediately when the number is unknown.
+ *   3. Store the inbound SMS in public.messages (platform/channel = 'sms') so
+ *      the whole conversation shows in /inbox on the contact's chat window.
+ *   4. Trigger Rita: the FIRST automated SMS reply greets the contact and offers
+ *      to continue on WhatsApp with a direct clickable chat link. Later replies
+ *      run through `ai-agent` and are answered on the same SMS channel.
+ *   5. Every outbound SMS is stored too, so the thread is complete.
+ *
+ * Optional shared-secret protection: SMS_INBOUND_WEBHOOK_SECRET, sent either as
+ * the `x-webhook-secret` header or a `?secret=` query parameter (019's webhook
+ * form only allows a URL).
+ */
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { corsHeaders } from "../_shared/cors.ts";
+import { sendSms019, toLocalIL } from "../_shared/sms019.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const WEBHOOK_SECRET = Deno.env.get("SMS_INBOUND_WEBHOOK_SECRET") ?? "";
+
+/** HARD RULE: only the official Meta WhatsApp Business number may be offered. */
+const OFFICIAL_WABA_PHONE = "972537983832";
+
+const json = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const firstString = (...vals: unknown[]): string => {
+  for (const v of vals) {
+    const s = String(v ?? "").trim();
+    if (s) return s;
+  }
+  return "";
+};
+
+/** Every shape an IL phone can be stored in, so a thread is never split. */
+function phoneVariants(raw: string): string[] {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (!digits) return [];
+  const local = digits.startsWith("972") ? `0${digits.slice(3)}` : digits;
+  const intl = digits.startsWith("0") ? `972${digits.slice(1)}` : digits;
+  return Array.from(new Set([raw, digits, `+${digits}`, local, intl, `+${intl}`].filter(Boolean)));
+}
+
+/** Normalized storage form used across the CRM: 9725XXXXXXXX. */
+function normalizeIl(raw: string): string | null {
+  const local = toLocalIL(raw);
+  return local ? `972${local.slice(1)}` : null;
+}
+
+function extractXml(raw: string, tag: string): string {
+  return raw.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"))?.[1]?.trim() ?? "";
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const url = new URL(req.url);
+
+  // 019's console verifies a webhook URL with a plain GET.
+  if (req.method === "GET") return json({ ok: true, endpoint: "sms-inbound-webhook" });
+  if (req.method !== "POST") return json({ error: "POST only" }, 405);
+
+  if (WEBHOOK_SECRET) {
+    const provided = req.headers.get("x-webhook-secret") ?? url.searchParams.get("secret") ?? "";
+    if (provided !== WEBHOOK_SECRET) return json({ error: "unauthorized" }, 401);
+  }
+
+  // ── Payload: 019 posts JSON, form-encoded or XML depending on the account ──
+  let payload: Record<string, unknown> = {};
+  const ct = (req.headers.get("content-type") ?? "").toLowerCase();
+  let rawBody = "";
+  try {
+    if (ct.includes("application/json")) {
+      payload = (await req.json()) ?? {};
+    } else if (ct.includes("form-urlencoded") || ct.includes("multipart/form-data")) {
+      payload = Object.fromEntries([...(await req.formData()).entries()]) as Record<string, unknown>;
+    } else {
+      rawBody = await req.text();
+      try {
+        payload = JSON.parse(rawBody);
+      } catch {
+        payload = {
+          phone: extractXml(rawBody, "phone") || extractXml(rawBody, "source") ||
+            extractXml(rawBody, "from"),
+          message: extractXml(rawBody, "message") || extractXml(rawBody, "text"),
+          destination: extractXml(rawBody, "destination") || extractXml(rawBody, "target"),
+          message_id: extractXml(rawBody, "message_id") || extractXml(rawBody, "id"),
+        };
+      }
+    }
+  } catch {
+    return json({ error: "invalid_payload" }, 400);
+  }
+  // Some accounts deliver everything on the query string instead of a body.
+  for (const [k, v] of url.searchParams.entries()) {
+    if (payload[k] === undefined && k !== "secret") payload[k] = v;
+  }
+
+  const p = payload as Record<string, any>;
+  const fromPhoneRaw = firstString(
+    p.phone, p.from, p.From, p.source, p.sender, p.msisdn, p.originator, p.caller,
+    p?.data?.phone, p?.data?.from,
+  );
+  const toPhoneRaw = firstString(
+    p.destination, p.to, p.To, p.target, p.did, p.recipient, p.sender_id, p?.data?.to,
+  );
+  const bodyText = firstString(
+    p.message, p.text, p.Body, p.body, p.content, p.sms, p?.data?.message, p?.data?.text,
+  );
+  const providerMessageId = firstString(p.message_id, p.messageId, p.id, p.sms_id);
+
+  const fromNormalized = normalizeIl(fromPhoneRaw);
+  if (!fromNormalized) {
+    console.warn("[sms-inbound] unusable sender", { keys: Object.keys(p) });
+    return json({ ok: true, skipped: "missing_or_invalid_sender", payload_keys: Object.keys(p) }, 202);
+  }
+  if (!bodyText) {
+    return json({ ok: true, skipped: "empty_body", from_last4: fromNormalized.slice(-4) }, 202);
+  }
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  // ── 1. Which workspace owns the 019 number that was replied to? ───────────
+  let workspaceOwnerId: string | null = null;
+  const toLocal = toLocalIL(toPhoneRaw);
+  if (toLocal) {
+    try {
+      const { data } = await admin
+        .from("workspace_sms_settings")
+        .select("workspace_owner_id, sender_id")
+        .in("sender_id", phoneVariants(toLocal))
+        .limit(1)
+        .maybeSingle();
+      workspaceOwnerId = (data as any)?.workspace_owner_id ?? null;
+    } catch (e) {
+      console.warn("[sms-inbound] sender→workspace lookup soft-fail", e instanceof Error ? e.message : e);
+    }
+  }
+
+  // ── 2. Existing CRM contact for this phone (workspace-scoped when known) ──
+  const LEAD_COLS =
+    "id, full_name, phone_number, assigned_to, workspace_owner_id, ai_autopilot, deal_type, preferences";
+  let lead: any = null;
+  try {
+    let q = admin.from("leads").select(LEAD_COLS).in("phone_number", phoneVariants(fromNormalized));
+    if (workspaceOwnerId) q = q.eq("workspace_owner_id", workspaceOwnerId);
+    const { data } = await q.order("updated_at", { ascending: false }).limit(1).maybeSingle();
+    lead = data ?? null;
+  } catch (e) {
+    console.warn("[sms-inbound] lead lookup soft-fail", e instanceof Error ? e.message : e);
+  }
+  // No workspace resolved from the DID: fall back to the thread that already
+  // exists for this phone anywhere, so replies never land in a stranger's inbox
+  // silently — the contact's own workspace keeps owning the conversation.
+  if (!lead?.id && !workspaceOwnerId) {
+    try {
+      const { data } = await admin
+        .from("leads")
+        .select(LEAD_COLS)
+        .in("phone_number", phoneVariants(fromNormalized))
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      lead = data ?? null;
+    } catch { /* soft-fail */ }
+  }
+  if (lead?.id && !workspaceOwnerId) {
+    workspaceOwnerId = lead.workspace_owner_id ?? lead.assigned_to ?? null;
+  }
+
+  // ── 3. Brand-new number → create the CRM card immediately ────────────────
+  let createdLead = false;
+  if (!lead?.id) {
+    if (!workspaceOwnerId) {
+      // Last resort so an inbound SMS is never dropped: the platform admin.
+      try {
+        const { data: adminRow } = await admin
+          .from("user_roles").select("user_id").eq("role", "super_admin").limit(1).maybeSingle();
+        workspaceOwnerId = (adminRow as any)?.user_id ?? null;
+      } catch { /* soft-fail */ }
+    }
+    if (!workspaceOwnerId) {
+      console.error("[sms-inbound] no workspace could be resolved — cannot create a contact");
+      return json({ ok: true, skipped: "no_workspace_resolved" }, 202);
+    }
+    try {
+      const { data: created, error } = await admin
+        .from("leads")
+        .insert({
+          phone_number: fromNormalized,
+          full_name: "איש קשר חדש (SMS)",
+          lead_stage: "engaging",
+          status: "contacted",
+          sentiment: "neutral",
+          loyalty_tier: "Hot Lead",
+          ai_autopilot: true,
+          assigned_to: workspaceOwnerId,
+          workspace_owner_id: workspaceOwnerId,
+          is_demo: false,
+          preferences: {
+            source: "sms",
+            channel: "sms",
+            inbound_excerpt: bodyText.slice(0, 240),
+            created_by_webhook: "sms-inbound-webhook",
+          },
+        })
+        .select(LEAD_COLS)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      lead = created;
+      createdLead = true;
+      console.log("[sms-inbound] created new CRM contact", { lead_id: lead?.id });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[sms-inbound] contact creation failed", msg);
+      await logIntegrationError({
+        integration: "sms",
+        functionName: "sms-inbound-webhook",
+        errorMessage: `failed to create a CRM contact for an inbound SMS: ${msg}`,
+        context: { from_last4: fromNormalized.slice(-4) },
+      });
+      return json({ error: "lead_create_failed", detail: msg }, 500);
+    }
+  }
+
+  // ── 4. Store the inbound SMS in the inbox (idempotent per provider id) ───
+  let duplicate = false;
+  try {
+    if (providerMessageId) {
+      const { data: dup } = await admin
+        .from("messages")
+        .select("id")
+        .eq("lead_id", lead.id)
+        .eq("metadata->>message_id", providerMessageId)
+        .limit(1)
+        .maybeSingle();
+      duplicate = !!(dup as any)?.id;
+    }
+    if (!duplicate) {
+      await admin.rpc("record_interaction_message", {
+        _lead_id: lead.id,
+        _platform: "sms",
+        _direction: "inbound",
+        _sender_type: "voter",
+        _content: bodyText,
+        _external_id: providerMessageId || `sms-in:${crypto.randomUUID()}`,
+        _created_at: new Date().toISOString(),
+        _metadata: {
+          provider: "019 SMS",
+          message_id: providerMessageId || null,
+          sender_phone: fromNormalized,
+          did: toLocal ?? null,
+          source: "sms-inbound-webhook",
+        },
+      });
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[sms-inbound] inbound store failed", msg);
+    await logIntegrationError({
+      integration: "sms",
+      functionName: "sms-inbound-webhook",
+      errorMessage: `failed to store an inbound SMS: ${msg}`,
+      context: { lead_id: lead.id },
+    });
+  }
+
+  try {
+    await admin.from("leads").update({ last_interaction_at: new Date().toISOString() }).eq("id", lead.id);
+  } catch { /* soft-fail */ }
+  try {
+    await admin.from("chat_history").insert({ lead_id: lead.id, role: "user", content: bodyText, is_demo: false });
+  } catch { /* soft-fail */ }
+
+  if (duplicate) {
+    return json({ ok: true, lead_id: lead.id, stored: false, reason: "duplicate_provider_message" });
+  }
+
+  // ── 5. Rita ──────────────────────────────────────────────────────────────
+  if (lead.ai_autopilot === false) {
+    return json({ ok: true, lead_id: lead.id, stored: true, auto_reply: "contact_autopilot_off" });
+  }
+  try {
+    const { data: paused } = await admin.rpc("is_ai_paused");
+    if (paused === true) {
+      return json({ ok: true, lead_id: lead.id, stored: true, auto_reply: "ai_paused" });
+    }
+  } catch { /* soft-fail: never block the reply on the gate lookup */ }
+
+  // Has Rita already offered the WhatsApp switch on this SMS thread?
+  let alreadyGreeted = false;
+  try {
+    const { data: prior } = await admin
+      .from("messages")
+      .select("id")
+      .eq("lead_id", lead.id)
+      .eq("platform", "sms")
+      .eq("direction", "outbound")
+      .limit(1)
+      .maybeSingle();
+    alreadyGreeted = !!(prior as any)?.id;
+  } catch { /* soft-fail */ }
+
+  let reply = "";
+
+  if (!alreadyGreeted) {
+    // FIRST automated SMS reply: greet + offer the WhatsApp switch with a
+    // direct clickable chat link to the official WBA number only.
+    let waPhone = OFFICIAL_WABA_PHONE;
+    try {
+      const { data: prov } = await admin
+        .from("wa_providers").select("config").eq("is_official", true).eq("is_active", true)
+        .limit(1).maybeSingle();
+      const cfg = ((prov as any)?.config ?? {}) as Record<string, unknown>;
+      const digits = String(cfg.display_phone_number ?? cfg.phone_number ?? "").replace(/\D/g, "");
+      if (digits.length >= 9) waPhone = digits;
+    } catch { /* keep the official constant */ }
+
+    let brandName = "Realtyz";
+    try {
+      const { data: wl } = await admin
+        .from("white_label_settings").select("agency_name").eq("user_id", workspaceOwnerId!)
+        .limit(1).maybeSingle();
+      const name = String((wl as any)?.agency_name ?? "").trim();
+      if (name) brandName = name;
+    } catch { /* keep the default */ }
+
+    reply =
+      `שלום, זו ריטה מ${brandName}. קיבלנו את ההודעה שלך ואנחנו כבר על זה.\n` +
+      `נוח יותר להמשיך בוואטסאפ (תמונות, נכסים וקישורים): https://wa.me/${waPhone}\n` +
+      `אפשר גם להמשיך כאן ב-SMS, כמו שנוח לך.`;
+  } else {
+    // Ongoing SMS conversation: answer with the normal Rita pipeline.
+    let history: Array<{ role: string; content: string }> = [];
+    try {
+      const { data: rows } = await admin
+        .from("messages")
+        .select("content, direction, created_at")
+        .eq("lead_id", lead.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      history = ((rows ?? []) as any[])
+        .reverse()
+        .map((m) => ({ role: m.direction === "inbound" ? "user" : "assistant", content: String(m.content ?? "") }))
+        .filter((m) => m.content);
+    } catch { /* soft-fail: Rita can answer on the inbound text alone */ }
+
+    try {
+      const aiRes = await fetch(`${SUPABASE_URL}/functions/v1/ai-agent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+        body: JSON.stringify({
+          lead_id: lead.id,
+          lead_name: lead.full_name,
+          mode: "deal_room_reply",
+          workspace_owner_id: workspaceOwnerId || undefined,
+          context:
+            `Inbound SMS from ${lead.full_name ?? "the contact"}: ${bodyText}\n` +
+            `[CHANNEL: SMS] Keep the reply short (under 300 characters), plain text, no markdown and no emojis. ` +
+            `When it helps, invite them to continue on WhatsApp at https://wa.me/${OFFICIAL_WABA_PHONE}.`,
+          messages: history,
+        }),
+      });
+      const rawAi = await aiRes.text();
+      let aiJson: any = {};
+      try { aiJson = JSON.parse(rawAi); } catch { /* non-json */ }
+      if (!aiRes.ok) {
+        console.error(`[sms-inbound] ai-agent failed ${aiRes.status}`, rawAi.slice(0, 400));
+        await logIntegrationError({
+          integration: "ai_gateway",
+          functionName: "sms-inbound-webhook",
+          errorCode: aiRes.status,
+          errorMessage: `ai-agent failed for an inbound SMS (${aiRes.status})`,
+          context: { lead_id: lead.id, response: rawAi.slice(0, 800) },
+        });
+      } else {
+        const text = aiJson?.content ?? aiJson?.message ?? aiJson?.reply ?? "";
+        reply = String(typeof text === "string" ? text : "").trim();
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[sms-inbound] ai-agent threw", msg);
+      await logIntegrationError({
+        integration: "ai_gateway",
+        functionName: "sms-inbound-webhook",
+        errorMessage: `ai-agent call threw for an inbound SMS: ${msg}`,
+        context: { lead_id: lead.id },
+      });
+    }
+
+    if (!reply) {
+      reply =
+        `קיבלנו את ההודעה שלך ונחזור אליך עם תשובה מדויקת. ` +
+        `להמשך נוח יותר בוואטסאפ: https://wa.me/${OFFICIAL_WABA_PHONE}`;
+    }
+  }
+
+  // SMS is one segment-priced channel: keep the reply short.
+  if (reply.length > 640) reply = `${reply.slice(0, 637)}...`;
+
+  const sent = await sendSms019(admin, fromNormalized, reply, workspaceOwnerId);
+  if (!sent.ok) {
+    console.error("[sms-inbound] outbound SMS failed", sent.error);
+    await logIntegrationError({
+      integration: "sms",
+      functionName: "sms-inbound-webhook",
+      errorMessage: `Rita's SMS reply could not be sent: ${sent.error}`,
+      context: { lead_id: lead.id, scope: sent.scope ?? null },
+    });
+  }
+
+  // Store the outbound leg either way, marked with its delivery status, so the
+  // inbox shows the full conversation and a failure is visible.
+  try {
+    await admin.rpc("record_interaction_message", {
+      _lead_id: lead.id,
+      _platform: "sms",
+      _direction: "outbound",
+      _sender_type: "ai",
+      _content: reply,
+      _external_id: sent.message_id || `sms-out:${crypto.randomUUID()}`,
+      _created_at: new Date().toISOString(),
+      _metadata: {
+        provider: "019 SMS",
+        message_id: sent.message_id ?? null,
+        status: sent.ok ? "sent" : "failed",
+        error: sent.ok ? null : sent.error ?? null,
+        ai_assisted: true,
+        greeting_with_whatsapp_switch: !alreadyGreeted,
+        source: "sms-inbound-webhook",
+      },
+    });
+  } catch (e) {
+    console.warn("[sms-inbound] outbound store soft-fail", e instanceof Error ? e.message : e);
+  }
+  try {
+    await admin.from("chat_history").insert({ lead_id: lead.id, role: "assistant", content: reply, is_demo: false });
+  } catch { /* soft-fail */ }
+
+  return json({
+    ok: true,
+    lead_id: lead.id,
+    lead_created: createdLead,
+    stored: true,
+    replied: sent.ok,
+    reply_kind: alreadyGreeted ? "rita_ai" : "greeting_whatsapp_switch",
+    error: sent.ok ? undefined : sent.error,
+  });
+});
