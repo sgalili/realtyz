@@ -363,7 +363,7 @@ export default function AffiliateNetwork() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2 border-t pt-3">
                         {l.asking_price ? (
-                          <span className="text-lg font-bold text-primary">
+                          <span className="text-lg font-bold text-brand-navy">
                             <bdi dir="ltr">{fmtILS(l.asking_price)}</bdi>
                           </span>
                         ) : null}
@@ -507,8 +507,6 @@ export default function AffiliateNetwork() {
                           <div className="truncate text-[11px] text-slate-500">
                             שותף: {r.affiliate?.display_name || 'שותף ללא שם'}
                             {r.affiliate?.phone ? ` · ${r.affiliate.phone}` : ''}
-                            {' · '}
-                            <bdi dir="ltr">{r.tracking_code}</bdi>
                             {' · '}
                             {r.clicks} כניסות
                           </div>

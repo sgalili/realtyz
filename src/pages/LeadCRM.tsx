@@ -2,7 +2,7 @@ import SmartTimelineCard from '@/components/SmartTimelineCard';
 import QuickMessageCard from '@/components/messaging/QuickMessageCard';
 
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -556,6 +556,7 @@ const LeadCRM = () => {
   const freemium = useFreemiumStatus();
   const { leadId: routeLeadId } = useParams<{ leadId?: string }>();
   const navigate = useNavigate();
+  const routeLocation = useLocation();
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(routeLeadId ?? null);
 
   // Sync sheet open-state with the URL param so /lead-crm/:id opens the profile.
@@ -2225,7 +2226,9 @@ const LeadCRM = () => {
           setSelectedVoterId(null);
           if (routeLeadId) {
             // Came in via /lead-crm/:id deep-link — return to the previous screen (inbox, dashboard, etc.)
-            if (window.history.length > 1) navigate(-1);
+            const returnTo = (routeLocation.state as { returnTo?: string } | null)?.returnTo;
+            if (returnTo) navigate(returnTo);
+            else if (window.history.length > 1) navigate(-1);
             else navigate('/lead-crm');
           }
         }
