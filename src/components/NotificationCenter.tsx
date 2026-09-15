@@ -302,6 +302,9 @@ export default function NotificationCenter() {
     ALERT_KEYWORDS.find(kw => content.includes(kw)) || '';
 
 
+  // The bell only exists while something is actually unread.
+  if (badgeCount === 0 && !open) return null;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
