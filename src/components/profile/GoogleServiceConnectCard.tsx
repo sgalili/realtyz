@@ -135,18 +135,18 @@ export function GoogleServiceConnectCard({
   // it explicitly — a pending query or a transient failure never flips it back.
   useEffect(() => {
     if (liveConnected) {
-      rememberConnected(platform, null, credEmail);
+      rememberConnected(platform, workspaceOwnerId, credEmail);
       try {
         window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
       } catch { /* storage may be unavailable */ }
     }
   }, [liveConnected, platform, credEmail]);
+  // Sticky status is remembered PER WORKSPACE only — never globally — so a
+  // connection in one office can never light up (or restore) in another.
   const connected = justDisconnected
     ? false
-    : liveConnected
-      || isRememberedConnected(platform)
-      || isRememberedConnected(platform, workspaceOwnerId);
-  const accountLabel = connected ? (credEmail ?? rememberedLabel(platform)) : null;
+    : liveConnected || isRememberedConnected(platform, workspaceOwnerId);
+  const accountLabel = connected ? (credEmail ?? rememberedLabel(platform, workspaceOwnerId)) : null;
 
   /** Explicit, user-initiated disconnect — the only way to clear the status. */
   const disconnect = async () => {
@@ -159,22 +159,15 @@ export function GoogleServiceConnectCard({
     // confirms, and stays that way even if the refetch is slow.
     setJustDisconnected(true);
     try {
-      // Disconnect only within the active workspace — platform + workspace.
+      // HARD delete, strictly filtered by service + active workspace: the row
+      // (and its tokens) is removed so nothing can restore it later, and no
+      // other workspace's row is ever touched.
       const { error } = await supabase
         .from('social_connections')
-        .update({
-          is_connected: false,
-          encrypted_session: null,
-          last_test_status: 'disconnected',
-          last_test_message: 'נותק ידנית',
-          last_test_at: new Date().toISOString(),
-        })
+        .delete()
         .eq('platform', platform)
-        .eq('workspace_owner_id', workspaceOwnerId)
-        .eq('is_connected', true);
+        .eq('workspace_owner_id', workspaceOwnerId);
       if (error) throw error;
-      // Clear BOTH sticky scopes: the card remembers under the default scope,
-      // the collapsed header under the active workspace id.
       forgetConnected(platform);
       forgetConnected(platform, workspaceOwnerId);
       try {
@@ -206,7 +199,7 @@ export function GoogleServiceConnectCard({
         if (error || !(resp as any)?.ok) throw new Error((resp as any)?.error || error?.message || 'נכשל');
         const connectedEmail = (resp as any).identity?.email ?? null;
         setJustDisconnected(false);
-        rememberConnected(platform, null, connectedEmail);
+        rememberConnected(platform, workspaceOwnerId, connectedEmail);
         try {
           window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
         } catch { /* storage may be unavailable */ }
@@ -245,7 +238,7 @@ export function GoogleServiceConnectCard({
     const unsubscribe = onOAuthResult(platform, (res) => {
       if (res.ok) {
         setJustDisconnected(false);
-        rememberConnected(platform, null, res.name || null);
+        rememberConnected(platform, workspaceOwnerId, res.name || null);
         try {
           window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
         } catch { /* storage may be unavailable */ }
