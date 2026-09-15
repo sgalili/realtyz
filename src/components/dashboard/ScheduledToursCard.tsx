@@ -120,6 +120,30 @@ export function ScheduledToursCard() {
     },
   });
 
+  /** Contact photos of this workspace, matched to a tour by phone number. */
+  const { data: avatars } = useQuery({
+    queryKey: ['tour-contact-avatars', ownerId],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('leads')
+        .select('phone_number, profile_picture_url')
+        .eq('workspace_owner_id', ownerId!)
+        .not('profile_picture_url', 'is', null)
+        .limit(1000);
+      const map = new Map<string, string>();
+      for (const row of (data ?? []) as any[]) {
+        const key = String(row.phone_number ?? '').replace(/\D/g, '').slice(-9);
+        if (key && row.profile_picture_url) map.set(key, row.profile_picture_url);
+      }
+      return map;
+    },
+  });
+
+  const avatarOf = (phone: string | null) =>
+    avatars?.get(String(phone ?? '').replace(/\D/g, '').slice(-9)) ?? null;
+
+
   const setStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase.from('property_tours').update({ status }).eq('id', id);
