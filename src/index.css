@@ -1031,6 +1031,16 @@
     -webkit-overflow-scrolling: auto;
   }
 
+  /* Exactly 20px between the hero and page content across the whole app:
+     the main surface owns that gap, so the first content block adds none. */
+  .realtyz-main-surface > div > *:first-child {
+    margin-top: 0 !important;
+  }
+
+  .realtyz-main-surface > div > *:first-child > *:first-child {
+    padding-top: 0;
+  }
+
   /* When the SubscriptionManager is mounted, force the surrounding shell to
      match its light off-white background so there is no dark stripe / edge. */
   .realtyz-main-surface:has([data-page="subscription"]) {
