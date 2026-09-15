@@ -373,7 +373,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       .maybeSingle();
     const { error } = existing?.id
       ? await supabase.from('social_connections').update(payload).eq('id', existing.id)
-      : await supabase.from('social_connections').upsert(payload, { onConflict: 'created_by,platform' });
+      : await supabase.from('social_connections').upsert(payload, { onConflict: 'workspace_owner_id,platform' });
     setConnectingWhatsApp(false);
     if (error) {
       toast.error('חיבור WhatsApp נכשל');

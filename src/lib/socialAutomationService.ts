@@ -303,7 +303,7 @@ export const SocialAutomationService = {
         .eq('id', existing.id);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from('social_connections').upsert(payload, { onConflict: 'created_by,platform' });
+      const { error } = await supabase.from('social_connections').upsert(payload, { onConflict: 'workspace_owner_id,platform' });
       if (error) throw error;
     }
   },
@@ -539,7 +539,7 @@ async function writeManual(
     // Stamp created_by so the dispatch function (which scopes per user) can find this row.
     const { error } = await supabase
       .from('social_connections')
-      .upsert({ ...payload, is_connected: false, created_by: manualUser?.id ?? null }, { onConflict: 'created_by,platform' });
+      .upsert({ ...payload, is_connected: false, created_by: manualUser?.id ?? null }, { onConflict: 'workspace_owner_id,platform' });
     if (error) throw error;
   }
 }

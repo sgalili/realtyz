@@ -75,7 +75,7 @@ export function SocialConnectionCard({ def, connection, onChange }: Props) {
           .eq('id', connection.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('social_connections').upsert(payload, { onConflict: 'created_by,platform' });
+        const { error } = await supabase.from('social_connections').upsert(payload, { onConflict: 'workspace_owner_id,platform' });
         if (error) throw error;
       }
       toast.success('פרטי החיבור נשמרו');
