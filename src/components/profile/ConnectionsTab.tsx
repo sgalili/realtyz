@@ -385,7 +385,7 @@ export function ConnectionsTab() {
             </section>
           )}
           <section className={cn('space-y-2', !officialPhone && 'border-t pt-4')}>
-            <h4 className="text-sm font-semibold">אופן חיבור WhatsApp</h4>
+            <h4 className="text-sm font-semibold">{`\n`}</h4>
             <WhatsAppConnectionModeCard />
           </section>
           {waMode === 'qr_session' && (
