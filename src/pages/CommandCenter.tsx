@@ -64,7 +64,7 @@ const PRIORITY_LABEL: Record<CommandTask['priority'], string> = {
   low: 'נמוך',
 };
 
-type SectionTab = 'tours' | 'tasks' | 'leads' | 'demos' | 'notes' | 'reminders' | 'calls';
+type SectionTab = 'tours' | 'tasks' | 'leads' | 'demos' | 'notes' | 'calls';
 
 const TAB_LABEL: Record<SectionTab, string> = {
   tours: 'סיורים',
@@ -72,27 +72,28 @@ const TAB_LABEL: Record<SectionTab, string> = {
   leads: 'לידים',
   demos: 'הדגמות',
   notes: '',
-  reminders: 'תזכורות',
   calls: 'שיחות',
 };
 
 /** Tabs that never show a card count next to their label. */
 const TABS_WITHOUT_COUNT = new Set<SectionTab>(['tours']);
 
-/** Standard workspaces: property tours first, then tasks, reminders and calls. */
-const DEFAULT_TABS: SectionTab[] = ['tours', 'tasks', 'reminders', 'calls'];
+/** Standard workspaces: property tours first, then tasks (incl. reminders) and calls. */
+const DEFAULT_TABS: SectionTab[] = ['tours', 'tasks', 'calls'];
 /**
  * Rita's marketing workspace: demos come first and property tours are hidden
  * (her workspace never manages properties).
  */
-const RITA_TABS: SectionTab[] = ['demos', 'tasks', 'reminders', 'calls'];
+const RITA_TABS: SectionTab[] = ['demos', 'tasks', 'calls'];
 
-/** Which section a card belongs to. */
+/**
+ * Which section a card belongs to. Reminders (follow-ups) live inside the
+ * unified "משימות" tab — there is no separate reminders section any more.
+ */
 function sectionOf(task: CommandTask): SectionTab {
   if (task.source === 'note') return task.actionType === 'interaction' ? 'calls' : 'notes';
   if (task.source === 'meeting') return 'tasks';
   if (task.actionType === 'call') return 'calls';
-  if (task.actionType === 'follow_up') return 'reminders';
   return 'tasks';
 }
 
