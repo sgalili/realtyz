@@ -61,19 +61,41 @@ async function exchangeCode(params: {
   | { access_token: string; refresh_token?: string; expires_in?: number; scope?: string }
   | { error: string }
 > {
-  const res = await timedFetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: params.clientId,
-      client_secret: params.clientSecret,
-      code: params.code,
+  let res: Response;
+  try {
+    res = await timedFetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: params.clientId,
+        client_secret: params.clientSecret,
+        code: params.code,
+        redirect_uri: params.redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+  } catch (e: any) {
+    // Network / timeout: never silently become a generic failure.
+    console.error('[google-oauth-exchange] token endpoint unreachable', {
       redirect_uri: params.redirectUri,
-      grant_type: 'authorization_code',
-    }),
-  });
-  const json = await res.json().catch(() => ({}));
+      client_id_tail: params.clientId.slice(-12),
+      reason: String(e?.message ?? e),
+    });
+    return { error: `Google token endpoint unreachable: ${String(e?.message ?? e)}` };
+  }
+  const rawBody = await res.text().catch(() => '');
+  let json: any = {};
+  try { json = rawBody ? JSON.parse(rawBody) : {}; } catch { json = {}; }
   if (!res.ok) {
+    // Log exactly what Google answered (no tokens are present in an error body).
+    console.error('[google-oauth-exchange] token exchange rejected', {
+      http_status: res.status,
+      google_error: json.error ?? null,
+      google_error_description: json.error_description ?? null,
+      raw: rawBody.slice(0, 400),
+      redirect_uri: params.redirectUri,
+      client_id_tail: params.clientId.slice(-12),
+    });
     const baseMsg =
       json.error_description ||
       json.error ||
@@ -88,6 +110,12 @@ async function exchangeCode(params: {
         ? `${baseMsg} — Google rejected the redirect URI. Add this EXACT value to your OAuth client's Authorized redirect URIs in Google Cloud Console: ${params.redirectUri}`
         : baseMsg,
     };
+  }
+  if (!json?.access_token) {
+    console.error('[google-oauth-exchange] token response missing access_token', {
+      keys: Object.keys(json ?? {}),
+    });
+    return { error: 'Google returned a token response without an access_token' };
   }
   return json;
 }
@@ -315,13 +343,38 @@ async function handle(req: Request): Promise<Response> {
       );
     }
 
-    // Exchange.
-    const tokens = await exchangeCode({
-      clientId: clientId!,
-      clientSecret: clientSecret!,
-      code,
-      redirectUri,
+    // Exchange. Every failure below is logged with the stage it happened in.
+    console.info('[google-oauth-exchange] start', {
+      platform,
+      workspace_owner_id: workspaceOwnerId,
+      caller: callerUserId,
+      credential_source: credentialSource,
+      redirect_uri: redirectUri,
     });
+    let tokens: Awaited<ReturnType<typeof exchangeCode>>;
+    try {
+      tokens = await exchangeCode({
+        clientId: clientId!,
+        clientSecret: clientSecret!,
+        code,
+        redirectUri,
+      });
+    } catch (e: any) {
+      console.error('[google-oauth-exchange] token stage threw', {
+        platform, workspace_owner_id: workspaceOwnerId, reason: String(e?.message ?? e),
+      });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: `החלפת הקוד מול Google נכשלה: ${String(e?.message ?? e)}`,
+          code: 'token_exchange_failed',
+          stage: 'token_exchange',
+          redirect_uri_used: redirectUri,
+          workspace_owner_id: workspaceOwnerId,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
     if ('error' in tokens) {
       await admin
         .from('social_connections')
@@ -332,23 +385,44 @@ async function handle(req: Request): Promise<Response> {
         })
         .eq('platform', platform)
         .eq('workspace_owner_id', workspaceOwnerId);
-      return new Response(JSON.stringify({ ok: false, error: tokens.error, code: 'token_exchange_failed', redirect_uri_used: redirectUri }), {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: tokens.error,
+        code: 'token_exchange_failed',
+        stage: 'token_exchange',
+        redirect_uri_used: redirectUri,
+        workspace_owner_id: workspaceOwnerId,
+      }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     // Fetch real identity with the fresh access_token.
-    const identity =
-      platform === 'gmail' || platform === 'google_all'
-        ? await fetchGmailIdentity(tokens.access_token)
-        : platform === 'youtube'
-          ? await fetchYouTubeIdentity(tokens.access_token)
-          : platform === 'google_calendar'
-            ? await fetchCalendarIdentity(tokens.access_token)
-            : await fetchDriveIdentity(tokens.access_token);
+    let identity: any;
+    try {
+      identity =
+        platform === 'gmail' || platform === 'google_all'
+          ? await fetchGmailIdentity(tokens.access_token)
+          : platform === 'youtube'
+            ? await fetchYouTubeIdentity(tokens.access_token)
+            : platform === 'google_calendar'
+              ? await fetchCalendarIdentity(tokens.access_token)
+              : await fetchDriveIdentity(tokens.access_token);
+    } catch (e: any) {
+      console.error('[google-oauth-exchange] identity stage threw', {
+        platform, workspace_owner_id: workspaceOwnerId, reason: String(e?.message ?? e),
+      });
+      identity = { error: String(e?.message ?? e), status: 0 };
+    }
 
     if ('error' in identity) {
+      console.error('[google-oauth-exchange] identity fetch failed', {
+        platform,
+        workspace_owner_id: workspaceOwnerId,
+        google_status: identity.status ?? null,
+        error: identity.error,
+      });
       await admin
         .from('social_connections')
         .update({
@@ -359,7 +433,14 @@ async function handle(req: Request): Promise<Response> {
         .eq('platform', platform === 'google_all' ? 'gmail' : platform)
         .eq('workspace_owner_id', workspaceOwnerId);
       return new Response(
-        JSON.stringify({ ok: false, error: identity.error, google_status: identity.status, code: 'identity_failed' }),
+        JSON.stringify({
+          ok: false,
+          error: identity.error,
+          google_status: identity.status,
+          code: 'identity_failed',
+          stage: 'identity',
+          workspace_owner_id: workspaceOwnerId,
+        }),
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -382,6 +463,10 @@ async function handle(req: Request): Promise<Response> {
     };
 
     let saveWarning: string | null = null;
+    /** Services whose own identity probe failed — never marked connected. */
+    const skipped: string[] = [];
+    /** Services actually bound to this workspace in this run. */
+    const stored: string[] = [];
 
     for (const targetPlatform of platformsToSync) {
       const { data: targetRow } = await admin
@@ -403,12 +488,39 @@ async function handle(req: Request): Promise<Response> {
       const prevCreds = (targetRow?.credentials as Record<string, unknown> | null) ?? {};
       const prevManual = ((prevCreds as any).manual ?? {}) as Record<string, string>;
 
-      const targetIdentity =
-        targetPlatform === 'youtube'
-          ? await fetchYouTubeIdentity(tokens.access_token).catch(() => identity)
-          : targetPlatform === 'google_calendar'
-            ? await fetchCalendarIdentity(tokens.access_token).catch(() => identity)
-            : identity;
+      let targetIdentity: any = identity;
+      if (targetPlatform === 'youtube' || targetPlatform === 'google_calendar') {
+        try {
+          targetIdentity = targetPlatform === 'youtube'
+            ? await fetchYouTubeIdentity(tokens.access_token)
+            : await fetchCalendarIdentity(tokens.access_token);
+        } catch (e: any) {
+          targetIdentity = { error: String(e?.message ?? e), status: 0 };
+        }
+      }
+      // A per-service probe that failed must NEVER be written as a verified
+      // identity: in a bundle sign-in we skip that service (so its card stays
+      // honestly disconnected), for a single-service request the identity error
+      // above already returned.
+      if (targetIdentity && 'error' in targetIdentity) {
+        console.warn('[google-oauth-exchange] skipping service without a valid identity', {
+          service: targetPlatform,
+          workspace_owner_id: workspaceOwnerId,
+          google_status: targetIdentity.status ?? null,
+          error: targetIdentity.error,
+        });
+        skipped.push(targetPlatform);
+        await admin
+          .from('social_connections')
+          .update({
+            last_test_at: new Date().toISOString(),
+            last_test_status: targetIdentity.status === 403 ? 'scope_missing' : 'auth_failed',
+            last_test_message: String(targetIdentity.error),
+          })
+          .eq('platform', targetPlatform)
+          .eq('workspace_owner_id', workspaceOwnerId);
+        continue;
+      }
 
       const newCreds = {
         ...prevCreds,
@@ -446,10 +558,15 @@ async function handle(req: Request): Promise<Response> {
       if (targetRow?.id) {
         try {
           const { error } = await withTimeout(
-            admin.from('social_connections').update(upd).eq('id', targetRow.id) as unknown as Promise<any>,
+            // Re-assert the workspace filter on the write itself: the row is
+            // only ever updated when it still belongs to the active workspace.
+            admin.from('social_connections').update(upd)
+              .eq('id', targetRow.id)
+              .eq('workspace_owner_id', workspaceOwnerId) as unknown as Promise<any>,
             8000, 'social_connections update',
           );
           if (error && !saveWarning) saveWarning = error.message;
+          else stored.push(targetPlatform);
         } catch (e: any) {
           if (!saveWarning) saveWarning = e?.message ?? 'db update failed';
         }
@@ -460,6 +577,7 @@ async function handle(req: Request): Promise<Response> {
             8000, 'social_connections upsert',
           );
           if (error && !saveWarning) saveWarning = error.message;
+          else stored.push(targetPlatform);
         } catch (e: any) {
           if (!saveWarning) saveWarning = e?.message ?? 'db upsert failed';
         }
@@ -467,8 +585,35 @@ async function handle(req: Request): Promise<Response> {
     }
 
     if (saveWarning) {
+      console.error('[google-oauth-exchange] persist stage failed', {
+        platform, workspace_owner_id: workspaceOwnerId, reason: saveWarning,
+      });
       return new Response(
-        JSON.stringify({ ok: false, error: `שמירת החיבור נכשלה: ${saveWarning}`, code: 'db_save_failed' }),
+        JSON.stringify({
+          ok: false,
+          error: `שמירת החיבור נכשלה: ${saveWarning}`,
+          code: 'db_save_failed',
+          stage: 'persist',
+          workspace_owner_id: workspaceOwnerId,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // A single-service request that stored nothing is a real failure, not a
+    // silent success — otherwise the UI shows a success toast over no row.
+    if (platform !== 'google_all' && stored.length === 0) {
+      console.error('[google-oauth-exchange] nothing stored for single-service request', {
+        platform, workspace_owner_id: workspaceOwnerId, skipped,
+      });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: 'החיבור לא נשמר עבור המשרד הפעיל. נסו שוב.',
+          code: 'not_stored',
+          stage: 'persist',
+          workspace_owner_id: workspaceOwnerId,
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -525,19 +670,26 @@ async function handle(req: Request): Promise<Response> {
       };
 
       if (sibRow?.id) {
-        await admin.from('social_connections').update(sibUpd).eq('id', sibRow.id);
+        await admin.from('social_connections').update(sibUpd)
+          .eq('id', sibRow.id)
+          .eq('workspace_owner_id', workspaceOwnerId);
       } else {
         await admin.from('social_connections').upsert(sibUpd, { onConflict: 'workspace_owner_id,platform' });
       }
     }
 
+    console.info('[google-oauth-exchange] done', {
+      platform, workspace_owner_id: workspaceOwnerId, stored, skipped,
+    });
     return new Response(
       JSON.stringify({
         ok: true,
         identity,
         credential_source: credentialSource,
         sibling_synced: !!(body.one_click && sibling),
-        platforms_synced: platform === 'google_all' ? ['gmail', 'google_calendar', 'youtube'] : [platform],
+        workspace_owner_id: workspaceOwnerId,
+        platforms_synced: stored,
+        platforms_skipped: skipped,
       }),
       {
         status: 200,

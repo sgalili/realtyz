@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { readEdgeError } from '@/lib/edgeError';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -196,7 +197,20 @@ export function GoogleServiceConnectCard({
         const { data: resp, error } = await supabase.functions.invoke('google-oauth-exchange', {
           body: { platform, code, redirect_uri: redirectUri },
         });
-        if (error || !(resp as any)?.ok) throw new Error((resp as any)?.error || error?.message || 'נכשל');
+        if (error) {
+          const real = await readEdgeError(error, 'נכשל');
+          console.error('[google-oauth] exchange transport error', { platform, real });
+          throw new Error(real);
+        }
+        if (!(resp as any)?.ok) {
+          console.error('[google-oauth] exchange rejected', {
+            platform,
+            code: (resp as any)?.code,
+            stage: (resp as any)?.stage,
+            error: (resp as any)?.error,
+          });
+          throw new Error((resp as any)?.error || 'נכשל');
+        }
         const connectedEmail = (resp as any).identity?.email ?? null;
         setJustDisconnected(false);
         rememberConnected(platform, workspaceOwnerId, connectedEmail);
