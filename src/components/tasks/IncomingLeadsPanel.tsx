@@ -6,11 +6,10 @@
  * in one place instead of on the dashboard.
  */
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { CalendarClock, CalendarPlus, ChevronLeft, ExternalLink } from 'lucide-react';
-import { toast } from 'sonner';
+import { CalendarClock, ChevronLeft, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -81,7 +80,6 @@ export function useScheduledDemosCount() {
 
 export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const ownerId = useActiveWorkspaceOwnerId();
 
   const { data: leads, isLoading: loadingLeads } = useQuery({
@@ -120,22 +118,6 @@ export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
 
   const loading = mode === 'leads' ? loadingLeads : loadingDemos;
   const rows = mode === 'leads' ? leads ?? [] : demos ?? [];
-
-  /** Creates (or re-creates) the Google Calendar event for one demo. */
-  const syncToCalendar = async (demoId: string) => {
-    const { data, error } = await supabase.functions.invoke('demo-booking-notify', {
-      body: { demo_request_id: demoId, calendar_only: true },
-    });
-    const cal = (data as any)?.calendar;
-    if (error || !cal?.created) {
-      toast.error('היומן לא עודכן', {
-        description: 'צריך לחבר את יומן Google בהגדרות החיבורים ולנסות שוב.',
-      });
-      return;
-    }
-    toast.success('ההדגמה נוספה ליומן Google');
-    queryClient.invalidateQueries({ queryKey: ['tasks-scheduled-demos'] });
-  };
 
   if (loading) {
     return (
@@ -201,29 +183,17 @@ export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
               </span>
               <ChevronLeft className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/50" />
             </button>
-            {!isLead && (
+            {!isLead && row.google_event_link && (
               <div className="mt-1 flex justify-end">
-                {row.google_event_id ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-[13px] text-muted-foreground"
-                    onClick={() => row.google_event_link && window.open(row.google_event_link, '_blank', 'noopener')}
-                  >
-                    <ExternalLink className="me-1.5 h-3.5 w-3.5" />
-                    ביומן Google
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-[13px] text-primary"
-                    onClick={() => syncToCalendar(row.id)}
-                  >
-                    <CalendarPlus className="me-1.5 h-3.5 w-3.5" />
-                    הוספה ליומן Google
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-[13px] text-muted-foreground"
+                  onClick={() => window.open(row.google_event_link, '_blank', 'noopener')}
+                >
+                  <ExternalLink className="me-1.5 h-3.5 w-3.5" />
+                  ביומן Google
+                </Button>
               </div>
             )}
           </li>
