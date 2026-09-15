@@ -79,13 +79,13 @@ const TAB_LABEL: Record<SectionTab, string> = {
 /** Tabs that never show a card count next to their label. */
 const TABS_WITHOUT_COUNT = new Set<SectionTab>(['tours']);
 
-/** Standard workspaces: property tours first, then tasks (incl. reminders) and calls. */
-const DEFAULT_TABS: SectionTab[] = ['tours', 'tasks', 'calls'];
+/** Standard workspaces: tasks (incl. reminders) first, then tours and calls. */
+const DEFAULT_TABS: SectionTab[] = ['tasks', 'tours', 'calls'];
 /**
- * Rita's marketing workspace: demos come first and property tours are hidden
+ * Rita's marketing workspace: tasks first, demos next, property tours hidden
  * (her workspace never manages properties).
  */
-const RITA_TABS: SectionTab[] = ['demos', 'tasks', 'calls'];
+const RITA_TABS: SectionTab[] = ['tasks', 'demos', 'calls'];
 
 /**
  * Which section a card belongs to. Reminders (follow-ups) live inside the
