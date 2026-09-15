@@ -25,8 +25,6 @@ import { toast } from 'sonner';
 import { publicUrl } from '@/lib/publicUrl';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 type PublicListing = {
   id: string | null;
   slug: string | null;
