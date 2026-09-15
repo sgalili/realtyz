@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
     const { data: meetings, error } = await admin
       .from('meetings')
-      .select('id, user_id, lead_id, title, starts_at, ends_at, timezone, conference_link, lead_name, lead_phone')
+      .select('id, user_id, lead_id, title, starts_at, ends_at, timezone, location, conference_link, lead_name, lead_phone')
       .eq('status', 'scheduled')
       .is('reminder_1h_sent_at', null)
       .gte('starts_at', lower)
@@ -91,6 +91,7 @@ Deno.serve(async (req) => {
           message: [
             "⏰ תזכורת: הפגישה מתחילה בעוד שעה",
             `👤 איש קשר: ${m.lead_name ?? "לא שויך"}`,
+            ...(m.location ? [`🏠 נכס: ${m.location}`] : []),
             `📅 אירוע: ${m.title || "פגישה"}`,
             `🕒 מועד: ${startStr}`,
             ...(link ? [link] : []),
