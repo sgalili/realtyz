@@ -61,6 +61,7 @@ function ConnectionSection({
   onToggle,
   children,
   headerAside,
+  restricted,
 }: {
   title: string;
   titleAside?: ReactNode;
@@ -70,9 +71,15 @@ function ConnectionSection({
   onToggle: () => void;
   children: ReactNode;
   headerAside?: ReactNode;
+  /** Super-admin only section — marked with a red border. */
+  restricted?: boolean;
 }) {
   return (
-    <div dir="rtl" className="rounded-xl border bg-card text-right shadow-sm">
+    <div
+      dir="rtl"
+      className="rounded-xl border bg-card text-right shadow-sm"
+      style={restricted ? { borderColor: 'hsl(0 72% 51%)' } : undefined}
+    >
       <button
         type="button"
         onClick={onToggle}
@@ -271,7 +278,7 @@ export function ConnectionsTab() {
 
   const [sms019Sender, setSms019Sender] = useState<string | null>(null);
 
-  const sections: Array<{ id: string; title: string; titleAside?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode }> = [
+  const sections: Array<{ id: string; title: string; titleAside?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
     {
       id: 'meta',
       title: 'פייסבוק / אינסטגרם',
@@ -358,7 +365,7 @@ export function ConnectionsTab() {
             accountEmail={googleAccountEmail}
           />
           {isSuperAdmin && (
-            <section className="border-t pt-3">
+            <section className="border-t pt-3" style={{ borderTopColor: 'hsl(0 72% 51%)' }}>
               <Button
                 type="button"
                 variant="ghost"
@@ -372,7 +379,7 @@ export function ConnectionsTab() {
                 <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', googleAdvancedOpen && 'rotate-180')} />
               </Button>
               {googleAdvancedOpen && (
-                <div data-keep className="mt-3">
+                <div data-keep className="mt-3 rounded-lg border p-3" style={{ borderColor: 'hsl(0 72% 51%)' }}>
                   <GoogleApiCredentialsCard />
                 </div>
               )}
@@ -390,6 +397,7 @@ export function ConnectionsTab() {
       status: sms019Sender ? sms019Sender : 'לא הוגדר',
       tone: (sms019Sender ? 'ok' : 'idle') as Tone,
       node: <WorkspaceSmsCard onStatus={setSms019Sender} />,
+      restricted: true,
     }] : []),
 
 
@@ -421,6 +429,7 @@ export function ConnectionsTab() {
           open={openId === s.id}
           onToggle={() => toggle(s.id)}
           headerAside={s.headerAside}
+          restricted={s.restricted}
         >
           {s.node}
         </ConnectionSection>
