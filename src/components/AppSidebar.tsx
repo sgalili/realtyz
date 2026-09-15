@@ -202,20 +202,23 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
 
               {/* Tutorial + broker/partner toggle share one row. */}
               <div className="mt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closeSidebar();
-                    window.dispatchEvent(new Event('realtyz:start-tour'));
-                  }}
-                  title="הדרכה"
-                  aria-label="הדרכה"
-                  className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-md border border-slate-200 px-2 py-1.5 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                  הדרכה
-                </button>
+                {/* Tutorial button: hidden in Rita's marketing workspace. */}
+                {!features.isRitaWorkspace && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeSidebar();
+                      window.dispatchEvent(new Event('realtyz:start-tour'));
+                    }}
+                    title="הדרכה"
+                    aria-label="הדרכה"
+                    className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-md border border-slate-200 px-2 py-1.5 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                    הדרכה
+                  </button>
+                )}
 
                 {/* Broker/partner toggle: hidden only in Rita's marketing workspace. */}
                 {features.modeSwitcherEnabled && <AppModeSwitcher />}
