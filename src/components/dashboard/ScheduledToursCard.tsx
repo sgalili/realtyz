@@ -121,13 +121,13 @@ function dayKey(iso: string) {
 export function ScheduledToursCard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [view, setView] = useState<'list' | 'calendar'>('list');
-  const [monthCursor, setMonthCursor] = useState(() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), 1);
-  });
-  const [openDay, setOpenDay] = useState<string | null>(() => dayKey(new Date().toISOString()));
-  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [view, setView] = useState<ScheduleView>('list');
+  const [monthCursor, setMonthCursor] = useState(startOfThisMonth);
+  const [openDay, setOpenDay] = useState<string | null>(() => todayKey());
+  /** Tour whose status pill was clicked, awaiting a manual client confirmation. */
+  const [confirmTarget, setConfirmTarget] = useState<Tour | null>(null);
+  /** Tour being cancelled, awaiting the "notify the client?" choice. */
+  const [cancelTarget, setCancelTarget] = useState<Tour | null>(null);
 
   // Tours belong to ONE workspace only — never show another workspace's tours.
   const ownerId = useActiveWorkspaceOwnerId();
@@ -235,6 +235,40 @@ export function ScheduledToursCard() {
     onError: () => toast.error('עדכון האישור נכשל'),
   });
 
+  /**
+   * Cancels a tour and, when the broker chooses to, lets the client know on
+   * WhatsApp through the official gateway.
+   */
+  const cancelTour = useMutation({
+    mutationFn: async ({ tour, notify }: { tour: Tour; notify: boolean }) => {
+      const { error } = await supabase
+        .from('property_tours')
+        .update({ status: 'cancelled' })
+        .eq('id', tour.id);
+      if (error) throw error;
+      if (!notify || !tour.client_phone) return { notified: false };
+      const where = tour.property_title || tour.property_address || 'הנכס';
+      const { error: waError } = await supabase.functions.invoke('send-whatsapp', {
+        body: {
+          phone_number: tour.client_phone,
+          message:
+            `שלום ${tour.client_name || ''}, זו ריטה מהמשרד 🙂\n` +
+            `הסיור ב${where} בתאריך ${formatWhen(tour.scheduled_at)} בוטל.\n` +
+            `נשמח לתאם מועד חדש — אפשר להשיב כאן.`,
+          ...(ownerId ? { tenant_id: ownerId } : {}),
+        },
+      });
+      if (waError) throw waError;
+      return { notified: true };
+    },
+    onSuccess: (res) => {
+      toast.success(res?.notified ? 'הסיור בוטל והלקוח קיבל הודעה' : 'הסיור בוטל');
+      setCancelTarget(null);
+      qc.invalidateQueries({ queryKey: ['scheduled-tours'] });
+    },
+    onError: () => toast.error('ביטול הסיור נכשל'),
+  });
+
   const byDay = useMemo(() => {
     const map = new Map<string, Tour[]>();
     for (const t of tours) {
@@ -266,7 +300,7 @@ export function ScheduledToursCard() {
   function TourActions({ t }: { t: Tour }) {
     return (
       <div className="mt-2 space-y-1.5">
-        {/* Chat and Call always share the SAME row. */}
+        {/* Chat, call, done and cancel all share the SAME row. */}
         <div className="flex flex-wrap items-center gap-1.5">
           <Button size="sm" variant="outline" className="h-8 text-[12px]" onClick={() => openOmnichat(t)}>
             <MessageSquare className="me-1 h-3.5 w-3.5" />
@@ -278,35 +312,30 @@ export function ScheduledToursCard() {
               שיחה
             </a>
           </Button>
+          {t.status !== 'completed' && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 text-[12px]"
+              onClick={() => setStatus.mutate({ id: t.id, status: 'completed' })}
+            >
+              בוצע
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" className="h-8 text-[12px]" onClick={() => setCancelTarget(t)}>
+            ביטול
+          </Button>
         </div>
-        <div className="flex flex-wrap gap-1.5">
         {t.client_email ? (
-          <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
-            <a href={`mailto:${t.client_email}`}>
-              <Mail className="me-1 h-3.5 w-3.5" />
-              אימייל
-            </a>
-          </Button>
+          <div className="flex flex-wrap gap-1.5">
+            <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
+              <a href={`mailto:${t.client_email}`}>
+                <Mail className="me-1 h-3.5 w-3.5" />
+                אימייל
+              </a>
+            </Button>
+          </div>
         ) : null}
-        {displayStatus(t) !== 'confirmed' && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-8 text-[12px]"
-            onClick={() => confirmByClient.mutate({ id: t.id })}
-          >
-            הלקוח אישר
-          </Button>
-        )}
-        {t.status !== 'completed' && (
-          <Button size="sm" variant="secondary" className="h-8 text-[12px]" onClick={() => setStatus.mutate({ id: t.id, status: 'completed' })}>
-            בוצע
-          </Button>
-        )}
-        <Button size="sm" variant="ghost" className="h-8 text-[12px]" onClick={() => setStatus.mutate({ id: t.id, status: 'cancelled' })}>
-          ביטול
-        </Button>
-        </div>
       </div>
     );
   }
@@ -323,9 +352,15 @@ export function ScheduledToursCard() {
             />
             {t.client_name}
           </div>
-          <Badge variant="outline" className={STATUS_CLASS[displayStatus(t)] ?? ''}>
-            {STATUS_HE[displayStatus(t)] ?? t.status}
-          </Badge>
+          {/* The status pill itself opens the manual client-confirmation dialog. */}
+          <button type="button" onClick={() => setConfirmTarget(t)} title="לחיצה לעדכון אישור הלקוח">
+            <Badge
+              variant="outline"
+              className={`cursor-pointer transition-opacity hover:opacity-80 ${STATUS_CLASS[displayStatus(t)] ?? ''}`}
+            >
+              {STATUS_HE[displayStatus(t)] ?? t.status}
+            </Badge>
+          </button>
         </div>
         <div className="mt-1.5 space-y-1 text-[13px] text-muted-foreground">
           <p className="flex items-center gap-1.5">
