@@ -379,34 +379,28 @@ export function ConnectionsTab() {
       tone: waStatus[1],
       node: (
         <div data-plain className="space-y-4">
-          {officialPhone ? (
-            // A Meta WBA number is live — keep this minimal: a single line of
-            // explanation, no icon, no pills, no setup block.
-            <section>
-              <p className="text-xs text-muted-foreground">
-                
-              </p>
-            </section>
-          ) : (
+          {!officialPhone && (
             <section className="space-y-2">
               <MetaWhatsAppAuthCard />
             </section>
           )}
-          <section className="space-y-2 border-t pt-4">
+          <section className={cn('space-y-2', !officialPhone && 'border-t pt-4')}>
             <h4 className="text-sm font-semibold">אופן חיבור WhatsApp</h4>
             <WhatsAppConnectionModeCard />
           </section>
-          <section className="space-y-2 border-t pt-4">
-            <h4 className="text-sm font-semibold">
-              
-              {personalPhone && (
-                <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
-                  {formatPhoneDisplay(personalPhone)}
-                </span>
-              )}
-            </h4>
-            <WhatsAppGatewayCard />
-          </section>
+          {waMode === 'qr_session' && (
+            <section className="space-y-2 border-t pt-4">
+              <h4 className="text-sm font-semibold">
+                מספר ווטסאפ אישי
+                {personalPhone && (
+                  <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
+                    {formatPhoneDisplay(personalPhone)}
+                  </span>
+                )}
+              </h4>
+              <WhatsAppGatewayCard />
+            </section>
+          )}
         </div>
       ),
 
