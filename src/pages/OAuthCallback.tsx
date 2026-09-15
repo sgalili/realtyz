@@ -5,6 +5,7 @@ import { isOAuthPopup, notifyOAuthOpener } from '@/lib/oauthPopupBridge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ExternalLink } from 'lucide-react';
 import { friendlyGoogleError } from '@/lib/googleApiErrors';
+import { readEdgeError } from '@/lib/edgeError';
 import { startMetaPageConnect } from '@/lib/facebookPageConnect';
 
 /**
@@ -268,9 +269,33 @@ export default function OAuthCallback() {
             EXCHANGE_TIMEOUT_MS,
             'החיבור ל-Google לא הושלם בזמן. נסה שוב.',
           );
-          if (fnError) throw new Error(String(fnError.message ?? fnError));
+          if (fnError) {
+            const real = await readEdgeError(fnError, 'exchange_failed');
+            console.error('[oauth-callback] google exchange transport error', {
+              platform: googlePlatform, redirectUri, real,
+            });
+            throw new Error(real);
+          }
           const payload = (data as any) ?? {};
-          if (payload.error || payload.ok === false) throw new Error(String(payload.error || 'exchange_failed'));
+          if (payload.error || payload.ok === false) {
+            console.error('[oauth-callback] google exchange rejected by server', {
+              platform: googlePlatform,
+              redirectUri,
+              code: payload.code,
+              stage: payload.stage,
+              google_status: payload.google_status,
+              redirect_uri_used: payload.redirect_uri_used,
+              error: payload.error,
+            });
+            throw new Error(String(payload.error || 'exchange_failed'));
+          }
+          if (payload.workspace_owner_id) {
+            console.info('[oauth-callback] google connection stored', {
+              platform: googlePlatform,
+              workspace_owner_id: payload.workspace_owner_id,
+              platforms_synced: payload.platforms_synced,
+            });
+          }
           if (cancelled || exchangeDoneRef.current) return;
           exchangeDoneRef.current = true;
           const email = String(payload?.identity?.email ?? '');
