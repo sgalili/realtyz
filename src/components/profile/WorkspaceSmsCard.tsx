@@ -14,6 +14,12 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
  * 019 authenticates with a username + API TOKEN generated on their website
  * (the old API password was retired).
  */
+/** True for a masked placeholder ("••••", "(שמור)") that is not a real token. */
+function isMaskedValue(v: string): boolean {
+  if (!v) return false;
+  return /[•*]/.test(v) || v.includes('שמור');
+}
+
 export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | null) => void }) {
   const ownerId = useActiveWorkspaceOwnerId();
   const [loading, setLoading] = useState(true);
