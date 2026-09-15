@@ -185,6 +185,16 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
           <Input id="sms019-sender" value={sender} onChange={(e) => setSender(e.target.value)} dir="ltr" />
         </div>
       </div>
+      <div className="space-y-1.5 sm:max-w-[220px]">
+        <Label htmlFor="sms019-recipient">מספר לבדיקה (לא חובה)</Label>
+        <Input
+          id="sms019-recipient"
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          placeholder={sender || '05X-XXXXXXX'}
+          dir="ltr"
+        />
+      </div>
       <div className="flex items-center gap-2">
         <Button onClick={save} disabled={saving}>
           {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
