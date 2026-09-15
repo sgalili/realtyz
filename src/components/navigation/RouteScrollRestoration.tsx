@@ -14,10 +14,15 @@ export function RouteScrollRestoration() {
     if (stored) {
       const top = Number(stored);
       if (Number.isFinite(top)) {
-        requestAnimationFrame(() => {
-          window.scrollTo({ top, behavior: 'auto' });
-          requestAnimationFrame(() => window.scrollTo({ top, behavior: 'auto' }));
-        });
+        // Async lists can grow after the route first renders. Re-apply briefly
+        // so returning from a CRM sheet lands on the precise original card.
+        const restore = () => window.scrollTo({ top, behavior: 'auto' });
+        requestAnimationFrame(restore);
+        const timers = [100, 300, 700].map((delay) => window.setTimeout(restore, delay));
+        return () => {
+          timers.forEach(window.clearTimeout);
+          sessionStorage.setItem(scrollKey(key), String(window.scrollY));
+        };
       }
     }
     previousKey.current = key;
