@@ -118,7 +118,7 @@ export function WhatsAppConnectionModeCard() {
                   )}
                 >
                   <span className="min-w-0">
-                    <span className="block text-sm font-medium">{opt.title}</span>
+                    <span className={cn('block text-sm', active ? 'font-bold' : 'font-medium')}>{opt.title}</span>
                     <span className="block text-xs text-muted-foreground">{opt.hint}</span>
                   </span>
                   {active && <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
