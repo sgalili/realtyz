@@ -15,6 +15,7 @@ import {
   Banknote,
   Building2,
   Copy,
+  HelpCircle,
   Link2,
   MapPin,
   Megaphone,
@@ -23,6 +24,12 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
+import {
+  Tooltip as UiTooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import SubmitLeadDialog from '@/components/affiliate/SubmitLeadDialog';
 import {
