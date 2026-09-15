@@ -484,12 +484,39 @@ async function handle(req: Request): Promise<Response> {
       const prevCreds = (targetRow?.credentials as Record<string, unknown> | null) ?? {};
       const prevManual = ((prevCreds as any).manual ?? {}) as Record<string, string>;
 
-      const targetIdentity =
-        targetPlatform === 'youtube'
-          ? await fetchYouTubeIdentity(tokens.access_token).catch(() => identity)
-          : targetPlatform === 'google_calendar'
-            ? await fetchCalendarIdentity(tokens.access_token).catch(() => identity)
-            : identity;
+      let targetIdentity: any = identity;
+      if (targetPlatform === 'youtube' || targetPlatform === 'google_calendar') {
+        try {
+          targetIdentity = targetPlatform === 'youtube'
+            ? await fetchYouTubeIdentity(tokens.access_token)
+            : await fetchCalendarIdentity(tokens.access_token);
+        } catch (e: any) {
+          targetIdentity = { error: String(e?.message ?? e), status: 0 };
+        }
+      }
+      // A per-service probe that failed must NEVER be written as a verified
+      // identity: in a bundle sign-in we skip that service (so its card stays
+      // honestly disconnected), for a single-service request the identity error
+      // above already returned.
+      if (targetIdentity && 'error' in targetIdentity) {
+        console.warn('[google-oauth-exchange] skipping service without a valid identity', {
+          service: targetPlatform,
+          workspace_owner_id: workspaceOwnerId,
+          google_status: targetIdentity.status ?? null,
+          error: targetIdentity.error,
+        });
+        skipped.push(targetPlatform);
+        await admin
+          .from('social_connections')
+          .update({
+            last_test_at: new Date().toISOString(),
+            last_test_status: targetIdentity.status === 403 ? 'scope_missing' : 'auth_failed',
+            last_test_message: String(targetIdentity.error),
+          })
+          .eq('platform', targetPlatform)
+          .eq('workspace_owner_id', workspaceOwnerId);
+        continue;
+      }
 
       const newCreds = {
         ...prevCreds,
