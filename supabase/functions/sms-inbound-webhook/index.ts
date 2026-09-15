@@ -295,13 +295,18 @@ Deno.serve(async (req) => {
   }
 
   // ── 5. Rita ──────────────────────────────────────────────────────────────
+  // Runs as a BACKGROUND task: the AI leg can take a minute, and 019 re-posts
+  // the same SMS when the webhook does not answer quickly.
+  const runRita = async () => {
   if (lead.ai_autopilot === false) {
-    return json({ ok: true, lead_id: lead.id, stored: true, auto_reply: "contact_autopilot_off" });
+    console.log("[sms-inbound] contact autopilot is off — no auto reply", { lead_id: lead.id });
+    return;
   }
   try {
     const { data: paused } = await admin.rpc("is_ai_paused");
     if (paused === true) {
-      return json({ ok: true, lead_id: lead.id, stored: true, auto_reply: "ai_paused" });
+      console.log("[sms-inbound] AI is paused for this workspace — no auto reply", { lead_id: lead.id });
+      return;
     }
   } catch { /* soft-fail: never block the reply on the gate lookup */ }
 
