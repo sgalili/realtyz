@@ -43,6 +43,7 @@ export function ExtensionGroupSyncCard({
 
   const persist = async (rows: ExtensionGroup[], silent: boolean) => {
     if (!workspaceOwnerId || rows.length === 0) return;
+    claimSignature(rows.map((g) => g.group_id).sort().join('|'), workspaceOwnerId);
     setSaving(true);
     try {
       const now = new Date().toISOString();
@@ -71,8 +72,17 @@ export function ExtensionGroupSyncCard({
   };
 
   // Auto-save every fresh push from the extension exactly once.
+  //
+  // TENANT ISOLATION: the extension bridge lives in the browser, not in the
+  // workspace, so the very same group list is visible after a workspace
+  // switch. Auto-saving it again would copy one broker's groups into another
+  // workspace. A pushed list is therefore claimed by the workspace that first
+  // stored it, and only that workspace may auto-save it. Another workspace
+  // must sync explicitly ("בדוק שוב") with its own Facebook session.
   useEffect(() => {
-    if (!signature || signature === savedRef.current) return;
+    if (!signature || !workspaceOwnerId || signature === savedRef.current) return;
+    const owner = claimOwnerFor(signature);
+    if (owner && owner !== workspaceOwnerId) return;
     savedRef.current = signature;
     void persist(groups, false);
     setOpen(false);
