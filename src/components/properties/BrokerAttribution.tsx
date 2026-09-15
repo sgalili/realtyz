@@ -3,6 +3,7 @@ import { Building2 } from 'lucide-react';
 type BrokerAttributionProps = {
   brokerName?: string | null;
   officeName?: string | null;
+  licenceNumber?: string | null;
   logoUrl?: string | null;
   compact?: boolean;
 };
@@ -10,6 +11,7 @@ type BrokerAttributionProps = {
 export default function BrokerAttribution({
   brokerName,
   officeName,
+  licenceNumber,
   logoUrl,
   compact = false,
 }: BrokerAttributionProps) {
@@ -28,6 +30,9 @@ export default function BrokerAttribution({
       <div className="min-w-0 text-right">
         <p className={`${compact ? 'text-xs' : 'text-sm'} truncate font-bold text-foreground`}>{broker}</p>
         <p className="truncate text-xs font-medium text-muted-foreground">{office}</p>
+        {licenceNumber?.trim() ? (
+          <p className="truncate text-xs font-medium text-muted-foreground">רישיון תיווך {licenceNumber.trim()}</p>
+        ) : null}
       </div>
     </div>
   );

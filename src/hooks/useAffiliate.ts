@@ -63,6 +63,7 @@ export type MarketplaceListing = {
   city: string | null;
   deal_type: string | null;
   rooms: number | null;
+  sqm: number | null;
   asking_price: number | null;
   image_url: string | null;
   media_photos: unknown;
@@ -76,6 +77,7 @@ export type MarketplaceListing = {
   tier3_amount: number;
   broker_name: string | null;
   office_name: string | null;
+  broker_license_number: string | null;
   agency_logo_url: string | null;
 };
 
