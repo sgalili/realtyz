@@ -343,13 +343,38 @@ async function handle(req: Request): Promise<Response> {
       );
     }
 
-    // Exchange.
-    const tokens = await exchangeCode({
-      clientId: clientId!,
-      clientSecret: clientSecret!,
-      code,
-      redirectUri,
+    // Exchange. Every failure below is logged with the stage it happened in.
+    console.info('[google-oauth-exchange] start', {
+      platform,
+      workspace_owner_id: workspaceOwnerId,
+      caller: callerUserId,
+      credential_source: credentialSource,
+      redirect_uri: redirectUri,
     });
+    let tokens: Awaited<ReturnType<typeof exchangeCode>>;
+    try {
+      tokens = await exchangeCode({
+        clientId: clientId!,
+        clientSecret: clientSecret!,
+        code,
+        redirectUri,
+      });
+    } catch (e: any) {
+      console.error('[google-oauth-exchange] token stage threw', {
+        platform, workspace_owner_id: workspaceOwnerId, reason: String(e?.message ?? e),
+      });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: `החלפת הקוד מול Google נכשלה: ${String(e?.message ?? e)}`,
+          code: 'token_exchange_failed',
+          stage: 'token_exchange',
+          redirect_uri_used: redirectUri,
+          workspace_owner_id: workspaceOwnerId,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
     if ('error' in tokens) {
       await admin
         .from('social_connections')
