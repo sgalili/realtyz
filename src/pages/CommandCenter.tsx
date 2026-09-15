@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import TaskFormDialog, { localDefaultDue, type TaskFormValues } from '@/components/tasks/TaskFormDialog';
 import {
   useCommandCenterTasks,
   useCommandCenterPosts,
