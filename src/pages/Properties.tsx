@@ -248,7 +248,8 @@ export default function Properties() {
         : take(type);
     defaultPoolRef.current.set(cacheKey, pool);
     return pool;
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConfigured, coveredCities.join('|')]);
 
 
   // The table is NEVER empty: whenever the query box is blank we repaint the
