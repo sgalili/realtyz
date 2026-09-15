@@ -106,12 +106,14 @@ export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
     enabled: !!ownerId && mode === 'demos',
     refetchInterval: 30_000,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('demo_requests')
         .select('id, first_name, last_name, phone, notes, status, preferred_at, created_at, lead_id, google_event_id, google_event_link')
-        .eq('workspace_owner_id', ownerId!)
-        .order('preferred_at', { ascending: false })
+        .or(demoOwnerFilter(ownerId!))
+        .order('preferred_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
         .limit(60);
+      if (error) throw error;
       return (data ?? []) as any[];
     },
   });
