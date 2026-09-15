@@ -51,12 +51,18 @@ type NavItem = {
   badge?: string;
 };
 
+/**
+ * Every sidebar entry owns a UNIQUE colour. The icon colour is forced with an
+ * arbitrary Tailwind value that is the exact hex of the badge's `text-*-700`
+ * token, so icon and counter pill always render in the same colour and no
+ * inherited `text-slate-900` can win.
+ */
 const NAV_ITEMS: NavItem[] = [
   {
     title: 'משימות',
     url: '/',
     icon: ClipboardList,
-    iconColor: 'text-sky-600',
+    iconColor: '!text-[#0369a1]', // sky-700
     badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
     aliases: ['/command-center', '/tasks'],
   },
@@ -64,14 +70,14 @@ const NAV_ITEMS: NavItem[] = [
     title: 'לוח בקרה',
     url: '/dashboard',
     icon: Activity,
-    iconColor: 'text-indigo-600',
+    iconColor: '!text-[#4338ca]', // indigo-700
     badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
   },
   {
     title: 'פוסטים',
     url: '/campaigns',
     icon: Megaphone,
-    iconColor: 'text-orange-500',
+    iconColor: '!text-[#c2410c]', // orange-700
     badgeClass: 'bg-orange-50 text-orange-700 ring-orange-200',
     aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
   },
@@ -79,15 +85,15 @@ const NAV_ITEMS: NavItem[] = [
     title: 'אנשי קשר',
     url: '/lead-crm',
     icon: Users,
-    iconColor: 'text-emerald-600',
+    iconColor: '!text-[#047857]', // emerald-700
     badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
     aliases: ['/crm', '/leads'],
   },
   {
     title: 'נכסים',
     url: '/properties',
-    icon: Building2,
-    iconColor: 'text-amber-500',
+    icon: Home,
+    iconColor: '!text-[#b45309]', // amber-700
     badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
     aliases: ['/property', '/listings'],
   },
@@ -95,7 +101,7 @@ const NAV_ITEMS: NavItem[] = [
     title: 'צ׳אטים',
     url: '/inbox',
     icon: MessageCircle,
-    iconColor: 'text-cyan-600',
+    iconColor: '!text-[#0e7490]', // cyan-700
     badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
     aliases: ['/communication'],
   },
@@ -103,7 +109,7 @@ const NAV_ITEMS: NavItem[] = [
     title: 'עסקאות',
     url: '/deal-room',
     icon: Handshake,
-    iconColor: 'text-rose-600',
+    iconColor: '!text-[#be123c]', // rose-700
     badgeClass: 'bg-rose-50 text-rose-700 ring-rose-200',
     aliases: ['/deals'],
   },
@@ -111,15 +117,15 @@ const NAV_ITEMS: NavItem[] = [
     title: 'שותפים',
     url: '/affiliate-network',
     icon: AffiliateFlowchartIcon,
-    iconColor: 'text-emerald-600',
-    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+    iconColor: '!text-[#6d28d9]', // violet-700
+    badgeClass: 'bg-violet-50 text-violet-700 ring-violet-200',
   },
   {
     title: 'הזמן חברים',
     url: '/referral',
     icon: Gift,
-    iconColor: 'text-amber-600',
-    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
+    iconColor: '!text-[#0f766e]', // teal-700
+    badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
   },
 ];
 
@@ -132,23 +138,23 @@ const PARTNER_NAV_ITEMS: NavItem[] = [
   {
     title: 'נכסים לשיווק',
     url: '/affiliate',
-    icon: Building2,
-    iconColor: 'text-sky-600',
+    icon: Home,
+    iconColor: '!text-[#0369a1]', // sky-700
     badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
   },
   {
     title: 'שותפים',
     url: '/affiliate-network',
     icon: AffiliateFlowchartIcon,
-    iconColor: 'text-emerald-600',
-    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+    iconColor: '!text-[#6d28d9]', // violet-700
+    badgeClass: 'bg-violet-50 text-violet-700 ring-violet-200',
   },
   {
     title: 'תגמולים',
     url: '/referral',
     icon: Gift,
-    iconColor: 'text-amber-600',
-    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
+    iconColor: '!text-[#0f766e]', // teal-700
+    badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
   },
 ];
 
