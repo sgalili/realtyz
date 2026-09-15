@@ -16,6 +16,8 @@ export interface PlatformSettings {
   ai_paused: boolean;
   ai_paused_reason: string | null;
   ai_paused_at: string | null;
+  /** Free-form per-workspace switches (e.g. auto_dm_commenters, comment_dm_text). */
+  extra: Record<string, unknown>;
 }
 
 const DEFAULTS: PlatformSettings = {
