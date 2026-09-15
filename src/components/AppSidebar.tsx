@@ -122,6 +122,35 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+/**
+ * Partner ("שותף") mode navigation: only the affiliate surfaces — shared
+ * listings to promote, the partner network and the referral/rewards screen.
+ * Broker-only CRM tooling is hidden entirely.
+ */
+const PARTNER_NAV_ITEMS: NavItem[] = [
+  {
+    title: 'נכסים לשיווק',
+    url: '/affiliate',
+    icon: Building2,
+    iconColor: 'text-sky-600',
+    badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
+  },
+  {
+    title: 'שותפים',
+    url: '/affiliate-network',
+    icon: AffiliateFlowchartIcon,
+    iconColor: 'text-emerald-600',
+    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  },
+  {
+    title: 'תגמולים',
+    url: '/referral',
+    icon: Gift,
+    iconColor: 'text-amber-600',
+    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
+  },
+];
+
 export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: string | null }) {
   const { state, isMobile, setOpen, setOpenMobile } = useSidebar();
 
