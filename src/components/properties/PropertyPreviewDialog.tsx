@@ -22,12 +22,14 @@ export function PropertyPreviewDialog({
   result,
   onCampaign,
   importing,
+  fullAddress,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   result: UnifiedResult | null;
   onCampaign?: (r: UnifiedResult) => void;
   importing?: boolean;
+  fullAddress?: string | null;
 }) {
   // Lazy full-gallery + rich metadata: the heavy per-property fetch only runs
   // when the user opens the details card. Nothing is written to the DB here —
@@ -133,7 +135,7 @@ export function PropertyPreviewDialog({
               {r.address && (
                 <div className="inline-flex items-center gap-1.5 text-foreground">
                   <MapPin className="h-4 w-4 text-primary" />
-                  {stripAddressNumbers(r.address)}
+                  {fullAddress || stripAddressNumbers(r.address)}
                 </div>
               )}
               {r.rooms != null && (

@@ -4,7 +4,7 @@
 //   set the reward (fixed ILS or percent of commission) paid on a signed deal.
 // Tab 2 "אנשי קשר משותפים" — full tracking CRM of every affiliate-generated
 //   referral: status funnel, source affiliate, linked lead, and settlement.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -28,8 +28,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, Building2, Handshake, MapPin, Search, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Banknote, BedDouble, Building2, Handshake, MapPin, Ruler, Search, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import {
   SUBMISSION_STATUS_LABELS,
@@ -53,6 +53,51 @@ import {
 } from '@/hooks/useAffiliate';
 import { fmtILS } from '@/lib/formatCurrency';
 import { PropertyThumb, propertyFullAddress } from '@/components/leads/LinkedPropertiesField';
+import ContactAvatar from '@/components/contacts/ContactAvatar';
+import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
+import type { UnifiedResult } from '@/lib/propertySearch';
+
+const AFFILIATE_SCROLL_KEY = 'affiliate-network:scroll-y';
+
+function listingPhotos(listing: BrokerAffiliateListing): string[] {
+  const urls: string[] = [];
+  if (listing.image_url) urls.push(listing.image_url);
+  if (Array.isArray(listing.media_photos)) {
+    for (const item of listing.media_photos) {
+      if (typeof item === 'string' && item.trim()) urls.push(item.trim());
+      else if (item && typeof item === 'object') {
+        const row = item as Record<string, unknown>;
+        const candidate = row.url ?? row.src ?? row.image_url ?? row.image;
+        if (typeof candidate === 'string' && candidate.trim()) urls.push(candidate.trim());
+      }
+    }
+  }
+  return [...new Set(urls)];
+}
+
+function toUnifiedResult(listing: BrokerAffiliateListing): UnifiedResult {
+  const dealType = listing.deal_type === 'rent' ? 'rent' : 'sale';
+  return {
+    key: `mine:${listing.id}`,
+    source: 'mine',
+    sources: ['mine'],
+    localId: listing.id,
+    title: listing.property_title || propertyFullAddress(listing) || 'נכס ללא כותרת',
+    description: listing.description,
+    price: listing.asking_price,
+    city: listing.city,
+    address: propertyFullAddress(listing),
+    neighborhood: listing.neighborhood,
+    rooms: listing.rooms ?? null,
+    size_sqm: listing.sqm ?? null,
+    floor: listing.floor,
+    photos: listingPhotos(listing),
+    url: listing.source_url,
+    listing_type: dealType,
+    property_type: listing.property_type ?? null,
+    raw: listing,
+  };
+}
 
 function RewardDialog({
   listing,
@@ -182,6 +227,7 @@ function RewardDialog({
 }
 
 export default function AffiliateNetwork() {
+  const navigate = useNavigate();
   const { data: listings = [], isLoading: listingsLoading } = useBrokerAffiliateListings();
   const { data: referrals = [], isLoading: refsLoading } = useBrokerReferrals();
   const { data: submissions = [], isLoading: subsLoading } = useBrokerSubmissions();
@@ -190,6 +236,20 @@ export default function AffiliateNetwork() {
 
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
+  const [previewing, setPreviewing] = useState<BrokerAffiliateListing | null>(null);
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem(AFFILIATE_SCROLL_KEY);
+    if (!stored) return;
+    sessionStorage.removeItem(AFFILIATE_SCROLL_KEY);
+    const top = Number(stored);
+    if (Number.isFinite(top)) requestAnimationFrame(() => window.scrollTo({ top, behavior: 'auto' }));
+  }, []);
+
+  const openLead = (leadId: string) => {
+    sessionStorage.setItem(AFFILIATE_SCROLL_KEY, String(window.scrollY));
+    navigate(`/lead-crm/${leadId}`, { state: { returnTo: '/affiliate-network' } });
+  };
 
   const filteredListings = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -225,7 +285,7 @@ export default function AffiliateNetwork() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
             { label: 'נכסים פתוחים לשותפים', value: String(totals.active), icon: Building2, color: 'text-sky-600' },
-            { label: 'שיווקים פעילים', value: String(totals.referrals), icon: Users, color: 'text-indigo-600' },
+            { label: 'שיווקים פעילים', value: String(totals.referrals), icon: Users, color: 'text-violet-600' },
             { label: 'עסקאות דרך שותפים', value: String(totals.signed), icon: Handshake, color: 'text-emerald-600' },
             { label: 'תגמול לתשלום', value: fmtILS(totals.owed), icon: Banknote, color: 'text-amber-600' },
           ].map((s) => (
@@ -233,7 +293,7 @@ export default function AffiliateNetwork() {
               <CardContent className="flex flex-col items-center justify-center gap-1.5 p-3.5 text-center">
                 <s.icon className={`h-6 w-6 shrink-0 ${s.color}`} />
                 <div className="kpi-label text-slate-500">{s.label}</div>
-                <div className="kpi-value font-bold text-slate-900">
+                <div className={`kpi-value font-bold ${s.color}`}>
                   <bdi dir="ltr">{s.value}</bdi>
                 </div>
               </CardContent>
@@ -242,7 +302,7 @@ export default function AffiliateNetwork() {
         </div>
 
         <Tabs defaultValue="rewards">
-          <TabsList>
+          <TabsList className="mx-auto flex w-fit max-w-full justify-center">
             <TabsTrigger value="rewards">נכסים ותגמולים</TabsTrigger>
             <TabsTrigger value="tracking">אנשי קשר משותפים</TabsTrigger>
             <TabsTrigger value="submissions">הגשות שותפים</TabsTrigger>
@@ -255,7 +315,7 @@ export default function AffiliateNetwork() {
                 placeholder="חיפוש נכס"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pe-9"
+                className="px-[15px] pe-9"
               />
             </div>
 
@@ -268,38 +328,51 @@ export default function AffiliateNetwork() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {filteredListings.map((l) => (
-                  <Card key={l.id} className="border-slate-200">
-                    <CardContent className="space-y-3 p-3.5">
-                      {/* Name + full address always sit above the pills and actions. */}
-                      <div className="flex items-center gap-3">
-                        <PropertyThumb p={l as any} size={56} />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-base font-bold text-slate-900">
-                            {l.property_title || 'נכס ללא כותרת'}
-                          </div>
-                          <div className="flex items-center gap-1.5 truncate text-[13px] text-slate-500">
-                            <MapPin className="h-3.5 w-3.5 shrink-0" />
-                            {propertyFullAddress(l as any) || 'כתובת לא צוינה'}
-                          </div>
-                        </div>
+                  <Card
+                    key={l.id}
+                    className="group cursor-pointer overflow-hidden border-slate-200 transition-shadow hover:shadow-lg"
+                    onClick={() => setPreviewing(l)}
+                  >
+                    <div className="border-b px-4 pb-2 pt-3">
+                      <h3 className="truncate text-base font-semibold" title={l.property_title || undefined}>
+                        {l.property_title || 'נכס ללא כותרת'}
+                      </h3>
+                      <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        <span className="whitespace-normal">{propertyFullAddress(l)}</span>
+                      </p>
+                    </div>
+                    <div className="aspect-[16/10] overflow-hidden bg-muted">
+                      {listingPhotos(l)[0] ? (
+                        <img
+                          src={listingPhotos(l)[0]}
+                          alt={propertyFullAddress(l)}
+                          loading="lazy"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">אין תמונה</div>
+                      )}
+                    </div>
+                    <CardContent className="flex flex-col gap-3 p-4">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        {l.rooms ? <span className="inline-flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />{l.rooms} חד׳</span> : null}
+                        {l.sqm ? <span className="inline-flex items-center gap-1"><Ruler className="h-3.5 w-3.5" />{l.sqm} מ״ר</span> : null}
                       </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 border-t pt-3">
                         {l.asking_price ? (
-                          <Badge variant="outline" className="text-[12px]">
+                          <span className="text-lg font-bold text-primary">
                             <bdi dir="ltr">{fmtILS(l.asking_price)}</bdi>
-                          </Badge>
+                          </span>
                         ) : null}
-
                         {l.affiliate_enabled && (
-                          <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                          <Badge variant="secondary">
                             {formatReward(l.affiliate_reward_type, l.affiliate_reward_amount)}
                           </Badge>
                         )}
-
-                        <Button size="sm" variant="outline" className="ms-auto" onClick={() => setEditing(l)}>
+                        <Button size="sm" variant="outline" className="ms-auto" onClick={(event) => { event.stopPropagation(); setEditing(l); }}>
                           קביעת תגמול
                         </Button>
                       </div>
@@ -323,12 +396,20 @@ export default function AffiliateNetwork() {
               submissions.map((s) => (
                 <Card key={s.id} className="border-slate-200">
                   <CardContent className="space-y-3 p-3.5">
-                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        {s.listing ? <PropertyThumb p={s.listing} size={52} /> : null}
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-bold text-slate-900">
-                          {s.lead_name}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-auto max-w-full justify-start gap-2 p-0 text-sm font-bold text-slate-900 hover:bg-transparent"
+                            disabled={!s.lead?.id}
+                            onClick={() => s.lead?.id && openLead(s.lead.id)}
+                          >
+                            <ContactAvatar name={s.lead?.full_name || s.lead_name} imageUrl={s.lead?.profile_picture_url} className="h-8 w-8" />
+                            <span className="truncate">{s.lead?.full_name || s.lead_name}</span>
                           {s.lead_phone ? <> · <bdi dir="ltr" className="font-normal text-slate-500">{s.lead_phone}</bdi></> : null}
-                        </div>
+                          </Button>
                         <div className="truncate text-[11px] text-slate-500">
                           {s.listing?.property_title || 'נכס'} · שותף: {s.affiliate?.display_name || 'שותף ללא שם'}
                           {' · '}
@@ -418,6 +499,7 @@ export default function AffiliateNetwork() {
                   <Card key={r.id} className="border-slate-200">
                     <CardContent className="space-y-3 p-3.5">
                       <div className="flex flex-wrap items-center gap-3">
+                        {r.listing ? <PropertyThumb p={r.listing} size={52} /> : null}
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-bold text-slate-900">
                             {r.listing?.property_title || 'נכס לא ידוע'}
@@ -438,14 +520,16 @@ export default function AffiliateNetwork() {
                       </div>
 
                       {r.lead && (
-                        <Link
-                          to={`/lead-crm/${r.lead.id}`}
-                          className="flex items-center gap-2 rounded-md bg-slate-50 px-2.5 py-2 text-[12px] font-semibold text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-slate-100"
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => openLead(r.lead?.id ?? '')}
+                          className="h-auto w-full justify-start gap-2 bg-slate-50 px-2.5 py-2 text-[12px] font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
                         >
-                          <Users className="h-3.5 w-3.5 text-slate-400" />
-                          {r.lead.full_name || 'איש קשר'}
+                          <ContactAvatar name={r.lead.full_name} imageUrl={r.lead.profile_picture_url} className="h-8 w-8" />
+                          <span>{r.lead.full_name || 'איש קשר'}</span>
                           {r.lead.phone ? <bdi dir="ltr" className="text-slate-500">{r.lead.phone}</bdi> : null}
-                        </Link>
+                        </Button>
                       )}
 
                       <div className="flex flex-wrap items-center gap-2">
@@ -503,6 +587,12 @@ export default function AffiliateNetwork() {
         </Tabs>
 
         <RewardDialog listing={editing} open={!!editing} onOpenChange={(v) => !v && setEditing(null)} />
+        <PropertyPreviewDialog
+          open={!!previewing}
+          onOpenChange={(open) => !open && setPreviewing(null)}
+          result={previewing ? toUnifiedResult(previewing) : null}
+          fullAddress={previewing ? propertyFullAddress(previewing) : null}
+        />
       </div>
     </>
   );

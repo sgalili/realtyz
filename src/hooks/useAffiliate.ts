@@ -257,6 +257,12 @@ export type BrokerAffiliateListing = {
   image_url: string | null;
   media_photos?: unknown;
   rooms?: number | null;
+  sqm?: number | null;
+  floor?: number | null;
+  neighborhood?: string | null;
+  description?: string | null;
+  property_type?: string | null;
+  source_url?: string | null;
   house_number?: string | null;
   apartment_number?: string | null;
   status: string | null;
@@ -280,7 +286,7 @@ export function useBrokerAffiliateListings() {
       const { data, error } = await supabase
         .from('listings')
         .select(
-          'id, property_title, address, city, deal_type, asking_price, rooms, image_url, media_photos, house_number, apartment_number, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount',
+          'id, property_title, address, city, neighborhood, deal_type, asking_price, rooms, sqm, floor, property_type, description, source_url, image_url, media_photos, house_number, apartment_number, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount',
         )
         .eq('user_id', ownerId!)
         .order('affiliate_enabled', { ascending: false })
@@ -327,8 +333,8 @@ export function useSetAffiliateReward() {
 }
 
 export type BrokerReferralRow = AffiliateReferral & {
-  listing?: { property_title: string | null; address: string | null; city: string | null } | null;
-  lead?: { id: string; full_name: string | null; phone: string | null; status: string | null } | null;
+  listing?: { property_title: string | null; address: string | null; city: string | null; image_url: string | null; media_photos: unknown } | null;
+  lead?: { id: string; full_name: string | null; phone: string | null; status: string | null; profile_picture_url: string | null } | null;
   affiliate?: { display_name: string | null; phone: string | null } | null;
 };
 
@@ -355,10 +361,10 @@ export function useBrokerReferrals() {
 
       const [listingsRes, leadsRes, affiliatesRes] = await Promise.all([
         listingIds.length
-          ? supabase.from('listings').select('id, property_title, address, city').in('id', listingIds)
+          ? supabase.from('listings').select('id, property_title, address, city, image_url, media_photos').in('id', listingIds)
           : Promise.resolve({ data: [] as any[] }),
         leadIds.length
-          ? supabase.from('leads').select('id, full_name, phone, status').in('id', leadIds)
+          ? supabase.from('leads').select('id, full_name, phone, status, profile_picture_url').in('id', leadIds)
           : Promise.resolve({ data: [] as any[] }),
         supabase.from('affiliate_profiles').select('user_id, display_name, phone').in('user_id', affiliateIds),
       ]);
@@ -496,27 +502,35 @@ export function accruedEarnings(row: {
 }
 
 export type AffiliateSubmissionRow = AffiliateLeadSubmission & {
-  listing?: { property_title: string | null; address: string | null; city: string | null } | null;
+  listing?: { property_title: string | null; address: string | null; city: string | null; image_url: string | null; media_photos: unknown } | null;
+  lead?: { id: string; full_name: string | null; phone: string | null; profile_picture_url: string | null } | null;
   affiliate?: { display_name: string | null; phone: string | null } | null;
 };
 
 async function hydrateSubmissions(rows: AffiliateLeadSubmission[]): Promise<AffiliateSubmissionRow[]> {
   if (rows.length === 0) return [];
   const listingIds = [...new Set(rows.map((r) => r.listing_id).filter(Boolean))] as string[];
+  const leadIds = [...new Set(rows.map((r) => r.lead_id).filter(Boolean))] as string[];
   const affiliateIds = [...new Set(rows.map((r) => r.affiliate_id))];
-  const [listingsRes, affRes] = await Promise.all([
+  const [listingsRes, leadsRes, affRes] = await Promise.all([
     listingIds.length
-      ? supabase.from('listings').select('id, property_title, address, city').in('id', listingIds)
+      ? supabase.from('listings').select('id, property_title, address, city, image_url, media_photos').in('id', listingIds)
+      : Promise.resolve({ data: [] as { id: string }[] }),
+    leadIds.length
+      ? supabase.from('leads').select('id, full_name, phone, profile_picture_url').in('id', leadIds)
       : Promise.resolve({ data: [] as { id: string }[] }),
     supabase.from('affiliate_profiles').select('user_id, display_name, phone').in('user_id', affiliateIds),
   ]);
-  const listingRows = (listingsRes.data ?? []) as unknown as Array<{ id: string; property_title: string | null; address: string | null; city: string | null }>;
+  const listingRows = (listingsRes.data ?? []) as unknown as Array<{ id: string; property_title: string | null; address: string | null; city: string | null; image_url: string | null; media_photos: unknown }>;
+  const leadRows = (leadsRes.data ?? []) as unknown as Array<{ id: string; full_name: string | null; phone: string | null; profile_picture_url: string | null }>;
   const affRows = (affRes.data ?? []) as unknown as Array<{ user_id: string; display_name: string | null; phone: string | null }>;
   const listingMap = new Map(listingRows.map((l) => [l.id, l]));
+  const leadMap = new Map(leadRows.map((l) => [l.id, l]));
   const affMap = new Map(affRows.map((a) => [a.user_id, a]));
   return rows.map((r) => ({
     ...r,
     listing: r.listing_id ? listingMap.get(r.listing_id) ?? null : null,
+    lead: r.lead_id ? leadMap.get(r.lead_id) ?? null : null,
     affiliate: affMap.get(r.affiliate_id) ?? null,
   }));
 }
