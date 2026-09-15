@@ -76,6 +76,12 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   /** Optional: pre-select the pipeline (used when launched from a Sale/Rent context). */
   defaultDealType?: 'sale' | 'rent';
+  /**
+   * Fired right after the contact is saved (created OR merged into an existing
+   * phone match). Lets a host flow — e.g. the New Tour dialog — pick up the
+   * fresh contact and continue filling its own form without a page change.
+   */
+  onCreated?: (lead: { id: string; full_name: string; phone_number: string; email: string | null }) => void;
 }
 
 export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 'sale' }: Props) {
