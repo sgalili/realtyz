@@ -119,10 +119,44 @@ function JoinAffiliateCard() {
   );
 }
 
+/** All photos of a marketplace listing (cover first). */
+function allPhotos(listing: MarketplaceListing): string[] {
+  const out: string[] = [];
+  if (listing.image_url) out.push(listing.image_url);
+  const photos = listing.media_photos;
+  if (Array.isArray(photos)) {
+    for (const p of photos) {
+      if (typeof p === 'string') out.push(p);
+      else if (p && typeof p === 'object' && 'url' in (p as Record<string, unknown>)) {
+        out.push(String((p as Record<string, unknown>).url));
+      }
+    }
+  }
+  return Array.from(new Set(out.filter(Boolean)));
+}
+
+/**
+ * Marketplace listing card — same layout/design language as the /properties
+ * grid cards: full-width title row, 16/10 gallery with photo counter and
+ * navigation, badges over the image, compact meta row, and an expandable
+ * details section holding the full affiliate tooling.
+ */
 function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
   const promote = useStartPromoting();
   const [link, setLink] = useState<string | null>(null);
-  const photo = firstPhoto(listing);
+  const photos = useMemo(() => allPhotos(listing), [listing]);
+  const hasPhotos = photos.length > 0;
+  const hasMany = photos.length > 1;
+  const [index, setIndex] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const activePhoto = hasPhotos ? photos[Math.min(index, photos.length - 1)] : null;
+  const isRent = listing.deal_type === 'rent';
+  const title = listing.property_title || 'נכס ללא כותרת';
+  const fullAddress = [listing.address, listing.city].filter(Boolean).join(', ') || 'כתובת לא צוינה';
+
+  const stop = (e: React.SyntheticEvent) => { e.stopPropagation(); e.preventDefault(); };
+  const goPrev = (e: React.SyntheticEvent) => { stop(e); setIndex((i) => (i - 1 + photos.length) % photos.length); };
+  const goNext = (e: React.SyntheticEvent) => { stop(e); setIndex((i) => (i + 1) % photos.length); };
 
   const copy = async (value: string) => {
     try {
@@ -134,91 +168,212 @@ function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
   };
 
   return (
-    <Card className="overflow-hidden border-slate-200 transition-shadow hover:shadow-md">
-      <div className="relative h-40 w-full bg-slate-100">
-        {photo ? (
-          <img src={photo} alt={listing.property_title ?? 'נכס'} loading="lazy" className="h-40 w-full object-cover" />
-        ) : (
-          <div className="flex h-40 w-full items-center justify-center">
-            <Building2 className="h-8 w-8 text-slate-300" />
-          </div>
-        )}
-        <div className="absolute end-2 top-2">
-          <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
-            {formatReward(listing.reward_type, listing.reward_amount)}
-          </Badge>
-        </div>
+    <Card
+      className="group relative flex cursor-pointer flex-col overflow-hidden transition-shadow hover:shadow-lg"
+      onClick={() => setExpanded((v) => !v)}
+    >
+      {/* Dedicated full-width title row — always the first element of the card. */}
+      <div className="w-full border-b px-4 pb-2 pt-3">
+        <h3 className="w-full truncate text-base font-semibold leading-tight" title={title}>
+          {title}
+        </h3>
       </div>
 
-      <CardContent className="space-y-2 p-4">
-        <div className="truncate text-sm font-bold text-slate-900">
-          {listing.property_title || 'נכס ללא כותרת'}
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">
-            {[listing.address, listing.city].filter(Boolean).join(', ') || 'כתובת לא צוינה'}
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          {listing.deal_type && (
-            <Badge variant="outline" className="text-[11px]">
-              {DEAL_TYPE_LABELS[listing.deal_type] ?? listing.deal_type}
-            </Badge>
-          )}
-          {listing.rooms ? (
-            <Badge variant="outline" className="text-[11px]">{listing.rooms} חדרים</Badge>
-          ) : null}
-          {listing.asking_price ? (
-            <Badge variant="outline" className="text-[11px]">
-              <bdi dir="ltr">{fmtILS(listing.asking_price)}</bdi>
-            </Badge>
-          ) : null}
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="text-[11px] font-semibold text-slate-500">פירוט העמלה ב-3 שלבים</div>
-          <CommissionTierBadges tiers={listingTiers(listing)} />
-        </div>
-
-        <SubmitLeadDialog listing={listing} />
-
-        {link ? (
-          <div className="space-y-2">
-            <div className="truncate rounded-md bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600 ring-1 ring-slate-200">
-              <bdi dir="ltr">{link}</bdi>
-            </div>
-            <Button size="sm" variant="outline" className="w-full gap-1.5" onClick={() => copy(link)}>
-              <Copy className="h-3.5 w-3.5" />
-              העתקת קישור השיווק
-            </Button>
-          </div>
+      <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+        {activePhoto ? (
+          <img
+            key={activePhoto}
+            src={activePhoto}
+            alt={`${title} — ${index + 1}/${photos.length}`}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
         ) : (
-          <Button
-            size="sm"
-            className="w-full gap-1.5"
-            disabled={promote.isPending}
-            onClick={() =>
-              promote.mutate(
-                { listing },
-                {
-                  onSuccess: (res) => {
-                    setLink(res.link);
-                    toast.success('קישור שיווק אישי נוצר');
-                  },
-                  onError: () => toast.error('יצירת הקישור נכשלה'),
-                },
-              )
-            }
-          >
-            <Megaphone className="h-3.5 w-3.5" />
-            {promote.isPending ? 'מכין קישור...' : 'קבלת קישור לשיווק'}
-          </Button>
+          <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+            אין תמונה
+          </div>
         )}
-      </CardContent>
+
+        {photos.length > 0 && (
+          <button
+            type="button"
+            onClick={(e) => { stop(e); setExpanded((v) => !v); }}
+            className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm"
+            title={`${photos.length} תמונות`}
+            aria-label={`${photos.length} תמונות`}
+          >
+            <ImageIcon className="h-3 w-3" />
+            {photos.length}
+          </button>
+        )}
+
+        {hasMany && (
+          <>
+            <button
+              type="button"
+              onClick={goPrev}
+              aria-label="תמונה קודמת"
+              className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background focus:opacity-100 group-hover:opacity-100"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              aria-label="תמונה הבאה"
+              className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background focus:opacity-100 group-hover:opacity-100"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-background/70 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-foreground shadow-sm backdrop-blur-sm">
+              {index + 1} / {photos.length}
+            </div>
+          </>
+        )}
+
+        <Badge className="absolute bottom-2 right-2 z-10 bg-emerald-600 text-white hover:bg-emerald-600">
+          {formatReward(listing.reward_type, listing.reward_amount)}
+        </Badge>
+
+        {listing.deal_type && (
+          <Badge
+            className={`absolute left-3 top-3 z-10 border ${isRent ? 'border-[#0b3982] bg-[#0b3982] text-white' : 'bg-primary text-primary-foreground'}`}
+          >
+            {DEAL_TYPE_LABELS[listing.deal_type] ?? listing.deal_type}
+          </Badge>
+        )}
+      </div>
+
+      {/* Thumbnail row — mounted only once the card is expanded */}
+      {hasMany && expanded && (
+        <div
+          className="scrollbar-thin flex gap-1.5 overflow-x-auto border-b bg-muted/40 px-2 py-2"
+          dir="rtl"
+          onClick={stop}
+          onWheel={(e) => e.stopPropagation()}
+        >
+          {photos.map((p, i) => (
+            <button
+              key={`${p}-${i}`}
+              type="button"
+              onClick={(e) => { stop(e); setIndex(i); }}
+              aria-label={`תמונה ${i + 1}`}
+              className={`relative h-10 w-14 shrink-0 overflow-hidden rounded-md border transition-all ${i === index ? 'border-primary ring-2 ring-primary/40' : 'border-border/60 opacity-70 hover:opacity-100'}`}
+            >
+              <img src={p} alt="" loading="lazy" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span className="inline-flex min-w-0 items-center gap-1">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{fullAddress}</span>
+          </span>
+          {listing.rooms ? (
+            <span className="inline-flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" /> {listing.rooms} חד'</span>
+          ) : null}
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-lg font-bold text-slate-900" dir="ltr">
+            {listing.asking_price ? <bdi>{fmtILS(listing.asking_price)}</bdi> : <span className="text-sm text-muted-foreground">מחיר לא צוין</span>}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { stop(e); setExpanded((v) => !v); }}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+            aria-expanded={expanded}
+          >
+            {expanded ? 'הסתרת פרטים' : 'כל הפרטים'}
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+
+        {expanded && (
+          <div className="space-y-3 border-t pt-3" onClick={stop}>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+              <div>
+                <dt className="text-muted-foreground">כתובת</dt>
+                <dd className="font-semibold text-slate-900">{fullAddress}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">סוג עסקה</dt>
+                <dd className="font-semibold text-slate-900">
+                  {listing.deal_type ? DEAL_TYPE_LABELS[listing.deal_type] ?? listing.deal_type : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">חדרים</dt>
+                <dd className="font-semibold text-slate-900">{listing.rooms ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">מחיר</dt>
+                <dd className="font-semibold text-slate-900" dir="ltr">
+                  {listing.asking_price ? fmtILS(listing.asking_price) : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">תגמול</dt>
+                <dd className="font-semibold text-emerald-700">
+                  {formatReward(listing.reward_type, listing.reward_amount)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">אושר לשיווק</dt>
+                <dd className="font-semibold text-slate-900">
+                  {listing.approved_at ? new Date(listing.approved_at).toLocaleDateString('he-IL') : '—'}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-semibold text-slate-500">פירוט העמלה ב-3 שלבים</div>
+              <CommissionTierBadges tiers={listingTiers(listing)} />
+            </div>
+
+            <SubmitLeadDialog listing={listing} />
+
+            {link ? (
+              <div className="space-y-2">
+                <div className="truncate rounded-md bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600 ring-1 ring-slate-200">
+                  <bdi dir="ltr">{link}</bdi>
+                </div>
+                <Button size="sm" variant="outline" className="w-full gap-1.5" onClick={() => copy(link)}>
+                  <Copy className="h-3.5 w-3.5" />
+                  העתקת קישור השיווק
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                className="w-full gap-1.5"
+                disabled={promote.isPending}
+                onClick={() =>
+                  promote.mutate(
+                    { listing },
+                    {
+                      onSuccess: (res) => {
+                        setLink(res.link);
+                        toast.success('קישור שיווק אישי נוצר');
+                      },
+                      onError: () => toast.error('יצירת הקישור נכשלה'),
+                    },
+                  )
+                }
+              >
+                <Megaphone className="h-3.5 w-3.5" />
+                {promote.isPending ? 'מכין קישור...' : 'קבלת קישור לשיווק'}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
     </Card>
   );
+
 }
 
 /** Metric box styled exactly like the dashboard KPI cards. */
