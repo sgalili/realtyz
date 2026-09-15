@@ -449,7 +449,10 @@ function toLocalInput(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** Inline editor for any quick-action card (note, reminder, call summary, meeting). */
+/**
+ * Editing a card reuses the EXACT same form as "משימה חדשה" — identical
+ * contact picker, due date with the calendar check, urgency and task text.
+ */
 function EditTaskDialog({
   task,
   onClose,
@@ -459,66 +462,41 @@ function EditTaskDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [when, setWhen] = useState('');
-  const [saving, setSaving] = useState(false);
+  const initial = task
+    ? {
+        lead: task.leadId
+          ? { id: task.leadId, full_name: task.leadName, phone_number: task.leadPhone }
+          : null,
+        when: task.dueAt ? toLocalInput(task.dueAt) : localDefaultDue(),
+        priority: task.priority,
+        text: task.description ?? task.title ?? '',
+      }
+    : undefined;
 
-  useEffect(() => {
+  const submit = async (values: TaskFormValues) => {
     if (!task) return;
-    setTitle(task.title ?? '');
-    setDescription(task.description ?? '');
-    setWhen(toLocalInput(task.dueAt));
-  }, [task]);
-
-  const save = async () => {
-    if (!task) return;
-    setSaving(true);
-    try {
-      await updateCommandTask(task, {
-        title: task.source === 'note' ? undefined : title.trim() || 'משימה',
-        description: description.trim() || null,
-        dueAt: task.source === 'note' ? undefined : when ? new Date(when).toISOString() : null,
-      });
-      toast.success('הכרטיס עודכן');
-      onSaved();
-      onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? 'עדכון הכרטיס נכשל');
-    } finally {
-      setSaving(false);
-    }
+    await updateCommandTask(task, {
+      title: task.source === 'note' ? undefined : values.text.slice(0, 120) || 'משימה',
+      description: values.text || null,
+      dueAt: task.source === 'note' ? undefined : values.when ? new Date(values.when).toISOString() : null,
+      priority: values.priority,
+      leadId: values.lead?.id ?? null,
+      leadName: values.lead?.full_name ?? null,
+      leadPhone: values.lead?.phone_number ?? null,
+    });
+    toast.success('המשימה עודכנה');
+    onSaved();
+    onClose();
   };
 
   return (
-    <Dialog open={!!task} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent dir="rtl" className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>עריכת כרטיס</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          {task?.source !== 'note' && (
-            <div className="space-y-1.5">
-              <Label htmlFor="et-title">כותרת</Label>
-              <Input id="et-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <Label htmlFor="et-desc">תוכן</Label>
-            <Textarea id="et-desc" rows={5} value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-          {task?.source !== 'note' && (
-            <div className="space-y-1.5">
-              <Label htmlFor="et-when">מועד</Label>
-              <Input id="et-when" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
-            </div>
-          )}
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose}>ביטול</Button>
-          <Button onClick={save} disabled={saving}>שמירה</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <TaskFormDialog
+      open={!!task}
+      onOpenChange={(v) => { if (!v) onClose(); }}
+      title="עריכת משימה"
+      submitLabel="שמור משימה"
+      initial={initial}
+      onSubmit={submit}
+    />
   );
 }
