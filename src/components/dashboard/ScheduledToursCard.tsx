@@ -33,6 +33,8 @@ import {
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { sendViaOfficialWaba } from '@/lib/officialWa';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 
 type Tour = {
   id: string;
@@ -98,13 +100,17 @@ export function ScheduledToursCard() {
   const [openDay, setOpenDay] = useState<string | null>(() => dayKey(new Date().toISOString()));
   const [sendingId, setSendingId] = useState<string | null>(null);
 
+  // Tours belong to ONE workspace only — never show another workspace's tours.
+  const ownerId = useActiveWorkspaceOwnerId();
   const { data: tours = [], isLoading } = useQuery({
-    queryKey: ['scheduled-tours'],
+    queryKey: ['scheduled-tours', ownerId],
+    enabled: !!ownerId,
     queryFn: async () => {
       const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from('property_tours')
         .select('id, client_name, client_phone, client_email, scheduled_at, property_title, property_address, status, notes, whatsapp_sent_at')
+        .eq('owner_id', ownerId!)
         .gte('scheduled_at', since)
         .neq('status', 'cancelled')
         .order('scheduled_at', { ascending: true })
