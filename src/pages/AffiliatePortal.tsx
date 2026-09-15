@@ -13,6 +13,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import {
   Banknote,
+  BedDouble,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Images as ImageIcon,
   Building2,
   Copy,
   HelpCircle,
