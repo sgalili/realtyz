@@ -483,7 +483,7 @@ export function ConnectionsTab() {
     ...(isSuperAdmin ? [{
       id: 'voice',
       title: 'טלפון',
-      titleAside: (
+      titleLead: (
         <Phone
           className={cn('h-5 w-5 shrink-0 text-[#0B62F5]', !(voicePhone || voiceReady) && 'grayscale opacity-40')}
           strokeWidth={2.25}
