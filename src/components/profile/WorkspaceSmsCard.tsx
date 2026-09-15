@@ -171,9 +171,13 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
           {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
           שמירה
         </Button>
-        <Button variant="outline" onClick={test} disabled={testing}>
+        <Button variant="outline" onClick={() => void runTest(false)} disabled={testing}>
           {testing ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
           בדיקה
+        </Button>
+        <Button variant="outline" onClick={() => void runTest(true)} disabled={testing}>
+          {testing ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
+          שליחת SMS בדיקה
         </Button>
       </div>
     </div>
