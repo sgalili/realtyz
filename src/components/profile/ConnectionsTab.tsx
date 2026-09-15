@@ -288,7 +288,7 @@ export function ConnectionsTab() {
     },
     {
       id: 'whatsapp',
-      title: 'חשבונות ווטסאפ',
+      title: 'ווטסאפ',
       status: waStatus[0],
       tone: waStatus[1],
       node: (
