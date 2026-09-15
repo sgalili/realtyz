@@ -2242,6 +2242,37 @@ Deno.serve(async (req) => {
       }
     }
 
+    // --- INCREMENTAL: on a scheduled run the caller passes the newest
+    // publication date it already holds. Ads at or before that date, and ads
+    // already present in the shared pool, are dropped BEFORE the expensive
+    // gallery/detail enrichment so Bright Data credits are only spent on
+    // genuinely new inventory.
+    let skippedNotNew = 0;
+    if (poolMode && !isItemUrl && rows.length) {
+      const before = rows.length;
+      const sinceMs = sinceIso ? new Date(sinceIso).getTime() : NaN;
+      if (Number.isFinite(sinceMs)) {
+        rows = rows.filter((r) => {
+          if (!r.published_at) return true;
+          return new Date(r.published_at).getTime() > sinceMs;
+        });
+      }
+      const ids = rows.map((r) => r.external_id).filter((v): v is string => Boolean(v));
+      if (ids.length) {
+        const { data: known } = await admin
+          .from("market_listings")
+          .select("external_id")
+          .eq("source", "yad2")
+          .in("external_id", ids);
+        const knownIds = new Set((known ?? []).map((k: any) => String(k.external_id)));
+        if (knownIds.size) rows = rows.filter((r) => !r.external_id || !knownIds.has(r.external_id));
+      }
+      skippedNotNew = before - rows.length;
+      if (skippedNotNew) {
+        console.log(`[yad2-unlocker] incremental: skipped ${skippedNotNew} already-known row(s)`);
+      }
+    }
+
     console.log(`[yad2-unlocker] parsed ${rows.length} row(s) via ${mode}`);
 
     // --- Gallery enrichment: feed rows only carry the cover thumbnail. Pull
