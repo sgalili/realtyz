@@ -121,7 +121,8 @@ export function useCommandCenterTasks() {
         leadIds.size
           ? (supabase as any)
               .from('leads')
-              .select('id, full_name, phone_number')
+              .select('id, full_name, phone_number, profile_picture_url')
+              .eq('workspace_owner_id', ownerId)
               .in('id', Array.from(leadIds))
           : Promise.resolve({ data: [] }),
         listingIds.size
@@ -164,6 +165,7 @@ export function useCommandCenterTasks() {
           listingLabel: labelOfListing(listing),
           listingThumb: listingThumbOf(listing),
           actionType: followup.action_type ?? m.action_type ?? null,
+          leadAvatar: lead?.profile_picture_url ?? null,
         };
       });
 
@@ -184,6 +186,7 @@ export function useCommandCenterTasks() {
           listingLabel: null,
           listingThumb: null,
           actionType: 'meeting',
+          leadAvatar: lead?.profile_picture_url ?? null,
         });
       }
 
