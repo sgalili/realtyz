@@ -7,19 +7,24 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { OAUTH_AUTHORIZE_URLS, OAUTH_SCOPES } from '@/lib/socialAutomationService';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 const PLATFORM = 'google_calendar';
 
 export function GoogleCalendarConnectCard() {
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const { data, refetch } = useQuery({
-    queryKey: ['google-calendar-conn'],
+    queryKey: ['google-calendar-conn', workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
     queryFn: async () => {
       const { data } = await supabase
         .from('social_connections')
         .select('id, is_connected, credentials, last_test_message')
         .eq('platform', PLATFORM)
-        .maybeSingle();
-      return data;
+        .eq('workspace_owner_id', workspaceOwnerId as string)
+        .order('is_connected', { ascending: false })
+        .limit(1);
+      return (data ?? [])[0] ?? null;
     },
   });
 
