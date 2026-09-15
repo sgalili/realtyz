@@ -287,25 +287,20 @@ export function ConnectionsTab() {
       node: (
         <div data-plain className="space-y-4">
           {officialPhone ? (
-            // A Meta WBA number is live — the whole Cloud API setup block is
-            // irrelevant, so show a compact confirmation row instead.
-            <section className="space-y-1">
-              <h4 className="text-sm font-semibold">
-                {"\n"}
-                <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
-                  {"\n"}
-                </span>
-              </h4>
-              <p className="text-xs text-muted-foreground">{"\n"}</p>
+            // A Meta WBA number is live — keep this minimal: a single line of
+            // explanation, no icon, no pills, no setup block.
+            <section>
+              <p className="text-xs text-muted-foreground">
+                זהו מספר ווטסאפ מאומת של Meta.
+              </p>
             </section>
           ) : (
             <section className="space-y-2">
-              <h4 className="text-sm font-semibold">{"\n"}</h4>
               <MetaWhatsAppAuthCard />
             </section>
           )}
           <section className="space-y-2 border-t pt-4">
-            <h4 className="text-sm font-semibold">{"\n"}</h4>
+            <h4 className="text-sm font-semibold">אופן חיבור WhatsApp</h4>
             <WhatsAppConnectionModeCard />
           </section>
           <section className="space-y-2 border-t pt-4">
@@ -321,6 +316,7 @@ export function ConnectionsTab() {
           </section>
         </div>
       ),
+
     },
     {
       id: 'google',
