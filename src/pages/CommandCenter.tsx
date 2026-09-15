@@ -9,6 +9,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { FirstTimeSyncDialog } from '@/components/onboarding/FirstTimeSyncDialog';
 
+import CallSummaryDialog from '@/components/tasks/CallSummaryDialog';
+import { invalidateLiveData } from '@/lib/liveSync';
 import {
   ScheduleMonthGrid,
   ScheduleViewToggle,
@@ -98,6 +100,11 @@ const RITA_TABS: SectionTab[] = ['tasks', 'demos', 'calls'];
  * Which section a card belongs to. Reminders (follow-ups) live inside the
  * unified "משימות" tab — there is no separate reminders section any more.
  */
+/** A call summary card lives in the activity log with action type "interaction". */
+function isCallSummary(task: CommandTask): boolean {
+  return task.source === 'note' && task.actionType === 'interaction';
+}
+
 function sectionOf(task: CommandTask): SectionTab {
   if (task.source === 'note') return task.actionType === 'interaction' ? 'calls' : 'notes';
   if (task.source === 'meeting') return 'tasks';
