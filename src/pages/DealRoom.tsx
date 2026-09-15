@@ -554,9 +554,7 @@ export default function DealRoom() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
             עסקאות
           </h1>
-          <Badge variant="secondary" className="text-xs">
-            {visibleLeads.length} {activeDealType === 'rent' ? 'בהשכרה' : 'במכירה'}
-          </Badge>
+          <Badge variant="secondary" className="text-xs" />
         </div>
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
