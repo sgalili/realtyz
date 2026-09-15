@@ -74,7 +74,7 @@ export function WhatsAppConnectionModeCard() {
   };
 
   return (
-    <Card dir="rtl" className="border-0 bg-transparent shadow-none">
+    <Card data-keep dir="rtl" className="border-0 bg-transparent shadow-none">
       <CardContent className="space-y-2 p-0">
         <p className="text-xs text-muted-foreground">
           הבחירה חלה על כל ההודעות היוצאות והנכנסות במרחב העבודה. קודי אימות נשלחים תמיד מהמספר הרשמי של המערכת.

@@ -133,7 +133,7 @@ export function WhatsAppGatewayCard() {
   const connected = status === 'connected';
 
   return (
-    <Card dir="rtl" className="border-0 bg-transparent text-right shadow-none">
+    <Card data-keep dir="rtl" className="border-0 bg-transparent text-right shadow-none">
       <CardContent className="space-y-3 p-0">
         {loading ? (
           <div className="flex h-16 items-center justify-center">
