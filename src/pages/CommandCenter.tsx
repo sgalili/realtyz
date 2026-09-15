@@ -114,11 +114,10 @@ function dueLabel(dueAt: string | null) {
 
 const ADD_LABEL: Record<SectionTab, string> = {
   tours: 'סיור חדש',
-  tasks: 'משימה חדשה',
+  tasks: 'משימה / תזכורת חדשה',
   leads: 'איש קשר חדש',
   demos: 'הדגמה חדשה',
   notes: 'הערה חדשה',
-  reminders: 'תזכורת חדשה',
   calls: 'סיכום שיחה',
 };
 
