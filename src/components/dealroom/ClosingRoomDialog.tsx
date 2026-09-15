@@ -196,6 +196,8 @@ export function ClosingRoomDialog({
       });
       queryClient.invalidateQueries({ queryKey: ['closing-docs', lead.id] });
       queryClient.invalidateQueries({ queryKey: ['lead-signature-docs', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['signature-status-strip', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['tour-digiform-sent', lead.id] });
       queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
     } catch (e: any) {
       toast.error('שליחת המסמך נכשלה', { description: e?.message });
