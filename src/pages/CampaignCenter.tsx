@@ -5712,7 +5712,7 @@ const PublishedFeed = ({
         <div className="grid flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
           {([
             { v: 'published' as FeedSubTab, label: 'פורסמו' },
-            { v: 'future' as FeedSubTab, label: 'עתידיים' },
+            { v: 'future' as FeedSubTab, label: 'מתוזמנים' },
             { v: 'drafts' as FeedSubTab, label: 'טיוטות' },
           ]).map((t) => (
             <button
