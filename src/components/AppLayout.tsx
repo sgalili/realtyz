@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import realtyzLogo from '@/assets/realtyz-logo.png';
-import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff } from 'lucide-react';
+import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -83,13 +83,15 @@ function HeaderProfileLink() {
       }}
       aria-label="פתח תפריט צדדי"
       title={displayName}
-      className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90"
+      className="relative inline-flex shrink-0 flex-col items-center justify-center gap-0 rounded-full text-xs font-bold text-primary-foreground transition hover:opacity-90"
     >
-      <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full">
+      <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary ring-1 ring-border">
         {avatarUrl
           ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
           : displayName.slice(0, 1)}
       </span>
+      {/* Down arrow makes it obvious the avatar opens the side menu */}
+      <ChevronDown className="-mt-0.5 h-3.5 w-3.5 text-foreground/70" aria-hidden="true" />
     </button>
   );
 }
@@ -512,17 +514,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
               >
                 <RitaAvatar className="h-7 w-7" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 p-0 text-primary hover:bg-primary/10 hover:text-primary"
-                onClick={() => window.dispatchEvent(new Event('open-quick-actions'))}
-                aria-label="פעולות מהירות"
-                title="פעולות מהירות"
-              >
-                <Zap className="h-5 w-5" />
-              </Button>
-
             </div>
           </header>
           <PageHero />

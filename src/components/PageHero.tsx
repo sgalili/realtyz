@@ -12,7 +12,6 @@
 import * as React from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Menu,
   Plus,
   FileSpreadsheet,
   User,
@@ -24,7 +23,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { RealtyzWave } from "@/components/RealtyzWave";
 import { BrightDataHeroPill } from "@/components/BrightDataHeroPill";
 import { AiResponseToggle } from "@/components/AiResponseToggle";
@@ -328,12 +326,6 @@ export function PageHero() {
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
         <div className="flex items-center gap-1" style={{ marginRight: "-15px" }}>
-          <SidebarTrigger
-            className="h-10 w-10 text-white hover:bg-white/10 hover:text-white [&_svg]:!h-6 [&_svg]:!w-6"
-            aria-label="פתח תפריט"
-          >
-            <Menu className="h-6 w-6" />
-          </SidebarTrigger>
           {(location.pathname.startsWith("/campaigns") || location.pathname.startsWith("/inbox")) && (
             <AiResponseToggle />
           )}

@@ -81,7 +81,7 @@ import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 import { startMetaPageConnect, FACEBOOK_PAGE_PROVIDER } from '@/lib/facebookPageConnect';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
-import { useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
+import { useRefreshMetaPageBinding, useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 
 import { searchAllSources } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
@@ -4501,6 +4501,18 @@ const PublishedFeed = ({
   const connectedChannelsRef = useRef(connectedChannels);
   useEffect(() => { connectedChannelsRef.current = connectedChannels; }, [connectedChannels]);
 
+  // The authoritative Facebook connection state is the effective Page binding in
+  // the database (own page, or the platform-shared one). The cached channel flag
+  // can lag behind it, which used to raise a bogus "reconnect" banner on refresh.
+  const { data: effectiveMetaPage } = useMetaPageBinding();
+  const effectiveMetaPageRef = useRef(effectiveMetaPage);
+  useEffect(() => { effectiveMetaPageRef.current = effectiveMetaPage; }, [effectiveMetaPage]);
+  /** True when a live Facebook Page with a usable token is bound right now. */
+  const facebookIsLive = () =>
+    !!effectiveMetaPageRef.current?.pageId && effectiveMetaPageRef.current?.hasToken !== false
+      ? true
+      : connectedChannelsRef.current.has('facebook');
+
   useEffect(() => {
     const handleDisconnect = () => {
       clearCachedFacebookChannel(workspaceOwnerId);
@@ -4894,7 +4906,7 @@ const PublishedFeed = ({
           // connected and keep allowing refreshes. Only surface the banner if
           // we have no bound Page; otherwise stay silent so a transient
           // permission blip does not hijack the UI.
-          if (!connectedChannelsRef.current.has('facebook')) {
+          if (!facebookIsLive()) {
             setFacebookSyncWarning('החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).');
           }
         }
@@ -5177,7 +5189,7 @@ const PublishedFeed = ({
             // If the workspace already has a bound Facebook Page, transient
             // blips (timeouts, rate limits, empty responses) must not trigger
             // the disruptive reconnect banner.
-            const isFbConnected = connectedChannelsRef.current.has('facebook');
+            const isFbConnected = facebookIsLive();
             const isTransient = isTransientFacebookError({
               raw_error: (syncData as any)?.raw_error,
               message: providerError,
@@ -5202,7 +5214,7 @@ const PublishedFeed = ({
       } catch (err) {
         console.warn('[campaign] manual facebook sync failed', err);
         // A raw network/edge crash while already connected is also transient.
-        if (connectedChannelsRef.current.has('facebook')) {
+        if (facebookIsLive()) {
           toast.message('רענון הפוסטים נדחה לרגע — החיבור נשמר', { id: toastId });
         } else {
           setFacebookSyncWarning('רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.');

@@ -10,8 +10,6 @@
  * the title (truncate) so the controls always fit.
  */
 import { useLocation } from 'react-router-dom';
-import { Menu } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/$/, title: 'משימות' },
@@ -67,13 +65,8 @@ export function PageToolbar() {
       className="w-full border-b border-border bg-card/60 backdrop-blur-sm print:hidden"
     >
       <div className="flex h-12 items-center justify-between gap-2 px-3 sm:px-6">
-        {/* Right (visual): burger / nav toggle */}
-        <SidebarTrigger
-          className="h-9 w-9 text-foreground hover:bg-muted [&_svg]:!h-5 [&_svg]:!w-5"
-          aria-label="פתח תפריט"
-        >
-          <Menu className="h-5 w-5" />
-        </SidebarTrigger>
+        {/* Nav opens from the profile avatar in the header — no burger button */}
+        <div className="h-9 w-9" aria-hidden="true" />
 
         {/* Center: dynamic page title */}
         <h1 className="min-w-0 flex-1 truncate text-center text-base font-bold text-foreground sm:text-lg">
