@@ -32,6 +32,8 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
   // placeholder so "בדיקה" works without retyping the token.
   const [savedToken, setSavedToken] = useState('');
   const [sender, setSender] = useState('');
+  // Optional destination for the real test SMS; defaults to the approved sender.
+  const [recipient, setRecipient] = useState('');
 
   useEffect(() => {
     let cancelled = false;
