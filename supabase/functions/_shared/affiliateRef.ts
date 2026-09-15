@@ -80,7 +80,7 @@ export async function resolveAffiliateReferral(
       try {
         const { data: l } = await admin
           .from("listings")
-          .select("id, property_title, address, city, neighborhood, deal_type, rooms, asking_price")
+          .select("id, property_title, address, city, neighborhood, deal_type, rooms, asking_price, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount")
           .eq("id", data.listing_id)
           .maybeSingle();
         listing = (l as any) ?? null;
@@ -89,29 +89,14 @@ export async function resolveAffiliateReferral(
       }
     }
 
-    // Commission tiers live on the marketplace approval row; fall back to the
-    // flat reward when the tiered columns are unavailable.
-    let tiers = { tier1: 0, tier2: 0, tier3Type: String(data.reward_type ?? "fixed"), tier3: Number(data.reward_amount ?? 0) };
-    try {
-      if (data.listing_id) {
-        const { data: appr } = await admin
-          .from("affiliate_listing_approvals")
-          .select("tier1_amount, tier2_amount, tier3_type, tier3_amount")
-          .eq("listing_id", data.listing_id)
-          .eq("broker_id", data.broker_id)
-          .maybeSingle();
-        if (appr) {
-          tiers = {
-            tier1: Number((appr as any).tier1_amount ?? 0),
-            tier2: Number((appr as any).tier2_amount ?? 0),
-            tier3Type: String((appr as any).tier3_type ?? tiers.tier3Type),
-            tier3: Number((appr as any).tier3_amount ?? tiers.tier3),
-          };
-        }
-      }
-    } catch {
-      /* tier table optional — flat reward already set */
-    }
+    // Commission tiers live on the listing itself (affiliate_tier* columns);
+    // fall back to the referral's flat reward when they are unset.
+    const tiers = {
+      tier1: Number((listing as any)?.affiliate_tier1_amount ?? 0),
+      tier2: Number((listing as any)?.affiliate_tier2_amount ?? 0),
+      tier3Type: String((listing as any)?.affiliate_tier3_type ?? data.reward_type ?? "fixed"),
+      tier3: Number((listing as any)?.affiliate_tier3_amount ?? data.reward_amount ?? 0),
+    };
 
     return {
       referral_id: data.id,
@@ -199,10 +184,12 @@ export async function attachAffiliateReferral(
   }
 
   try {
-    const update: Record<string, unknown> = { clicks: undefined, updated_at: now };
-    delete update.clicks;
+    const update: Record<string, unknown> = { updated_at: now };
     if (leadId) update.lead_id = leadId;
-    if (!referral.status || referral.status === "promoting") update.status = "lead_submitted";
+    // Allowed values: promoting | clicked | lead_captured | qualified | ...
+    if (!referral.status || referral.status === "promoting" || referral.status === "clicked") {
+      update.status = "lead_captured";
+    }
     const { error } = await admin.from("affiliate_referrals").update(update).eq("id", referral.referral_id);
     if (error) console.warn("[affiliate-ref] referral link soft-fail:", error.message);
     else out.referral_linked = true;
