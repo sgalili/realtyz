@@ -64,41 +64,20 @@ type SendResult = {
   raw?: unknown;
 };
 
-async function sendSms019(
-  user: string,
-  password: string,
+/**
+ * SMS always goes through the shared, workspace-scoped 019 gateway so each
+ * workspace sends from its OWN approved 019 sender number.
+ */
+async function sendSmsWorkspace(
+  admin: any,
   phone: string,
   body: string,
-  source: string,
+  workspaceOwnerId: string | null,
 ): Promise<SendResult> {
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<sms>
-  <user>
-    <username>${escapeXml(user)}</username>
-    <password>${escapeXml(password)}</password>
-  </user>
-  <source>${escapeXml(source || "Realtyz")}</source>
-  <destinations>
-    <phone>${escapeXml(phone)}</phone>
-  </destinations>
-  <message>${escapeXml(body)}</message>
-</sms>`;
-
   try {
-    const res = await fetch("https://www.019sms.co.il:8090/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/xml; charset=UTF-8" },
-      body: xml,
-    });
-    const text = await res.text();
-    const status = parseInt(text.match(/<status>(-?\d+)<\/status>/)?.[1] ?? "-1", 10);
-    const messageId = text.match(/<message_id>(.*?)<\/message_id>/)?.[1] ?? null;
-    if (status === 0) {
-      return { ok: true, provider_message_id: messageId };
-    }
-    const errorMsg =
-      text.match(/<message>(.*?)<\/message>/)?.[1] ?? `019 status ${status}`;
-    return { ok: false, failure_reason: errorMsg };
+    const r = await sendSms019(admin, phone, body, workspaceOwnerId);
+    if (r.ok) return { ok: true, provider_message_id: r.message_id ?? null };
+    return { ok: false, failure_reason: r.error ?? "019 failed" };
   } catch (e: any) {
     return { ok: false, failure_reason: `019 network: ${e?.message ?? e}` };
   }
