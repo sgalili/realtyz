@@ -190,8 +190,8 @@ function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceLis
               <ImageIcon className="m-[5px] h-[15px] w-[15px] text-muted-foreground" aria-hidden="true" />
             )}
           </div>
-          <div className="grid min-w-0 flex-1 grid-cols-1 gap-x-4 gap-y-0.5 text-xs sm:grid-cols-[minmax(180px,1fr)_auto_auto_auto] sm:items-center">
-            <span className="truncate font-semibold text-foreground" title={fullAddress}>{fullAddress}</span>
+          <div className="grid min-w-0 flex-1 grid-cols-[minmax(90px,1fr)_auto_auto_auto] items-center gap-x-3 text-xs">
+            <span className="font-semibold leading-tight text-foreground" title={fullAddress}>{fullAddress}</span>
             <span className="text-muted-foreground">{listing.rooms ? `${listing.rooms} חד׳` : '—'}</span>
             <span className="text-muted-foreground">{listing.sqm ? `${listing.sqm} מ״ר` : '—'}</span>
             <span className="font-bold text-foreground" dir="ltr">{listing.asking_price ? fmtILS(listing.asking_price) : '—'}</span>
