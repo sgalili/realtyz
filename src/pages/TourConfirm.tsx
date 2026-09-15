@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CalendarCheck2, Loader2 } from 'lucide-react';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/publicFunctions';
+const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/+$/, '');
+const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '');
 
 type PublicTour = {
   client_name: string | null;
