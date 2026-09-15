@@ -117,13 +117,45 @@ Deno.serve(async (req) => {
       ? `${APP_URL}/deal-room?leadId=${body.lead_id}`
       : `${APP_URL}/deal-room`;
 
-    const lead = body.lead_name || "Lead";
-    const detail = body.detail ? `\n${body.detail.slice(0, 400)}` : "";
+    let lead = body.lead_name || "לא שויך";
+    let propertyLabel: string | null = null;
+    if (body.lead_id) {
+      const { data: leadRow } = await admin
+        .from("leads")
+        .select("full_name, workspace_owner_id")
+        .eq("id", body.lead_id)
+        .maybeSingle();
+      lead = (leadRow as { full_name?: string } | null)?.full_name || lead;
+
+      const workspaceOwnerId = (leadRow as { workspace_owner_id?: string } | null)?.workspace_owner_id;
+      if (workspaceOwnerId) {
+        const { data: relation } = await admin
+          .from("lead_listings")
+          .select("listing_id")
+          .eq("lead_id", body.lead_id)
+          .limit(1)
+          .maybeSingle();
+        const listingId = (relation as { listing_id?: string } | null)?.listing_id;
+        if (listingId) {
+          const { data: listing } = await admin
+            .from("listings")
+            .select("property_title, address, city")
+            .eq("id", listingId)
+            .eq("workspace_owner_id", workspaceOwnerId)
+            .maybeSingle();
+          const property = listing as { property_title?: string; address?: string; city?: string } | null;
+          propertyLabel = property?.property_title || [property?.address, property?.city].filter(Boolean).join(", ") || null;
+        }
+      }
+    }
     const title = TITLE_BY_EVENT[body.event_type];
-    const text =
-      `${title}\n` +
-      `Lead: ${lead}${detail}\n\n` +
-      `Open the Deal Room: ${deepLink}`;
+    const text = [
+      title,
+      `👤 איש קשר: ${lead}`,
+      ...(propertyLabel ? [`🏠 נכס: ${propertyLabel}`] : []),
+      ...(body.detail ? [`📝 פרטים: ${body.detail.slice(0, 400).replace(/\n+/g, " ")}`] : []),
+      `🔗 פתיחה במערכת: ${deepLink}`,
+    ].join("\n");
 
     // Persist notification row first
     const { data: notifRow } = await admin
