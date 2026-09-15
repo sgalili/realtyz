@@ -84,10 +84,15 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     || (activeWorkspace?.workspace_name ?? '').trim();
 
   // Square workspace logo, shown on the side opposite the name + owner line.
+  // Workspaces without any logo fall back to the workspace owner's picture.
   const squareLogo = (settings as any)?.logo_url
     ?? activeWorkspace?.workspace_logo_url
     ?? identity.logo
+    ?? activeWorkspace?.owner_avatar_url
     ?? null;
+  const logoIsOwnerPhoto = !((settings as any)?.logo_url
+    || activeWorkspace?.workspace_logo_url
+    || identity.logo) && !!activeWorkspace?.owner_avatar_url;
 
   const workspaceInfo = (
     <div className="min-w-0 flex-1 text-right">
@@ -102,7 +107,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
         <img
           src={squareLogo}
           alt={identity.name}
-          className="h-full w-full object-contain p-0.5"
+          className={logoIsOwnerPhoto ? 'h-full w-full object-cover' : 'h-full w-full object-contain p-0.5'}
           referrerPolicy="no-referrer"
         />
       ) : (

@@ -240,20 +240,23 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
 
               {/* Settings + Tutorial + broker/partner toggle share one row. */}
               <div className="mt-2 flex items-center gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
-                {/* Settings shortcut: opens /profile and closes the sidebar. */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closeSidebar();
-                    navigate('/profile');
-                  }}
-                  title="הגדרות"
-                  aria-label="הגדרות"
-                  className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 px-2 py-1.5 text-slate-600 transition-colors hover:bg-slate-50"
-                >
-                  <Settings className="h-4 w-4" />
-                </button>
+                {/* Settings shortcut: opens /profile and closes the sidebar.
+                    Hidden in Rita's marketing workspace. */}
+                {!features.isRitaWorkspace && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeSidebar();
+                      navigate('/profile');
+                    }}
+                    title="הגדרות"
+                    aria-label="הגדרות"
+                    className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 px-2 py-1.5 text-slate-600 transition-colors hover:bg-slate-50"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </button>
+                )}
 
                 {/* Tutorial button: hidden in Rita's marketing workspace. */}
                 {!features.isRitaWorkspace && (
