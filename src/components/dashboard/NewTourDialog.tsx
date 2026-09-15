@@ -381,7 +381,7 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                   )}
                 </div>
               ) : (
-                <p className="text-[14px] text-muted-foreground">התחילו להקליד כדי לראות נכסים מתאימים</p>
+                <p className="text-[14px] text-muted-foreground">\n</p>
               )}
             </div>
 
