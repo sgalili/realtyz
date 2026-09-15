@@ -94,6 +94,7 @@ function toUnifiedResult(listing: BrokerAffiliateListing): UnifiedResult {
     photos: listingPhotos(listing),
     url: listing.source_url,
     listing_type: dealType,
+    property_type: 'apartment',
     raw: listing,
   };
 }
