@@ -143,7 +143,7 @@ export function ExtensionGroupSyncCard({
       let found: ExtensionGroup[] = [];
       for (let i = 0; i < 12; i++) {
         await new Promise((r) => setTimeout(r, 400));
-        found = readExtensionGroups();
+        found = readExtensionGroups(workspaceOwnerId);
         if (found.length > 0) break;
         if (i % 3 === 2) refresh();
       }
