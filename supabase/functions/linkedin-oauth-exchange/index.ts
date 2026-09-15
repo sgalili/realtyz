@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
         .eq('id', row.id);
       if (error) throw error;
     } else {
-      const { error } = await admin.from('social_connections').upsert(upd, { onConflict: 'created_by,platform' });
+      const { error } = await admin.from('social_connections').upsert(upd, { onConflict: 'workspace_owner_id,platform' });
       if (error) throw error;
     }
 

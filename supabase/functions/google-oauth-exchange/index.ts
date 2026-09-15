@@ -456,7 +456,7 @@ async function handle(req: Request): Promise<Response> {
       } else {
         try {
           const { error } = await withTimeout(
-            admin.from('social_connections').upsert(upd, { onConflict: 'created_by,platform' }) as unknown as Promise<any>,
+            admin.from('social_connections').upsert(upd, { onConflict: 'workspace_owner_id,platform' }) as unknown as Promise<any>,
             8000, 'social_connections upsert',
           );
           if (error && !saveWarning) saveWarning = error.message;
@@ -527,7 +527,7 @@ async function handle(req: Request): Promise<Response> {
       if (sibRow?.id) {
         await admin.from('social_connections').update(sibUpd).eq('id', sibRow.id);
       } else {
-        await admin.from('social_connections').upsert(sibUpd, { onConflict: 'created_by,platform' });
+        await admin.from('social_connections').upsert(sibUpd, { onConflict: 'workspace_owner_id,platform' });
       }
     }
 
