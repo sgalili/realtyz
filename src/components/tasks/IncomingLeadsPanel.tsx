@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
+import { RITA_WORKSPACE_OWNER_ID } from '@/config/workspaceMode';
 
 type Mode = 'leads' | 'demos';
 
@@ -49,6 +50,18 @@ export function useIncomingLeadsCount() {
   return leads;
 }
 
+/**
+ * Demo requests arriving from the public landing page can be stored without a
+ * workspace owner. Those belong to Rita's marketing workspace (the database
+ * policies treat a missing owner exactly that way), so her workspace must also
+ * see the rows where the owner column is still empty.
+ */
+function demoOwnerFilter(ownerId: string) {
+  return ownerId === RITA_WORKSPACE_OWNER_ID
+    ? `workspace_owner_id.eq.${ownerId},workspace_owner_id.is.null`
+    : `workspace_owner_id.eq.${ownerId}`;
+}
+
 export function useScheduledDemosCount() {
   const ownerId = useActiveWorkspaceOwnerId();
   const { data = 0 } = useQuery({
@@ -59,7 +72,7 @@ export function useScheduledDemosCount() {
       const { count } = await supabase
         .from('demo_requests')
         .select('id', { count: 'exact', head: true })
-        .eq('workspace_owner_id', ownerId!);
+        .or(demoOwnerFilter(ownerId!));
       return count ?? 0;
     },
   });
@@ -93,12 +106,14 @@ export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
     enabled: !!ownerId && mode === 'demos',
     refetchInterval: 30_000,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('demo_requests')
         .select('id, first_name, last_name, phone, notes, status, preferred_at, created_at, lead_id, google_event_id, google_event_link')
-        .eq('workspace_owner_id', ownerId!)
-        .order('preferred_at', { ascending: false })
+        .or(demoOwnerFilter(ownerId!))
+        .order('preferred_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
         .limit(60);
+      if (error) throw error;
       return (data ?? []) as any[];
     },
   });

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScheduledToursCard } from '@/components/dashboard/ScheduledToursCard';
 import { NewTourDialog } from '@/components/dashboard/NewTourDialog';
+import { NewDemoDialog } from '@/components/dashboard/NewDemoDialog';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useNavigate } from 'react-router-dom';
@@ -64,7 +65,7 @@ const PRIORITY_LABEL: Record<CommandTask['priority'], string> = {
   low: 'נמוך',
 };
 
-type SectionTab = 'tours' | 'tasks' | 'leads' | 'demos' | 'notes' | 'reminders' | 'calls';
+type SectionTab = 'tours' | 'tasks' | 'leads' | 'demos' | 'notes' | 'calls';
 
 const TAB_LABEL: Record<SectionTab, string> = {
   tours: 'סיורים',
@@ -72,27 +73,28 @@ const TAB_LABEL: Record<SectionTab, string> = {
   leads: 'לידים',
   demos: 'הדגמות',
   notes: '',
-  reminders: 'תזכורות',
   calls: 'שיחות',
 };
 
 /** Tabs that never show a card count next to their label. */
 const TABS_WITHOUT_COUNT = new Set<SectionTab>(['tours']);
 
-/** Standard workspaces: property tours first, then tasks, reminders and calls. */
-const DEFAULT_TABS: SectionTab[] = ['tours', 'tasks', 'reminders', 'calls'];
+/** Standard workspaces: property tours first, then tasks (incl. reminders) and calls. */
+const DEFAULT_TABS: SectionTab[] = ['tours', 'tasks', 'calls'];
 /**
  * Rita's marketing workspace: demos come first and property tours are hidden
  * (her workspace never manages properties).
  */
-const RITA_TABS: SectionTab[] = ['demos', 'tasks', 'reminders', 'calls'];
+const RITA_TABS: SectionTab[] = ['demos', 'tasks', 'calls'];
 
-/** Which section a card belongs to. */
+/**
+ * Which section a card belongs to. Reminders (follow-ups) live inside the
+ * unified "משימות" tab — there is no separate reminders section any more.
+ */
 function sectionOf(task: CommandTask): SectionTab {
   if (task.source === 'note') return task.actionType === 'interaction' ? 'calls' : 'notes';
   if (task.source === 'meeting') return 'tasks';
   if (task.actionType === 'call') return 'calls';
-  if (task.actionType === 'follow_up') return 'reminders';
   return 'tasks';
 }
 
@@ -113,11 +115,10 @@ function dueLabel(dueAt: string | null) {
 
 const ADD_LABEL: Record<SectionTab, string> = {
   tours: 'סיור חדש',
-  tasks: 'משימה חדשה',
+  tasks: 'משימה / תזכורת חדשה',
   leads: 'איש קשר חדש',
   demos: 'הדגמה חדשה',
   notes: 'הערה חדשה',
-  reminders: 'תזכורת חדשה',
   calls: 'סיכום שיחה',
 };
 
@@ -174,6 +175,7 @@ export default function CommandCenter() {
 
   const [editing, setEditing] = useState<CommandTask | null>(null);
   const [newTourOpen, setNewTourOpen] = useState(false);
+  const [newDemoOpen, setNewDemoOpen] = useState(false);
   const toggleCard = (key: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
@@ -184,7 +186,7 @@ export default function CommandCenter() {
 
   const counts = useMemo(() => {
     const base: Record<SectionTab, number> = {
-      tours: 0, tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, reminders: 0, calls: 0,
+      tours: 0, tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, calls: 0,
     };
     for (const t of tasks) base[sectionOf(t)] += 1;
     return base;
@@ -192,7 +194,11 @@ export default function CommandCenter() {
 
   /** Opens the quick-action drawer on the right form for the active tab. */
   const addNew = (section: SectionTab) => {
-    if (section === 'leads' || section === 'demos') {
+    if (section === 'demos') {
+      setNewDemoOpen(true);
+      return;
+    }
+    if (section === 'leads') {
       navigate('/lead-crm');
       return;
     }
@@ -241,6 +247,7 @@ export default function CommandCenter() {
     <div dir="rtl" className="space-y-6 p-4 md:p-6">
       <FirstTimeSyncDialog />
       <NewTourDialog open={newTourOpen} onOpenChange={setNewTourOpen} />
+      <NewDemoDialog open={newDemoOpen} onOpenChange={setNewDemoOpen} />
 
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">משימות</h1>
@@ -251,13 +258,9 @@ export default function CommandCenter() {
 
 
       <Card className="p-4">
-        <div
-          className={
-            isRitaWorkspace
-              ? 'mb-[30px] flex flex-col items-center justify-center gap-[50px] sm:mb-4 sm:flex-row sm:flex-wrap sm:gap-2'
-              : 'mb-4 flex flex-wrap items-center justify-center gap-2'
-          }
-        >
+        {/* Tabs first, then the "add new" button below them. Desktop keeps an
+            exact 50px gap under the tabs; mobile stays as it was. */}
+        <div className="mb-4 flex flex-col items-center justify-center gap-[25px] md:gap-0">
           <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)}>
             <TabsList className="justify-center overflow-x-auto">
 
@@ -272,7 +275,7 @@ export default function CommandCenter() {
               ))}
             </TabsList>
           </Tabs>
-          <Button size="sm" className="mt-[25px] h-9 gap-1 text-sm" onClick={() => addNew(tab)}>
+          <Button size="sm" className="h-9 gap-1 text-sm md:mt-[50px]" onClick={() => addNew(tab)}>
             <Plus className="h-4 w-4" />
             {ADD_LABEL[tab]}
           </Button>

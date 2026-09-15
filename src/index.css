@@ -1490,3 +1490,11 @@
 /* Affiliate KPI boxes: centred, icon above the label, +3px type. */
 .realtyz-affiliate-kpi .kpi-label { font-size: 14px; }
 .realtyz-affiliate-kpi .kpi-value { font-size: 21px; }
+
+/* Global legibility floor: no text in the app may render smaller than 7px.
+   Any legacy tiny utility class is clamped up to 7px without touching the
+   normal type scale. */
+.text-\[1px\], .text-\[2px\], .text-\[3px\], .text-\[4px\], .text-\[5px\], .text-\[6px\],
+.text-\[0\.1rem\], .text-\[0\.2rem\], .text-\[0\.3rem\], .text-\[0\.35rem\] {
+  font-size: 7px !important;
+}
