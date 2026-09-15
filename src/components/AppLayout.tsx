@@ -83,13 +83,15 @@ function HeaderProfileLink() {
       }}
       aria-label="פתח תפריט צדדי"
       title={displayName}
-      className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90"
+      className="relative inline-flex shrink-0 flex-col items-center justify-center gap-0 rounded-full text-xs font-bold text-primary-foreground transition hover:opacity-90"
     >
-      <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full">
+      <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary ring-1 ring-border">
         {avatarUrl
           ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
           : displayName.slice(0, 1)}
       </span>
+      {/* Down arrow makes it obvious the avatar opens the side menu */}
+      <ChevronDown className="-mt-0.5 h-3.5 w-3.5 text-foreground/70" aria-hidden="true" />
     </button>
   );
 }
