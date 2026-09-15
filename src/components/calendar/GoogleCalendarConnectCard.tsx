@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { readEdgeError } from '@/lib/edgeError';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -43,7 +44,15 @@ export function GoogleCalendarConnectCard() {
         const { data: resp, error } = await supabase.functions.invoke('google-oauth-exchange', {
           body: { platform: PLATFORM, code: m.code, redirect_uri: `${window.location.origin}/oauth/callback` },
         });
-        if (error || !resp?.ok) throw new Error(resp?.error || error?.message || 'Failed');
+        if (error) {
+          const real = await readEdgeError(error, 'Failed');
+          console.error('[google-calendar] exchange transport error', real);
+          throw new Error(real);
+        }
+        if (!resp?.ok) {
+          console.error('[google-calendar] exchange rejected', { code: resp?.code, stage: resp?.stage, error: resp?.error });
+          throw new Error(resp?.error || 'Failed');
+        }
         toast.success('Calendar connected', { id: tId, description: resp.identity?.email });
         refetch();
       } catch (e: any) {
