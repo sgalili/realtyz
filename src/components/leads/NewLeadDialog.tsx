@@ -84,7 +84,7 @@ interface Props {
   onCreated?: (lead: { id: string; full_name: string; phone_number: string; email: string | null }) => void;
 }
 
-export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 'sale' }: Props) {
+export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 'sale', onCreated }: Props) {
   const queryClient = useQueryClient();
   const { checkInArea, isConfigured, serviceAreas } = useServiceAreas();
   const activeWorkspaceId = useActiveWorkspaceOwnerId();
