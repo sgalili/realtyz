@@ -355,6 +355,7 @@ export function ScheduledToursCard() {
             </p>
           ) : null}
         </div>
+        <SignatureStatusStrip leadId={leadIdOf(t.client_phone)} />
         <TourActions t={t} />
       </div>
     );
