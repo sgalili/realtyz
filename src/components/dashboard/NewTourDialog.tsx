@@ -381,9 +381,7 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                     })
                   )}
                 </div>
-              ) : (
-                <p className="text-[14px] text-muted-foreground">\n</p>
-              )}
+              ) : null}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
