@@ -627,8 +627,8 @@ export default function AffiliatePortal() {
           </div>
 
           <div className="relative mt-4 max-w-sm">
-            <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="pe-9" />
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9" />
           </div>
 
           <TabsContent value="marketplace" className="space-y-4 pt-4">
