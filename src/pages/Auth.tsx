@@ -161,7 +161,9 @@ const Auth = () => {
     const { error } = activeMethod === 'whatsapp'
       ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'send', phone: normalizedPhone } })
       : activeMethod === 'sms'
-        ? await supabase.auth.signInWithOtp({ phone: normalizedPhone })
+        // SMS codes ship through the central 019 gateway, not the built-in
+        // phone provider (which is not configured for this project).
+        ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'send_sms', phone: normalizedPhone } })
         : await supabase.functions.invoke('email-auth', { body: { action: 'send', email } });
     if (error) {
       // Real OTP delivery failed (e.g. unconfigured WhatsApp gateway).
@@ -237,7 +239,11 @@ const Auth = () => {
           return await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
         })
       : activeMethod === 'sms'
-        ? await supabase.auth.verifyOtp({ phone: normalizedPhone, token: code, type: 'sms' })
+        ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: normalizedPhone, code } }).then(async ({ data, error }) => {
+            if (error) return { error };
+            if (!data?.token_hash) return { error: new Error('קוד אומת, אך הכניסה נכשלה') };
+            return await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
+          })
         : await supabase.functions.invoke('email-auth', { body: { action: 'verify', email, code } }).then(async ({ data, error }) => {
             if (error) return { error };
             if (!data?.token_hash) return { error: new Error('קוד אומת, אך הכניסה נכשלה') };
