@@ -276,22 +276,36 @@ export default function AffiliatePortal() {
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
-            { label: 'נכסים בשיווק', value: String(stats.promoting), icon: Megaphone, color: 'text-sky-600' },
-            { label: 'אנשי קשר שהוגשו', value: String(stats.leads), icon: MousePointerClick, color: 'text-indigo-600' },
-            { label: 'עסקאות שנחתמו', value: String(stats.signed), icon: TrendingUp, color: 'text-emerald-600' },
-            { label: 'תגמול מצטבר', value: fmtILS(stats.earned), icon: Banknote, color: 'text-amber-600' },
+            {
+              label: 'נכסים בשיווק',
+              value: String(stats.promoting),
+              icon: Megaphone,
+              accent: 'primary' as const,
+              tooltip: 'מספר הנכסים שיצרתם עבורם קישור שיווק אישי.',
+            },
+            {
+              label: 'אנשי קשר שהוגשו',
+              value: String(stats.leads),
+              icon: MousePointerClick,
+              accent: 'primary' as const,
+              tooltip: 'סך אנשי הקשר שהגשתם לנכסים של מתווכים מהרשת.',
+            },
+            {
+              label: 'עסקאות שנחתמו',
+              value: String(stats.signed),
+              icon: TrendingUp,
+              accent: 'success' as const,
+              tooltip: 'עסקאות שנסגרו בעקבות הפניות שלכם.',
+            },
+            {
+              label: 'תגמול מצטבר',
+              value: fmtILS(stats.earned),
+              icon: Banknote,
+              accent: 'warning' as const,
+              tooltip: 'סך התגמול שנצבר לזכותכם מכל העסקאות שנסגרו.',
+            },
           ].map((s) => (
-            <Card key={s.label} className="border-slate-200">
-              <CardContent className="flex items-center gap-3 p-3.5">
-                <s.icon className={`h-5 w-5 shrink-0 ${s.color}`} />
-                <div className="min-w-0">
-                  <div className="truncate text-[11px] text-slate-500">{s.label}</div>
-                  <div className="text-base font-bold text-slate-900">
-                    <bdi dir="ltr">{s.value}</bdi>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <AffiliateKpiCard key={s.label} {...s} />
           ))}
         </div>
 
