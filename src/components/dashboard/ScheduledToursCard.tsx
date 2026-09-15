@@ -277,6 +277,7 @@ export function ScheduledToursCard() {
         <Button size="sm" variant="ghost" className="h-8 text-[12px]" onClick={() => setStatus.mutate({ id: t.id, status: 'cancelled' })}>
           ביטול
         </Button>
+        </div>
       </div>
     );
   }
