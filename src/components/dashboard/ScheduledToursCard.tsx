@@ -206,6 +206,24 @@ export function ScheduledToursCard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['scheduled-tours'] }),
   });
 
+  /** Marks the tour as confirmed ONLY as an explicit client acceptance. */
+  const confirmByClient = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const current = tours.find((t) => t.id === id);
+      const meta = { ...(current?.metadata ?? {}), client_confirmed_at: new Date().toISOString() };
+      const { error } = await supabase
+        .from('property_tours')
+        .update({ status: 'confirmed', metadata: meta as any })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('הסיור סומן כמאושר על ידי הלקוח');
+      qc.invalidateQueries({ queryKey: ['scheduled-tours'] });
+    },
+    onError: () => toast.error('עדכון האישור נכשל'),
+  });
+
   const byDay = useMemo(() => {
     const map = new Map<string, Tour[]>();
     for (const t of tours) {
