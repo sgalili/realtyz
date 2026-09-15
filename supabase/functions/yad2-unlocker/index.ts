@@ -1884,6 +1884,131 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
   return { id: inserted.id, updated: false };
 }
 
+// -------- Shared market pool --------
+// `market_listings` is the single, system-wide cache of Yad2 inventory. It is
+// written only by the twice-daily scheduled run and read by everybody else.
+
+async function saveMarketListing(admin: any, row: Scraped & Record<string, any>) {
+  const payload: Record<string, unknown> = {
+    source: "yad2",
+    external_id: row.external_id ?? null,
+    source_url: row.source_url,
+    deal_type: row.deal_type ?? "sale",
+    title: row.title ?? null,
+    description: row.long_description ?? row.description ?? null,
+    address: row.address ?? null,
+    house_number: row.house_number != null ? String(row.house_number) : null,
+    apartment_number: row.apartment_number != null ? String(row.apartment_number) : null,
+    city: row.city ?? null,
+    neighborhood: row.neighborhood ?? null,
+    price: row.price ?? null,
+    rooms: row.rooms ?? null,
+    sqm: row.sqm ?? null,
+    floor: row.floor ?? null,
+    property_type:
+      (row.attributes?.property_type ?? row.attributes?.propertyType ?? row.attributes?.subcategory ?? null) as
+        | string
+        | null,
+    photos: Array.isArray(row.photos) ? row.photos.slice(0, 40) : [],
+    attributes: row.attributes ?? {},
+    raw: {
+      short_description: row.short_description ?? null,
+      furniture_details: row.furniture_details ?? {},
+      additional_details: row.additional_details ?? {},
+      price_history: row.price_history ?? [],
+      owner_name: row.owner_name ?? null,
+      owner_phone: row.owner_phone ?? null,
+      latitude: row.latitude ?? null,
+      longitude: row.longitude ?? null,
+      available_from: row.available_from ?? null,
+    },
+    published_at: row.published_at ?? null,
+    updated_at_source: row.updated_at_source ?? null,
+    last_seen_at: new Date().toISOString(),
+  };
+
+  const { data: existing } = await admin
+    .from("market_listings")
+    .select("id")
+    .eq("source_url", row.source_url)
+    .maybeSingle();
+
+  if (existing?.id) {
+    const { error } = await admin.from("market_listings").update(payload).eq("id", existing.id);
+    if (error) throw new Error(`pool_update_failed(${row.source_url}): ${error.message}`);
+    return;
+  }
+  const { error } = await admin.from("market_listings").insert(payload);
+  if (error) throw new Error(`pool_insert_failed(${row.source_url}): ${error.message}`);
+}
+
+/** Answers a search straight from the shared pool — zero external calls. */
+async function readMarketPool(
+  admin: any,
+  body: any,
+  limit: number,
+  inputUrl: string,
+): Promise<any[]> {
+  let q = admin.from("market_listings").select("*").limit(Math.min(200, Math.max(1, limit)));
+
+  const itemId = String(inputUrl.match(/\/realestate\/item\/([^/?#]+)/)?.[1] ?? "");
+  if (itemId) {
+    q = q.eq("external_id", itemId);
+  } else {
+    const city = String(body?.city ?? "").trim();
+    if (city) q = q.ilike("city", `%${city}%`);
+    const dealIn = String(body?.listing_type ?? body?.deal_type ?? "").toLowerCase();
+    if (dealIn === "rent" || dealIn === "sale") q = q.eq("deal_type", dealIn);
+    const hood = String(body?.neighborhood ?? "").trim();
+    if (hood) q = q.ilike("neighborhood", `%${hood}%`);
+    const rooms = Number(body?.rooms);
+    if (Number.isFinite(rooms) && rooms > 0) q = q.eq("rooms", rooms);
+    const minP = Number(body?.min_price);
+    if (Number.isFinite(minP) && minP > 0) q = q.gte("price", minP);
+    const maxP = Number(body?.max_price);
+    if (Number.isFinite(maxP) && maxP > 0) q = q.lte("price", maxP);
+    const text = String(body?.query ?? body?.q ?? "").trim();
+    if (text) q = q.or(`title.ilike.%${text}%,address.ilike.%${text}%,description.ilike.%${text}%`);
+    q = q.order("published_at", { ascending: false, nullsFirst: false });
+  }
+
+  const { data, error } = await q;
+  if (error) {
+    console.warn(`[yad2-unlocker] pool read failed: ${error.message}`);
+    return [];
+  }
+  return (data ?? []).map((r: any) => ({
+    source_url: r.source_url,
+    external_id: r.external_id,
+    title: r.title,
+    description: r.description,
+    long_description: r.description,
+    price: r.price,
+    rooms: r.rooms,
+    sqm: r.sqm,
+    floor: r.floor,
+    city: r.city,
+    neighborhood: r.neighborhood,
+    address: r.address,
+    house_number: r.house_number,
+    apartment_number: r.apartment_number,
+    photos: Array.isArray(r.photos) ? r.photos : [],
+    attributes: r.attributes ?? {},
+    deal_type: r.deal_type,
+    listing_type: r.deal_type,
+    property_type: r.property_type,
+    published_at: r.published_at,
+    updated_at_source: r.updated_at_source,
+    price_history: (r.raw ?? {}).price_history ?? [],
+    furniture_details: (r.raw ?? {}).furniture_details ?? {},
+    additional_details: (r.raw ?? {}).additional_details ?? {},
+    owner_name: (r.raw ?? {}).owner_name ?? null,
+    owner_phone: (r.raw ?? {}).owner_phone ?? null,
+    latitude: (r.raw ?? {}).latitude ?? null,
+    longitude: (r.raw ?? {}).longitude ?? null,
+  }));
+}
+
 // -------- Handler --------
 
 Deno.serve(async (req) => {
