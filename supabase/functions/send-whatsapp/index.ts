@@ -891,9 +891,17 @@ Deno.serve(async (req) => {
     // ARCHITECTURE (HARD): WhatsApp messaging is Meta Cloud API only. There is
     // no alternative gateway and no fallback transport — every outbound message
     // (free text, media, approved template) leaves through graph.facebook.com.
+    // Workspace-selected transport: the personal QR-linked number is used for
+    // plain-text sends when the workspace chose it. OTP/system messages
+    // (force_official) and approved templates always stay on Meta Cloud.
+    const wantsPersonal = routing.mode === "qr_session" && !parsed.data.force_official &&
+      !parsed.data.template_id && !parsed.data.file;
+    const greenCreds = wantsPersonal ? await resolveGreenCreds(admin, routing.owner_id) : null;
+    const usePersonal = !!greenCreds;
+
     const provider = await resolveProvider(admin, userId, routingTenantId, true);
 
-    if (!provider) {
+    if (!provider && !usePersonal) {
       console.error("send-whatsapp no active WBA provider", {
         user_routed: !!userId,
         tenant_routed: !!routingTenantId,
@@ -985,13 +993,29 @@ Deno.serve(async (req) => {
 
 
 
-    let result: StdResponse = await sendViaWba(
-      provider.config,
-      phone,
-      outboundMessage,
-      parsed.data.file,
-      template,
-    );
+    let result: StdResponse;
+    if (usePersonal && greenCreds && outboundMessage) {
+      const sent = await sendGreenApiText(
+        { instance_id: greenCreds.instance_id, token: greenCreds.token },
+        phone,
+        outboundMessage,
+      );
+      result = {
+        success: sent.success,
+        provider: "GREEN_API",
+        message_id: sent.message_id,
+        error: sent.error,
+        details: sent.details,
+      };
+    } else {
+      result = await sendViaWba(
+        provider!.config,
+        phone,
+        outboundMessage,
+        parsed.data.file,
+        template,
+      );
+    }
 
     // Compliance audit + message-row logging. Best-effort; never blocks the send.
     const effectiveProvider = result.provider ?? provider?.name ?? "WBA";
