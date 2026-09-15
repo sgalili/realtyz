@@ -383,6 +383,37 @@ Deno.serve(async (req) => {
     }
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
+    // SMS login code: dispatched straight through the 019 gateway (never the
+    // built-in phone provider, which is not configured). Credentials resolve
+    // per workspace with the shared platform 019 account as fallback, so every
+    // workspace can send codes while its data stays isolated.
+    if (action === "send_sms") {
+      await admin.rpc("cleanup_expired_whatsapp_login_otps");
+      const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0");
+      const codeHash = await hashCode(phone, code);
+      const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
+      const owner = await resolveWorkspaceOwnerForPhone(admin, phone);
+      const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-Realtyz: ${code}`, owner);
+      if (!sms.ok) {
+        console.error("whatsapp-auth SMS OTP send failed", { phone_last4: phone.slice(-4), error: sms.error, scope: sms.scope ?? null });
+        await logIntegrationError({
+          integration: "sms",
+          functionName: "whatsapp-auth",
+          errorMessage: String(sms.error ?? "019 SMS OTP send failed"),
+          context: { phone_last4: phone.slice(-4), scope: sms.scope ?? null },
+        });
+        return json({ error: sms.error ?? "שליחת קוד ב-SMS נכשלה" }, 502);
+      }
+      const { error: insertError } = await admin.from("whatsapp_login_otps").insert({
+        phone_number: phone,
+        code_hash: codeHash,
+        expires_at: expiresAt,
+      });
+      if (insertError) throw insertError;
+      console.info("whatsapp-auth SMS OTP delivered", { phone_last4: phone.slice(-4), scope: sms.scope ?? null });
+      return json({ success: true, channel: "sms" });
+    }
+
     if (action === "send") {
       console.info("whatsapp-auth OTP send requested", { phone_last4: phone.slice(-4), env: envPresence() });
       await admin.rpc("cleanup_expired_whatsapp_login_otps");
