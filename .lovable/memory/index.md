@@ -61,3 +61,4 @@
 - [Workspace SMS 019 + OTP fallback](mem://features/workspace-sms-019) — per-workspace 019 credentials, WhatsApp OTP SMS fallback, first-time Google/Facebook approval popup, FB group publish scopes.
 - [Meta template compliance](mem://features/wa-template-compliance) — OTP AUTHENTICATION template, drip stage-2 UTILITY/MARKETING templates, template_rejected logging.
 - [FB groups extension-only](mem://constraints/fb-groups-extension-only) — No Graph API for group posts; rzPostQueue + campaign_activity_queue fb_group_post handled by the extension.
+- [Yad2 scrape rate limit](mem://constraints/yad2-scrape-rate-limit) — Bright Data scraped only 08:00/18:00 via properties-scheduled-sync slot claim; incremental watermarks; shared market_listings pool serves every workspace (never copy pool rows into listings).
