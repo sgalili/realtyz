@@ -128,12 +128,15 @@ async function runSync(admin: any, token: string, cities: string[]) {
       }
     }
 
-    // Distribute the fresh pool rows to every workspace in the same cities.
-    const { data: sharedCount, error: shareErr } = await admin.rpc('share_market_listings', {
-      _since: runStartedAt,
-    });
-    if (shareErr) console.error('[properties-scheduled-sync] share failed', shareErr.message);
-    shared = Number(sharedCount ?? 0) || 0;
+    // The pool itself IS the sharing layer: `market_listings` is readable by
+    // every signed-in user, so the moment a row lands here every workspace in
+    // that city sees it — with no per-workspace API call and no duplicated row
+    // (listings.source_url is globally unique by design).
+    const { count: freshShared } = await admin
+      .from('market_listings')
+      .select('*', { count: 'exact', head: true })
+      .gte('last_seen_at', runStartedAt);
+    shared = Number(freshShared ?? 0) || 0;
 
     // Homely runs on the same schedule so the whole inventory refresh is one job.
     try {
