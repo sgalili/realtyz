@@ -512,17 +512,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
               >
                 <RitaAvatar className="h-7 w-7" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 p-0 text-primary hover:bg-primary/10 hover:text-primary"
-                onClick={() => window.dispatchEvent(new Event('open-quick-actions'))}
-                aria-label="פעולות מהירות"
-                title="פעולות מהירות"
-              >
-                <Zap className="h-5 w-5" />
-              </Button>
-
             </div>
           </header>
           <PageHero />
