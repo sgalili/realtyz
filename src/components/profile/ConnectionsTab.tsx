@@ -327,7 +327,7 @@ export function ConnectionsTab() {
     },
     {
       id: 'google',
-      title: 'חשבונות גוגל',
+      title: 'גוגל',
       headerAside: (
         <span className="flex items-center gap-1.5" aria-label="שירותי Google">
           <GoogleBrandGlyph brand="gmail" connected={connectedGoogle.has('gmail') || isRememberedConnected('gmail', activeWorkspaceId)} />
