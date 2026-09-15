@@ -3725,6 +3725,93 @@ export type Database = {
           },
         ]
       }
+      market_listings: {
+        Row: {
+          address: string | null
+          apartment_number: string | null
+          attributes: Json
+          city: string | null
+          created_at: string
+          deal_type: string
+          description: string | null
+          external_id: string | null
+          first_seen_at: string
+          floor: number | null
+          house_number: string | null
+          id: string
+          last_seen_at: string
+          neighborhood: string | null
+          photos: Json
+          price: number | null
+          property_type: string | null
+          published_at: string | null
+          raw: Json
+          rooms: number | null
+          source: string
+          source_url: string
+          sqm: number | null
+          title: string | null
+          updated_at: string
+          updated_at_source: string | null
+        }
+        Insert: {
+          address?: string | null
+          apartment_number?: string | null
+          attributes?: Json
+          city?: string | null
+          created_at?: string
+          deal_type?: string
+          description?: string | null
+          external_id?: string | null
+          first_seen_at?: string
+          floor?: number | null
+          house_number?: string | null
+          id?: string
+          last_seen_at?: string
+          neighborhood?: string | null
+          photos?: Json
+          price?: number | null
+          property_type?: string | null
+          published_at?: string | null
+          raw?: Json
+          rooms?: number | null
+          source?: string
+          source_url: string
+          sqm?: number | null
+          title?: string | null
+          updated_at?: string
+          updated_at_source?: string | null
+        }
+        Update: {
+          address?: string | null
+          apartment_number?: string | null
+          attributes?: Json
+          city?: string | null
+          created_at?: string
+          deal_type?: string
+          description?: string | null
+          external_id?: string | null
+          first_seen_at?: string
+          floor?: number | null
+          house_number?: string | null
+          id?: string
+          last_seen_at?: string
+          neighborhood?: string | null
+          photos?: Json
+          price?: number | null
+          property_type?: string | null
+          published_at?: string | null
+          raw?: Json
+          rooms?: number | null
+          source?: string
+          source_url?: string
+          sqm?: number | null
+          title?: string | null
+          updated_at?: string
+          updated_at_source?: string | null
+        }
+        Relationships: []
+      }
       market_pulse_cache: {
         Row: {
           cache_key: string
@@ -3779,6 +3866,96 @@ export type Database = {
           id?: string
           metadata?: Json | null
           property_evaluation_data?: Json | null
+        }
+        Relationships: []
+      }
+      market_scrape_runs: {
+        Row: {
+          claimed_at: string
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          new_count: number
+          run_date: string
+          scraped_count: number
+          shared_count: number
+          slot: string
+          source: string
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          claimed_at?: string
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          new_count?: number
+          run_date: string
+          scraped_count?: number
+          shared_count?: number
+          slot: string
+          source?: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          claimed_at?: string
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          new_count?: number
+          run_date?: string
+          scraped_count?: number
+          shared_count?: number
+          slot?: string
+          source?: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      market_scrape_state: {
+        Row: {
+          city: string
+          created_at: string
+          deal_type: string
+          id: string
+          last_new_count: number
+          last_run_at: string | null
+          last_success_at: string | null
+          source: string
+          updated_at: string
+          watermark_published_at: string | null
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          deal_type: string
+          id?: string
+          last_new_count?: number
+          last_run_at?: string | null
+          last_success_at?: string | null
+          source?: string
+          updated_at?: string
+          watermark_published_at?: string | null
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          deal_type?: string
+          id?: string
+          last_new_count?: number
+          last_run_at?: string | null
+          last_success_at?: string | null
+          source?: string
+          updated_at?: string
+          watermark_published_at?: string | null
         }
         Relationships: []
       }
@@ -6202,6 +6379,7 @@ export type Database = {
         Args: { _group: string; _limit: number; _owner: string }
         Returns: boolean
       }
+      claim_market_scrape_slot: { Args: { _source?: string }; Returns: Json }
       cleanup_expired_email_login_otps: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
@@ -6271,6 +6449,17 @@ export type Database = {
           _token: string
         }
         Returns: Json
+      }
+      finish_market_scrape_run: {
+        Args: {
+          _error?: string
+          _new_rows?: number
+          _scraped?: number
+          _shared?: number
+          _status?: string
+          _token: string
+        }
+        Returns: undefined
       }
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
       gen_referral_code: { Args: never; Returns: string }
@@ -6423,6 +6612,15 @@ export type Database = {
         Returns: string
       }
       listing_photo_pool: { Args: { _listing_id: string }; Returns: string[] }
+      market_pool_coverage: {
+        Args: { _since?: string }
+        Returns: {
+          city: string
+          deal_type: string
+          listings: number
+          newest_published_at: string
+        }[]
+      }
       match_knowledge_chunks: {
         Args: {
           match_count?: number

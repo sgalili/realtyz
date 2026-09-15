@@ -40,7 +40,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
 import { PropertyNotesBlock } from '@/components/properties/PropertyNotesBlock';
 import { usePropertyNotesByListing } from '@/hooks/usePropertyNotes';
-import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
+import { searchAllSources, searchLocalListings, searchMarketPool, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { sourcePhotoCount } from '@/lib/photoCount';
 import { stripAddressNumbers } from '@/lib/formatAddress';
@@ -181,67 +181,25 @@ export default function Properties() {
     return () => window.removeEventListener('properties:add', handler);
   }, []);
 
-  // LIVE SYNC — on entering the page we kick a throttled background refresh of
-  // Homely + Yad2 inventory into our own `listings` table (max once every 30
-  // minutes), then repaint from the DB. Never blocks the UI.
-  const syncedRef = useRef(false);
+  // NO SCRAPE ON PAGE LOAD. Yad2 inventory is fetched by the scheduled job
+  // twice a day (08:00 / 18:00 Asia/Jerusalem) into the shared market pool and
+  // distributed to every workspace in the same cities. Entering the page only
+  // reads what we already store, so it can never spend Bright Data credits.
+  const [poolInfo, setPoolInfo] = useState<{ last: string | null; count: number } | null>(null);
   useEffect(() => {
-    if (syncedRef.current) return;
-    syncedRef.current = true;
-    const KEY = 'realtyz:properties:last-live-sync';
-    const last = Number(localStorage.getItem(KEY) ?? 0);
-    if (Date.now() - last < 30 * 60 * 1000) return;
-    localStorage.setItem(KEY, String(Date.now()));
+    let alive = true;
     void (async () => {
-      await Promise.allSettled([
-        supabase.functions.invoke('homely-daily-sync', { body: { reason: 'properties_page' } }),
-        supabase.functions.invoke('properties-scheduled-sync', { body: { reason: 'properties_page' } }),
-      ]);
-      defaultPoolRef.current.clear();
-      const pool = await loadDefaultPool(listingType).catch(() => [] as UnifiedResult[]);
-      if (pool.length) setResults((cur) => (cur.length ? cur : pool));
-      queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+      const { data } = await supabase
+        .from('market_scrape_runs')
+        .select('finished_at, claimed_at, new_count, shared_count')
+        .eq('status', 'success')
+        .order('claimed_at', { ascending: false })
+        .limit(1);
+      const row = (data ?? [])[0] as { finished_at: string | null; claimed_at: string; new_count: number } | undefined;
+      if (alive && row) setPoolInfo({ last: row.finished_at ?? row.claimed_at, count: row.new_count ?? 0 });
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { alive = false; };
   }, []);
-
-
-
-  // FIRST VISIT ONLY — the workspace has no inventory yet, so we pull the 50
-  // newest Yad2 listings (sale + rent) for the agent's cities straight into our
-  // own `listings` table. Runs once per user, in the background.
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (!user?.id || seededRef.current) return;
-    const KEY = `realtyz:properties:yad2-first-seed:${user.id}`;
-    if (localStorage.getItem(KEY) === '1') return;
-    seededRef.current = true;
-    localStorage.setItem(KEY, '1');
-    const cities = (isConfigured && coveredCities.length ? coveredCities : DEFAULT_CITIES).slice(0, 2);
-    const perCall = Math.max(10, Math.ceil(50 / (cities.length * 2)));
-    void (async () => {
-      const toastId = toast.loading('טוען את 50 הנכסים החדשים ביד2 לאזור שלך…');
-      try {
-        await Promise.allSettled(
-          cities.flatMap((c) =>
-            (['sale', 'rent'] as ListingType[]).map((t) =>
-              supabase.functions.invoke('yad2-unlocker', {
-                body: { city: c, listing_type: t, mode: 'search', limit: perCall, pages: 1 },
-              }),
-            ),
-          ),
-        );
-        defaultPoolRef.current.clear();
-        const pool = await loadDefaultPool(listingType).catch(() => [] as UnifiedResult[]);
-        if (pool.length) setResults((cur) => (cur.length ? cur : pool));
-        queryClient.invalidateQueries({ queryKey: ['properties-search'] });
-        toast.success('הנכסים העדכניים מיד2 נשמרו במאגר שלך', { id: toastId });
-      } catch {
-        toast.dismiss(toastId);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isConfigured, coveredCities.join('|')]);
 
 
   // LOCAL-FIRST: entering the page never triggers a live scraper call.
@@ -254,17 +212,32 @@ export default function Properties() {
     const cacheKey = type;
     const hit = defaultPoolRef.current.get(cacheKey);
     if (hit) return hit;
-    const cities = DEFAULT_CITIES;
-    const batches = await Promise.all(
-      cities.map((c) =>
+    const cities = (isConfigured && coveredCities.length ? coveredCities : DEFAULT_CITIES).slice(0, 6);
+    // Own inventory + the SHARED market pool for the same cities. The pool is
+    // refreshed twice a day by the scheduled job, so any workspace working in
+    // these cities sees the fresh Yad2 inventory without an API call.
+    const batches = await Promise.all([
+      ...cities.map((c) =>
         searchLocalListings({ city: c, listing_type: 'all' }).catch(() => [] as UnifiedResult[]),
       ),
-    );
+      ...cities.map((c) =>
+        searchMarketPool({ city: c, listing_type: 'all' }, 100).catch(() => [] as UnifiedResult[]),
+      ),
+    ]);
     const seen = new Set<string>();
-    let all = batches.flat().filter((r) => (seen.has(r.key) ? false : (seen.add(r.key), true)));
+    const seenUrls = new Set<string>();
+    let all = batches.flat().filter((r) => {
+      if (seen.has(r.key)) return false;
+      const u = (r.url ?? '').split('?')[0];
+      if (u && seenUrls.has(u)) return false;
+      seen.add(r.key);
+      if (u) seenUrls.add(u);
+      return true;
+    });
     // Safety net: if the workspace cities hold nothing yet, show all stored inventory.
     if (!all.length) {
       all = await searchLocalListings({ listing_type: 'all' }).catch(() => [] as UnifiedResult[]);
+      if (!all.length) all = await searchMarketPool({ listing_type: 'all' }, 200).catch(() => [] as UnifiedResult[]);
     }
     const newestFirst = (a: UnifiedResult, b: UnifiedResult) =>
       new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
@@ -275,7 +248,8 @@ export default function Properties() {
         : take(type);
     defaultPoolRef.current.set(cacheKey, pool);
     return pool;
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConfigured, coveredCities.join('|')]);
 
 
   // The table is NEVER empty: whenever the query box is blank we repaint the
@@ -777,6 +751,12 @@ export default function Properties() {
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">
           חיפוש מאוחד — הומלי, יד-2 והמאגר שלך במקום אחד. לחץ על נכס לתצוגה מלאה, וסמן נכסים לייבוא קבוצתי.
+        </p>
+        <p className="text-[11px] sm:text-xs text-muted-foreground/80 mt-1">
+          נכסי יד-2 מתעדכנים פעמיים ביום — 08:00 ו-18:00.
+          {poolInfo?.last
+            ? ` עדכון אחרון: ${new Date(poolInfo.last).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+            : ''}
         </p>
       </header>
 

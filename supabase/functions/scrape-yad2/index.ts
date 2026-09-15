@@ -91,6 +91,27 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch { /* body optional */ }
 
+  // RATE LIMIT (HARD): Bright Data is reachable only inside a claimed
+  // twice-daily scrape slot (08:00 / 18:00 Asia/Jerusalem). See
+  // properties-scheduled-sync and claim_market_scrape_slot().
+  const scrapeToken = typeof body?.scrape_token === "string" ? body.scrape_token : null;
+  let runOk = false;
+  if (scrapeToken) {
+    const { data: run } = await admin
+      .from("market_scrape_runs")
+      .select("id, status")
+      .eq("token", scrapeToken)
+      .maybeSingle();
+    runOk = Boolean(run?.id) && (run as any)?.status === "running";
+  }
+  if (!runOk) {
+    return json({
+      success: false,
+      error: "rate_limited",
+      detail: "שאיבת נתונים מיד-2 מתבצעת פעמיים ביום בלבד (08:00 ו-18:00) דרך הסנכרון המתוזמן.",
+    }, 429);
+  }
+
   const urls: string[] = Array.isArray(body?.urls) && body.urls.length
     ? body.urls
     : (typeof body?.url === "string" ? [body.url] : DEFAULT_URLS);
