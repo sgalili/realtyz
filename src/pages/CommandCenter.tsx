@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScheduledToursCard } from '@/components/dashboard/ScheduledToursCard';
+import { NewTourDialog } from '@/components/dashboard/NewTourDialog';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useNavigate } from 'react-router-dom';
