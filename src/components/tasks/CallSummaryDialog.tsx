@@ -78,7 +78,7 @@ export default function CallSummaryDialog({
       if (digits.length >= 3) filters.push(`phone_number.ilike.%${digits}%`);
       const { data } = await (supabase as any)
         .from('leads')
-        .select('id, full_name, phone_number, city')
+        .select('id, full_name, phone_number, city, profile_picture_url')
         .or(filters.join(','))
         .limit(8);
       if (cancelled) return;

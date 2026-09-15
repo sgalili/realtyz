@@ -11,6 +11,7 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
 
 export type TaskLeadLite = {
+  profile_picture_url?: string | null;
   id: string;
   full_name: string | null;
   phone_number: string | null;
@@ -93,7 +94,7 @@ export default function TaskFormDialog({
       if (digits.length >= 3) filters.push(`phone_number.ilike.%${digits}%`);
       const { data } = await (supabase as any)
         .from('leads')
-        .select('id, full_name, phone_number, city')
+        .select('id, full_name, phone_number, city, profile_picture_url')
         .or(filters.join(','))
         .limit(8);
       if (cancelled) return;
