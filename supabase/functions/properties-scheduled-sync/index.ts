@@ -8,9 +8,10 @@
 //     Every other call in the app reads the shared pool instead.
 //  2. Incremental only: each city + deal type keeps a watermark (the newest
 //     publication date already collected) so we never pay for known ads.
-//  3. Central first, then shared: rows land in `market_listings` and
-//     `share_market_listings()` distributes them to every workspace working
-//     in the same cities — no extra API calls per workspace.
+//  3. Central and shared: rows land in `market_listings`, which every signed-in
+//     workspace can read. A workspace working in the same city sees the fresh
+//     inventory instantly, without a second API call and without duplicating
+//     the row (listings.source_url is globally unique).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
