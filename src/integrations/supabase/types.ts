@@ -2805,7 +2805,9 @@ export type Database = {
           is_selected: boolean
           max_posts_per_day: number | null
           member_count: number | null
+          page_id: string | null
           privacy: string | null
+          source: string | null
           updated_at: string
           workspace_owner_id: string
         }
@@ -2821,7 +2823,9 @@ export type Database = {
           is_selected?: boolean
           max_posts_per_day?: number | null
           member_count?: number | null
+          page_id?: string | null
           privacy?: string | null
+          source?: string | null
           updated_at?: string
           workspace_owner_id: string
         }
@@ -2837,7 +2841,9 @@ export type Database = {
           is_selected?: boolean
           max_posts_per_day?: number | null
           member_count?: number | null
+          page_id?: string | null
           privacy?: string | null
+          source?: string | null
           updated_at?: string
           workspace_owner_id?: string
         }
