@@ -132,7 +132,7 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     }
     setSaving(true);
     try {
-      const scheduledAt = new Date(`${date}T${time}:00+03:00').replace(')`.slice(0, 0) + `${date}T${time}:00+03:00`);
+      const scheduledAt = new Date(`${date}T${time}:00+03:00`);
       const { error } = await supabase.from('property_tours').insert({
         owner_id: ownerId,
         client_name: name.trim(),
