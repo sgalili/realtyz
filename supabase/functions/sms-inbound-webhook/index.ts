@@ -206,7 +206,9 @@ Deno.serve(async (req) => {
         .from("leads")
         .insert({
           phone_number: fromNormalized,
-          full_name: "איש קשר חדש (SMS)",
+          // The phone is all we know yet — use it as the display name so Rita
+          // never addresses the contact by a placeholder word.
+          full_name: displayIL(fromNormalized),
           lead_stage: "engaging",
           status: "contacted",
           sentiment: "neutral",
