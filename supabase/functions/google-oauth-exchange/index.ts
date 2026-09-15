@@ -385,23 +385,44 @@ async function handle(req: Request): Promise<Response> {
         })
         .eq('platform', platform)
         .eq('workspace_owner_id', workspaceOwnerId);
-      return new Response(JSON.stringify({ ok: false, error: tokens.error, code: 'token_exchange_failed', redirect_uri_used: redirectUri }), {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: tokens.error,
+        code: 'token_exchange_failed',
+        stage: 'token_exchange',
+        redirect_uri_used: redirectUri,
+        workspace_owner_id: workspaceOwnerId,
+      }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     // Fetch real identity with the fresh access_token.
-    const identity =
-      platform === 'gmail' || platform === 'google_all'
-        ? await fetchGmailIdentity(tokens.access_token)
-        : platform === 'youtube'
-          ? await fetchYouTubeIdentity(tokens.access_token)
-          : platform === 'google_calendar'
-            ? await fetchCalendarIdentity(tokens.access_token)
-            : await fetchDriveIdentity(tokens.access_token);
+    let identity: any;
+    try {
+      identity =
+        platform === 'gmail' || platform === 'google_all'
+          ? await fetchGmailIdentity(tokens.access_token)
+          : platform === 'youtube'
+            ? await fetchYouTubeIdentity(tokens.access_token)
+            : platform === 'google_calendar'
+              ? await fetchCalendarIdentity(tokens.access_token)
+              : await fetchDriveIdentity(tokens.access_token);
+    } catch (e: any) {
+      console.error('[google-oauth-exchange] identity stage threw', {
+        platform, workspace_owner_id: workspaceOwnerId, reason: String(e?.message ?? e),
+      });
+      identity = { error: String(e?.message ?? e), status: 0 };
+    }
 
     if ('error' in identity) {
+      console.error('[google-oauth-exchange] identity fetch failed', {
+        platform,
+        workspace_owner_id: workspaceOwnerId,
+        google_status: identity.status ?? null,
+        error: identity.error,
+      });
       await admin
         .from('social_connections')
         .update({
