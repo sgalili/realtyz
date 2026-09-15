@@ -9,7 +9,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { FirstTimeSyncDialog } from '@/components/onboarding/FirstTimeSyncDialog';
 
-import { Card } from '@/components/ui/card';
+import {
+  ScheduleMonthGrid,
+  ScheduleViewToggle,
+  startOfThisMonth,
+  todayKey,
+  type ScheduleView,
+} from '@/components/dashboard/ScheduleViews';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -178,6 +184,10 @@ export default function CommandCenter() {
   const [editing, setEditing] = useState<CommandTask | null>(null);
   const [newTourOpen, setNewTourOpen] = useState(false);
   const [newDemoOpen, setNewDemoOpen] = useState(false);
+  // The same list / calendar display switch the tours tab uses.
+  const [taskView, setTaskView] = useState<ScheduleView>('list');
+  const [taskMonth, setTaskMonth] = useState(startOfThisMonth);
+  const [taskDay, setTaskDay] = useState<string | null>(() => todayKey());
   const toggleCard = (key: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
