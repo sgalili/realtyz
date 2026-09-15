@@ -461,6 +461,9 @@ export async function updateCommandTask(task: CommandTask, edit: CommandTaskEdit
     if (edit.title !== undefined) patch.title = edit.title;
     if (edit.description !== undefined) patch.description = edit.description;
     if (edit.dueAt !== undefined) patch.starts_at = edit.dueAt;
+    if (edit.leadId !== undefined) patch.lead_id = edit.leadId;
+    if (edit.leadName !== undefined) patch.lead_name = edit.leadName;
+    if (edit.leadPhone !== undefined) patch.lead_phone = edit.leadPhone;
     const { error } = await (supabase as any).from('meetings').update(patch).eq('id', task.id);
     if (error) throw error;
     return;
@@ -470,6 +473,23 @@ export async function updateCommandTask(task: CommandTask, edit: CommandTaskEdit
   if (edit.title !== undefined) patch.title = edit.title;
   if (edit.description !== undefined) patch.content = edit.description;
   if (edit.dueAt !== undefined) patch.scheduled_for = edit.dueAt;
+
+  // Contact + urgency live in the row metadata, so they are merged in place.
+  if (edit.priority !== undefined || edit.leadId !== undefined) {
+    const { data: current } = await (supabase as any)
+      .from('scheduled_items')
+      .select('metadata')
+      .eq('id', task.id)
+      .maybeSingle();
+    const metadata = { ...((current?.metadata ?? {}) as Record<string, unknown>) };
+    if (edit.priority !== undefined) metadata.priority = edit.priority;
+    if (edit.leadId !== undefined) {
+      metadata.lead_id = edit.leadId;
+      metadata.lead_name = edit.leadName ?? null;
+    }
+    patch.metadata = metadata;
+  }
+
   const { error } = await (supabase as any).from('scheduled_items').update(patch).eq('id', task.id);
   if (error) throw error;
 }
