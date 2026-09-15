@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ScheduledToursCard } from '@/components/dashboard/ScheduledToursCard';
+import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
