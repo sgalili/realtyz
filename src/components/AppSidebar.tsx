@@ -202,7 +202,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               </div>
 
               {/* Settings + Tutorial + broker/partner toggle share one row. */}
-              <div className="mt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <div className="mt-2 flex items-center gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {/* Settings shortcut: opens /profile and closes the sidebar. */}
                 <button
                   type="button"
