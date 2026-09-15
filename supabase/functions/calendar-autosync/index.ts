@@ -11,7 +11,12 @@
  * the app. Idempotent: a row that already carries a Google event id is skipped.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { createCalendarEvent, getFreshAccessToken } from "../_shared/google-calendar.ts";
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  getFreshAccessToken,
+  updateCalendarEvent,
+} from "../_shared/google-calendar.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -168,14 +173,62 @@ Deno.serve(async (req) => {
     if (error || !row) return json({ ok: false, error: "record not found" }, 404);
 
     const item = normalize(kind, row as Record<string, any>);
-    if (!item.startISO || !item.ownerId) return json({ ok: true, skipped: "no_schedule_or_owner" });
-    if (item.existingEventId) return json({ ok: true, skipped: "already_synced", event_id: item.existingEventId });
+    const rowStatus = String((row as Record<string, any>).status ?? "").toLowerCase();
+    const isCancelled = ["cancelled", "canceled", "archived"].includes(rowStatus);
 
-    // Past items are never pushed to the calendar.
-    if (new Date(item.startISO).getTime() < Date.now() - HOUR) return json({ ok: true, skipped: "past_item" });
+    if (!item.ownerId) return json({ ok: true, skipped: "no_schedule_or_owner" });
 
     const token = await getFreshAccessToken(admin, item.ownerId);
     if ("error" in token) return json({ ok: true, calendar: { created: false, reason: token.error } });
+
+    // ── Cancelled item: drop the calendar event so nothing is orphaned ───────
+    if (item.existingEventId && (isCancelled || !item.startISO)) {
+      const removed = await deleteCalendarEvent({
+        accessToken: token.accessToken,
+        calendarId: token.calendarId,
+        eventId: item.existingEventId,
+      });
+      if ("error" in removed) {
+        console.error("[calendar-autosync] delete failed", kind, body.record_id, removed.error);
+        return json({ ok: false, calendar: { deleted: false, reason: removed.error } }, 502);
+      }
+      const clear: Record<string, unknown> = { [item.eventIdColumn]: null };
+      if (item.eventLinkColumn) clear[item.eventLinkColumn] = null;
+      await admin.from(kind).update(clear).eq("id", body.record_id);
+      return json({ ok: true, calendar: { deleted: true } });
+    }
+
+    if (!item.startISO) return json({ ok: true, skipped: "no_schedule_or_owner" });
+    if (isCancelled) return json({ ok: true, skipped: "cancelled" });
+
+    // ── Existing event: patch it in place (time / title / details) ───────────
+    if (item.existingEventId) {
+      const patched = await updateCalendarEvent({
+        accessToken: token.accessToken,
+        calendarId: token.calendarId,
+        timezone: token.timezone,
+        eventId: item.existingEventId,
+        summary: item.title,
+        description: item.description || "",
+        location: item.location ?? undefined,
+        startISO: item.startISO,
+        endISO: item.endISO ?? plusMinutes(item.startISO, 30),
+      });
+      if ("error" in patched) {
+        console.error("[calendar-autosync] patch failed", kind, body.record_id, patched.error);
+        return json({ ok: false, calendar: { updated: false, reason: patched.error } }, 502);
+      }
+      if (item.eventLinkColumn && patched.htmlLink) {
+        await admin.from(kind).update({ [item.eventLinkColumn]: patched.htmlLink }).eq("id", body.record_id);
+      }
+      return json({
+        ok: true,
+        calendar: { updated: true, event_id: patched.id, link: patched.htmlLink ?? null },
+      });
+    }
+
+    // Past items are never pushed to the calendar.
+    if (new Date(item.startISO).getTime() < Date.now() - HOUR) return json({ ok: true, skipped: "past_item" });
 
     const event = await createCalendarEvent({
       accessToken: token.accessToken,

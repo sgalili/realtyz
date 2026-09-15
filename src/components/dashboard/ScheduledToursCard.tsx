@@ -29,10 +29,11 @@ import {
   Phone,
   Send,
   StickyNote,
-  User,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { sendViaOfficialWaba } from '@/lib/officialWa';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 
 type Tour = {
   id: string;
@@ -98,13 +99,17 @@ export function ScheduledToursCard() {
   const [openDay, setOpenDay] = useState<string | null>(() => dayKey(new Date().toISOString()));
   const [sendingId, setSendingId] = useState<string | null>(null);
 
+  // Tours belong to ONE workspace only — never show another workspace's tours.
+  const ownerId = useActiveWorkspaceOwnerId();
   const { data: tours = [], isLoading } = useQuery({
-    queryKey: ['scheduled-tours'],
+    queryKey: ['scheduled-tours', ownerId],
+    enabled: !!ownerId,
     queryFn: async () => {
       const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from('property_tours')
         .select('id, client_name, client_phone, client_email, scheduled_at, property_title, property_address, status, notes, whatsapp_sent_at')
+        .eq('owner_id', ownerId!)
         .gte('scheduled_at', since)
         .neq('status', 'cancelled')
         .order('scheduled_at', { ascending: true })
@@ -113,6 +118,30 @@ export function ScheduledToursCard() {
       return (data ?? []) as Tour[];
     },
   });
+
+  /** Contact photos of this workspace, matched to a tour by phone number. */
+  const { data: avatars } = useQuery({
+    queryKey: ['tour-contact-avatars', ownerId],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('leads')
+        .select('phone_number, profile_picture_url')
+        .eq('workspace_owner_id', ownerId!)
+        .not('profile_picture_url', 'is', null)
+        .limit(1000);
+      const map = new Map<string, string>();
+      for (const row of (data ?? []) as any[]) {
+        const key = String(row.phone_number ?? '').replace(/\D/g, '').slice(-9);
+        if (key && row.profile_picture_url) map.set(key, row.profile_picture_url);
+      }
+      return map;
+    },
+  });
+
+  const avatarOf = (phone: string | null) =>
+    avatars?.get(String(phone ?? '').replace(/\D/g, '').slice(-9)) ?? null;
+
 
   const setStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -214,7 +243,11 @@ export function ScheduledToursCard() {
       <div className="rounded-lg border bg-muted/20 p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <User className="h-4 w-4 text-primary" />
+            <ContactAvatar
+              name={t.client_name}
+              imageUrl={avatarOf(t.client_phone)}
+              className="h-8 w-8"
+            />
             {t.client_name}
           </div>
           <Badge variant="outline" className={STATUS_CLASS[t.status] ?? ''}>

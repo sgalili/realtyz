@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { listingThumbOf } from '@/hooks/usePropertyNotes';
 
 export type CommandTask = {
@@ -18,7 +19,10 @@ export type CommandTask = {
   listingLabel: string | null;
   listingThumb: string | null;
   actionType: string | null;
+  /** Contact profile picture, shown in every list view. */
+  leadAvatar: string | null;
 };
+
 
 
 const PRIORITY_WEIGHT: Record<string, number> = { high: 0, medium: 1, low: 2 };
@@ -51,10 +55,13 @@ export const NOTE_ACTION_LABEL: Record<string, string> = {
 
 export function useCommandCenterTasks() {
   const { user } = useAuth();
+  // Every query is filtered by the ACTIVE workspace so nothing from another
+  // workspace can ever appear here, even for super admins.
+  const ownerId = useActiveWorkspaceOwnerId();
 
   return useQuery({
-    queryKey: ['command-center-tasks', user?.id ?? 'anon'],
-    enabled: !!user,
+    queryKey: ['command-center-tasks', user?.id ?? 'anon', ownerId ?? 'none'],
+    enabled: !!user && !!ownerId,
     staleTime: 0,
     refetchOnMount: 'always',
     refetchInterval: 15_000,
@@ -63,17 +70,20 @@ export function useCommandCenterTasks() {
         (supabase as any)
           .from('scheduled_items')
           .select('id, title, content, item_type, status, scheduled_for, metadata')
+          .eq('workspace_owner_id', ownerId)
           .order('scheduled_for', { ascending: true })
           .limit(300),
         (supabase as any)
           .from('meetings')
           .select('id, title, description, starts_at, status, lead_id, lead_name, lead_phone')
+          .eq('workspace_owner_id', ownerId)
           .gte('starts_at', new Date(Date.now() - 12 * 3600_000).toISOString())
           .order('starts_at', { ascending: true })
           .limit(100),
         (supabase as any)
           .from('interaction_activity_log')
           .select('id, action_type, platform, content, metadata, created_at')
+          .eq('workspace_owner_id', ownerId)
           .in('action_type', ['note', 'interaction'])
           .order('created_at', { ascending: false })
           .limit(60),
@@ -111,7 +121,8 @@ export function useCommandCenterTasks() {
         leadIds.size
           ? (supabase as any)
               .from('leads')
-              .select('id, full_name, phone_number')
+              .select('id, full_name, phone_number, profile_picture_url')
+              .eq('workspace_owner_id', ownerId)
               .in('id', Array.from(leadIds))
           : Promise.resolve({ data: [] }),
         listingIds.size
@@ -154,6 +165,7 @@ export function useCommandCenterTasks() {
           listingLabel: labelOfListing(listing),
           listingThumb: listingThumbOf(listing),
           actionType: followup.action_type ?? m.action_type ?? null,
+          leadAvatar: lead?.profile_picture_url ?? null,
         };
       });
 
@@ -174,6 +186,7 @@ export function useCommandCenterTasks() {
           listingLabel: null,
           listingThumb: null,
           actionType: 'meeting',
+          leadAvatar: lead?.profile_picture_url ?? null,
         });
       }
 
@@ -199,6 +212,7 @@ export function useCommandCenterTasks() {
           listingLabel: labelOfListing(listing),
           listingThumb: listingThumbOf(listing),
           actionType: kind,
+          leadAvatar: lead?.profile_picture_url ?? null,
         });
       }
 
@@ -321,10 +335,11 @@ export const CHANNEL_LABEL: Record<string, string> = {
 
 export function useCommandCenterPosts() {
   const { user } = useAuth();
+  const ownerId = useActiveWorkspaceOwnerId();
 
   return useQuery({
-    queryKey: ['command-center-posts', user?.id ?? 'anon'],
-    enabled: !!user,
+    queryKey: ['command-center-posts', user?.id ?? 'anon', ownerId ?? 'none'],
+    enabled: !!user && !!ownerId,
     staleTime: 0,
     refetchOnMount: 'always',
     refetchInterval: 15_000,
@@ -333,12 +348,14 @@ export function useCommandCenterPosts() {
         (supabase as any)
           .from('scheduled_items')
           .select('id, title, content, item_type, channel, status, scheduled_for')
+          .eq('workspace_owner_id', ownerId)
           .in('item_type', POST_ITEM_TYPES as unknown as string[])
           .order('scheduled_for', { ascending: false })
           .limit(60),
         (supabase as any)
           .from('campaign_activity_queue')
           .select('id, activity_type, target_label, status, scheduled_for, payload')
+          .eq('workspace_owner_id', ownerId)
           .order('scheduled_for', { ascending: false })
           .limit(40),
       ]);

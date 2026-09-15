@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ScheduledToursCard } from '@/components/dashboard/ScheduledToursCard';
+import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -61,9 +63,10 @@ const PRIORITY_LABEL: Record<CommandTask['priority'], string> = {
   low: 'נמוך',
 };
 
-type SectionTab = 'tasks' | 'leads' | 'demos' | 'notes' | 'reminders' | 'calls';
+type SectionTab = 'tours' | 'tasks' | 'leads' | 'demos' | 'notes' | 'reminders' | 'calls';
 
 const TAB_LABEL: Record<SectionTab, string> = {
+  tours: 'סיורים',
   tasks: 'משימות',
   leads: 'לידים',
   demos: 'הדגמות',
@@ -72,11 +75,14 @@ const TAB_LABEL: Record<SectionTab, string> = {
   calls: 'שיחות',
 };
 
-/** Standard workspaces keep the full tab set. */
-const DEFAULT_TABS: SectionTab[] = ['tasks', 'leads', 'demos', 'notes', 'reminders', 'calls'];
+/** Tabs that never show a card count next to their label. */
+const TABS_WITHOUT_COUNT = new Set<SectionTab>(['tours']);
+
+/** Standard workspaces: property tours first, then tasks, reminders and calls. */
+const DEFAULT_TABS: SectionTab[] = ['tours', 'tasks', 'reminders', 'calls'];
 /**
- * Rita's marketing workspace: demos come first, and the לידים / הערות tabs are
- * hidden there (they stay available in every other workspace).
+ * Rita's marketing workspace: demos come first and property tours are hidden
+ * (her workspace never manages properties).
  */
 const RITA_TABS: SectionTab[] = ['demos', 'tasks', 'reminders', 'calls'];
 
@@ -105,6 +111,7 @@ function dueLabel(dueAt: string | null) {
 }
 
 const ADD_LABEL: Record<SectionTab, string> = {
+  tours: 'סיור חדש',
   tasks: 'משימה חדשה',
   leads: 'איש קשר חדש',
   demos: 'הדגמה חדשה',
@@ -155,9 +162,14 @@ export default function CommandCenter() {
   const leadsCount = useIncomingLeadsCount();
   const demosCount = useScheduledDemosCount();
   
-  const [tab, setTab] = useState<SectionTab>(isRitaWorkspace ? 'demos' : 'tasks');
+  const [tab, setTab] = useState<SectionTab>(visibleTabs[0]);
   // Every card starts COLLAPSED when entering the page.
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+
+  // Switching workspaces can change the tab set — snap back to the first tab.
+  useEffect(() => {
+    if (!visibleTabs.includes(tab)) setTab(visibleTabs[0]);
+  }, [visibleTabs, tab]);
 
   const [editing, setEditing] = useState<CommandTask | null>(null);
   const toggleCard = (key: string) =>
@@ -170,7 +182,7 @@ export default function CommandCenter() {
 
   const counts = useMemo(() => {
     const base: Record<SectionTab, number> = {
-      tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, reminders: 0, calls: 0,
+      tours: 0, tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, reminders: 0, calls: 0,
     };
     for (const t of tasks) base[sectionOf(t)] += 1;
     return base;
@@ -180,6 +192,10 @@ export default function CommandCenter() {
   const addNew = (section: SectionTab) => {
     if (section === 'leads' || section === 'demos') {
       navigate('/lead-crm');
+      return;
+    }
+    if (section === 'tours') {
+      navigate('/properties');
       return;
     }
     const quickTab = section === 'notes' ? 'note' : section === 'calls' ? 'interaction' : 'reminder';
@@ -244,7 +260,11 @@ export default function CommandCenter() {
 
               {visibleTabs.map((key) => (
                 <TabsTrigger key={key} value={key}>
-                  {TAB_LABEL[key] ? `${TAB_LABEL[key]} (${counts[key]})` : ''}
+                  {TAB_LABEL[key]
+                    ? TABS_WITHOUT_COUNT.has(key)
+                      ? TAB_LABEL[key]
+                      : `${TAB_LABEL[key]} (${counts[key]})`
+                    : ''}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -256,8 +276,11 @@ export default function CommandCenter() {
         </div>
 
 
-        {tab === 'leads' || tab === 'demos' ? (
+        {tab === 'tours' ? (
+          <ScheduledToursCard />
+        ) : tab === 'leads' || tab === 'demos' ? (
           <IncomingLeadsPanel mode={tab} />
+
         ) : isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2, 3].map((i) => (
@@ -288,6 +311,13 @@ export default function CommandCenter() {
                       aria-expanded={isOpen}
                       className="flex min-w-0 flex-1 items-start gap-3 text-right"
                     >
+                      {task.leadName || task.leadAvatar ? (
+                        <ContactAvatar
+                          name={task.leadName}
+                          imageUrl={task.leadAvatar}
+                          className="mt-0.5 h-9 w-9 shrink-0"
+                        />
+                      ) : null}
                       <span className="min-w-0 flex-1 space-y-1.5">
                         <span className="flex flex-wrap items-center gap-2">
                           <span className={`rounded-full px-2 py-0.5 text-[13px] font-semibold ${PRIORITY_STYLE[task.priority]}`}>

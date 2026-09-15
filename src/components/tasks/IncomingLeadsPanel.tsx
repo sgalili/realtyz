@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { CalendarClock, CalendarPlus, ChevronLeft, ExternalLink, UserPlus } from 'lucide-react';
+import { CalendarClock, CalendarPlus, ChevronLeft, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 
 type Mode = 'leads' | 'demos';
 
@@ -40,7 +41,7 @@ export function useIncomingLeadsCount() {
       const { count } = await supabase
         .from('leads')
         .select('id', { count: 'exact', head: true })
-        .eq('assigned_to', ownerId!)
+        .eq('workspace_owner_id', ownerId!)
         .gte('created_at', since);
       return count ?? 0;
     },
@@ -57,7 +58,8 @@ export function useScheduledDemosCount() {
     queryFn: async () => {
       const { count } = await supabase
         .from('demo_requests')
-        .select('id', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true })
+        .eq('workspace_owner_id', ownerId!);
       return count ?? 0;
     },
   });
@@ -77,8 +79,8 @@ export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
       const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
         .from('leads')
-        .select('id, full_name, phone_number, city, interest_tag, lead_stage, status, created_at')
-        .eq('assigned_to', ownerId!)
+        .select('id, full_name, phone_number, city, interest_tag, lead_stage, status, created_at, profile_picture_url')
+        .eq('workspace_owner_id', ownerId!)
         .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(60);
@@ -94,6 +96,7 @@ export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
       const { data } = await supabase
         .from('demo_requests')
         .select('id, first_name, last_name, phone, notes, status, preferred_at, created_at, lead_id, google_event_id, google_event_link')
+        .eq('workspace_owner_id', ownerId!)
         .order('preferred_at', { ascending: false })
         .limit(60);
       return (data ?? []) as any[];
@@ -153,11 +156,12 @@ export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
               onClick={() => navigate(target)}
               className="flex w-full items-start gap-3 rounded-lg border border-border bg-card p-3 text-right transition-colors hover:bg-accent/40"
             >
-              {isLead ? (
-                <UserPlus className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              ) : (
-                <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              )}
+              <ContactAvatar
+                name={name}
+                imageUrl={row.profile_picture_url ?? null}
+                className="mt-0.5 h-9 w-9 shrink-0"
+              />
+              {isLead ? null : <CalendarClock className="mt-1.5 h-4 w-4 shrink-0 text-primary" />}
               <span className="min-w-0 flex-1 space-y-1">
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="text-base font-semibold">{name}</span>
