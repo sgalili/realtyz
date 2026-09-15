@@ -464,7 +464,7 @@ export function ConnectionsTab() {
     // see or override the credentials.
     ...(isSuperAdmin ? [{
       id: 'sms019',
-      titleAside: (
+      titleLead: (
         <MessageSquare
           className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !sms019Sender && 'grayscale opacity-40')}
           strokeWidth={2.25}
