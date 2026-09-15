@@ -4905,6 +4905,8 @@ export type Database = {
           owner_id: string
           property_address: string | null
           property_title: string | null
+          reminder_sent: boolean
+          reminder_sent_at: string | null
           scheduled_at: string
           share_token: string | null
           status: string
@@ -4926,6 +4928,8 @@ export type Database = {
           owner_id: string
           property_address?: string | null
           property_title?: string | null
+          reminder_sent?: boolean
+          reminder_sent_at?: string | null
           scheduled_at: string
           share_token?: string | null
           status?: string
@@ -4947,6 +4951,8 @@ export type Database = {
           owner_id?: string
           property_address?: string | null
           property_title?: string | null
+          reminder_sent?: boolean
+          reminder_sent_at?: string | null
           scheduled_at?: string
           share_token?: string | null
           status?: string
@@ -5119,6 +5125,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scheduler_locks: {
+        Row: {
+          created_at: string
+          job_name: string
+          last_error: string | null
+          last_run_at: string | null
+          locked_by: string | null
+          locked_until: string
+          paused: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          job_name: string
+          last_error?: string | null
+          last_run_at?: string | null
+          locked_by?: string | null
+          locked_until?: string
+          paused?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          job_name?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          locked_by?: string | null
+          locked_until?: string
+          paused?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       service_toggles: {
         Row: {
@@ -6315,6 +6354,10 @@ export type Database = {
       }
     }
     Functions: {
+      acquire_scheduler_lock: {
+        Args: { _job: string; _lease_seconds?: number; _worker?: string }
+        Returns: boolean
+      }
       add_credit: {
         Args: {
           _amount: number
@@ -6746,6 +6789,10 @@ export type Database = {
       register_referral: { Args: { _code: string }; Returns: Json }
       release_fb_group_post_slot: {
         Args: { _group: string; _owner: string }
+        Returns: undefined
+      }
+      release_scheduler_lock: {
+        Args: { _error?: string; _job: string }
         Returns: undefined
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
