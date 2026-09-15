@@ -363,6 +363,8 @@ Deno.serve(async (req) => {
       `אפשר גם להמשיך כאן ב-SMS, כמו שנוח לך.`;
   } else {
     // Ongoing SMS conversation: answer with the normal Rita pipeline.
+    const rawName = String(lead.full_name ?? "").trim();
+    const realName = rawName && /[A-Za-z\u0590-\u05FF]/.test(rawName) ? rawName : null;
     let history: Array<{ role: string; content: string }> = [];
     try {
       const { data: rows } = await admin
