@@ -86,11 +86,12 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     queryKey: ['new-tour-leads', ownerId, contactQuery],
     enabled: !!ownerId && open && contactQuery.trim().length >= 2,
     queryFn: async () => {
+      if (!ownerId) return [];
       const q = contactQuery.trim();
       const { data } = await supabase
         .from('leads')
         .select('id, full_name, phone_number, email, profile_picture_url')
-        .eq('workspace_owner_id', ownerId!)
+        .eq('workspace_owner_id', ownerId)
         .or(`full_name.ilike.%${q}%,phone_number.ilike.%${q}%`)
         .limit(8);
       return (data ?? []) as LeadOption[];
@@ -101,10 +102,11 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     queryKey: ['new-tour-listings', ownerId, listingQuery],
     enabled: !!ownerId && open,
     queryFn: async () => {
+      if (!ownerId) return [];
       let query = supabase
         .from('listings')
         .select('id, property_title, address, city, image_url, media_photos, rooms, sqm, asking_price, deal_type')
-        .eq('workspace_owner_id', ownerId!)
+        .eq('workspace_owner_id', ownerId)
         .order('created_at', { ascending: false })
         .limit(8);
       const q = listingQuery.trim();
