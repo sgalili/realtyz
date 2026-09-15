@@ -4906,7 +4906,7 @@ const PublishedFeed = ({
           // connected and keep allowing refreshes. Only surface the banner if
           // we have no bound Page; otherwise stay silent so a transient
           // permission blip does not hijack the UI.
-          if (!connectedChannelsRef.current.has('facebook')) {
+          if (!facebookIsLive()) {
             setFacebookSyncWarning('החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).');
           }
         }
