@@ -258,7 +258,11 @@ export default function CommandCenter() {
 
               {visibleTabs.map((key) => (
                 <TabsTrigger key={key} value={key}>
-                  {TAB_LABEL[key] ? `${TAB_LABEL[key]} (${counts[key]})` : ''}
+                  {TAB_LABEL[key]
+                    ? TABS_WITHOUT_COUNT.has(key)
+                      ? TAB_LABEL[key]
+                      : `${TAB_LABEL[key]} (${counts[key]})`
+                    : ''}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -270,8 +274,11 @@ export default function CommandCenter() {
         </div>
 
 
-        {tab === 'leads' || tab === 'demos' ? (
+        {tab === 'tours' ? (
+          <ScheduledToursCard />
+        ) : tab === 'leads' || tab === 'demos' ? (
           <IncomingLeadsPanel mode={tab} />
+
         ) : isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2, 3].map((i) => (
