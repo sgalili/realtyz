@@ -157,39 +157,29 @@ export default function QuickActionDrawer() {
     if (error) throw error;
   }
 
-  const saveTask = async () => {
-    if (!taskText.trim()) { toast.error('כתוב את המשימה'); return; }
-    if (!reminderWhen) { toast.error('בחר מועד'); return; }
-    setSaving(true);
-    try {
-      const text = taskText.trim();
-      const { error } = await (supabase as any).from('scheduled_items').insert({
-        user_id: user!.id,
-        title: text.slice(0, 120),
-        content: text,
-        item_type: 'task',
-        channel: 'internal',
-        status: 'pending',
-        scheduled_for: new Date(reminderWhen).toISOString(),
-        metadata: {
-          lead_id: lead?.id ?? null,
-          lead_name: lead?.full_name ?? null,
-          priority: reminderPriority,
-          action_type: 'follow_up',
-          source: 'quick_action_drawer',
-        },
-      });
-      if (error) throw error;
-      toast.success('המשימה נשמרה');
-      resetAfterSave();
-      setFlow(null);
-      invalidateLiveData(queryClient);
-      queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
-    } catch (e: any) {
-      toast.error(e?.message ?? 'שמירת המשימה נכשלה');
-    } finally {
-      setSaving(false);
-    }
+  const saveTask = async (values: TaskFormValues) => {
+    const text = values.text.trim();
+    const { error } = await (supabase as any).from('scheduled_items').insert({
+      user_id: user!.id,
+      title: text.slice(0, 120),
+      content: text,
+      item_type: 'task',
+      channel: 'internal',
+      status: 'pending',
+      scheduled_for: new Date(values.when).toISOString(),
+      metadata: {
+        lead_id: values.lead?.id ?? null,
+        lead_name: values.lead?.full_name ?? null,
+        priority: values.priority,
+        action_type: 'follow_up',
+        source: 'quick_action_drawer',
+      },
+    });
+    if (error) throw error;
+    toast.success('המשימה נשמרה');
+    setFlow(null);
+    invalidateLiveData(queryClient);
+    queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
   };
 
   const saveInteraction = async () => {
