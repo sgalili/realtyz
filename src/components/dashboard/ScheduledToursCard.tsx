@@ -27,13 +27,12 @@ import {
   MapPin,
   MessageSquare,
   Phone,
-  Send,
   StickyNote,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
-import { sendViaOfficialWaba } from '@/lib/officialWa';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
+import { SignatureStatusStrip } from '@/components/signature/SignatureStatusStrip';
 
 type Tour = {
   id: string;
