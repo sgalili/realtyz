@@ -20,12 +20,26 @@ export async function loadCalendarCreds(admin: Admin, userId: string): Promise<{
   calendarId: string;
   timezone: string;
 } | null> {
-  const { data: row } = await admin
+  // Workspace-scoped first (the id passed in is the workspace owner), with a
+  // legacy fallback for rows saved before workspace scoping existed.
+  const { data: wsRows } = await admin
     .from('social_connections')
     .select('id, credentials')
     .eq('platform', 'google_calendar')
-    .eq('created_by', userId)
-    .maybeSingle();
+    .eq('workspace_owner_id', userId)
+    .order('is_connected', { ascending: false })
+    .limit(1);
+  let row = (wsRows ?? [])[0] ?? null;
+  if (!row) {
+    const { data: legacy } = await admin
+      .from('social_connections')
+      .select('id, credentials')
+      .eq('platform', 'google_calendar')
+      .eq('created_by', userId)
+      .is('workspace_owner_id', null)
+      .limit(1);
+    row = (legacy ?? [])[0] ?? null;
+  }
   if (!row) return null;
   const creds = (row.credentials as any)?.manual ?? {};
   const identity = (row.credentials as any)?.verified_identity ?? {};
