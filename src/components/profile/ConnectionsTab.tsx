@@ -326,24 +326,37 @@ export function ConnectionsTab() {
 
   const waLive = !!(officialPhone || personalPhone || greenLive || waMode);
 
-  const sections: Array<{ id: string; title: string; titleAside?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
+  // Connected Facebook page picture(s) replace the "מחובר" pill in the header.
+  const fbPagePicture = fbHealth?.pagePicture ?? fbBinding?.pageAvatarUrl ?? null;
+
+  const sections: Array<{ id: string; title: string; titleAside?: ReactNode; titleLead?: ReactNode; titleNode?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
     {
       id: 'meta',
-      title: 'פייסבוק / אינסטגרם',
-      titleAside: (
-        <span className="flex items-center gap-1.5">
+      title: 'פייסבוק אינסטגרם',
+      titleNode: (
+        <span className="flex min-w-0 items-center gap-2">
           <BrandIcon name="facebook" className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !fbConnected && 'grayscale opacity-40')} />
-          <BrandIcon name="instagram" className={cn('h-5 w-5 shrink-0 text-[#E4405F]', !fbConnected && 'grayscale opacity-40')} />
+          <span className="text-sm font-semibold">פייסבוק</span>
+          <BrandIcon name="instagram" className={cn('ms-3 h-5 w-5 shrink-0 text-[#E4405F]', !fbConnected && 'grayscale opacity-40')} />
+          <span className="text-sm font-semibold">אינסטגרם</span>
         </span>
       ),
       status: metaStatus[0],
       tone: metaStatus[1],
+      headerAside: fbConnected && fbPagePicture ? (
+        <img
+          src={fbPagePicture}
+          alt={fbHealth?.pageName ?? fbBinding?.pageName ?? 'עמוד פייסבוק מחובר'}
+          className="h-8 w-8 shrink-0 rounded-md border object-cover"
+          loading="lazy"
+        />
+      ) : undefined,
       node: <MetaDirectConnectionCard onStatus={setMeta} />,
     },
     {
       id: 'whatsapp',
       title: 'ווטסאפ',
-      titleAside: (
+      titleLead: (
         <BrandIcon name="whatsapp" className={cn('h-5 w-5 shrink-0 text-[#25D366]', !waLive && 'grayscale opacity-40')} />
       ),
       status: waStatus[0],
