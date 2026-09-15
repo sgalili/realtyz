@@ -708,7 +708,7 @@ export default function Profile() {
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
         <TabsList className={`grid w-full ${isAgency ? 'grid-cols-6' : 'grid-cols-5'} mb-[15px]`}>
           <TabsTrigger value="personal">פרופיל</TabsTrigger>
-          <TabsTrigger value="workspace">המשרד</TabsTrigger>
+          <TabsTrigger value="workspace">משרד</TabsTrigger>
           <TabsTrigger value="aibrain">מח AI</TabsTrigger>
           <TabsTrigger value="connections">חיבורים</TabsTrigger>
           <TabsTrigger value="billing">חבילה</TabsTrigger>
