@@ -77,11 +77,12 @@ function ConnectionSection({
   onToggle,
   children,
   headerAside,
+  bodyClassName,
   restricted,
 }: {
   title: string;
   titleAside?: ReactNode;
-  /** Logo rendered at the very start of the header row, before the label. */
+  /** Logo rendered at the very start of header row, before the label. */
   titleLead?: ReactNode;
   /** Fully custom label row (replaces titleLead + title + titleAside). */
   titleNode?: ReactNode;
@@ -91,6 +92,7 @@ function ConnectionSection({
   onToggle: () => void;
   children: ReactNode;
   headerAside?: ReactNode;
+  bodyClassName?: string;
   /** Super-admin only section — marked with a red border. */
   restricted?: boolean;
 }) {
@@ -122,6 +124,7 @@ function ConnectionSection({
         <div
           className={cn(
             'border-t px-1 pb-1 pt-[10px] text-right',
+            bodyClassName,
             // neutralize the nested Card chrome + hide its duplicate header
             '[&_[data-conn-body]>div:not([data-plain])]:border-0 [&_[data-conn-body]>div:not([data-plain])]:bg-transparent [&_[data-conn-body]>div:not([data-plain])]:shadow-none',
             '[&_[data-conn-body]>div:not([data-plain])>:first-child]:hidden',
