@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BillingTab from '@/components/profile/BillingTab';
@@ -646,12 +647,18 @@ export default function Profile() {
   };
 
   /* Google OAuth callback result: surface success / failure as a toast. */
+  const googleQueryClient = useQueryClient();
   useEffect(() => {
     const g = params.get('google');
     if (!g) return;
     if (g === 'connected') {
       const acc = params.get('google_account');
       toast.success('חיבור Google הושלם', { description: acc || undefined });
+      // The row was just written for the active workspace: drop the cached
+      // "not connected" answer so the cards never show a false failure.
+      void googleQueryClient.invalidateQueries({ queryKey: ['google-service-conn'] });
+      void googleQueryClient.invalidateQueries({ queryKey: ['google-services-status'] });
+      void googleQueryClient.invalidateQueries({ queryKey: ['google-calendar-conn'] });
     } else {
       toast.error('חיבור Google נכשל', {
         description: params.get('google_reason') || 'נסו להתחבר שוב',
