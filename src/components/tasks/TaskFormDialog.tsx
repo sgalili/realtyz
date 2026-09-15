@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BellRing, CalendarCheck2, Loader2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
 
