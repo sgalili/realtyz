@@ -31,9 +31,9 @@ const MANAGER_ROLES = ["owner", "admin", "manager", "managing_broker"];
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-type Kind = "meetings" | "property_tours" | "scheduled_items" | "demo_requests";
+type Kind = "meetings" | "property_tours" | "scheduled_items" | "demo_requests" | "call_records";
 
-const SUPPORTED: Kind[] = ["meetings", "property_tours", "scheduled_items", "demo_requests"];
+const SUPPORTED: Kind[] = ["meetings", "property_tours", "scheduled_items", "demo_requests", "call_records"];
 
 /** Israeli phone → E.164 digits (9725XXXXXXXX). */
 function normalizePhone(raw: string | null | undefined): string | null {
@@ -79,6 +79,10 @@ type Normalized = {
   existingEventId: string | null;
   /** Short Hebrew label of the item kind, used in the WhatsApp alert. */
   kindLabel: string;
+  /** Calls are logged after they happen, so past timestamps are still mirrored. */
+  allowPast?: boolean;
+  /** Automatic logs (calls) never trigger a WhatsApp confirmation. */
+  silent?: boolean;
 };
 
 const HOUR = 60 * 60_000;
@@ -143,6 +147,35 @@ function normalize(kind: Kind, row: Record<string, any>): Normalized {
       kindLabel: typeLabel,
     };
   }
+  if (kind === "call_records") {
+    const start = row.started_at ? new Date(row.started_at).toISOString() : null;
+    const end = row.ended_at
+      ? new Date(row.ended_at).toISOString()
+      : start
+      ? plusMinutes(start, Math.max(5, Math.round((Number(row.duration_seconds) || 0) / 60) || 5))
+      : null;
+    const dirLabel = String(row.direction) === "outbound" ? "שיחה יוצאת" : "שיחה נכנסת";
+    const who = row.lead_name || row.caller_phone || "";
+    return {
+      ownerId: row.workspace_owner_id ?? row.user_id ?? null,
+      startISO: start,
+      endISO: end,
+      title: `${dirLabel}${who ? ` — ${who}` : ""}`,
+      description: [
+        row.caller_phone && `טלפון: ${row.caller_phone}`,
+        `טופל על ידי: ${String(row.handled_by) === "ai" ? "רשמן AI" : "מתווך"}`,
+        row.summary && `סיכום: ${row.summary}`,
+        row.needs_callback && row.callback_reason && `נדרש חזרה: ${row.callback_reason}`,
+        row.recording_url && `הקלטה: ${row.recording_url}`,
+      ].filter(Boolean).join("\n"),
+      eventIdColumn: "google_event_id",
+      eventLinkColumn: "google_event_link",
+      existingEventId: row.google_event_id ?? null,
+      kindLabel: dirLabel,
+      allowPast: true,
+      silent: true,
+    };
+  }
   const start = row.preferred_at ? new Date(row.preferred_at).toISOString() : null;
   const leadName = [row.first_name, row.last_name].filter(Boolean).join(" ").trim();
   return {
@@ -172,13 +205,39 @@ Deno.serve(async (req) => {
     const { data: row, error } = await admin.from(kind).select("*").eq("id", body.record_id).maybeSingle();
     if (error || !row) return json({ ok: false, error: "record not found" }, 404);
 
-    const item = normalize(kind, row as Record<string, any>);
-    const rowStatus = String((row as Record<string, any>).status ?? "").toLowerCase();
+    const raw = row as Record<string, any>;
+    // Calls carry only lead_id; pull the contact name so the event title is readable.
+    if (kind === "call_records" && raw.lead_id) {
+      const { data: lead } = await admin.from("leads").select("full_name").eq("id", raw.lead_id).maybeSingle();
+      raw.lead_name = (lead as { full_name?: string } | null)?.full_name ?? null;
+    }
+
+    const item = normalize(kind, raw);
+    const rowStatus = String(raw.status ?? "").toLowerCase();
     const isCancelled = ["cancelled", "canceled", "archived"].includes(rowStatus);
 
     if (!item.ownerId) return json({ ok: true, skipped: "no_schedule_or_owner" });
 
-    const token = await getFreshAccessToken(admin, item.ownerId);
+    let ownerId = item.ownerId;
+    let token = await getFreshAccessToken(admin as any, ownerId);
+    if ("error" in token) {
+      // The record may belong to a team member; fall back to their workspace owner.
+      const { data: membership } = await admin
+        .from("workspace_memberships")
+        .select("workspace_owner_id")
+        .eq("user_id", ownerId)
+        .neq("workspace_owner_id", ownerId)
+        .limit(1)
+        .maybeSingle();
+      const fallbackOwner = (membership as { workspace_owner_id?: string } | null)?.workspace_owner_id;
+      if (fallbackOwner) {
+        const retry = await getFreshAccessToken(admin as any, fallbackOwner);
+        if (!("error" in retry)) {
+          ownerId = fallbackOwner;
+          token = retry;
+        }
+      }
+    }
     if ("error" in token) return json({ ok: true, calendar: { created: false, reason: token.error } });
 
     // ── Cancelled item: drop the calendar event so nothing is orphaned ───────
@@ -227,8 +286,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Past items are never pushed to the calendar.
-    if (new Date(item.startISO).getTime() < Date.now() - HOUR) return json({ ok: true, skipped: "past_item" });
+    // Past items are never pushed to the calendar (call logs are the exception).
+    if (!item.allowPast && new Date(item.startISO).getTime() < Date.now() - HOUR) {
+      return json({ ok: true, skipped: "past_item" });
+    }
 
     const event = await createCalendarEvent({
       accessToken: token.accessToken,
@@ -251,12 +312,12 @@ Deno.serve(async (req) => {
 
     // ── WhatsApp confirmation to the owner + every workspace manager ─────────
     const notifications: unknown[] = [];
-    if (body.notify !== false) {
-      const recipients = new Set<string>([item.ownerId]);
+    if (body.notify !== false && !item.silent) {
+      const recipients = new Set<string>([ownerId]);
       const { data: members } = await admin
         .from("workspace_memberships")
         .select("user_id, role")
-        .eq("workspace_owner_id", item.ownerId);
+        .eq("workspace_owner_id", ownerId);
       (members ?? []).forEach((m: { user_id: string; role: string }) => {
         if (MANAGER_ROLES.includes(String(m.role))) recipients.add(m.user_id);
       });
@@ -274,7 +335,7 @@ Deno.serve(async (req) => {
         const normalized = normalizePhone(p.phone);
         if (normalized) phones.add(normalized);
       });
-      for (const phone of phones) notifications.push(await sendWhatsApp(phone, message, item.ownerId));
+      for (const phone of phones) notifications.push(await sendWhatsApp(phone, message, ownerId));
     }
 
     return json({

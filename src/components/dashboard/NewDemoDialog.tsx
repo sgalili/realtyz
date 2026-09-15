@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Search } from 'lucide-react';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
@@ -46,7 +45,6 @@ export function NewDemoDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   const [date, setDate] = useState(defaultDate());
   const [time, setTime] = useState('11:00');
   const [notes, setNotes] = useState('');
-  const [addToCalendar, setAddToCalendar] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const { data: leads = [] } = useQuery({
@@ -82,7 +80,6 @@ export function NewDemoDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     setDate(defaultDate());
     setTime('11:00');
     setNotes('');
-    setAddToCalendar(true);
   };
 
   const submit = async () => {
@@ -115,7 +112,8 @@ export function NewDemoDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         .single();
       if (error) throw error;
 
-      if (addToCalendar && data?.id) {
+      // Every dated record is mirrored to the connected Google Calendar automatically.
+      if (data?.id) {
         const res = await supabase.functions.invoke('demo-booking-notify', {
           body: { demo_request_id: data.id },
         });
@@ -196,10 +194,9 @@ export function NewDemoDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="פרטים להדגמה" />
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={addToCalendar} onCheckedChange={(v) => setAddToCalendar(!!v)} />
-            הוספה ליומן ושליחת אישור
-          </label>
+          <p className="text-[13px] text-muted-foreground">
+            ההדגמה תישמר אוטומטית ביומן Google המחובר ותישלח הודעת אישור.
+          </p>
         </div>
 
         <DialogFooter className="flex-row justify-between gap-2 space-x-0">
