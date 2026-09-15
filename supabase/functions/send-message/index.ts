@@ -29,52 +29,15 @@ function toIntlIL(raw: string | null | undefined): string | null {
   return local ? `972${local.slice(1)}` : null;
 }
 
-async function sendSmsTwilio(admin: ReturnType<typeof createClient>, phone: string, body: string) {
-  const intl = toIntlIL(phone);
-  if (!intl) return { ok: false, error: "מספר טלפון לא תקין" };
-  const { data } = await admin
-    .from("api_configs")
-    .select("api_key")
-    .eq("service_name", "Twilio")
-    .eq("is_active", true)
-    .maybeSingle();
-  const parts = String((data as any)?.api_key || "").split(":");
-  const accountSid = parts[0] || "";
-  const authToken = parts[1] || "";
-  const fromNumber = parts.slice(2).join(":") || "";
-  if (!accountSid || !authToken || !fromNumber) return { ok: false, error: "Twilio לא מוגדר" };
-
-  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      To: `+${intl}`,
-      From: fromNumber,
-      Body: body,
-    }),
-  });
-  const text = await res.text();
-  let json: any = null;
-  try { json = text ? JSON.parse(text) : null; } catch { /* keep raw */ }
-  if (res.ok) return { ok: true, provider: "Twilio", message_id: json?.sid ?? null };
-  return { ok: false, error: json?.message || text || `Twilio status ${res.status}` };
-}
-
 async function sendSms(
   admin: ReturnType<typeof createClient>,
   phone: string,
   body: string,
   workspaceOwnerId?: string | null,
 ) {
-  // Workspace isolation: the 019 sender is resolved per workspace.
-  const sms019 = await sendSms019(admin as any, phone, body, workspaceOwnerId ?? null);
-  if (sms019.ok) return sms019;
-  const twilio = await sendSmsTwilio(admin, phone, body);
-  if (twilio.ok) return twilio;
-  return { ok: false, error: `${sms019.error || "019 failed"}; ${twilio.error || "Twilio failed"}` };
+  // 019 is the ONLY SMS gateway. The sender is resolved per workspace, so a
+  // workspace never sends through another workspace's 019 account.
+  return await sendSms019(admin as any, phone, body, workspaceOwnerId ?? null);
 }
 
 const WebhookPayload = z.object({
