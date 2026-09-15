@@ -10,8 +10,6 @@
  * the title (truncate) so the controls always fit.
  */
 import { useLocation } from 'react-router-dom';
-import { Menu } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/$/, title: 'משימות' },

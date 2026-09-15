@@ -12,7 +12,6 @@
 import * as React from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Menu,
   Plus,
   FileSpreadsheet,
   User,
@@ -24,7 +23,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { RealtyzWave } from "@/components/RealtyzWave";
 import { BrightDataHeroPill } from "@/components/BrightDataHeroPill";
 import { AiResponseToggle } from "@/components/AiResponseToggle";
