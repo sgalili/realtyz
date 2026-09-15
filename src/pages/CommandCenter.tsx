@@ -9,7 +9,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { FirstTimeSyncDialog } from '@/components/onboarding/FirstTimeSyncDialog';
 
-import { Card } from '@/components/ui/card';
+import {
+  ScheduleMonthGrid,
+  ScheduleViewToggle,
+  startOfThisMonth,
+  todayKey,
+  type ScheduleView,
+} from '@/components/dashboard/ScheduleViews';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -178,6 +184,10 @@ export default function CommandCenter() {
   const [editing, setEditing] = useState<CommandTask | null>(null);
   const [newTourOpen, setNewTourOpen] = useState(false);
   const [newDemoOpen, setNewDemoOpen] = useState(false);
+  // The same list / calendar display switch the tours tab uses.
+  const [taskView, setTaskView] = useState<ScheduleView>('list');
+  const [taskMonth, setTaskMonth] = useState(startOfThisMonth);
+  const [taskDay, setTaskDay] = useState<string | null>(() => todayKey());
   const toggleCard = (key: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
@@ -245,8 +255,142 @@ export default function CommandCenter() {
     }
   };
 
+  /** One task card — shared by the list view and the calendar day view. */
+  const renderTaskCard = (task: CommandTask) => {
+    const due = task.source === 'note'
+      ? { ...dueLabel(task.dueAt), overdue: false }
+      : dueLabel(task.dueAt);
+    const cardKey = `${task.source}-${task.id}`;
+    const isOpen = openIds.has(cardKey);
+    return (
+      <li
+        key={cardKey}
+        className="w-full rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent/40"
+      >
+        <div className="flex items-start gap-2">
+          <button
+            type="button"
+            onClick={() => toggleCard(cardKey)}
+            aria-expanded={isOpen}
+            className="flex min-w-0 flex-1 items-start gap-3 text-right"
+          >
+            {task.leadName || task.leadAvatar ? (
+              <ContactAvatar
+                name={task.leadName}
+                imageUrl={task.leadAvatar}
+                className="mt-0.5 h-10 w-10 shrink-0"
+              />
+            ) : null}
+            <span className="min-w-0 flex-1 space-y-1.5">
+              {task.leadName && (
+                <span className="block truncate text-[15px] font-bold text-foreground">
+                  {task.leadName}
+                </span>
+              )}
+              <span className="flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-2 py-0.5 text-[13px] font-semibold ${PRIORITY_STYLE[task.priority]}`}>
+                  {PRIORITY_LABEL[task.priority]}
+                </span>
+                <span className="break-words text-base font-semibold">{task.title}</span>
+                {task.actionType && task.source !== 'note' && (
+                  <Badge variant="secondary" className="text-[13px]">
+                    {ACTION_TYPE_LABEL[task.actionType] ?? task.actionType}
+                  </Badge>
+                )}
+                {task.source === 'note' && (
+                  <Badge variant="outline" className="text-[13px]">
+                    {NOTE_ACTION_LABEL[task.actionType ?? 'note'] ?? 'פתק'}
+                  </Badge>
+                )}
+                {TASK_STATUS_LABEL[task.status] && (
+                  <Badge variant="outline" className="text-[13px]">
+                    {TASK_STATUS_LABEL[task.status]}
+                  </Badge>
+                )}
+                <span
+                  className={`inline-flex items-center gap-1 text-[13px] ${
+                    due.overdue
+                      ? 'font-semibold text-destructive'
+                      : due.today
+                        ? 'font-semibold text-primary'
+                        : 'text-muted-foreground'
+                  }`}
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  {due.overdue ? `באיחור · ${due.text}` : due.text}
+                </span>
+                {task.leadPhone && (
+                  <span className="text-[13px] text-muted-foreground">{formatPhoneDisplay(task.leadPhone)}</span>
+                )}
+              </span>
+            </span>
+          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <IconAction label="עריכה" onClick={() => setEditing(task)}>
+              <Pencil className="h-4 w-4" />
+            </IconAction>
+            <IconAction label="מחיקה" destructive onClick={() => removeTask(task)}>
+              <Trash2 className="h-4 w-4" />
+            </IconAction>
+            <button
+              type="button"
+              onClick={() => toggleCard(cardKey)}
+              aria-label={isOpen ? 'סגירה' : 'פתיחה'}
+              className="p-1 text-muted-foreground"
+            >
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {isOpen && (
+          <div className="mt-3 space-y-3 border-t border-border/60 pt-3">
+            {task.description && (
+              <p className="w-full whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
+                {task.description}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {task.leadId && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 gap-1 text-sm"
+                  onClick={() => navigate(`/lead-crm/${task.leadId}`)}
+                >
+                  <Users className="h-4 w-4" />
+                  {task.leadName ?? 'כרטיס לקוח'}
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+              {task.listingId && listingsEnabled && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1 text-sm"
+                  onClick={() => navigate(`/properties/${task.listingId}`)}
+                >
+                  <Building2 className="h-4 w-4" />
+                  {task.listingLabel ?? 'כרטיס נכס'}
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+              {task.source !== 'note' && (
+                <IconAction label="בוצע" onClick={() => completeTask(task)}>
+                  <Check className="h-4 w-4" />
+                </IconAction>
+              )}
+            </div>
+          </div>
+        )}
+      </li>
+    );
+  };
+
   return (
-    <div dir="rtl" className="space-y-6 p-4 md:p-6">
+    <div dir="rtl" className="p-4 md:p-6">
       <FirstTimeSyncDialog />
       <NewTourDialog open={newTourOpen} onOpenChange={setNewTourOpen} />
       <NewDemoDialog open={newDemoOpen} onOpenChange={setNewDemoOpen} />
@@ -258,8 +402,8 @@ export default function CommandCenter() {
         </p>
       </header>
 
-
-      <Card className="p-4">
+      {/* Page content sits exactly 20px below the hero header — no outer frame. */}
+      <div className="mt-[20px]">
         {/* Tabs first, then the "add new" button below them. Desktop keeps an
             exact 50px gap under the tabs; mobile stays as it was. */}
         <div className="mb-4 flex flex-col items-center justify-center gap-[25px] md:gap-0">
@@ -295,147 +439,43 @@ export default function CommandCenter() {
               <Skeleton key={i} className="h-16 w-full" />
             ))}
           </div>
-        ) : visible.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            אין כרטיסים בתצוגה הזו.
-          </p>
         ) : (
-          <ul className="space-y-2">
-            {visible.map((task) => {
-              const due = task.source === 'note'
-                ? { ...dueLabel(task.dueAt), overdue: false }
-                : dueLabel(task.dueAt);
-              const cardKey = `${task.source}-${task.id}`;
-              const isOpen = openIds.has(cardKey);
-              return (
-                <li
-                  key={cardKey}
-                  className="w-full rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent/40"
-                >
-                  <div className="flex items-start gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleCard(cardKey)}
-                      aria-expanded={isOpen}
-                      className="flex min-w-0 flex-1 items-start gap-3 text-right"
-                    >
-                      {task.leadName || task.leadAvatar ? (
-                        <ContactAvatar
-                          name={task.leadName}
-                          imageUrl={task.leadAvatar}
-                          className="mt-0.5 h-10 w-10 shrink-0"
-                        />
-                      ) : null}
-                      <span className="min-w-0 flex-1 space-y-1.5">
-                        {task.leadName && (
-                          <span className="block truncate text-[15px] font-bold text-foreground">
-                            {task.leadName}
-                          </span>
-                        )}
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full px-2 py-0.5 text-[13px] font-semibold ${PRIORITY_STYLE[task.priority]}`}>
-                            {PRIORITY_LABEL[task.priority]}
-                          </span>
-                          <span className="break-words text-base font-semibold">{task.title}</span>
-                          {task.actionType && task.source !== 'note' && (
-                            <Badge variant="secondary" className="text-[13px]">
-                              {ACTION_TYPE_LABEL[task.actionType] ?? task.actionType}
-                            </Badge>
-                          )}
-                          {task.source === 'note' && (
-                            <Badge variant="outline" className="text-[13px]">
-                              {NOTE_ACTION_LABEL[task.actionType ?? 'note'] ?? 'פתק'}
-                            </Badge>
-                          )}
-                          {TASK_STATUS_LABEL[task.status] && (
-                            <Badge variant="outline" className="text-[13px]">
-                              {TASK_STATUS_LABEL[task.status]}
-                            </Badge>
-                          )}
-                          <span
-                            className={`inline-flex items-center gap-1 text-[13px] ${
-                              due.overdue
-                                ? 'font-semibold text-destructive'
-                                : due.today
-                                  ? 'font-semibold text-primary'
-                                  : 'text-muted-foreground'
-                            }`}
-                          >
-                            <CalendarClock className="h-3.5 w-3.5" />
-                            {due.overdue ? `באיחור · ${due.text}` : due.text}
-                          </span>
-                          {task.leadPhone && (
-                            <span className="text-[13px] text-muted-foreground">{formatPhoneDisplay(task.leadPhone)}</span>
-                          )}
-                        </span>
-                      </span>
-                    </button>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <IconAction label="עריכה" onClick={() => setEditing(task)}>
-                        <Pencil className="h-4 w-4" />
-                      </IconAction>
-                      <IconAction label="מחיקה" destructive onClick={() => removeTask(task)}>
-                        <Trash2 className="h-4 w-4" />
-                      </IconAction>
-                      <button
-                        type="button"
-                        onClick={() => toggleCard(cardKey)}
-                        aria-label={isOpen ? 'סגירה' : 'פתיחה'}
-                        className="p-1 text-muted-foreground"
-                      >
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform ${isOpen ? '' : '-rotate-90'}`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-
-                  {isOpen && (
-                    <div className="mt-3 space-y-3 border-t border-border/60 pt-3">
-                      {task.description && (
-                        <p className="w-full whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
-                          {task.description}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {task.leadId && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-8 gap-1 text-sm"
-                            onClick={() => navigate(`/lead-crm/${task.leadId}`)}
-                          >
-                            <Users className="h-4 w-4" />
-                            {task.leadName ?? 'כרטיס לקוח'}
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {task.listingId && listingsEnabled && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 gap-1 text-sm"
-                            onClick={() => navigate(`/properties/${task.listingId}`)}
-                          >
-                            <Building2 className="h-4 w-4" />
-                            {task.listingLabel ?? 'כרטיס נכס'}
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {task.source !== 'note' && (
-                          <IconAction label="בוצע" onClick={() => completeTask(task)}>
-                            <Check className="h-4 w-4" />
-                          </IconAction>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <div className="space-y-3">
+            {/* Same display toggle as the tours tab, fully functional here. */}
+            <ScheduleViewToggle
+              view={taskView}
+              onViewChange={setTaskView}
+              monthCursor={taskMonth}
+              onMonthChange={setTaskMonth}
+            />
+            {taskView === 'calendar' ? (
+              <ScheduleMonthGrid
+                items={visible.map((t) => ({
+                  id: `${t.source}-${t.id}`,
+                  at: t.dueAt,
+                  label: t.leadName ?? t.title,
+                  task: t,
+                }))}
+                monthCursor={taskMonth}
+                openDay={taskDay}
+                onOpenDay={setTaskDay}
+                emptyLabel="אין משימות ביום שנבחר"
+                renderItem={(item) => (
+                  <ul className="space-y-2" key={item.id}>{renderTaskCard(item.task)}</ul>
+                )}
+              />
+            ) : visible.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                אין כרטיסים בתצוגה הזו.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {visible.map((task) => renderTaskCard(task))}
+              </ul>
+            )}
+          </div>
         )}
-      </Card>
+      </div>
 
       {tab === 'notes' && <PropertyNotesCard />}
 

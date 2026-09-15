@@ -13,15 +13,20 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   CalendarClock,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  List,
   Loader2,
   Mail,
   MapPin,
@@ -33,6 +38,13 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { SignatureStatusStrip } from '@/components/signature/SignatureStatusStrip';
+import {
+  ScheduleMonthGrid,
+  ScheduleViewToggle,
+  startOfThisMonth,
+  todayKey,
+  type ScheduleView,
+} from '@/components/dashboard/ScheduleViews';
 
 type Tour = {
   id: string;
@@ -109,13 +121,13 @@ function dayKey(iso: string) {
 export function ScheduledToursCard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [view, setView] = useState<'list' | 'calendar'>('list');
-  const [monthCursor, setMonthCursor] = useState(() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), 1);
-  });
-  const [openDay, setOpenDay] = useState<string | null>(() => dayKey(new Date().toISOString()));
-  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [view, setView] = useState<ScheduleView>('list');
+  const [monthCursor, setMonthCursor] = useState(startOfThisMonth);
+  const [openDay, setOpenDay] = useState<string | null>(() => todayKey());
+  /** Tour whose status pill was clicked, awaiting a manual client confirmation. */
+  const [confirmTarget, setConfirmTarget] = useState<Tour | null>(null);
+  /** Tour being cancelled, awaiting the "notify the client?" choice. */
+  const [cancelTarget, setCancelTarget] = useState<Tour | null>(null);
 
   // Tours belong to ONE workspace only — never show another workspace's tours.
   const ownerId = useActiveWorkspaceOwnerId();
@@ -223,6 +235,40 @@ export function ScheduledToursCard() {
     onError: () => toast.error('עדכון האישור נכשל'),
   });
 
+  /**
+   * Cancels a tour and, when the broker chooses to, lets the client know on
+   * WhatsApp through the official gateway.
+   */
+  const cancelTour = useMutation({
+    mutationFn: async ({ tour, notify }: { tour: Tour; notify: boolean }) => {
+      const { error } = await supabase
+        .from('property_tours')
+        .update({ status: 'cancelled' })
+        .eq('id', tour.id);
+      if (error) throw error;
+      if (!notify || !tour.client_phone) return { notified: false };
+      const where = tour.property_title || tour.property_address || 'הנכס';
+      const { error: waError } = await supabase.functions.invoke('send-whatsapp', {
+        body: {
+          phone_number: tour.client_phone,
+          message:
+            `שלום ${tour.client_name || ''}, זו ריטה מהמשרד 🙂\n` +
+            `הסיור ב${where} בתאריך ${formatWhen(tour.scheduled_at)} בוטל.\n` +
+            `נשמח לתאם מועד חדש — אפשר להשיב כאן.`,
+          ...(ownerId ? { tenant_id: ownerId } : {}),
+        },
+      });
+      if (waError) throw waError;
+      return { notified: true };
+    },
+    onSuccess: (res) => {
+      toast.success(res?.notified ? 'הסיור בוטל והלקוח קיבל הודעה' : 'הסיור בוטל');
+      setCancelTarget(null);
+      qc.invalidateQueries({ queryKey: ['scheduled-tours'] });
+    },
+    onError: () => toast.error('ביטול הסיור נכשל'),
+  });
+
   const byDay = useMemo(() => {
     const map = new Map<string, Tour[]>();
     for (const t of tours) {
@@ -254,7 +300,7 @@ export function ScheduledToursCard() {
   function TourActions({ t }: { t: Tour }) {
     return (
       <div className="mt-2 space-y-1.5">
-        {/* Chat and Call always share the SAME row. */}
+        {/* Chat, call, done and cancel all share the SAME row. */}
         <div className="flex flex-wrap items-center gap-1.5">
           <Button size="sm" variant="outline" className="h-8 text-[12px]" onClick={() => openOmnichat(t)}>
             <MessageSquare className="me-1 h-3.5 w-3.5" />
@@ -266,35 +312,30 @@ export function ScheduledToursCard() {
               שיחה
             </a>
           </Button>
+          {t.status !== 'completed' && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 text-[12px]"
+              onClick={() => setStatus.mutate({ id: t.id, status: 'completed' })}
+            >
+              בוצע
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" className="h-8 text-[12px]" onClick={() => setCancelTarget(t)}>
+            ביטול
+          </Button>
         </div>
-        <div className="flex flex-wrap gap-1.5">
         {t.client_email ? (
-          <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
-            <a href={`mailto:${t.client_email}`}>
-              <Mail className="me-1 h-3.5 w-3.5" />
-              אימייל
-            </a>
-          </Button>
+          <div className="flex flex-wrap gap-1.5">
+            <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
+              <a href={`mailto:${t.client_email}`}>
+                <Mail className="me-1 h-3.5 w-3.5" />
+                אימייל
+              </a>
+            </Button>
+          </div>
         ) : null}
-        {displayStatus(t) !== 'confirmed' && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-8 text-[12px]"
-            onClick={() => confirmByClient.mutate({ id: t.id })}
-          >
-            הלקוח אישר
-          </Button>
-        )}
-        {t.status !== 'completed' && (
-          <Button size="sm" variant="secondary" className="h-8 text-[12px]" onClick={() => setStatus.mutate({ id: t.id, status: 'completed' })}>
-            בוצע
-          </Button>
-        )}
-        <Button size="sm" variant="ghost" className="h-8 text-[12px]" onClick={() => setStatus.mutate({ id: t.id, status: 'cancelled' })}>
-          ביטול
-        </Button>
-        </div>
       </div>
     );
   }
@@ -311,9 +352,15 @@ export function ScheduledToursCard() {
             />
             {t.client_name}
           </div>
-          <Badge variant="outline" className={STATUS_CLASS[displayStatus(t)] ?? ''}>
-            {STATUS_HE[displayStatus(t)] ?? t.status}
-          </Badge>
+          {/* The status pill itself opens the manual client-confirmation dialog. */}
+          <button type="button" onClick={() => setConfirmTarget(t)} title="לחיצה לעדכון אישור הלקוח">
+            <Badge
+              variant="outline"
+              className={`cursor-pointer transition-opacity hover:opacity-80 ${STATUS_CLASS[displayStatus(t)] ?? ''}`}
+            >
+              {STATUS_HE[displayStatus(t)] ?? t.status}
+            </Badge>
+          </button>
         </div>
         <div className="mt-1.5 space-y-1 text-[13px] text-muted-foreground">
           <p className="flex items-center gap-1.5">
@@ -360,123 +407,90 @@ export function ScheduledToursCard() {
     );
   }
 
-  const monthGrid = useMemo(() => {
-    const first = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1);
-    const startOffset = first.getDay();
-    const daysInMonth = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0).getDate();
-    const cells: Array<Date | null> = Array.from({ length: startOffset }, () => null);
-    for (let d = 1; d <= daysInMonth; d += 1) {
-      cells.push(new Date(monthCursor.getFullYear(), monthCursor.getMonth(), d));
-    }
-    while (cells.length % 7 !== 0) cells.push(null);
-    return cells;
-  }, [monthCursor]);
-
-  const selectedDayTours = openDay ? byDay.get(openDay) ?? [] : [];
-
   return (
-    <Card dir="rtl">
-      <CardContent className="space-y-3 pt-4">
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            size="icon"
-            variant={view === 'list' ? 'default' : 'ghost'}
-            aria-label="רשימה"
-            className="h-8 w-8"
-            onClick={() => setView('list')}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          {view === 'calendar' && (
-            <div className="flex items-center gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8"
-                onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <span className="min-w-[7.5rem] text-center text-sm font-semibold">
-                {monthCursor.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
-              </span>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8"
-                onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-          <Button
-            size="icon"
-            variant={view === 'calendar' ? 'default' : 'ghost'}
-            aria-label="לוח שנה"
-            className="h-8 w-8"
-            onClick={() => setView('calendar')}
-          >
-            <CalendarDays className="h-4 w-4" />
-          </Button>
-        </div>
+    <div dir="rtl" className="space-y-3">
+      <ScheduleViewToggle
+        view={view}
+        onViewChange={setView}
+        monthCursor={monthCursor}
+        onMonthChange={setMonthCursor}
+      />
 
-
-        {isLoading ? (
-          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-        ) : view === 'list' ? (
-          tours.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">אין סיורים מתוזמנים כרגע</p>
-          ) : (
-            tours.map((t) => <TourRow key={t.id} t={t} />)
-          )
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+      ) : view === 'list' ? (
+        tours.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">אין סיורים מתוזמנים כרגע</p>
         ) : (
-          <div className="space-y-3">
-            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-muted-foreground">
-              {DAY_LABELS.map((d) => <div key={d}>{d}</div>)}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {monthGrid.map((d, i) => {
-                if (!d) return <div key={`e${i}`} className="h-16 rounded-md bg-muted/10" />;
-                const k = dayKey(d.toISOString());
-                const list = byDay.get(k) ?? [];
-                const isSelected = openDay === k;
-                const isToday = k === dayKey(new Date().toISOString());
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setOpenDay(k)}
-                    className={`h-16 rounded-md border p-1 text-right transition-colors ${
-                      isSelected ? 'border-primary bg-primary/10' : 'bg-muted/20 hover:bg-muted/40'
-                    } ${isToday ? 'ring-1 ring-primary/50' : ''}`}
-                  >
-                    <span className="block text-[11px] font-semibold text-foreground">{d.getDate()}</span>
-                    <span className="mt-0.5 block space-y-0.5">
-                      {list.slice(0, 2).map((t) => (
-                        <span key={t.id} className="block truncate rounded bg-primary/15 px-1 text-[10px] text-primary">
-                          {formatTime(t.scheduled_at)} {t.client_name}
-                        </span>
-                      ))}
-                      {list.length > 2 ? (
-                        <span className="block text-[10px] text-muted-foreground">+{list.length - 2}</span>
-                      ) : null}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="space-y-2">
-              {selectedDayTours.length === 0 ? (
-                <p className="py-2 text-center text-[13px] text-muted-foreground">אין סיורים ביום שנבחר</p>
-              ) : (
-                selectedDayTours.map((t) => <TourRow key={t.id} t={t} />)
-              )}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          tours.map((t) => <TourRow key={t.id} t={t} />)
+        )
+      ) : (
+        <ScheduleMonthGrid
+          items={tours.map((t) => ({ id: t.id, at: t.scheduled_at, label: t.client_name, tour: t }))}
+          monthCursor={monthCursor}
+          openDay={openDay}
+          onOpenDay={setOpenDay}
+          emptyLabel="אין סיורים ביום שנבחר"
+          renderItem={(item) => <TourRow key={item.id} t={item.tour} />}
+        />
+      )}
+
+      {/* Manual client confirmation, opened by clicking the status pill. */}
+      <AlertDialog open={!!confirmTarget} onOpenChange={(v) => { if (!v) setConfirmTarget(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>לסמן שהלקוח אישר את המועד?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmTarget
+                ? `${confirmTarget.client_name} · ${formatWhen(confirmTarget.scheduled_at)}`
+                : ''}
+              {' '}הסטטוס יתעדכן ל"מאושר" והאירוע יישמר ביומן.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>חזרה</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmTarget) confirmByClient.mutate({ id: confirmTarget.id });
+                setConfirmTarget(null);
+              }}
+            >
+              הלקוח אישר
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancellation, with an explicit "notify the client on WhatsApp?" choice. */}
+      <AlertDialog open={!!cancelTarget} onOpenChange={(v) => { if (!v) setCancelTarget(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>לבטל את הסיור?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cancelTarget ? `${cancelTarget.client_name} · ${formatWhen(cancelTarget.scheduled_at)}. ` : ''}
+              רוצה שנעדכן את הלקוח בוואטסאפ על הביטול?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel disabled={cancelTour.isPending}>חזרה</AlertDialogCancel>
+            <Button
+              variant="outline"
+              disabled={cancelTour.isPending}
+              onClick={() => { if (cancelTarget) cancelTour.mutate({ tour: cancelTarget, notify: false }); }}
+            >
+              בטל בלי להודיע
+            </Button>
+            <Button
+              disabled={cancelTour.isPending}
+              onClick={() => { if (cancelTarget) cancelTour.mutate({ tour: cancelTarget, notify: true }); }}
+            >
+              {cancelTour.isPending ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : null}
+              בטל והודע בוואטסאפ
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
 

@@ -60,7 +60,7 @@ export function PropertyNotesCard() {
   };
 
   return (
-    <Card dir="rtl" className="p-4">
+    <div dir="rtl">
       <div className="mb-4 flex items-center gap-2">
         <StickyNote className="h-5 w-5 text-amber-600" />
         <h2 className="text-lg font-semibold">הערות על נכסים</h2>
@@ -154,6 +154,6 @@ export function PropertyNotesCard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }
