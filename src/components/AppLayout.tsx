@@ -81,7 +81,7 @@ function HeaderProfileLink() {
           setOpen(true);
         }
       }}
-      aria-label={displayName}
+      aria-label="פתח תפריט צדדי"
       title={displayName}
       className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90"
     >
