@@ -140,7 +140,7 @@ export function GoogleServiceConnectCard({
         window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
       } catch { /* storage may be unavailable */ }
     }
-  }, [liveConnected, platform, credEmail]);
+  }, [liveConnected, platform, credEmail, workspaceOwnerId]);
   // Sticky status is remembered PER WORKSPACE only — never globally — so a
   // connection in one office can never light up (or restore) in another.
   const connected = justDisconnected
@@ -217,7 +217,7 @@ export function GoogleServiceConnectCard({
         });
       }
     },
-    [platform, refetch],
+    [platform, refetch, workspaceOwnerId, queryClient],
   );
 
   // Full-page redirect flow: the /oauth/callback route stashes the returned
@@ -264,7 +264,7 @@ export function GoogleServiceConnectCard({
       unsubscribe();
       window.removeEventListener('message', handler);
     };
-  }, [platform, exchange, refetch]);
+  }, [platform, exchange, refetch, workspaceOwnerId]);
 
 
   const connect = async () => {
