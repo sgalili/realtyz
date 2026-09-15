@@ -6,6 +6,16 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type Mode = 'official_meta' | 'qr_session';
 
@@ -33,6 +43,7 @@ export function WhatsAppConnectionModeCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Mode | null>(null);
   const [mode, setMode] = useState<Mode>('official_meta');
+  const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -51,7 +62,7 @@ export function WhatsAppConnectionModeCard() {
     return () => { cancelled = true; };
   }, [ownerId]);
 
-  const choose = async (value: Mode) => {
+  const apply = async (value: Mode) => {
     if (!ownerId || value === mode) return;
     setSaving(value);
     const { error } = await supabase
@@ -66,6 +77,8 @@ export function WhatsAppConnectionModeCard() {
       return;
     }
     setMode(value);
+    // Let the personal-number card show/hide its QR action immediately.
+    window.dispatchEvent(new CustomEvent('realtyz:wa-mode-changed', { detail: value }));
     toast.success(
       value === 'qr_session'
         ? 'כל ההודעות במרחב העבודה יישלחו מהמספר האישי'
@@ -73,12 +86,20 @@ export function WhatsAppConnectionModeCard() {
     );
   };
 
+  // Switching from the official Meta number to a personal number changes the
+  // sending identity for the whole workspace — always confirm first.
+  const choose = (value: Mode) => {
+    if (value === mode) return;
+    if (mode === 'official_meta' && value === 'qr_session') {
+      setConfirm(true);
+      return;
+    }
+    void apply(value);
+  };
+
   return (
     <Card data-keep dir="rtl" className="border-0 bg-transparent shadow-none">
       <CardContent className="space-y-2 p-0">
-        <p className="text-xs text-muted-foreground">
-          
-        </p>
         {loading ? (
           <Skeleton className="h-20 w-full" />
         ) : (
@@ -107,6 +128,22 @@ export function WhatsAppConnectionModeCard() {
           </div>
         )}
       </CardContent>
+
+      <AlertDialog open={confirm} onOpenChange={setConfirm}>
+        <AlertDialogContent dir="rtl" className="text-right">
+          <AlertDialogHeader>
+            <AlertDialogTitle>להחליף למספר ווטסאפ אישי?</AlertDialogTitle>
+            <AlertDialogDescription>
+              כל ההודעות במרחב העבודה יישלחו ויתקבלו מהמספר האישי במקום מהמספר הרשמי של Meta.
+              קודי אימות ימשיכו להישלח מהמספר הרשמי. יש לסרוק קוד QR כדי להשלים את החיבור.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void apply('qr_session')}>החלפה</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

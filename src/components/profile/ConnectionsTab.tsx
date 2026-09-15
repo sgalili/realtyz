@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronDown, Settings2 } from 'lucide-react';
+import { ChevronDown, MessageSquare, Phone, Settings2 } from 'lucide-react';
+import { BrandIcon } from '@/components/BrandIcon';
+import { PortalBrandGlyph } from '@/components/profile/PortalBrandGlyph';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -278,10 +280,39 @@ export function ConnectionsTab() {
 
   const [sms019Sender, setSms019Sender] = useState<string | null>(null);
 
+  // Portal connection state drives the Yad2 / Homely brand marks in the header.
+  const { data: portalStatus = { yad2: false, homely: false } } = useQuery({
+    queryKey: ['listing-portals-status'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return { yad2: false, homely: false };
+      const [keys, homely] = await Promise.all([
+        supabase.from('user_api_keys').select('brightdata_api_token, brightdata_zone').eq('user_id', user.id).maybeSingle(),
+        supabase.from('homely_broker_credentials' as never).select('connection_status, homely_password_encrypted').eq('user_id', user.id).maybeSingle(),
+      ]);
+      const k = (keys.data ?? {}) as any;
+      const h = (homely.data ?? {}) as any;
+      return {
+        yad2: Boolean(String(k?.brightdata_api_token ?? '').trim() && String(k?.brightdata_zone ?? '').trim()),
+        homely: h?.connection_status === 'ok' || Boolean(h?.homely_password_encrypted),
+      };
+    },
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const waLive = !!(officialPhone || personalPhone || greenLive || waMode);
+
   const sections: Array<{ id: string; title: string; titleAside?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
     {
       id: 'meta',
       title: 'פייסבוק / אינסטגרם',
+      titleAside: (
+        <span className="flex items-center gap-1.5">
+          <BrandIcon name="facebook" className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !fbConnected && 'grayscale opacity-40')} />
+          <BrandIcon name="instagram" className={cn('h-5 w-5 shrink-0 text-[#E4405F]', !fbConnected && 'grayscale opacity-40')} />
+        </span>
+      ),
       status: metaStatus[0],
       tone: metaStatus[1],
       node: <MetaDirectConnectionCard onStatus={setMeta} />,
@@ -289,6 +320,9 @@ export function ConnectionsTab() {
     {
       id: 'whatsapp',
       title: 'ווטסאפ',
+      titleAside: (
+        <BrandIcon name="whatsapp" className={cn('h-5 w-5 shrink-0 text-[#25D366]', !waLive && 'grayscale opacity-40')} />
+      ),
       status: waStatus[0],
       tone: waStatus[1],
       node: (
@@ -393,6 +427,12 @@ export function ConnectionsTab() {
     // see or override the credentials.
     ...(isSuperAdmin ? [{
       id: 'sms019',
+      titleAside: (
+        <MessageSquare
+          className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !sms019Sender && 'grayscale opacity-40')}
+          strokeWidth={2.25}
+        />
+      ),
       title: 'SMS ',
       status: sms019Sender ? sms019Sender : 'לא הוגדר',
       tone: (sms019Sender ? 'ok' : 'idle') as Tone,
@@ -401,20 +441,38 @@ export function ConnectionsTab() {
     }] : []),
 
 
-    {
+    // Voice calls and the real-estate portals are platform-level services:
+    // only a Super Admin may see or configure them.
+    ...(isSuperAdmin ? [{
       id: 'voice',
       title: 'שיחות טלפון',
+      titleAside: (
+        <Phone
+          className={cn('h-5 w-5 shrink-0 text-[#0B62F5]', !(voicePhone || voiceReady) && 'grayscale opacity-40')}
+          strokeWidth={2.25}
+        />
+      ),
       status: voicePhone ? formatPhoneDisplay(voicePhone) : voiceReady ? 'מחובר' : 'לא הוגדר',
-      tone: voicePhone || voiceReady ? 'ok' : 'idle',
+      tone: (voicePhone || voiceReady ? 'ok' : 'idle') as Tone,
       node: <VoiceGatewayCard />,
-    },
-    {
+      restricted: true,
+    }] : []),
+    ...(isSuperAdmin ? [{
       id: 'portals',
       title: 'פורטלי נדל"ן',
-      status: 'הגדרות',
-      tone: 'idle',
+      status: '',
+      tone: 'idle' as Tone,
+      // Portal brand marks replace the settings pill: full color when the
+      // portal is connected, grayscale when it is not.
+      headerAside: (
+        <span className="flex items-center gap-1.5" aria-label="portals">
+          <PortalBrandGlyph portal="yad2" connected={portalStatus.yad2} />
+          <PortalBrandGlyph portal="homely" connected={portalStatus.homely} />
+        </span>
+      ),
       node: <ListingPortalsCard />,
-    },
+      restricted: true,
+    }] : []),
   ];
 
   return (

@@ -39,23 +39,36 @@ export function WhatsAppGatewayCard() {
   const [qrLoading, setQrLoading] = useState(false);
   const [qrNote, setQrNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // The QR action only makes sense when the workspace chose the personal number.
+  const [personalSelected, setPersonalSelected] = useState(false);
 
   const load = useCallback(async () => {
     if (!ownerId) { setLoading(false); return; }
     const { data } = await supabase
       .from('workspace_whatsapp_settings' as never)
-      .select('green_api_instance_id, qr_status, qr_phone')
+      .select('green_api_instance_id, qr_status, qr_phone, connection_type')
       .eq('workspace_owner_id', ownerId)
       .maybeSingle();
     const row = data as any;
     setInstanceId(String(row?.green_api_instance_id ?? ''));
     setPhone(String(row?.qr_phone ?? ''));
+    setPersonalSelected(String(row?.connection_type ?? '') === 'qr_session');
     const st = String(row?.qr_status ?? 'disconnected');
     setStatus(st === 'connected' || st === 'pending' || st === 'error' ? (st as any) : 'disconnected');
     setLoading(false);
   }, [ownerId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // React instantly when the method selector above switches the workspace mode.
+  useEffect(() => {
+    const onMode = (e: Event) => {
+      const value = (e as CustomEvent).detail;
+      setPersonalSelected(value === 'qr_session');
+    };
+    window.addEventListener('realtyz:wa-mode-changed', onMode);
+    return () => window.removeEventListener('realtyz:wa-mode-changed', onMode);
+  }, []);
 
   /** Opens the QR dialog, provisioning the workspace instance when missing. */
   const openQr = async () => {
@@ -134,17 +147,13 @@ export function WhatsAppGatewayCard() {
 
   return (
     <Card data-keep dir="rtl" className="border-0 bg-transparent text-right shadow-none">
-      <CardContent className="space-y-3 p-0">
+      <CardContent className="space-y-2 p-0">
         {loading ? (
           <div className="flex h-16 items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
           </div>
         ) : (
           <>
-            <p className="text-xs text-muted-foreground">
-              
-            </p>
-
             {connected && (
               <div className="space-y-1 rounded-lg border p-3">
                 <div className="flex items-center justify-between gap-2">
@@ -163,12 +172,14 @@ export function WhatsAppGatewayCard() {
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-1.5">
-              <Button variant="outline" size="sm" onClick={openQr} disabled={busy}
-                className="px-2 text-xs whitespace-nowrap">
-                <QrCode className="ml-1 h-3.5 w-3.5" />
-                {connected ? 'חיבור מספר אחר' : 'סריקת QR'}
-              </Button>
+            <div className="flex items-center justify-center gap-1.5 p-0 m-0">
+              {personalSelected && (
+                <Button variant="outline" size="sm" onClick={openQr} disabled={busy}
+                  className="px-2 text-xs whitespace-nowrap">
+                  <QrCode className="ml-1 h-3.5 w-3.5" />
+                  {connected ? 'חיבור מספר אחר' : 'סריקת QR'}
+                </Button>
+              )}
               {connected && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
