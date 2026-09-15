@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScheduledToursCard } from '@/components/dashboard/ScheduledToursCard';
+import { ScheduledToursCard, useScheduledToursCount } from '@/components/dashboard/ScheduledToursCard';
 import { NewTourDialog } from '@/components/dashboard/NewTourDialog';
 import { NewDemoDialog } from '@/components/dashboard/NewDemoDialog';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
