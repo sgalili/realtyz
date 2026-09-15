@@ -37,6 +37,7 @@ import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
+import { useAppMode } from '@/hooks/useAppMode';
 import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
 
 
@@ -122,6 +123,35 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+/**
+ * Partner ("שותף") mode navigation: only the affiliate surfaces — shared
+ * listings to promote, the partner network and the referral/rewards screen.
+ * Broker-only CRM tooling is hidden entirely.
+ */
+const PARTNER_NAV_ITEMS: NavItem[] = [
+  {
+    title: 'נכסים לשיווק',
+    url: '/affiliate',
+    icon: Building2,
+    iconColor: 'text-sky-600',
+    badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
+  },
+  {
+    title: 'שותפים',
+    url: '/affiliate-network',
+    icon: AffiliateFlowchartIcon,
+    iconColor: 'text-emerald-600',
+    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  },
+  {
+    title: 'תגמולים',
+    url: '/referral',
+    icon: Gift,
+    iconColor: 'text-amber-600',
+    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
+  },
+];
+
 export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: string | null }) {
   const { state, isMobile, setOpen, setOpenMobile } = useSidebar();
 
@@ -134,19 +164,26 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin } = useUserRole();
+  const { isSuperAdmin, isAffiliateOnly } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
+  const { isPartnerMode } = useAppMode();
 
   // Navigation follows the ACTIVE workspace: Rita's marketing workspace hides
   // properties, deals and partners; every other workspace shows them all.
+  // In partner ("שותף") mode — or for an affiliate-only account — only the
+  // affiliate screens are listed.
   const features = useWorkspaceFeatures();
-  const navItems = useMemo(() => NAV_ITEMS.filter((item) => {
-    if (item.url === '/properties') return features.listingsEnabled;
-    if (item.url === '/deal-room') return features.dealsEnabled;
-    if (item.url === '/affiliate-network') return features.partnersEnabled;
-    return true;
-  }), [features]);
+  const affiliateOnlyNav = isPartnerMode || isAffiliateOnly;
+  const navItems = useMemo(() => {
+    if (affiliateOnlyNav) return PARTNER_NAV_ITEMS;
+    return NAV_ITEMS.filter((item) => {
+      if (item.url === '/properties') return features.listingsEnabled;
+      if (item.url === '/deal-room') return features.dealsEnabled;
+      if (item.url === '/affiliate-network') return features.partnersEnabled;
+      return true;
+    });
+  }, [features, affiliateOnlyNav]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
