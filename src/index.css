@@ -1477,7 +1477,7 @@
 /* Dashboard readability scale: every text size inside the dashboard grows by
    roughly 2px so the daily control screen is comfortable to read. */
 .realtyz-dashboard-scale .text-\[10px\] { font-size: 12px; }
-.realtyz-dashboard-scale .text-\[11px\] { font-size: 13px; }
+.realtyz-dashboard-scale .text-\[11px\] { font-size: 12px; }
 .realtyz-dashboard-scale .text-\[12px\] { font-size: 14px; }
 .realtyz-dashboard-scale .text-xs { font-size: 14px; line-height: 1.45; }
 .realtyz-dashboard-scale .text-sm { font-size: 16px; line-height: 1.5; }
@@ -1491,11 +1491,11 @@
 .realtyz-affiliate-kpi .kpi-label { font-size: 14px; }
 .realtyz-affiliate-kpi .kpi-value { font-size: 21px; }
 
-/* Global legibility floor: no text in the app may render smaller than 10px.
-   Any legacy tiny utility class is clamped up to 10px without touching the
+/* Global legibility floor: no text in the app may render smaller than 12px.
+   Any legacy tiny utility class is clamped up to 12px without touching the
    normal type scale. */
 .text-\[1px\], .text-\[2px\], .text-\[3px\], .text-\[4px\], .text-\[5px\], .text-\[6px\],
-.text-\[7px\], .text-\[8px\], .text-\[9px\],
-.text-\[0\.1rem\], .text-\[0\.2rem\], .text-\[0\.3rem\], .text-\[0\.35rem\], .text-\[0\.4rem\], .text-\[0\.45rem\], .text-\[0\.5rem\], .text-\[0\.55rem\], .text-\[0\.6rem\] {
-  font-size: 10px !important;
+.text-\[7px\], .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\],
+.text-\[0\.1rem\], .text-\[0\.2rem\], .text-\[0\.3rem\], .text-\[0\.35rem\], .text-\[0\.4rem\], .text-\[0\.45rem\], .text-\[0\.5rem\], .text-\[0\.55rem\], .text-\[0\.6rem\], .text-\[0\.65rem\], .text-\[0\.7rem\], .text-\[0\.75rem\] {
+  font-size: 12px !important;
 }
