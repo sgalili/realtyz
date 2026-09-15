@@ -519,6 +519,8 @@ export function ConnectionsTab() {
           key={s.id}
           title={s.title}
           titleAside={s.titleAside}
+          titleLead={s.titleLead}
+          titleNode={s.titleNode}
           status={s.status}
           tone={s.tone}
           open={openId === s.id}
