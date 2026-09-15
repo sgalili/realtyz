@@ -234,40 +234,23 @@ export function ScheduledToursCard() {
     }
   }
 
-  /** Sends a reminder from the OFFICIAL WABA number only. */
-  async function sendReminder(t: Tour) {
-    setSendingId(t.id);
-    const where = t.property_title || t.property_address || 'הנכס';
-    const msg = `שלום ${t.client_name}, מזכיר את הסיור ב${where} בתאריך ${formatWhen(t.scheduled_at)}. נתראה!`;
-    const res = await sendViaOfficialWaba({ phone_number: t.client_phone, message: msg });
-    setSendingId(null);
-    if (res.ok) toast.success('תזכורת נשלחה מהמספר הרשמי');
-    else toast.error(res.error || 'שליחת התזכורת נכשלה');
-  }
-
   function TourActions({ t }: { t: Tour }) {
     return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <Button size="sm" variant="outline" className="h-8 text-[12px]" onClick={() => openOmnichat(t)}>
-          <MessageSquare className="me-1 h-3.5 w-3.5" />
-          אומני-צ׳אט
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 text-[12px]"
-          disabled={sendingId === t.id}
-          onClick={() => sendReminder(t)}
-        >
-          {sendingId === t.id ? <Loader2 className="me-1 h-3.5 w-3.5 animate-spin" /> : <Send className="me-1 h-3.5 w-3.5" />}
-          וואטסאפ רשמי
-        </Button>
-        <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
-          <a href={`tel:${t.client_phone}`}>
-            <Phone className="me-1 h-3.5 w-3.5" />
-            שיחה
-          </a>
-        </Button>
+      <div className="mt-2 space-y-1.5">
+        {/* Chat and Call always share the SAME row. */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button size="sm" variant="outline" className="h-8 text-[12px]" onClick={() => openOmnichat(t)}>
+            <MessageSquare className="me-1 h-3.5 w-3.5" />
+            צ׳אט
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
+            <a href={`tel:${t.client_phone}`}>
+              <Phone className="me-1 h-3.5 w-3.5" />
+              שיחה
+            </a>
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
         {t.client_email ? (
           <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
             <a href={`mailto:${t.client_email}`}>
@@ -276,9 +259,14 @@ export function ScheduledToursCard() {
             </a>
           </Button>
         ) : null}
-        {t.status !== 'confirmed' && (
-          <Button size="sm" variant="secondary" className="h-8 text-[12px]" onClick={() => setStatus.mutate({ id: t.id, status: 'confirmed' })}>
-            אישור
+        {displayStatus(t) !== 'confirmed' && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 text-[12px]"
+            onClick={() => confirmByClient.mutate({ id: t.id })}
+          >
+            הלקוח אישר
           </Button>
         )}
         {t.status !== 'completed' && (
