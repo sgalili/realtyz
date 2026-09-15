@@ -275,6 +275,9 @@
 
   async function postFirstCommentToPage(job) {
     if (isLoggedOut()) return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' };
+    if (!postContextOk() && !groupContextOk()) {
+      return { ok: false, reason: 'הפעולה בוטלה: העמוד הפתוח אינו פוסט ספציפי' };
+    }
 
     const postUrl = String(job.post_url || '').trim();
     const postId = String(job.post_id || '').trim();
