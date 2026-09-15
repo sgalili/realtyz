@@ -1,12 +1,12 @@
 ---
-name: WhatsApp = Official Meta Cloud API only
-description: All WhatsApp chat, /inbox, sending and inbound webhooks run exclusively on the official Meta Cloud API; Green API is messaging-forbidden (avatars only).
+name: WhatsApp transport = workspace choice (Meta official or personal QR)
+description: Each workspace picks one WhatsApp method for all messages; OTP always ships from the official Meta number. Green API is the personal QR transport only.
 type: constraint
 ---
-WhatsApp messaging is 100% Official WhatsApp Business API (Meta Cloud API, graph.facebook.com). Forbidden to reintroduce any alternative gateway or fallback transport for chat.
+Superseded the old "Meta only" rule (user decision, Sep 2026).
 
-- Outbound: `send-whatsapp` → `sendViaWba` only. No Green API branch, no `qr_session` routing, no `GREEN_API` provider value. `resolveWorkspaceOwner()` only resolves the owning workspace, never a transport.
-- Inbound: `whatsapp-webhook` accepts ONLY the official Meta envelope (`object=whatsapp_business_account` / `entry[]`). Anything else returns `ignored: non_official_provider_payload`. `meta-wa-webhook` forwards the original Meta payload.
-- `greenapi-webhook` is deprecated for messaging: it never writes leads/messages/chat_history and never triggers autopilot; it only honours `stateInstanceChanged`.
-- Green API survives strictly as an auxiliary avatar helper (`_shared/greenApiCreds.ts` `triggerAvatarFetch`, `fetch-wa-avatars`), fully decoupled from chat; fall back to initials when unavailable.
-- Settings UI (`WhatsAppConnectionModeCard`) shows the official connection only — no QR-session mode selector.
+- `workspace_whatsapp_settings.connection_type` = `official_meta` | `qr_session` is the single source of truth, chosen in the Connections tab (`WhatsAppConnectionModeCard`).
+- `send-whatsapp`: `qr_session` sends plain text through Green API (`resolveGreenCreds` + `sendGreenApiText`); approved templates, media and `force_official: true` always go through Meta Cloud (`sendViaWba`).
+- OTP (HARD): `whatsapp-auth` always passes `force_official: true` — verification codes never leave a personal number.
+- Personal number: exactly ONE instance per workspace, provisioned automatically by `greenapi-session` `create_instance` on first QR request. No manual Instance ID / API Token fields, no "add instance", no avatar-sync button on that card (avatar sync lives in the CRM page menu only).
+- Inbound: `whatsapp-webhook` for Meta envelopes; `greenapi-webhook` for the personal QR session.
