@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScheduledToursCard } from '@/components/dashboard/ScheduledToursCard';
+import { ScheduledToursCard, useScheduledToursCount } from '@/components/dashboard/ScheduledToursCard';
 import { NewTourDialog } from '@/components/dashboard/NewTourDialog';
 import { NewDemoDialog } from '@/components/dashboard/NewDemoDialog';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
@@ -77,7 +77,7 @@ const TAB_LABEL: Record<SectionTab, string> = {
 };
 
 /** Tabs that never show a card count next to their label. */
-const TABS_WITHOUT_COUNT = new Set<SectionTab>(['tours']);
+const TABS_WITHOUT_COUNT = new Set<SectionTab>([]);
 
 /** Standard workspaces: tasks (incl. reminders) first, then tours and calls. */
 const DEFAULT_TABS: SectionTab[] = ['tasks', 'tours', 'calls'];
@@ -163,6 +163,7 @@ export default function CommandCenter() {
   // Incoming leads and scheduled demos now live inside this page.
   const leadsCount = useIncomingLeadsCount();
   const demosCount = useScheduledDemosCount();
+  const toursCount = useScheduledToursCount();
   
   const [tab, setTab] = useState<SectionTab>(visibleTabs[0]);
   // Every card starts COLLAPSED when entering the page.
@@ -186,11 +187,11 @@ export default function CommandCenter() {
 
   const counts = useMemo(() => {
     const base: Record<SectionTab, number> = {
-      tours: 0, tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, calls: 0,
+      tours: toursCount, tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, calls: 0,
     };
     for (const t of tasks) base[sectionOf(t)] += 1;
     return base;
-  }, [tasks, leadsCount, demosCount]);
+  }, [tasks, leadsCount, demosCount, toursCount]);
 
   /** Opens the quick-action drawer on the right form for the active tab. */
   const addNew = (section: SectionTab) => {

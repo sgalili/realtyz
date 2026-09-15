@@ -27,13 +27,12 @@ import {
   MapPin,
   MessageSquare,
   Phone,
-  Send,
   StickyNote,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
-import { sendViaOfficialWaba } from '@/lib/officialWa';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
+import { SignatureStatusStrip } from '@/components/signature/SignatureStatusStrip';
 
 type Tour = {
   id: string;
@@ -46,14 +45,33 @@ type Tour = {
   status: string;
   notes: string | null;
   whatsapp_sent_at: string | null;
+  listing_id: string | null;
+  metadata: Record<string, unknown> | null;
 };
 
 const STATUS_HE: Record<string, string> = {
-  pending: 'ממתין לאישור',
+  pending: 'ממתין לאישור הלקוח',
   confirmed: 'מאושר',
   completed: 'בוצע',
   cancelled: 'בוטל',
 };
+
+/**
+ * A tour counts as confirmed ONLY when the client explicitly accepted it.
+ * Creating a tour in the app never means the client agreed, so anything that
+ * is not an explicit acceptance is shown as "waiting for the client".
+ */
+function displayStatus(t: Tour): string {
+  if (t.status !== 'confirmed') return t.status;
+  const meta = (t.metadata ?? {}) as Record<string, unknown>;
+  const accepted =
+    meta.client_confirmed_at ??
+    meta.confirmed_by_client_at ??
+    meta.client_accepted_at ??
+    (meta.confirmed_by === 'client' ? true : null) ??
+    meta.confirmed_by_agent_at;
+  return accepted ? 'confirmed' : 'pending';
+}
 
 const STATUS_CLASS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -108,7 +126,7 @@ export function ScheduledToursCard() {
       const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from('property_tours')
-        .select('id, client_name, client_phone, client_email, scheduled_at, property_title, property_address, status, notes, whatsapp_sent_at')
+        .select('id, client_name, client_phone, client_email, scheduled_at, property_title, property_address, status, notes, whatsapp_sent_at, listing_id, metadata')
         .eq('owner_id', ownerId!)
         .gte('scheduled_at', since)
         .neq('status', 'cancelled')
@@ -119,28 +137,64 @@ export function ScheduledToursCard() {
     },
   });
 
-  /** Contact photos of this workspace, matched to a tour by phone number. */
-  const { data: avatars } = useQuery({
-    queryKey: ['tour-contact-avatars', ownerId],
+  /** Contacts of this workspace, matched to a tour by phone number. */
+  const { data: contacts } = useQuery({
+    queryKey: ['tour-contact-index', ownerId],
     enabled: !!ownerId,
     queryFn: async () => {
       const { data } = await supabase
         .from('leads')
-        .select('phone_number, profile_picture_url')
+        .select('id, phone_number, profile_picture_url')
         .eq('workspace_owner_id', ownerId!)
-        .not('profile_picture_url', 'is', null)
-        .limit(1000);
-      const map = new Map<string, string>();
+        .limit(2000);
+      const map = new Map<string, { id: string; avatar: string | null }>();
       for (const row of (data ?? []) as any[]) {
         const key = String(row.phone_number ?? '').replace(/\D/g, '').slice(-9);
-        if (key && row.profile_picture_url) map.set(key, row.profile_picture_url);
+        if (key) map.set(key, { id: String(row.id), avatar: row.profile_picture_url ?? null });
       }
       return map;
     },
   });
 
-  const avatarOf = (phone: string | null) =>
-    avatars?.get(String(phone ?? '').replace(/\D/g, '').slice(-9)) ?? null;
+  const phoneKey = (phone: string | null) => String(phone ?? '').replace(/\D/g, '').slice(-9);
+  const avatarOf = (phone: string | null) => contacts?.get(phoneKey(phone))?.avatar ?? null;
+  const leadIdOf = (phone: string | null) => contacts?.get(phoneKey(phone))?.id ?? null;
+
+  /**
+   * Cover photo of every property that has a scheduled tour, so each tour row
+   * shows the real thumbnail instead of an empty placeholder.
+   */
+  const listingIds = useMemo(
+    () => Array.from(new Set(tours.map((t) => t.listing_id).filter(Boolean) as string[])),
+    [tours],
+  );
+  const { data: listingPhotos } = useQuery({
+    queryKey: ['tour-listing-photos', ownerId, listingIds.join(',')],
+    enabled: listingIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('id, image_url, media_photos')
+        .in('id', listingIds);
+      const map = new Map<string, string>();
+      for (const row of (data ?? []) as any[]) {
+        const arr = Array.isArray(row.media_photos) ? row.media_photos : [];
+        const fromArray = arr
+          .map((item: any) =>
+            typeof item === 'string'
+              ? item
+              : item && typeof item === 'object'
+                ? (typeof item.url === 'string' ? item.url : typeof item.src === 'string' ? item.src : null)
+                : null,
+          )
+          .find((u: string | null) => !!u && /^(https?:\/\/|\/)/.test(u));
+        const url = (typeof row.image_url === 'string' && row.image_url.trim()) || fromArray || null;
+        if (url) map.set(String(row.id), url);
+      }
+      return map;
+    },
+  });
+
 
 
   const setStatus = useMutation({
@@ -149,6 +203,24 @@ export function ScheduledToursCard() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['scheduled-tours'] }),
+  });
+
+  /** Marks the tour as confirmed ONLY as an explicit client acceptance. */
+  const confirmByClient = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const current = tours.find((t) => t.id === id);
+      const meta = { ...(current?.metadata ?? {}), client_confirmed_at: new Date().toISOString() };
+      const { error } = await supabase
+        .from('property_tours')
+        .update({ status: 'confirmed', metadata: meta as any })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('הסיור סומן כמאושר על ידי הלקוח');
+      qc.invalidateQueries({ queryKey: ['scheduled-tours'] });
+    },
+    onError: () => toast.error('עדכון האישור נכשל'),
   });
 
   const byDay = useMemo(() => {
@@ -179,40 +251,23 @@ export function ScheduledToursCard() {
     }
   }
 
-  /** Sends a reminder from the OFFICIAL WABA number only. */
-  async function sendReminder(t: Tour) {
-    setSendingId(t.id);
-    const where = t.property_title || t.property_address || 'הנכס';
-    const msg = `שלום ${t.client_name}, מזכיר את הסיור ב${where} בתאריך ${formatWhen(t.scheduled_at)}. נתראה!`;
-    const res = await sendViaOfficialWaba({ phone_number: t.client_phone, message: msg });
-    setSendingId(null);
-    if (res.ok) toast.success('תזכורת נשלחה מהמספר הרשמי');
-    else toast.error(res.error || 'שליחת התזכורת נכשלה');
-  }
-
   function TourActions({ t }: { t: Tour }) {
     return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <Button size="sm" variant="outline" className="h-8 text-[12px]" onClick={() => openOmnichat(t)}>
-          <MessageSquare className="me-1 h-3.5 w-3.5" />
-          אומני-צ׳אט
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 text-[12px]"
-          disabled={sendingId === t.id}
-          onClick={() => sendReminder(t)}
-        >
-          {sendingId === t.id ? <Loader2 className="me-1 h-3.5 w-3.5 animate-spin" /> : <Send className="me-1 h-3.5 w-3.5" />}
-          וואטסאפ רשמי
-        </Button>
-        <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
-          <a href={`tel:${t.client_phone}`}>
-            <Phone className="me-1 h-3.5 w-3.5" />
-            שיחה
-          </a>
-        </Button>
+      <div className="mt-2 space-y-1.5">
+        {/* Chat and Call always share the SAME row. */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button size="sm" variant="outline" className="h-8 text-[12px]" onClick={() => openOmnichat(t)}>
+            <MessageSquare className="me-1 h-3.5 w-3.5" />
+            צ׳אט
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
+            <a href={`tel:${t.client_phone}`}>
+              <Phone className="me-1 h-3.5 w-3.5" />
+              שיחה
+            </a>
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
         {t.client_email ? (
           <Button size="sm" variant="outline" className="h-8 text-[12px]" asChild>
             <a href={`mailto:${t.client_email}`}>
@@ -221,9 +276,14 @@ export function ScheduledToursCard() {
             </a>
           </Button>
         ) : null}
-        {t.status !== 'confirmed' && (
-          <Button size="sm" variant="secondary" className="h-8 text-[12px]" onClick={() => setStatus.mutate({ id: t.id, status: 'confirmed' })}>
-            אישור
+        {displayStatus(t) !== 'confirmed' && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 text-[12px]"
+            onClick={() => confirmByClient.mutate({ id: t.id })}
+          >
+            הלקוח אישר
           </Button>
         )}
         {t.status !== 'completed' && (
@@ -234,6 +294,7 @@ export function ScheduledToursCard() {
         <Button size="sm" variant="ghost" className="h-8 text-[12px]" onClick={() => setStatus.mutate({ id: t.id, status: 'cancelled' })}>
           ביטול
         </Button>
+        </div>
       </div>
     );
   }
@@ -250,8 +311,8 @@ export function ScheduledToursCard() {
             />
             {t.client_name}
           </div>
-          <Badge variant="outline" className={STATUS_CLASS[t.status] ?? ''}>
-            {STATUS_HE[t.status] ?? t.status}
+          <Badge variant="outline" className={STATUS_CLASS[displayStatus(t)] ?? ''}>
+            {STATUS_HE[displayStatus(t)] ?? t.status}
           </Badge>
         </div>
         <div className="mt-1.5 space-y-1 text-[13px] text-muted-foreground">
@@ -260,10 +321,20 @@ export function ScheduledToursCard() {
             {formatWhen(t.scheduled_at)}
           </p>
           {(t.property_title || t.property_address) && (
-            <p className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5" />
-              {t.property_title || t.property_address}
-            </p>
+            <div className="flex items-center gap-2">
+              {t.listing_id && listingPhotos?.get(t.listing_id) ? (
+                <img
+                  src={listingPhotos.get(t.listing_id) as string}
+                  alt={t.property_title ?? 'תמונת הנכס'}
+                  loading="lazy"
+                  className="h-12 w-12 shrink-0 rounded-md border object-cover"
+                />
+              ) : null}
+              <p className="flex min-w-0 items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{t.property_title || t.property_address}</span>
+              </p>
+            </div>
           )}
           <p className="flex items-center gap-1.5">
             <Phone className="h-3.5 w-3.5" />
@@ -283,6 +354,7 @@ export function ScheduledToursCard() {
             </p>
           ) : null}
         </div>
+        <SignatureStatusStrip leadId={leadIdOf(t.client_phone)} />
         <TourActions t={t} />
       </div>
     );
@@ -409,3 +481,27 @@ export function ScheduledToursCard() {
 }
 
 export default ScheduledToursCard;
+
+/**
+ * Live count of upcoming tours in the ACTIVE workspace only.
+ * Used by the tabs bar to show "סיורים (n)".
+ */
+export function useScheduledToursCount() {
+  const ownerId = useActiveWorkspaceOwnerId();
+  const { data } = useQuery({
+    queryKey: ['scheduled-tours-count', ownerId],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+      const { count, error } = await supabase
+        .from('property_tours')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', ownerId!)
+        .gte('scheduled_at', since)
+        .neq('status', 'cancelled');
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  return data ?? 0;
+}
