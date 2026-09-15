@@ -248,7 +248,10 @@ Deno.serve(async (req) => {
             scheduled_at: startIso,
             timezone: "Asia/Jerusalem",
             property_address: address,
-            status: "confirmed",
+            // Signing the form is NOT the client approving the time — the tour
+            // stays pending until the client approves it (tour-confirm), and
+            // only then is the calendar event created.
+            status: "pending",
             notes: `נחתם הסכם סיור בנכס: ${doc.title}`,
             metadata: {
               lead_id: doc.lead_id,
@@ -259,30 +262,41 @@ Deno.serve(async (req) => {
           };
           const tourId = (existing as any)?.id;
           if (tourId) {
-            await admin.from("property_tours").update(tourPayload).eq("id", tourId);
+            const { status: _ignored, ...keepStatus } = tourPayload;
+            await admin.from("property_tours").update(keepStatus).eq("id", tourId);
           } else {
             await admin.from("property_tours").insert(tourPayload);
           }
+        }
 
-          // Google Calendar sync for the broker who owns the workspace.
-          try {
-            const token = await getFreshAccessToken(admin, ownerId);
-            if (!("error" in token)) {
-              const end = new Date(tourStart!.getTime() + 45 * 60_000);
-              await createCalendarEvent({
-                accessToken: token.accessToken,
-                calendarId: token.calendarId,
-                timezone: token.timezone,
-                summary: `סיור בנכס — ${clientName}`,
-                description: `הסכם סיור נחתם דיגיטלית.\n${doc.title}`,
-                startISO: tourStart!.toISOString(),
-                endISO: end.toISOString(),
-                location: address ?? undefined,
-              });
-            }
-          } catch (e) {
-            console.error("sign-closing-doc calendar sync failed", e);
+        // Instant WhatsApp alert to the broker: the client signed the form.
+        try {
+          const { data: brokerProfile } = await admin
+            .from("profiles")
+            .select("phone")
+            .eq("id", ownerId)
+            .maybeSingle();
+          const brokerPhone = (brokerProfile as { phone?: string } | null)?.phone;
+          if (brokerPhone) {
+            await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SERVICE_ROLE}`,
+                apikey: SERVICE_ROLE,
+              },
+              body: JSON.stringify({
+                phone_number: brokerPhone,
+                message:
+                  `הלקוח חתם על ${doc.title}\n` +
+                  `${clientName}${(leadRow as any)?.phone_number ? ` · ${(leadRow as any).phone_number}` : ""}` +
+                  (address ? `\n${address}` : ""),
+                tenant_id: ownerId,
+              }),
+            });
           }
+        } catch (e) {
+          console.error("sign-closing-doc broker alert failed", e);
         }
 
         // Immediate WhatsApp confirmation in Rita's voice.

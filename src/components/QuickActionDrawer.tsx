@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import TaskFormDialog, { type TaskFormValues } from '@/components/tasks/TaskFormDialog';
 
 /**
  * Quick actions are TWO standalone dialogs — a task ("משימה") and a call
@@ -156,39 +157,29 @@ export default function QuickActionDrawer() {
     if (error) throw error;
   }
 
-  const saveTask = async () => {
-    if (!taskText.trim()) { toast.error('כתוב את המשימה'); return; }
-    if (!reminderWhen) { toast.error('בחר מועד'); return; }
-    setSaving(true);
-    try {
-      const text = taskText.trim();
-      const { error } = await (supabase as any).from('scheduled_items').insert({
-        user_id: user!.id,
-        title: text.slice(0, 120),
-        content: text,
-        item_type: 'task',
-        channel: 'internal',
-        status: 'pending',
-        scheduled_for: new Date(reminderWhen).toISOString(),
-        metadata: {
-          lead_id: lead?.id ?? null,
-          lead_name: lead?.full_name ?? null,
-          priority: reminderPriority,
-          action_type: 'follow_up',
-          source: 'quick_action_drawer',
-        },
-      });
-      if (error) throw error;
-      toast.success('המשימה נשמרה');
-      resetAfterSave();
-      setFlow(null);
-      invalidateLiveData(queryClient);
-      queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
-    } catch (e: any) {
-      toast.error(e?.message ?? 'שמירת המשימה נכשלה');
-    } finally {
-      setSaving(false);
-    }
+  const saveTask = async (values: TaskFormValues) => {
+    const text = values.text.trim();
+    const { error } = await (supabase as any).from('scheduled_items').insert({
+      user_id: user!.id,
+      title: text.slice(0, 120),
+      content: text,
+      item_type: 'task',
+      channel: 'internal',
+      status: 'pending',
+      scheduled_for: new Date(values.when).toISOString(),
+      metadata: {
+        lead_id: values.lead?.id ?? null,
+        lead_name: values.lead?.full_name ?? null,
+        priority: values.priority,
+        action_type: 'follow_up',
+        source: 'quick_action_drawer',
+      },
+    });
+    if (error) throw error;
+    toast.success('המשימה נשמרה');
+    setFlow(null);
+    invalidateLiveData(queryClient);
+    queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
   };
 
   const saveInteraction = async () => {
@@ -258,79 +249,15 @@ export default function QuickActionDrawer() {
 
   return (
     <>
-      {/* Standalone dialog #1 — new task */}
-      <Dialog open={flow === 'reminder'} onOpenChange={(v) => setFlow(v ? 'reminder' : null)}>
-        <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto text-right sm:max-w-md">
-          <DialogHeader className="text-right">
-            <DialogTitle className="flex items-center gap-2 text-lg font-extrabold">
-              <BellRing className="h-5 w-5 text-primary" />
-              משימה חדשה
-            </DialogTitle>
-          </DialogHeader>
+      {/* Standalone dialog #1 — new task (same form as "עריכת משימה") */}
+      <TaskFormDialog
+        open={flow === 'reminder'}
+        onOpenChange={(v) => setFlow(v ? 'reminder' : null)}
+        title="משימה חדשה"
+        submitLabel="שמור משימה"
+        onSubmit={saveTask}
+      />
 
-          <div className="space-y-3">
-            {leadPicker}
-
-            <div className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">מועד</Label>
-                <Input type="datetime-local" value={reminderWhen} onChange={(e) => setReminderWhen(e.target.value)} />
-              </div>
-              {/* Google Calendar availability check — icon only, right after the date field */}
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-10 w-10 shrink-0"
-                onClick={loadCalendarSlots}
-                disabled={calendarLoading}
-                aria-label="בדיקת זמינות ביומן Google"
-                title="בדיקת זמינות ביומן Google"
-              >
-                {calendarLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck2 className="h-4 w-4" />}
-              </Button>
-              <div className="min-w-[110px] space-y-2">
-                <Label className="text-sm font-semibold">דחיפות</Label>
-                <Select value={reminderPriority} onValueChange={setReminderPriority}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">גבוהה</SelectItem>
-                    <SelectItem value="medium">בינונית</SelectItem>
-                    <SelectItem value="low">נמוכה</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {calendarConnected === false && <p className="text-sm text-muted-foreground">היומן אינו מחובר. ניתן לבחור מועד ידנית.</p>}
-            {calendarSlots.length > 0 && (
-              <div className="grid grid-cols-1 gap-2">
-                {calendarSlots.map((slot) => {
-                  const value = toLocalDateTime(slot.start);
-                  const selected = reminderWhen === value;
-                  return (
-                    <Button key={slot.start} type="button" variant={selected ? 'default' : 'outline'} onClick={() => setReminderWhen(value)} className="justify-between">
-                      <span>{new Date(slot.start).toLocaleDateString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
-                      <span>{new Date(slot.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
-                      <span className={selected ? 'text-primary-foreground' : 'text-success'}>פנוי</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">משימה / תזכורת</Label>
-              <Textarea value={taskText} onChange={(e) => setTaskText(e.target.value)} rows={4} className="resize-none" />
-            </div>
-
-            <Button className="w-full font-bold" onClick={saveTask} disabled={saving}>
-              {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <BellRing className="me-2 h-4 w-4" />}
-              שמור משימה
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Standalone dialog #2 — call summary */}
       <Dialog open={flow === 'interaction'} onOpenChange={(v) => setFlow(v ? 'interaction' : null)}>
