@@ -20,7 +20,21 @@
   "content_scripts": [
     {
       "matches": ["https://*.facebook.com/*"],
-      "js": ["facebook.js", "poster.js"],
+      "js": ["facebook.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "//": "poster.js automates posting/commenting — load it ONLY on group and single-post contexts, never on the personal newsfeed or profile.",
+      "matches": [
+        "https://*.facebook.com/groups/*",
+        "https://*.facebook.com/*/posts/*",
+        "https://*.facebook.com/*/permalink/*",
+        "https://*.facebook.com/permalink.php*",
+        "https://*.facebook.com/story.php*",
+        "https://*.facebook.com/photo*",
+        "https://*.facebook.com/*/videos/*"
+      ],
+      "js": ["poster.js"],
       "run_at": "document_idle"
     },
     {
