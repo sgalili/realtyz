@@ -195,7 +195,10 @@ export default function TaskFormDialog({
                         onClick={() => { setLead(r); setLeadResults([]); }}
                         className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-right transition hover:bg-accent"
                       >
-                        <span className="truncate text-sm font-semibold">{r.full_name || 'ללא שם'}</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <ContactAvatar name={r.full_name} imageUrl={r.profile_picture_url} className="h-7 w-7 shrink-0" />
+                          <span className="truncate text-sm font-semibold">{r.full_name || 'ללא שם'}</span>
+                        </span>
                         <span className="shrink-0 text-xs text-muted-foreground">
                           {r.phone_number ? formatPhoneDisplay(r.phone_number) : ''}
                         </span>

@@ -130,12 +130,19 @@ export default function CallSummaryDialog({
             <Label className="text-sm font-semibold">איש קשר</Label>
             {lead ? (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-foreground">{lead.full_name || 'ללא שם'}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {lead.phone_number ? formatPhoneDisplay(lead.phone_number) : '—'}
-                    {lead.city ? ` · ${lead.city}` : ''}
-                  </p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <ContactAvatar
+                    name={lead.full_name}
+                    imageUrl={lead.profile_picture_url}
+                    className="h-9 w-9 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-foreground">{lead.full_name || 'ללא שם'}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {lead.phone_number ? formatPhoneDisplay(lead.phone_number) : '—'}
+                      {lead.city ? ` · ${lead.city}` : ''}
+                    </p>
+                  </div>
                 </div>
                 <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setLead(null); setLeadQuery(''); }}>
                   החלף
@@ -165,7 +172,10 @@ export default function CallSummaryDialog({
                         onClick={() => { setLead(r); setLeadResults([]); }}
                         className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-right transition hover:bg-accent"
                       >
-                        <span className="truncate text-sm font-semibold">{r.full_name || 'ללא שם'}</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <ContactAvatar name={r.full_name} imageUrl={r.profile_picture_url} className="h-7 w-7 shrink-0" />
+                          <span className="truncate text-sm font-semibold">{r.full_name || 'ללא שם'}</span>
+                        </span>
                         <span className="shrink-0 text-xs text-muted-foreground">
                           {r.phone_number ? formatPhoneDisplay(r.phone_number) : ''}
                         </span>
