@@ -46,14 +46,33 @@ type Tour = {
   status: string;
   notes: string | null;
   whatsapp_sent_at: string | null;
+  listing_id: string | null;
+  metadata: Record<string, unknown> | null;
 };
 
 const STATUS_HE: Record<string, string> = {
-  pending: 'ממתין לאישור',
+  pending: 'ממתין לאישור הלקוח',
   confirmed: 'מאושר',
   completed: 'בוצע',
   cancelled: 'בוטל',
 };
+
+/**
+ * A tour counts as confirmed ONLY when the client explicitly accepted it.
+ * Creating a tour in the app never means the client agreed, so anything that
+ * is not an explicit acceptance is shown as "waiting for the client".
+ */
+function displayStatus(t: Tour): string {
+  if (t.status !== 'confirmed') return t.status;
+  const meta = (t.metadata ?? {}) as Record<string, unknown>;
+  const accepted =
+    meta.client_confirmed_at ??
+    meta.confirmed_by_client_at ??
+    meta.client_accepted_at ??
+    (meta.confirmed_by === 'client' ? true : null) ??
+    meta.confirmed_by_agent_at;
+  return accepted ? 'confirmed' : 'pending';
+}
 
 const STATUS_CLASS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-800 border-amber-200',
