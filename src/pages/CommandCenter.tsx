@@ -61,9 +61,10 @@ const PRIORITY_LABEL: Record<CommandTask['priority'], string> = {
   low: 'נמוך',
 };
 
-type SectionTab = 'tasks' | 'leads' | 'demos' | 'notes' | 'reminders' | 'calls';
+type SectionTab = 'tours' | 'tasks' | 'leads' | 'demos' | 'notes' | 'reminders' | 'calls';
 
 const TAB_LABEL: Record<SectionTab, string> = {
+  tours: 'סיורים',
   tasks: 'משימות',
   leads: 'לידים',
   demos: 'הדגמות',
@@ -72,11 +73,14 @@ const TAB_LABEL: Record<SectionTab, string> = {
   calls: 'שיחות',
 };
 
-/** Standard workspaces keep the full tab set. */
-const DEFAULT_TABS: SectionTab[] = ['tasks', 'leads', 'demos', 'notes', 'reminders', 'calls'];
+/** Tabs that never show a card count next to their label. */
+const TABS_WITHOUT_COUNT = new Set<SectionTab>(['tours']);
+
+/** Standard workspaces: property tours first, then tasks, reminders and calls. */
+const DEFAULT_TABS: SectionTab[] = ['tours', 'tasks', 'reminders', 'calls'];
 /**
- * Rita's marketing workspace: demos come first, and the לידים / הערות tabs are
- * hidden there (they stay available in every other workspace).
+ * Rita's marketing workspace: demos come first and property tours are hidden
+ * (her workspace never manages properties).
  */
 const RITA_TABS: SectionTab[] = ['demos', 'tasks', 'reminders', 'calls'];
 
