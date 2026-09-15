@@ -66,11 +66,17 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     try {
       const { data } = await (supabase as any)
         .from('fb_user_groups')
-        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected')
+        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected, page_id')
         // Workspace-scoped so shared Facebook groups are identical for every member.
         .eq('workspace_owner_id', workspaceOwnerId)
         .order('group_name', { ascending: true });
-      const nextGroups: GroupTarget[] = ((data ?? []) as any[]).map((r) => ({
+      // TENANT ISOLATION: hide groups bound to a Facebook page this workspace is
+      // no longer connected to.
+      const connectedPage = pageBinding?.pageId ?? null;
+      const visible = ((data ?? []) as any[]).filter(
+        (r) => !r?.page_id || !connectedPage || String(r.page_id) === connectedPage,
+      );
+      const nextGroups: GroupTarget[] = visible.map((r) => ({
         id: String(r.id),
         groupId: String(r.group_id),
         name: String(r.group_name || r.group_id),
