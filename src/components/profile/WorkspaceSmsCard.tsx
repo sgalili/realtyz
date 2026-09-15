@@ -32,6 +32,8 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
   // placeholder so "בדיקה" works without retyping the token.
   const [savedToken, setSavedToken] = useState('');
   const [sender, setSender] = useState('');
+  // Optional destination for the real test SMS; defaults to the approved sender.
+  const [recipient, setRecipient] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -105,13 +107,30 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
     setTesting(true);
     const tId = toast.loading(send ? 'שולח SMS בדיקה דרך 019...' : 'בודק חיבור 019...');
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast.error('נדרשת התחברות מחדש', { id: tId, description: 'ההתחברות פגה. התחברו מחדש ונסו שוב.' });
+        return;
+      }
       const { data, error } = await supabase.functions.invoke('test-sms-connection', {
-        body: { mode: send ? 'send' : 'balance', workspace_owner_id: ownerId ?? undefined },
+        body: {
+          mode: send ? 'send' : 'balance',
+          workspace_owner_id: ownerId ?? undefined,
+          recipient: send ? (recipient.trim() || undefined) : undefined,
+        },
       });
-      const resp = (data ?? {}) as {
+      let resp = (data ?? {}) as {
         success?: boolean; credit?: string; error?: string; sender?: string | null;
         username?: string; scope?: string; sent_to?: string; message_id?: string | null;
       };
+      // invoke() masks non-2xx bodies behind a generic error — read the real one.
+      if (error && (error as any)?.context?.text) {
+        try {
+          const raw = await (error as any).context.text();
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') resp = { ...parsed, ...resp };
+        } catch { /* keep generic error */ }
+      }
       if (error || resp.success !== true) {
         toast.error(send ? 'שליחת SMS הבדיקה נכשלה' : 'בדיקת 019 נכשלה', {
           id: tId,
@@ -165,6 +184,16 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
           <Label htmlFor="sms019-sender">מספר שולח מאושר</Label>
           <Input id="sms019-sender" value={sender} onChange={(e) => setSender(e.target.value)} dir="ltr" />
         </div>
+      </div>
+      <div className="space-y-1.5 sm:max-w-[220px]">
+        <Label htmlFor="sms019-recipient">מספר לבדיקה (לא חובה)</Label>
+        <Input
+          id="sms019-recipient"
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          placeholder={sender || '05X-XXXXXXX'}
+          dir="ltr"
+        />
       </div>
       <div className="flex items-center gap-2">
         <Button onClick={save} disabled={saving}>
