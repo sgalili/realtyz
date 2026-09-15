@@ -684,16 +684,9 @@ Deno.serve(async (req) => {
       if (channel === "sms") {
         const local = toLocalIL(recipient);
         if (!local) result = { ok: false, failure_reason: "מספר טלפון לא תקין" };
-        else if (!sms019Creds || sms019Creds.length < 2)
-          result = { ok: false, failure_reason: "019 SMS לא מוגדר" };
-        else
-          result = await sendSms019(
-            sms019Creds[0],
-            sms019Creds.slice(1).join(":"),
-            local,
-            personalized,
-            "Realtyz",
-          );
+        else if (!smsReady)
+          result = { ok: false, failure_reason: "019 SMS לא מוגדר למרחב העבודה" };
+        else result = await sendSmsWorkspace(admin, local, personalized, ownerUserId);
       } else if (channel === "whatsapp") {
         const intl = toIntlIL(recipient);
         const testTemplate = parseWaTemplate(body.wa_template);
