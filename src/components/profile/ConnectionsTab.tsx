@@ -328,7 +328,10 @@ export function ConnectionsTab() {
   const waLive = !!(officialPhone || personalPhone || greenLive || waMode);
 
   // Connected Facebook page picture(s) replace the "מחובר" pill in the header.
-  const fbPagePicture = fbHealth?.pagePicture ?? fbBinding?.pageAvatarUrl ?? null;
+  const fbPageId = fbHealth?.pageId ?? fbBinding?.pageId ?? null;
+  const fbPagePicture = fbHealth?.pagePicture
+    ?? fbBinding?.pageAvatarUrl
+    ?? (fbPageId ? `https://graph.facebook.com/${fbPageId}/picture?type=square&width=64&height=64` : null);
 
   const sections: Array<{ id: string; title: string; titleAside?: ReactNode; titleLead?: ReactNode; titleNode?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
     {
