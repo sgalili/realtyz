@@ -5195,7 +5195,12 @@ const PublishedFeed = ({
               raw_error: (syncData as any)?.raw_error,
               message: providerError,
             });
-            if (isFbConnected && isTransient) {
+            // A missing read scope (#10 pages_read_engagement / Page Public
+            // Content Access) is an app-review limitation, NOT a broken Page
+            // binding. While a Page with a live token is bound we keep the
+            // existing posts and stay silent instead of forcing a reconnect.
+            const isScopeLimitation = graphFailure === 'permission';
+            if (isFbConnected && (isTransient || isScopeLimitation)) {
               hadTransientIssue = true;
             } else {
               refreshWarning = 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
