@@ -43,6 +43,7 @@ export function WhatsAppConnectionModeCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Mode | null>(null);
   const [mode, setMode] = useState<Mode>('official_meta');
+  const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
     if (!ownerId) return;
