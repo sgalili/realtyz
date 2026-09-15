@@ -204,6 +204,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
           className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-background px-2.5 py-2 text-right"
         >
           {workspaceInfo}
+          {workspaceLogoSquare}
         </div>
       )}
     </div>
