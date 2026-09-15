@@ -220,7 +220,11 @@ export function ScheduledToursCard() {
       <div className="rounded-lg border bg-muted/20 p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <User className="h-4 w-4 text-primary" />
+            <ContactAvatar
+              name={t.client_name}
+              imageUrl={avatarOf(t.client_phone)}
+              className="h-8 w-8"
+            />
             {t.client_name}
           </div>
           <Badge variant="outline" className={STATUS_CLASS[t.status] ?? ''}>
