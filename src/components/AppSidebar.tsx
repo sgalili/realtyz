@@ -9,6 +9,7 @@ import {
   ClipboardList,
   HelpCircle,
   Gift,
+  Settings,
   type LucideProps,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
