@@ -4,7 +4,7 @@
  * Daily job. Finds contacts whose lease ends in exactly 60 days and has Rita
  * ask, on WhatsApp, whether they want help finding a new rental.
  */
-import { corsHeaders, dispatchOnce, firstName, israelToday, addDaysIso, json, runJob } from "../_shared/engagementJobs.ts";
+import { corsHeaders, dispatchOnce, firstName, israelToday, addDaysIso, runJob } from "../_shared/engagementJobs.ts";
 
 const JOB = "lease-expiry-reminders";
 const BATCH = 50;
