@@ -335,10 +335,11 @@ export const CHANNEL_LABEL: Record<string, string> = {
 
 export function useCommandCenterPosts() {
   const { user } = useAuth();
+  const ownerId = useActiveWorkspaceOwnerId();
 
   return useQuery({
-    queryKey: ['command-center-posts', user?.id ?? 'anon'],
-    enabled: !!user,
+    queryKey: ['command-center-posts', user?.id ?? 'anon', ownerId ?? 'none'],
+    enabled: !!user && !!ownerId,
     staleTime: 0,
     refetchOnMount: 'always',
     refetchInterval: 15_000,
@@ -347,12 +348,14 @@ export function useCommandCenterPosts() {
         (supabase as any)
           .from('scheduled_items')
           .select('id, title, content, item_type, channel, status, scheduled_for')
+          .eq('workspace_owner_id', ownerId)
           .in('item_type', POST_ITEM_TYPES as unknown as string[])
           .order('scheduled_for', { ascending: false })
           .limit(60),
         (supabase as any)
           .from('campaign_activity_queue')
           .select('id, activity_type, target_label, status, scheduled_for, payload')
+          .eq('workspace_owner_id', ownerId)
           .order('scheduled_for', { ascending: false })
           .limit(40),
       ]);
