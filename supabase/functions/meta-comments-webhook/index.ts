@@ -231,6 +231,9 @@ Deno.serve(async (req) => {
             return !!native && (native === flat!.postId || flat!.postId.endsWith(`_${native}`));
           });
           if (match) await persistTrackedComments(admin, String((match as any).id), [flat], page);
+
+          // Comment → private Messenger DM (opt-in per workspace).
+          await maybePrivateReply(admin, binding as any, flat);
         }
       }
     } catch (e) {
