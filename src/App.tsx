@@ -14,6 +14,7 @@ import { MandateProvider } from "@/hooks/useMandate";
 import { WorkspaceProvider, useWorkspace } from "@/hooks/useWorkspace";
 import { ReferralCapture } from '@/components/referrals/ReferralCapture';
 import { WorkspaceSelectorModal } from "@/components/workspace/WorkspaceSelectorModal";
+import { RouteScrollRestoration } from "@/components/navigation/RouteScrollRestoration";
 import { toast } from "sonner";
 import { Suspense } from "react";
 import { lazyWithRetry as lazy } from "@/lib/lazyWithRetry";
@@ -285,6 +286,7 @@ const App = () => (
       <TooltipProvider>
         <Sonner />
         <BrowserRouter>
+          <RouteScrollRestoration />
           <AuthProvider>
             <WorkspaceProvider>
             <WhiteLabelProvider>

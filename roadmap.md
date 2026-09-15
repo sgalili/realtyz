@@ -22,3 +22,6 @@
 - [x] Verify database flow, UI, and deployed edge functions
 - [x] Unify every tenant with Rita's dashboard and navigation
 - [x] Remove duplicate workspace entries from every workspace menu
+- [x] Clean up tour card communication and status actions
+- [x] Add send-digiform action when no tour form was sent
+- [x] Preserve exact page position when opening and closing CRM cards
