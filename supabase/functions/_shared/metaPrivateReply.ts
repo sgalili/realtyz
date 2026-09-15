@@ -44,8 +44,9 @@ const post = async (url: string, body: Record<string, unknown>) => {
   return { ok: res.ok, status: res.status, payload };
 };
 
-const classify = (payload: any): PrivateReplyOutcome extends infer _ ?
-  Extract<PrivateReplyOutcome, { ok: false }>["reason"] : never => {
+type FailReason = Extract<PrivateReplyOutcome, { ok: false }>["reason"];
+
+const classify = (payload: any): FailReason => {
   const err = payload?.error ?? {};
   const code = Number(err.code ?? 0);
   const sub = Number(err.error_subcode ?? 0);
