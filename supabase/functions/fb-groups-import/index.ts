@@ -124,6 +124,9 @@ Deno.serve(async (req) => {
       const nodes: string[] = ["me"];
       const meId = String(me?.id ?? "").trim();
       if (meId) nodes.push(meId);
+      // TENANT ISOLATION: remember which connected Page produced each group so
+      // a group can never be displayed under another workspace / another page.
+      const pageIds = new Set<string>();
 
       try {
         const accRes = await fetch(
@@ -132,9 +135,12 @@ Deno.serve(async (req) => {
         const acc = await accRes.json().catch(() => ({}));
         for (const p of Array.isArray(acc?.data) ? acc.data : []) {
           const pid = String((p as any)?.id ?? "").trim();
-          if (pid && !nodes.includes(pid)) nodes.push(pid);
+          if (!pid) continue;
+          pageIds.add(pid);
+          if (!nodes.includes(pid)) nodes.push(pid);
         }
       } catch { /* ignore */ }
+
 
       for (const node of nodes) {
         for (const fields of [FULL_FIELDS, BASIC_FIELDS]) {
