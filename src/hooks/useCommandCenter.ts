@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { listingThumbOf } from '@/hooks/usePropertyNotes';
 
 export type CommandTask = {
@@ -18,7 +19,10 @@ export type CommandTask = {
   listingLabel: string | null;
   listingThumb: string | null;
   actionType: string | null;
+  /** Contact profile picture, shown in every list view. */
+  leadAvatar: string | null;
 };
+
 
 
 const PRIORITY_WEIGHT: Record<string, number> = { high: 0, medium: 1, low: 2 };
