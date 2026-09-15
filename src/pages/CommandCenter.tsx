@@ -163,6 +163,7 @@ export default function CommandCenter() {
   // Incoming leads and scheduled demos now live inside this page.
   const leadsCount = useIncomingLeadsCount();
   const demosCount = useScheduledDemosCount();
+  const toursCount = useScheduledToursCount();
   
   const [tab, setTab] = useState<SectionTab>(visibleTabs[0]);
   // Every card starts COLLAPSED when entering the page.
