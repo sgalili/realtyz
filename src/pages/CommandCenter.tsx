@@ -160,9 +160,14 @@ export default function CommandCenter() {
   const leadsCount = useIncomingLeadsCount();
   const demosCount = useScheduledDemosCount();
   
-  const [tab, setTab] = useState<SectionTab>(isRitaWorkspace ? 'demos' : 'tasks');
+  const [tab, setTab] = useState<SectionTab>(visibleTabs[0]);
   // Every card starts COLLAPSED when entering the page.
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+
+  // Switching workspaces can change the tab set — snap back to the first tab.
+  useEffect(() => {
+    if (!visibleTabs.includes(tab)) setTab(visibleTabs[0]);
+  }, [visibleTabs, tab]);
 
   const [editing, setEditing] = useState<CommandTask | null>(null);
   const toggleCard = (key: string) =>
@@ -175,7 +180,7 @@ export default function CommandCenter() {
 
   const counts = useMemo(() => {
     const base: Record<SectionTab, number> = {
-      tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, reminders: 0, calls: 0,
+      tours: 0, tasks: 0, leads: leadsCount, demos: demosCount, notes: 0, reminders: 0, calls: 0,
     };
     for (const t of tasks) base[sectionOf(t)] += 1;
     return base;
@@ -185,6 +190,10 @@ export default function CommandCenter() {
   const addNew = (section: SectionTab) => {
     if (section === 'leads' || section === 'demos') {
       navigate('/lead-crm');
+      return;
+    }
+    if (section === 'tours') {
+      navigate('/properties');
       return;
     }
     const quickTab = section === 'notes' ? 'note' : section === 'calls' ? 'interaction' : 'reminder';
