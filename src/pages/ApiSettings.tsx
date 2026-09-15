@@ -816,9 +816,11 @@ const ApiSettings = () => {
   const handleTestSms = async () => {
     setTestingService('sms');
     try {
-      const user = smsUser || existingSms?.api_key.split(':')[0];
-      const pass = smsPass || existingSms?.api_key.split(':').slice(1).join(':');
-      if (!user || !pass) { toast.error('יש למלא שם משתמש וסיסמה'); setTestingService(null); return; }
+      // Never send a masked placeholder — fall back to the saved credential.
+      const masked = (v?: string) => !!v && (/[•*]/.test(v) || v.includes('שמור'));
+      const user = (masked(smsUser) ? '' : smsUser) || existingSms?.api_key.split(':')[0];
+      const pass = (masked(smsPass) ? '' : smsPass) || existingSms?.api_key.split(':').slice(1).join(':');
+      if (!user || !pass) { toast.error('יש למלא שם משתמש וטוקן, או לשמור אותם קודם'); setTestingService(null); return; }
       const res = await fetch(`https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/test-sms-connection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
