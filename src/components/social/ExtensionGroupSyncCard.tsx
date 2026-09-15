@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { cn } from '@/lib/utils';
 import { openExternal } from '@/lib/openExternal';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { useExtensionGroups, readExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
 import { ExtensionDownloadButton, isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
 import { pairExtension, readRunnerStatus } from '@/lib/extensionPairing';
