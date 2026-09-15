@@ -60,6 +60,13 @@ function normalizeIl(raw: string): string | null {
   return local ? `972${local.slice(1)}` : null;
 }
 
+/** CRM display form: 05X-XXXXXXX. */
+function displayIL(raw: string): string {
+  const local = toLocalIL(raw);
+  if (!local) return String(raw ?? "");
+  return `${local.slice(0, 3)}-${local.slice(3)}`;
+}
+
 function extractXml(raw: string, tag: string): string {
   return raw.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"))?.[1]?.trim() ?? "";
 }
