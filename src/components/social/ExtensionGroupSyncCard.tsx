@@ -54,7 +54,8 @@ export function ExtensionGroupSyncCard({
   actions?: ReactNode;
 }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
-  const { groups, refresh } = useExtensionGroups();
+  const { data: pageBinding } = useMetaPageBinding();
+  const { groups, refresh } = useExtensionGroups(workspaceOwnerId);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [open, setOpen] = useState(false);
