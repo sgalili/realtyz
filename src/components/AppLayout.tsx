@@ -54,6 +54,7 @@ const TUTORIAL_STEPS = [
 
 function HeaderProfileLink() {
   const { user } = useAuth();
+  const { setOpen, setOpenMobile, isMobile } = useSidebar();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,16 +69,28 @@ function HeaderProfileLink() {
 
   if (!user) return null;
 
-  const displayName = friendlyUserDisplayName(user, 'הפרופיל שלי');
+  const displayName = friendlyUserDisplayName(user, 'הגדרות');
 
   return (
-    <Link to="/profile" aria-label={`${displayName} - הפרופיל שלי`} title={displayName} className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90">
+    <button
+      type="button"
+      onClick={() => {
+        if (isMobile) {
+          setOpenMobile(true);
+        } else {
+          setOpen(true);
+        }
+      }}
+      aria-label="פתח תפריט צדדי"
+      title={displayName}
+      className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90"
+    >
       <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full">
         {avatarUrl
           ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
           : displayName.slice(0, 1)}
       </span>
-    </Link>
+    </button>
   );
 }
 
