@@ -152,8 +152,13 @@ export default function TaskFormDialog({
             <Label className="text-sm font-semibold">איש קשר</Label>
             {lead ? (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-foreground">{lead.full_name || 'ללא שם'}</p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <ContactAvatar
+                    name={lead.full_name}
+                    imageUrl={lead.profile_picture_url}
+                    className="h-9 w-9 shrink-0"
+                  />
+                  <div className="min-w-0">
                   <p className="truncate text-xs text-muted-foreground">
                     {lead.phone_number ? formatPhoneDisplay(lead.phone_number) : '—'}
                     {lead.city ? ` · ${lead.city}` : ''}
