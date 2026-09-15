@@ -2281,7 +2281,10 @@ Deno.serve(async (req) => {
     if (!previewOnly) {
       const saveOne = async (r: typeof rows[number]) => {
         try {
-          await saveListing(admin, userId, r);
+          // Scheduled runs write to the CENTRAL pool; `share_market_listings`
+          // then distributes the rows to every workspace in the same city.
+          if (poolMode) await saveMarketListing(admin, r);
+          else await saveListing(admin, userId, r);
           saved++;
         } catch (e: any) {
           const msg = String(e?.message ?? e);
@@ -2293,7 +2296,7 @@ Deno.serve(async (req) => {
         if (timeLeft() < 5_000) { timedOut = true; break; }
         await Promise.all(rows.slice(i, i + 3).map(saveOne));
       }
-      console.log(`[yad2-unlocker] saved ${saved}/${rows.length} row(s), ${saveErrors.length} error(s)`);
+      console.log(`[yad2-unlocker] saved ${saved}/${rows.length} row(s) (pool=${poolMode}), ${saveErrors.length} error(s)`);
     } else {
       console.log(`[yad2-unlocker] preview_only=true — skipping DB save for ${rows.length} row(s)`);
     }
