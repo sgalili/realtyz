@@ -18,3 +18,8 @@ STRICT PER-WORKSPACE (2026-08-30, supersedes the earlier platform-shared page ru
 - `get_effective_meta_page()` resolves ONLY the active workspace owner's binding — no account-level fallback, no `is_platform_shared` fallback.
 - `get_account_integrations()` returns the workspace-scoped Facebook page; only WhatsApp (WBA/Green) and Yad2 stay account-level across workspaces.
 - Never re-add cross-workspace or platform-shared Facebook/Instagram fallbacks.
+
+FACEBOOK GROUPS (2026-09-15):
+- `fb_user_groups` RLS is strict: `ws_current_access(workspace_owner_id)` for select/insert/update/delete (no member/super-admin cross-workspace read).
+- Never query or update `fb_user_groups` / `fb_group_post_log` by `group_id` alone — always add `.eq('workspace_owner_id', owner)`.
+- The browser extension group push is browser-level: a pushed list is claimed by the first workspace that saves it (`rz-ext-fb-groups-claim`); other workspaces must sync explicitly. Never auto-persist a foreign claim.
