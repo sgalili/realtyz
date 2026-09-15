@@ -82,33 +82,58 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
   };
 
   const test = async () => {
+    if (testing) return;
     setTesting(true);
-    // Fall back to the stored token (field shows the masked "(שמור)" placeholder),
-    // re-reading it from the workspace settings if it isn't cached yet.
-    let effectiveToken = token.trim() || savedToken;
-    if (!effectiveToken && ownerId) {
-      const { data: row } = await supabase
-        .from('workspace_sms_settings')
-        .select('token, username')
-        .eq('workspace_owner_id', ownerId)
-        .maybeSingle();
-      effectiveToken = String((row as any)?.token ?? '').trim();
-      if (effectiveToken) setSavedToken(effectiveToken);
-    }
-    if (!username.trim() || !effectiveToken) {
+    const tId = toast.loading('בודק חיבור 019...');
+    try {
+      // A typed value is used only when it is a REAL token: the masked
+      // placeholder (bullets / "(שמור)") must never be sent to 019.
+      const typed = token.trim();
+      let effectiveToken = isMaskedValue(typed) ? '' : typed;
+      if (!effectiveToken) effectiveToken = savedToken;
+      let effectiveUser = username.trim();
+      if ((!effectiveToken || !effectiveUser) && ownerId) {
+        const { data: row } = await supabase
+          .from('workspace_sms_settings')
+          .select('token, username')
+          .eq('workspace_owner_id', ownerId)
+          .maybeSingle();
+        const dbToken = String((row as any)?.token ?? '').trim();
+        if (!effectiveToken && dbToken) {
+          effectiveToken = dbToken;
+          setSavedToken(dbToken);
+        }
+        if (!effectiveUser) effectiveUser = String((row as any)?.username ?? '').trim();
+      }
+      if (!effectiveUser || !effectiveToken) {
+        toast.error('נדרשים שם משתמש 019 וטוקן שמור לפני בדיקה', {
+          id: tId,
+          description: 'שמרו את הפרטים ואז לחצו בדיקה.',
+        });
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke('test-sms-connection', {
+        body: { user: effectiveUser, token: effectiveToken },
+      });
+      const resp = (data ?? {}) as { success?: boolean; credit?: string; error?: string };
+      if (error || resp.success !== true) {
+        toast.error('בדיקת 019 נכשלה', {
+          id: tId,
+          description: resp.error ?? error?.message ?? 'לא התקבלה תשובה מ-019',
+          duration: 8000,
+        });
+        return;
+      }
+      toast.success('חיבור 019 תקין', {
+        id: tId,
+        description: `תשובת 019: יתרה ${resp.credit ?? '—'} הודעות · משתמש ${effectiveUser}`,
+        duration: 6000,
+      });
+    } catch (e: any) {
+      toast.error('בדיקת 019 נכשלה', { id: tId, description: e?.message ?? 'שגיאה לא צפויה' });
+    } finally {
       setTesting(false);
-      toast.error('נדרשים שם משתמש 019 וטוקן שמור לפני בדיקה');
-      return;
     }
-    const { data, error } = await supabase.functions.invoke('test-sms-connection', {
-      body: { user: username.trim(), token: effectiveToken },
-    });
-    setTesting(false);
-    if (error || (data as any)?.success === false) {
-      toast.error('בדיקת 019 נכשלה', { description: (data as any)?.error ?? error?.message });
-      return;
-    }
-    toast.success(`חיבור 019 תקין · יתרה ${(data as any)?.credit ?? '—'}`);
   };
 
   if (loading) {
