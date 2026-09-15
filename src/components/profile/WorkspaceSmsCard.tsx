@@ -22,6 +22,9 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
   const [username, setUsername] = useState('');
   const [token, setToken] = useState('');
   const [hasToken, setHasToken] = useState(false);
+  // Token already stored for this workspace — used when the field shows the masked
+  // placeholder so "בדיקה" works without retyping the token.
+  const [savedToken, setSavedToken] = useState('');
   const [sender, setSender] = useState('');
 
   useEffect(() => {
@@ -36,6 +39,7 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
       if (cancelled) return;
       setUsername(String((data as any)?.username ?? ''));
       setSender(String((data as any)?.sender_id ?? ''));
+      setSavedToken(String((data as any)?.token ?? '').trim());
       setHasToken(!!String((data as any)?.token ?? '').trim());
       onStatus?.(((data as any)?.sender_id as string) ?? null);
       setLoading(false);
@@ -71,20 +75,33 @@ export function WorkspaceSmsCard({ onStatus }: { onStatus?: (sender: string | nu
       toast.error('שמירת הגדרות 019 נכשלה', { description: error.message });
       return;
     }
-    if (token.trim()) setHasToken(true);
+    if (token.trim()) { setSavedToken(token.trim()); setHasToken(true); }
     setToken('');
     onStatus?.(sender.trim());
     toast.success('מספר ה-019 של מרחב העבודה נשמר');
   };
 
   const test = async () => {
-    if (!username.trim() || !token.trim()) {
-      toast.error('להזנת בדיקה יש למלא שם משתמש וטוקן');
+    setTesting(true);
+    // Fall back to the stored token (field shows the masked "(שמור)" placeholder),
+    // re-reading it from the workspace settings if it isn't cached yet.
+    let effectiveToken = token.trim() || savedToken;
+    if (!effectiveToken && ownerId) {
+      const { data: row } = await supabase
+        .from('workspace_sms_settings')
+        .select('token, username')
+        .eq('workspace_owner_id', ownerId)
+        .maybeSingle();
+      effectiveToken = String((row as any)?.token ?? '').trim();
+      if (effectiveToken) setSavedToken(effectiveToken);
+    }
+    if (!username.trim() || !effectiveToken) {
+      setTesting(false);
+      toast.error('נדרשים שם משתמש 019 וטוקן שמור לפני בדיקה');
       return;
     }
-    setTesting(true);
     const { data, error } = await supabase.functions.invoke('test-sms-connection', {
-      body: { user: username.trim(), token: token.trim() },
+      body: { user: username.trim(), token: effectiveToken },
     });
     setTesting(false);
     if (error || (data as any)?.success === false) {
