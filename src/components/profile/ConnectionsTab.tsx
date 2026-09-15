@@ -536,6 +536,7 @@ export function ConnectionsTab() {
           open={openId === s.id}
           onToggle={() => toggle(s.id)}
           headerAside={s.headerAside}
+          bodyClassName={s.id === 'whatsapp' ? 'pt-0' : undefined}
           restricted={s.restricted}
         >
           {s.node}
