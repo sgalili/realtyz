@@ -460,13 +460,25 @@ Deno.serve(async (req) => {
     await admin.from("chat_history").insert({ lead_id: lead.id, role: "assistant", content: reply, is_demo: false });
   } catch { /* soft-fail */ }
 
+  console.log("[sms-inbound] Rita replied", {
+    lead_id: lead.id,
+    replied: sent.ok,
+    reply_kind: alreadyGreeted ? "rita_ai" : "greeting_whatsapp_switch",
+  });
+  };
+
+  const task = runRita().catch((e) =>
+    console.error("[sms-inbound] Rita task failed", e instanceof Error ? e.message : e)
+  );
+  const waitUntil = (globalThis as any).EdgeRuntime?.waitUntil;
+  if (typeof waitUntil === "function") waitUntil(task);
+  else await task;
+
   return json({
     ok: true,
     lead_id: lead.id,
     lead_created: createdLead,
     stored: true,
-    replied: sent.ok,
-    reply_kind: alreadyGreeted ? "rita_ai" : "greeting_whatsapp_switch",
-    error: sent.ok ? undefined : sent.error,
+    rita: "queued",
   });
 });
