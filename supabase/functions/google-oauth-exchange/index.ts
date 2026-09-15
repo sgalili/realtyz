@@ -670,19 +670,26 @@ async function handle(req: Request): Promise<Response> {
       };
 
       if (sibRow?.id) {
-        await admin.from('social_connections').update(sibUpd).eq('id', sibRow.id);
+        await admin.from('social_connections').update(sibUpd)
+          .eq('id', sibRow.id)
+          .eq('workspace_owner_id', workspaceOwnerId);
       } else {
         await admin.from('social_connections').upsert(sibUpd, { onConflict: 'workspace_owner_id,platform' });
       }
     }
 
+    console.info('[google-oauth-exchange] done', {
+      platform, workspace_owner_id: workspaceOwnerId, stored, skipped,
+    });
     return new Response(
       JSON.stringify({
         ok: true,
         identity,
         credential_source: credentialSource,
         sibling_synced: !!(body.one_click && sibling),
-        platforms_synced: platform === 'google_all' ? ['gmail', 'google_calendar', 'youtube'] : [platform],
+        workspace_owner_id: workspaceOwnerId,
+        platforms_synced: stored,
+        platforms_skipped: skipped,
       }),
       {
         status: 200,
