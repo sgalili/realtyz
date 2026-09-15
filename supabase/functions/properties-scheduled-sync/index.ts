@@ -1,10 +1,16 @@
 // properties-scheduled-sync
-// Twice-daily background inventory refresh. Pulls freshly published Yad2
-// (and Homely) listings for each workspace's own territory so the app can
-// stay LOCAL-FIRST: the /properties page never triggers a live scrape.
+// THE ONLY entry point that is allowed to spend Bright Data credits on Yad2.
 //
-// Invoked by pg_cron twice a day. Also callable manually with
-// { owner_id, cities } for a targeted run.
+// HARD RULES
+//  1. Exactly two scrape runs per day: 08:00 and 18:00 Asia/Jerusalem. The
+//     slot is claimed through `claim_market_scrape_slot()`, which refuses
+//     anything outside those hours and any second claim for the same slot.
+//     Every other call in the app reads the shared pool instead.
+//  2. Incremental only: each city + deal type keeps a watermark (the newest
+//     publication date already collected) so we never pay for known ads.
+//  3. Central first, then shared: rows land in `market_listings` and
+//     `share_market_listings()` distributes them to every workspace working
+//     in the same cities — no extra API calls per workspace.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
@@ -13,11 +19,9 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const DEFAULT_CITIES = ['הרצליה', 'רמת השרון'];
 const DEAL_TYPES: Array<'sale' | 'rent'> = ['sale', 'rent'];
-// Keep well under the 150s edge idle timeout even though work runs in the
-// background after the response is flushed.
+const MAX_CITIES = 8;
 const BUDGET_MS = 120_000;
 const FRESH_DAYS = 7;
-
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -41,83 +45,156 @@ async function callFunction(name: string, body: unknown) {
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-async function runSync(
-  admin: any,
-  requestedOwner: string | undefined,
-  requestedCities: string[] | undefined,
-) {
+/** Union of every workspace's service areas — one scrape serves them all. */
+async function resolveCities(admin: any, requested?: string[]): Promise<string[]> {
+  if (requested?.length) return requested.slice(0, MAX_CITIES);
+  const { data } = await admin.from('profiles').select('service_areas').limit(500);
+  const set = new Set<string>();
+  for (const row of data ?? []) {
+    const areas = Array.isArray((row as any)?.service_areas) ? (row as any).service_areas as string[] : [];
+    for (const a of areas) {
+      const city = String(a ?? '').includes(' - ') ? String(a).split(' - ')[0] : String(a ?? '');
+      const c = city.trim();
+      if (c) set.add(c);
+    }
+  }
+  for (const c of DEFAULT_CITIES) set.add(c);
+  return Array.from(set).slice(0, MAX_CITIES);
+}
+
+async function runSync(admin: any, token: string, cities: string[]) {
   const started = Date.now();
   const timeLeft = () => BUDGET_MS - (Date.now() - started);
+  let scraped = 0;
+  let newRows = 0;
+  let shared = 0;
+  const runStartedAt = new Date().toISOString();
 
-  let owners: string[] = [];
-  if (requestedOwner) {
-    owners = [requestedOwner];
-  } else {
-    const { data } = await admin.from('listings').select('user_id').not('user_id', 'is', null).limit(2000);
-    owners = Array.from(new Set((data ?? []).map((r: any) => r.user_id).filter(Boolean))).slice(0, 10);
-  }
-
-  for (const owner of owners) {
-    // Territory = the agent's configured service areas, else the house default.
-    let cities = requestedCities ?? DEFAULT_CITIES;
-    if (!requestedCities) {
-      const { data: prof } = await admin
-        .from('profiles').select('service_areas').eq('id', owner).maybeSingle();
-      const areas = Array.isArray((prof as any)?.service_areas) ? (prof as any).service_areas as string[] : [];
-      const derived = Array.from(new Set(areas.map((a) => (a.includes(' - ') ? a.split(' - ')[0] : a).trim()).filter(Boolean)));
-      if (derived.length) cities = derived.slice(0, 4);
-    }
-
+  try {
     for (const city of cities) {
       for (const deal of DEAL_TYPES) {
         if (timeLeft() < 20_000) {
-          console.log('[properties-scheduled-sync] budget exhausted, stopping', { owner, city, deal });
-          return;
+          console.log('[properties-scheduled-sync] budget exhausted', { city, deal });
+          break;
         }
+
+        const { data: state } = await admin
+          .from('market_scrape_state')
+          .select('id, watermark_published_at')
+          .eq('source', 'yad2').eq('city', city).eq('deal_type', deal)
+          .maybeSingle();
+        const since: string | null = (state as any)?.watermark_published_at ?? null;
+
         try {
           const d: any = await callFunction('yad2-unlocker', {
-            owner_id: owner,
             city,
             listing_type: deal,
             mode: 'search',
             limit: 40,
             pages: 1,
+            scrape_token: token,
+            since,
           });
-          console.log('[properties-scheduled-sync] synced', {
-            owner, city, deal,
-            count: Array.isArray(d?.results) ? d.results.length : 0,
-            error: d?.error ? String(d.detail ?? d.error).slice(0, 200) : undefined,
+          const count = Array.isArray(d?.results) ? d.results.length : 0;
+          scraped += Number(d?.records_scraped ?? count) || 0;
+          newRows += Number(d?.records_saved ?? 0) || 0;
+
+          const newest: string | null = d?.newest_published_at ?? null;
+          const watermark = newest && (!since || new Date(newest) > new Date(since)) ? newest : since;
+          const payload = {
+            source: 'yad2',
+            city,
+            deal_type: deal,
+            watermark_published_at: watermark,
+            last_run_at: new Date().toISOString(),
+            last_success_at: new Date().toISOString(),
+            last_new_count: Number(d?.records_saved ?? 0) || 0,
+          };
+          if ((state as any)?.id) {
+            await admin.from('market_scrape_state').update(payload).eq('id', (state as any).id);
+          } else {
+            await admin.from('market_scrape_state').insert(payload);
+          }
+
+          console.log('[properties-scheduled-sync] scraped', {
+            city, deal, count, saved: d?.records_saved ?? 0, skipped: d?.skipped_not_new ?? 0, since,
           });
         } catch (e) {
-          console.warn('[properties-scheduled-sync] failed', { owner, city, deal, error: (e as Error).message });
+          console.warn('[properties-scheduled-sync] failed', { city, deal, error: (e as Error).message });
+          await admin.from('market_scrape_state').upsert({
+            source: 'yad2', city, deal_type: deal, last_run_at: new Date().toISOString(),
+          }, { onConflict: 'source,city,deal_type' });
         }
       }
     }
+
+    // Distribute the fresh pool rows to every workspace in the same cities.
+    const { data: sharedCount, error: shareErr } = await admin.rpc('share_market_listings', {
+      _since: runStartedAt,
+    });
+    if (shareErr) console.error('[properties-scheduled-sync] share failed', shareErr.message);
+    shared = Number(sharedCount ?? 0) || 0;
+
+    // Homely runs on the same schedule so the whole inventory refresh is one job.
+    try {
+      await callFunction('homely-daily-sync', { reason: 'scheduled_slot' });
+    } catch (e) {
+      console.warn('[properties-scheduled-sync] homely sync failed', (e as Error).message);
+    }
+
+    await admin.rpc('finish_market_scrape_run', {
+      _token: token, _status: 'success', _scraped: scraped, _new_rows: newRows, _shared: shared,
+    });
+  } catch (e) {
+    await admin.rpc('finish_market_scrape_run', {
+      _token: token, _status: 'error', _scraped: scraped, _new_rows: newRows, _shared: shared,
+      _error: String((e as Error)?.message ?? e).slice(0, 500),
+    });
+    throw e;
   }
-  console.log('[properties-scheduled-sync] done', { owners: owners.length, elapsed_ms: Date.now() - started });
+
+  console.log('[properties-scheduled-sync] done', {
+    cities: cities.length, scraped, newRows, shared, elapsed_ms: Date.now() - started,
+  });
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-
   const body = await req.json().catch(() => ({} as any));
-  const requestedOwner: string | undefined = body?.owner_id ? String(body.owner_id) : undefined;
   const requestedCities: string[] | undefined = Array.isArray(body?.cities) && body.cities.length
     ? body.cities.map(String)
     : undefined;
 
-  // Freshness stats for the "new in the last 7 days" badge/counter.
-  const since = new Date(Date.now() - FRESH_DAYS * 864e5).toISOString();
+  // Freshness stats for the "new in the last 7 days" counter.
+  const freshSince = new Date(Date.now() - FRESH_DAYS * 864e5).toISOString();
   const { count: freshCount } = await admin
-    .from('listings')
+    .from('market_listings')
     .select('*', { count: 'exact', head: true })
-    .gte('created_at', since);
+    .gte('first_seen_at', freshSince);
 
-  // Scraping every city/deal-type inline blows past the 150s idle timeout, so
-  // the work continues after the response is flushed.
-  const task = runSync(admin, requestedOwner, requestedCities)
+  // RATE LIMIT: claim one of the two daily slots. Anything else is a no-op.
+  const { data: claim, error: claimErr } = await admin.rpc('claim_market_scrape_slot', { _source: 'yad2' });
+  if (claimErr) {
+    console.error('[properties-scheduled-sync] claim failed', claimErr.message);
+    return json({ ok: false, error: 'claim_failed', detail: claimErr.message }, 500);
+  }
+  const c: any = claim ?? {};
+  if (!c.allowed) {
+    console.log('[properties-scheduled-sync] slot not available', c);
+    return json({
+      ok: true,
+      queued: false,
+      skipped: true,
+      reason: c.reason ?? 'not_allowed',
+      detail: 'שאיבת נתונים מיד-2 מתבצעת פעמיים ביום בלבד — 08:00 ו-18:00.',
+      fresh_last_7_days: freshCount ?? 0,
+    });
+  }
+
+  const cities = await resolveCities(admin, requestedCities);
+  const task = runSync(admin, String(c.token), cities)
     .catch((e) => console.error('[properties-scheduled-sync] fatal', e));
   // @ts-ignore EdgeRuntime is provided by the Supabase edge runtime.
   if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(task);
@@ -125,7 +202,8 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     queued: true,
+    slot: c.slot,
+    cities,
     fresh_last_7_days: freshCount ?? 0,
   });
-
 });
