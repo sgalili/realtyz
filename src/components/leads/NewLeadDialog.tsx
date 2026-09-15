@@ -76,9 +76,15 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   /** Optional: pre-select the pipeline (used when launched from a Sale/Rent context). */
   defaultDealType?: 'sale' | 'rent';
+  /**
+   * Fired right after the contact is saved (created OR merged into an existing
+   * phone match). Lets a host flow — e.g. the New Tour dialog — pick up the
+   * fresh contact and continue filling its own form without a page change.
+   */
+  onCreated?: (lead: { id: string; full_name: string; phone_number: string; email: string | null }) => void;
 }
 
-export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 'sale' }: Props) {
+export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 'sale', onCreated }: Props) {
   const queryClient = useQueryClient();
   const { checkInArea, isConfigured, serviceAreas } = useServiceAreas();
   const activeWorkspaceId = useActiveWorkspaceOwnerId();
@@ -318,6 +324,14 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           ? `${fullName.trim()} · כבר היה במאגר עם אותו טלפון, הפרטים עודכנו`
           : `${fullName.trim()} · ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}`,
       });
+      if (created?.id) {
+        onCreated?.({
+          id: String(created.id),
+          full_name: fullName.trim(),
+          phone_number: normalizedPhone,
+          email: email.trim() || null,
+        });
+      }
       reset();
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ['leads'] });

@@ -2,9 +2,11 @@
  * NewTourDialog
  * -------------
  * End-to-end flow for scheduling a new property tour:
- * pick an existing contact (or type a new one) -> pick a property -> date & time
- * -> optional WhatsApp confirmation sent from the OFFICIAL Meta WBA number only
- * (see src/lib/officialWa.ts).
+ * pick an existing contact from the CRM (or create one on the spot with the +
+ * button inside the search field) -> pick a property (the list stays collapsed
+ * until the broker types a search) -> date & time -> optional WhatsApp
+ * confirmation and an optional digital-signature form, both sent from the
+ * OFFICIAL Meta WBA number only (see src/lib/officialWa.ts).
  */
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,11 +18,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Search } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, Plus, Search, X } from 'lucide-react';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { sendViaOfficialWaba } from '@/lib/officialWa';
+import { publicUrl } from '@/lib/publicUrl';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import NewLeadDialog from '@/components/leads/NewLeadDialog';
 
 type LeadOption = {
   id: string;
@@ -42,6 +47,15 @@ type ListingOption = {
   asking_price: number | null;
   deal_type: string | null;
 };
+
+/** Signature templates the broker can send to the client before the tour. */
+type SignatureTemplate = 'tour_agreement' | 'offer_letter' | 'lease_agreement';
+
+const SIGNATURE_FORMS: { value: SignatureTemplate; label: string }[] = [
+  { value: 'tour_agreement', label: 'הסכם סיור בנכס' },
+  { value: 'offer_letter', label: 'הצעת רכישה' },
+  { value: 'lease_agreement', label: 'חוזה שכירות' },
+];
 
 function listingPhoto(listing: ListingOption) {
   if (listing.image_url) return listing.image_url;
@@ -71,15 +85,15 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
   const [contactQuery, setContactQuery] = useState('');
   const [selectedLead, setSelectedLead] = useState<LeadOption | null>(null);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const [newContactOpen, setNewContactOpen] = useState(false);
   const [listingQuery, setListingQuery] = useState('');
   const [selectedListing, setSelectedListing] = useState<ListingOption | null>(null);
   const [date, setDate] = useState(defaultDate());
   const [time, setTime] = useState('17:00');
   const [notes, setNotes] = useState('');
   const [sendWa, setSendWa] = useState(true);
+  const [sendSignature, setSendSignature] = useState(false);
+  const [signatureForm, setSignatureForm] = useState<SignatureTemplate>('tour_agreement');
   const [saving, setSaving] = useState(false);
 
   const { data: leads = [] } = useQuery({
@@ -98,20 +112,21 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     },
   });
 
-  const { data: listings = [] } = useQuery({
-    queryKey: ['new-tour-listings', ownerId, listingQuery],
-    enabled: !!ownerId && open,
+  // The property list is intentionally search-driven: nothing loads (and
+  // nothing renders) until the broker types at least two characters.
+  const listingSearch = listingQuery.trim();
+  const { data: listings = [], isFetching: listingsLoading } = useQuery({
+    queryKey: ['new-tour-listings', ownerId, listingSearch],
+    enabled: !!ownerId && open && listingSearch.length >= 2,
     queryFn: async () => {
       if (!ownerId) return [];
-      let query = supabase
+      const { data } = await supabase
         .from('listings')
         .select('id, property_title, address, city, image_url, media_photos, rooms, sqm, asking_price, deal_type')
         .eq('workspace_owner_id', ownerId)
+        .or(`property_title.ilike.%${listingSearch}%,address.ilike.%${listingSearch}%,city.ilike.%${listingSearch}%`)
         .order('created_at', { ascending: false })
         .limit(8);
-      const q = listingQuery.trim();
-      if (q.length >= 2) query = query.or(`property_title.ilike.%${q}%,address.ilike.%${q}%,city.ilike.%${q}%`);
-      const { data } = await query;
       return (data ?? []) as ListingOption[];
     },
   });
@@ -123,44 +138,62 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
   const pickLead = (l: LeadOption) => {
     setSelectedLead(l);
-    setName(l.full_name ?? '');
-    setPhone(l.phone_number ?? '');
-    setEmail(l.email ?? '');
     setContactQuery('');
   };
 
   const reset = () => {
     setContactQuery('');
     setSelectedLead(null);
-    setName('');
-    setPhone('');
-    setEmail('');
     setListingQuery('');
     setSelectedListing(null);
     setDate(defaultDate());
     setTime('17:00');
     setNotes('');
     setSendWa(true);
+    setSendSignature(false);
+    setSignatureForm('tour_agreement');
+  };
+
+  /** Generates the chosen form and sends its secure signature link on WhatsApp. */
+  const sendSignatureForm = async (leadId: string, scheduledAt: Date) => {
+    const { data: gen, error: genErr } = await supabase.functions.invoke('generate-closing-doc', {
+      body: {
+        lead_id: leadId,
+        template_key: signatureForm,
+        listing_id: selectedListing?.id || undefined,
+        tour_date: signatureForm === 'tour_agreement' ? scheduledAt.toISOString() : undefined,
+      },
+    });
+    if (genErr) throw new Error(genErr.message || 'הפקת המסמך נכשלה');
+    const documentId = (gen as any)?.document_id;
+    if (!documentId) throw new Error('לא הוחזר מזהה מסמך');
+    const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-closing-doc', {
+      body: { document_id: documentId, site_url: publicUrl('').replace(/\/$/, '') },
+    });
+    if (sendErr) throw new Error(sendErr.message || 'שליחת המסמך נכשלה');
+    if ((sendRes as any)?.success === false) throw new Error((sendRes as any)?.error || 'שליחת המסמך נכשלה');
   };
 
   const submit = async () => {
     if (!ownerId) return;
-    if (!name.trim() || !phone.trim()) {
-      toast.error('נדרשים שם וטלפון של איש הקשר');
+    if (!selectedLead) {
+      toast.error('יש לבחור איש קשר מהמאגר או להוסיף חדש');
       return;
     }
     if (!date || !time) {
       toast.error('נדרשים תאריך ושעה לסיור');
       return;
     }
+    const name = (selectedLead.full_name || '').trim();
+    const phone = (selectedLead.phone_number || '').trim();
     setSaving(true);
     try {
       const scheduledAt = new Date(`${date}T${time}:00+03:00`);
       const { error } = await supabase.from('property_tours').insert({
         owner_id: ownerId,
-        client_name: name.trim(),
-        client_phone: phone.trim(),
-        client_email: email.trim() || null,
+        client_name: name,
+        client_phone: phone,
+        client_email: selectedLead.email || null,
         listing_id: selectedListing?.id ?? null,
         property_title: selectedListing?.property_title ?? null,
         property_address: [selectedListing?.address, selectedListing?.city].filter(Boolean).join(', ') || null,
@@ -182,10 +215,19 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         });
         const where = propertyLabel || 'הנכס';
         const res = await sendViaOfficialWaba({
-          phone_number: phone.trim(),
-          message: `שלום ${name.trim()}, קבענו סיור ב${where} ב${when}. נתראה!`,
+          phone_number: phone,
+          message: `שלום ${name}, קבענו סיור ב${where} ב${when}. נתראה!`,
         });
         if (!res.ok) toast.error(res.error || 'הסיור נשמר, אך שליחת האישור בוואטסאפ נכשלה');
+      }
+
+      if (sendSignature) {
+        try {
+          await sendSignatureForm(selectedLead.id, scheduledAt);
+          toast.success('הטופס לחתימה דיגיטלית נשלח בוואטסאפ');
+        } catch (e: any) {
+          toast.error('הסיור נשמר, אך שליחת הטופס לחתימה נכשלה', { description: e?.message });
+        }
       }
 
       toast.success('הסיור נקבע');
@@ -201,126 +243,217 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
-      <DialogContent dir="rtl" className="max-h-[90vh] max-w-lg overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>סיור חדש</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+        <DialogContent dir="rtl" className="max-h-[90vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>סיור חדש</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>איש קשר</Label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                className="pr-9"
-                placeholder="חיפוש לפי שם או טלפון"
-                value={contactQuery}
-                onChange={(e) => setContactQuery(e.target.value)}
-              />
-            </div>
-            {leads.length > 0 && contactQuery.trim().length >= 2 ? (
-              <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-1">
-                {leads.map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => pickLead(l)}
-                    className="flex w-full items-center gap-2 rounded-md p-2 text-right hover:bg-accent"
-                  >
-                    <ContactAvatar name={l.full_name ?? ''} imageUrl={l.profile_picture_url} className="h-8 w-8" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{l.full_name || 'ללא שם'}</span>
-                      <span className="block text-[12px] text-muted-foreground">{formatPhoneDisplay(l.phone_number)}</span>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>איש קשר</Label>
+              {selectedLead ? (
+                <div className="flex items-center gap-2 rounded-md border p-2">
+                  <ContactAvatar
+                    name={selectedLead.full_name ?? ''}
+                    imageUrl={selectedLead.profile_picture_url}
+                    className="h-8 w-8"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{selectedLead.full_name || 'ללא שם'}</span>
+                    <span className="block text-[14px] text-muted-foreground">
+                      {formatPhoneDisplay(selectedLead.phone_number)}
                     </span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="שם מלא" value={name} onChange={(e) => { setSelectedLead(null); setName(e.target.value); }} />
-              <Input placeholder="טלפון" value={phone} onChange={(e) => { setSelectedLead(null); setPhone(e.target.value); }} />
-            </div>
-            <Input placeholder="אימייל (לא חובה)" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-
-          <div className="space-y-2">
-            <Label>נכס</Label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pr-9"
-                placeholder="חיפוש נכס"
-                value={listingQuery}
-                onChange={(e) => setListingQuery(e.target.value)}
-              />
-            </div>
-            <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border p-1">
-              {listings.length === 0 ? (
-                <p className="p-2 text-[12px] text-muted-foreground">לא נמצאו נכסים</p>
+                  </span>
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedLead(null)} title="בחירת איש קשר אחר">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               ) : (
-                listings.map((p) => {
-                  const active = selectedListing?.id === p.id;
-                  const photo = listingPhoto(p);
-                  return (
-                    <button
-                      key={p.id}
+                <>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      className="pl-10 pr-9"
+                      placeholder="חיפוש לפי שם או טלפון"
+                      value={contactQuery}
+                      onChange={(e) => setContactQuery(e.target.value)}
+                    />
+                    <Button
                       type="button"
-                      onClick={() => setSelectedListing(active ? null : p)}
-                      className={`flex w-full items-center gap-2 rounded-md p-2 text-right ${active ? 'bg-primary/10 ring-1 ring-primary/40' : 'hover:bg-accent'}`}
+                      variant="ghost"
+                      size="icon"
+                      className="absolute left-1 top-1/2 h-7 w-7 -translate-y-1/2"
+                      title="הוספת איש קשר חדש"
+                      onClick={() => setNewContactOpen(true)}
                     >
-                      {photo ? (
-                        <img src={photo} alt={p.property_title} className="h-12 w-12 rounded-md object-cover" />
-                      ) : (
-                        <span className="h-12 w-12 rounded-md bg-muted" />
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{p.property_title}</span>
-                        <span className="block truncate text-[12px] text-muted-foreground">
-                          {[p.address, p.city].filter(Boolean).join(', ')}
-                        </span>
-                        <span className="block truncate text-[12px] text-muted-foreground">
-                          {p.deal_type === 'rent' ? 'להשכרה' : p.deal_type === 'sale' ? 'למכירה' : 'סוג עסקה לא צוין'} · {p.rooms ? `${p.rooms} חדרים` : 'חדרים לא צוינו'}{p.sqm ? ` · ${p.sqm} מ״ר` : ''} · {formatPrice(p.asking_price)}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {leads.length > 0 && contactQuery.trim().length >= 2 ? (
+                    <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-1">
+                      {leads.map((l) => (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => pickLead(l)}
+                          className="flex w-full items-center gap-2 rounded-md p-2 text-right hover:bg-accent"
+                        >
+                          <ContactAvatar name={l.full_name ?? ''} imageUrl={l.profile_picture_url} className="h-8 w-8" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">{l.full_name || 'ללא שם'}</span>
+                            <span className="block text-[14px] text-muted-foreground">{formatPhoneDisplay(l.phone_number)}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
               )}
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-2">
-              <Label>תאריך</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Label>נכס</Label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pr-9"
+                  placeholder="חיפוש נכס"
+                  value={listingQuery}
+                  onChange={(e) => setListingQuery(e.target.value)}
+                />
+              </div>
+              {selectedListing ? (
+                <div className="flex items-center gap-2 rounded-md border p-2">
+                  {listingPhoto(selectedListing) ? (
+                    <img
+                      src={listingPhoto(selectedListing) as string}
+                      alt={selectedListing.property_title}
+                      className="h-12 w-12 rounded-md object-cover"
+                    />
+                  ) : (
+                    <span className="h-12 w-12 rounded-md bg-muted" />
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{selectedListing.property_title}</span>
+                    <span className="block truncate text-[14px] text-muted-foreground">
+                      {[selectedListing.address, selectedListing.city].filter(Boolean).join(', ')}
+                    </span>
+                  </span>
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedListing(null)} title="הסרת הנכס">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : listingSearch.length >= 2 ? (
+                <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border p-1">
+                  {listingsLoading ? (
+                    <p className="p-2 text-[14px] text-muted-foreground">מחפש נכסים…</p>
+                  ) : listings.length === 0 ? (
+                    <p className="p-2 text-[14px] text-muted-foreground">לא נמצאו נכסים</p>
+                  ) : (
+                    listings.map((p) => {
+                      const photo = listingPhoto(p);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => { setSelectedListing(p); setListingQuery(''); }}
+                          className="flex w-full items-center gap-2 rounded-md p-2 text-right hover:bg-accent"
+                        >
+                          {photo ? (
+                            <img src={photo} alt={p.property_title} className="h-12 w-12 rounded-md object-cover" />
+                          ) : (
+                            <span className="h-12 w-12 rounded-md bg-muted" />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">{p.property_title}</span>
+                            <span className="block truncate text-[14px] text-muted-foreground">
+                              {[p.address, p.city].filter(Boolean).join(', ')}
+                            </span>
+                            <span className="block truncate text-[14px] text-muted-foreground">
+                              {p.deal_type === 'rent' ? 'להשכרה' : p.deal_type === 'sale' ? 'למכירה' : 'סוג עסקה לא צוין'} · {p.rooms ? `${p.rooms} חדרים` : 'חדרים לא צוינו'}{p.sqm ? ` · ${p.sqm} מ״ר` : ''} · {formatPrice(p.asking_price)}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              ) : (
+                <p className="text-[14px] text-muted-foreground">התחילו להקליד כדי לראות נכסים מתאימים</p>
+              )}
             </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label>תאריך</Label>
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>שעה</Label>
+                <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label>שעה</Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+              <Label>הערות</Label>
+              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="פרטים לסיור" />
+            </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={sendWa} onCheckedChange={(v) => setSendWa(!!v)} />
+              שליחת אישור בוואטסאפ
+            </label>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={sendSignature} onCheckedChange={(v) => setSendSignature(!!v)} />
+                שליחת טופס לחתימה דיגיטלית בוואטסאפ
+              </label>
+              {sendSignature ? (
+                <Select value={signatureForm} onValueChange={(v) => setSignatureForm(v as SignatureTemplate)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחירת טופס" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SIGNATURE_FORMS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>הערות</Label>
-            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="פרטים לסיור" />
-          </div>
+          <DialogFooter className="flex-row justify-between gap-2 space-x-0">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>ביטול</Button>
+            <Button onClick={submit} disabled={saving}>
+              {saving ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : null}
+              קביעת סיור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={sendWa} onCheckedChange={(v) => setSendWa(!!v)} />
-            שליחת אישור בוואטסאפ
-          </label>
-        </div>
-
-        <DialogFooter className="flex-row justify-between gap-2 space-x-0">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>ביטול</Button>
-          <Button onClick={submit} disabled={saving}>
-            {saving ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : null}
-            קביעת סיור
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {/* Blank CRM contact form opened by the + inside the search field. The tour
+          dialog stays open, so the broker keeps filling the tour right after. */}
+      <NewLeadDialog
+        open={newContactOpen}
+        onOpenChange={setNewContactOpen}
+        onCreated={(lead) => {
+          setSelectedLead({
+            id: lead.id,
+            full_name: lead.full_name,
+            phone_number: lead.phone_number,
+            email: lead.email,
+            profile_picture_url: null,
+          });
+          setContactQuery('');
+          setNewContactOpen(false);
+        }}
+      />
+    </>
   );
 }
 
