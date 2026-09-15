@@ -6,6 +6,16 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type Mode = 'official_meta' | 'qr_session';
 
