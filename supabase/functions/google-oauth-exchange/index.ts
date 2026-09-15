@@ -463,6 +463,10 @@ async function handle(req: Request): Promise<Response> {
     };
 
     let saveWarning: string | null = null;
+    /** Services whose own identity probe failed — never marked connected. */
+    const skipped: string[] = [];
+    /** Services actually bound to this workspace in this run. */
+    const stored: string[] = [];
 
     for (const targetPlatform of platformsToSync) {
       const { data: targetRow } = await admin
