@@ -172,12 +172,14 @@ export function WhatsAppGatewayCard() {
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-1.5">
-              <Button variant="outline" size="sm" onClick={openQr} disabled={busy}
-                className="px-2 text-xs whitespace-nowrap">
-                <QrCode className="ml-1 h-3.5 w-3.5" />
-                {connected ? 'חיבור מספר אחר' : 'סריקת QR'}
-              </Button>
+            <div className="flex items-center justify-center gap-1.5 p-0 m-0">
+              {personalSelected && (
+                <Button variant="outline" size="sm" onClick={openQr} disabled={busy}
+                  className="px-2 text-xs whitespace-nowrap">
+                  <QrCode className="ml-1 h-3.5 w-3.5" />
+                  {connected ? 'חיבור מספר אחר' : 'סריקת QR'}
+                </Button>
+              )}
               {connected && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
