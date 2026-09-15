@@ -280,10 +280,18 @@ export function ConnectionsTab() {
 
   const [sms019Sender, setSms019Sender] = useState<string | null>(null);
 
+  const waLive = !!(officialPhone || personalPhone || greenLive || waMode);
+
   const sections: Array<{ id: string; title: string; titleAside?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
     {
       id: 'meta',
       title: 'פייסבוק / אינסטגרם',
+      titleAside: (
+        <span className="flex items-center gap-1.5">
+          <BrandIcon name="facebook" className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !fbConnected && 'grayscale opacity-40')} />
+          <BrandIcon name="instagram" className={cn('h-5 w-5 shrink-0 text-[#E4405F]', !fbConnected && 'grayscale opacity-40')} />
+        </span>
+      ),
       status: metaStatus[0],
       tone: metaStatus[1],
       node: <MetaDirectConnectionCard onStatus={setMeta} />,
@@ -291,6 +299,9 @@ export function ConnectionsTab() {
     {
       id: 'whatsapp',
       title: 'ווטסאפ',
+      titleAside: (
+        <BrandIcon name="whatsapp" className={cn('h-5 w-5 shrink-0 text-[#25D366]', !waLive && 'grayscale opacity-40')} />
+      ),
       status: waStatus[0],
       tone: waStatus[1],
       node: (
