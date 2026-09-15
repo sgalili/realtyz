@@ -1771,7 +1771,7 @@ const LeadCRM = () => {
   const messageSentiment = getSentimentFromMessages(activeVoterMessages);
 
   return (
-    <div className="space-y-4 relative pb-20 pt-[10px]">
+    <div className="space-y-4 relative pb-20 pt-0">
       {/* Header + add menu live in the global PageHero (top bar) */}
 
 
