@@ -113,6 +113,63 @@ export async function searchLocalListings(f: SearchFilters): Promise<UnifiedResu
   return sortYad2First(await searchLocal(f));
 }
 
+/**
+ * SHARED MARKET POOL — the system-wide Yad2 index refreshed twice a day
+ * (08:00 / 18:00). Readable by every workspace, so inventory scraped once is
+ * instantly available to every workspace working in the same city, with zero
+ * extra external calls.
+ */
+export async function searchMarketPool(f: SearchFilters, limit = 200): Promise<UnifiedResult[]> {
+  let q = supabase
+    .from('market_listings')
+    .select('id, external_id, source_url, deal_type, title, description, address, city, neighborhood, price, rooms, sqm, floor, property_type, photos, published_at, first_seen_at, last_seen_at')
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  if (f.city && f.city !== 'כל הערים') q = q.ilike('city', `%${f.city}%`);
+  if (f.neighborhood) q = q.ilike('neighborhood', `%${f.neighborhood}%`);
+  if (f.listing_type && f.listing_type !== 'all') q = q.eq('deal_type', f.listing_type);
+  if (f.min_price != null) q = q.gte('price', f.min_price);
+  if (f.max_price != null) q = q.lte('price', f.max_price);
+  if (f.rooms != null) q = q.gte('rooms', f.rooms);
+  if (f.min_sqm != null) q = q.gte('sqm', f.min_sqm);
+  for (const t of tokenize(f.q)) {
+    const like = `%${t}%`;
+    q = q.or(`title.ilike.${like},address.ilike.${like},city.ilike.${like},neighborhood.ilike.${like},description.ilike.${like}`);
+  }
+
+  const { data, error } = await q;
+  if (error) {
+    console.warn('[propertySearch] market pool query failed', error.message);
+    return [];
+  }
+  return (data ?? []).map((row: any): UnifiedResult => {
+    const price = normPhone(row.price);
+    return {
+      key: `pool:${row.id}`,
+      source: 'yad2',
+      sources: ['yad2'],
+      localId: null,
+      title: row.title || 'נכס',
+      description: row.description ?? null,
+      price,
+      city: row.city ?? null,
+      address: row.address ?? row.neighborhood ?? null,
+      neighborhood: row.neighborhood ?? null,
+      rooms: row.rooms != null ? Number(row.rooms) : null,
+      size_sqm: sanitizeSqm(row.sqm),
+      floor: row.floor != null ? Number(row.floor) : null,
+      photos: normalizeImageUrls(Array.isArray(row.photos) ? row.photos.filter((p: any) => typeof p === 'string') : []),
+      url: row.source_url ?? null,
+      listing_type: inferListingType(price, row.deal_type),
+      property_type: row.property_type ?? null,
+      updated_at: row.last_seen_at ?? null,
+      created_at: row.published_at ?? row.first_seen_at ?? null,
+      raw: row,
+    };
+  });
+}
+
 async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
   let q = supabase
     .from('listings')
