@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -88,6 +88,12 @@ export function GoogleServiceConnectCard({
   accountEmail?: string | null;
 }) {
   const [configError, setConfigError] = useState(false);
+  // Flipped the instant the broker confirms the disconnect dialog, so the
+  // "מחובר" label and the unlink button are replaced by the connect button
+  // immediately — without waiting for a refetch or a page refresh.
+  const [justDisconnected, setJustDisconnected] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const queryClient = useQueryClient();
   // Google links live per workspace: reads, writes and disconnects are all
   // filtered by the ACTIVE workspace so offices never affect each other.
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
@@ -124,7 +130,7 @@ export function GoogleServiceConnectCard({
     creds.user_email ??
     accountEmail ??
     null;
-  const liveConnected = !!data?.is_connected;
+  const liveConnected = !!data?.is_connected && !justDisconnected;
   // A connected service stays connected in the UI until the broker disconnects
   // it explicitly — a pending query or a transient failure never flips it back.
   useEffect(() => {
@@ -135,17 +141,25 @@ export function GoogleServiceConnectCard({
       } catch { /* storage may be unavailable */ }
     }
   }, [liveConnected, platform, credEmail]);
-  const connected = liveConnected || isRememberedConnected(platform);
-  const accountLabel = credEmail ?? rememberedLabel(platform);
+  const connected = justDisconnected
+    ? false
+    : liveConnected
+      || isRememberedConnected(platform)
+      || isRememberedConnected(platform, workspaceOwnerId);
+  const accountLabel = connected ? (credEmail ?? rememberedLabel(platform)) : null;
 
   /** Explicit, user-initiated disconnect — the only way to clear the status. */
   const disconnect = async () => {
+    if (!workspaceOwnerId) {
+      toast.error('לא זוהה משרד פעיל');
+      return;
+    }
+    setDisconnecting(true);
+    // Optimistic: the row switches to the connect button the moment the broker
+    // confirms, and stays that way even if the refetch is slow.
+    setJustDisconnected(true);
     try {
-      if (!workspaceOwnerId) {
-        toast.error('לא זוהה משרד פעיל');
-        return;
-      }
-      // Disconnect only within the active workspace — id + workspace_owner_id.
+      // Disconnect only within the active workspace — platform + workspace.
       const { error } = await supabase
         .from('social_connections')
         .update({
@@ -159,14 +173,25 @@ export function GoogleServiceConnectCard({
         .eq('workspace_owner_id', workspaceOwnerId)
         .eq('is_connected', true);
       if (error) throw error;
+      // Clear BOTH sticky scopes: the card remembers under the default scope,
+      // the collapsed header under the active workspace id.
       forgetConnected(platform);
+      forgetConnected(platform, workspaceOwnerId);
       try {
         window.localStorage.setItem(`realtyz:google-explicit-disconnect:${platform}`, '1');
       } catch { /* storage may be unavailable */ }
       toast.success('החיבור נותק');
-      refetch();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['google-service-conn', platform] }),
+        queryClient.invalidateQueries({ queryKey: ['google-services-status'] }),
+        queryClient.invalidateQueries({ queryKey: ['google-calendar-conn'] }),
+      ]);
+      await refetch();
     } catch {
+      setJustDisconnected(false);
       toast.error('הניתוק נכשל, נסו שוב');
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -180,6 +205,7 @@ export function GoogleServiceConnectCard({
         });
         if (error || !(resp as any)?.ok) throw new Error((resp as any)?.error || error?.message || 'נכשל');
         const connectedEmail = (resp as any).identity?.email ?? null;
+        setJustDisconnected(false);
         rememberConnected(platform, null, connectedEmail);
         try {
           window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
@@ -218,6 +244,7 @@ export function GoogleServiceConnectCard({
   useEffect(() => {
     const unsubscribe = onOAuthResult(platform, (res) => {
       if (res.ok) {
+        setJustDisconnected(false);
         rememberConnected(platform, null, res.name || null);
         try {
           window.localStorage.removeItem(`realtyz:google-explicit-disconnect:${platform}`);
@@ -322,8 +349,11 @@ export function GoogleServiceConnectCard({
                   style={{ color: 'hsl(0 72% 45%)', borderColor: 'hsl(0 72% 70%)' }}
                   aria-label="ניתוק החיבור"
                   title="ניתוק החיבור"
+                  disabled={disconnecting}
                 >
-                  <Unlink className="h-4 w-4" />
+                  {disconnecting
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Unlink className="h-4 w-4" />}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent dir="rtl" className="text-right">
