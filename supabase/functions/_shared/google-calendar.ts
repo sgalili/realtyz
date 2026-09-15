@@ -226,3 +226,55 @@ export async function createCalendarEvent(opts: {
     json.conferenceData?.entryPoints?.find((e: any) => e.entryPointType === 'video')?.uri;
   return { id: json.id as string, htmlLink: json.htmlLink, meetLink };
 }
+
+/**
+ * Patch an existing Google Calendar event so app-side edits (new time, title,
+ * description, location) are mirrored instantly instead of creating a twin.
+ */
+export async function updateCalendarEvent(opts: {
+  accessToken: string;
+  calendarId: string;
+  timezone: string;
+  eventId: string;
+  summary?: string;
+  description?: string;
+  startISO?: string;
+  endISO?: string;
+  location?: string;
+  status?: 'confirmed' | 'cancelled';
+}): Promise<{ id: string; htmlLink?: string } | { error: string }> {
+  const body: any = {};
+  if (opts.summary !== undefined) body.summary = opts.summary;
+  if (opts.description !== undefined) body.description = opts.description;
+  if (opts.location !== undefined) body.location = opts.location;
+  if (opts.status !== undefined) body.status = opts.status;
+  if (opts.startISO) body.start = { dateTime: opts.startISO, timeZone: opts.timezone };
+  if (opts.endISO) body.end = { dateTime: opts.endISO, timeZone: opts.timezone };
+
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(opts.calendarId)}/events/${encodeURIComponent(opts.eventId)}?sendUpdates=all`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${opts.accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) return { error: json.error?.message || `events.patch ${res.status}` };
+  return { id: json.id as string, htmlLink: json.htmlLink };
+}
+
+/** Remove an event from Google Calendar (used when an item is cancelled/deleted). */
+export async function deleteCalendarEvent(opts: {
+  accessToken: string;
+  calendarId: string;
+  eventId: string;
+}): Promise<{ ok: true } | { error: string }> {
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(opts.calendarId)}/events/${encodeURIComponent(opts.eventId)}?sendUpdates=all`,
+    { method: 'DELETE', headers: { Authorization: `Bearer ${opts.accessToken}` } },
+  );
+  if (res.ok || res.status === 404 || res.status === 410) return { ok: true };
+  const json = await res.json().catch(() => ({}));
+  return { error: json.error?.message || `events.delete ${res.status}` };
+}
