@@ -23,6 +23,7 @@ export function PropertyPreviewDialog({
   onCampaign,
   importing,
   fullAddress,
+  navyPrice = false,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -30,6 +31,7 @@ export function PropertyPreviewDialog({
   onCampaign?: (r: UnifiedResult) => void;
   importing?: boolean;
   fullAddress?: string | null;
+  navyPrice?: boolean;
 }) {
   // Lazy full-gallery + rich metadata: the heavy per-property fetch only runs
   // when the user opens the details card. Nothing is written to the DB here —
@@ -107,7 +109,7 @@ export function PropertyPreviewDialog({
             )}
 
             <div className="flex items-baseline justify-between gap-3 flex-wrap">
-              <div className="text-2xl font-bold text-success inline-flex items-center gap-2">
+              <div className={`text-2xl font-bold inline-flex items-center gap-2 ${navyPrice ? 'text-brand-navy' : 'text-success'}`}>
                 <Building2 className="h-5 w-5 opacity-60" />
                 {r.price ? (
                   <>

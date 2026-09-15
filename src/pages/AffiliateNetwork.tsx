@@ -239,12 +239,13 @@ export default function AffiliateNetwork() {
   const [previewing, setPreviewing] = useState<BrokerAffiliateListing | null>(null);
 
   useEffect(() => {
+    if (listingsLoading || refsLoading || subsLoading) return;
     const stored = sessionStorage.getItem(AFFILIATE_SCROLL_KEY);
     if (!stored) return;
     sessionStorage.removeItem(AFFILIATE_SCROLL_KEY);
     const top = Number(stored);
     if (Number.isFinite(top)) requestAnimationFrame(() => window.scrollTo({ top, behavior: 'auto' }));
-  }, []);
+  }, [listingsLoading, refsLoading, subsLoading]);
 
   const openLead = (leadId: string) => {
     sessionStorage.setItem(AFFILIATE_SCROLL_KEY, String(window.scrollY));
@@ -590,6 +591,7 @@ export default function AffiliateNetwork() {
           onOpenChange={(open) => !open && setPreviewing(null)}
           result={previewing ? toUnifiedResult(previewing) : null}
           fullAddress={previewing ? propertyFullAddress(previewing) : null}
+          navyPrice
         />
       </div>
     </>
