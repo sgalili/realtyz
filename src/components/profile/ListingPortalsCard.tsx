@@ -35,7 +35,7 @@ const PORTALS: Portal[] = [
   {
     id: 'yad2',
     label: 'יד2',
-    description: 'סנכרון נכסים ולידים מ-yad2.co.il באמצעות Bright Data',
+    description: '\n',
     link: 'https://www.yad2.co.il/',
     fields: [
       { col: 'brightdata_api_token', label: 'Bright Data API Token', type: 'password', dir: 'ltr', placeholder: 'bd_xxxxxxxx' },

@@ -38,26 +38,26 @@ export function BrightDataBalanceWidget({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-primary" />
-          <span className="text-xs font-semibold">יתרת קרדיט Bright Data</span>
+          <span className="text-xs font-semibold">{"\n"}</span>
           {low && (
             <Badge variant="outline" className="text-amber-700 border-amber-300 gap-1">
               <AlertTriangle className="h-3 w-3" /> יתרה נמוכה
             </Badge>
           )}
           {data?.zone_status === 'active' && (
-            <Badge variant="outline" className="text-emerald-700 border-emerald-300">Zone פעיל</Badge>
+            <Badge variant="outline" className="text-emerald-700 border-emerald-300">פעיל</Badge>
           )}
         </div>
         <div className="flex items-center gap-1">
         <Button size="sm" variant="ghost" asChild className="h-7 gap-1 px-2">
           <a href="https://brightdata.com/cp/billing_flow?id=hl_2432c380&type=top_up" target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-3.5 w-3.5" />
-            <span className="text-xs">טעינת קרדיט</span>
+            <span className="text-xs">{"\n"}</span>
           </a>
         </Button>
         <Button size="sm" variant="ghost" onClick={onRefresh} disabled={loading} className="h-7 gap-1 px-2">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          <span className="text-xs">רענון</span>
+          <span className="text-xs">{"\n"}</span>
         </Button>
         </div>
       </div>
