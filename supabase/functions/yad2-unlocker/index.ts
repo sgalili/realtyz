@@ -2314,6 +2314,13 @@ Deno.serve(async (req) => {
       records_saved: saved,
       results: rows,
       save_errors: saveErrors,
+      served_from: poolMode ? "brightdata_scheduled" : "brightdata",
+      newest_published_at: rows.reduce<string | null>((acc, r) => {
+        const p = r.published_at ?? null;
+        if (!p) return acc;
+        return !acc || new Date(p).getTime() > new Date(acc).getTime() ? p : acc;
+      }, null),
+      skipped_not_new: skippedNotNew,
       mode: isItemUrl ? "item" : "search",
       transport: mode,
       json_source: jsonSource,
