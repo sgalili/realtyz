@@ -33,6 +33,7 @@ const DEFAULTS: PlatformSettings = {
   ai_paused: false,
   ai_paused_reason: null,
   ai_paused_at: null,
+  extra: {},
 };
 
 export function usePlatformSettings() {
