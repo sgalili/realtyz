@@ -4501,6 +4501,18 @@ const PublishedFeed = ({
   const connectedChannelsRef = useRef(connectedChannels);
   useEffect(() => { connectedChannelsRef.current = connectedChannels; }, [connectedChannels]);
 
+  // The authoritative Facebook connection state is the effective Page binding in
+  // the database (own page, or the platform-shared one). The cached channel flag
+  // can lag behind it, which used to raise a bogus "reconnect" banner on refresh.
+  const { data: effectiveMetaPage } = useMetaPageBinding();
+  const effectiveMetaPageRef = useRef(effectiveMetaPage);
+  useEffect(() => { effectiveMetaPageRef.current = effectiveMetaPage; }, [effectiveMetaPage]);
+  /** True when a live Facebook Page with a usable token is bound right now. */
+  const facebookIsLive = () =>
+    !!effectiveMetaPageRef.current?.pageId && effectiveMetaPageRef.current?.hasToken !== false
+      ? true
+      : connectedChannelsRef.current.has('facebook');
+
   useEffect(() => {
     const handleDisconnect = () => {
       clearCachedFacebookChannel(workspaceOwnerId);
