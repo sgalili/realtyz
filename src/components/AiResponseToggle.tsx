@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAutoFlags } from '@/hooks/useAutoFlags';
 import { cn } from '@/lib/utils';
-import { RitaAvatar } from '@/components/RitaAvatar';
+import { Bot } from 'lucide-react';
 
 /**
  * Collapsed robot button for the page hero.
@@ -29,13 +29,11 @@ export function AiResponseToggle() {
           title="מענה AI"
           aria-label="מענה AI"
           className={cn(
-            'h-9 w-9 rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-white/40',
-            active
-              ? 'border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 hover:text-white'
-              : 'border-muted-foreground/30 bg-muted/40 text-muted-foreground opacity-60 grayscale hover:bg-muted/60 hover:text-muted-foreground'
+            'h-9 w-9 rounded-full transition-colors text-white hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40',
+            active ? 'opacity-100' : 'opacity-60'
           )}
         >
-          <RitaAvatar className="h-7 w-7 border-0 ring-0" />
+          <Bot className="!h-5 !w-5" strokeWidth={2.5} />
         </Button>
       </PopoverTrigger>
       <PopoverContent

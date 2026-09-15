@@ -325,7 +325,7 @@ export function PageHero() {
         style={{ minHeight: "65px", paddingTop: "10px", paddingBottom: "10px" }}
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
-        <div className="flex items-center gap-1" style={{ marginRight: "-15px" }}>
+        <div className="flex items-center gap-1">
           {(location.pathname.startsWith("/campaigns") || location.pathname.startsWith("/inbox")) && (
             <AiResponseToggle />
           )}
@@ -334,7 +334,7 @@ export function PageHero() {
         </div>
 
         {/* Absolute-centered page title — locked to screen center */}
-        <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap pt-[10px] pb-[20px] text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
+        <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
           {displayTitle}
         </h1>
 
