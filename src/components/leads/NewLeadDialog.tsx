@@ -324,6 +324,14 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           ? `${fullName.trim()} · כבר היה במאגר עם אותו טלפון, הפרטים עודכנו`
           : `${fullName.trim()} · ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}`,
       });
+      if (created?.id) {
+        onCreated?.({
+          id: String(created.id),
+          full_name: fullName.trim(),
+          phone_number: normalizedPhone,
+          email: email.trim() || null,
+        });
+      }
       reset();
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
