@@ -1,220 +1,90 @@
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useCallback, useEffect, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { MessageCircle, Save, Loader2, CheckCircle2, ImageDown, QrCode, PlusCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, QrCode, Unlink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
-import { useWaAvatarSync } from '@/hooks/useWaAvatarSync';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 /**
- * Quick-update card for Green API WhatsApp gateway credentials.
- * Lives on /profile so the account owner can rotate the WA Instance
- * without diving into the full Settings → API page.
+ * Personal WhatsApp number for the active workspace, linked by scanning a QR
+ * code. A workspace owns exactly ONE personal instance: the instance is created
+ * automatically the first time the user asks for a QR code, so there are no
+ * manual Instance ID / API Token fields and no "add instance" action.
  *
- * On save (or successful test) we ALSO upsert a `social_connections`
- * row for `whatsapp_green` with `is_connected = true` so every
- * WA-aware surface across the app (inbox composer, deal-room reply,
- * campaign center, SMS/blast simulator, dashboard channel pills,
- * SocialConnectionsTab) immediately treats this account as a live
- * WhatsApp gateway instead of showing the controls as disabled.
+ * Profile-image syncing lives exclusively in the CRM page menu.
  */
 export function WhatsAppGatewayCard() {
-  const [instanceId, setInstanceId] = useState('');
-  const [token, setToken] = useState('');
-  const [waPhone, setWaPhone] = useState<string>('');
+  const ownerId = useActiveWorkspaceOwnerId();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [status, setStatus] = useState<'unknown' | 'ok' | 'err'>('unknown');
-  const [syncingAvatars, setSyncingAvatars] = useState(false);
+  const [instanceId, setInstanceId] = useState('');
+  const [phone, setPhone] = useState('');
+  const [status, setStatus] = useState<'connected' | 'pending' | 'disconnected' | 'error'>('disconnected');
   const [qrOpen, setQrOpen] = useState(false);
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
-  const [qrNote, setQrNote] = useState<string>('');
-  const [creating, setCreating] = useState(false);
-  const avatarSync = useWaAvatarSync();
+  const [qrNote, setQrNote] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('manage-api-configs', { method: 'GET' });
-        if (error) throw error;
-        const row = (data as any[])?.find((r) => r.service_name === 'Green API');
-        if (row?.api_key) {
-          const parts = String(row.api_key).split(':');
-          setInstanceId(parts[0] ?? '');
-          setToken(parts.slice(1).join(':'));
-        }
-      } catch {
-        /* silent — user will just enter fresh values */
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const load = useCallback(async () => {
+    if (!ownerId) { setLoading(false); return; }
+    const { data } = await supabase
+      .from('workspace_whatsapp_settings' as never)
+      .select('green_api_instance_id, qr_status, qr_phone')
+      .eq('workspace_owner_id', ownerId)
+      .maybeSingle();
+    const row = data as any;
+    setInstanceId(String(row?.green_api_instance_id ?? ''));
+    setPhone(String(row?.qr_phone ?? ''));
+    const st = String(row?.qr_status ?? 'disconnected');
+    setStatus(st === 'connected' || st === 'pending' || st === 'error' ? (st as any) : 'disconnected');
+    setLoading(false);
+  }, [ownerId]);
 
-  // Probe phone once creds are populated.
-  useEffect(() => {
-    if (!loading && instanceId && token && !waPhone) {
-      probePhone();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, instanceId, token]);
+  useEffect(() => { void load(); }, [load]);
 
-  const upsertSocialConnection = async (waState: 'authorized' | 'unknown') => {
-    try {
-      await supabase
-        .from('social_connections')
-        .upsert(
-          {
-            platform: 'whatsapp_green',
-            display_name: `WhatsApp · Instance ${instanceId.trim()}`,
-            is_connected: waState === 'authorized',
-            credentials: {
-              manual: {
-                instance_id: instanceId.trim(),
-                api_token: token.trim(),
-                token: token.trim(),
-                wa_state: waState,
-              },
-              wa_state: waState,
-              instance_id: instanceId.trim(),
-              token: token.trim(),
-              api_token: token.trim(),
-            },
-            connected_at: waState === 'authorized' ? new Date().toISOString() : null,
-            last_test_at: new Date().toISOString(),
-            last_test_status: waState === 'authorized' ? 'ok' : 'unknown',
-          } as any,
-          { onConflict: 'platform' },
-        );
-    } catch {
-      /* non-fatal: send-whatsapp's api_configs fallback still works */
-    }
-  };
-
-  const probePhone = async (): Promise<void> => {
-    try {
-      const res = await fetch(
-        `https://api.green-api.com/waInstance${instanceId.trim()}/getWaSettings/${token.trim()}`,
-      );
-      const data = await res.json().catch(() => ({}));
-      const wid: string = data?.wid ?? data?.phone ?? '';
-      const digits = String(wid).replace(/\D/g, '');
-      if (digits) setWaPhone(digits);
-    } catch { /* ignore */ }
-  };
-
-  const probeState = async (): Promise<'authorized' | 'unknown'> => {
-    try {
-      const res = await fetch(
-        `https://api.green-api.com/waInstance${instanceId.trim()}/getStateInstance/${token.trim()}`,
-      );
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.stateInstance === 'authorized') {
-        probePhone();
-        return 'authorized';
-      }
-    } catch { /* ignore */ }
-    return 'unknown';
-  };
-
-  const save = async () => {
-    if (!instanceId.trim() || !token.trim()) {
-      toast.error('יש למלא Instance ID ו-API Token');
-      return;
-    }
-    setSaving(true);
-    try {
-      const { error } = await supabase.functions.invoke('manage-api-configs', {
-        method: 'POST',
-        body: {
-          service_name: 'Green API',
-          api_key: `${instanceId.trim()}:${token.trim()}`,
-          is_active: true,
-        },
-      });
-      if (error) throw error;
-      const state = await probeState();
-      await upsertSocialConnection(state);
-      if (state === 'authorized') setStatus('ok');
-      toast.success(
-        state === 'authorized'
-          ? 'פרטי WhatsApp נשמרו והחיבור הופעל בכל הרכיבים במערכת'
-          : 'פרטי WhatsApp נשמרו (המתן לאישור המכשיר ולאחר מכן לחץ בדיקת חיבור)',
-      );
-    } catch (e: any) {
-      toast.error(`שמירה נכשלה: ${e?.message ?? e}`);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const test = async () => {
-    if (!instanceId.trim() || !token.trim()) {
-      toast.error('יש למלא קודם Instance ID ו-API Token');
-      return;
-    }
-    setTesting(true);
-    setStatus('unknown');
-    try {
-      const state = await probeState();
-      if (state === 'authorized') {
-        setStatus('ok');
-        await upsertSocialConnection('authorized');
-        toast.success('✅ חיבור Green API תקין · WhatsApp פעיל בכל הרכיבים');
-      } else {
-        setStatus('err');
-        await upsertSocialConnection('unknown');
-        toast.error('חיבור Green API לא מאומת. סרוק את ה-QR בלוח הבקרה של Green API ונסה שוב.');
-      }
-    } catch (e: any) {
-      setStatus('err');
-      toast.error(`בדיקה נכשלה: ${e?.message ?? e}`);
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  // Background sweep: keeps running on the server even if the user navigates
-  // away mid-sync, and the hook re-attaches to the live job on return.
-  const syncAvatars = async (force = false) => {
-    setSyncingAvatars(true);
-    try {
-      const res = await avatarSync.start(force);
-      if (res.supported === false) return; // silent circuit-breaker
-      toast.success('סנכרון תמונות הפרופיל התחיל · ימשיך לרוץ גם אם תעבור למסך אחר');
-    } finally {
-      setSyncingAvatars(false);
-    }
-  };
-
-
-  /** Pulls a live QR code from Green API (server-side) and polls until linked. */
+  /** Opens the QR dialog, provisioning the workspace instance when missing. */
   const openQr = async () => {
-    if (!instanceId.trim() || !token.trim()) {
-      toast.error('יש למלא Instance ID ו-API Token לפני סריקת QR');
-      return;
-    }
     setQrOpen(true);
     setQrImage(null);
     setQrNote('');
     setQrLoading(true);
     try {
+      if (!instanceId) {
+        const { data, error } = await supabase.functions.invoke('greenapi-session', {
+          body: { action: 'create_instance' },
+        });
+        if (error) throw error;
+        const newId = (data as any)?.instance_id;
+        if (!newId) {
+          setQrNote((data as any)?.error ?? 'לא ניתן ליצור חיבור אישי כרגע');
+          setQrLoading(false);
+          return;
+        }
+        setInstanceId(String(newId));
+      }
       const { data, error } = await supabase.functions.invoke('greenapi-session', {
-        body: { action: 'qr', instance_id: instanceId.trim(), token: token.trim() },
+        body: { action: 'qr' },
       });
       if (error) throw error;
       if ((data as any)?.status === 'connected') {
+        setStatus('connected');
+        if ((data as any)?.phone) setPhone(String((data as any).phone).replace(/\D/g, ''));
         setQrNote('המספר כבר מחובר. לחיבור מספר אחר יש להתנתק קודם.');
-        setStatus('ok');
-        if ((data as any)?.phone) setWaPhone(String((data as any).phone).replace(/\D/g, ''));
-        await upsertSocialConnection('authorized');
       } else if ((data as any)?.qr_image) {
         setQrImage(String((data as any).qr_image));
       } else {
@@ -227,177 +97,103 @@ export function WhatsAppGatewayCard() {
     }
   };
 
-  // While the QR dialog is open, poll the live state so the card flips to
-  // "פעיל" the moment the user finishes scanning.
+  // Poll while the dialog is open so the card flips to "מחובר" right after scan.
   useEffect(() => {
-    if (!qrOpen || !instanceId || !token) return;
+    if (!qrOpen) return;
     const timer = setInterval(async () => {
       try {
-        const { data } = await supabase.functions.invoke('greenapi-session', {
-          body: { action: 'status', instance_id: instanceId.trim(), token: token.trim() },
-        });
+        const { data } = await supabase.functions.invoke('greenapi-session', { body: { action: 'status' } });
         if ((data as any)?.status === 'connected') {
-          setStatus('ok');
-          if ((data as any)?.phone) setWaPhone(String((data as any).phone).replace(/\D/g, ''));
-          await upsertSocialConnection('authorized');
+          setStatus('connected');
+          if ((data as any)?.phone) setPhone(String((data as any).phone).replace(/\D/g, ''));
           setQrOpen(false);
-          toast.success('WhatsApp חובר בהצלחה');
+          toast.success('המספר האישי חובר בהצלחה');
+          void load();
         }
       } catch { /* keep polling */ }
     }, 5000);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qrOpen, instanceId, token]);
+  }, [qrOpen, load]);
 
-  /** Creates a fresh Green API instance automatically (Partner API). */
-  const createInstance = async () => {
-    setCreating(true);
+  const disconnect = async () => {
+    setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke('greenapi-session', {
-        body: { action: 'create_instance' },
-      });
-      if (error) throw error;
-      const newId = (data as any)?.instance_id;
-      const newToken = (data as any)?.token;
-      if (!newId || !newToken) {
-        toast.error((data as any)?.error ?? 'יצירת מכונה נכשלה');
-        return;
-      }
-      setInstanceId(String(newId));
-      setToken(String(newToken));
-      setWaPhone('');
-      setStatus('unknown');
-      await supabase.functions.invoke('manage-api-configs', {
-        method: 'POST',
-        body: { service_name: 'Green API', api_key: `${newId}:${newToken}`, is_active: true },
-      });
-      toast.success('מכונה חדשה נוצרה ונשמרה · כעת סרוק את קוד ה-QR');
-      setTimeout(() => { void openQr(); }, 400);
+      await supabase.functions.invoke('greenapi-session', { body: { action: 'logout' } });
+      setStatus('disconnected');
+      setPhone('');
+      toast.success('המספר האישי נותק');
+      void load();
     } catch (e: any) {
-      toast.error(`יצירת מכונה נכשלה: ${e?.message ?? e}`);
+      toast.error(`הניתוק נכשל: ${e?.message ?? e}`);
     } finally {
-      setCreating(false);
+      setBusy(false);
     }
   };
 
+  const connected = status === 'connected';
+
   return (
-    <Card dir="rtl" className="text-right">
-      <CardHeader>
-        <CardTitle className="text-right flex items-center gap-2 justify-end">
-          {status === 'ok' && (
-            <Badge className="gap-1 rounded-full border-0 bg-emerald-600 px-3 py-1 text-[12px] font-bold text-white hover:bg-emerald-700">
-              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.75} /> פעיל
-            </Badge>
-          )}
-          <span>מספר אישי בסריקת QR (Green API)</span>
-          <MessageCircle className="h-5 w-5 text-emerald-600" />
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-
-
-        <div className="space-y-1.5">
-          <Label className="text-right block">מספר WhatsApp מחובר</Label>
-          <Input
-            dir="ltr"
-            readOnly
-            value={waPhone ? formatPhoneDisplay(waPhone) : ''}
-            className="bg-muted/40"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="wa-instance" className="text-right block">Instance ID</Label>
-          <Input
-            id="wa-instance"
-            dir="ltr"
-            placeholder="7103164675"
-            value={instanceId}
-            onChange={(e) => setInstanceId(e.target.value)}
-            disabled={loading}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="wa-token" className="text-right block">API Token</Label>
-          <Input
-            id="wa-token"
-            dir="ltr"
-            type="password"
-            placeholder="••••••••••••••••"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            disabled={loading}
-          />
-        </div>
-
-        {avatarSync.active && (
-          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="tabular-nums">{avatarSync.percent}%</span>
-              <span>
-                מסנכרן תמונות פרופיל · {avatarSync.job?.scanned ?? 0}/{avatarSync.job?.total ?? 0}
-                {' · עודכנו '}{avatarSync.job?.updated ?? 0}
-              </span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full bg-emerald-500 transition-all"
-                style={{ width: `${avatarSync.percent}%` }}
-              />
-            </div>
-            <p className="text-[11px]">הסנכרון ממשיך ברקע גם אם תעבור למסך אחר.</p>
+    <Card dir="rtl" className="border-0 bg-transparent text-right shadow-none">
+      <CardContent className="space-y-3 p-0">
+        {loading ? (
+          <div className="flex h-16 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
           </div>
-        )}
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">
+              מספר ווטסאפ אישי אחד לכל מרחב עבודה. החיבור נוצר אוטומטית ברגע שסורקים את קוד ה-QR.
+            </p>
 
-        <div className="flex items-center gap-1.5 justify-end pt-1 flex-nowrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => syncAvatars(false)}
-            disabled={syncingAvatars || avatarSync.active || loading}
-            title="משוך תמונות פרופיל מ-WhatsApp לכל אנשי הקשר החסרים תמונה"
-            className="px-2 text-xs whitespace-nowrap"
-          >
-            {syncingAvatars || avatarSync.active ? (
-              <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <ImageDown className="ml-1 h-3.5 w-3.5" />
+            {connected && (
+              <div className="space-y-1 rounded-lg border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge className="gap-1 rounded-full border-0 bg-emerald-600 px-3 py-1 text-[12px] font-bold text-white hover:bg-emerald-700">
+                    <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.75} /> מחובר
+                  </Badge>
+                  <span className="text-sm font-medium" dir="ltr">
+                    {phone ? formatPhoneDisplay(phone) : '—'}
+                  </span>
+                </div>
+                {instanceId && (
+                  <p className="text-[11px] text-muted-foreground" dir="ltr">
+                    Instance {instanceId}
+                  </p>
+                )}
+              </div>
             )}
-            תמונות
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={createInstance}
-            disabled={creating || loading}
-            title="צור מכונת Green API חדשה אוטומטית"
-            className="px-2 text-xs whitespace-nowrap"
-          >
-            {creating ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <PlusCircle className="ml-1 h-3.5 w-3.5" />}
-            חיבור
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={openQr}
-            disabled={loading}
-            className="px-2 text-xs whitespace-nowrap"
-          >
-            <QrCode className="ml-1 h-3.5 w-3.5" />
-            QR
-          </Button>
-          <Button variant="outline" size="sm" onClick={test} disabled={testing || loading}
-            className="px-2 text-xs whitespace-nowrap">
-            {testing ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : null}
-            בדיקה
-          </Button>
-          <Button size="sm" onClick={save} disabled={saving || loading}
-            className="px-2 text-xs whitespace-nowrap">
-            {saving ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <Save className="ml-1 h-3.5 w-3.5" />}
-            שמירה
-          </Button>
-        </div>
+
+            <div className="flex items-center justify-end gap-1.5">
+              <Button variant="outline" size="sm" onClick={openQr} disabled={busy}
+                className="px-2 text-xs whitespace-nowrap">
+                <QrCode className="ml-1 h-3.5 w-3.5" />
+                {connected ? 'חיבור מספר אחר' : 'סריקת QR'}
+              </Button>
+              {connected && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" disabled={busy}
+                      className="px-2 text-xs text-destructive hover:text-destructive">
+                      <Unlink className="h-3.5 w-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent dir="rtl" className="text-right">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>לנתק את המספר האישי?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        ההודעות במרחב העבודה יפסיקו להישלח ולהתקבל מהמספר הזה עד לחיבור מחדש.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>ביטול</AlertDialogCancel>
+                      <AlertDialogAction onClick={disconnect}>ניתוק</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          </>
+        )}
       </CardContent>
 
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
