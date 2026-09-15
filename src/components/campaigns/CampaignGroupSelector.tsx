@@ -7,6 +7,7 @@ import { fbGroupId, fbGroupUrl, fbGroupUrlFrom } from "@/lib/fbGroupUrl";
 import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
+import { useMetaPageBinding } from "@/hooks/useMetaPageBinding";
 
 export type FacebookGroup = {
   group_id: string;
@@ -33,6 +34,7 @@ type Props = {
  */
 export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Props) => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const { data: pageBinding } = useMetaPageBinding();
   const [groups, setGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncNote, setSyncNote] = useState<string | null>(null);
@@ -59,14 +61,18 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     try {
       const { data } = await (supabase as any)
         .from("fb_user_groups")
-        .select("group_id, group_name, group_icon, group_url, member_count, is_selected")
+        .select("group_id, group_name, group_icon, group_url, member_count, is_selected, page_id")
         // Workspace-scoped: every member of this workspace sees the same groups.
         .eq("workspace_owner_id", workspaceOwnerId)
         // Only groups the broker approved in the connections screen are targets.
         .neq("is_selected", false)
         .order("group_name", { ascending: true });
+      // TENANT ISOLATION: skip groups bound to a Facebook page this workspace
+      // is not connected to.
+      const connectedPage = pageBinding?.pageId ?? null;
       for (const r of (data ?? []) as any[]) {
         if (!r?.group_id) continue;
+        if (r.page_id && connectedPage && String(r.page_id) !== connectedPage) continue;
         byId.set(String(r.group_id), mapRow(r));
       }
     } catch { /* Graph cache unavailable — manual groups still render */ }
