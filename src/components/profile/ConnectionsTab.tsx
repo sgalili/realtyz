@@ -54,9 +54,23 @@ function StatusPill({ label, tone }: { label: string; tone: Tone }) {
  * Inner card chrome (border + its own header) is neutralized so the section
  * header is the single source of truth for the title.
  */
+/** Official multicolor Google "G" mark. */
+function GoogleGMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={cn('h-5 w-5 shrink-0', className)} aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2.5 24 .5 14.6.5 6.5 5.8 2.6 13.6l7.8 6.1C12.3 13.7 17.6 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.1 24.5c0-1.6-.15-3.1-.42-4.6H24v9.1h12.4c-.55 2.9-2.2 5.3-4.6 7l7.6 5.9c4.4-4.1 6.7-10.1 6.7-17.4z" />
+      <path fill="#FBBC05" d="M10.4 28.3A14.6 14.6 0 0 1 9.6 24c0-1.5.27-2.95.77-4.3l-7.8-6.1A23.9 23.9 0 0 0 0 24c0 3.85.92 7.5 2.6 10.7l7.8-6.4z" />
+      <path fill="#34A853" d="M24 47.5c6.2 0 11.5-2.05 15.4-5.6l-7.6-5.9c-2.1 1.4-4.8 2.25-7.8 2.25-6.4 0-11.7-4.2-13.6-10.2l-7.8 6.4C6.5 42.2 14.6 47.5 24 47.5z" />
+    </svg>
+  );
+}
+
 function ConnectionSection({
   title,
   titleAside,
+  titleLead,
+  titleNode,
   status,
   tone,
   open,
