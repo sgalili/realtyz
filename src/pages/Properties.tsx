@@ -40,7 +40,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
 import { PropertyNotesBlock } from '@/components/properties/PropertyNotesBlock';
 import { usePropertyNotesByListing } from '@/hooks/usePropertyNotes';
-import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
+import { searchAllSources, searchLocalListings, searchMarketPool, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { sourcePhotoCount } from '@/lib/photoCount';
 import { stripAddressNumbers } from '@/lib/formatAddress';
