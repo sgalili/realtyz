@@ -380,15 +380,17 @@ export default function AffiliatePortal() {
           </TabsList>
 
           <TabsContent value="marketplace" className="space-y-4 pt-4">
+            <h2 className="text-xl font-bold text-slate-900">נכסים לשיווק</h2>
             <div className="relative max-w-sm">
-              <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
-                placeholder="חיפוש לפי כותרת, כתובת או עיר"
+                placeholder="חיפוש נכסים לשיווק"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pe-9"
+                className="ps-9"
               />
             </div>
+
 
             {marketLoading ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
