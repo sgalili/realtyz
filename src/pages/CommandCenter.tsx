@@ -62,6 +62,13 @@ import {
   useScheduledDemosCount,
 } from '@/components/tasks/IncomingLeadsPanel';
 
+/** Urgency is communicated by the card border colour instead of a label. */
+const PRIORITY_BORDER: Record<CommandTask['priority'], string> = {
+  high: 'border-destructive',
+  medium: 'border-amber-500',
+  low: 'border-border',
+};
+
 const PRIORITY_STYLE: Record<CommandTask['priority'], string> = {
   high: 'bg-destructive/10 text-destructive ring-1 ring-destructive/20',
   medium: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
@@ -272,7 +279,7 @@ export default function CommandCenter() {
     return (
       <li
         key={cardKey}
-        className="w-full rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent/40"
+        className={`w-full rounded-lg border-2 bg-card p-3 transition-colors hover:bg-accent/40 ${PRIORITY_BORDER[task.priority]}`}
       >
         <div className="flex items-start gap-2">
           <button
@@ -294,10 +301,8 @@ export default function CommandCenter() {
                   {task.leadName}
                 </span>
               )}
+              {/* Urgency is shown by the card border colour, not by a label. */}
               <span className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-2 py-0.5 text-[13px] font-semibold ${PRIORITY_STYLE[task.priority]}`}>
-                  {PRIORITY_LABEL[task.priority]}
-                </span>
                 <span className="break-words text-base font-semibold">{task.title}</span>
                 {task.actionType && task.source !== 'note' && (
                   <Badge variant="secondary" className="text-[13px]">
