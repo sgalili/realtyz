@@ -593,7 +593,6 @@ Deno.serve(async (req) => {
     for (const r of providerRows ?? []) {
       if (r.is_active && r.api_key) providers.set(r.service_name, r.api_key);
     }
-    const sms019Raw = providers.get("019 SMS");
     const greenRaw = providers.get("Green API");
     const fromAddress = "Realtyz <updates@realtyz.co.il>"; // legacy display only
 
@@ -633,7 +632,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           providers: {
-            sms: !!(sms019Creds && sms019Creds.length >= 2 && sms019Creds[0] && sms019Creds.slice(1).join(":")),
+            sms: smsReady,
             whatsapp: whatsappReady,
             email: gmailReady || resendReady,
             voice: false,
@@ -861,16 +860,9 @@ Deno.serve(async (req) => {
       if (channel === "sms") {
         const local = toLocalIL(row.recipient_phone);
         if (!local) result = { ok: false, failure_reason: "missing_phone" };
-        else if (!sms019Creds || sms019Creds.length < 2)
+        else if (!smsReady)
           result = { ok: false, failure_reason: "provider_not_configured" };
-        else
-          result = await sendSms019(
-            sms019Creds[0],
-            sms019Creds.slice(1).join(":"),
-            local,
-            message,
-            "Realtyz",
-          );
+        else result = await sendSmsWorkspace(admin, local, message, ownerUserId);
       } else if (channel === "whatsapp") {
         const intl = toIntlIL(row.recipient_phone);
         if (!intl) result = { ok: false, failure_reason: "missing_phone" };
@@ -966,7 +958,7 @@ Deno.serve(async (req) => {
 
       // Source account labeling for non-email channels (email already set above).
       if (!sourceAccount) {
-        if (channel === "sms") sourceAccount = sms019Creds?.[0] ? `019 / ${sms019Creds[0]}` : "019 SMS";
+        if (channel === "sms") sourceAccount = sms019Cfg?.username ? `019 / ${sms019Cfg.username}` : "019 SMS";
         else if (channel === "whatsapp") {
           sourceAccount = campaignWaTemplate
             ? `Meta WABA / template:${campaignWaTemplate.name}`
