@@ -55,10 +55,13 @@ export const NOTE_ACTION_LABEL: Record<string, string> = {
 
 export function useCommandCenterTasks() {
   const { user } = useAuth();
+  // Every query is filtered by the ACTIVE workspace so nothing from another
+  // workspace can ever appear here, even for super admins.
+  const ownerId = useActiveWorkspaceOwnerId();
 
   return useQuery({
-    queryKey: ['command-center-tasks', user?.id ?? 'anon'],
-    enabled: !!user,
+    queryKey: ['command-center-tasks', user?.id ?? 'anon', ownerId ?? 'none'],
+    enabled: !!user && !!ownerId,
     staleTime: 0,
     refetchOnMount: 'always',
     refetchInterval: 15_000,
@@ -67,17 +70,20 @@ export function useCommandCenterTasks() {
         (supabase as any)
           .from('scheduled_items')
           .select('id, title, content, item_type, status, scheduled_for, metadata')
+          .eq('workspace_owner_id', ownerId)
           .order('scheduled_for', { ascending: true })
           .limit(300),
         (supabase as any)
           .from('meetings')
           .select('id, title, description, starts_at, status, lead_id, lead_name, lead_phone')
+          .eq('workspace_owner_id', ownerId)
           .gte('starts_at', new Date(Date.now() - 12 * 3600_000).toISOString())
           .order('starts_at', { ascending: true })
           .limit(100),
         (supabase as any)
           .from('interaction_activity_log')
           .select('id, action_type, platform, content, metadata, created_at')
+          .eq('workspace_owner_id', ownerId)
           .in('action_type', ['note', 'interaction'])
           .order('created_at', { ascending: false })
           .limit(60),
