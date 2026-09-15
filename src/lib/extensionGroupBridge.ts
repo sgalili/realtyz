@@ -71,8 +71,23 @@ export const normalizeExtensionGroups = (input: any): ExtensionGroup[] => {
     .filter((g) => (seen.has(g.group_id) ? false : (seen.add(g.group_id), true)));
 };
 
-export const readExtensionGroups = (): ExtensionGroup[] => {
+/**
+ * TENANT ISOLATION: `EXT_GROUPS_STORAGE_KEY` is a browser-level inbox the
+ * extension writes into — it is NOT workspace state. Every cached copy is kept
+ * under a per-workspace key, and the shared inbox is consumed (cleared) as soon
+ * as a workspace takes it, so switching workspaces can never surface another
+ * workspace's Facebook groups.
+ */
+const ownerCacheKey = (owner: string) => `${EXT_GROUPS_STORAGE_KEY}:${owner}`;
+
+export const readExtensionGroups = (owner?: string | null): ExtensionGroup[] => {
   try {
+    if (owner) {
+      const own = localStorage.getItem(ownerCacheKey(owner));
+      if (own) return normalizeExtensionGroups(JSON.parse(own));
+      const inbox = localStorage.getItem(EXT_GROUPS_STORAGE_KEY);
+      return inbox ? normalizeExtensionGroups(JSON.parse(inbox)) : [];
+    }
     const raw = localStorage.getItem(EXT_GROUPS_STORAGE_KEY);
     return raw ? normalizeExtensionGroups(JSON.parse(raw)) : [];
   } catch {
@@ -80,8 +95,14 @@ export const readExtensionGroups = (): ExtensionGroup[] => {
   }
 };
 
-export const writeExtensionGroups = (groups: ExtensionGroup[]) => {
+export const writeExtensionGroups = (groups: ExtensionGroup[], owner?: string | null) => {
   try {
+    if (owner) {
+      localStorage.setItem(ownerCacheKey(owner), JSON.stringify(groups));
+      // Consume the shared inbox so no other workspace can read this push.
+      localStorage.removeItem(EXT_GROUPS_STORAGE_KEY);
+      return;
+    }
     localStorage.setItem(EXT_GROUPS_STORAGE_KEY, JSON.stringify(groups));
   } catch {
     /* noop */
