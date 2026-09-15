@@ -163,19 +163,26 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin } = useUserRole();
+  const { isSuperAdmin, isAffiliateOnly } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
+  const { isPartnerMode } = useAppMode();
 
   // Navigation follows the ACTIVE workspace: Rita's marketing workspace hides
   // properties, deals and partners; every other workspace shows them all.
+  // In partner ("שותף") mode — or for an affiliate-only account — only the
+  // affiliate screens are listed.
   const features = useWorkspaceFeatures();
-  const navItems = useMemo(() => NAV_ITEMS.filter((item) => {
-    if (item.url === '/properties') return features.listingsEnabled;
-    if (item.url === '/deal-room') return features.dealsEnabled;
-    if (item.url === '/affiliate-network') return features.partnersEnabled;
-    return true;
-  }), [features]);
+  const affiliateOnlyNav = isPartnerMode || isAffiliateOnly;
+  const navItems = useMemo(() => {
+    if (affiliateOnlyNav) return PARTNER_NAV_ITEMS;
+    return NAV_ITEMS.filter((item) => {
+      if (item.url === '/properties') return features.listingsEnabled;
+      if (item.url === '/deal-room') return features.dealsEnabled;
+      if (item.url === '/affiliate-network') return features.partnersEnabled;
+      return true;
+    });
+  }, [features, affiliateOnlyNav]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
