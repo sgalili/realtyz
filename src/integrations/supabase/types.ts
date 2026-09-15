@@ -2354,6 +2354,53 @@ export type Database = {
           },
         ]
       }
+      engagement_message_log: {
+        Row: {
+          created_at: string
+          dedupe_key: string
+          error: string | null
+          id: string
+          job_name: string
+          lead_id: string | null
+          message: string | null
+          phone_number: string | null
+          status: string
+          workspace_owner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key: string
+          error?: string | null
+          id?: string
+          job_name: string
+          lead_id?: string | null
+          message?: string | null
+          phone_number?: string | null
+          status?: string
+          workspace_owner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string
+          error?: string | null
+          id?: string
+          job_name?: string
+          lead_id?: string | null
+          message?: string | null
+          phone_number?: string | null
+          status?: string
+          workspace_owner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_message_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       error_logs: {
         Row: {
           context: Json | null
@@ -2894,6 +2941,36 @@ export type Database = {
         }
         Relationships: []
       }
+      holiday_greetings: {
+        Row: {
+          created_at: string
+          greeting_date: string
+          holiday_name: string
+          id: string
+          is_active: boolean
+          message_template: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          greeting_date: string
+          holiday_name: string
+          id?: string
+          is_active?: boolean
+          message_template: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          greeting_date?: string
+          holiday_name?: string
+          id?: string
+          is_active?: boolean
+          message_template?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       homely_broker_credentials: {
         Row: {
           connection_status: string
@@ -3373,6 +3450,7 @@ export type Database = {
           agency_name: string | null
           ai_autopilot: boolean | null
           assigned_to: string | null
+          birth_date: string | null
           city: string | null
           commission_amount: number | null
           commission_currency: string | null
@@ -3398,6 +3476,7 @@ export type Database = {
           is_voted: boolean | null
           last_interaction_at: string | null
           lead_stage: string
+          lease_end_date: string | null
           linked_listing_id: string | null
           loss_reason: string | null
           loss_reason_note: string | null
@@ -3427,6 +3506,7 @@ export type Database = {
           agency_name?: string | null
           ai_autopilot?: boolean | null
           assigned_to?: string | null
+          birth_date?: string | null
           city?: string | null
           commission_amount?: number | null
           commission_currency?: string | null
@@ -3452,6 +3532,7 @@ export type Database = {
           is_voted?: boolean | null
           last_interaction_at?: string | null
           lead_stage?: string
+          lease_end_date?: string | null
           linked_listing_id?: string | null
           loss_reason?: string | null
           loss_reason_note?: string | null
@@ -3481,6 +3562,7 @@ export type Database = {
           agency_name?: string | null
           ai_autopilot?: boolean | null
           assigned_to?: string | null
+          birth_date?: string | null
           city?: string | null
           commission_amount?: number | null
           commission_currency?: string | null
@@ -3506,6 +3588,7 @@ export type Database = {
           is_voted?: boolean | null
           last_interaction_at?: string | null
           lead_stage?: string
+          lease_end_date?: string | null
           linked_listing_id?: string | null
           loss_reason?: string | null
           loss_reason_note?: string | null
@@ -4896,6 +4979,8 @@ export type Database = {
           client_name: string
           client_phone: string
           created_at: string
+          feedback_sent: boolean
+          feedback_sent_at: string | null
           google_event_id: string | null
           google_event_link: string | null
           id: string
@@ -4919,6 +5004,8 @@ export type Database = {
           client_name: string
           client_phone: string
           created_at?: string
+          feedback_sent?: boolean
+          feedback_sent_at?: string | null
           google_event_id?: string | null
           google_event_link?: string | null
           id?: string
@@ -4942,6 +5029,8 @@ export type Database = {
           client_name?: string
           client_phone?: string
           created_at?: string
+          feedback_sent?: boolean
+          feedback_sent_at?: string | null
           google_event_id?: string | null
           google_event_link?: string | null
           id?: string
