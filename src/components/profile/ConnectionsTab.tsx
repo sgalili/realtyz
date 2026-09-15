@@ -398,6 +398,7 @@ export function ConnectionsTab() {
     {
       id: 'google',
       title: 'גוגל',
+      titleLead: <GoogleGMark className={someGoogleConnected ? undefined : 'grayscale opacity-40'} />,
       headerAside: (
         <span className="flex items-center gap-1.5" aria-label="שירותי Google">
           <GoogleBrandGlyph brand="gmail" connected={connectedGoogle.has('gmail') || isRememberedConnected('gmail', activeWorkspaceId)} />
