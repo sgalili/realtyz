@@ -3121,9 +3121,12 @@ const ConfirmDispatchDialog = ({
         return [id, bare, `ext:${bare}`];
       })));
       try {
+        // TENANT ISOLATION: only this workspace's own imported groups.
+        if (!workspaceOwnerId) { setGroupStats({ known: 0, members: 0 }); setGroupMetaMap({}); return; }
         const { data } = await (supabase as any)
           .from('fb_user_groups')
           .select('group_id, group_name, group_url, member_count')
+          .eq('workspace_owner_id', workspaceOwnerId)
           .in('group_id', ids);
         const rows = (data || []) as any[];
         const members = rows.reduce((sum, r) => sum + (Number(r?.member_count) || 0), 0);
