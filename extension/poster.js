@@ -166,8 +166,36 @@
 
 
 
+  /* ── Execution guards ────────────────────────────────────────────────────
+   * Nothing here may ever fire on its own. Every action requires an explicit
+   * job from the app (with an id), and the current URL must be a legitimate
+   * target: a group for posting, a real post permalink for commenting.
+   * The personal newsfeed, personal profile, watch and marketplace are hard
+   * blocked so the automation can never loop over private content. */
+  const BLOCKED_CONTEXT = /^\/(?:$|\?|home|profile\.php|me\/?$|watch|marketplace|reels|stories|messages|notifications|friends|bookmarks|settings|gaming)/i;
+  const GROUP_CONTEXT = /^\/groups\/[^/]+/i;
+  const POST_CONTEXT = /(?:\/posts\/|\/permalink|permalink\.php|story_fbid=|multi_permalinks=|pfbid|\/photo|\/videos\/|comment_id=)/i;
+
+  const contextOf = () => `${location.pathname}${location.search}`;
+
+  const groupContextOk = () => GROUP_CONTEXT.test(location.pathname) && !BLOCKED_CONTEXT.test(location.pathname);
+  const postContextOk = () => POST_CONTEXT.test(contextOf()) && !BLOCKED_CONTEXT.test(location.pathname);
+
+  /* One run per job id inside this tab, forever. */
+  const doneJobs = new Set();
+  const claimJob = (job) => {
+    const id = String((job && job.id) || '').trim();
+    if (!id) return null;
+    if (doneJobs.has(id)) return null;
+    doneJobs.add(id);
+    return id;
+  };
+
   async function postToGroup(job) {
     if (isLoggedOut()) return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' };
+    if (!groupContextOk()) {
+      return { ok: false, reason: 'הפעולה בוטלה: העמוד הפתוח אינו קבוצת פייסבוק' };
+    }
 
     // 1. open the composer
     let box = textbox();
