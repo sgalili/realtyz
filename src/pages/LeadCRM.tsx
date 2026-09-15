@@ -636,17 +636,34 @@ const LeadCRM = () => {
     return () => clearTimeout(searchTimerRef.current);
   }, [search]);
 
+  // Kick off a full WhatsApp profile-picture sweep for the active workspace.
+  const handleSyncProfilePictures = async () => {
+    toast.info('מסנכרנת תמונות פרופיל…');
+    try {
+      const { error } = await supabase.functions.invoke('fetch-wa-avatars', {
+        body: { limit: 2000, owner_id: activeWorkspaceId, force: true },
+      });
+      if (error) throw error;
+      toast.success('סנכרון תמונות הפרופיל הושלם');
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+    } catch (err: any) {
+      toast.error('סנכרון תמונות הפרופיל נכשל: ' + (err?.message || 'שגיאה לא ידועה'));
+    }
+  };
+
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
   useEffect(() => {
     const handler = (e: Event) => {
-      const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' }>).detail?.action;
+      const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' | 'avatars' }>).detail?.action;
       if (action === 'manual') setAddVoterOpen(true);
       else if (action === 'import') fileInputRef.current?.click();
       else if (action === 'homely') handleHomelySync();
+      else if (action === 'avatars') handleSyncProfilePictures();
     };
     window.addEventListener('leads:add', handler);
     return () => window.removeEventListener('leads:add', handler);
   }, []);
+
 
   useRealtimeSubscription('messages', [['lead-messages', selectedVoterId ?? '']]);
 
