@@ -5198,6 +5198,7 @@ export type Database = {
           platform: string
           session_method: string | null
           updated_at: string
+          workspace_owner_id: string | null
         }
         Insert: {
           connected_at?: string | null
@@ -5214,6 +5215,7 @@ export type Database = {
           platform: string
           session_method?: string | null
           updated_at?: string
+          workspace_owner_id?: string | null
         }
         Update: {
           connected_at?: string | null
@@ -5230,6 +5232,7 @@ export type Database = {
           platform?: string
           session_method?: string | null
           updated_at?: string
+          workspace_owner_id?: string | null
         }
         Relationships: []
       }

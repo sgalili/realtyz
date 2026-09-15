@@ -48,10 +48,16 @@ export async function connectedGoogleServices(): Promise<Set<string>> {
   const { data: auth } = await supabase.auth.getUser();
   const userId = auth?.user?.id;
   if (!userId) return new Set<string>();
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('active_workspace_owner_id')
+    .eq('id', userId)
+    .maybeSingle();
+  const wsOwner = (prof as any)?.active_workspace_owner_id ?? userId;
   const { data } = await supabase
     .from('social_connections')
     .select('platform, is_connected')
-    .eq('created_by', userId)
+    .eq('workspace_owner_id', wsOwner)
     .in('platform', ['gmail', 'google_calendar', 'youtube']);
   return new Set((data ?? []).filter((r: any) => r.is_connected).map((r: any) => String(r.platform)));
 }

@@ -253,11 +253,21 @@ async function handle(req: Request): Promise<Response> {
     // Pull saved BYOK credentials — strictly scoped to the calling user so
     // we never accidentally write OAuth tokens onto another user's row.
     const callerUserId = userData.user.id;
+    // Google links are per WORKSPACE: resolve the caller's active workspace and
+    // scope every read/write to it so one office never touches another's rows.
+    const { data: callerProfile } = await admin
+      .from('profiles')
+      .select('active_workspace_owner_id')
+      .eq('id', callerUserId)
+      .maybeSingle();
+    const workspaceOwnerId =
+      (callerProfile as { active_workspace_owner_id?: string } | null)?.active_workspace_owner_id ??
+      callerUserId;
     const { data: row } = await admin
       .from('social_connections')
       .select('id, credentials, display_name')
       .eq('platform', platform)
-      .eq('created_by', callerUserId)
+      .eq('workspace_owner_id', workspaceOwnerId)
       .maybeSingle();
 
     const manual = ((row?.credentials as any)?.manual ?? {}) as {
@@ -321,7 +331,7 @@ async function handle(req: Request): Promise<Response> {
           last_test_message: `Code exchange failed: ${tokens.error}`,
         })
         .eq('platform', platform)
-        .eq('created_by', callerUserId);
+        .eq('workspace_owner_id', workspaceOwnerId);
       return new Response(JSON.stringify({ ok: false, error: tokens.error, code: 'token_exchange_failed', redirect_uri_used: redirectUri }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -347,7 +357,7 @@ async function handle(req: Request): Promise<Response> {
           last_test_message: identity.error,
         })
         .eq('platform', platform === 'google_all' ? 'gmail' : platform)
-        .eq('created_by', callerUserId);
+        .eq('workspace_owner_id', workspaceOwnerId);
       return new Response(
         JSON.stringify({ ok: false, error: identity.error, google_status: identity.status, code: 'identity_failed' }),
         {
@@ -378,7 +388,7 @@ async function handle(req: Request): Promise<Response> {
         .from('social_connections')
         .select('id, credentials, display_name, is_connected')
         .eq('platform', targetPlatform)
-        .eq('created_by', callerUserId)
+        .eq('workspace_owner_id', workspaceOwnerId)
         .maybeSingle();
 
       // Smart persistence: an automatic bundle sign-in (google_all) must NEVER
@@ -419,6 +429,7 @@ async function handle(req: Request): Promise<Response> {
       const upd = {
         platform: targetPlatform,
         created_by: callerUserId,
+        workspace_owner_id: workspaceOwnerId,
         display_name: targetRow?.display_name ?? displayNameFor(targetPlatform),
         credentials: newCreds,
         encrypted_session: sessionMarker,
@@ -473,7 +484,7 @@ async function handle(req: Request): Promise<Response> {
         .from('social_connections')
         .select('id, credentials, display_name')
         .eq('platform', sibling)
-        .eq('created_by', callerUserId)
+        .eq('workspace_owner_id', workspaceOwnerId)
         .maybeSingle();
 
       const sibPrev = (sibRow?.credentials as Record<string, unknown> | null) ?? {};
@@ -499,6 +510,7 @@ async function handle(req: Request): Promise<Response> {
       const sibUpd = {
         platform: sibling,
         created_by: callerUserId,
+        workspace_owner_id: workspaceOwnerId,
         display_name:
           sibRow?.display_name ??
           (sibling === 'gmail' ? 'Gmail · Google Workspace' : 'Google Drive'),

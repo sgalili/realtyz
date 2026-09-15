@@ -21,6 +21,7 @@ import { clearPendingOAuth, currentOrigin, oauthRedirectUri, takePendingOAuth } 
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { friendlyGoogleError } from '@/lib/googleApiErrors';
 import { forgetConnected, isRememberedConnected, rememberConnected, rememberedLabel } from '@/lib/connectionStatusCache';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 
 
@@ -87,9 +88,13 @@ export function GoogleServiceConnectCard({
   accountEmail?: string | null;
 }) {
   const [configError, setConfigError] = useState(false);
+  // Google links live per workspace: reads, writes and disconnects are all
+  // filtered by the ACTIVE workspace so offices never affect each other.
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
 
   const { data, refetch, isLoading } = useQuery({
-    queryKey: ['google-service-conn', platform],
+    queryKey: ['google-service-conn', platform, workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
     queryFn: async () => {
       // NEVER use .maybeSingle() here: more than one row for the same platform
       // may be visible (e.g. super admin), which used to error out and render a
@@ -98,6 +103,7 @@ export function GoogleServiceConnectCard({
         .from('social_connections')
         .select('id, is_connected, credentials, connected_at')
         .eq('platform', platform)
+        .eq('workspace_owner_id', workspaceOwnerId as string)
         .order('is_connected', { ascending: false })
         .order('connected_at', { ascending: false })
         .limit(1);
@@ -135,9 +141,24 @@ export function GoogleServiceConnectCard({
   /** Explicit, user-initiated disconnect — the only way to clear the status. */
   const disconnect = async () => {
     try {
-      if (data?.id) {
-        await supabase.from('social_connections').update({ is_connected: false }).eq('id', data.id);
+      if (!workspaceOwnerId) {
+        toast.error('לא זוהה משרד פעיל');
+        return;
       }
+      // Disconnect only within the active workspace — id + workspace_owner_id.
+      const { error } = await supabase
+        .from('social_connections')
+        .update({
+          is_connected: false,
+          encrypted_session: null,
+          last_test_status: 'disconnected',
+          last_test_message: 'נותק ידנית',
+          last_test_at: new Date().toISOString(),
+        })
+        .eq('platform', platform)
+        .eq('workspace_owner_id', workspaceOwnerId)
+        .eq('is_connected', true);
+      if (error) throw error;
       forgetConnected(platform);
       try {
         window.localStorage.setItem(`realtyz:google-explicit-disconnect:${platform}`, '1');

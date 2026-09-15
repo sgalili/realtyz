@@ -235,11 +235,15 @@ export function ConnectionsTab() {
   // Live Google service statuses so the collapsed "חשבונות גוגל" header matches
   // the individual cards and reflects the combined auto-link result instantly.
   const { data: googleConns } = useQuery({
-    queryKey: ['google-services-status'],
+    // Strictly workspace-scoped: Udi's Google links must never show up while
+    // Rita's workspace is active (and vice versa).
+    queryKey: ['google-services-status', activeWorkspaceId],
+    enabled: !!activeWorkspaceId,
     queryFn: async () => {
       const { data } = await supabase
         .from('social_connections')
         .select('platform, is_connected, credentials')
+        .eq('workspace_owner_id', activeWorkspaceId as string)
         .in('platform', ['gmail', 'google_calendar', 'youtube']);
       return (data ?? []) as { platform: string; is_connected: boolean; credentials: any }[];
     },
