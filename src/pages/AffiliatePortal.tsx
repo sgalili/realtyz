@@ -182,19 +182,19 @@ function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceLis
       onClick={() => setExpanded((v) => !v)}
     >
       {compact ? (
-        <div className="flex min-h-12 items-center gap-3 px-3 py-2">
-          <div className="h-[25px] w-[25px] shrink-0 overflow-hidden rounded-sm bg-muted">
+        <div className="flex min-h-14 items-center gap-3 px-3 py-2">
+          <div className="h-[50px] w-[50px] shrink-0 overflow-hidden rounded-md bg-muted">
             {activePhoto ? (
               <img src={activePhoto} alt={title} loading="lazy" className="h-full w-full object-cover" />
             ) : (
-              <ImageIcon className="m-[5px] h-[15px] w-[15px] text-muted-foreground" aria-hidden="true" />
+              <ImageIcon className="m-[13px] h-6 w-6 text-muted-foreground" aria-hidden="true" />
             )}
           </div>
-          <div className="grid min-w-0 flex-1 grid-cols-[minmax(90px,1fr)_auto_auto_auto] items-center gap-x-3 text-xs">
-            <span className="font-semibold leading-tight text-foreground" title={fullAddress}>{fullAddress}</span>
+          <div className="grid min-w-0 flex-1 grid-cols-[minmax(90px,1fr)_auto_auto_auto] items-center gap-x-3 text-sm">
+            <span className="text-[15px] font-semibold leading-tight text-foreground" title={fullAddress}>{fullAddress}</span>
             <span className="text-muted-foreground">{listing.rooms ? `${listing.rooms} חד׳` : '—'}</span>
             <span className="text-muted-foreground">{listing.sqm ? `${listing.sqm} מ״ר` : '—'}</span>
-            <span className="font-bold text-foreground" dir="ltr">{listing.asking_price ? fmtILS(listing.asking_price) : '—'}</span>
+            <span className="text-[15px] font-bold text-foreground" dir="ltr">{listing.asking_price ? fmtILS(listing.asking_price) : '—'}</span>
           </div>
           <Button
             type="button"
