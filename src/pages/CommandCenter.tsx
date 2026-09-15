@@ -195,7 +195,7 @@ export default function CommandCenter() {
       return;
     }
     if (section === 'tours') {
-      navigate('/properties');
+      setNewTourOpen(true);
       return;
     }
     const quickTab = section === 'notes' ? 'note' : section === 'calls' ? 'interaction' : 'reminder';
