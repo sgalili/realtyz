@@ -1993,6 +1993,42 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
     const isItemUrl = /\/realestate\/item\//.test(inputUrl);
 
+    // ------------------------------------------------------------------
+    // RATE LIMIT (HARD): Bright Data is reachable ONLY inside a claimed
+    // twice-daily scrape slot (08:00 / 18:00 Asia/Jerusalem). Every other
+    // call — user searches, page loads, manual refreshes — is answered from
+    // the shared `market_listings` pool without spending a single credit.
+    // ------------------------------------------------------------------
+    const scrapeToken = typeof body?.scrape_token === "string" ? body.scrape_token : null;
+    const sinceIso = typeof body?.since === "string" && body.since ? body.since : null;
+    let poolMode = false;
+    if (scrapeToken) {
+      const { data: run } = await admin
+        .from("market_scrape_runs")
+        .select("id, status, finished_at")
+        .eq("token", scrapeToken)
+        .maybeSingle();
+      poolMode = Boolean(run?.id) && run?.status === "running";
+      if (!poolMode) console.warn("[yad2-unlocker] scrape_token rejected — serving from pool");
+    }
+    if (!poolMode) {
+      const pooled = await readMarketPool(admin, body, limit, inputUrl);
+      console.log(`[yad2-unlocker] pool mode → ${pooled.length} row(s), no external call`);
+      return json({
+        success: true,
+        source: "yad2",
+        connected: true,
+        served_from: "pool",
+        rate_limited: true,
+        detail: "נתוני יד-2 מתעדכנים פעמיים ביום (08:00 ו-18:00) ומוצגים מהמאגר המשותף.",
+        records_scraped: pooled.length,
+        records_saved: 0,
+        results: pooled,
+        mode: isItemUrl ? "item" : "search",
+        resolved_url: inputUrl,
+      });
+    }
+
 
     let rows: Scraped[] = [];
     let mode: "json" | "html" | "browser" = "json";
