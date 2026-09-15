@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import TaskFormDialog, { type TaskFormValues } from '@/components/tasks/TaskFormDialog';
 
 /**
  * Quick actions are TWO standalone dialogs — a task ("משימה") and a call
