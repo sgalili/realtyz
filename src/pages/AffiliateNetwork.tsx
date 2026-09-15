@@ -250,7 +250,7 @@ export default function AffiliateNetwork() {
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
             <div className="relative max-w-sm">
-              <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 placeholder="חיפוש נכס"
                 value={search}

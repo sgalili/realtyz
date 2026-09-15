@@ -36,7 +36,28 @@ type ListingOption = {
   address: string | null;
   city: string | null;
   image_url: string | null;
+  media_photos: unknown;
+  rooms: number | null;
+  sqm: number | null;
+  asking_price: number | null;
+  deal_type: string | null;
 };
+
+function listingPhoto(listing: ListingOption) {
+  if (listing.image_url) return listing.image_url;
+  if (!Array.isArray(listing.media_photos)) return null;
+  const photo = listing.media_photos.find((item) => typeof item === 'string' || (item && typeof item === 'object'));
+  if (typeof photo === 'string') return photo;
+  if (photo && typeof photo === 'object') {
+    const candidate = photo as { url?: unknown; src?: unknown };
+    return typeof candidate.url === 'string' ? candidate.url : typeof candidate.src === 'string' ? candidate.src : null;
+  }
+  return null;
+}
+
+function formatPrice(value: number | null) {
+  return typeof value === 'number' ? `${new Intl.NumberFormat('he-IL').format(value)} ₪` : 'מחיר לא צוין';
+}
 
 function defaultDate() {
   const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -82,7 +103,7 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     queryFn: async () => {
       let query = supabase
         .from('listings')
-        .select('id, property_title, address, city, image_url')
+        .select('id, property_title, address, city, image_url, media_photos, rooms, sqm, asking_price, deal_type')
         .eq('workspace_owner_id', ownerId!)
         .order('created_at', { ascending: false })
         .limit(8);
@@ -188,9 +209,9 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
           <div className="space-y-2">
             <Label>איש קשר</Label>
             <div className="relative">
-              <Search className="absolute end-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                className="pe-9"
+                className="pr-9"
                 placeholder="חיפוש לפי שם או טלפון"
                 value={contactQuery}
                 onChange={(e) => setContactQuery(e.target.value)}
@@ -223,17 +244,22 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
           <div className="space-y-2">
             <Label>נכס</Label>
-            <Input
-              placeholder="חיפוש נכס"
-              value={listingQuery}
-              onChange={(e) => setListingQuery(e.target.value)}
-            />
+            <div className="relative">
+              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="pr-9"
+                placeholder="חיפוש נכס"
+                value={listingQuery}
+                onChange={(e) => setListingQuery(e.target.value)}
+              />
+            </div>
             <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border p-1">
               {listings.length === 0 ? (
                 <p className="p-2 text-[12px] text-muted-foreground">לא נמצאו נכסים</p>
               ) : (
                 listings.map((p) => {
                   const active = selectedListing?.id === p.id;
+                  const photo = listingPhoto(p);
                   return (
                     <button
                       key={p.id}
@@ -241,15 +267,18 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                       onClick={() => setSelectedListing(active ? null : p)}
                       className={`flex w-full items-center gap-2 rounded-md p-2 text-right ${active ? 'bg-primary/10 ring-1 ring-primary/40' : 'hover:bg-accent'}`}
                     >
-                      {p.image_url ? (
-                        <img src={p.image_url} alt={p.property_title} className="h-10 w-10 rounded-md object-cover" />
+                      {photo ? (
+                        <img src={photo} alt={p.property_title} className="h-12 w-12 rounded-md object-cover" />
                       ) : (
-                        <span className="h-10 w-10 rounded-md bg-muted" />
+                        <span className="h-12 w-12 rounded-md bg-muted" />
                       )}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{p.property_title}</span>
                         <span className="block truncate text-[12px] text-muted-foreground">
                           {[p.address, p.city].filter(Boolean).join(', ')}
+                        </span>
+                        <span className="block truncate text-[12px] text-muted-foreground">
+                          {p.deal_type === 'rent' ? 'להשכרה' : p.deal_type === 'sale' ? 'למכירה' : 'סוג עסקה לא צוין'} · {p.rooms ? `${p.rooms} חדרים` : 'חדרים לא צוינו'}{p.sqm ? ` · ${p.sqm} מ״ר` : ''} · {formatPrice(p.asking_price)}
                         </span>
                       </span>
                     </button>
@@ -277,11 +306,11 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={sendWa} onCheckedChange={(v) => setSendWa(!!v)} />
-            שליחת אישור בוואטסאפ מהמספר הרשמי
+            שליחת אישור בוואטסאפ
           </label>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex-row justify-between gap-2 space-x-0">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>ביטול</Button>
           <Button onClick={submit} disabled={saving}>
             {saving ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : null}
