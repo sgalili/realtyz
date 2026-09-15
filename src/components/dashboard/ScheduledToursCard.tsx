@@ -13,15 +13,20 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   CalendarClock,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  List,
   Loader2,
   Mail,
   MapPin,
@@ -33,6 +38,13 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { SignatureStatusStrip } from '@/components/signature/SignatureStatusStrip';
+import {
+  ScheduleMonthGrid,
+  ScheduleViewToggle,
+  startOfThisMonth,
+  todayKey,
+  type ScheduleView,
+} from '@/components/dashboard/ScheduleViews';
 
 type Tour = {
   id: string;
