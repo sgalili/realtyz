@@ -2,16 +2,11 @@
  * ContactAvatar
  * ─────────────
  * One shared avatar for every place a contact is rendered (tasks, tours,
- * incoming leads, reminders, calls). Shows the contact's profile picture when
- * we have one, otherwise their initials.
+ * incoming leads, reminders, calls). STRICT RULE: it renders ONLY when the CRM
+ * has a real profile picture URL for that contact — never a placeholder, icon
+ * or initials fallback.
  */
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
-function initialsOf(name?: string | null) {
-  const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  return parts.slice(0, 2).map((p) => p[0]).join('');
-}
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
 
 export function ContactAvatar({
   name,
@@ -22,12 +17,10 @@ export function ContactAvatar({
   imageUrl?: string | null;
   className?: string;
 }) {
+  if (!imageUrl) return null;
   return (
     <Avatar className={className ?? 'h-9 w-9'}>
-      {imageUrl ? <AvatarImage src={imageUrl} alt={name ?? 'איש קשר'} /> : null}
-      <AvatarFallback className="bg-primary/10 text-[12px] font-semibold text-primary">
-        {initialsOf(name)}
-      </AvatarFallback>
+      <AvatarImage src={imageUrl} alt={name ?? 'איש קשר'} />
     </Avatar>
   );
 }
