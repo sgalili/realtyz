@@ -172,6 +172,7 @@ export default function CommandCenter() {
   }, [visibleTabs, tab]);
 
   const [editing, setEditing] = useState<CommandTask | null>(null);
+  const [newTourOpen, setNewTourOpen] = useState(false);
   const toggleCard = (key: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
