@@ -5,6 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+
+/** Every OTP channel (WhatsApp, SMS, email) uses a 4-digit code. */
+const OTP_LENGTH = 4;
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { lovable } from '@/integrations/lovable';
@@ -207,7 +210,7 @@ const Auth = () => {
   };
 
   const handleVerifyCode = async (code = otp) => {
-    const expectedLength = isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4);
+    const expectedLength = OTP_LENGTH;
     if (isGoogleFlow || code.length !== expectedLength || loading || otpAttempts >= 3) return;
     setLoading(true);
     window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
@@ -312,14 +315,14 @@ const Auth = () => {
               {codeSent && !isGoogleFlow ? (
                 <div className="space-y-4 text-center animate-fade-in">
                   <Label className="block text-xl font-bold text-foreground">הזינו את הקוד שקיבלתם {activeMethod === 'whatsapp' ? 'בווטסאפ' : activeMethod === 'sms' ? 'ב-SMS' : 'באימייל'}</Label>
-                  <InputOTP maxLength={isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4)} value={otp} onChange={(value) => { const len = isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4); setOtp(value); if (value.length === len) void handleVerifyCode(value); }} containerClassName="justify-center" dir="ltr" disabled={otpAttempts >= 3}>
+                  <InputOTP maxLength={OTP_LENGTH} value={otp} onChange={(value) => { setOtp(value); if (value.length === OTP_LENGTH) void handleVerifyCode(value); }} containerClassName="justify-center" dir="ltr" disabled={otpAttempts >= 3}>
                     <InputOTPGroup className="flex-row-reverse gap-2">
-                      {Array.from({ length: isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4) }).map((_, index) => (
+                      {Array.from({ length: OTP_LENGTH }).map((_, index) => (
                         <InputOTPSlot key={index} index={index} className="h-20 w-20 rounded-md border bg-background p-0 text-7xl font-black leading-none text-primary" />
                       ))}
                     </InputOTPGroup>
                   </InputOTP>
-                  {activeMethod === 'sms' && <Button type="button" className="auth-gold-button w-full" onClick={() => handleVerifyCode()} disabled={loading || otp.length !== 6}>
+                  {activeMethod === 'sms' && <Button type="button" className="auth-gold-button w-full" onClick={() => handleVerifyCode()} disabled={loading || otp.length !== OTP_LENGTH}>
                     {loading ? 'מאמת...' : 'כניסה למערכת'}
                   </Button>}
                   {resendSeconds > 0 ? (
