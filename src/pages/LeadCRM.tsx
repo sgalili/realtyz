@@ -1793,7 +1793,7 @@ const LeadCRM = () => {
             <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
               <div className="relative w-full sm:w-72">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="חיפוש חופשי..." className="pr-9 pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input placeholder="חיפוש" className="pr-9 pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
                 <button
                   type="button"
                   onClick={() => setFiltersOpen((open) => !open)}
