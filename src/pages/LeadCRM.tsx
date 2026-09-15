@@ -639,6 +639,8 @@ const LeadCRM = () => {
   // Kick off a full WhatsApp profile-picture sweep for the active workspace.
   const handleSyncProfilePictures = async () => {
     toast.info('מסנכרנת תמונות פרופיל…');
+    // Spins the hero icon and locks the button until the sweep finishes.
+    window.dispatchEvent(new Event('leads:busy:on'));
     try {
       const { error } = await supabase.functions.invoke('fetch-wa-avatars', {
         body: { limit: 2000, owner_id: activeWorkspaceId, force: true },
@@ -648,6 +650,8 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
     } catch (err: any) {
       toast.error('סנכרון תמונות הפרופיל נכשל: ' + (err?.message || 'שגיאה לא ידועה'));
+    } finally {
+      window.dispatchEvent(new Event('leads:busy:off'));
     }
   };
 
