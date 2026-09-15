@@ -39,23 +39,36 @@ export function WhatsAppGatewayCard() {
   const [qrLoading, setQrLoading] = useState(false);
   const [qrNote, setQrNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // The QR action only makes sense when the workspace chose the personal number.
+  const [personalSelected, setPersonalSelected] = useState(false);
 
   const load = useCallback(async () => {
     if (!ownerId) { setLoading(false); return; }
     const { data } = await supabase
       .from('workspace_whatsapp_settings' as never)
-      .select('green_api_instance_id, qr_status, qr_phone')
+      .select('green_api_instance_id, qr_status, qr_phone, connection_type')
       .eq('workspace_owner_id', ownerId)
       .maybeSingle();
     const row = data as any;
     setInstanceId(String(row?.green_api_instance_id ?? ''));
     setPhone(String(row?.qr_phone ?? ''));
+    setPersonalSelected(String(row?.connection_type ?? '') === 'qr_session');
     const st = String(row?.qr_status ?? 'disconnected');
     setStatus(st === 'connected' || st === 'pending' || st === 'error' ? (st as any) : 'disconnected');
     setLoading(false);
   }, [ownerId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // React instantly when the method selector above switches the workspace mode.
+  useEffect(() => {
+    const onMode = (e: Event) => {
+      const value = (e as CustomEvent).detail;
+      setPersonalSelected(value === 'qr_session');
+    };
+    window.addEventListener('realtyz:wa-mode-changed', onMode);
+    return () => window.removeEventListener('realtyz:wa-mode-changed', onMode);
+  }, []);
 
   /** Opens the QR dialog, provisioning the workspace instance when missing. */
   const openQr = async () => {
