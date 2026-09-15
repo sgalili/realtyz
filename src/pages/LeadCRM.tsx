@@ -636,17 +636,34 @@ const LeadCRM = () => {
     return () => clearTimeout(searchTimerRef.current);
   }, [search]);
 
+  // Kick off a full WhatsApp profile-picture sweep for the active workspace.
+  const handleSyncProfilePictures = async () => {
+    toast.info('מסנכרנת תמונות פרופיל…');
+    try {
+      const { error } = await supabase.functions.invoke('fetch-wa-avatars', {
+        body: { limit: 2000, owner_id: activeWorkspaceId, force: true },
+      });
+      if (error) throw error;
+      toast.success('סנכרון תמונות הפרופיל הושלם');
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+    } catch (err: any) {
+      toast.error('סנכרון תמונות הפרופיל נכשל: ' + (err?.message || 'שגיאה לא ידועה'));
+    }
+  };
+
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
   useEffect(() => {
     const handler = (e: Event) => {
-      const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' }>).detail?.action;
+      const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' | 'avatars' }>).detail?.action;
       if (action === 'manual') setAddVoterOpen(true);
       else if (action === 'import') fileInputRef.current?.click();
       else if (action === 'homely') handleHomelySync();
+      else if (action === 'avatars') handleSyncProfilePictures();
     };
     window.addEventListener('leads:add', handler);
     return () => window.removeEventListener('leads:add', handler);
   }, []);
+
 
   useRealtimeSubscription('messages', [['lead-messages', selectedVoterId ?? '']]);
 
@@ -1754,7 +1771,7 @@ const LeadCRM = () => {
   const messageSentiment = getSentimentFromMessages(activeVoterMessages);
 
   return (
-    <div className="space-y-4 relative pb-20 pt-[10px]">
+    <div className="space-y-4 relative pb-20 pt-0">
       {/* Header + add menu live in the global PageHero (top bar) */}
 
 
@@ -1776,7 +1793,7 @@ const LeadCRM = () => {
             <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
               <div className="relative w-full sm:w-72">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="חיפוש חופשי..." className="pr-9 pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input placeholder="חיפוש" className="pr-9 pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
                 <button
                   type="button"
                   onClick={() => setFiltersOpen((open) => !open)}
@@ -1811,23 +1828,24 @@ const LeadCRM = () => {
                   {t.label}
                 </button>
               ))}
-            </div>
-            {(() => {
-              const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all' || leadKindFilter !== 'all';
-              const accountTotal = isDemoMode ? leads.length : realTotalCount;
-              const filteredTotal = isDemoMode ? filtered?.length ?? 0 : totalCount;
-              return (
-                <p className="text-xs text-muted-foreground tabular-nums">
-                  {selectedIds.size > 0
-                    ? `נבחרו ${selectedIds.size.toLocaleString('he-IL')} רשומות`
-                    : accountTotal === 0
-                      ? '\n'
+              {/* Total counter sits at the very end of the pills row */}
+              {(() => {
+                const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all' || leadKindFilter !== 'all';
+                const accountTotal = isDemoMode ? leads.length : realTotalCount;
+                const filteredTotal = isDemoMode ? filtered?.length ?? 0 : totalCount;
+                if (accountTotal === 0 && selectedIds.size === 0) return null;
+                return (
+                  <span className="self-center ms-1 text-[15px] leading-none text-muted-foreground tabular-nums whitespace-nowrap">
+                    {selectedIds.size > 0
+                      ? `נבחרו ${selectedIds.size.toLocaleString('he-IL')} רשומות`
                       : hasFilter
                         ? `מציג ${filteredTotal.toLocaleString('he-IL')} מתוך ${accountTotal.toLocaleString('he-IL')}`
                         : `סה״כ: ${accountTotal.toLocaleString('he-IL')} רשומות`}
-                </p>
-              );
-            })()}
+                  </span>
+                );
+              })()}
+            </div>
+
           </div>
           {filtersOpen && <div className="flex flex-wrap gap-2 pt-2 animate-fade-in">
             <Select value={interestFilter} onValueChange={setInterestFilter}>

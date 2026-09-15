@@ -106,10 +106,11 @@ function LeadsHeroAddButton() {
       window.removeEventListener("leads:busy:off", off);
     };
   }, []);
-  const dispatch = (action: "manual" | "import" | "homely") => {
+  const dispatch = (action: "manual" | "import" | "homely" | "avatars") => {
     if (busy) return;
     window.dispatchEvent(new CustomEvent("leads:add", { detail: { action } }));
   };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -137,6 +138,10 @@ function LeadsHeroAddButton() {
         <DropdownMenuItem onClick={() => dispatch("homely")} className="gap-2" disabled={busy}>
           <DownloadCloud className="h-4 w-4" /> משיכת אנשי קשר מ-Homely
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => dispatch("avatars")} className="gap-2" disabled={busy}>
+          <RefreshCw className="h-4 w-4" /> סנכרון תמונות פרופיל
+        </DropdownMenuItem>
+
       </DropdownMenuContent>
     </DropdownMenu>
   );
