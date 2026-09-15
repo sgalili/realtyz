@@ -436,6 +436,10 @@ export type CommandTaskEdit = {
   title?: string;
   description?: string | null;
   dueAt?: string | null;
+  priority?: string;
+  leadId?: string | null;
+  leadName?: string | null;
+  leadPhone?: string | null;
 };
 
 /**
