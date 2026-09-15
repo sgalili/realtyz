@@ -61,19 +61,41 @@ async function exchangeCode(params: {
   | { access_token: string; refresh_token?: string; expires_in?: number; scope?: string }
   | { error: string }
 > {
-  const res = await timedFetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: params.clientId,
-      client_secret: params.clientSecret,
-      code: params.code,
+  let res: Response;
+  try {
+    res = await timedFetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: params.clientId,
+        client_secret: params.clientSecret,
+        code: params.code,
+        redirect_uri: params.redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+  } catch (e: any) {
+    // Network / timeout: never silently become a generic failure.
+    console.error('[google-oauth-exchange] token endpoint unreachable', {
       redirect_uri: params.redirectUri,
-      grant_type: 'authorization_code',
-    }),
-  });
-  const json = await res.json().catch(() => ({}));
+      client_id_tail: params.clientId.slice(-12),
+      reason: String(e?.message ?? e),
+    });
+    return { error: `Google token endpoint unreachable: ${String(e?.message ?? e)}` };
+  }
+  const rawBody = await res.text().catch(() => '');
+  let json: any = {};
+  try { json = rawBody ? JSON.parse(rawBody) : {}; } catch { json = {}; }
   if (!res.ok) {
+    // Log exactly what Google answered (no tokens are present in an error body).
+    console.error('[google-oauth-exchange] token exchange rejected', {
+      http_status: res.status,
+      google_error: json.error ?? null,
+      google_error_description: json.error_description ?? null,
+      raw: rawBody.slice(0, 400),
+      redirect_uri: params.redirectUri,
+      client_id_tail: params.clientId.slice(-12),
+    });
     const baseMsg =
       json.error_description ||
       json.error ||
