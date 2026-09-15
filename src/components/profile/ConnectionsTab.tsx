@@ -54,9 +54,23 @@ function StatusPill({ label, tone }: { label: string; tone: Tone }) {
  * Inner card chrome (border + its own header) is neutralized so the section
  * header is the single source of truth for the title.
  */
+/** Official multicolor Google "G" mark. */
+function GoogleGMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={cn('h-5 w-5 shrink-0', className)} aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2.5 24 .5 14.6.5 6.5 5.8 2.6 13.6l7.8 6.1C12.3 13.7 17.6 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.1 24.5c0-1.6-.15-3.1-.42-4.6H24v9.1h12.4c-.55 2.9-2.2 5.3-4.6 7l7.6 5.9c4.4-4.1 6.7-10.1 6.7-17.4z" />
+      <path fill="#FBBC05" d="M10.4 28.3A14.6 14.6 0 0 1 9.6 24c0-1.5.27-2.95.77-4.3l-7.8-6.1A23.9 23.9 0 0 0 0 24c0 3.85.92 7.5 2.6 10.7l7.8-6.4z" />
+      <path fill="#34A853" d="M24 47.5c6.2 0 11.5-2.05 15.4-5.6l-7.6-5.9c-2.1 1.4-4.8 2.25-7.8 2.25-6.4 0-11.7-4.2-13.6-10.2l-7.8 6.4C6.5 42.2 14.6 47.5 24 47.5z" />
+    </svg>
+  );
+}
+
 function ConnectionSection({
   title,
   titleAside,
+  titleLead,
+  titleNode,
   status,
   tone,
   open,
@@ -67,6 +81,10 @@ function ConnectionSection({
 }: {
   title: string;
   titleAside?: ReactNode;
+  /** Logo rendered at the very start of the header row, before the label. */
+  titleLead?: ReactNode;
+  /** Fully custom label row (replaces titleLead + title + titleAside). */
+  titleNode?: ReactNode;
   status: string;
   tone: Tone;
   open: boolean;
@@ -90,8 +108,13 @@ function ConnectionSection({
       >
         <span className="flex min-w-0 items-center gap-2">
           <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
-          <span className="truncate text-sm font-semibold">{title}</span>
-          {titleAside}
+          {titleNode ?? (
+            <>
+              {titleLead}
+              <span className="truncate text-sm font-semibold">{title}</span>
+              {titleAside}
+            </>
+          )}
         </span>
         {headerAside ?? <StatusPill label={status} tone={tone} />}
       </button>
@@ -293,7 +316,8 @@ export function ConnectionsTab() {
       const k = (keys.data ?? {}) as any;
       const h = (homely.data ?? {}) as any;
       return {
-        yad2: Boolean(String(k?.brightdata_api_token ?? '').trim() && String(k?.brightdata_zone ?? '').trim()),
+        // Yad2 shows in full color as soon as the BrightData API is connected.
+        yad2: Boolean(String(k?.brightdata_api_token ?? '').trim()),
         homely: h?.connection_status === 'ok' || Boolean(h?.homely_password_encrypted),
       };
     },
@@ -303,24 +327,37 @@ export function ConnectionsTab() {
 
   const waLive = !!(officialPhone || personalPhone || greenLive || waMode);
 
-  const sections: Array<{ id: string; title: string; titleAside?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
+  // Connected Facebook page picture(s) replace the "מחובר" pill in the header.
+  const fbPagePicture = fbHealth?.pagePicture ?? fbBinding?.pageAvatarUrl ?? null;
+
+  const sections: Array<{ id: string; title: string; titleAside?: ReactNode; titleLead?: ReactNode; titleNode?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
     {
       id: 'meta',
-      title: 'פייסבוק / אינסטגרם',
-      titleAside: (
-        <span className="flex items-center gap-1.5">
+      title: 'פייסבוק אינסטגרם',
+      titleNode: (
+        <span className="flex min-w-0 items-center gap-2">
           <BrandIcon name="facebook" className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !fbConnected && 'grayscale opacity-40')} />
-          <BrandIcon name="instagram" className={cn('h-5 w-5 shrink-0 text-[#E4405F]', !fbConnected && 'grayscale opacity-40')} />
+          <span className="text-sm font-semibold">פייסבוק</span>
+          <BrandIcon name="instagram" className={cn('ms-3 h-5 w-5 shrink-0 text-[#E4405F]', !fbConnected && 'grayscale opacity-40')} />
+          <span className="text-sm font-semibold">אינסטגרם</span>
         </span>
       ),
       status: metaStatus[0],
       tone: metaStatus[1],
+      headerAside: fbConnected && fbPagePicture ? (
+        <img
+          src={fbPagePicture}
+          alt={fbHealth?.pageName ?? fbBinding?.pageName ?? 'עמוד פייסבוק מחובר'}
+          className="h-8 w-8 shrink-0 rounded-md border object-cover"
+          loading="lazy"
+        />
+      ) : undefined,
       node: <MetaDirectConnectionCard onStatus={setMeta} />,
     },
     {
       id: 'whatsapp',
       title: 'ווטסאפ',
-      titleAside: (
+      titleLead: (
         <BrandIcon name="whatsapp" className={cn('h-5 w-5 shrink-0 text-[#25D366]', !waLive && 'grayscale opacity-40')} />
       ),
       status: waStatus[0],
@@ -362,6 +399,7 @@ export function ConnectionsTab() {
     {
       id: 'google',
       title: 'גוגל',
+      titleLead: <GoogleGMark className={someGoogleConnected ? undefined : 'grayscale opacity-40'} />,
       headerAside: (
         <span className="flex items-center gap-1.5" aria-label="שירותי Google">
           <GoogleBrandGlyph brand="gmail" connected={connectedGoogle.has('gmail') || isRememberedConnected('gmail', activeWorkspaceId)} />
@@ -427,7 +465,7 @@ export function ConnectionsTab() {
     // see or override the credentials.
     ...(isSuperAdmin ? [{
       id: 'sms019',
-      titleAside: (
+      titleLead: (
         <MessageSquare
           className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !sms019Sender && 'grayscale opacity-40')}
           strokeWidth={2.25}
@@ -446,7 +484,7 @@ export function ConnectionsTab() {
     ...(isSuperAdmin ? [{
       id: 'voice',
       title: 'טלפון',
-      titleAside: (
+      titleLead: (
         <Phone
           className={cn('h-5 w-5 shrink-0 text-[#0B62F5]', !(voicePhone || voiceReady) && 'grayscale opacity-40')}
           strokeWidth={2.25}
@@ -482,6 +520,8 @@ export function ConnectionsTab() {
           key={s.id}
           title={s.title}
           titleAside={s.titleAside}
+          titleLead={s.titleLead}
+          titleNode={s.titleNode}
           status={s.status}
           tone={s.tone}
           open={openId === s.id}
