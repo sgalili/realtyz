@@ -3121,9 +3121,12 @@ const ConfirmDispatchDialog = ({
         return [id, bare, `ext:${bare}`];
       })));
       try {
+        // TENANT ISOLATION: only this workspace's own imported groups.
+        if (!workspaceOwnerId) { setGroupStats({ known: 0, members: 0 }); setGroupMetaMap({}); return; }
         const { data } = await (supabase as any)
           .from('fb_user_groups')
           .select('group_id, group_name, group_url, member_count')
+          .eq('workspace_owner_id', workspaceOwnerId)
           .in('group_id', ids);
         const rows = (data || []) as any[];
         const members = rows.reduce((sum, r) => sum + (Number(r?.member_count) || 0), 0);
@@ -7362,10 +7365,10 @@ const CampaignCenter = () => {
           .eq('created_by', user.id)
           .order('updated_at', { ascending: false })
           .limit(100),
-        // No workspace filter: group rows may be imported under a different
-        // workspace stamp, and a missing name would show as "קבוצה 1234".
+        // TENANT ISOLATION: never read another workspace's Facebook groups.
         (supabase as any).from('fb_user_groups')
           .select('group_id,group_name,group_icon,group_url,member_count')
+          .eq('workspace_owner_id', scope)
           .limit(2000),
       ]);
       if (!cancelled) {

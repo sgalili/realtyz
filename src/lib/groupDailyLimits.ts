@@ -31,15 +31,24 @@ const todayIsrael = (): string => {
   return parts; // YYYY-MM-DD
 };
 
-export async function loadGroupLimitState(groupIds: string[]): Promise<GroupLimitState> {
+/**
+ * TENANT ISOLATION: group rows and their counters are always read for one
+ * workspace owner. Never query `fb_user_groups` / `fb_group_post_log` by
+ * group_id alone — the same Facebook group can exist in several workspaces.
+ */
+export async function loadGroupLimitState(
+  groupIds: string[],
+  workspaceOwnerId?: string | null,
+): Promise<GroupLimitState> {
   const state: GroupLimitState = { limits: {}, usedToday: {} };
   const ids = Array.from(new Set(groupIds.filter(Boolean)));
-  if (ids.length === 0) return state;
+  if (ids.length === 0 || !workspaceOwnerId) return state;
 
   try {
     const { data } = await (supabase as any)
       .from('fb_user_groups')
       .select('group_id, max_posts_per_day')
+      .eq('workspace_owner_id', workspaceOwnerId)
       .in('group_id', ids);
     for (const r of (data ?? []) as any[]) {
       const cap = Number(r?.max_posts_per_day);
@@ -51,6 +60,7 @@ export async function loadGroupLimitState(groupIds: string[]): Promise<GroupLimi
     const { data } = await (supabase as any)
       .from('fb_group_post_log')
       .select('group_id, post_count')
+      .eq('workspace_owner_id', workspaceOwnerId)
       .eq('posted_on', todayIsrael())
       .in('group_id', ids);
     for (const r of (data ?? []) as any[]) {
@@ -62,14 +72,19 @@ export async function loadGroupLimitState(groupIds: string[]): Promise<GroupLimi
 }
 
 /** Persist one daily cap for every selected group (0 / empty clears the cap). */
-export async function saveGroupDailyLimit(groupIds: string[], limit: number | null): Promise<void> {
+export async function saveGroupDailyLimit(
+  groupIds: string[],
+  limit: number | null,
+  workspaceOwnerId?: string | null,
+): Promise<void> {
   const ids = Array.from(new Set(groupIds.filter(Boolean)));
-  if (ids.length === 0) return;
+  if (ids.length === 0 || !workspaceOwnerId) return;
   const value = limit && limit > 0 ? Math.min(50, Math.floor(limit)) : null;
   try {
     await (supabase as any)
       .from('fb_user_groups')
       .update({ max_posts_per_day: value })
+      .eq('workspace_owner_id', workspaceOwnerId)
       .in('group_id', ids);
   } catch { /* best effort — the server-side claim is authoritative */ }
 }
