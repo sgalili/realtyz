@@ -81,6 +81,10 @@ function ConnectionSection({
 }: {
   title: string;
   titleAside?: ReactNode;
+  /** Logo rendered at the very start of the header row, before the label. */
+  titleLead?: ReactNode;
+  /** Fully custom label row (replaces titleLead + title + titleAside). */
+  titleNode?: ReactNode;
   status: string;
   tone: Tone;
   open: boolean;
