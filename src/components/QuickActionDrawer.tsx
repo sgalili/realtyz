@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Zap, StickyNote, BellRing, MessageSquarePlus, Home, Loader2, Search, ArrowLeft, CalendarCheck2 } from 'lucide-react';
+import { BellRing, MessageSquarePlus, Loader2, Search, CalendarCheck2 } from 'lucide-react';
 import { invalidateLiveData } from '@/lib/liveSync';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,22 +13,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 
-type TabKey = 'note' | 'reminder' | 'interaction' | 'matches';
+/**
+ * Quick actions are TWO standalone dialogs — a task ("משימה") and a call
+ * summary ("סיכום שיחה"). The third quick flow, a property tour, lives in its
+ * own `NewTourDialog`. There is no tabbed container, no note form and no
+ * property-matching screen any more.
+ */
+type FlowKey = 'reminder' | 'interaction';
 
 type LeadLite = { id: string; full_name: string | null; phone_number: string | null; city: string | null; deal_type: string | null };
-import { PropertyMeta, PropertyThumb, propertyFullAddress } from '@/components/leads/LinkedPropertiesField';
-import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
-
-type ListingLite = { id: string; property_title: string | null; address: string | null; city: string | null; neighborhood: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null; image_url: string | null; media_photos: unknown };
-
-const LISTING_LITE_FIELDS = 'id, property_title, address, city, neighborhood, rooms, asking_price, deal_type, image_url, media_photos';
-
-const TABS: Array<{ key: TabKey; label: string; icon: typeof StickyNote }> = [
-  { key: 'note', label: 'פתק', icon: StickyNote },
-  { key: 'reminder', label: 'תזכורת', icon: BellRing },
-  { key: 'interaction', label: 'סיכום שיחה', icon: MessageSquarePlus },
-  { key: 'matches', label: 'התאמת נכס', icon: Home },
-];
 
 const CHANNELS: Array<{ value: string; label: string }> = [
   { value: 'whatsapp', label: 'וואטסאפ' },
@@ -53,15 +45,10 @@ function toLocalDateTime(value: string) {
 }
 
 export default function QuickActionDrawer() {
-  // Property matching and property links exist only in workspaces that manage
-  // properties; Rita's marketing workspace never shows them.
-  const { listingsEnabled } = useWorkspaceFeatures();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<TabKey>('note');
+  const [flow, setFlow] = useState<FlowKey | null>(null);
   const [saving, setSaving] = useState(false);
 
   // lead picker
@@ -70,14 +57,8 @@ export default function QuickActionDrawer() {
   const [lead, setLead] = useState<LeadLite | null>(null);
   const [searching, setSearching] = useState(false);
 
-  // property picker (notes can be attached to a listing)
-  const [listingQuery, setListingQuery] = useState('');
-  const [listingResults, setListingResults] = useState<ListingLite[]>([]);
-  const [listing, setListing] = useState<ListingLite | null>(null);
-
   // forms
-  const [noteText, setNoteText] = useState('');
-  const [reminderTitle, setReminderTitle] = useState('');
+  const [taskText, setTaskText] = useState('');
   const [reminderWhen, setReminderWhen] = useState(localDefaultDue());
   const [reminderPriority, setReminderPriority] = useState('medium');
   const [interactionChannel, setInteractionChannel] = useState('whatsapp');
@@ -86,20 +67,17 @@ export default function QuickActionDrawer() {
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
 
-  // matches
-  const [matches, setMatches] = useState<ListingLite[] | null>(null);
-  const [matchesLoading, setMatchesLoading] = useState(false);
+  const open = flow !== null;
 
   useEffect(() => {
     const openHandler = (e: Event) => {
-      const requested = (e as CustomEvent<{ tab?: TabKey }>).detail?.tab;
-      if (requested) setTab(requested);
-      setOpen(true);
+      const requested = (e as CustomEvent<{ tab?: string }>).detail?.tab;
+      setFlow(requested === 'interaction' ? 'interaction' : 'reminder');
     };
     const keyHandler = (e: KeyboardEvent) => {
       if ((e.altKey || e.metaKey) && e.key.toLowerCase() === 'q') {
         e.preventDefault();
-        setOpen((v) => !v);
+        setFlow((v) => (v ? null : 'reminder'));
       }
     };
     window.addEventListener('open-quick-actions', openHandler);
@@ -135,8 +113,7 @@ export default function QuickActionDrawer() {
   const threadKey = useMemo(() => (lead ? `lead:${lead.id}` : `quick:${user?.id ?? 'anon'}`), [lead, user?.id]);
 
   const resetAfterSave = () => {
-    setNoteText('');
-    setReminderTitle('');
+    setTaskText('');
     setInteractionText('');
     setReminderWhen(localDefaultDue());
   };
@@ -160,24 +137,6 @@ export default function QuickActionDrawer() {
     }
   };
 
-  // Live property search for the note tab.
-  useEffect(() => {
-    if (!open) return;
-    const q = listingQuery.trim();
-    if (q.length < 2) { setListingResults([]); return; }
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      const { data } = await (supabase as any)
-        .from('listings')
-        .select(LISTING_LITE_FIELDS)
-        .or(`property_title.ilike.%${q}%,address.ilike.%${q}%,city.ilike.%${q}%`)
-        .limit(8);
-      if (cancelled) return;
-      setListingResults(Array.isArray(data) ? data : []);
-    }, 250);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [listingQuery, open]);
-
   async function logActivity(actionType: string, platform: string, content: string) {
     if (!user) return;
     const { error } = await (supabase as any).from('interaction_activity_log').insert({
@@ -191,42 +150,22 @@ export default function QuickActionDrawer() {
       content,
       metadata: {
         lead_id: lead?.id ?? null,
-        listing_id: listing?.id ?? null,
         source: 'quick_action_drawer',
       },
     });
     if (error) throw error;
   }
 
-  const saveNote = async () => {
-    if (!noteText.trim()) { toast.error('כתוב תוכן לפתק'); return; }
-    setSaving(true);
-    try {
-      await logActivity('note', 'internal', noteText.trim());
-      if (lead?.id) {
-        await (supabase as any).from('leads').update({ last_interaction_at: new Date().toISOString() }).eq('id', lead.id);
-      }
-      toast.success('הפתק נשמר');
-      resetAfterSave();
-      queryClient.invalidateQueries({ queryKey: ['property-notes'] });
-      queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
-      invalidateLiveData(queryClient);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'שמירת הרשומה נכשלה');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveReminder = async () => {
-    if (!reminderTitle.trim()) { toast.error('כתוב כותרת לתזכורת'); return; }
+  const saveTask = async () => {
+    if (!taskText.trim()) { toast.error('כתוב את המשימה'); return; }
     if (!reminderWhen) { toast.error('בחר מועד'); return; }
     setSaving(true);
     try {
+      const text = taskText.trim();
       const { error } = await (supabase as any).from('scheduled_items').insert({
         user_id: user!.id,
-        title: reminderTitle.trim(),
-        content: noteText.trim() || reminderTitle.trim(),
+        title: text.slice(0, 120),
+        content: text,
         item_type: 'task',
         channel: 'internal',
         status: 'pending',
@@ -240,30 +179,20 @@ export default function QuickActionDrawer() {
         },
       });
       if (error) throw error;
-      if (calendarConnected) {
-        const { data: calendarData, error: calendarError } = await supabase.functions.invoke('calendar-schedule-action', {
-          body: {
-            title: reminderTitle.trim(),
-            notes: noteText.trim(),
-            starts_at: new Date(reminderWhen).toISOString(),
-            duration_minutes: 30,
-            lead_id: lead?.id ?? null,
-          },
-        });
-        if (calendarError || !calendarData?.ok) throw new Error(calendarData?.error || calendarError?.message || 'Calendar sync failed');
-      }
-      toast.success('התזכורת נקבעה');
+      toast.success('המשימה נשמרה');
       resetAfterSave();
+      setFlow(null);
       invalidateLiveData(queryClient);
+      queryClient.invalidateQueries({ queryKey: ['command-center-tasks'] });
     } catch (e: any) {
-      toast.error(e?.message ?? 'קביעת התזכורת נכשלה');
+      toast.error(e?.message ?? 'שמירת המשימה נכשלה');
     } finally {
       setSaving(false);
     }
   };
 
   const saveInteraction = async () => {
-    if (!lead) { toast.error('בחר מתעניין'); return; }
+    if (!lead) { toast.error('בחר איש קשר'); return; }
     if (!interactionText.trim()) { toast.error('כתוב סיכום שיחה'); return; }
     setSaving(true);
     try {
@@ -271,41 +200,14 @@ export default function QuickActionDrawer() {
       await (supabase as any).from('leads').update({ last_interaction_at: new Date().toISOString() }).eq('id', lead.id);
       toast.success('סיכום השיחה נשמר');
       resetAfterSave();
+      setFlow(null);
       invalidateLiveData(queryClient);
-
     } catch (e: any) {
       toast.error(e?.message ?? 'שמירת סיכום השיחה נכשלה');
     } finally {
       setSaving(false);
     }
   };
-
-  const loadMatches = async () => {
-    setMatchesLoading(true);
-    setMatches(null);
-    try {
-      let q = (supabase as any)
-        .from('listings')
-        .select(LISTING_LITE_FIELDS)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      if (lead?.city) q = q.ilike('city', `%${lead.city}%`);
-      if (lead?.deal_type) q = q.eq('deal_type', lead.deal_type);
-      const { data, error } = await q;
-      if (error) throw error;
-      setMatches(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'טעינת ההתאמות נכשלה');
-      setMatches([]);
-    } finally {
-      setMatchesLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (open && tab === 'matches') loadMatches();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, tab, lead?.id]);
 
   const leadPicker = (
     <div className="space-y-2">
@@ -329,6 +231,7 @@ export default function QuickActionDrawer() {
             <Input
               value={leadQuery}
               onChange={(e) => setLeadQuery(e.target.value)}
+              placeholder="חיפוש לפי שם או טלפון"
               className="ps-9"
             />
           </div>
@@ -355,241 +258,117 @@ export default function QuickActionDrawer() {
 
   return (
     <>
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" dir="rtl" className="flex w-full flex-col gap-0 overflow-y-auto border-border bg-background p-0 sm:max-w-md">
-          <SheetHeader className="border-b border-border bg-muted/40 px-5 py-4 text-center">
-            <SheetTitle className="flex items-center justify-center gap-2 text-lg font-extrabold">
-              <Zap className="h-5 w-5 text-primary" />
-              פעולות מהירות
-            </SheetTitle>
-          </SheetHeader>
+      {/* Standalone dialog #1 — new task */}
+      <Dialog open={flow === 'reminder'} onOpenChange={(v) => setFlow(v ? 'reminder' : null)}>
+        <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto text-right sm:max-w-md">
+          <DialogHeader className="text-right">
+            <DialogTitle className="flex items-center gap-2 text-lg font-extrabold">
+              <BellRing className="h-5 w-5 text-primary" />
+              משימה חדשה
+            </DialogTitle>
+          </DialogHeader>
 
-          <div className="grid grid-cols-4 gap-1 border-b border-border bg-background px-3 py-2">
-            {TABS.filter((t) => listingsEnabled || t.key !== 'matches').map((t) => {
-              const Icon = t.icon;
-              const active = tab === t.key;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setTab(t.key)}
-                  className={`group flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[11px] font-bold transition ${
-                    active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-primary hover:text-primary-foreground'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex-1 space-y-4 px-5 py-4">
+          <div className="space-y-3">
             {leadPicker}
 
-            {tab === 'note' && (
-              <div className="space-y-3">
-                <div className={listingsEnabled ? 'space-y-2' : 'hidden'}>
-                  <Label className="text-sm font-semibold">נכס מקושר</Label>
-                  {listing ? (
-                    <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
-                      <p className="truncate text-sm font-bold text-foreground">
-                        {listing.property_title || [listing.neighborhood, listing.city].filter(Boolean).join(', ') || 'נכס'}
-                      </p>
-                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setListing(null); setListingQuery(''); }}>
-                        החלף
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <Input
-                        value={listingQuery}
-                        onChange={(e) => setListingQuery(e.target.value)}
-                        placeholder="חיפוש נכס לפי כתובת, עיר או כותרת"
-                      />
-                      {listingResults.length > 0 && (
-                        <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-border p-1">
-                          {listingResults.map((r) => (
-                            <button
-                              key={r.id}
-                              type="button"
-                              onClick={() => { setListing(r); setListingResults([]); }}
-                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-right transition hover:bg-accent"
-                            >
-                              <PropertyThumb p={r} size={40} />
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-semibold">{propertyFullAddress(r)}</span>
-                                {r.property_title && (
-                                  <span className="block truncate text-[11px] text-muted-foreground">{r.property_title}</span>
-                                )}
-                                <PropertyMeta p={r} />
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {listing && (
-                        <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-2">
-                          <PropertyThumb p={listing} size={48} />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold">{propertyFullAddress(listing)}</p>
-                            {listing.property_title && (
-                              <p className="truncate text-[11px] text-muted-foreground">{listing.property_title}</p>
-                            )}
-                            <PropertyMeta p={listing} />
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">תוכן הפתק</Label>
-                  <Textarea
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    rows={6}
-                    className="resize-none"
-                  />
-                </div>
-                <Button className="w-full font-bold" onClick={saveNote} disabled={saving}>
-                  {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <StickyNote className="me-2 h-4 w-4" />}
-                  שמור פתק
-                </Button>
+            <div className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">מועד</Label>
+                <Input type="datetime-local" value={reminderWhen} onChange={(e) => setReminderWhen(e.target.value)} />
+              </div>
+              {/* Google Calendar availability check — icon only, right after the date field */}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 shrink-0"
+                onClick={loadCalendarSlots}
+                disabled={calendarLoading}
+                aria-label="בדיקת זמינות ביומן Google"
+                title="בדיקת זמינות ביומן Google"
+              >
+                {calendarLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck2 className="h-4 w-4" />}
+              </Button>
+              <div className="min-w-[110px] space-y-2">
+                <Label className="text-sm font-semibold">דחיפות</Label>
+                <Select value={reminderPriority} onValueChange={setReminderPriority}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">גבוהה</SelectItem>
+                    <SelectItem value="medium">בינונית</SelectItem>
+                    <SelectItem value="low">נמוכה</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {calendarConnected === false && <p className="text-sm text-muted-foreground">היומן אינו מחובר. ניתן לבחור מועד ידנית.</p>}
+            {calendarSlots.length > 0 && (
+              <div className="grid grid-cols-1 gap-2">
+                {calendarSlots.map((slot) => {
+                  const value = toLocalDateTime(slot.start);
+                  const selected = reminderWhen === value;
+                  return (
+                    <Button key={slot.start} type="button" variant={selected ? 'default' : 'outline'} onClick={() => setReminderWhen(value)} className="justify-between">
+                      <span>{new Date(slot.start).toLocaleDateString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
+                      <span>{new Date(slot.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className={selected ? 'text-primary-foreground' : 'text-success'}>פנוי</span>
+                    </Button>
+                  );
+                })}
               </div>
             )}
 
-            {tab === 'reminder' && (
-              <div className="space-y-3">
-                <div className="space-y-2">
-                        <Label className="text-sm font-semibold">כותרת</Label>
-                  <Input value={reminderTitle} onChange={(e) => setReminderTitle(e.target.value)} />
-                </div>
-                <Button type="button" variant="outline" className="w-full gap-2" onClick={loadCalendarSlots} disabled={calendarLoading}>
-                  {calendarLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck2 className="h-4 w-4" />}
-                  בדיקת זמינות ביומן Google
-                </Button>
-                {calendarConnected === false && <p className="text-sm text-muted-foreground">היומן אינו מחובר. ניתן לבחור מועד ידנית.</p>}
-                {calendarSlots.length > 0 && (
-                  <div className="grid grid-cols-1 gap-2">
-                    {calendarSlots.map((slot) => {
-                      const value = toLocalDateTime(slot.start);
-                      const selected = reminderWhen === value;
-                      return (
-                        <Button key={slot.start} type="button" variant={selected ? 'default' : 'outline'} onClick={() => setReminderWhen(value)} className="justify-between">
-                          <span>{new Date(slot.start).toLocaleDateString('he-IL', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
-                          <span>{new Date(slot.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span className={selected ? 'text-primary-foreground' : 'text-success'}>פנוי</span>
-                        </Button>
-                      );
-                    })}
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">מועד</Label>
-                    <Input type="datetime-local" value={reminderWhen} onChange={(e) => setReminderWhen(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">דחיפות</Label>
-                    <Select value={reminderPriority} onValueChange={setReminderPriority}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="high">גבוהה</SelectItem>
-                        <SelectItem value="medium">בינונית</SelectItem>
-                        <SelectItem value="low">נמוכה</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">הערה</Label>
-                  <Textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={3} className="resize-none" />
-                </div>
-                <Button className="w-full font-bold" onClick={saveReminder} disabled={saving}>
-                  {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <BellRing className="me-2 h-4 w-4" />}
-                  קבע תזכורת
-                </Button>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">משימה / תזכורת</Label>
+              <Textarea value={taskText} onChange={(e) => setTaskText(e.target.value)} rows={4} className="resize-none" />
+            </div>
 
-            {tab === 'interaction' && (
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">ערוץ</Label>
-                  <Select value={interactionChannel} onValueChange={setInteractionChannel}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {CHANNELS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">סיכום שיחה</Label>
-                  <Textarea
-                    value={interactionText}
-                    onChange={(e) => setInteractionText(e.target.value)}
-                    rows={5}
-                    className="resize-none"
-                  />
-                </div>
-                <Button className="w-full font-bold" onClick={saveInteraction} disabled={saving}>
-                  {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <MessageSquarePlus className="me-2 h-4 w-4" />}
-                  שמור סיכום שיחה
-                </Button>
-              </div>
-            )}
-
-            {tab === 'matches' && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">
-                    {lead ? `נכסים שמתאימים ל${lead.full_name || 'מתעניין'}` : 'הנכסים העדכניים במערכת'}
-                  </p>
-                  <Button variant="outline" size="sm" className="text-xs" onClick={loadMatches} disabled={matchesLoading}>
-                    רענון
-                  </Button>
-                </div>
-                {matchesLoading && (
-                  <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  </div>
-                )}
-                {!matchesLoading && matches?.length === 0 && (
-                  <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-                    לא נמצאו נכסים מתאימים
-                  </p>
-                )}
-                <div className="space-y-2">
-                  {(matches ?? []).map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => { setOpen(false); navigate(`/properties/${m.id}`); }}
-                      className="flex w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-right transition hover:border-primary hover:bg-accent"
-                    >
-                      <PropertyThumb p={m} size={52} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-bold text-foreground">{propertyFullAddress(m)}</p>
-                        {m.property_title && (
-                          <p className="truncate text-xs text-muted-foreground">{m.property_title}</p>
-                        )}
-                        <PropertyMeta p={m} />
-                      </div>
-                      <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    </button>
-                  ))}
-                </div>
-                {lead && (
-                  <Button variant="outline" className="w-full text-sm font-bold" onClick={() => { setOpen(false); navigate(`/lead-crm/${lead.id}`); }}>
-                    פתח כרטיס מתעניין
-                  </Button>
-                )}
-              </div>
-            )}
+            <Button className="w-full font-bold" onClick={saveTask} disabled={saving}>
+              {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <BellRing className="me-2 h-4 w-4" />}
+              שמור משימה
+            </Button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
+
+      {/* Standalone dialog #2 — call summary */}
+      <Dialog open={flow === 'interaction'} onOpenChange={(v) => setFlow(v ? 'interaction' : null)}>
+        <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto text-right sm:max-w-md">
+          <DialogHeader className="text-right">
+            <DialogTitle className="flex items-center gap-2 text-lg font-extrabold">
+              <MessageSquarePlus className="h-5 w-5 text-primary" />
+              סיכום שיחה
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {leadPicker}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">ערוץ</Label>
+              <Select value={interactionChannel} onValueChange={setInteractionChannel}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CHANNELS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">סיכום שיחה</Label>
+              <Textarea
+                value={interactionText}
+                onChange={(e) => setInteractionText(e.target.value)}
+                rows={5}
+                className="resize-none"
+              />
+            </div>
+            <Button className="w-full font-bold" onClick={saveInteraction} disabled={saving}>
+              {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <MessageSquarePlus className="me-2 h-4 w-4" />}
+              שמור סיכום שיחה
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
