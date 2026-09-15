@@ -212,6 +212,7 @@ export function useCommandCenterTasks() {
           listingLabel: labelOfListing(listing),
           listingThumb: listingThumbOf(listing),
           actionType: kind,
+          leadAvatar: lead?.profile_picture_url ?? null,
         });
       }
 
