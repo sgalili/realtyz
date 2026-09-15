@@ -13,12 +13,12 @@ const OPTIONS: Array<{ value: Mode; title: string; hint: string }> = [
   {
     value: 'official_meta',
     title: 'מספר Realtyz הרשמי (Meta)',
-    hint: 'שליחה וקבלה דרך המספר המאומת של Meta.',
+    hint: '',
   },
   {
     value: 'qr_session',
-    title: 'מספר ווטסאפ אישי (סריקת QR)',
-    hint: 'שליחה וקבלה מהמספר האישי שחובר בסריקת QR.',
+    title: 'מספר ווטסאפ אישי ',
+    hint: '',
   },
 ];
 
@@ -77,7 +77,7 @@ export function WhatsAppConnectionModeCard() {
     <Card data-keep dir="rtl" className="border-0 bg-transparent shadow-none">
       <CardContent className="space-y-2 p-0">
         <p className="text-xs text-muted-foreground">
-          הבחירה חלה על כל ההודעות היוצאות והנכנסות במרחב העבודה. קודי אימות נשלחים תמיד מהמספר הרשמי של המערכת.
+          
         </p>
         {loading ? (
           <Skeleton className="h-20 w-full" />
