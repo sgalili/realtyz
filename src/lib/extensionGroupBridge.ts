@@ -119,18 +119,28 @@ export const requestExtensionGroups = () => {
   } catch { /* noop */ }
 };
 
-/** Live extension-synced groups. Updates instantly on push. */
-export const useExtensionGroups = () => {
-  const [groups, setGroups] = useState<ExtensionGroup[]>(() => readExtensionGroups());
+/**
+ * Live extension-synced groups for ONE workspace.
+ *
+ * Pass the active workspace owner id: every cached list is stored per workspace
+ * and the shared browser inbox is consumed on commit, so a workspace switch
+ * never inherits the previous workspace's groups.
+ */
+export const useExtensionGroups = (owner?: string | null) => {
+  const [groups, setGroups] = useState<ExtensionGroup[]>(() => readExtensionGroups(owner));
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
 
   useEffect(() => {
+    // Workspace switch: start from this workspace's own cache only.
+    setGroups(readExtensionGroups(owner));
+    setLastSyncAt(null);
+
     const commit = (input: any) => {
       const next = normalizeExtensionGroups(input);
       if (next.length === 0) return;
       setGroups(next);
       setLastSyncAt(Date.now());
-      writeExtensionGroups(next);
+      writeExtensionGroups(next, owner);
     };
 
     const onMessage = (e: MessageEvent) => {
