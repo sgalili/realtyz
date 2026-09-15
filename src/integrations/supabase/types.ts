@@ -1015,6 +1015,8 @@ export type Database = {
           duration_seconds: number | null
           elevenlabs_conversation_id: string | null
           ended_at: string | null
+          google_event_id: string | null
+          google_event_link: string | null
           handled_by: string
           id: string
           lead_id: string | null
@@ -1036,6 +1038,8 @@ export type Database = {
           duration_seconds?: number | null
           elevenlabs_conversation_id?: string | null
           ended_at?: string | null
+          google_event_id?: string | null
+          google_event_link?: string | null
           handled_by?: string
           id?: string
           lead_id?: string | null
@@ -1057,6 +1061,8 @@ export type Database = {
           duration_seconds?: number | null
           elevenlabs_conversation_id?: string | null
           ended_at?: string | null
+          google_event_id?: string | null
+          google_event_link?: string | null
           handled_by?: string
           id?: string
           lead_id?: string | null
