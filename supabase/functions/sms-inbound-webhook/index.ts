@@ -383,11 +383,13 @@ Deno.serve(async (req) => {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
         body: JSON.stringify({
           lead_id: lead.id,
-          lead_name: lead.full_name,
+          // A phone-shaped name means we do not know the real name yet — never
+          // let Rita greet the contact by their own phone number.
+          lead_name: realName || undefined,
           mode: "deal_room_reply",
           workspace_owner_id: workspaceOwnerId || undefined,
           context:
-            `Inbound SMS from ${lead.full_name ?? "the contact"}: ${bodyText}\n` +
+            `Inbound SMS from ${realName ?? "the contact (name unknown — do not invent one)"}: ${bodyText}\n` +
             `[CHANNEL: SMS] Keep the reply short (under 300 characters), plain text, no markdown and no emojis. ` +
             `When it helps, invite them to continue on WhatsApp at https://wa.me/${OFFICIAL_WABA_PHONE}.`,
           messages: history,
