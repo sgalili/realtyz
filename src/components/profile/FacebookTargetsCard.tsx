@@ -96,6 +96,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     const { error } = await (supabase as any)
       .from('fb_user_groups')
       .update({ is_selected: next })
+      .eq('workspace_owner_id', workspaceOwnerId)
       .eq('id', target.id);
     if (error) {
       setGroups((prev) => prev.map((g) => (g.id === target.id ? { ...g, selected: !next } : g)));
@@ -110,6 +111,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     const { error } = await (supabase as any)
       .from('fb_user_groups')
       .update({ is_selected: next })
+      .eq('workspace_owner_id', workspaceOwnerId)
       .in('id', ids);
     if (error) {
       toast.error('עדכון הבחירה נכשל', { description: error.message });

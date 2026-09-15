@@ -1020,7 +1020,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
 
                 // Persist the per-group daily cap the broker typed.
                 if (selectedGroupIds.length > 0) {
-                  void saveGroupDailyLimit(selectedGroupIds, groupDailyLimit > 0 ? groupDailyLimit : null);
+                  void saveGroupDailyLimit(selectedGroupIds, groupDailyLimit > 0 ? groupDailyLimit : null, workspaceOwnerId);
                 }
 
                 // Distribute properties across slots RANDOMLY (each cycle is a

@@ -199,7 +199,7 @@ export function ScheduleCurrentPostDialog({
     if (!open || selectedGroupIds.length === 0) { setLimitState({ limits: {}, usedToday: {} }); return; }
     let cancelled = false;
     (async () => {
-      const state = await loadGroupLimitState(selectedGroupIds);
+      const state = await loadGroupLimitState(selectedGroupIds, workspaceOwnerId);
       if (!cancelled) setLimitState(state);
     })();
     return () => { cancelled = true; };
@@ -472,7 +472,7 @@ export function ScheduleCurrentPostDialog({
       ? Array.from(new Set(resolvedGroupIds.map((g) => String(g).replace(/^ext:/, '')).filter(Boolean)))
       : [];
     if (channelId === 'facebook' && baseGroupIds.length > 0) {
-      await saveGroupDailyLimit(baseGroupIds, groupDailyLimit > 0 ? groupDailyLimit : null);
+      await saveGroupDailyLimit(baseGroupIds, groupDailyLimit > 0 ? groupDailyLimit : null, workspaceOwnerId);
     }
     const liveLimits: GroupLimitState = channelId === 'facebook' && baseGroupIds.length > 0
       ? {
