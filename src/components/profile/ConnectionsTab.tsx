@@ -445,7 +445,7 @@ export function ConnectionsTab() {
     // only a Super Admin may see or configure them.
     ...(isSuperAdmin ? [{
       id: 'voice',
-      title: 'שיחות טלפון',
+      title: 'טלפון',
       titleAside: (
         <Phone
           className={cn('h-5 w-5 shrink-0 text-[#0B62F5]', !(voicePhone || voiceReady) && 'grayscale opacity-40')}
@@ -459,7 +459,7 @@ export function ConnectionsTab() {
     }] : []),
     ...(isSuperAdmin ? [{
       id: 'portals',
-      title: 'פורטלי נדל"ן',
+      title: 'יד2 / הומלי',
       status: '',
       tone: 'idle' as Tone,
       // Portal brand marks replace the settings pill: full color when the
