@@ -147,17 +147,13 @@ export function WhatsAppGatewayCard() {
 
   return (
     <Card data-keep dir="rtl" className="border-0 bg-transparent text-right shadow-none">
-      <CardContent className="space-y-3 p-0">
+      <CardContent className="space-y-2 p-0">
         {loading ? (
           <div className="flex h-16 items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
           </div>
         ) : (
           <>
-            <p className="text-xs text-muted-foreground">
-              
-            </p>
-
             {connected && (
               <div className="space-y-1 rounded-lg border p-3">
                 <div className="flex items-center justify-between gap-2">
