@@ -77,11 +77,12 @@ function ConnectionSection({
   onToggle,
   children,
   headerAside,
+  bodyClassName,
   restricted,
 }: {
   title: string;
   titleAside?: ReactNode;
-  /** Logo rendered at the very start of the header row, before the label. */
+  /** Logo rendered at the very start of header row, before the label. */
   titleLead?: ReactNode;
   /** Fully custom label row (replaces titleLead + title + titleAside). */
   titleNode?: ReactNode;
@@ -91,6 +92,7 @@ function ConnectionSection({
   onToggle: () => void;
   children: ReactNode;
   headerAside?: ReactNode;
+  bodyClassName?: string;
   /** Super-admin only section — marked with a red border. */
   restricted?: boolean;
 }) {
@@ -122,6 +124,7 @@ function ConnectionSection({
         <div
           className={cn(
             'border-t px-1 pb-1 pt-[10px] text-right',
+            bodyClassName,
             // neutralize the nested Card chrome + hide its duplicate header
             '[&_[data-conn-body]>div:not([data-plain])]:border-0 [&_[data-conn-body]>div:not([data-plain])]:bg-transparent [&_[data-conn-body]>div:not([data-plain])]:shadow-none',
             '[&_[data-conn-body]>div:not([data-plain])>:first-child]:hidden',
@@ -217,6 +220,15 @@ export function ConnectionsTab() {
       } catch { /* silent */ }
     })();
   }, [activeWorkspaceId]);
+
+  // Keep the WhatsApp expanded panel in sync when the user toggles the method.
+  useEffect(() => {
+    const onMode = (e: Event) => {
+      setWaMode((e as CustomEvent).detail as string);
+    };
+    window.addEventListener('realtyz:wa-mode-changed', onMode);
+    return () => window.removeEventListener('realtyz:wa-mode-changed', onMode);
+  }, []);
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
@@ -367,34 +379,28 @@ export function ConnectionsTab() {
       tone: waStatus[1],
       node: (
         <div data-plain className="space-y-4">
-          {officialPhone ? (
-            // A Meta WBA number is live — keep this minimal: a single line of
-            // explanation, no icon, no pills, no setup block.
-            <section>
-              <p className="text-xs text-muted-foreground">
-                
-              </p>
-            </section>
-          ) : (
+          {!officialPhone && (
             <section className="space-y-2">
               <MetaWhatsAppAuthCard />
             </section>
           )}
-          <section className="space-y-2 border-t pt-4">
+          <section className={cn('space-y-2', !officialPhone && 'border-t pt-4')}>
             <h4 className="text-sm font-semibold">אופן חיבור WhatsApp</h4>
             <WhatsAppConnectionModeCard />
           </section>
-          <section className="space-y-2 border-t pt-4">
-            <h4 className="text-sm font-semibold">
-              
-              {personalPhone && (
-                <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
-                  {formatPhoneDisplay(personalPhone)}
-                </span>
-              )}
-            </h4>
-            <WhatsAppGatewayCard />
-          </section>
+          {waMode === 'qr_session' && (
+            <section className="space-y-2 border-t pt-4">
+              <h4 className="text-sm font-semibold">
+                מספר ווטסאפ אישי
+                {personalPhone && (
+                  <span className="ms-2 text-xs font-normal text-muted-foreground" dir="ltr">
+                    {formatPhoneDisplay(personalPhone)}
+                  </span>
+                )}
+              </h4>
+              <WhatsAppGatewayCard />
+            </section>
+          )}
         </div>
       ),
 
@@ -530,6 +536,7 @@ export function ConnectionsTab() {
           open={openId === s.id}
           onToggle={() => toggle(s.id)}
           headerAside={s.headerAside}
+          bodyClassName={s.id === 'whatsapp' ? 'pt-0' : undefined}
           restricted={s.restricted}
         >
           {s.node}
