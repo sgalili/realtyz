@@ -81,7 +81,7 @@ import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 import { startMetaPageConnect, FACEBOOK_PAGE_PROVIDER } from '@/lib/facebookPageConnect';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
-import { useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
+import { useRefreshMetaPageBinding, useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 
 import { searchAllSources } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
@@ -5189,7 +5189,7 @@ const PublishedFeed = ({
             // If the workspace already has a bound Facebook Page, transient
             // blips (timeouts, rate limits, empty responses) must not trigger
             // the disruptive reconnect banner.
-            const isFbConnected = connectedChannelsRef.current.has('facebook');
+            const isFbConnected = facebookIsLive();
             const isTransient = isTransientFacebookError({
               raw_error: (syncData as any)?.raw_error,
               message: providerError,
@@ -5214,7 +5214,7 @@ const PublishedFeed = ({
       } catch (err) {
         console.warn('[campaign] manual facebook sync failed', err);
         // A raw network/edge crash while already connected is also transient.
-        if (connectedChannelsRef.current.has('facebook')) {
+        if (facebookIsLive()) {
           toast.message('רענון הפוסטים נדחה לרגע — החיבור נשמר', { id: toastId });
         } else {
           setFacebookSyncWarning('רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.');
