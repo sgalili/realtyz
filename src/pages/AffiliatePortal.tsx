@@ -568,8 +568,8 @@ export default function AffiliatePortal() {
     <>
       <div className="space-y-5 p-4" dir="rtl">
         <header>
-          <h1 className="text-2xl font-bold text-slate-900">נכסים לשיווק</h1>
           <p className="text-sm text-slate-500">
+
             בחרו נכס, קבלו קישור שיווק אישי, וקבלו תגמול על כל עסקה שנסגרת דרככם.
           </p>
         </header>
