@@ -749,8 +749,6 @@ export default function Properties() {
           חיפוש מאוחד — הומלי, יד-2 והמאגר שלך במקום אחד. לחץ על נכס לתצוגה מלאה, וסמן נכסים לייבוא קבוצתי.
         </p>
         <p className="text-[11px] sm:text-xs text-muted-foreground/80 mt-1">
-          {poolInfo?.last
-            ? ` עדכון אחרון: ${new Date(poolInfo.last).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
             : ''}
         </p>
       </header>
