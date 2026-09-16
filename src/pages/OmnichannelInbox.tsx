@@ -885,8 +885,8 @@ const OmnichannelInbox = () => {
 
   useEffect(() => {
     if (highlightMessageId) return; // deep-linked view scrolls to the target instead
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, highlightMessageId]);
+    chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+  }, [selectedVoterId, chatMessages?.length, highlightMessageId]);
 
   // Deep link from the notification center: scroll to the exact message and
   // keep it highlighted for a few seconds.
@@ -894,7 +894,7 @@ const OmnichannelInbox = () => {
     if (!highlightMessageId || !chatMessages?.length) return;
     const el = document.querySelector(`[data-message-id="${highlightMessageId}"]`);
     if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.scrollIntoView({ behavior: 'auto', block: 'center' });
     const timer = setTimeout(() => setHighlightMessageId(null), 4000);
     return () => clearTimeout(timer);
   }, [highlightMessageId, chatMessages]);
@@ -1292,8 +1292,8 @@ const OmnichannelInbox = () => {
               )}
 
               {/* Messages */}
-              <ScrollArea className="flex-1 p-2 sm:p-4 whatsapp-chat-bg">
-                <div className="mx-auto w-full max-w-3xl space-y-2 overflow-hidden">
+              <ScrollArea className="min-w-0 flex-1 p-2 sm:p-4 whatsapp-chat-bg">
+                <div className="mx-auto w-full min-w-0 max-w-3xl space-y-2 px-1 pb-3 sm:px-2">
                   {chatMessages?.length === 0 && (
                     <p className="rounded-lg bg-whatsapp-bubble-in/80 px-3 py-2 text-center text-sm text-muted-foreground shadow-sm">אין הודעות עדיין</p>
                   )}
@@ -1323,7 +1323,7 @@ const OmnichannelInbox = () => {
                             <div className="flex-1 h-px bg-border" />
                           </div>
                         )}
-                        <Message from={isOutbound ? 'assistant' : 'user'} className={`max-w-full flex-row items-end gap-2 ${isOutbound ? 'justify-start' : 'justify-end'}`}>
+                        <Message from={isOutbound ? 'assistant' : 'user'} className={`min-w-0 max-w-full flex-row items-end gap-2 px-0.5 ${isOutbound ? 'justify-start' : 'justify-end'}`}>
                           {isAiMessage ? (
                             <RitaAvatar className="h-7 w-7" />
                           ) : isOutbound ? (
@@ -1343,7 +1343,7 @@ const OmnichannelInbox = () => {
                               />
                             </button>
                           )}
-                          <MessageContent className={`relative min-w-0 max-w-[78%] gap-0 overflow-hidden rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isAiMessage ? 'border border-primary/20 bg-primary/10 text-foreground rounded-es-sm' : isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
+                          <MessageContent className={`relative min-w-0 max-w-[calc(100%-2.5rem)] gap-0 break-words [overflow-wrap:anywhere] rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isAiMessage ? 'border border-primary/20 bg-primary/10 text-foreground rounded-es-sm' : isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
                             {msg.id === lastAiMessageId && selectedVoterId && (
                               <UndoLastAiMessage
                                 messageId={msg.id as string}

@@ -26,6 +26,7 @@ import { sendViaOfficialWaba } from '@/lib/officialWa';
 import { publicUrl } from '@/lib/publicUrl';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
 type LeadOption = {
   id: string;
@@ -424,7 +425,10 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
             </div>
 
             <div className="space-y-2">
-              <Label>הערות</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>הערות</Label>
+                <VoiceInputButton size="sm" language="auto" onTranscript={(value) => setNotes((current) => current ? `${current} ${value}` : value)} />
+              </div>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="פרטים לסיור" />
             </div>
 

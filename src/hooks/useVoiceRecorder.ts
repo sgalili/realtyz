@@ -15,24 +15,6 @@ interface Options {
   maxSeconds?: number;
 }
 
-/** Pick a container the browser can actually produce (Safari only does mp4). */
-function pickMimeType(): string | undefined {
-  if (typeof MediaRecorder === 'undefined') return undefined;
-  const candidates = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/mp4;codecs=mp4a.40.2',
-    'audio/mp4',
-    'audio/ogg;codecs=opus',
-  ];
-  for (const c of candidates) {
-    try {
-      if (MediaRecorder.isTypeSupported(c)) return c;
-    } catch { /* older browsers throw */ }
-  }
-  return undefined;
-}
-
 function micErrorMessage(e: unknown): string {
   const name = (e as { name?: string } | null)?.name ?? '';
   if (name === 'NotAllowedError' || name === 'SecurityError') {
@@ -53,9 +35,8 @@ function micErrorMessage(e: unknown): string {
 /**
  * Global voice-to-text recorder.
  *
- * Primary path: MediaRecorder captures ONE complete file (no timeslice, so the
- * container header is always present). Fallback path: Web Audio PCM encoded to
- * a 16kHz mono WAV, for browsers without MediaRecorder audio support.
+ * The recorder captures raw browser PCM and always encodes a complete 16 kHz
+ * mono WAV. This avoids fragmented WebM/MP4 containers on Safari and Chromium.
  * The audio is transcribed through the `transcribe-audio` edge function and the
  * transcript is handed to `onTranscript` — never submitted anywhere.
  */
@@ -64,10 +45,6 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
   const [seconds, setSeconds] = useState(0);
 
   const streamRef = useRef<MediaStream | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const blobPartsRef = useRef<Blob[]>([]);
-  const stoppedRef = useRef<Promise<void> | null>(null);
-  // Web Audio fallback
   const ctxRef = useRef<AudioContext | null>(null);
   const nodeRef = useRef<ScriptProcessorNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -91,7 +68,6 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
     nodeRef.current = null;
     sourceRef.current = null;
     streamRef.current = null;
-    recorderRef.current = null;
     if (ctx && ctx.state !== 'closed') ctx.close().catch(() => {});
   }, []);
 
@@ -100,27 +76,8 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
   const transcribe = useCallback(async (blob: Blob) => {
     setState('transcribing');
     try {
-      // Base MIME only: `audio/webm;codecs=opus` would put extra parameters
-      // between the media type and the `;base64` marker of the data URL.
-      // Re-encode to a plain 16kHz mono WAV so the upload is always decodable
-      // (Safari's fragmented MP4 / webm-opus containers are frequently rejected).
-      let clean = blob;
-      let baseMime = (blob.type || 'audio/webm').split(';')[0].trim() || 'audio/webm';
-      if (baseMime !== 'audio/wav') {
-        try {
-          const buf = await blob.arrayBuffer();
-          const Ctx: typeof AudioContext = window.AudioContext
-            ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-          const ctx = new Ctx();
-          const decoded = await ctx.decodeAudioData(buf.slice(0));
-          await ctx.close().catch(() => {});
-          const wav = encodeWav([decoded.getChannelData(0)], decoded.sampleRate);
-          if (wav.size > 1024) { clean = wav; baseMime = 'audio/wav'; }
-        } catch { /* keep the original container */ }
-        if (baseMime !== 'audio/wav' && blob.type !== baseMime) {
-          clean = new Blob([blob], { type: baseMime });
-        }
-      }
+      const clean = blob;
+      const baseMime = 'audio/wav';
       if (clean.size < 1024) throw new Error('ההקלטה הייתה ריקה — נסו שוב');
 
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -177,9 +134,7 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
   const start = useCallback(async () => {
     if (stateRef.current !== 'idle') return;
     cancelledRef.current = false;
-    blobPartsRef.current = [];
     pcmRef.current = [];
-    stoppedRef.current = null;
 
     if (!navigator.mediaDevices?.getUserMedia) {
       onError?.('הדפדפן הזה לא תומך בהקלטה קולית');
@@ -199,35 +154,23 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
     }
     streamRef.current = stream;
 
-    const mimeType = pickMimeType();
     try {
-      if (typeof MediaRecorder !== 'undefined') {
-        const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-        recorderRef.current = recorder;
-        recorder.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) blobPartsRef.current.push(e.data);
-        };
-        stoppedRef.current = new Promise<void>((resolve) => {
-          recorder.onstop = () => resolve();
-          recorder.onerror = () => resolve();
-        });
-        // No timeslice: one complete, decodable file when we stop.
-        recorder.start();
-      } else {
-        const ctx = new AudioContext();
-        ctxRef.current = ctx;
-        if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
-        sampleRateRef.current = ctx.sampleRate;
-        const source = ctx.createMediaStreamSource(stream);
-        sourceRef.current = source;
-        const node = ctx.createScriptProcessor(4096, 1, 1);
-        nodeRef.current = node;
-        node.onaudioprocess = (e) => {
-          pcmRef.current.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-        };
-        source.connect(node);
-        node.connect(ctx.destination);
-      }
+      const Ctx: typeof AudioContext = window.AudioContext
+        ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) throw new Error('AudioContext unavailable');
+      const ctx = new Ctx();
+      ctxRef.current = ctx;
+      if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
+      sampleRateRef.current = ctx.sampleRate;
+      const source = ctx.createMediaStreamSource(stream);
+      sourceRef.current = source;
+      const node = ctx.createScriptProcessor(4096, 1, 1);
+      nodeRef.current = node;
+      node.onaudioprocess = (e) => {
+        pcmRef.current.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+      };
+      source.connect(node);
+      node.connect(ctx.destination);
     } catch (e) {
       teardown();
       setState('idle');
@@ -250,30 +193,9 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
     if (stateRef.current !== 'recording') return null;
     if (tickRef.current) { window.clearInterval(tickRef.current); tickRef.current = null; }
 
-    const recorder = recorderRef.current;
-    let blob: Blob | null = null;
-
-    if (recorder) {
-      try {
-        if (recorder.state !== 'inactive') {
-          
-          recorder.stop();
-          await Promise.race([
-            stoppedRef.current ?? Promise.resolve(),
-            new Promise<void>((r) => window.setTimeout(r, 3000)),
-          ]);
-        }
-      } catch { /* fall through to the size check */ }
-      const parts = blobPartsRef.current;
-      blobPartsRef.current = [];
-      if (parts.length) {
-        blob = new Blob(parts, { type: recorder.mimeType || parts[0].type || 'audio/webm' });
-      }
-    } else {
-      const chunks = pcmRef.current;
-      pcmRef.current = [];
-      if (chunks.length) blob = encodeWav(chunks, sampleRateRef.current);
-    }
+    const chunks = pcmRef.current;
+    pcmRef.current = [];
+    const blob = chunks.length ? encodeWav(chunks, sampleRateRef.current) : null;
 
     teardown();
 
@@ -293,9 +215,7 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
 
   const cancel = useCallback(() => {
     cancelledRef.current = true;
-    blobPartsRef.current = [];
     pcmRef.current = [];
-    try { if (recorderRef.current?.state !== 'inactive') recorderRef.current?.stop(); } catch { /* noop */ }
     teardown();
     setState('idle');
     setSeconds(0);

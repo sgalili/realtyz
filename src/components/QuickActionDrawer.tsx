@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import TaskFormDialog, { type TaskFormValues } from '@/components/tasks/TaskFormDialog';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
 /**
  * Quick actions are TWO standalone dialogs — a task ("משימה") and a call
@@ -281,7 +282,10 @@ export default function QuickActionDrawer() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-semibold">סיכום שיחה</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm font-semibold">סיכום שיחה</Label>
+                <VoiceInputButton size="sm" language="auto" onTranscript={(value) => setInteractionText((current) => current ? `${current} ${value}` : value)} />
+              </div>
               <Textarea
                 value={interactionText}
                 onChange={(e) => setInteractionText(e.target.value)}

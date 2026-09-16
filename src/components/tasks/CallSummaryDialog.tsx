@@ -11,6 +11,7 @@ import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
 import type { TaskLeadLite } from '@/components/tasks/TaskFormDialog';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
 export const CALL_CHANNELS: Array<{ value: string; label: string }> = [
   { value: 'whatsapp', label: 'וואטסאפ' },
@@ -199,7 +200,10 @@ export default function CallSummaryDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">סיכום שיחה</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm font-semibold">סיכום שיחה</Label>
+              <VoiceInputButton size="sm" language="auto" onTranscript={(value) => setText((current) => current ? `${current} ${value}` : value)} />
+            </div>
             <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} className="resize-none" />
           </div>
 
