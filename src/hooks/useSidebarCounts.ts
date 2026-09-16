@@ -94,15 +94,45 @@ export function useSidebarCounts() {
         );
       };
 
-      const [leads, listings, chats, deals, campaigns] = await Promise.all([
+      const waitingTasksAndTours = async (): Promise<number> => {
+        try {
+          const [tasksRes, toursRes] = await Promise.all([
+            (supabase as any)
+              .from('scheduled_items')
+              .select('item_type, status')
+              .eq('workspace_owner_id', workspaceOwnerId)
+              .limit(1000),
+            (supabase as any)
+              .from('meetings')
+              .select('status')
+              .eq('workspace_owner_id', workspaceOwnerId)
+              .gte('starts_at', new Date(Date.now() - 12 * 3600_000).toISOString())
+              .limit(1000),
+          ]);
+          const closed = new Set(['completed', 'done', 'cancelled', 'sent', 'archived']);
+          const postTypes = new Set(['social_post', 'sms_campaign', 'whatsapp_blast', 'push']);
+          const taskCount = Array.isArray(tasksRes.data)
+            ? tasksRes.data.filter((row: any) => !closed.has(String(row.status ?? '').toLowerCase()) && !postTypes.has(String(row.item_type ?? '').toLowerCase())).length
+            : 0;
+          const tourCount = Array.isArray(toursRes.data)
+            ? toursRes.data.filter((row: any) => !closed.has(String(row.status ?? '').toLowerCase())).length
+            : 0;
+          return taskCount + tourCount;
+        } catch {
+          return 0;
+        }
+      };
+
+      const [leads, listings, chats, deals, campaigns, tasks] = await Promise.all([
         safeCount('leads'),
         yad2FreshCount(),
         distinctChatLeads(),
         activeDealsCount(),
         groupedCampaignCount(),
+        waitingTasksAndTours(),
       ]);
 
-      return { leads, listings, chats, deals, campaigns };
+      return { leads, listings, chats, deals, campaigns, tasks };
 
 
     },
