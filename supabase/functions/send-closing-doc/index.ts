@@ -202,6 +202,54 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ---- Admin / managing broker notification (best effort) ----
+    // The client's delivery already succeeded above; a failure to alert the
+    // manager must never fail the request.
+    try {
+      const { data: managerProfile } = await admin
+        .from("profiles")
+        .select("phone, full_name")
+        .eq("id", workspaceOwnerId)
+        .maybeSingle();
+      const managerPhone = String((managerProfile as any)?.phone ?? "").trim();
+      const { data: leadRow } = await admin
+        .from("leads")
+        .select("full_name, phone_number")
+        .eq("id", doc.lead_id)
+        .maybeSingle();
+      if (managerPhone) {
+        const alert = [
+          `📤 נשלח מסמך לחתימה דיגיטלית`,
+          `📄 ${doc.title}`,
+          `👤 איש קשר: ${(leadRow as any)?.full_name || signerName || "—"}`,
+          ...((leadRow as any)?.phone_number ? [`📞 ${(leadRow as any).phone_number}`] : []),
+          `🔗 ${signUrl}`,
+        ].join("\n");
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SERVICE_ROLE}`,
+            apikey: SERVICE_ROLE,
+          },
+          body: JSON.stringify({
+            phone_number: managerPhone,
+            message: alert,
+            tenant_id: workspaceOwnerId,
+            ai_assisted: false,
+          }),
+        });
+        if (!res.ok) {
+          console.error("[send-closing-doc] manager alert failed", res.status, await res.text());
+        }
+      } else {
+        console.warn("[send-closing-doc] no manager phone on file", { workspaceOwnerId });
+      }
+    } catch (e) {
+      console.error("[send-closing-doc] manager alert error", e);
+    }
+
+
 
     // Update document + lead stage
     await admin
