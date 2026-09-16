@@ -223,9 +223,10 @@ export default function NotificationCenter() {
     if (items.length > 0 || inbound.length + tours.length + newLeads.length > 0) baselinedRef.current = true;
 
     let changed = false;
-    items.forEach((i) => {
+    items.forEach((i: any) => {
       if (!i.id || seenRef.current.ids.has(i.id)) return;
       seenRef.current.ids.add(i.id);
+      (i.alsoSeen ?? []).forEach((extra: string) => seenRef.current.ids.add(extra));
       changed = true;
       if (baseline) return;
       const ts = i.at ? new Date(i.at).getTime() : 0;
