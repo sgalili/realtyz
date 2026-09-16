@@ -239,7 +239,7 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
     if (recorder) {
       try {
         if (recorder.state !== 'inactive') {
-          recorder.requestData?.();
+          
           recorder.stop();
           await Promise.race([
             stoppedRef.current ?? Promise.resolve(),
