@@ -152,14 +152,21 @@ Deno.serve(async (req) => {
           signed_pdf_path: signedPath,
           signer_name: signer_name || null,
           signature_data: signature_data.slice(0, 100), // store a tiny prefix only (full image is in the PDF)
+          fields: {
+            ...((doc.fields ?? {}) as Record<string, unknown>),
+            signer_first_name: first_name,
+            signer_last_name: last_name,
+            signer_identity_number: identityNumber,
+          },
         })
         .eq("id", doc.id);
 
       // Move lead to "negotiation" or keep as "awaiting_signature"? Mark as closed candidate via stage flip:
       await admin
         .from("leads")
-        .update({ lead_stage: "negotiation", last_interaction_at: nowIso })
+        .update({ lead_stage: "negotiation", last_interaction_at: nowIso, identity_number: identityNumber })
         .eq("id", doc.lead_id);
+
 
       await admin.from("audit_logs").insert({
         actor_id: doc.user_id,
