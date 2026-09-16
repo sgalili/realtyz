@@ -265,7 +265,7 @@ export default function CommandCenter() {
         key={cardKey}
         className={`w-full rounded-lg border-2 bg-card p-3 transition-colors hover:bg-accent/40 ${PRIORITY_BORDER[task.priority]}`}
       >
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+        <div className="min-w-0">
           <div
             role="button"
             tabIndex={0}
@@ -298,7 +298,7 @@ export default function CommandCenter() {
                   <span className="block min-w-0">
                     <button
                       type="button"
-                      className="block max-w-full truncate text-[15px] font-bold text-foreground hover:text-primary hover:underline"
+                      className="block max-w-full whitespace-normal break-words text-right text-[15px] font-bold leading-snug text-foreground hover:text-primary hover:underline"
                       onClick={(event) => {
                         event.stopPropagation();
                         if (task.leadId) navigate(`/lead-crm/${task.leadId}`);
@@ -329,11 +329,12 @@ export default function CommandCenter() {
               )}
             </span>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1">
+          {/* Status pill + action row sit at the bottom of the card so they never cover the text */}
+          <div className="mt-3 flex flex-col items-end gap-2" onClick={(event) => event.stopPropagation()}>
             {TASK_STATUS_LABEL[task.status] && (
               <Badge variant="outline" className="text-[13px]">{TASK_STATUS_LABEL[task.status]}</Badge>
             )}
-            <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center gap-2">
               {task.leadId && <IconAction label="WhatsApp" onClick={() => navigate(`/inbox?lead=${task.leadId}&channel=whatsapp`)}><BrandIcon name="whatsapp" className="h-4 w-4 text-[hsl(var(--social-whatsapp))]" /></IconAction>}
               {task.leadPhone && <Button asChild type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground"><a href={`tel:${task.leadPhone}`} aria-label="שיחת טלפון" title="שיחת טלפון"><Phone className="h-4 w-4" /></a></Button>}
               <IconAction label="עריכה" onClick={() => setEditing(task)}><Pencil className="h-4 w-4" /></IconAction>
