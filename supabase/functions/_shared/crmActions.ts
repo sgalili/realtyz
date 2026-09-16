@@ -217,11 +217,11 @@ export async function searchProperties(
   const maxPrice = Number(args.max_price) > 0 ? Number(args.max_price) : null;
 
   let query = supabase.from("listings")
-    .select("id, slug, property_title, short_description, description, address, city, neighborhood, rooms, sqm, asking_price, deal_type, features, image_url, media_photos, status, is_published, created_at")
+    .select("id, slug, property_title, short_description, description, address, city, neighborhood, rooms, sqm, asking_price, deal_type, features, image_url, media_photos, status, is_published, affiliate_enabled, created_at")
     .eq("workspace_owner_id", ownerId)
     .order("created_at", { ascending: false })
     .limit(200);
-  if (publicOnly) query = query.eq("is_published", true);
+  if (publicOnly) query = query.or("is_published.eq.true,affiliate_enabled.eq.true");
   const { data, error } = await query;
   if (error) throw error;
 
