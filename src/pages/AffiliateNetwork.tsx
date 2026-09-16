@@ -242,6 +242,8 @@ export default function AffiliateNetwork() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
   const [previewing, setPreviewing] = useState<BrokerAffiliateListing | null>(null);
+  /** Property awaiting confirmation before it leaves the affiliate marketplace. */
+  const [unsharing, setUnsharing] = useState<BrokerAffiliateListing | null>(null);
 
   useEffect(() => {
     if (listingsLoading || refsLoading || subsLoading) return;
