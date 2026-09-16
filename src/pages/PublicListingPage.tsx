@@ -58,7 +58,7 @@ function detailRows(row: any): Array<{ label: string; value: string }> {
     if (text && text !== '{}' && text !== '[]') rows.push({ label, value: text });
   };
   for (const key of ['neighborhood', 'available_from', 'project_name', 'elevator', 'parking', 'source', 'latitude', 'longitude']) add(DETAIL_LABELS[key], row?.[key]);
-  for (const [group, value] of [['מאפיינים', row?.features], ['פרטים נוספים', row?.additional_details], ['ריהוט', row?.furniture_details], ['הסביבה', row?.area_perks], ['פרטי מקור', row?.source_metadata]]) {
+  for (const [group, value] of [['מאפיינים', row?.features], ['נתוני נכס', row?.attributes], ['פרטים נוספים', row?.additional_details], ['ריהוט', row?.furniture_details], ['הסביבה', row?.area_perks], ['פרטי מקור', row?.source_metadata], ['היסטוריית מחיר', row?.price_history]]) {
     if (value && typeof value === 'object') {
       for (const [key, item] of Object.entries(value)) add(`${group}: ${key}`, item);
     }

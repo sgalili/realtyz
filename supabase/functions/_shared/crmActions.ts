@@ -215,7 +215,7 @@ export async function searchProperties(
     .eq("workspace_owner_id", ownerId)
     .order("created_at", { ascending: false })
     .limit(100);
-  if (publicOnly) query = query.eq("is_published", true).eq("status", "live");
+  if (publicOnly) query = query.eq("is_published", true);
   const { data, error } = await query;
   if (error) throw error;
 
@@ -235,10 +235,27 @@ export async function searchProperties(
     return distance;
   };
 
-  return [...rows]
+  const ranked = [...rows]
     .filter((row: any) => !dealType || row.deal_type === dealType)
     .sort((a: any, b: any) => score(a) - score(b))
     .slice(0, Math.max(3, Math.min(10, rows.length)));
+
+  return await Promise.all(ranked.map(async (row: any) => {
+    const longUrl = `https://realtyz.co.il/p/${row.slug || row.id}`;
+    const { data: existing } = await supabase.from("short_urls")
+      .select("slug").eq("property_id", row.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (existing?.slug) return { ...row, short_url: `https://realtyz.co.il/r/${existing.slug}` };
+    const alphabet = "abcdefghijkmnpqrstuvwxyz23456789";
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const bytes = new Uint8Array(7);
+      crypto.getRandomValues(bytes);
+      const slug = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+      const { error: insertError } = await supabase.from("short_urls")
+        .insert({ slug, property_id: row.id, long_url: longUrl, created_by: ownerId });
+      if (!insertError) return { ...row, short_url: `https://realtyz.co.il/r/${slug}` };
+    }
+    return { ...row, short_url: longUrl };
+  }));
 }
 
 /**
