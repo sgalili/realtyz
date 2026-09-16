@@ -10,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MODEL = "google/gemini-3.5-transcribe";
+const MODEL = "openai/gpt-4o-transcribe";
 const MAX_BYTES = 24 * 1024 * 1024;
 
 const json = (body: unknown, status = 200) =>
