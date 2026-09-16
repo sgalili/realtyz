@@ -231,9 +231,8 @@ Deno.serve(async (req) => {
       },
       properties: [property],
       note: noteParts.join(" | ") || undefined,
-      feeText: dealType === "rent"
-        ? "חודש שכירות אחד"
-        : "2% ממחיר העסקה",
+      feeText,
+
       // The pre-tour form carries its own Hebrew name.
       titleOverride: template_key === "tour_agreement" ? "הסכם סיור בנכס" : undefined,
       logo: await fetchLogo(brand?.logo_url),
