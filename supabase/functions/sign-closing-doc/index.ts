@@ -35,7 +35,12 @@ const SignSchema = z.object({
   token: z.string().min(20).max(100),
   signature_data: z.string().startsWith("data:image/").max(500_000),
   signer_name: z.string().min(1).max(160).optional(),
+  // Mandatory identity fields captured in the signature section of the form.
+  first_name: z.string().trim().min(1, "שם פרטי חסר").max(80),
+  last_name: z.string().trim().min(1, "שם משפחה חסר").max(80),
+  identity_number: z.string().trim().regex(/^\d{5,20}$/, "תעודת זהות לא תקינה"),
 });
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
