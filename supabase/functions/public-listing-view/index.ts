@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { cleanPayload } from "../_shared/cleanValues.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -42,7 +43,10 @@ Deno.serve(async (req) => {
       admin.from("workspace_memberships").select("workspace_name, workspace_logo_url").eq("workspace_owner_id", ownerId).order("created_at", { ascending: true }).limit(1).maybeSingle(),
     ]);
 
-    const { workspace_owner_id: _workspaceOwnerId, user_id: _userId, is_published: _isPublished, affiliate_enabled: _affiliateEnabled, ...property } = listing;
+    const { workspace_owner_id: _workspaceOwnerId, user_id: _userId, is_published: _isPublished, affiliate_enabled: _affiliateEnabled, ...rawProperty } = listing;
+    // Only clean, readable values leave the backend: identifiers, hashes and
+    // debug keys from the ingestion pipeline are stripped here.
+    const property = cleanPayload(rawProperty);
     return new Response(JSON.stringify({
       property,
       attribution: {
