@@ -411,7 +411,7 @@ export default function CommandCenter() {
               ))}
             </TabsList>
           </Tabs>
-          <Button size="sm" className="h-9 gap-1 text-sm md:mt-[50px]" onClick={() => addNew(tab)}>
+          <Button size="sm" className="h-9 gap-1 bg-success text-success-foreground hover:bg-success/90 text-sm md:mt-[50px]" onClick={() => addNew(tab)}>
             <Plus className="h-4 w-4" />
             {ADD_LABEL[tab]}
           </Button>
