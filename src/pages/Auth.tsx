@@ -75,7 +75,8 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [activeMethod, setActiveMethod] = useState<AuthMethod>('whatsapp');
+  // SMS is the default sign-in / sign-up channel on both screens.
+  const [activeMethod, setActiveMethod] = useState<AuthMethod>('sms');
   const [codeSent, setCodeSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
@@ -144,9 +145,9 @@ const Auth = () => {
     if (isGoogleFlow) return;
     setLoading(true);
 
-    // Preview-mode bypass applies ONLY to email / SMS. WhatsApp OTP always goes
-    // out through the official Meta WABA gateway so real codes arrive.
-    if (isPreviewHost && activeMethod !== 'whatsapp') {
+    // Phone codes (SMS and WhatsApp) always go out through the real gateways so
+    // a code actually arrives; only email keeps the preview shortcut.
+    if (isPreviewHost && !isPhoneFlow) {
       setCodeSent(true);
       setResendSeconds(0);
       setOtpAttempts(0);
@@ -155,6 +156,7 @@ const Auth = () => {
       toast.success('מצב Preview: השתמשו בקוד המאסטר 9321');
       return;
     }
+
 
 
     const normalizedPhone = formattedPhone.replace(/^0/, '+972').replace('-', '');
@@ -222,7 +224,8 @@ const Auth = () => {
     if (code.length === 4) {
       const ok = await tryMasterOtp(code, normalizedPhone);
       if (ok) { setLoading(false); return; }
-      if (isPreviewHost && activeMethod !== 'whatsapp') {
+      // Phone codes fall through to real verification; only email stops here.
+      if (isPreviewHost && !isPhoneFlow) {
         setOtpAttempts((a) => a + 1);
         setOtp('');
         toast.error('קוד מאסטר שגוי');
