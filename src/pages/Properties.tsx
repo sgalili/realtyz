@@ -181,10 +181,6 @@ export default function Properties() {
     return () => window.removeEventListener('properties:add', handler);
   }, []);
 
-  // NO SCRAPE ON PAGE LOAD. Yad2 inventory is fetched by the scheduled job
-  // twice a day (08:00 / 18:00 Asia/Jerusalem) into the shared market pool and
-  // distributed to every workspace in the same cities. Entering the page only
-  // reads what we already store, so it can never spend Bright Data credits.
   const [poolInfo, setPoolInfo] = useState<{ last: string | null; count: number } | null>(null);
   useEffect(() => {
     let alive = true;
