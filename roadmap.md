@@ -42,4 +42,4 @@
 42. [x] Add affiliate property list/grid views, fix search spacing, color summary metrics, and match inbox tabs
 
 43. [x] Tighten Rita property search, SMS inbox sync, affiliate actions, and public property completeness
-44. [ ] Fix task card wrapping, property return navigation, action spacing, and single view switch
+44. [x] Fix task card wrapping, property return navigation, action spacing, and single view switch

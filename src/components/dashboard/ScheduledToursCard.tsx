@@ -123,10 +123,12 @@ function dayKey(iso: string) {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
-export function ScheduledToursCard() {
+export function ScheduledToursCard({ view: controlledView, onViewChange }: { view?: ScheduleView; onViewChange?: (view: ScheduleView) => void } = {}) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [view, setView] = useState<ScheduleView>('list');
+  const [internalView, setInternalView] = useState<ScheduleView>('list');
+  const view = controlledView ?? internalView;
+  const setView = onViewChange ?? setInternalView;
   const [monthCursor, setMonthCursor] = useState(startOfThisMonth);
   const [openDay, setOpenDay] = useState<string | null>(() => todayKey());
   /** Tour whose status pill was clicked, awaiting a manual client confirmation. */
@@ -445,13 +447,6 @@ export function ScheduledToursCard() {
         onOpenChange={(open) => { if (!open) setEditTarget(null); }}
         tour={editTarget as EditableTour | null}
       />
-      <ScheduleViewToggle
-        view={view}
-        onViewChange={setView}
-        monthCursor={monthCursor}
-        onMonthChange={setMonthCursor}
-      />
-
       {isLoading ? (
         <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
       ) : view === 'list' ? (
