@@ -59,7 +59,6 @@ import { listingPublishedAt } from '@/lib/listingFreshness';
 
 
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
-import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
 
@@ -161,9 +160,6 @@ export default function Properties() {
   // Multi-select + batch import progress
   const [importSteps, setImportSteps] = useState<ImportStep[]>([]);
   const [progressOpen, setProgressOpen] = useState(false);
-  const [previewResult, setPreviewResult] = useState<UnifiedResult | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
-
   const [addOpen, setAddOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -534,24 +530,25 @@ export default function Properties() {
   // Local rows navigate immediately. Starting a full source scrape here used
   // to compete with the detail query for bandwidth and backend capacity; the
   // detail page now performs enrichment only after its local text has painted.
-  const handleSelect = (r: UnifiedResult) => {
+  const handleSelect = async (r: UnifiedResult) => {
     if (r.localId) {
-      navigate(`/properties/${r.localId}`, { state: { propertySnapshot: r } });
+      navigate(`/properties/${r.localId}`, { state: { propertySnapshot: r, returnTo: '/properties' } });
       return;
     }
-    setPreviewResult(r);
-    setPreviewOpen(true);
-    // External row — import it into the DB in the background, then pull the
-    // full gallery and metadata so it is permanently cached.
-    void (async () => {
-      try {
-        const id = await autoImportResult(r);
-        await ensureFullPropertyImport(id, r.url ?? null);
-        queryClient.invalidateQueries({ queryKey: ['properties-search'] });
-      } catch (err) {
-        console.warn('[Properties] background full import failed', err);
-      }
-    })();
+    setImportingKey(r.key);
+    try {
+      const importedId = await autoImportResult(r);
+      void ensureFullPropertyImport(importedId, r.url ?? null).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+      navigate(`/properties/${importedId}`, {
+        state: { propertySnapshot: { ...r, localId: importedId }, returnTo: '/properties' },
+      });
+    } catch (err: any) {
+      console.warn('[Properties] property import failed', err);
+      toast.error('פתיחת הנכס נכשלה: ' + (err?.message ?? 'שגיאה'));
+    } finally {
+      setImportingKey(null);
+    }
   };
 
 
@@ -1130,13 +1127,6 @@ export default function Properties() {
         onOpenChange={setProgressOpen}
         steps={importSteps}
         onDone={() => { runSearch(); }}
-      />
-      <PropertyPreviewDialog
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-        result={previewResult}
-        onCampaign={(r) => { setPreviewOpen(false); goToCampaign(r); }}
-        importing={previewResult ? importingKey === previewResult.key : false}
       />
     </div>
   );

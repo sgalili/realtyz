@@ -1238,15 +1238,17 @@ export default function PropertyDetail() {
 
 
 
-      {/* Actions are intentionally first so they stay predictable on mobile.
-          The owner sits on the opposite side of the same row. */}
-      <div className="flex min-h-9 flex-wrap items-center justify-between gap-3">
-        {owner ? (
-          <Link to={`/crm/profile/${owner.id}`} className="shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
-            {owner.full_name}
-          </Link>
-        ) : <span />}
-        <div className="flex flex-wrap items-center justify-end gap-3">
+      {owner ? (
+        <Link to={`/crm/profile/${owner.id}`} className="shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
+          {owner.full_name}
+        </Link>
+      ) : null}
+
+      {/* The management controls are the single action bar for every internal
+          property page. It stays pinned below the global header while the
+          property content scrolls underneath it. */}
+      <div className="sticky top-[calc(env(safe-area-inset-top)+65px)] z-30 flex min-h-10 justify-end pointer-events-none">
+        <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-end gap-2 rounded-md border border-border/70 bg-background/95 px-2 py-1 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85">
         {!editMode ? (
           <>
 
@@ -1258,21 +1260,19 @@ export default function PropertyDetail() {
               </a>
             )}
 
-            {/* Prominent manual refresh of every field from the Yad2 data. */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={syncFromYad2}
-              disabled={syncingSource}
-              aria-label="סנכרון מ-Yad2"
-              title="סנכרון כל פרטי הנכס מ-Yad2"
-              className="h-8 gap-1.5 border-primary/40 px-2.5 text-[13px] font-semibold text-primary hover:bg-primary/10"
-            >
-              {syncingSource
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <RefreshCw className="h-4 w-4" />}
-              <span>סנכרון מ-Yad2</span>
-            </Button>
+            {yad2Url && liveYad2Status === 'live' && (
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={syncFromYad2}
+                disabled={syncingSource}
+                aria-label="סנכרון מ-Yad2"
+                title="סנכרון כל פרטי הנכס מ-Yad2"
+                className="h-8 w-8 border-primary/40 text-primary hover:bg-primary/10"
+              >
+                <RefreshCw className={`h-4 w-4 ${syncingSource ? 'animate-spin' : ''}`} />
+              </Button>
+            )}
 
             {isHomelyListing && resolvedSourceUrl && (
               <a href={resolvedSourceUrl} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה המקורית ב-Homely" title="צפייה במודעה המקורית ב-Homely" className="inline-flex h-7 w-7 items-center justify-center rounded border border-primary text-sm font-extrabold text-primary transition hover:bg-primary hover:text-primary-foreground">H</a>
@@ -1344,8 +1344,8 @@ export default function PropertyDetail() {
 
         {(originalDate || sourceUpdatedDate) && (
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            {originalDate && <span>פורסם במקור: {originalDate}</span>}
-            {sourceUpdatedDate && <span>עודכן במקור: {sourceUpdatedDate}</span>}
+            {originalDate && <span>פורסם: {originalDate}</span>}
+            {sourceUpdatedDate && <span>עודכן: {sourceUpdatedDate}</span>}
           </div>
         )}
 
