@@ -58,23 +58,13 @@ export function ScheduleViewToggle({
       <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label="מצב תצוגה">
         <Button
           size="icon"
-          variant="ghost"
-          aria-label="תצוגת רשימה"
-          aria-pressed={view === 'list'}
-          className={`h-8 w-8 border-0 bg-transparent shadow-none ${view === 'list' ? 'text-primary' : 'text-muted-foreground'}`}
-          onClick={() => onViewChange('list')}
+          variant="outline"
+          aria-label={view === 'list' ? 'מעבר לתצוגת לוח שנה' : 'מעבר לתצוגת רשימה'}
+          title={view === 'list' ? 'לוח שנה' : 'רשימה'}
+          className="h-10 w-10 rounded-md bg-background shadow-none"
+          onClick={() => onViewChange(view === 'list' ? 'calendar' : 'list')}
         >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label="תצוגת לוח שנה"
-          aria-pressed={view === 'calendar'}
-          className={`h-8 w-8 border-0 bg-transparent shadow-none ${view === 'calendar' ? 'text-primary' : 'text-muted-foreground'}`}
-          onClick={() => onViewChange('calendar')}
-        >
-          <CalendarDays className="h-4 w-4" />
+          {view === 'list' ? <CalendarDays className="h-5 w-5" /> : <List className="h-5 w-5" />}
         </Button>
       </div>
       {view === 'calendar' && (

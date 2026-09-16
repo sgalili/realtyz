@@ -380,8 +380,11 @@ export function PageHero() {
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => navigate("/properties")}
-              aria-label="חזרה לקטלוג הנכסים"
+              onClick={() => {
+                const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
+                navigate(returnTo || "/properties");
+              }}
+              aria-label="חזרה למסך הקודם"
               className="h-10 w-10 rounded-full text-white hover:bg-white/15 hover:text-white"
             >
               <ArrowLeft className="!h-6 !w-6" strokeWidth={2.5} />

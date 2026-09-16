@@ -17,6 +17,7 @@ export type CommandTask = {
   leadPhone: string | null;
   listingId: string | null;
   listingLabel: string | null;
+  listingMeta: string | null;
   listingDealType: 'rent' | 'sell' | null;
   listingThumb: string | null;
   actionType: string | null;
@@ -129,7 +130,7 @@ export function useCommandCenterTasks() {
         listingIds.size
           ? (supabase as any)
               .from('listings')
-              .select('id, property_title, address, city, deal_type, media_photos, image_url')
+              .select('id, property_title, property_type, address, house_number, city, neighborhood, deal_type, media_photos, image_url')
               .in('id', Array.from(listingIds))
           : Promise.resolve({ data: [] }),
       ]);
@@ -142,6 +143,17 @@ export function useCommandCenterTasks() {
       );
       const labelOfListing = (l: any) =>
         l ? (l.property_title || [l.address, l.city].filter(Boolean).join(', ') || 'נכס') : null;
+      const metaOfListing = (l: any) => {
+        if (!l) return null;
+        const street = [l.address, l.house_number].filter(Boolean).join(' ');
+        return [
+          l.property_type,
+          l.city,
+          l.neighborhood,
+          l.deal_type === 'rent' ? 'השכרה' : l.deal_type ? 'מכירה' : null,
+          street,
+        ].filter(Boolean).join(' · ') || null;
+      };
 
       const tasks: CommandTask[] = items.map((r) => {
         const m = (r.metadata ?? {}) as any;
@@ -164,6 +176,7 @@ export function useCommandCenterTasks() {
           leadPhone: lead?.phone_number ?? null,
           listingId: m.listing_id ?? null,
           listingLabel: labelOfListing(listing),
+          listingMeta: metaOfListing(listing),
           listingDealType: listing?.deal_type === 'rent' ? 'rent' : listing?.deal_type ? 'sell' : null,
           listingThumb: listingThumbOf(listing),
           actionType: followup.action_type ?? m.action_type ?? null,
@@ -186,6 +199,7 @@ export function useCommandCenterTasks() {
           leadPhone: lead?.phone_number ?? mt.lead_phone ?? null,
           listingId: null,
           listingLabel: null,
+          listingMeta: null,
           listingDealType: null,
           listingThumb: null,
           actionType: 'meeting',
@@ -213,6 +227,7 @@ export function useCommandCenterTasks() {
           leadPhone: lead?.phone_number ?? null,
           listingId: m.listing_id ?? null,
           listingLabel: labelOfListing(listing),
+          listingMeta: metaOfListing(listing),
           listingDealType: listing?.deal_type === 'rent' ? 'rent' : listing?.deal_type ? 'sell' : null,
           listingThumb: listingThumbOf(listing),
           actionType: kind,

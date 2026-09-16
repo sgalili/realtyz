@@ -226,7 +226,8 @@ export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const propertySnapshot = (location.state as { propertySnapshot?: UnifiedResult } | null)?.propertySnapshot;
+  const detailState = location.state as { propertySnapshot?: UnifiedResult; returnTo?: string } | null;
+  const propertySnapshot = detailState?.propertySnapshot;
   const qc = useQueryClient();
   const [activePhoto, setActivePhoto] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
@@ -813,7 +814,7 @@ export default function PropertyDetail() {
       <div className="p-6 space-y-4 text-center" dir="rtl">
         <h1 className="text-3xl font-bold tracking-tight text-primary">הנכס לא נמצא</h1>
         <p className="text-muted-foreground">ייתכן שהקישור פג תוקף או שהנכס הוסר מהקטלוג.</p>
-        <Button onClick={() => navigate('/properties')} variant="outline" className="gap-2">
+        <Button onClick={() => navigate(detailState?.returnTo || '/properties')} variant="outline" className="gap-2">
           <ArrowRight className="h-4 w-4" /> חזרה לקטלוג
         </Button>
       </div>

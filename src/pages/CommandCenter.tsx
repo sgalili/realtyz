@@ -265,7 +265,7 @@ export default function CommandCenter() {
         key={cardKey}
         className={`w-full rounded-lg border-2 bg-card p-3 transition-colors hover:bg-accent/40 ${PRIORITY_BORDER[task.priority]}`}
       >
-        <div className="flex items-start gap-2">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
           <div
             role="button"
             tabIndex={0}
@@ -277,7 +277,7 @@ export default function CommandCenter() {
               }
             }}
             aria-expanded={isOpen}
-            className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-right"
+            className="flex min-w-0 cursor-pointer items-start gap-2 text-right"
           >
             {task.leadName || task.leadAvatar ? (
               <button
@@ -289,13 +289,13 @@ export default function CommandCenter() {
                 disabled={!task.leadId}
                 aria-label={`פתיחת כרטיס איש קשר של ${task.leadName ?? 'איש קשר'}`}
               >
-                <ContactAvatar name={task.leadName} imageUrl={task.leadAvatar} className="mt-0.5 h-10 w-10 shrink-0" />
+                <ContactAvatar name={task.leadName} imageUrl={task.leadAvatar} className="h-10 w-10 shrink-0" />
               </button>
             ) : null}
             <span className="min-w-0 flex-1">
               {task.leadName && (
-                <span className="flex min-w-0 items-start gap-1.5">
-                  <span className="min-w-0 flex-1">
+                <span className="block min-w-0">
+                  <span className="block min-w-0">
                     <button
                       type="button"
                       className="block max-w-full truncate text-[15px] font-bold text-foreground hover:text-primary hover:underline"
@@ -307,7 +307,7 @@ export default function CommandCenter() {
                     >
                       {task.leadName}
                     </button>
-                    <span className={`mt-0.5 block text-[13px] ${due.overdue ? 'font-semibold text-destructive' : due.today ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>
+                    <span dir="rtl" className={`mt-0.5 block whitespace-nowrap text-[13px] ${due.overdue ? 'font-semibold text-destructive' : due.today ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>
                       {due.overdue ? `באיחור · ${due.text}` : due.text}
                     </span>
                     {task.listingId && listingsEnabled && (
@@ -315,54 +315,36 @@ export default function CommandCenter() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="mt-0.5 h-auto max-w-full justify-start gap-1 border-0 bg-transparent p-0 text-[13px] font-medium text-primary shadow-none hover:bg-transparent hover:underline"
+                        className="mt-1 h-auto max-w-full justify-start border-0 bg-transparent p-0 text-[13px] font-medium leading-5 text-primary shadow-none hover:bg-transparent hover:underline"
                         onClick={(event) => {
                           event.stopPropagation();
-                          navigate(`/properties/${task.listingId}`);
+                          navigate(`/properties/${task.listingId}`, { state: { returnTo: '/command-center' } });
                         }}
                       >
-                        <span className="whitespace-normal break-words text-right">{task.listingLabel ?? 'כרטיס נכס'}</span>
-                        {task.listingDealType && <span className="shrink-0 text-muted-foreground">· {task.listingDealType === 'rent' ? 'השכרה' : 'מכירה'}</span>}
+                        <span className="line-clamp-2 break-normal text-right [overflow-wrap:normal]">{task.listingMeta ?? task.listingLabel ?? 'כרטיס נכס'}</span>
                       </Button>
                     )}
                   </span>
-                  {task.leadId && (
-                    <span className="flex shrink-0 items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
-                      <IconAction label="WhatsApp" onClick={() => navigate(`/inbox?lead=${task.leadId}&channel=whatsapp`)}>
-                        <BrandIcon name="whatsapp" className="h-4 w-4 text-[hsl(var(--social-whatsapp))]" />
-                      </IconAction>
-                      {task.leadPhone && (
-                        <Button asChild type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                          <a href={`tel:${task.leadPhone}`} aria-label="שיחת טלפון" title="שיחת טלפון">
-                            <Phone className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      )}
-                    </span>
-                  )}
                 </span>
               )}
             </span>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+              {task.leadId && <IconAction label="WhatsApp" onClick={() => navigate(`/inbox?lead=${task.leadId}&channel=whatsapp`)}><BrandIcon name="whatsapp" className="h-4 w-4 text-[hsl(var(--social-whatsapp))]" /></IconAction>}
+              {task.leadPhone && <Button asChild type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground"><a href={`tel:${task.leadPhone}`} aria-label="שיחת טלפון" title="שיחת טלפון"><Phone className="h-4 w-4" /></a></Button>}
               <IconAction label="עריכה" onClick={() => setEditing(task)}><Pencil className="h-4 w-4" /></IconAction>
               {task.source !== 'note' && (
                 <IconAction label="בוצע" onClick={() => completeTask(task)}><Check className="h-4 w-4 text-success" /></IconAction>
               )}
               <IconAction label="מחיקה" destructive onClick={() => removeTask(task)}><Trash2 className="h-4 w-4" /></IconAction>
+              <IconAction label={isOpen ? 'סגירה' : 'פתיחה'} onClick={() => toggleCard(cardKey)}>
+                <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? '' : 'rotate-90'}`} />
+              </IconAction>
             </div>
             {TASK_STATUS_LABEL[task.status] && (
               <Badge variant="outline" className="text-[13px]">{TASK_STATUS_LABEL[task.status]}</Badge>
             )}
-            <button
-              type="button"
-              onClick={() => toggleCard(cardKey)}
-              aria-label={isOpen ? 'סגירה' : 'פתיחה'}
-              className="p-1 text-muted-foreground"
-            >
-              <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? '' : 'rotate-90'}`} />
-            </button>
           </div>
         </div>
 
@@ -397,7 +379,8 @@ export default function CommandCenter() {
         {/* Tabs first, then the "add new" button below them. Desktop keeps an
             exact 50px gap under the tabs; mobile stays as it was. */}
         <div className="mb-4 flex flex-col items-center justify-center gap-[25px] md:gap-0">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)} className="mx-auto w-full max-w-2xl">
+          <div className="mx-auto flex w-full max-w-2xl items-center gap-2">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)} className="min-w-0 flex-1">
             <TabsList className="grid h-[44px] w-full gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
 
               {visibleTabs.map((key) => (
@@ -411,6 +394,10 @@ export default function CommandCenter() {
               ))}
             </TabsList>
           </Tabs>
+          {(tab === 'tasks' || tab === 'tours') && (
+            <ScheduleViewToggle view={taskView} onViewChange={setTaskView} monthCursor={taskMonth} onMonthChange={setTaskMonth} />
+          )}
+          </div>
           <Button size="sm" className="h-10 gap-1 bg-success text-lg font-bold text-success-foreground hover:bg-success/90 md:mt-[50px]" onClick={() => addNew(tab)}>
             <Plus className="h-4 w-4" />
             {ADD_LABEL[tab]}
@@ -419,7 +406,7 @@ export default function CommandCenter() {
 
 
         {tab === 'tours' ? (
-          <ScheduledToursCard />
+          <ScheduledToursCard view={taskView} onViewChange={setTaskView} month={taskMonth} />
         ) : tab === 'leads' || tab === 'demos' ? (
           <IncomingLeadsPanel mode={tab} />
 
@@ -431,13 +418,6 @@ export default function CommandCenter() {
           </div>
         ) : (
           <div className="space-y-3">
-            {/* Same display toggle as the tours tab, fully functional here. */}
-            <ScheduleViewToggle
-              view={taskView}
-              onViewChange={setTaskView}
-              monthCursor={taskMonth}
-              onMonthChange={setTaskMonth}
-            />
             {taskView === 'calendar' ? (
               <ScheduleMonthGrid
                 items={visible.map((t) => ({
