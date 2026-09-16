@@ -20,9 +20,9 @@
  * form only allows a URL).
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { corsHeaders } from "../_shared/cors.ts";
-import { sendSms019, toLocalIL } from "../_shared/sms019.ts";
-import { logIntegrationError } from "../_shared/logIntegrationError.ts";
+import { corsHeaders } from "./cors.ts";
+import { sendSms019, toLocalIL } from "./sms019.ts";
+import { logIntegrationError } from "./logIntegrationError.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -71,13 +71,13 @@ function extractXml(raw: string, tag: string): string {
   return raw.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"))?.[1]?.trim() ?? "";
 }
 
-Deno.serve(async (req) => {
+export async function handleSmsInbound(req: Request, endpointName = "sms-inbound-webhook"): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const url = new URL(req.url);
 
   // 019's console verifies a webhook URL with a plain GET.
-  if (req.method === "GET") return json({ ok: true, endpoint: "sms-inbound-webhook" });
+  if (req.method === "GET") return json({ ok: true, endpoint: endpointName });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
   if (WEBHOOK_SECRET) {
@@ -494,4 +494,4 @@ Deno.serve(async (req) => {
     stored: true,
     rita: "queued",
   });
-});
+}
