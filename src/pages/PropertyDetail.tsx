@@ -499,6 +499,7 @@ export default function PropertyDetail() {
   // already-visible layout. Nothing here ever blocks or hides the page.
   const hydratedRef = useRef<string | null>(null);
   const [hydrating, setHydrating] = useState(false);
+  const [syncingSource, setSyncingSource] = useState(false);
   // Absolute ceiling for the corner indicator, so a dead scraper can't leave a
   // spinner running forever. The sync itself keeps going server-side.
   const HYDRATION_INDICATOR_MAX_MS = 90_000;
@@ -1175,6 +1176,51 @@ export default function PropertyDetail() {
         ? String((meta.homely_raw as JsonRecord).lastdate)
         : null,
   );
+
+  /**
+   * Manual "סנכרון מ-Yad2": re-reads the ad data for THIS listing and rewrites
+   * every field in the database, then refreshes the page from the DB.
+   * It goes through `yad2-unlocker`, which serves the shared market pool
+   * outside the twice-daily scrape window, so no extra provider calls are made.
+   */
+  const syncFromYad2 = async () => {
+    if (!property?.id || syncingSource) return;
+    setSyncingSource(true);
+    const toastId = toast.loading('מסנכרן את נתוני הנכס מ-Yad2…');
+    try {
+      const tasks: Promise<unknown>[] = [
+        supabase.functions.invoke('listings-metadata-backfill', {
+          body: { listing_ids: [property.id], force: true },
+        }),
+      ];
+      if (resolvedSourceUrl) {
+        tasks.push(
+          supabase.functions.invoke('yad2-unlocker', {
+            body: { url: resolvedSourceUrl, limit: 1 },
+          }),
+        );
+      }
+      const results = await Promise.allSettled(tasks);
+      const failed = results.find(
+        (r) => r.status === 'rejected' || (r.value as { error?: unknown } | null)?.error,
+      );
+      await qc.refetchQueries({ queryKey: ['property-detail', id] });
+      qc.invalidateQueries({ queryKey: ['listings'] });
+      qc.invalidateQueries({ queryKey: ['properties-search'] });
+      if (failed) {
+        toast.error('הסנכרון הושלם חלקית', {
+          id: toastId,
+          description: 'חלק מהשדות לא התעדכנו. נתוני יד2 מתרעננים גם אוטומטית פעמיים ביום.',
+        });
+      } else {
+        toast.success('נתוני הנכס סונכרנו', { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error('הסנכרון נכשל', { id: toastId, description: e?.message ?? String(e) });
+    } finally {
+      setSyncingSource(false);
+    }
+  };
 
   const openCommunicationCards = () => {
     setCommunicationOpenKey((value) => value + 1);
