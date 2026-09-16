@@ -338,8 +338,6 @@ export default function SignDocument() {
           )}
         </Card>
       </div>
-
-      </div>
     </main>
   );
 }
