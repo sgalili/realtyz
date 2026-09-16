@@ -236,6 +236,7 @@ export default function AffiliateNetwork() {
   const { data: submissions = [], isLoading: subsLoading } = useBrokerSubmissions();
   const updateSubmission = useUpdateSubmission();
   const updateReferral = useUpdateReferral();
+  const quickSave = useSetAffiliateReward();
 
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
@@ -408,8 +409,8 @@ export default function AffiliateNetwork() {
                           <Switch
                             id={`affiliate-${l.id}`}
                             checked={l.affiliate_enabled}
-                            disabled={save.isPending}
-                            onCheckedChange={(enabled) => save.mutate({
+                            disabled={quickSave.isPending}
+                            onCheckedChange={(enabled) => quickSave.mutate({
                               listingId: l.id,
                               enabled,
                               rewardType: l.affiliate_reward_type ?? 'fixed',

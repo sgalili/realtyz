@@ -19,13 +19,15 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!backendUrl || !serviceKey) throw new Error("missing backend configuration");
     const admin = createClient(backendUrl, serviceKey);
-    const columns = "id, slug, property_title, address, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, features, image_url, media_photos, is_published, status, affiliate_enabled, workspace_owner_id, user_id";
+    const columns = "id, slug, property_title, address, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, media_documents, price_history, source, source_metadata, external_id, created_at, updated_at, is_published, status, affiliate_enabled, workspace_owner_id, user_id";
 
     let query = admin.from("listings").select(columns).limit(1);
     query = UUID_RE.test(identifier) ? query.eq("id", identifier) : query.eq("slug", identifier);
     const { data: listing, error } = await query.maybeSingle();
     if (error) throw error;
-    const publishable = listing && (listing.is_published === true || (listing.affiliate_enabled === true && (listing.status ?? "live") === "live"));
+    // Affiliate links remain usable from the persisted database snapshot even
+    // after the source ad expires or the local status changes.
+    const publishable = listing && (listing.is_published === true || listing.affiliate_enabled === true);
     if (!publishable) {
       return new Response(JSON.stringify({ error: "not found" }), {
         status: 404,

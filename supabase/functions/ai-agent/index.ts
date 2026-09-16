@@ -1897,7 +1897,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
             const price = row.asking_price ? `${Number(row.asking_price).toLocaleString("he-IL")} ₪` : "מחיר לא צוין";
             const highlights = [row.neighborhood, row.rooms ? `${row.rooms} חדרים` : null, row.sqm ? `${row.sqm} מ״ר` : null].filter(Boolean).join(", ");
             const description = String(row.short_description || row.description || "").trim().slice(0, 110);
-            const link = `https://realtyz.co.il/p/${row.slug || row.id}`;
+            const link = row.short_url || `https://realtyz.co.il/p/${row.slug || row.id}`;
             return `${index + 1}. ${location}\n${price}${highlights ? ` | ${highlights}` : ""}${description ? `\n${description}` : ""}\n${link}`;
           }).join("\n")
         : "אני בודקת כעת חלופות נוספות במאגר הנכסים ואחזור עם אפשרויות מתאימות.";

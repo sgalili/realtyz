@@ -336,15 +336,17 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      await admin.from("messages").insert({
-        lead_id,
-        content: finalContent,
-        direction: "outbound",
-        sender_type: "agent",
-        channel: "sms",
-        platform: "sms",
-        metadata: { provider: sms.provider, message_id: sms.message_id },
-      } as any);
+      const { error: recordError } = await admin.rpc("record_interaction_message", {
+        _lead_id: lead_id,
+        _platform: "sms",
+        _direction: "outbound",
+        _sender_type: "agent",
+        _content: finalContent,
+        _external_id: sms.message_id ?? `sms-out:${crypto.randomUUID()}`,
+        _created_at: new Date().toISOString(),
+        _metadata: { provider: sms.provider },
+      });
+      if (recordError) throw recordError;
       return new Response(JSON.stringify({ success: true, sent: true, provider: sms.provider }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

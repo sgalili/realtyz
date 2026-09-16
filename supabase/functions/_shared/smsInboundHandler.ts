@@ -273,7 +273,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   let inboundStored = false;
   const inboundMetadata = {
     provider: "019 SMS",
-    message_id: providerMessageId || null,
+    external_id: providerMessageId || null,
     sender_phone: fromNormalized,
     did: toLocal ?? null,
     source: "sms-inbound-webhook",
@@ -284,7 +284,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
         .from("messages")
         .select("id")
         .eq("lead_id", lead.id)
-        .eq("metadata->>message_id", providerMessageId)
+        .eq("metadata->>external_id", providerMessageId)
         .limit(1)
         .maybeSingle();
       duplicate = !!(dup as any)?.id;

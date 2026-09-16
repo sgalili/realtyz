@@ -294,7 +294,7 @@ const OmnichannelInbox = () => {
   const { data: dbVoters } = useQuery({
     queryKey: ['inbox-leads', workspaceScope],
     enabled: !isDemoMode && !!workspaceScope,
-    refetchInterval: 3000,
+    refetchInterval: 1000,
     queryFn: async () => {
       const { data } = await supabase.from('leads').select('*').eq('workspace_owner_id', workspaceScope!).order('last_interaction_at', { ascending: false });
       return data ?? [];
