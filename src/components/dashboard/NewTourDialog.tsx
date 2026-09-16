@@ -185,8 +185,27 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
     setSignatureForm('tour_agreement');
   };
 
+  /**
+   * Edge errors arrive as a generic "non-2xx status code" — read the response
+   * body so the broker sees the real reason a form failed to send.
+   */
+  const edgeMessage = async (err: any, fallback: string): Promise<string> => {
+    try {
+      const res = err?.context;
+      if (res && typeof res.clone === 'function') {
+        const j = await res.clone().json();
+        const e = j?.error;
+        if (typeof e === 'string') return e;
+        if (e?.fieldErrors) return Object.values(e.fieldErrors).flat().join(', ');
+        if (j?.details) return String(j.details);
+      }
+    } catch { /* body already consumed or not JSON */ }
+    return err?.message || fallback;
+  };
+
   /** Generates the chosen form and sends its secure signature link on WhatsApp. */
   const sendSignatureForm = async (leadId: string, scheduledAt: Date) => {
+
     const { data: gen, error: genErr } = await supabase.functions.invoke('generate-closing-doc', {
       body: {
         lead_id: leadId,
