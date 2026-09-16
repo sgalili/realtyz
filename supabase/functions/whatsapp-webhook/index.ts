@@ -1186,7 +1186,7 @@ async function handleLeadInboxInbound(
       if (focusListingId) {
         const { data: listing } = await admin
           .from("listings")
-          .select("property_title, address, house_number, asking_price, description, city, neighborhood, deal_type, rooms, size_sqm")
+          .select("property_title, address, house_number, asking_price, description, city, neighborhood, deal_type, rooms, sqm")
           .eq("id", focusListingId)
           .maybeSingle();
         if (listing) {
@@ -1196,7 +1196,7 @@ async function handleLeadInboxInbound(
             `${l.city ?? ""} ${l.neighborhood ?? ""}`.trim(),
             l.deal_type === "rent" ? "סוג עסקה: השכרה" : l.deal_type === "sale" ? "סוג עסקה: מכירה" : "",
             l.rooms ? `חדרים: ${l.rooms}` : "",
-            l.size_sqm ? `מ"ר: ${l.size_sqm}` : "",
+            l.sqm ? `מ"ר: ${l.sqm}` : "",
             l.asking_price ? `מחיר: ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח` : "",
             l.description ? `תיאור: ${String(l.description).slice(0, 600)}` : "",
           ].filter(Boolean).join("\n");
