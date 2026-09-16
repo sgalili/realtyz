@@ -3,6 +3,7 @@ import { ScheduledToursCard, useScheduledToursCount } from '@/components/dashboa
 import { NewTourDialog } from '@/components/dashboard/NewTourDialog';
 import { NewDemoDialog } from '@/components/dashboard/NewDemoDialog';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
+import { BrandIcon } from '@/components/BrandIcon';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,27 +28,21 @@ import {
   ChevronDown,
   Pencil,
   Building2,
-  CalendarClock,
   Check,
   ChevronLeft,
   Megaphone,
-  MessageCircle,
   Phone,
   Plus,
   Trash2,
-  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatPhoneDisplay } from '@/lib/formatPhone';
 import TaskFormDialog, { localDefaultDue, type TaskFormValues } from '@/components/tasks/TaskFormDialog';
 import {
   useCommandCenterTasks,
   useCommandCenterPosts,
-  ACTION_TYPE_LABEL,
   TASK_STATUS_LABEL,
   POST_STATUS_LABEL,
   CHANNEL_LABEL,
-  NOTE_ACTION_LABEL,
   deleteCommandTask,
   deletePostActivity,
   updateCommandTask,
@@ -69,18 +64,6 @@ const PRIORITY_BORDER: Record<CommandTask['priority'], string> = {
   high: 'border-destructive',
   medium: 'border-amber-500',
   low: 'border-border',
-};
-
-const PRIORITY_STYLE: Record<CommandTask['priority'], string> = {
-  high: 'bg-destructive/10 text-destructive ring-1 ring-destructive/20',
-  medium: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  low: 'bg-muted text-muted-foreground ring-1 ring-border',
-};
-
-const PRIORITY_LABEL: Record<CommandTask['priority'], string> = {
-  high: 'דחוף',
-  medium: 'רגיל',
-  low: 'נמוך',
 };
 
 type SectionTab = 'tours' | 'tasks' | 'leads' | 'demos' | 'notes' | 'calls';
@@ -311,7 +294,7 @@ export default function CommandCenter() {
                 <ContactAvatar name={task.leadName} imageUrl={task.leadAvatar} className="mt-0.5 h-10 w-10 shrink-0" />
               </button>
             ) : null}
-            <span className="min-w-0 flex-1 space-y-1.5">
+            <span className="min-w-0 flex-1">
               {task.leadName && (
                 <span className="flex min-w-0 items-start gap-1.5">
                   <span className="min-w-0 flex-1">
@@ -326,16 +309,14 @@ export default function CommandCenter() {
                     >
                       {task.leadName}
                     </button>
-                    {callSummary && (
-                      <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                        {due.text}
-                      </span>
-                    )}
+                    <span className={`mt-0.5 block text-[13px] ${due.overdue ? 'font-semibold text-destructive' : due.today ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>
+                      {due.overdue ? `באיחור · ${due.text}` : due.text}
+                    </span>
                   </span>
-                  {callSummary && task.leadId && (
+                  {task.leadId && (
                     <span className="flex shrink-0 items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
                       <IconAction label="WhatsApp" onClick={() => navigate(`/inbox?lead=${task.leadId}&channel=whatsapp`)}>
-                        <MessageCircle className="h-4 w-4" />
+                        <BrandIcon name="whatsapp" className="h-4 w-4 text-[hsl(var(--social-whatsapp))]" />
                       </IconAction>
                       {task.leadPhone && (
                         <Button asChild type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground">
@@ -348,58 +329,26 @@ export default function CommandCenter() {
                   )}
                 </span>
               )}
-              {/* Urgency is shown by the card border colour, not by a label. */}
-              <span className="flex flex-wrap items-center gap-2">
-                {!callSummary && <span className="break-words text-base font-semibold">{task.title}</span>}
-                {task.actionType && task.source !== 'note' && (
-                  <Badge variant="secondary" className="text-[13px]">
-                    {ACTION_TYPE_LABEL[task.actionType] ?? task.actionType}
-                  </Badge>
-                )}
-                {task.source === 'note' && !callSummary && (
-                  <Badge variant="outline" className="text-[13px]">
-                    {NOTE_ACTION_LABEL[task.actionType ?? 'note'] ?? 'פתק'}
-                  </Badge>
-                )}
-                {TASK_STATUS_LABEL[task.status] && (
-                  <Badge variant="outline" className="text-[13px]">
-                    {TASK_STATUS_LABEL[task.status]}
-                  </Badge>
-                )}
-                {!callSummary && <span
-                  className={`inline-flex items-center gap-1 text-[13px] ${
-                    due.overdue
-                      ? 'font-semibold text-destructive'
-                      : due.today
-                        ? 'font-semibold text-primary'
-                        : 'text-muted-foreground'
-                  }`}
-                >
-                  <CalendarClock className="h-3.5 w-3.5" />
-                  {due.overdue ? `באיחור · ${due.text}` : due.text}
-                </span>}
-                {task.leadPhone && !callSummary && (
-                  <span className="text-[13px] text-muted-foreground">{formatPhoneDisplay(task.leadPhone)}</span>
-                )}
-              </span>
             </span>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <IconAction label="עריכה" onClick={() => setEditing(task)}>
-              <Pencil className="h-4 w-4" />
-            </IconAction>
-            <IconAction label="מחיקה" destructive onClick={() => removeTask(task)}>
-              <Trash2 className="h-4 w-4" />
-            </IconAction>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <div className="flex items-center gap-1">
+              <IconAction label="עריכה" onClick={() => setEditing(task)}><Pencil className="h-4 w-4" /></IconAction>
+              {task.source !== 'note' && (
+                <IconAction label="בוצע" onClick={() => completeTask(task)}><Check className="h-4 w-4 text-success" /></IconAction>
+              )}
+              <IconAction label="מחיקה" destructive onClick={() => removeTask(task)}><Trash2 className="h-4 w-4" /></IconAction>
+            </div>
+            {TASK_STATUS_LABEL[task.status] && (
+              <Badge variant="outline" className="text-[13px]">{TASK_STATUS_LABEL[task.status]}</Badge>
+            )}
             <button
               type="button"
               onClick={() => toggleCard(cardKey)}
               aria-label={isOpen ? 'סגירה' : 'פתיחה'}
               className="p-1 text-muted-foreground"
             >
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${isOpen ? '' : callSummary ? 'rotate-90' : '-rotate-90'}`}
-              />
+              <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? '' : 'rotate-90'}`} />
             </button>
           </div>
         </div>
@@ -412,18 +361,6 @@ export default function CommandCenter() {
               </p>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              {task.leadId && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="h-8 gap-1 text-sm"
-                  onClick={() => navigate(`/lead-crm/${task.leadId}`)}
-                >
-                  <Users className="h-4 w-4" />
-                  {task.leadName ?? 'כרטיס לקוח'}
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              )}
               {task.listingId && listingsEnabled && (
                 <Button
                   size="sm"
@@ -435,11 +372,6 @@ export default function CommandCenter() {
                   {task.listingLabel ?? 'כרטיס נכס'}
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-              )}
-              {task.source !== 'note' && (
-                <IconAction label="בוצע" onClick={() => completeTask(task)}>
-                  <Check className="h-4 w-4" />
-                </IconAction>
               )}
             </div>
           </div>
