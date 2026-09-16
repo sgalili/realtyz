@@ -42,13 +42,16 @@ export default function SignDocument() {
   const [doc, setDoc] = useState<Doc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [signerName, setSignerName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [idNumber, setIdNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const hasInkRef = useRef(false);
+  const [hasInk, setHasInk] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -60,7 +63,11 @@ export default function SignDocument() {
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'לא ניתן לטעון את המסמך');
         setDoc(json);
-        setSignerName(json.signer_name || '');
+        const parts = String(json.signer_name || '').trim().split(/\s+/).filter(Boolean);
+        if (parts.length) {
+          setFirstName(parts[0]);
+          setLastName(parts.slice(1).join(' '));
+        }
       } catch (e: any) {
         setError(e?.message || 'לא ניתן לטעון את המסמך');
       } finally {
@@ -68,6 +75,7 @@ export default function SignDocument() {
       }
     })();
   }, [token]);
+
 
   function setupCanvas(c: HTMLCanvasElement) {
     const ctx = c.getContext('2d');
