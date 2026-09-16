@@ -999,7 +999,7 @@ ${shareUrl}
             />
             <PromptInputFooter>
               <PromptInputTools>
-                <VoiceInputButton disabled={isLoading} title="דברו — ההקלטה תתומלל ותישלח לעוזר" onTranscript={(t) => { setInput(''); void sendMessage(t); }} />
+                <VoiceInputButton disabled={isLoading} title="דיבור לטקסט" language="auto" onTranscript={(value) => setInput((current) => current ? `${current} ${value}` : value)} />
                 <PromptInputButton variant={researchMode ? 'default' : 'ghost'} onClick={() => setResearchMode((v) => !v)} disabled={isLoading} tooltip={researchMode ? 'כבה מצב מחקר חי' : 'הפעל מצב מחקר חי'}>
                   <Globe className="h-4 w-4" />
                 </PromptInputButton>

@@ -148,7 +148,6 @@ export default function Properties() {
   // Active source filter from the breakdown popup (null = all sources).
   const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
   const [searching, setSearching] = useState(false);
-  const voiceSearchPendingRef = useRef(false);
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
   const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.hasSearched || !!cached?.results?.length);
@@ -531,15 +530,6 @@ export default function Properties() {
     runSearch();
   }, [q, runSearch, navigate]);
 
-  // Voice commands are committed to state first and then submitted, ensuring
-  // the search parser receives the complete transcript rather than stale text.
-  useEffect(() => {
-    if (!voiceSearchPendingRef.current || !q.trim()) return;
-    voiceSearchPendingRef.current = false;
-    void submitQuery();
-  }, [q, submitQuery]);
-
-
   // Local rows navigate immediately. Starting a full source scrape here used
   // to compete with the detail query for bandwidth and backend capacity; the
   // detail page now performs enrichment only after its local text has painted.
@@ -748,9 +738,6 @@ export default function Properties() {
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">
           חיפוש מאוחד — הומלי, יד-2 והמאגר שלך במקום אחד. לחץ על נכס לתצוגה מלאה, וסמן נכסים לייבוא קבוצתי.
         </p>
-        <p className="text-[11px] sm:text-xs text-muted-foreground/80 mt-1">
-            : ''}
-        </p>
       </header>
 
       {/* Compact unified control bar */}
@@ -805,11 +792,8 @@ export default function Properties() {
               <VoiceInputButton
                 size="sm"
                 title="חיפוש קולי"
-                language="he"
-                onTranscript={(t) => {
-                  voiceSearchPendingRef.current = true;
-                  setQ(t);
-                }}
+                language="auto"
+                onTranscript={(value) => setQ((current) => current ? `${current} ${value}` : value)}
               />
              </div>
             <Button

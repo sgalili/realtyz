@@ -10,9 +10,8 @@
  *      CREATE a new contact card immediately when the number is unknown.
  *   3. Store the inbound SMS in public.messages (platform/channel = 'sms') so
  *      the whole conversation shows in /inbox on the contact's chat window.
- *   4. Trigger Rita: the FIRST automated SMS reply greets the contact and offers
- *      to continue on WhatsApp with a direct clickable chat link. Later replies
- *      run through `ai-agent` and are answered on the same SMS channel.
+ *   4. Trigger Rita on the same SMS channel. The WhatsApp handoff is offered
+ *      once, only after the client has sent at least two inbound SMS messages.
  *   5. Every outbound SMS is stored too, so the thread is complete.
  *
  * Optional shared-secret protection: SMS_INBOUND_WEBHOOK_SECRET, sent either as
@@ -143,7 +142,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   );
   const bodyText = firstString(
     p.message, p.text, p.Body, p.body, p.content, p.sms, p?.data?.message, p?.data?.text,
-  );
+  ).slice(0, 4000);
   const providerMessageId = firstString(p.message_id, p.messageId, p.id, p.sms_id);
 
   const fromNormalized = normalizeIl(fromPhoneRaw);
@@ -329,8 +328,11 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
         errorMessage: `failed to store an inbound SMS: ${msg} | ${msg2}`,
         context: { lead_id: lead.id },
       });
+      return json({ error: "message_store_failed" }, 500);
     }
   }
+
+  if (!duplicate && !inboundStored) return json({ error: "message_store_failed" }, 500);
 
   // In-app notification for the inbound SMS itself (independent of Rita).
   if (inboundStored && workspaceOwnerId) {
@@ -397,9 +399,9 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
     const profile = (profileRes.data ?? null) as any;
     const autopilotFlag = settings?.enable_ai_autopilot;
     const sentimentOn = profile?.auto_reply_positive === true || profile?.auto_reply_negative === true;
-    const autoEnabled = autopilotFlag === true || sentimentOn ||
-      // No explicit workspace decision yet: fall back to the contact-level flag.
-      (autopilotFlag === undefined || autopilotFlag === null ? lead.ai_autopilot !== false : false);
+    const autoEnabled = autopilotFlag === false
+      ? false
+      : autopilotFlag === true || sentimentOn || lead.ai_autopilot !== false;
     if (!autoEnabled) {
       console.log("[sms-inbound] workspace Auto AI is off — no auto reply", {
         lead_id: lead.id,

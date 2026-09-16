@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -220,6 +220,12 @@ const LiveConversations = () => {
     last_content: string;
     last_at: string;
   }>>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const scrollContainer = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
+  }, [selectedVoterId, thread]);
 
   // Initialize the visible list once when entering demo mode
   useEffect(() => {
@@ -228,13 +234,6 @@ const LiveConversations = () => {
       return;
     }
     setDemoVoterList((prev) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (scrollRef.current) {
-      const scrollContainer = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
-      if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
-    }
-  }, [selectedVoterId, thread]);
       if (prev.length > 0) return prev;
       return DEMO_VOTERS.slice(0, VISIBLE_COUNT).map((voter, index) => {
         const msgs = DEMO_MESSAGES.filter((msg) => msg.lead_id === voter.id);

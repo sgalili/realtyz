@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
+import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 
 export type TaskLeadLite = {
   profile_picture_url?: string | null;
@@ -266,7 +267,10 @@ export default function TaskFormDialog({
           )}
 
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">משימה / תזכורת</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm font-semibold">משימה / תזכורת</Label>
+              <VoiceInputButton size="sm" language="auto" onTranscript={(value) => setText((current) => current ? `${current} ${value}` : value)} />
+            </div>
             <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="resize-none" />
           </div>
 
