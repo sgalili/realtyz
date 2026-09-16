@@ -24,6 +24,8 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { Message, MessageContent } from '@/components/ai-elements/message';
 
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { groupByIdentity, normalizePhoneKey } from '@/lib/threadIdentity';
@@ -120,8 +122,8 @@ function getInboxSocialHandle(lead: any, platform: string): string | null {
 
 const ChannelIcon = ({ channel, size = 'sm' }: { channel: string | null; size?: 'sm' | 'md' | 'lg' }) => {
   const cfg = channelConfig[channel || 'whatsapp'] || channelConfig.whatsapp;
-  const boxClass = size === 'lg' ? 'h-9 w-9' : size === 'md' ? 'h-7 w-7' : 'h-5 w-5';
-  const iconClass = size === 'lg' ? 'h-5 w-5' : size === 'md' ? 'h-4 w-4' : 'h-3 w-3';
+  const boxClass = size === 'lg' ? 'h-7 w-7' : size === 'md' ? 'h-6 w-6' : 'h-4 w-4';
+  const iconClass = size === 'lg' ? 'h-4 w-4' : size === 'md' ? 'h-3.5 w-3.5' : 'h-2.5 w-2.5';
   return (
     <span title={cfg.label} className={`${boxClass} inline-flex shrink-0 items-center justify-center rounded-md ${cfg.bgClass} text-social-foreground shadow-sm`}>
       {cfg.brand ? <BrandIcon name={cfg.brand} className={iconClass} /> : (typeof cfg.icon!.type === 'string' ? cfg.icon : cloneElement(cfg.icon!, { className: iconClass }))}
@@ -191,6 +193,8 @@ const OmnichannelInbox = () => {
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const activeWorkspaceOwnerId = useActiveWorkspaceOwnerId();
+  const workspaceScope = activeWorkspaceOwnerId ?? user?.id ?? null;
   const navigate = useNavigate();
 
   // Agent identity for outbound chat bubbles (circular avatar next to each one).
@@ -289,11 +293,11 @@ const OmnichannelInbox = () => {
   useRealtimeSubscription('leads', [['inbox-leads']]);
 
   const { data: dbVoters } = useQuery({
-    queryKey: ['inbox-leads'],
-    enabled: !isDemoMode,
+    queryKey: ['inbox-leads', workspaceScope],
+    enabled: !isDemoMode && !!workspaceScope,
     refetchInterval: 3000,
     queryFn: async () => {
-      const { data } = await supabase.from('leads').select('*').order('last_interaction_at', { ascending: false });
+      const { data } = await supabase.from('leads').select('*').eq('workspace_owner_id', workspaceScope!).order('last_interaction_at', { ascending: false });
       return data ?? [];
     },
   });
@@ -549,6 +553,11 @@ const OmnichannelInbox = () => {
     const found = (data ?? [])[0]?.id;
     if (found) navigate(`/lead-crm/${found}`);
     else toast.error('אין כרטיס איש קשר לשיחה הזו');
+  };
+
+  const openCrmContact = (leadId: string) => {
+    if (!leadId || leadId.startsWith('phone:') || leadId.startsWith('demo-')) return;
+    navigate(`/lead-crm/${leadId}`);
   };
 
   const { data: dbChatMessages } = useQuery({
@@ -1013,7 +1022,7 @@ const OmnichannelInbox = () => {
   };
 
   return (
-    <div dir="rtl" className="space-y-3">
+    <div dir="rtl" className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <NewWhatsAppChatDialog
         open={newChatOpen}
         onOpenChange={setNewChatOpen}
@@ -1025,43 +1034,45 @@ const OmnichannelInbox = () => {
         }}
       />
       {/* Filter pills + bookmark */}
-      <div className="flex items-center gap-2">
-        <div className="flex flex-1 flex-row-reverse items-center gap-2 overflow-x-auto">
-          <button
+      <div className="mx-auto grid w-full max-w-2xl shrink-0 grid-cols-4 gap-1 rounded-md bg-muted p-1">
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => { setActiveTab('handling'); setSelectedVoterId(null); }}
-            className={`h-10 inline-flex items-center gap-1 rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'handling' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
+            className={`h-10 min-w-0 gap-1 rounded-sm px-2 text-sm whitespace-nowrap ${activeTab === 'handling' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
           >
-            <RitaAvatar className="h-4 w-4 border-0 ring-0" />
+            <RitaAvatar className="h-3.5 w-3.5 border-0 ring-0" />
             <span>בטיפול ({handlingCount}) AI</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => { setActiveTab('waiting'); setSelectedVoterId(null); }}
-            className={`h-10 inline-flex items-center rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'waiting' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
+            className={`h-10 min-w-0 rounded-sm px-2 text-sm whitespace-nowrap ${activeTab === 'waiting' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
           >
             מחכות למענה ({waitingCount})
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => { setActiveTab('all'); setSelectedVoterId(null); }}
-            className={`h-10 inline-flex items-center rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
+            className={`h-10 min-w-0 rounded-sm px-2 text-sm whitespace-nowrap ${activeTab === 'all' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
           >
             כל השיחות ({totalCount})
-          </button>
-        </div>
-        <button
+          </Button>
+        <Button
+          variant="ghost"
           type="button"
           onClick={() => { setBookmarkedOnly((v) => !v); setSelectedVoterId(null); }}
           aria-label="סימניות"
-          className={`h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-lg border ${bookmarkedOnly ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:bg-muted/50'}`}
+          className={`h-10 min-w-0 rounded-sm px-2 ${bookmarkedOnly ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
         >
           <Bookmark className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       {/* Channel filter — icons only, no pill background */}
-      <div className="flex items-center gap-2 overflow-x-auto">
+      <div className="flex shrink-0 items-center justify-center gap-1.5 overflow-x-auto">
         {(() => {
           const channelsInList = new Set<string>();
           (leadChannels instanceof Map ? Array.from(leadChannels.values()) : []).forEach((set: Set<string>) => {
@@ -1109,7 +1120,7 @@ const OmnichannelInbox = () => {
                 aria-label={c.label}
                 title={c.label}
                 aria-pressed={active}
-                className={`h-9 w-9 shrink-0 inline-flex items-center justify-center bg-transparent border-0 p-0 transition-all ${active ? 'opacity-100 scale-110' : hasChats ? 'opacity-70 hover:opacity-100' : 'opacity-35 grayscale hover:opacity-70'}`}
+                className={`h-7 w-7 shrink-0 inline-flex items-center justify-center bg-transparent border-0 p-0 transition-all ${active ? 'opacity-100 scale-110' : hasChats ? 'opacity-70 hover:opacity-100' : 'opacity-35 grayscale hover:opacity-70'}`}
               >
                 <ChannelIcon channel={c.key} size="md" />
               </button>
@@ -1123,7 +1134,7 @@ const OmnichannelInbox = () => {
 
 
 
-      <div className="grid h-[calc(100svh-300px)] min-h-[480px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-340px)] lg:grid-cols-[20rem_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:grid-cols-[20rem_minmax(0,1fr)]">
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden border-l bg-card`}>
           <div className="p-3 border-b space-y-2">
@@ -1191,14 +1202,12 @@ const OmnichannelInbox = () => {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                    {/* Clicking a result (avatar or name) only opens the chat —
-                        it never navigates to the CRM profile page. */}
                     <button
                       type="button"
-                      onClick={(event) => { event.stopPropagation(); setSelectedVoterId(voter.id); }}
+                      onClick={(event) => { event.stopPropagation(); openCrmContact(voter.id); }}
                       className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      title="פתיחת השיחה"
-                      aria-label="פתיחת השיחה"
+                      title="פתיחת כרטיס איש קשר"
+                      aria-label="פתיחת כרטיס איש קשר"
                     >
                       <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
                     </button>
@@ -1338,7 +1347,7 @@ const OmnichannelInbox = () => {
                             <div className="flex-1 h-px bg-border" />
                           </div>
                         )}
-                        <div className={`flex min-w-0 items-end gap-2 ${isOutbound ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
+                        <Message from={isOutbound ? 'assistant' : 'user'} className={`max-w-full flex-row items-end gap-2 ${isOutbound ? 'justify-start' : 'justify-end'}`}>
                           {isAiMessage ? (
                             <RitaAvatar className="h-7 w-7" />
                           ) : isOutbound ? (
@@ -1349,14 +1358,16 @@ const OmnichannelInbox = () => {
                               textClassName="text-[10px]"
                             />
                           ) : (
-                            <VoterAvatar
-                              fullName={selectedVoter?.full_name}
-                              profilePictureUrl={(selectedVoter as any)?.profile_picture_url}
-                              className="h-7 w-7 shrink-0"
-                              textClassName="text-[10px]"
-                            />
+                            <button type="button" onClick={openCrmCard} className="shrink-0 rounded-full" aria-label="פתיחת כרטיס איש קשר">
+                              <VoterAvatar
+                                fullName={selectedVoter?.full_name}
+                                profilePictureUrl={(selectedVoter as any)?.profile_picture_url}
+                                className="h-7 w-7 shrink-0"
+                                textClassName="text-[10px]"
+                              />
+                            </button>
                           )}
-                          <div className={`relative min-w-0 max-w-[78%] overflow-hidden rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isAiMessage ? 'border border-primary/20 bg-primary/10 text-foreground rounded-es-sm' : isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
+                          <MessageContent className={`relative min-w-0 max-w-[78%] gap-0 overflow-hidden rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isAiMessage ? 'border border-primary/20 bg-primary/10 text-foreground rounded-es-sm' : isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
                             {msg.id === lastAiMessageId && selectedVoterId && (
                               <UndoLastAiMessage
                                 messageId={msg.id as string}
@@ -1391,8 +1402,8 @@ const OmnichannelInbox = () => {
                               <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
                               {isOutbound && <WhatsAppTicks status={((msg as any)?.metadata?.status as 'sent' | 'delivered' | 'read') || 'delivered'} />}
                             </p>
-                          </div>
-                        </div>
+                          </MessageContent>
+                        </Message>
                       </div>
                     );
                   })}

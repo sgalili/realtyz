@@ -398,11 +398,11 @@ export default function CommandCenter() {
         {/* Tabs first, then the "add new" button below them. Desktop keeps an
             exact 50px gap under the tabs; mobile stays as it was. */}
         <div className="mb-4 flex flex-col items-center justify-center gap-[25px] md:gap-0">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)}>
-            <TabsList className="justify-center overflow-x-auto">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)} className="mx-auto w-full max-w-2xl">
+            <TabsList className="grid h-auto w-full overflow-x-auto p-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
 
               {visibleTabs.map((key) => (
-                <TabsTrigger key={key} value={key}>
+                <TabsTrigger key={key} value={key} className="h-10 min-w-0 rounded-sm px-2 text-sm">
                   {TAB_LABEL[key]
                     ? TABS_WITHOUT_COUNT.has(key)
                       ? TAB_LABEL[key]

@@ -312,7 +312,20 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
     return;
   }
   try {
-    const { data: paused } = await admin.rpc("is_ai_paused");
+    if (!workspaceOwnerId) {
+      console.log("[sms-inbound] no workspace owner — no auto reply", { lead_id: lead.id });
+      return;
+    }
+    const { data: workspaceSettings } = await admin
+      .from("platform_settings")
+      .select("enable_ai_autopilot, ai_paused")
+      .eq("user_id", workspaceOwnerId)
+      .maybeSingle();
+    if ((workspaceSettings as any)?.enable_ai_autopilot !== true) {
+      console.log("[sms-inbound] workspace Auto AI is off — no auto reply", { lead_id: lead.id });
+      return;
+    }
+    const { data: paused } = await admin.rpc("is_ai_paused", { _user_id: workspaceOwnerId });
     if (paused === true) {
       console.log("[sms-inbound] AI is paused for this workspace — no auto reply", { lead_id: lead.id });
       return;
@@ -472,6 +485,31 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   try {
     await admin.from("chat_history").insert({ lead_id: lead.id, role: "assistant", content: reply, is_demo: false });
   } catch { /* soft-fail */ }
+
+  // Create an in-app notification for the workspace that owns this SMS thread.
+  // The notification points to the exact stored reply and is never shared with
+  // another workspace.
+  if (workspaceOwnerId) {
+    try {
+      await admin.from("notifications").insert({
+        user_id: workspaceOwnerId,
+        lead_id: lead.id,
+        event_type: "rita_sms_reply",
+        title: "ריטה השיבה ב-SMS",
+        body: reply,
+        deep_link: `/inbox?chat=${lead.id}`,
+        channel: "in_app",
+        delivered: true,
+        delivery_result: {
+          message_id: sent.message_id ?? null,
+          sms_status: sent.ok ? "sent" : "failed",
+          source: "sms-019-webhook",
+        },
+      });
+    } catch (e) {
+      console.warn("[sms-inbound] Rita notification soft-fail", e instanceof Error ? e.message : e);
+    }
+  }
 
   console.log("[sms-inbound] Rita replied", {
     lead_id: lead.id,

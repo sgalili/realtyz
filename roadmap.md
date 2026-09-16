@@ -28,7 +28,7 @@
 - [x] Simplify task cards and align date, actions, status, and expansion control
 - [x] Add tour editing beside completion and cancellation actions
 - [x] Preserve exact property-list position after returning from property details
-31. [ ] Persist Rita SMS replies, surface them promptly in the open inbox chat, and notify the active workspace
-32. [ ] Enforce workspace and per-contact Auto AI switches for SMS replies
-33. [ ] Refine inbox bubble sides, CRM avatar navigation, icon sizing, fixed layout, and centered tabs
-34. [ ] Match task-page tabs to the inbox tab styling and sizing
+31. [x] Persist Rita SMS replies, surface them promptly in the open inbox chat, and notify the active workspace
+32. [x] Enforce workspace and per-contact Auto AI switches for SMS replies
+33. [x] Refine inbox bubble sides, CRM avatar navigation, icon sizing, fixed layout, and centered tabs
+34. [x] Match task-page tabs to the inbox tab styling and sizing
