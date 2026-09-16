@@ -366,6 +366,11 @@ export function ScheduledToursCard({
             </Button>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <button type="button" onClick={() => setConfirmTarget(t)} title="לחיצה לעדכון אישור הלקוח">
+              <Badge variant="outline" className={`cursor-pointer transition-opacity hover:opacity-80 ${STATUS_CLASS[displayStatus(t)] ?? ''}`}>
+                {STATUS_HE[displayStatus(t)] ?? t.status}
+              </Badge>
+            </button>
             <div className="flex items-center gap-1">
               <Button
                 size="icon"
@@ -400,11 +405,6 @@ export function ScheduledToursCard({
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <button type="button" onClick={() => setConfirmTarget(t)} title="לחיצה לעדכון אישור הלקוח">
-              <Badge variant="outline" className={`cursor-pointer transition-opacity hover:opacity-80 ${STATUS_CLASS[displayStatus(t)] ?? ''}`}>
-                {STATUS_HE[displayStatus(t)] ?? t.status}
-              </Badge>
-            </button>
           </div>
         </div>
         <div className="mt-1.5 space-y-1 text-[13px] text-muted-foreground">
