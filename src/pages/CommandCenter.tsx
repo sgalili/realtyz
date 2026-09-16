@@ -321,7 +321,7 @@ export default function CommandCenter() {
                           navigate(`/properties/${task.listingId}`);
                         }}
                       >
-                        <span className="truncate">{task.listingLabel ?? 'כרטיס נכס'}</span>
+                        <span className="whitespace-normal break-words text-right">{task.listingLabel ?? 'כרטיס נכס'}</span>
                         {task.listingDealType && <span className="shrink-0 text-muted-foreground">· {task.listingDealType === 'rent' ? 'השכרה' : 'מכירה'}</span>}
                       </Button>
                     )}
