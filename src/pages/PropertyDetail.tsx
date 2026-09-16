@@ -609,7 +609,7 @@ export default function PropertyDetail() {
         total_floors: property.total_floors != null ? String(property.total_floors) : '',
         year_built: property.year_built != null ? String(property.year_built) : '',
         property_type: property.property_type || 'apartment',
-        deal_type: String(meta.deal_type ?? meta.listing_type ?? property.listing_type ?? 'sale'),
+        deal_type: String((data?.row as any)?.deal_type ?? meta.deal_type ?? meta.listing_type ?? property.listing_type ?? 'sale'),
         status: (data?.row as any)?.status ? String((data?.row as any).status) : '',
         price: String(property.price || ''),
         vaad_bayit: String(meta.vaad_bayit ?? meta.vaad_monthly ?? ''),
