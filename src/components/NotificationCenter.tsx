@@ -134,6 +134,25 @@ export default function NotificationCenter() {
     },
   });
 
+  const { data: ritaSmsReplies = [] } = useQuery({
+    queryKey: ['notif-rita-sms-replies', scope],
+    enabled: !!scope,
+    refetchInterval: 5_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('id, lead_id, title, body, deep_link, created_at, user_id')
+        .eq('user_id', scope!)
+        .eq('event_type', 'rita_sms_reply')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
   // ---- New property tour bookings (Realtime enabled on property_tours) ----
   const { data: tours = [] } = useQuery({
     queryKey: ['notif-tours', scope],
@@ -215,6 +234,7 @@ export default function NotificationCenter() {
           ? `${g.count} הודעות חדשות מ${g.row.leads?.full_name || 'איש קשר'}`
           : `הודעה חדשה מ${g.row.leads?.full_name || 'איש קשר'}`,
       })),
+      ...ritaSmsReplies.map((n: any) => ({ id: `rita-${n.id}`, at: n.created_at, msg: n.title || 'ריטה השיבה ב-SMS' })),
       ...tours.map((t: any) => ({ id: t.id, at: t.created_at, msg: `סיור חדש נקבע: ${t.client_name || 'לקוח'}` })),
       ...newLeads.map((l: any) => ({ id: `lead-${l.id}`, at: l.created_at, msg: `ליד חדש נכנס: ${l.full_name || 'איש קשר חדש'}` })),
     ];
@@ -241,7 +261,7 @@ export default function NotificationCenter() {
         localStorage.setItem(TOASTED_KEY, JSON.stringify(all));
       } catch { /* noop */ }
     }
-  }, [inbound, tours, newLeads]);
+  }, [inbound, ritaSmsReplies, tours, newLeads]);
 
 
 
@@ -268,14 +288,16 @@ export default function NotificationCenter() {
   const visibleInbound = groupedInbound.filter((g) => !deletedKeys.has(g.row.id));
   const visibleTours = tours.filter((t: any) => !deletedKeys.has(t.id));
   const visibleLeads = newLeads.filter((l: any) => !deletedKeys.has(`lead-${l.id}`));
+  const visibleRitaSmsReplies = ritaSmsReplies.filter((n: any) => !deletedKeys.has(`rita-${n.id}`));
 
   const unviewedAlerts = visibleAlerts.filter((a: any) => !viewedIds.has(a.id));
   const unviewedInbound = visibleInbound.filter((g) => !viewedIds.has(g.row.id));
   const unviewedTours = visibleTours.filter((t: any) => !viewedIds.has(t.id));
   const unviewedLeads = visibleLeads.filter((l: any) => !viewedIds.has(`lead-${l.id}`));
+  const unviewedRitaSmsReplies = visibleRitaSmsReplies.filter((n: any) => !viewedIds.has(`rita-${n.id}`));
   const activeBudgetAlerts = budgetAlerts.filter(b => !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
   const badgeCount =
-    unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + unviewedLeads.length + activeBudgetAlerts.length;
+    unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + unviewedLeads.length + unviewedRitaSmsReplies.length + activeBudgetAlerts.length;
 
   /** Every key currently rendered in the drawer. */
   const allKeys = [
@@ -283,6 +305,7 @@ export default function NotificationCenter() {
     ...visibleInbound.flatMap((g) => [g.row.id, ...g.extraIds]),
     ...visibleTours.map((t: any) => t.id),
     ...visibleLeads.map((l: any) => `lead-${l.id}`),
+    ...visibleRitaSmsReplies.map((n: any) => `rita-${n.id}`),
   ];
 
   const markViewed = (id: string) => markRead([id]);
@@ -484,6 +507,27 @@ export default function NotificationCenter() {
                     <span className="mt-0.5 block truncate text-xs text-muted-foreground">{(m.content || '').slice(0, 70)}</span>
                     <span className="mt-1 block text-[10px] text-muted-foreground/60">
                       {m.created_at ? formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: he }) : ''}
+                    </span>
+                  </span>
+                </button>
+              </NotifRow>
+            );
+          })}
+
+          {visibleRitaSmsReplies.map((n: any) => {
+            const key = `rita-${n.id}`;
+            return (
+              <NotifRow key={key} unread={!viewedIds.has(key)} onDelete={() => deleteOne([key])}>
+                <button
+                  onClick={() => { markViewed(key); setOpen(false); navigate(n.deep_link || `/inbox?chat=${n.lead_id}`); }}
+                  className="flex min-w-0 flex-1 items-start gap-3 text-right"
+                >
+                  <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{n.title || 'ריטה השיבה ב-SMS'}</span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">{n.body}</span>
+                    <span className="mt-1 block text-[10px] text-muted-foreground/60">
+                      {n.created_at ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: he }) : ''}
                     </span>
                   </span>
                 </button>
