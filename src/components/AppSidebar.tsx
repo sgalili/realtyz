@@ -114,7 +114,7 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/deals'],
   },
   {
-    title: 'שותפים',
+    title: 'שיווק שותפים',
     url: '/affiliate-network',
     icon: AffiliateFlowchartIcon,
     iconColor: '!text-[#6d28d9]', // violet-700
@@ -143,7 +143,7 @@ const PARTNER_NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
   },
   {
-    title: 'שותפים',
+    title: 'שיווק שותפים',
     url: '/affiliate-network',
     icon: AffiliateFlowchartIcon,
     iconColor: '!text-[#6d28d9]', // violet-700
