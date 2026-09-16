@@ -34,11 +34,11 @@
 34. [x] Match task-page tabs to the inbox tab styling and sizing
 35. [x] Align campaign, inbox, and task tabs; refine inbox navigation and task property labels
 36. [x] Refine inbox chat controls, affiliate title, and unified sidebar counters
-37. [ ] Persist every inbound 019 SMS and synchronize inbox notifications immediately
-38. [ ] Fix shared speech-to-text recording and add append-only microphones to task, call, and tour dialogs
-39. [ ] Open chats at the bottom without animation and prevent bubble clipping
-40. [ ] Remove the Yad2 schedule notice and standardize list/grid controls
-41. [ ] Repair Rita CRM/property tools and delay SMS-to-WhatsApp handoff until two client replies
+37. [x] Persist every inbound 019 SMS and synchronize inbox notifications immediately
+38. [x] Fix shared speech-to-text recording and add append-only microphones to task, call, and tour dialogs
+39. [x] Open chats at the bottom without animation and prevent bubble clipping
+40. [x] Remove the Yad2 schedule notice and standardize list/grid controls
+41. [x] Repair Rita CRM/property tools and delay SMS-to-WhatsApp handoff until two client replies
 42. [x] Add affiliate property list/grid views, fix search spacing, color summary metrics, and match inbox tabs
 
 43. [x] Tighten Rita property search, SMS inbox sync, affiliate actions, and public property completeness
