@@ -443,7 +443,7 @@ function PublicListingContent() {
                   {wazeUrl && (
                     <Button asChild variant="outline" size="sm">
                       <a href={wazeUrl} target="_blank" rel="noopener noreferrer">
-                        <Navigation className="h-4 w-4" /> ניווט ב-Waze
+                        <NavigationIcon className="h-4 w-4" /> ניווט ב-Waze
                       </a>
                     </Button>
                   )}
