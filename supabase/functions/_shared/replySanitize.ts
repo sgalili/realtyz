@@ -44,6 +44,10 @@ export function sanitizeReplyText(raw: string | null | undefined): string {
 
   text = text.replace(/^\s*\[(?:whatsapp|instagram|facebook|messenger|email|sms|telegram|web)\]\s*/i, "");
   text = text.replace(/\[[0-9a-f]{6,8}\]\s*/gi, "");
+  // Internal markers must never reach a human, even if the model echoes them.
+  text = text.replace(/\[ref[:=]\s*[A-Za-z0-9_-]{4,}\]?/gi, "");
+  text = text.replace(/\[(?:AGENT_COMMAND|REFERRAL_CONTEXT)[^\]]*\]/gi, "");
+  text = text.replace(/^\s*(?:===\s*)?(?:REALTYZ MASTER AGENT DIRECTIVE|END MASTER AGENT DIRECTIVE)[^\n]*\n?/gim, "");
   text = text.replace(/\*\*\s*\*\*/g, "").replace(/__\s*__/g, "");
 
   // Final hard guard: no code fences, JSON blobs or action schemas survive.
