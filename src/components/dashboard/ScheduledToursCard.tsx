@@ -33,6 +33,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  Pencil,
   StickyNote,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
@@ -40,6 +41,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { BrandIcon } from '@/components/BrandIcon';
 import { DigitalSignatureButton } from '@/components/signature/DigitalSignatureButton';
+import { NewTourDialog, type EditableTour } from '@/components/dashboard/NewTourDialog';
 import { SignatureStatusStrip } from '@/components/signature/SignatureStatusStrip';
 import {
   ScheduleMonthGrid,
@@ -131,6 +133,7 @@ export function ScheduledToursCard() {
   const [confirmTarget, setConfirmTarget] = useState<Tour | null>(null);
   /** Tour being cancelled, awaiting the "notify the client?" choice. */
   const [cancelTarget, setCancelTarget] = useState<Tour | null>(null);
+  const [editTarget, setEditTarget] = useState<Tour | null>(null);
 
   // Tours belong to ONE workspace only — never show another workspace's tours.
   const ownerId = useActiveWorkspaceOwnerId();
@@ -350,6 +353,16 @@ export function ScheduledToursCard() {
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                onClick={() => setEditTarget(t)}
+                aria-label="עריכת הסיור"
+                title="עריכה"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
               {t.status !== 'completed' ? (
                 <Button
                   size="icon"
@@ -427,6 +440,11 @@ export function ScheduledToursCard() {
 
   return (
     <div dir="rtl" className="space-y-3">
+      <NewTourDialog
+        open={!!editTarget}
+        onOpenChange={(open) => { if (!open) setEditTarget(null); }}
+        tour={editTarget as EditableTour | null}
+      />
       <ScheduleViewToggle
         view={view}
         onViewChange={setView}

@@ -8,7 +8,7 @@
  * confirmation and an optional digital-signature form, both sent from the
  * OFFICIAL Meta WBA number only (see src/lib/officialWa.ts).
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -79,7 +79,19 @@ function defaultDate() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export type EditableTour = {
+  id: string;
+  client_name: string;
+  client_phone: string;
+  client_email: string | null;
+  scheduled_at: string;
+  property_title: string | null;
+  property_address: string | null;
+  listing_id: string | null;
+  notes: string | null;
+};
+
+export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boolean; onOpenChange: (v: boolean) => void; tour?: EditableTour | null }) {
   const qc = useQueryClient();
   const ownerId = useActiveWorkspaceOwnerId();
 
@@ -95,6 +107,19 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   const [sendSignature, setSendSignature] = useState(false);
   const [signatureForm, setSignatureForm] = useState<SignatureTemplate>('tour_agreement');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open || !tour) return;
+    const scheduled = new Date(tour.scheduled_at);
+    const p = (n: number) => String(n).padStart(2, '0');
+    setSelectedLead({ id: '', full_name: tour.client_name, phone_number: tour.client_phone, email: tour.client_email, profile_picture_url: null });
+    setSelectedListing(tour.listing_id ? { id: tour.listing_id, property_title: tour.property_title || 'נכס', address: tour.property_address, city: null, image_url: null, media_photos: [], rooms: null, sqm: null, asking_price: null, deal_type: null } : null);
+    setDate(`${scheduled.getFullYear()}-${p(scheduled.getMonth() + 1)}-${p(scheduled.getDate())}`);
+    setTime(`${p(scheduled.getHours())}:${p(scheduled.getMinutes())}`);
+    setNotes(tour.notes ?? '');
+    setSendWa(false);
+    setSendSignature(false);
+  }, [open, tour]);
 
   const { data: leads = [] } = useQuery({
     queryKey: ['new-tour-leads', ownerId, contactQuery],
@@ -189,7 +214,7 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     setSaving(true);
     try {
       const scheduledAt = new Date(`${date}T${time}:00+03:00`);
-      const { data: created, error } = await supabase.from('property_tours').insert({
+      const payload = {
         owner_id: ownerId,
         client_name: name,
         client_phone: phone,
@@ -202,7 +227,11 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         // The client has NOT accepted yet — only an explicit acceptance confirms.
         status: 'pending',
         timezone: 'Asia/Jerusalem',
-      }).select('id').maybeSingle();
+      };
+      const request = tour
+        ? supabase.from('property_tours').update(payload).eq('id', tour.id).eq('owner_id', ownerId)
+        : supabase.from('property_tours').insert(payload);
+      const { data: created, error } = await request.select('id').maybeSingle();
       if (error) throw error;
 
       if (sendWa) {
@@ -228,7 +257,7 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         }
       }
 
-      toast.success('הסיור נקבע');
+      toast.success(tour ? 'הסיור עודכן' : 'הסיור נקבע');
       qc.invalidateQueries({ queryKey: ['scheduled-tours'] });
       qc.invalidateQueries({ queryKey: ['command-center-tasks'] });
       reset();
@@ -245,7 +274,7 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
         <DialogContent dir="rtl" className="max-h-[90vh] max-w-lg overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>סיור חדש</DialogTitle>
+            <DialogTitle>{tour ? 'עריכת סיור' : 'סיור חדש'}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -426,7 +455,7 @@ export function NewTourDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>ביטול</Button>
             <Button onClick={submit} disabled={saving}>
               {saving ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : null}
-              קביעת סיור
+              {tour ? 'שמירת שינויים' : 'קביעת סיור'}
             </Button>
           </DialogFooter>
         </DialogContent>
