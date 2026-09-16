@@ -1042,7 +1042,7 @@ const OmnichannelInbox = () => {
             className={`h-10 min-w-0 gap-1 rounded-sm px-2 text-sm whitespace-nowrap ${activeTab === 'handling' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
           >
             <RitaAvatar className="h-3.5 w-3.5 border-0 ring-0" />
-            <span>בטיפול ({handlingCount}) AI</span>
+            <span>ריטה ({handlingCount})</span>
           </Button>
           <Button
             variant="ghost"
@@ -1050,7 +1050,7 @@ const OmnichannelInbox = () => {
             onClick={() => { setActiveTab('waiting'); setSelectedVoterId(null); }}
             className={`h-10 min-w-0 rounded-sm px-2 text-sm whitespace-nowrap ${activeTab === 'waiting' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
           >
-            מחכות למענה ({waitingCount})
+            ממתינות ({waitingCount})
           </Button>
           <Button
             variant="ghost"
