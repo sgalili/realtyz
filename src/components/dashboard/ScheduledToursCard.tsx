@@ -127,10 +127,12 @@ export function ScheduledToursCard({
   view: controlledView,
   onViewChange,
   month: controlledMonth,
+  onMonthChange,
 }: {
   view?: ScheduleView;
   onViewChange?: (view: ScheduleView) => void;
   month?: Date;
+  onMonthChange?: (month: Date) => void;
 } = {}) {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -139,6 +141,7 @@ export function ScheduledToursCard({
   const setView = onViewChange ?? setInternalView;
   const [internalMonth, setInternalMonth] = useState(startOfThisMonth);
   const monthCursor = controlledMonth ?? internalMonth;
+  const setMonthCursor = onMonthChange ?? setInternalMonth;
   const [openDay, setOpenDay] = useState<string | null>(() => todayKey());
   /** Tour whose status pill was clicked, awaiting a manual client confirmation. */
   const [confirmTarget, setConfirmTarget] = useState<Tour | null>(null);
