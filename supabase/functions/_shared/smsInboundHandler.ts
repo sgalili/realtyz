@@ -399,50 +399,35 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   } catch { /* soft-fail: never block the reply on the gate lookup */ }
 
 
-  // Has Rita already offered the WhatsApp switch on this SMS thread?
-  let alreadyGreeted = false;
+  // How many replies has the CLIENT sent on this thread, and did Rita already
+  // offer the WhatsApp switch? The switch is offered only from the 2nd reply on.
+  let clientReplies = 1;
+  let handoffOffered = false;
+  try {
+    const { count } = await admin
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("lead_id", lead.id)
+      .eq("direction", "inbound");
+    if (typeof count === "number" && count > 0) clientReplies = count;
+  } catch { /* soft-fail */ }
   try {
     const { data: prior } = await admin
       .from("messages")
       .select("id")
       .eq("lead_id", lead.id)
-      .eq("platform", "sms")
       .eq("direction", "outbound")
+      .eq("metadata->>whatsapp_handoff", "true")
       .limit(1)
       .maybeSingle();
-    alreadyGreeted = !!(prior as any)?.id;
+    handoffOffered = !!(prior as any)?.id;
   } catch { /* soft-fail */ }
 
+  const offerHandoff = clientReplies >= 2 && !handoffOffered;
+
   let reply = "";
-
-  if (!alreadyGreeted) {
-    // FIRST automated SMS reply: greet + offer the WhatsApp switch with a
-    // direct clickable chat link to the official WBA number only.
-    let waPhone = OFFICIAL_WABA_PHONE;
-    try {
-      const { data: prov } = await admin
-        .from("wa_providers").select("config").eq("is_official", true).eq("is_active", true)
-        .limit(1).maybeSingle();
-      const cfg = ((prov as any)?.config ?? {}) as Record<string, unknown>;
-      const digits = String(cfg.display_phone_number ?? cfg.phone_number ?? "").replace(/\D/g, "");
-      if (digits.length >= 9) waPhone = digits;
-    } catch { /* keep the official constant */ }
-
-    let brandName = "Realtyz";
-    try {
-      const { data: wl } = await admin
-        .from("white_label_settings").select("agency_name").eq("user_id", workspaceOwnerId!)
-        .limit(1).maybeSingle();
-      const name = String((wl as any)?.agency_name ?? "").trim();
-      if (name) brandName = name;
-    } catch { /* keep the default */ }
-
-    reply =
-      `שלום, זו ריטה מ${brandName}. קיבלנו את ההודעה שלך ואנחנו כבר על זה.\n` +
-      `נוח יותר להמשיך בוואטסאפ (תמונות, נכסים וקישורים): https://wa.me/${waPhone}\n` +
-      `אפשר גם להמשיך כאן ב-SMS, כמו שנוח לך.`;
-  } else {
-    // Ongoing SMS conversation: answer with the normal Rita pipeline.
+  {
+    // Rita always answers through the normal pipeline on the SMS channel.
     const rawName = String(lead.full_name ?? "").trim();
     const realName = rawName && /[A-Za-z\u0590-\u05FF]/.test(rawName) ? rawName : null;
     let history: Array<{ role: string; content: string }> = [];
