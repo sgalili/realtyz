@@ -2028,7 +2028,7 @@ Deno.serve(async (req) => {
           const aiJson: any = await aiRes.json().catch(() => ({}));
           replyText = sanitizeAiReply(extractAiText(aiJson?.content ?? aiJson?.message ?? aiJson?.reply ?? aiJson));
           if (!aiRes.ok || !replyText) {
-            replyText = "ריטה קלטה את הבקשה וממשיכה לעבד אותה על בסיס נתוני המשרד. שלח עוד פרט אחד אם תרצה דיוק נוסף.";
+            replyText = "לא הצלחתי להשלים את הבקשה כרגע. אפשר לנסות שוב בניסוח קצר וממוקד.";
             companionAction = "intelligence_agent_soft_fallback";
           }
           meta = { ai_status: aiRes.status, sources: aiJson?.sources ?? null, research_sources: aiJson?.research_sources ?? null };
