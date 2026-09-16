@@ -30,7 +30,7 @@ import {
 import { toast } from 'sonner';
 import { Banknote, BedDouble, Building2, Handshake, LayoutGrid, List, MapPin, Ruler, Search, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
+
 import {
   SUBMISSION_STATUS_LABELS,
   SUBMISSION_STATUS_ORDER,
@@ -365,32 +365,37 @@ export default function AffiliateNetwork() {
                   const listing = filteredListings.find((item) => item.id === result.localId);
                   if (!listing) return null;
                   const shared = Boolean(listing.affiliate_enabled);
+                  // Plain-text commission amounts under a shared (green) button —
+                  // zero tiers stay hidden, no pills.
+                  const tierTexts: string[] = [];
+                  if (shared) {
+                    const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
+                    const t1 = Number(listing.affiliate_tier1_amount ?? 0);
+                    const t2 = Number(listing.affiliate_tier2_amount ?? 0);
+                    const t3 = Number(listing.affiliate_tier3_amount ?? 0);
+                    const t3Type = (listing.affiliate_tier3_type ?? 'fixed') as RewardType;
+                    if (t1) tierTexts.push(`1: ${money(t1)}`);
+                    if (t2) tierTexts.push(`2: ${money(t2)}`);
+                    if (t3) tierTexts.push(`3: ${t3Type === 'percent' ? `${t3}%` : money(t3)}`);
+                  }
                   return (
-                    <Button
-                      size="sm"
-                      variant={shared ? 'default' : 'outline'}
-                      className={`h-8 gap-1.5 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
-                      title={shared ? 'הנכס פתוח לשותפים — לחיצה תסיר אותו' : 'פתיחת הנכס לשיווק שותפים'}
-                      onClick={() => (shared ? setUnsharing(listing) : setEditing(listing))}
-                    >
-                      <Handshake className="h-4 w-4" />
-                      {shared ? 'משותף' : 'שיתוף'}
-                    </Button>
-                  );
-                }}
-                commissionCell={(result) => {
-                  const listing = filteredListings.find((item) => item.id === result.localId);
-                  if (!listing) return null;
-                  return (
-                    <CommissionTierBadges
-                      compact
-                      tiers={{
-                        tier1: Number(listing.affiliate_tier1_amount ?? 0),
-                        tier2: Number(listing.affiliate_tier2_amount ?? 0),
-                        tier3: Number(listing.affiliate_tier3_amount ?? 0),
-                        tier3Type: (listing.affiliate_tier3_type ?? 'fixed') as RewardType,
-                      }}
-                    />
+                    <div className="flex flex-col items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant={shared ? 'default' : 'outline'}
+                        className={`h-8 gap-1.5 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
+                        title={shared ? 'הנכס פתוח לשותפים — לחיצה תסיר אותו' : 'פתיחת הנכס לשיווק שותפים'}
+                        onClick={() => (shared ? setUnsharing(listing) : setEditing(listing))}
+                      >
+                        <Handshake className="h-4 w-4" />
+                        {shared ? 'משותף' : 'שיתוף'}
+                      </Button>
+                      {tierTexts.length > 0 ? (
+                        <div className="text-[11px] font-semibold whitespace-nowrap text-slate-600">
+                          <bdi dir="ltr">{tierTexts.join(', ')}</bdi>
+                        </div>
+                      ) : null}
+                    </div>
                   );
                 }}
               />
