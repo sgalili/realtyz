@@ -243,8 +243,6 @@ export default function AffiliateNetwork() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
   const [previewing, setPreviewing] = useState<BrokerAffiliateListing | null>(null);
-  /** Property awaiting confirmation before it leaves the affiliate marketplace. */
-  const [unsharing, setUnsharing] = useState<BrokerAffiliateListing | null>(null);
 
   useEffect(() => {
     if (listingsLoading || refsLoading || subsLoading) return;
@@ -676,43 +674,6 @@ export default function AffiliateNetwork() {
 
         <RewardDialog listing={editing} open={!!editing} onOpenChange={(v) => !v && setEditing(null)} />
 
-        {/* Removing a property from the marketplace always asks first. */}
-        <Dialog open={!!unsharing} onOpenChange={(open) => !open && setUnsharing(null)}>
-          <DialogContent dir="rtl" className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-right">להסיר את הנכס משיווק שותפים?</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-slate-600">
-              {unsharing?.property_title || propertyFullAddress(unsharing ?? ({} as BrokerAffiliateListing)) || 'הנכס'} לא יופיע יותר בזירת השותפים. אפשר להחזיר אותו בכל רגע.
-            </p>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setUnsharing(null)}>ביטול</Button>
-              <Button
-                variant="destructive"
-                disabled={quickSave.isPending}
-                onClick={() => {
-                  const listing = unsharing;
-                  if (!listing) return;
-                  quickSave.mutate({
-                    listingId: listing.id,
-                    enabled: false,
-                    rewardType: listing.affiliate_reward_type ?? 'fixed',
-                    rewardAmount: Number(listing.affiliate_reward_amount ?? 0),
-                    tier1Amount: Number(listing.affiliate_tier1_amount ?? 0),
-                    tier2Amount: Number(listing.affiliate_tier2_amount ?? 0),
-                    tier3Type: (listing.affiliate_tier3_type ?? 'fixed') as RewardType,
-                    tier3Amount: Number(listing.affiliate_tier3_amount ?? 0),
-                  }, {
-                    onSuccess: () => { toast.success('הנכס הוסר משיווק שותפים'); setUnsharing(null); },
-                    onError: () => toast.error('העדכון נכשל'),
-                  });
-                }}
-              >
-                {quickSave.isPending ? 'מעדכן...' : 'הסרה'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
         <PropertyPreviewDialog
           open={!!previewing}
           onOpenChange={(open) => !open && setPreviewing(null)}
