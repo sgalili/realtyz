@@ -102,8 +102,25 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
     try {
       // Base MIME only: `audio/webm;codecs=opus` would put extra parameters
       // between the media type and the `;base64` marker of the data URL.
-      const baseMime = (blob.type || 'audio/webm').split(';')[0].trim() || 'audio/webm';
-      const clean = blob.type === baseMime ? blob : new Blob([blob], { type: baseMime });
+      // Re-encode to a plain 16kHz mono WAV so the upload is always decodable
+      // (Safari's fragmented MP4 / webm-opus containers are frequently rejected).
+      let clean = blob;
+      let baseMime = (blob.type || 'audio/webm').split(';')[0].trim() || 'audio/webm';
+      if (baseMime !== 'audio/wav') {
+        try {
+          const buf = await blob.arrayBuffer();
+          const Ctx: typeof AudioContext = window.AudioContext
+            ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+          const ctx = new Ctx();
+          const decoded = await ctx.decodeAudioData(buf.slice(0));
+          await ctx.close().catch(() => {});
+          const wav = encodeWav([decoded.getChannelData(0)], decoded.sampleRate);
+          if (wav.size > 1024) { clean = wav; baseMime = 'audio/wav'; }
+        } catch { /* keep the original container */ }
+        if (baseMime !== 'audio/wav' && blob.type !== baseMime) {
+          clean = new Blob([blob], { type: baseMime });
+        }
+      }
       if (clean.size < 1024) throw new Error('ההקלטה הייתה ריקה — נסו שוב');
 
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -239,7 +256,7 @@ export function useVoiceRecorder({ onTranscript, onError, language = 'auto', max
     if (recorder) {
       try {
         if (recorder.state !== 'inactive') {
-          recorder.requestData?.();
+          
           recorder.stop();
           await Promise.race([
             stoppedRef.current ?? Promise.resolve(),
