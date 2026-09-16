@@ -2373,7 +2373,7 @@ const LeadCRM = () => {
                         </div>
                       );
                     })()}
-                    <div className="min-w-0 max-w-[calc(100%-6rem)] text-center">
+                    <div className="absolute inset-x-0 top-0 mx-auto min-w-0 px-12 text-center">
                       <EditableInlineText
                         value={selectedVoter.full_name || ''}
                         placeholder="איש קשר לא ידוע"
@@ -2623,8 +2623,8 @@ const LeadCRM = () => {
                     return (
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
-                          <SelectCell icon={<UserRoundPlus className="h-3.5 w-3.5 text-slate-700" />} label="סוג איש קשר" value={leadKind} placeholder="בחר סוג" options={leadKindOpts} onChange={(v) => savePref({ lead_kind: v })} />
-                          {isPropertyContact && <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />}
+                          {/* Contact type now lives next to the gender field in the details panel; deal type removed. */}
+
                           <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v, lead_source: v })} />
                           <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={displayedStage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
                           {/* Buyer/renter search preferences are irrelevant to brokers and owners. */}
@@ -2735,10 +2735,11 @@ const LeadCRM = () => {
                     phone={selectedVoter.phone_number}
                     vars={{ name: selectedVoter.full_name, city: selectedVoter.city }}
                     leadKind={(selectedVoter as any)?.preferences?.lead_kind ?? null}
+                    collapsible
                   />
 
                   {/* Smart timeline + quick note + follow-up extraction */}
-                  <SmartTimelineCard leadId={selectedVoter.id} title="ציר זמן מלא" />
+                  <SmartTimelineCard leadId={selectedVoter.id} title="ציר זמן מלא" collapsible />
 
 
                 </div>

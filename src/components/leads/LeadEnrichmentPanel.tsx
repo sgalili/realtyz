@@ -74,6 +74,7 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   const prefs = (lead.preferences ?? {}) as Record<string, any>;
 
   const [gender, setGender] = useState<string>(lead.gender ?? prefs.gender ?? '');
+  const [leadKind, setLeadKind] = useState<string>(String(prefs.lead_kind ?? ''));
   const [email, setEmail] = useState<string>(lead.email ?? '');
   const [phone, setPhone] = useState<string>(formatPhoneAsTyped(lead.phone_number));
   const [city, setCity] = useState<string>(lead.city ?? '');
@@ -91,11 +92,12 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
 
   useEffect(() => {
     setGender(lead.gender ?? prefs.gender ?? '');
+    setLeadKind(String(prefs.lead_kind ?? ''));
     setEmail(lead.email ?? '');
     setPhone(formatPhoneAsTyped(lead.phone_number));
     setCity(lead.city ?? '');
     setAddress(lead.address ?? '');
-  }, [lead.id, lead.gender, prefs.gender, lead.email, lead.phone_number, lead.city, lead.address]);
+  }, [lead.id, lead.gender, prefs.gender, prefs.lead_kind, lead.email, lead.phone_number, lead.city, lead.address]);
 
   // Re-sync socials whenever the parent lead's preferences change (e.g. after
   // the enrichment dialog writes new social profiles to the DB), so the panel
@@ -273,8 +275,29 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <GenderIcon className="h-3.5 w-3.5 text-slate-700" /> סוג איש קשר
+              {savingField === 'lead_kind' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+            </Label>
+            <Select
+              value={leadKind || undefined}
+              onValueChange={(v) => { setLeadKind(v); persist({ pref: { lead_kind: v } }, 'lead_kind'); }}
+            >
+              <SelectTrigger className="h-8 text-sm font-semibold text-slate-900"><SelectValue placeholder="בחר סוג" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="buyer">קונה</SelectItem>
+                <SelectItem value="seller">מוכר</SelectItem>
+                <SelectItem value="renter">שוכר</SelectItem>
+                <SelectItem value="landlord">משכיר</SelectItem>
+                <SelectItem value="broker">מתווך/ת</SelectItem>
+                <SelectItem value="affiliate">שותף</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
+
 
 
 
