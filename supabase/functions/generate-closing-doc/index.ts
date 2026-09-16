@@ -36,7 +36,39 @@ const BodySchema = z.object({
   // Client ID number captured in the signature form; persisted onto the CRM
   // contact so future documents reuse it.
   identity_number: z.string().max(20).optional(),
+  // Explicit deal type chosen by the broker when generating the form.
+  deal_type: z.enum(["sale", "rent"]).optional(),
+  // Commission settings. 'first_month' is the rental default (one month's rent),
+  // 'percent' takes commission_percent, 'fixed' takes commission_amount.
+  commission_mode: z.enum(["percent", "fixed", "first_month"]).optional(),
+  commission_percent: z.number().positive().max(100).optional(),
+  commission_amount: z.number().positive().optional(),
+  commission_text: z.string().max(200).optional(),
 });
+
+/** Hebrew brokerage-fee wording from the broker's commission settings. */
+function buildFeeText(
+  dealType: "rent" | "sale",
+  opts: {
+    commission_mode?: "percent" | "fixed" | "first_month";
+    commission_percent?: number;
+    commission_amount?: number;
+    commission_text?: string;
+  },
+): string {
+  const custom = String(opts.commission_text ?? "").trim();
+  if (custom) return custom;
+  const mode = opts.commission_mode ?? (dealType === "rent" ? "first_month" : "percent");
+  const shekel = (n: number) => `${new Intl.NumberFormat("he-IL").format(Math.round(n))} ₪`;
+  if (mode === "first_month") return "חודש שכירות אחד";
+  if (mode === "fixed" && opts.commission_amount) return shekel(opts.commission_amount);
+  if (mode === "percent" && opts.commission_percent) {
+    const pct = String(opts.commission_percent).replace(/\.0+$/, "");
+    return `${pct}% ממחיר העסקה`;
+  }
+  return dealType === "rent" ? "חודש שכירות אחד" : "2% ממחיר העסקה";
+}
+
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -147,9 +179,14 @@ Deno.serve(async (req) => {
       if (data) listing = data;
     }
 
-    const dealType: "rent" | "sale" =
+    // The broker's explicit choice wins; otherwise fall back to the template and
+    // the stored property/contact deal type.
+    const dealType: "rent" | "sale" = parsed.data.deal_type ??
       (template_key === "lease_agreement" ? "rent" : null) ??
         (String(listing.deal_type ?? lead.deal_type ?? "").toLowerCase() === "sale" ? "sale" : "rent");
+
+    const feeText = buildFeeText(dealType, parsed.data);
+
 
     const price = price_override ?? listing.asking_price ?? null;
     const propertyAddress = [listing.address, listing.city].filter(Boolean).join(", ") ||
@@ -194,9 +231,8 @@ Deno.serve(async (req) => {
       },
       properties: [property],
       note: noteParts.join(" | ") || undefined,
-      feeText: dealType === "rent"
-        ? "חודש שכירות אחד"
-        : "2% ממחיר העסקה",
+      feeText,
+
       // The pre-tour form carries its own Hebrew name.
       titleOverride: template_key === "tour_agreement" ? "הסכם סיור בנכס" : undefined,
       logo: await fetchLogo(brand?.logo_url),
@@ -234,6 +270,11 @@ Deno.serve(async (req) => {
         deal_type: dealType,
         terms: terms ?? null,
         tour_date: tour_date ?? null,
+        fee_text: feeText,
+        commission_mode: parsed.data.commission_mode ?? (dealType === "rent" ? "first_month" : "percent"),
+        commission_percent: parsed.data.commission_percent ?? null,
+        commission_amount: parsed.data.commission_amount ?? null,
+
       },
     });
     if (insErr) throw insErr;

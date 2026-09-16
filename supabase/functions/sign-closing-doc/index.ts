@@ -35,7 +35,12 @@ const SignSchema = z.object({
   token: z.string().min(20).max(100),
   signature_data: z.string().startsWith("data:image/").max(500_000),
   signer_name: z.string().min(1).max(160).optional(),
+  // Mandatory identity fields captured in the signature section of the form.
+  first_name: z.string().trim().min(1, "שם פרטי חסר").max(80),
+  last_name: z.string().trim().min(1, "שם משפחה חסר").max(80),
+  identity_number: z.string().trim().regex(/^\d{5,20}$/, "תעודת זהות לא תקינה"),
 });
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -87,7 +92,11 @@ Deno.serve(async (req) => {
       if (!parsed.success) {
         return new Response(JSON.stringify({ error: parsed.error.flatten() }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      const { token: tk, signature_data, signer_name } = parsed.data;
+      const { token: tk, signature_data, first_name, last_name } = parsed.data;
+      const identityNumber = parsed.data.identity_number.replace(/\D/g, "");
+      // The signed name is always built from the two mandatory name fields.
+      const signer_name = `${first_name} ${last_name}`.replace(/\s+/g, " ").trim();
+
 
       const { data: doc, error } = await admin
         .from("closing_documents")
@@ -143,14 +152,21 @@ Deno.serve(async (req) => {
           signed_pdf_path: signedPath,
           signer_name: signer_name || null,
           signature_data: signature_data.slice(0, 100), // store a tiny prefix only (full image is in the PDF)
+          fields: {
+            ...((doc.fields ?? {}) as Record<string, unknown>),
+            signer_first_name: first_name,
+            signer_last_name: last_name,
+            signer_identity_number: identityNumber,
+          },
         })
         .eq("id", doc.id);
 
       // Move lead to "negotiation" or keep as "awaiting_signature"? Mark as closed candidate via stage flip:
       await admin
         .from("leads")
-        .update({ lead_stage: "negotiation", last_interaction_at: nowIso })
+        .update({ lead_stage: "negotiation", last_interaction_at: nowIso, identity_number: identityNumber })
         .eq("id", doc.lead_id);
+
 
       await admin.from("audit_logs").insert({
         actor_id: doc.user_id,
