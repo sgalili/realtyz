@@ -67,30 +67,44 @@ export function ScheduleViewToggle({
           {view === 'list' ? <CalendarDays className="h-5 w-5" /> : <List className="h-5 w-5" />}
         </Button>
       </div>
-      {view === 'calendar' && (
-        <div className="flex items-center gap-1">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            onClick={() => onMonthChange(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[7.5rem] text-center text-sm font-semibold">
-            {monthCursor.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
-          </span>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            onClick={() => onMonthChange(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-      {view !== 'calendar' ? <span aria-hidden="true" /> : null}
+    </div>
+  );
+}
+
+/**
+ * Month navigation. Rendered on its own row above the calendar grid so it can
+ * never overlap the section tabs on narrow screens.
+ */
+export function ScheduleMonthNav({
+  monthCursor,
+  onMonthChange,
+}: {
+  monthCursor: Date;
+  onMonthChange: (d: Date) => void;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-8 w-8"
+        aria-label="חודש קודם"
+        onClick={() => onMonthChange(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      <span className="min-w-[7.5rem] text-center text-sm font-semibold">
+        {monthCursor.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
+      </span>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-8 w-8"
+        aria-label="חודש הבא"
+        onClick={() => onMonthChange(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1))}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
