@@ -239,7 +239,7 @@ export default function SignDocument() {
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto p-4 space-y-4">
+      <div className="max-w-3xl mx-auto p-4 pb-4 space-y-4">
         <Card className="overflow-hidden">
           {doc.pdf_url ? (
             <PdfInlineViewer url={doc.pdf_url} className="h-[70vh]" />
@@ -250,20 +250,54 @@ export default function SignDocument() {
           )}
         </Card>
 
-        <Card className="p-4 space-y-3">
-          <div>
-            <label className="text-sm font-medium">שם מלא לפי תעודת זהות</label>
-            <Input
-              value={signerName}
-              onChange={(e) => setSignerName(e.target.value)}
-              placeholder="כפי שמופיע בתעודת הזהות"
-              className="mt-1"
-            />
+        {/* Signature block stays pinned to the bottom of the viewport so the
+            client always sees it while scrolling the document. */}
+        <Card className="sticky bottom-2 z-20 p-4 space-y-3 shadow-lg border-primary/20">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-sm font-medium">
+                שם פרטי <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="שם פרטי"
+                className="mt-1"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">
+                שם משפחה <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="שם משפחה"
+                className="mt-1"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">
+                תעודת זהות <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={idNumber}
+                inputMode="numeric"
+                onChange={(e) => setIdNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                placeholder="9 ספרות"
+                className="mt-1"
+                required
+              />
+            </div>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium">ציירו את החתימה</label>
+              <label className="text-sm font-medium">
+                ציירו את החתימה <span className="text-destructive">*</span>
+              </label>
               <button
                 type="button"
                 onClick={clearCanvas}
@@ -277,7 +311,7 @@ export default function SignDocument() {
                 ref={canvasRef}
                 width={600}
                 height={180}
-                className="w-full h-44 touch-none cursor-crosshair"
+                className="w-full h-32 sm:h-40 touch-none cursor-crosshair"
                 onPointerDown={startDraw}
                 onPointerMove={moveDraw}
                 onPointerUp={endDraw}
@@ -290,14 +324,21 @@ export default function SignDocument() {
             </p>
           </div>
 
-          <Button className="w-full h-12 text-base" onClick={submit} disabled={submitting}>
+          <Button className="w-full h-12 text-base" onClick={submit} disabled={submitting || !canSubmit}>
             {submitting ? (
               <><Loader2 className="h-4 w-4 ml-2 animate-spin" />חותם…</>
             ) : (
               <><FileSignature className="h-4 w-4 ml-2" />חתימה ושליחה</>
             )}
           </Button>
+          {!canSubmit && (
+            <p className="text-[11px] text-muted-foreground text-center">
+              יש למלא שם פרטי, שם משפחה, תעודת זהות ולצייר חתימה.
+            </p>
+          )}
         </Card>
+      </div>
+
       </div>
     </main>
   );
