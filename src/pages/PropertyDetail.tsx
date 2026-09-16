@@ -281,7 +281,7 @@ export default function PropertyDetail() {
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at, owner_id, short_description, long_description, latitude, longitude, furniture_details, additional_details, price_history, attributes, available_from, house_number, apartment_number')
+        .select('id, property_title, description, asking_price, deal_type, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at, owner_id, short_description, long_description, latitude, longitude, furniture_details, additional_details, price_history, attributes, available_from, house_number, apartment_number')
         .eq('id', id!)
         .maybeSingle();
       if (!row) return null;
@@ -329,11 +329,13 @@ export default function PropertyDetail() {
       )).map((s) => JSON.parse(s) as { url: string; name: string });
 
       const priceNum = Number(row.asking_price) || 0;
-      const dealType = String((meta as JsonRecord).deal_type ?? (meta as JsonRecord).listing_type ?? '').toLowerCase();
+      // The saved column is the single source of truth for sale vs rent; the
+      // price heuristic only fills in when nothing was ever saved.
+      const savedDealType = String((row as any).deal_type ?? (meta as JsonRecord).deal_type ?? (meta as JsonRecord).listing_type ?? '').toLowerCase();
       let listingType: 'sale' | 'rent';
-      if (priceNum > 0 && priceNum < 50_000) listingType = 'rent';
-      else if (priceNum >= 500_000) listingType = 'sale';
-      else listingType = dealType === 'rent' ? 'rent' : 'sale';
+      if (savedDealType === 'rent' || savedDealType === 'sale') listingType = savedDealType;
+      else if (priceNum > 0 && priceNum < 50_000) listingType = 'rent';
+      else listingType = 'sale';
       const textFeatures = features.filter((f): f is string => typeof f === 'string');
       const featuresObject = ((features as unknown[]).find(isRecord) ?? {}) as JsonRecord;
       const extras = isRecord(featuresObject.extras) ? featuresObject.extras : {};
@@ -609,7 +611,7 @@ export default function PropertyDetail() {
         total_floors: property.total_floors != null ? String(property.total_floors) : '',
         year_built: property.year_built != null ? String(property.year_built) : '',
         property_type: property.property_type || 'apartment',
-        deal_type: String(meta.deal_type ?? meta.listing_type ?? property.listing_type ?? 'sale'),
+        deal_type: String((data?.row as any)?.deal_type ?? meta.deal_type ?? meta.listing_type ?? property.listing_type ?? 'sale'),
         status: (data?.row as any)?.status ? String((data?.row as any).status) : '',
         price: String(property.price || ''),
         vaad_bayit: String(meta.vaad_bayit ?? meta.vaad_monthly ?? ''),
@@ -761,6 +763,9 @@ export default function PropertyDetail() {
         latitude: form.latitude ? Number(form.latitude) : null,
         longitude: form.longitude ? Number(form.longitude) : null,
         available_from: form.available_from || null,
+        // The sale/rent choice must land on the column every list reads from,
+        // not only inside source_metadata.
+        ...(form.deal_type === 'rent' || form.deal_type === 'sale' ? { deal_type: form.deal_type } : {}),
         ...(form.status ? { status: form.status } : {}),
         source_url: form.source_url || null,
         media_photos: form.photos,
