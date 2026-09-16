@@ -329,7 +329,7 @@ export default function CommandCenter() {
               )}
             </span>
             {TASK_STATUS_LABEL[task.status] && (
-              <Badge variant="outline" className="shrink-0 self-start text-[13px]">{TASK_STATUS_LABEL[task.status]}</Badge>
+              <Badge variant="outline" className="shrink-0 self-start text-[13px]" onClick={(event) => event.stopPropagation()}>{TASK_STATUS_LABEL[task.status]}</Badge>
             )}
           </div>
           {/* Action row sits at the bottom of the card so it never covers the text */}
