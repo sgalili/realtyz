@@ -1033,39 +1033,45 @@ const OmnichannelInbox = () => {
           setSelectedVoterId(leadId);
         }}
       />
-      {/* Filter pills + bookmark */}
-      <div className="mx-auto grid w-full max-w-2xl shrink-0 grid-cols-4 gap-1 rounded-md bg-muted p-1">
+      {/* Queue tabs match the campaigns layout; bookmark stays a square control. */}
+      <div className="mx-auto flex w-full max-w-2xl shrink-0 items-center gap-2" dir="rtl">
+        <div className="grid min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
           <Button
             variant="ghost"
             type="button"
-            onClick={() => { setActiveTab('handling'); setSelectedVoterId(null); }}
-            className={`h-10 min-w-0 gap-1 rounded-sm px-2 text-sm whitespace-nowrap ${activeTab === 'handling' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+            onClick={() => { setActiveTab('all'); setSelectedVoterId(null); }}
+            style={{ fontSize: 'calc(0.875rem + 3px)' }}
+            className={`min-w-0 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'all' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            <RitaAvatar className="h-3.5 w-3.5 border-0 ring-0" />
-            <span>ריטה ({handlingCount})</span>
+            כל השיחות ({totalCount})
           </Button>
           <Button
             variant="ghost"
             type="button"
             onClick={() => { setActiveTab('waiting'); setSelectedVoterId(null); }}
-            className={`h-10 min-w-0 rounded-sm px-2 text-sm whitespace-nowrap ${activeTab === 'waiting' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+            style={{ fontSize: 'calc(0.875rem + 3px)' }}
+            className={`min-w-0 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'waiting' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             ממתינות ({waitingCount})
           </Button>
           <Button
             variant="ghost"
             type="button"
-            onClick={() => { setActiveTab('all'); setSelectedVoterId(null); }}
-            className={`h-10 min-w-0 rounded-sm px-2 text-sm whitespace-nowrap ${activeTab === 'all' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+            onClick={() => { setActiveTab('handling'); setSelectedVoterId(null); }}
+            style={{ fontSize: 'calc(0.875rem + 3px)' }}
+            className={`min-w-0 gap-1 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'handling' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            כל השיחות ({totalCount})
+            <RitaAvatar className="h-3.5 w-3.5 border-0 ring-0" />
+            <span>ריטה ({handlingCount})</span>
           </Button>
+        </div>
         <Button
           variant="ghost"
           type="button"
+          size="icon"
           onClick={() => { setBookmarkedOnly((v) => !v); setSelectedVoterId(null); }}
           aria-label="סימניות"
-          className={`h-10 min-w-0 rounded-sm px-2 ${bookmarkedOnly ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+          className={`h-11 w-11 shrink-0 rounded-lg border border-border/60 p-0 ${bookmarkedOnly ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'bg-muted/40 text-muted-foreground hover:text-foreground'}`}
         >
           <Bookmark className="h-4 w-4" />
         </Button>

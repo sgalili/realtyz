@@ -17,6 +17,7 @@ export type CommandTask = {
   leadPhone: string | null;
   listingId: string | null;
   listingLabel: string | null;
+  listingDealType: 'rent' | 'sell' | null;
   listingThumb: string | null;
   actionType: string | null;
   /** Contact profile picture, shown in every list view. */
@@ -128,7 +129,7 @@ export function useCommandCenterTasks() {
         listingIds.size
           ? (supabase as any)
               .from('listings')
-              .select('id, property_title, address, city, media_photos, image_url')
+              .select('id, property_title, address, city, deal_type, media_photos, image_url')
               .in('id', Array.from(listingIds))
           : Promise.resolve({ data: [] }),
       ]);
@@ -163,6 +164,7 @@ export function useCommandCenterTasks() {
           leadPhone: lead?.phone_number ?? null,
           listingId: m.listing_id ?? null,
           listingLabel: labelOfListing(listing),
+          listingDealType: listing?.deal_type === 'rent' ? 'rent' : listing?.deal_type ? 'sell' : null,
           listingThumb: listingThumbOf(listing),
           actionType: followup.action_type ?? m.action_type ?? null,
           leadAvatar: lead?.profile_picture_url ?? null,
@@ -184,6 +186,7 @@ export function useCommandCenterTasks() {
           leadPhone: lead?.phone_number ?? mt.lead_phone ?? null,
           listingId: null,
           listingLabel: null,
+          listingDealType: null,
           listingThumb: null,
           actionType: 'meeting',
           leadAvatar: lead?.profile_picture_url ?? null,
@@ -210,6 +213,7 @@ export function useCommandCenterTasks() {
           leadPhone: lead?.phone_number ?? null,
           listingId: m.listing_id ?? null,
           listingLabel: labelOfListing(listing),
+          listingDealType: listing?.deal_type === 'rent' ? 'rent' : listing?.deal_type ? 'sell' : null,
           listingThumb: listingThumbOf(listing),
           actionType: kind,
           leadAvatar: lead?.profile_picture_url ?? null,

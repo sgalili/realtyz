@@ -8103,7 +8103,7 @@ const CampaignCenter = () => {
 
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="-mt-[25px] space-y-6" dir="rtl">
       {isTargetedMode && (
         <div className="relative -mx-3 sm:-mx-6 -mt-6 mb-2 overflow-hidden text-primary-foreground"
              style={{ backgroundColor: 'hsl(var(--header-bg))' }} data-no-hero-wave>

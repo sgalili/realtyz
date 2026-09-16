@@ -27,9 +27,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import {
   ChevronDown,
   Pencil,
-  Building2,
   Check,
-  ChevronLeft,
   Megaphone,
   Phone,
   Plus,
@@ -312,6 +310,21 @@ export default function CommandCenter() {
                     <span className={`mt-0.5 block text-[13px] ${due.overdue ? 'font-semibold text-destructive' : due.today ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>
                       {due.overdue ? `באיחור · ${due.text}` : due.text}
                     </span>
+                    {task.listingId && listingsEnabled && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="mt-0.5 h-auto max-w-full justify-start gap-1 border-0 bg-transparent p-0 text-[13px] font-medium text-primary shadow-none hover:bg-transparent hover:underline"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/properties/${task.listingId}`);
+                        }}
+                      >
+                        <span className="truncate">{task.listingLabel ?? 'כרטיס נכס'}</span>
+                        {task.listingDealType && <span className="shrink-0 text-muted-foreground">· {task.listingDealType}</span>}
+                      </Button>
+                    )}
                   </span>
                   {task.leadId && (
                     <span className="flex shrink-0 items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
@@ -360,20 +373,6 @@ export default function CommandCenter() {
                 {task.description}
               </p>
             )}
-            <div className="flex flex-wrap items-center gap-2">
-              {task.listingId && listingsEnabled && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1 text-sm"
-                  onClick={() => navigate(`/properties/${task.listingId}`)}
-                >
-                  <Building2 className="h-4 w-4" />
-                  {task.listingLabel ?? 'כרטיס נכס'}
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
           </div>
         )}
       </li>
@@ -394,15 +393,15 @@ export default function CommandCenter() {
       </header>
 
       {/* Page content sits exactly 20px below the hero header — no outer frame. */}
-      <div className="mt-[20px]">
+      <div className="mt-[-5px]">
         {/* Tabs first, then the "add new" button below them. Desktop keeps an
             exact 50px gap under the tabs; mobile stays as it was. */}
         <div className="mb-4 flex flex-col items-center justify-center gap-[25px] md:gap-0">
           <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)} className="mx-auto w-full max-w-2xl">
-            <TabsList className="grid h-auto w-full overflow-x-auto p-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
+            <TabsList className="grid h-auto w-full gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
 
               {visibleTabs.map((key) => (
-                <TabsTrigger key={key} value={key} className="h-10 min-w-0 rounded-sm px-2 text-sm">
+                <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="min-w-0 rounded-lg px-2 py-2 font-semibold transition data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
                   {TAB_LABEL[key]
                     ? TABS_WITHOUT_COUNT.has(key)
                       ? TAB_LABEL[key]
