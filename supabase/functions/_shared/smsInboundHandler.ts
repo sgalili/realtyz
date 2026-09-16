@@ -458,7 +458,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
           context:
             `Inbound SMS from ${realName ?? "the contact (name unknown — do not invent one)"}: ${bodyText}\n` +
             `[CHANNEL: SMS] Keep the reply short (under 300 characters), plain text, no markdown and no emojis. ` +
-            `When it helps, invite them to continue on WhatsApp at https://wa.me/${OFFICIAL_WABA_PHONE}.`,
+            `Never mention WhatsApp and never include any link — the system appends the WhatsApp invitation itself when it is due.`,
           messages: history,
         }),
       });
