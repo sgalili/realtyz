@@ -84,6 +84,13 @@ export function ClosingRoomDialog({
   const [terms, setTerms] = useState<string>('');
   const [tourDate, setTourDate] = useState<string>('');
   const [identityNumber, setIdentityNumber] = useState<string>('');
+  const [dealType, setDealType] = useState<'sale' | 'rent'>(
+    defaultTemplate === 'lease_agreement' ? 'rent' : 'sale',
+  );
+  // Sale defaults to a percentage of the price; rent defaults to one month's rent.
+  const [commissionMode, setCommissionMode] = useState<'percent' | 'fixed' | 'first_month'>('percent');
+  const [commissionPercent, setCommissionPercent] = useState<string>('2');
+  const [commissionAmount, setCommissionAmount] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -98,9 +105,24 @@ export function ClosingRoomDialog({
       setTerms('');
       setTourDate('');
       setIdentityNumber('');
+      setCommissionAmount('');
+      setCommissionPercent('2');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Deal type follows the chosen template, and the commission mode follows the
+  // deal type (rent = first month's rent, sale = percentage).
+  useEffect(() => {
+    const next: 'sale' | 'rent' = template === 'lease_agreement' ? 'rent' : template === 'offer_letter' ? 'sale' : dealType;
+    if (next !== dealType) setDealType(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template]);
+
+  useEffect(() => {
+    setCommissionMode(dealType === 'rent' ? 'first_month' : 'percent');
+  }, [dealType]);
+
 
   const { data: listings = [] } = useQuery({
     queryKey: ['listings-mini'],
