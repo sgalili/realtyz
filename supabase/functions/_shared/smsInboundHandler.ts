@@ -67,6 +67,23 @@ function displayIL(raw: string): string {
   return `${local.slice(0, 3)}-${local.slice(3)}`;
 }
 
+/** Branded short link (https://realtyz.co.il/r/<slug>) for an SMS-safe URL. */
+async function shortenLink(admin: any, longUrl: string, createdBy: string | null): Promise<string> {
+  const alpha = "abcdefghijkmnpqrstuvwxyz23456789";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const buf = new Uint8Array(7);
+    crypto.getRandomValues(buf);
+    let slug = "";
+    for (const b of buf) slug += alpha[b % alpha.length];
+    const { error } = await admin
+      .from("short_urls")
+      .insert({ slug, property_id: null, long_url: longUrl, created_by: createdBy });
+    if (!error) return `https://realtyz.co.il/r/${slug}`;
+  }
+  // Never block the reply on the shortener.
+  return longUrl;
+}
+
 function extractXml(raw: string, tag: string): string {
   return raw.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"))?.[1]?.trim() ?? "";
 }
