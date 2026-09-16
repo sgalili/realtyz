@@ -33,3 +33,4 @@
 33. [x] Refine inbox bubble sides, CRM avatar navigation, icon sizing, fixed layout, and centered tabs
 34. [x] Match task-page tabs to the inbox tab styling and sizing
 35. [x] Align campaign, inbox, and task tabs; refine inbox navigation and task property labels
+36. [x] Refine inbox chat controls, affiliate title, and unified sidebar counters

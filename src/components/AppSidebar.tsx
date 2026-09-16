@@ -194,6 +194,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
     switch (url) {
+      case '/': return counts.tasks;
       case '/lead-crm': return counts.leads;
       case '/properties': return counts.listings;
       case '/inbox': return counts.chats;
@@ -311,7 +312,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         <item.icon className={`h-4 w-4 shrink-0 ${item.iconColor}`} />
                         {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
                         {!collapsed && item.badge && (
-                          <span className={`ms-auto rounded-full px-2.5 py-0.5 text-xs font-bold leading-none ring-1 ${item.badgeClass}`}>
+                          <span className="ms-auto rounded-full bg-background px-2.5 py-0.5 text-xs font-bold leading-none text-foreground ring-1 ring-border">
                             {item.badge}
                           </span>
                         )}
@@ -319,7 +320,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                           const c = countFor(item.url);
                           if (c === undefined || c === 0) return null;
                           return (
-                            <span className={`ms-auto rounded-full px-2 py-0.5 text-[11px] font-bold leading-none ring-1 ${item.badgeClass}`}>
+                            <span className="ms-auto rounded-full bg-background px-2 py-0.5 text-[11px] font-bold leading-none text-foreground ring-1 ring-border">
                               {formatCount(c)}
                             </span>
                           );

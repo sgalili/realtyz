@@ -1034,8 +1034,8 @@ const OmnichannelInbox = () => {
 
   return (
     <div dir="rtl" className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      {/* Queue tabs match the campaigns layout; bookmark stays a square control. */}
-      <div className="mx-auto flex w-full max-w-2xl shrink-0 items-center gap-2" dir="rtl">
+      {/* Queue tabs belong to the main inbox only; bookmark stays a square control. */}
+      {!selectedVoterId && <div className="mx-auto flex w-full max-w-2xl shrink-0 items-center gap-2" dir="rtl">
         <div className="grid h-[44px] min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
           <Button
             variant="ghost"
@@ -1076,7 +1076,7 @@ const OmnichannelInbox = () => {
         >
           <Bookmark className="h-4 w-4" />
         </Button>
-      </div>
+      </div>}
 
       <div className="grid min-h-0 flex-1 w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:grid-cols-[20rem_minmax(0,1fr)]">
         {/* Right panel - Contact List */}
@@ -1359,12 +1359,6 @@ const OmnichannelInbox = () => {
                               />
                             )}
                             <div className="mb-1 flex items-center justify-end gap-1.5">
-                              {isAiMessage && (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-background/60 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                                  <RitaAvatar className="h-4 w-4 border-0 ring-0" />
-                                  AI
-                                </span>
-                              )}
                               <ChannelIcon channel={msg.channel} />
                             </div>
                             {(() => {
@@ -1403,13 +1397,16 @@ const OmnichannelInbox = () => {
                       if (v) setManualTakeoverWarning(false);
                     }}
                   >
-                    <RitaAvatar className="pointer-events-none absolute left-1 top-1/2 z-20 h-3 w-3 -translate-y-1/2 border-0 ring-0 transition-transform group-data-[state=checked]:translate-x-5" />
+                    <RitaAvatar
+                      className="pointer-events-none absolute left-[2px] top-1/2 z-20 h-5 w-5 -translate-y-1/2 border-0 bg-background p-px ring-0 transition-transform group-data-[state=checked]:translate-x-5"
+                      imageClassName="rounded-full"
+                    />
                   </Switch>
                   <span className="text-xs font-medium">
                     {manualTakeoverWarning
                       ? 'מצב ידני - הטייס האוטומטי מושהה לשיחה זו'
                       : chatAutopilotOn
-                        ? 'טייס אוטומטי פעיל לשיחה זו - ריטה עונה באופן אוטומטי'
+                        ? 'ריטה עונה באופן אוטומטי'
                         : 'טייס אוטומטי כבוי לשיחה זו - המענה ידני'}
                   </span>
                 </div>
