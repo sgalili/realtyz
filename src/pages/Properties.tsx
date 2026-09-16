@@ -1406,7 +1406,7 @@ function Yad2AdButton({ url }: { url: string }) {
 }
 
 
-function ResultTable({
+export function ResultTable({
   results,
   importingKey,
   onSelect,

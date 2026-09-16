@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, BedDouble, Building2, Handshake, MapPin, Ruler, Search, Users } from 'lucide-react';
+import { Banknote, BedDouble, Building2, Handshake, LayoutGrid, List, MapPin, Ruler, Search, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import {
@@ -56,6 +56,7 @@ import { PropertyThumb, propertyFullAddress } from '@/components/leads/LinkedPro
 import ContactAvatar from '@/components/contacts/ContactAvatar';
 import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
 import type { UnifiedResult } from '@/lib/propertySearch';
+import { ResultTable } from '@/pages/Properties';
 
 const AFFILIATE_SCROLL_KEY = 'affiliate-network:scroll-y';
 
@@ -96,6 +97,8 @@ function toUnifiedResult(listing: BrokerAffiliateListing): UnifiedResult {
     listing_type: dealType,
     property_type: 'apartment',
     raw: listing,
+    created_at: listing.affiliate_approved_at,
+    updated_at: listing.affiliate_approved_at,
   };
 }
 
@@ -235,6 +238,7 @@ export default function AffiliateNetwork() {
   const updateReferral = useUpdateReferral();
 
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
   const [previewing, setPreviewing] = useState<BrokerAffiliateListing | null>(null);
 
@@ -285,10 +289,10 @@ export default function AffiliateNetwork() {
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
-            { label: 'נכסים פתוחים לשותפים', value: String(totals.active), icon: Building2, color: 'text-sky-600' },
-            { label: 'שיווקים פעילים', value: String(totals.referrals), icon: Users, color: 'text-violet-600' },
-            { label: 'עסקאות דרך שותפים', value: String(totals.signed), icon: Handshake, color: 'text-emerald-600' },
-            { label: 'תגמול לתשלום', value: fmtILS(totals.owed), icon: Banknote, color: 'text-amber-600' },
+            { label: 'נכסים פתוחים לשותפים', value: String(totals.active), icon: Building2, color: 'text-deal-blue' },
+            { label: 'שיווקים פעילים', value: String(totals.referrals), icon: Users, color: 'text-destructive' },
+            { label: 'עסקאות דרך שותפים', value: String(totals.signed), icon: Handshake, color: 'text-success' },
+            { label: 'תגמול לתשלום', value: fmtILS(totals.owed), icon: Banknote, color: 'text-warning' },
           ].map((s) => (
             <Card key={s.label} className="realtyz-affiliate-kpi border-slate-200">
               <CardContent className="flex flex-col items-center justify-center gap-1.5 p-3.5 text-center">
@@ -303,21 +307,31 @@ export default function AffiliateNetwork() {
         </div>
 
         <Tabs defaultValue="rewards">
-          <TabsList className="mx-auto flex w-fit max-w-full justify-center">
-            <TabsTrigger value="rewards">נכסים ותגמולים</TabsTrigger>
-            <TabsTrigger value="tracking">אנשי קשר משותפים</TabsTrigger>
-            <TabsTrigger value="submissions">הגשות שותפים</TabsTrigger>
+          <TabsList className="mx-auto grid h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+            <TabsTrigger value="rewards" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">נכסים ותגמולים</TabsTrigger>
+            <TabsTrigger value="tracking" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">אנשי קשר משותפים</TabsTrigger>
+            <TabsTrigger value="submissions" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">הגשות שותפים</TabsTrigger>
           </TabsList>
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder="חיפוש נכס"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="px-[15px] pe-9"
-              />
+            <div className="flex items-center gap-3">
+              <div className="relative max-w-sm flex-1">
+                <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="חיפוש נכס"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-10 ps-10 pe-4"
+                />
+              </div>
+              <div className="ms-auto inline-flex items-center gap-0.5" role="group" aria-label="מצב תצוגה">
+                <Button type="button" size="icon" variant="ghost" onClick={() => setViewMode('grid')} aria-pressed={viewMode === 'grid'} aria-label="תצוגת כרטיסיות" title="כרטיסיות" className={`h-8 w-9 border-0 bg-transparent shadow-none ${viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </Button>
+                <Button type="button" size="icon" variant="ghost" onClick={() => setViewMode('table')} aria-pressed={viewMode === 'table'} aria-label="תצוגת טבלה" title="טבלה" className={`h-8 w-9 border-0 bg-transparent shadow-none ${viewMode === 'table' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <List className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
 
             {listingsLoading ? (
@@ -328,6 +342,18 @@ export default function AffiliateNetwork() {
                   לא נמצאו נכסים בחשבון זה.
                 </CardContent>
               </Card>
+            ) : viewMode === 'table' ? (
+              <ResultTable
+                results={filteredListings.map(toUnifiedResult)}
+                importingKey={null}
+                onSelect={(result) => {
+                  const listing = filteredListings.find((item) => item.id === result.localId);
+                  if (listing) setPreviewing(listing);
+                }}
+                onCampaign={(result) => {
+                  if (result.localId) navigate(`/campaigns?tab=create&channel=facebook&properties=${result.localId}&listing=${result.localId}`);
+                }}
+              />
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {filteredListings.map((l) => (
