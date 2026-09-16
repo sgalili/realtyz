@@ -36,6 +36,7 @@ import {
   resolveAffiliateReferral,
   attachAffiliateReferral,
   referralPropertyLabel,
+  stripRefTag,
   type InboundReferral,
 } from "../_shared/affiliateRef.ts";
 import { resolveWaSenderRole, type WaSenderRole } from "../_shared/waSenderRole.ts";
@@ -1150,6 +1151,10 @@ async function handleLeadInboxInbound(
     };
   } catch (_) { /* generic office wording is an acceptable fallback */ }
 
+  // The raw inbound text carries internal markers (affiliate [ref:CODE] tags).
+  // They must never reach the model prompt or be echoed back to a human.
+  const promptInboundText = stripRefTag(inboundText).trim() || inboundText;
+
   let reply = "";
   const aiStartedAt = Date.now();
   if (!agentCommand) {
@@ -1171,26 +1176,43 @@ async function handleLeadInboxInbound(
         });
       }
     }
+    // FOCUS PROPERTY — the property this specific inbound message is about.
+    // The current message always wins over the contact's older interest_tag,
+    // otherwise a new enquiry about one address gets answered with another
+    // property's price and link.
+    let focusProperty = "";
+    const focusListingId = referral?.listing_id ?? shortLink?.listing_id ?? lead.interest_tag ?? null;
     try {
-      if (lead.interest_tag) {
+      if (focusListingId) {
         const { data: listing } = await admin
           .from("listings")
-          .select("property_title, asking_price, description, city, neighborhood, deal_type")
-          .eq("id", lead.interest_tag)
+          .select("property_title, address, house_number, asking_price, description, city, neighborhood, deal_type, rooms, sqm")
+          .eq("id", focusListingId)
           .maybeSingle();
         if (listing) {
-          const listingBlock = [
-            `נכס שהמתעניין פנה לגביו: ${listing.property_title ?? "-"}`,
-            listing.asking_price ? `מחיר מבוקש: ${Number(listing.asking_price).toLocaleString("he-IL")} ש"ח` : "",
-            `${listing.city ?? ""} ${listing.neighborhood ?? ""}`.trim(),
-            listing.description ? `תיאור: ${String(listing.description).slice(0, 600)}` : "",
+          const l = listing as any;
+          focusProperty = [
+            `כתובת/כותרת: ${[l.address, l.house_number].filter(Boolean).join(" ") || l.property_title || "-"}`,
+            `${l.city ?? ""} ${l.neighborhood ?? ""}`.trim(),
+            l.deal_type === "rent" ? "סוג עסקה: השכרה" : l.deal_type === "sale" ? "סוג עסקה: מכירה" : "",
+            l.rooms ? `חדרים: ${l.rooms}` : "",
+            l.sqm ? `מ"ר: ${l.sqm}` : "",
+            l.asking_price ? `מחיר: ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח` : "",
+            l.description ? `תיאור: ${String(l.description).slice(0, 600)}` : "",
           ].filter(Boolean).join("\n");
-          contextBlock = contextBlock ? `${contextBlock}\n\n${listingBlock}` : listingBlock;
         }
       }
     } catch (e) {
       console.warn("[autopilot] fast-lane listing context soft-fail:", e instanceof Error ? e.message : e);
     }
+
+    // An internal user (owner / admin / manager / affiliate) writing through a
+    // property link or referral tag is role-ambiguous: Rita clarifies once.
+    const alreadyClarified = aiMessages.some(
+      (m) => m.role === "assistant" && /כמתעניין|כמתווך|בודק את המערכת/.test(String(m.content ?? "")),
+    );
+    const roleAmbiguity = !!staffSender && !alreadyClarified &&
+      !!(referral || shortLink || hasShortLinkSignature || focusListingId);
 
     const fast = await generateFastReply({
       owner: ownerIdentity,
@@ -1204,9 +1226,11 @@ async function handleLeadInboxInbound(
         gender: lead.gender ?? null,
         preferences: lead.preferences ?? null,
       },
-      inboundText,
+      inboundText: promptInboundText,
       history: aiMessages,
       contextBlock,
+      focusProperty: focusProperty || null,
+      roleAmbiguity,
       recruitment: recruitmentMode,
       staff: staffSender ? { role: staffSender.label, name: staffSender.displayName } : null,
     });
@@ -1237,7 +1261,7 @@ async function handleLeadInboxInbound(
         // System context: the webhook has no interactive user session, so we
         // hand ai-agent the verified workspace owner explicitly.
         workspace_owner_id: aiOwnerId || undefined,
-        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}${referral ? `\n[REFERRAL_CONTEXT] The contact arrived through an affiliate marketing link for this property: ${referralPropertyLabel(referral)}. It is ALREADY linked to their CRM card — never say you failed to find it. Greet warmly, confirm the property by name and offer a viewing.` : ""}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
+        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${promptInboundText}${referral ? `\n[REFERRAL_CONTEXT] The contact arrived through an affiliate marketing link for this property: ${referralPropertyLabel(referral)}. It is ALREADY linked to their CRM card — never say you failed to find it. Greet warmly, confirm the property by name and offer a viewing.` : ""}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
         messages: aiMessages,
         enable_research: agentCommand ? true : undefined,
       }),
@@ -1289,7 +1313,7 @@ async function handleLeadInboxInbound(
       owner: ownerIdentity,
       domain: ownerDomain,
       lead: { id: lead.id, full_name: lead.full_name, deal_type: lead.deal_type, gender: lead.gender ?? null, preferences: lead.preferences ?? null },
-      inboundText,
+      inboundText: promptInboundText,
       history: aiMessages,
       recruitment: recruitmentMode,
       staff: staffSender ? { role: staffSender.label, name: staffSender.displayName } : null,

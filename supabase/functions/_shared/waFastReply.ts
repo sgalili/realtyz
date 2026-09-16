@@ -58,6 +58,47 @@ export interface FastReplyInput {
    * lead-facing salesperson.
    */
   staff?: { role: string; name?: string | null } | null;
+  /**
+   * The ONE property this inbound message is about (resolved from the current
+   * message: affiliate ref tag / short link / explicit address). Prevents Rita
+   * from answering about a stale property from an older thread.
+   */
+  focusProperty?: string | null;
+  /**
+   * True when the sender is a registered internal user (owner/admin/manager/
+   * affiliate) writing in a lead-shaped context (property link / ref tag), so
+   * Rita must clarify the role for THIS interaction before answering fully.
+   */
+  roleAmbiguity?: boolean;
+}
+
+/** Extra directives injected on top of whichever persona prompt is used. */
+export function buildFocusBlock(input: {
+  focusProperty?: string | null;
+  roleAmbiguity?: boolean;
+  staff?: { role: string; name?: string | null } | null;
+}): string {
+  const parts: string[] = [];
+  if (input.focusProperty) {
+    parts.push(`הנכס שעליו נשאלה השאלה עכשיו (הנכס היחיד שמותר לדבר עליו בתשובה הזו):
+${input.focusProperty}
+חוקים: אל תערבבי נכס אחר, כתובת אחרת, מחיר אחר או קישור אחר. השתמשי רק בנתונים שמופיעים כאן. אם חסר נתון, אמרי שתבדקי ותחזרי, בלי להמציא.`);
+  }
+  if (input.roleAmbiguity) {
+    const who = String(input.staff?.name ?? "").trim();
+    parts.push(`הבהרת תפקיד (חובה, פעם אחת): הפונה${who ? ` (${who})` : ""} הוא משתמש רשום במערכת${input.staff?.role ? ` בתפקיד ${input.staff.role}` : ""}, אך ההודעה הגיעה בהקשר של פנייה על נכס. פתחי בשאלה קצרה אחת בלבד: האם הוא פונה כמתעניין/מתווך חיצוני עבור לקוח, או בודק את המערכת כמנהל. בלי פיץ', בלי דמו, בלי תשאול נוסף, עד 30 מילים.`);
+  }
+  if (!parts.length) return "";
+  return "\n\n" + parts.join("\n\n");
+}
+
+/** Removes internal channel/ref markers from history so they never get echoed. */
+function cleanHistoryText(value: string): string {
+  return String(value ?? "")
+    .replace(/\[ref[:=]\s*[A-Za-z0-9_-]{4,}\]?/gi, "")
+    .replace(/^\s*\[(?:whatsapp|sms|instagram|facebook|messenger|email|telegram|web)\]\s*/i, "")
+    .replace(/\[(?:AGENT_COMMAND|REFERRAL_CONTEXT)[^\]]*\]/gi, "")
+    .trim();
 }
 
 /**
@@ -191,10 +232,10 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
     .slice(-16)
     .map((m) => ({
       role: m.role === "assistant" ? "assistant" : "user",
-      content: String(m.content).slice(0, 900),
+      content: cleanHistoryText(String(m.content)).slice(0, 900),
     }));
   if (!recent.length || recent[recent.length - 1].role !== "user") {
-    recent.push({ role: "user", content: input.inboundText.slice(0, 900) });
+    recent.push({ role: "user", content: cleanHistoryText(input.inboundText).slice(0, 900) });
   }
 
   try {
@@ -211,11 +252,16 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
             role: "system",
             // Internal staff wins over every lead-facing mode: a manager must
             // never be pitched a demo or qualified like a new visitor.
-            content: input.staff
+            content: (input.staff
               ? buildStaffReplyPrompt(input.staff, input.contextBlock, input.owner)
               : input.recruitment
               ? buildRecruitmentReplyPrompt(input.lead, input.contextBlock)
-              : buildFastReplyPrompt(input.lead, input.contextBlock, input.owner, input.domain ?? "real_estate"),
+              : buildFastReplyPrompt(input.lead, input.contextBlock, input.owner, input.domain ?? "real_estate")) +
+              buildFocusBlock({
+                focusProperty: input.focusProperty,
+                roleAmbiguity: input.roleAmbiguity,
+                staff: input.staff,
+              }),
           },
           ...recent,
         ],
