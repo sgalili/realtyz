@@ -228,6 +228,13 @@ const LiveConversations = () => {
       return;
     }
     setDemoVoterList((prev) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scrollRef.current) {
+      const scrollContainer = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
+      if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
+  }, [selectedVoterId, thread]);
       if (prev.length > 0) return prev;
       return DEMO_VOTERS.slice(0, VISIBLE_COUNT).map((voter, index) => {
         const msgs = DEMO_MESSAGES.filter((msg) => msg.lead_id === voter.id);
@@ -400,7 +407,7 @@ const LiveConversations = () => {
                         transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                         className="overflow-hidden bg-background/40 border-t border-border/20"
                       >
-                        <ScrollArea className="h-[260px]">
+                        <ScrollArea ref={scrollRef} className="h-[260px]">
                           <div className="space-y-3 p-4 max-w-2xl mx-auto">
                             {thread?.length === 0 && (
                               <p className="text-sm text-muted-foreground text-center py-4">אין הודעות</p>

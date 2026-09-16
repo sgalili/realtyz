@@ -18,7 +18,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Megaphone, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid,
+  Megaphone, BedDouble, Ruler, MapPin, Building2, List, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon,
   RefreshCw,
@@ -181,10 +181,6 @@ export default function Properties() {
     return () => window.removeEventListener('properties:add', handler);
   }, []);
 
-  // NO SCRAPE ON PAGE LOAD. Yad2 inventory is fetched by the scheduled job
-  // twice a day (08:00 / 18:00 Asia/Jerusalem) into the shared market pool and
-  // distributed to every workspace in the same cities. Entering the page only
-  // reads what we already store, so it can never spend Bright Data credits.
   const [poolInfo, setPoolInfo] = useState<{ last: string | null; count: number } | null>(null);
   useEffect(() => {
     let alive = true;
@@ -753,9 +749,6 @@ export default function Properties() {
           חיפוש מאוחד — הומלי, יד-2 והמאגר שלך במקום אחד. לחץ על נכס לתצוגה מלאה, וסמן נכסים לייבוא קבוצתי.
         </p>
         <p className="text-[11px] sm:text-xs text-muted-foreground/80 mt-1">
-          נכסי יד-2 מתעדכנים פעמיים ביום — 08:00 ו-18:00.
-          {poolInfo?.last
-            ? ` עדכון אחרון: ${new Date(poolInfo.last).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
             : ''}
         </p>
       </header>
@@ -993,7 +986,7 @@ export default function Properties() {
               title="טבלה"
               className={`h-8 w-9 border-0 bg-transparent shadow-none ${viewMode === 'table' ? 'text-primary' : 'text-muted-foreground'}`}
             >
-              <FileSpreadsheet className="h-3.5 w-3.5" />
+              <List className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>

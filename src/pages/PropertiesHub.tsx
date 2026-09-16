@@ -111,7 +111,6 @@ function Yad2Panel() {
   return (
     <div className="space-y-6">
       <p className="text-xs text-muted-foreground">
-        מקור: Yad2 RSS · עודכן כל 30 דקות · ערוץ פר עיר בליבת השטח של המתווך
       </p>
       {CORE_CITIES.map((city) => {
         const items = data?.cities?.[city]?.items ?? [];

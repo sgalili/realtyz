@@ -114,10 +114,6 @@ export async function searchLocalListings(f: SearchFilters): Promise<UnifiedResu
 }
 
 /**
- * SHARED MARKET POOL — the system-wide Yad2 index refreshed twice a day
- * (08:00 / 18:00). Readable by every workspace, so inventory scraped once is
- * instantly available to every workspace working in the same city, with zero
- * extra external calls.
  */
 export async function searchMarketPool(f: SearchFilters, limit = 200): Promise<UnifiedResult[]> {
   let q = supabase
