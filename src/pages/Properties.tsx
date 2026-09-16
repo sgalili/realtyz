@@ -1636,7 +1636,12 @@ export function ResultTable({
                     </Button>
 
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
-                    {onAffiliate ? (
+                    {onEdit ? (
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="עריכת הנכס" aria-label="עריכת הנכס" onClick={() => onEdit(r)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    ) : null}
+                    {affiliateCell ? null : onAffiliate ? (
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="הגדר שיווק שותפים" aria-label="הגדר שיווק שותפים" onClick={() => onAffiliate(r)}>
                         <Handshake className="h-4 w-4" />
                       </Button>
@@ -1649,7 +1654,7 @@ export function ResultTable({
               {rowNotes && rowNotes.length > 0 && (
                 <tr className="border-t-0 bg-amber-50/40">
                   <td className="px-2 pb-2" />
-                  <td className="px-2 pb-2" colSpan={12}>
+                  <td className="px-2 pb-2" colSpan={12 + (affiliateCell ? 1 : 0) + (commissionCell ? 1 : 0)}>
                     <PropertyNotesBlock notes={rowNotes} />
                   </td>
                 </tr>
