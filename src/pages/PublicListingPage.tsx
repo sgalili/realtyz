@@ -407,6 +407,50 @@ function PublicListingContent() {
               </dl>
             )}
 
+            {data.groups.map((group) => (
+              <div key={group.title} className="border-t pt-4">
+                <h2 className="mb-2 text-sm font-bold text-foreground">{group.title}</h2>
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+                  {group.rows.map((row, index) => (
+                    <div key={`${group.title}-${row.label}-${index}`} className="min-w-0">
+                      <dt className="text-xs font-semibold text-muted-foreground">{row.label}</dt>
+                      <dd className="mt-0.5 break-words text-sm text-foreground">{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+
+            {(mapEmbed || googleUrl) && (
+              <div className="border-t pt-4">
+                <h2 className="mb-2 text-sm font-bold text-foreground">מיקום והגעה</h2>
+                {mapEmbed && (
+                  <iframe
+                    title="מיקום הנכס על המפה"
+                    src={mapEmbed}
+                    loading="lazy"
+                    className="h-56 w-full rounded-lg border"
+                  />
+                )}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {googleUrl && (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={googleUrl} target="_blank" rel="noopener noreferrer">
+                        <MapPin className="h-4 w-4" /> ניווט ב-Google Maps
+                      </a>
+                    </Button>
+                  )}
+                  {wazeUrl && (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={wazeUrl} target="_blank" rel="noopener noreferrer">
+                        <Navigation className="h-4 w-4" /> ניווט ב-Waze
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2">
               <Button asChild className="flex-1">
                 <a href={officialWaLink(waText)} target="_blank" rel="noopener noreferrer">
