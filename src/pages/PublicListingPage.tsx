@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bed, Building2, ImageIcon, Layers, Loader2, MapPin, Ruler, Share2 } from 'lucide-react';
+import { Bed, Building2, ImageIcon, Layers, Loader2, MapPin, Navigation as NavigationIcon, Ruler, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
