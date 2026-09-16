@@ -1501,6 +1501,8 @@ export function ResultTable({
       <table className="w-full text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
+            {affiliateCell ? <th className="px-2 py-2 font-semibold whitespace-nowrap">שותפים</th> : null}
+            {commissionCell ? <th className="px-2 py-2 font-semibold whitespace-nowrap">עמלות</th> : null}
             <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
 
             <HeaderCell col="name" label="רחוב" />
@@ -1528,6 +1530,12 @@ export function ResultTable({
             return (
               <Fragment key={r.key}>
               <tr className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
+                {affiliateCell ? (
+                  <td className="px-2 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>{affiliateCell(r)}</td>
+                ) : null}
+                {commissionCell ? (
+                  <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{commissionCell(r)}</td>
+                ) : null}
                 <td className="px-2 py-1.5">
                   <div className="relative h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
