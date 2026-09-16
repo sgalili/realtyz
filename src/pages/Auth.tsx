@@ -75,7 +75,8 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [activeMethod, setActiveMethod] = useState<AuthMethod>('whatsapp');
+  // SMS is the default sign-in / sign-up channel on both screens.
+  const [activeMethod, setActiveMethod] = useState<AuthMethod>('sms');
   const [codeSent, setCodeSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
