@@ -115,6 +115,7 @@ export default function SignDocument() {
     ctx.lineTo(x, y);
     ctx.stroke();
     hasInkRef.current = true;
+    if (!hasInk) setHasInk(true);
   }
   function endDraw() {
     drawingRef.current = false;
@@ -124,17 +125,30 @@ export default function SignDocument() {
     if (c) {
       setupCanvas(c);
       hasInkRef.current = false;
+      setHasInk(false);
     }
   }
 
+  const idDigits = idNumber.replace(/\D/g, '');
+  const canSubmit =
+    !!firstName.trim() && !!lastName.trim() && idDigits.length >= 5 && hasInk;
+
   async function submit() {
     if (!doc || !canvasRef.current) return;
-    if (!hasInkRef.current) {
-      toast.error('יש לצייר את החתימה');
+    if (!firstName.trim()) {
+      toast.error('יש להקליד שם פרטי');
       return;
     }
-    if (!signerName.trim()) {
-      toast.error('יש להקליד את השם המלא');
+    if (!lastName.trim()) {
+      toast.error('יש להקליד שם משפחה');
+      return;
+    }
+    if (idDigits.length < 5) {
+      toast.error('יש להקליד מספר תעודת זהות תקין');
+      return;
+    }
+    if (!hasInkRef.current) {
+      toast.error('יש לצייר את החתימה');
       return;
     }
     setSubmitting(true);
@@ -150,9 +164,13 @@ export default function SignDocument() {
         body: JSON.stringify({
           token,
           signature_data: dataUrl,
-          signer_name: signerName.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          identity_number: idDigits,
+          signer_name: `${firstName.trim()} ${lastName.trim()}`,
         }),
       });
+
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'החתימה נכשלה');
       setSuccess(true);
