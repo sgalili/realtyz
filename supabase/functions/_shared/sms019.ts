@@ -199,6 +199,39 @@ export async function sendSms019(
     status = parseInt(text.match(/<status>(-?\d+)<\/status>/)?.[1] ?? "-1", 10);
   }
 
+  // Stored credentials rejected ("API token is invalid"): fall back to the
+  // platform SMS_019_TOKEN secret so replies still ship.
+  const envCfg = envSms019Config();
+  if (status !== 0 && envCfg?.token && envCfg.token !== cfg.token) {
+    const fallback: Sms019Config = {
+      ...envCfg,
+      username: envCfg.username || cfg.username,
+      sender: envCfg.sender || cfg.sender,
+    };
+    const fb = sms019Auth(fallback);
+    res = await fetch("https://www.019sms.co.il:8090/api", {
+      method: "POST",
+      headers: fb.headers,
+      body: `<?xml version="1.0" encoding="UTF-8"?>
+<sms>
+  ${fb.userXml}
+  <source>${escapeXml(fallback.sender)}</source>
+  <destinations><phone>${escapeXml(local)}</phone></destinations>
+  <message>${escapeXml(body)}</message>
+</sms>`,
+    });
+    text = await res.text();
+    status = parseInt(text.match(/<status>(-?\d+)<\/status>/)?.[1] ?? "-1", 10);
+    if (status === 0) {
+      return {
+        ok: true,
+        provider: "019 SMS",
+        message_id: text.match(/<message_id>(.*?)<\/message_id>/)?.[1] ?? null,
+        scope: "platform",
+      };
+    }
+  }
+
   if (status === 0) {
     return {
       ok: true,
