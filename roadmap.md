@@ -43,3 +43,4 @@
 
 43. [x] Tighten Rita property search, SMS inbox sync, affiliate actions, and public property completeness
 44. [x] Fix task card wrapping, property return navigation, action spacing, and single view switch
+45. [x] Affiliate table sharing status, commission column, unpublish confirmation, full edit, and richer public property page
