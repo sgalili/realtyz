@@ -196,6 +196,13 @@ export function ClosingRoomDialog({
           price_override: price ? Number(price) : undefined,
           tour_date: template === 'tour_agreement' && tourDate ? tourDate : undefined,
           identity_number: identityNumber.trim() || undefined,
+          deal_type: dealType,
+          commission_mode: commissionMode,
+          commission_percent:
+            commissionMode === 'percent' && commissionPercent ? Number(commissionPercent) : undefined,
+          commission_amount:
+            commissionMode === 'fixed' && commissionAmount ? Number(commissionAmount) : undefined,
+
         },
       });
       if (genErr) throw new Error(await edgeMessage(genErr, 'הפקת המסמך נכשלה'));
