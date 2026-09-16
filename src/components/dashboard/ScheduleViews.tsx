@@ -41,20 +41,19 @@ function formatTime(iso: string) {
   });
 }
 
-/** List / calendar switch with month navigation while the calendar is active. */
+/** Single square list / calendar switch. Month navigation lives in the grid. */
 export function ScheduleViewToggle({
   view,
   onViewChange,
-  monthCursor,
-  onMonthChange,
 }: {
   view: ScheduleView;
   onViewChange: (v: ScheduleView) => void;
-  monthCursor: Date;
-  onMonthChange: (d: Date) => void;
+  monthCursor?: Date;
+  onMonthChange?: (d: Date) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="flex shrink-0 items-center">
+
       <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label="מצב תצוגה">
         <Button
           size="icon"
