@@ -451,7 +451,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="realtyz-app-shell h-screen overflow-hidden flex w-full bg-background">
+      <div className="realtyz-app-shell h-screen overflow-hidden flex w-full bg-background pt-[env(safe-area-inset-top)]">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
           <header className="h-16 border-b border-border bg-background text-foreground flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30 relative" dir="rtl">
