@@ -360,8 +360,8 @@ export default function AffiliateNetwork() {
                 onEdit={(result) => {
                   if (result.localId) navigate(`/properties/${result.localId}`, { state: { returnTo: '/affiliate-network', openEdit: true } });
                 }}
-                // First column: shared properties are green; clicking a shared
-                // property asks before pulling it out of the marketplace.
+                // First column: shared properties are green; clicking always
+                // opens the commissions dialog with the sharing switch.
                 affiliateCell={(result) => {
                   const listing = filteredListings.find((item) => item.id === result.localId);
                   if (!listing) return null;
@@ -385,8 +385,8 @@ export default function AffiliateNetwork() {
                         size="sm"
                         variant={shared ? 'default' : 'outline'}
                         className={`h-8 gap-1.5 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
-                        title={shared ? 'הנכס פתוח לשותפים — לחיצה תסיר אותו' : 'פתיחת הנכס לשיווק שותפים'}
-                        onClick={() => (shared ? setUnsharing(listing) : setEditing(listing))}
+                        title={shared ? 'עריכת עמלות והפסקת שיווק שותפים' : 'פתיחת הנכס לשיווק שותפים'}
+                        onClick={() => setEditing(listing)}
                       >
                         <Handshake className="h-4 w-4" />
                         {shared ? 'משותף' : 'שיתוף'}
