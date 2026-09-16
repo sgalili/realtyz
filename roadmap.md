@@ -46,3 +46,5 @@
 45. [x] Affiliate table sharing status, commission column, unpublish confirmation, full edit, and richer public property page
 
 46. [x] Move status pill to the top-left corner of task and tour cards
+
+47. [x] Clean scraped junk from property data, add a Yad2 sync button, and harden Rita output sanitization

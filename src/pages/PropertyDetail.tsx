@@ -15,7 +15,7 @@ import {
   BedDouble, Ruler, MapPin, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink, Pencil, Save, X,
-  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2, ChevronLeft, ChevronRight, Megaphone, NotebookPen } from 'lucide-react';
+  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2, ChevronLeft, ChevronRight, Megaphone, NotebookPen, RefreshCw } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
   type HomelyProperty,
@@ -499,6 +499,7 @@ export default function PropertyDetail() {
   // already-visible layout. Nothing here ever blocks or hides the page.
   const hydratedRef = useRef<string | null>(null);
   const [hydrating, setHydrating] = useState(false);
+  const [syncingSource, setSyncingSource] = useState(false);
   // Absolute ceiling for the corner indicator, so a dead scraper can't leave a
   // spinner running forever. The sync itself keeps going server-side.
   const HYDRATION_INDICATOR_MAX_MS = 90_000;
@@ -1176,6 +1177,51 @@ export default function PropertyDetail() {
         : null,
   );
 
+  /**
+   * Manual "סנכרון מ-Yad2": re-reads the ad data for THIS listing and rewrites
+   * every field in the database, then refreshes the page from the DB.
+   * It goes through `yad2-unlocker`, which serves the shared market pool
+   * outside the twice-daily scrape window, so no extra provider calls are made.
+   */
+  const syncFromYad2 = async () => {
+    if (!property?.id || syncingSource) return;
+    setSyncingSource(true);
+    const toastId = toast.loading('מסנכרן את נתוני הנכס מ-Yad2…');
+    try {
+      const tasks: Promise<unknown>[] = [
+        supabase.functions.invoke('listings-metadata-backfill', {
+          body: { listing_ids: [property.id], force: true },
+        }),
+      ];
+      if (resolvedSourceUrl) {
+        tasks.push(
+          supabase.functions.invoke('yad2-unlocker', {
+            body: { url: resolvedSourceUrl, limit: 1 },
+          }),
+        );
+      }
+      const results = await Promise.allSettled(tasks);
+      const failed = results.find(
+        (r) => r.status === 'rejected' || (r.value as { error?: unknown } | null)?.error,
+      );
+      await qc.refetchQueries({ queryKey: ['property-detail', id] });
+      qc.invalidateQueries({ queryKey: ['listings'] });
+      qc.invalidateQueries({ queryKey: ['properties-search'] });
+      if (failed) {
+        toast.error('הסנכרון הושלם חלקית', {
+          id: toastId,
+          description: 'חלק מהשדות לא התעדכנו. נתוני יד2 מתרעננים גם אוטומטית פעמיים ביום.',
+        });
+      } else {
+        toast.success('נתוני הנכס סונכרנו', { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error('הסנכרון נכשל', { id: toastId, description: e?.message ?? String(e) });
+    } finally {
+      setSyncingSource(false);
+    }
+  };
+
   const openCommunicationCards = () => {
     setCommunicationOpenKey((value) => value + 1);
     window.requestAnimationFrame(() => {
@@ -1211,6 +1257,22 @@ export default function PropertyDetail() {
                 <Yad2Icon className="h-6 w-6" />
               </a>
             )}
+
+            {/* Prominent manual refresh of every field from the Yad2 data. */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={syncFromYad2}
+              disabled={syncingSource}
+              aria-label="סנכרון מ-Yad2"
+              title="סנכרון כל פרטי הנכס מ-Yad2"
+              className="h-8 gap-1.5 border-primary/40 px-2.5 text-[13px] font-semibold text-primary hover:bg-primary/10"
+            >
+              {syncingSource
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <RefreshCw className="h-4 w-4" />}
+              <span>סנכרון מ-Yad2</span>
+            </Button>
 
             {isHomelyListing && resolvedSourceUrl && (
               <a href={resolvedSourceUrl} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה המקורית ב-Homely" title="צפייה במודעה המקורית ב-Homely" className="inline-flex h-7 w-7 items-center justify-center rounded border border-primary text-sm font-extrabold text-primary transition hover:bg-primary hover:text-primary-foreground">H</a>
