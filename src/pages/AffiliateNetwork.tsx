@@ -55,7 +55,6 @@ import {
 import { fmtILS } from '@/lib/formatCurrency';
 import { PropertyThumb, propertyFullAddress } from '@/components/leads/LinkedPropertiesField';
 import ContactAvatar from '@/components/contacts/ContactAvatar';
-import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { ResultTable } from '@/pages/Properties';
 
@@ -242,7 +241,6 @@ export default function AffiliateNetwork() {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
-  const [previewing, setPreviewing] = useState<BrokerAffiliateListing | null>(null);
 
   useEffect(() => {
     if (listingsLoading || refsLoading || subsLoading) return;
@@ -349,8 +347,9 @@ export default function AffiliateNetwork() {
                 results={filteredListings.map(toUnifiedResult)}
                 importingKey={null}
                 onSelect={(result) => {
-                  const listing = filteredListings.find((item) => item.id === result.localId);
-                  if (listing) setPreviewing(listing);
+                  if (result.localId) navigate(`/properties/${result.localId}`, {
+                    state: { propertySnapshot: result, returnTo: '/affiliate-network' },
+                  });
                 }}
                 onCampaign={(result) => {
                   if (result.localId) navigate(`/campaigns?tab=create&channel=facebook&properties=${result.localId}&listing=${result.localId}`);
@@ -404,7 +403,9 @@ export default function AffiliateNetwork() {
                   <Card
                     key={l.id}
                     className="group cursor-pointer overflow-hidden border-slate-200 transition-shadow hover:shadow-lg"
-                    onClick={() => setPreviewing(l)}
+                    onClick={() => navigate(`/properties/${l.id}`, {
+                      state: { propertySnapshot: toUnifiedResult(l), returnTo: '/affiliate-network' },
+                    })}
                   >
                     <div className="border-b px-4 pb-2 pt-3">
                       <h3 className="truncate text-base font-semibold" title={l.property_title || undefined}>
@@ -674,13 +675,6 @@ export default function AffiliateNetwork() {
 
         <RewardDialog listing={editing} open={!!editing} onOpenChange={(v) => !v && setEditing(null)} />
 
-        <PropertyPreviewDialog
-          open={!!previewing}
-          onOpenChange={(open) => !open && setPreviewing(null)}
-          result={previewing ? toUnifiedResult(previewing) : null}
-          fullAddress={previewing ? propertyFullAddress(previewing) : null}
-          navyPrice
-        />
       </div>
     </>
   );
