@@ -329,11 +329,13 @@ export default function PropertyDetail() {
       )).map((s) => JSON.parse(s) as { url: string; name: string });
 
       const priceNum = Number(row.asking_price) || 0;
-      const dealType = String((meta as JsonRecord).deal_type ?? (meta as JsonRecord).listing_type ?? '').toLowerCase();
+      // The saved column is the single source of truth for sale vs rent; the
+      // price heuristic only fills in when nothing was ever saved.
+      const savedDealType = String((row as any).deal_type ?? (meta as JsonRecord).deal_type ?? (meta as JsonRecord).listing_type ?? '').toLowerCase();
       let listingType: 'sale' | 'rent';
-      if (priceNum > 0 && priceNum < 50_000) listingType = 'rent';
-      else if (priceNum >= 500_000) listingType = 'sale';
-      else listingType = dealType === 'rent' ? 'rent' : 'sale';
+      if (savedDealType === 'rent' || savedDealType === 'sale') listingType = savedDealType;
+      else if (priceNum > 0 && priceNum < 50_000) listingType = 'rent';
+      else listingType = 'sale';
       const textFeatures = features.filter((f): f is string => typeof f === 'string');
       const featuresObject = ((features as unknown[]).find(isRecord) ?? {}) as JsonRecord;
       const extras = isRecord(featuresObject.extras) ? featuresObject.extras : {};
