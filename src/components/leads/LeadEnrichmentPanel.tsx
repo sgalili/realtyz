@@ -92,11 +92,12 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
 
   useEffect(() => {
     setGender(lead.gender ?? prefs.gender ?? '');
+    setLeadKind(String(prefs.lead_kind ?? ''));
     setEmail(lead.email ?? '');
     setPhone(formatPhoneAsTyped(lead.phone_number));
     setCity(lead.city ?? '');
     setAddress(lead.address ?? '');
-  }, [lead.id, lead.gender, prefs.gender, lead.email, lead.phone_number, lead.city, lead.address]);
+  }, [lead.id, lead.gender, prefs.gender, prefs.lead_kind, lead.email, lead.phone_number, lead.city, lead.address]);
 
   // Re-sync socials whenever the parent lead's preferences change (e.g. after
   // the enrichment dialog writes new social profiles to the DB), so the panel
