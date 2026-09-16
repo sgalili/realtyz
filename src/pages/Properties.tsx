@@ -551,24 +551,6 @@ export default function Properties() {
     }
   };
 
-
-  const handleImport = async (r: UnifiedResult) => {
-    if (r.localId) { navigate(`/properties/${r.localId}`, { state: { propertySnapshot: r } }); return; }
-    setImportingKey(r.key);
-    try {
-      const id = await autoImportResult(r);
-      toast.success('יובא אוטומטית למאגר');
-      queryClient.invalidateQueries({ queryKey: ['properties-search'] });
-      setPreviewOpen(false);
-      navigate(`/properties/${id}`, { state: { propertySnapshot: { ...r, localId: id } } });
-    } catch (err: any) {
-      console.error('[Properties] auto-import failed', err);
-      toast.error('ייבוא אוטומטי נכשל: ' + (err?.message ?? 'שגיאה'));
-    } finally {
-      setImportingKey(null);
-    }
-  };
-
   const cityOptions = useMemo(() => {
     const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
     results.forEach((r) => { if (r.city) cities.add(r.city); });
