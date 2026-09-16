@@ -2373,7 +2373,7 @@ const LeadCRM = () => {
                         </div>
                       );
                     })()}
-                    <div className="min-w-0 max-w-[calc(100%-6rem)] text-center">
+                    <div className="absolute inset-x-0 top-0 mx-auto min-w-0 px-12 text-center">
                       <EditableInlineText
                         value={selectedVoter.full_name || ''}
                         placeholder="איש קשר לא ידוע"
