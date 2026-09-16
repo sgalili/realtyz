@@ -1089,7 +1089,8 @@ const OmnichannelInbox = () => {
                 const channelsInList = new Set<string>();
                 (leadChannels instanceof Map ? Array.from(leadChannels.values()) : []).forEach((set: Set<string>) => set.forEach((channel) => channelsInList.add(channel)));
                 (lastMessages instanceof Map ? Array.from(lastMessages.values()) : []).forEach((message: any) => {
-                  if (message?.channel) channelsInList.add(String(message.channel).toLowerCase());
+                  const key = String(message?.channel || message?.platform || '').toLowerCase();
+                  if (key) channelsInList.add(key);
                 });
                 return ([
                   { key: 'whatsapp', label: 'WhatsApp' }, { key: 'sms', label: 'SMS' },
