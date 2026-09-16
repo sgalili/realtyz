@@ -1033,7 +1033,10 @@
 
   /* Exactly 20px between the hero and page content across the whole app:
      the main surface owns that gap, so the first content block adds none. */
-  .realtyz-main-surface > div > *:first-child {
+  .realtyz-main-surface > div > *:first-child,
+  .realtyz-main-surface > div > *:first-child > *:first-child,
+  .realtyz-main-surface > div > *:first-child > *:first-child > *:first-child,
+  .realtyz-main-surface > div > *:first-child > *:first-child > *:first-child > *:first-child {
     margin-top: 0 !important;
   }
 
