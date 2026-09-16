@@ -563,7 +563,8 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
         status: sent.ok ? "sent" : "failed",
         error: sent.ok ? null : sent.error ?? null,
         ai_assisted: true,
-        greeting_with_whatsapp_switch: !alreadyGreeted,
+        whatsapp_handoff: offerHandoff ? "true" : "false",
+        client_replies: clientReplies,
         source: "sms-inbound-webhook",
       },
     });
