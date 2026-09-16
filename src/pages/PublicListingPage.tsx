@@ -43,28 +43,70 @@ type PublicListing = {
   brokerLicenceNumber: string | null;
   agencyLogoUrl: string | null;
   details: Array<{ label: string; value: string }>;
+  /** Rich data grouped into readable blocks (features, environment, source…). */
+  groups: Array<{ title: string; rows: Array<{ label: string; value: string }> }>;
+  latitude: number | null;
+  longitude: number | null;
+  addressForMap: string;
 };
 
 const DETAIL_LABELS: Record<string, string> = {
   neighborhood: 'שכונה', available_from: 'כניסה', project_name: 'פרויקט', elevator: 'מעלית', parking: 'חניה',
-  source: 'מקור', latitude: 'קו רוחב', longitude: 'קו אורך', external_id: 'מזהה במקור', status: 'סטטוס שמור',
-  created_at: 'נוסף למאגר', updated_at: 'עודכן לאחרונה', media_documents: 'מסמכים',
+  source: 'מקור', external_id: 'מזהה במקור', status: 'סטטוס שמור',
+  created_at: 'נוסף למאגר', updated_at: 'עודכן לאחרונה',
 };
+
+/** Turns any value (including nested JSON) into short readable Hebrew text. */
+function readable(value: unknown): string {
+  if (value === null || value === undefined || value === '' || value === false) return '';
+  if (typeof value === 'boolean') return 'כן';
+  if (Array.isArray(value)) return value.map(readable).filter(Boolean).join(', ');
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => {
+        const text = readable(item);
+        return text ? `${key}: ${text}` : '';
+      })
+      .filter(Boolean)
+      .join(' · ');
+  }
+  return String(value).trim();
+}
 
 function detailRows(row: any): Array<{ label: string; value: string }> {
   const rows: Array<{ label: string; value: string }> = [];
-  const add = (label: string, value: unknown) => {
-    if (value === null || value === undefined || value === '' || value === false) return;
-    const text = typeof value === 'boolean' ? 'כן' : typeof value === 'object' ? JSON.stringify(value) : String(value);
-    if (text && text !== '{}' && text !== '[]') rows.push({ label, value: text });
-  };
-  for (const key of ['neighborhood', 'available_from', 'project_name', 'elevator', 'parking', 'source', 'latitude', 'longitude', 'external_id', 'status', 'created_at', 'updated_at', 'media_documents']) add(DETAIL_LABELS[key], row?.[key]);
-  for (const [group, value] of [['מאפיינים', row?.features], ['נתוני נכס', row?.attributes], ['פרטים נוספים', row?.additional_details], ['ריהוט', row?.furniture_details], ['הסביבה', row?.area_perks], ['פרטי מקור', row?.source_metadata], ['היסטוריית מחיר', row?.price_history]]) {
-    if (value && typeof value === 'object') {
-      for (const [key, item] of Object.entries(value)) add(`${group}: ${key}`, item);
-    }
+  for (const key of ['neighborhood', 'available_from', 'project_name', 'elevator', 'parking', 'source', 'external_id', 'status', 'created_at', 'updated_at']) {
+    const text = readable(row?.[key]);
+    if (text) rows.push({ label: DETAIL_LABELS[key], value: text });
   }
   return rows;
+}
+
+/** Every remaining rich block from the DB / original ad, kept human-readable. */
+function detailGroups(row: any): Array<{ title: string; rows: Array<{ label: string; value: string }> }> {
+  const sources: Array<[string, unknown]> = [
+    ['מאפיינים', row?.features],
+    ['נתוני הנכס', row?.attributes],
+    ['פרטים נוספים', row?.additional_details],
+    ['ריהוט', row?.furniture_details],
+    ['הסביבה', row?.area_perks],
+    ['פרטי המודעה במקור', row?.source_metadata],
+    ['היסטוריית מחיר', row?.price_history],
+  ];
+  const groups: Array<{ title: string; rows: Array<{ label: string; value: string }> }> = [];
+  for (const [title, value] of sources) {
+    if (!value || typeof value !== 'object') continue;
+    const rows: Array<{ label: string; value: string }> = [];
+    const entries = Array.isArray(value)
+      ? (value as unknown[]).map((item, index) => [String(index + 1), item] as [string, unknown])
+      : Object.entries(value as Record<string, unknown>);
+    for (const [key, item] of entries) {
+      const text = readable(item);
+      if (text) rows.push({ label: key, value: text });
+    }
+    if (rows.length) groups.push({ title, rows });
+  }
+  return groups;
 }
 
 /** Public pages must never expose house / apartment numbers. */
