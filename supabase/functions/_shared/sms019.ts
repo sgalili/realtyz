@@ -111,15 +111,31 @@ export async function resolveSms019Config(
   }
 
   // Last resort: the platform-wide Realtyz 019 credentials from env secrets.
-  const envUser = Deno.env.get("SMS019_USERNAME")?.trim();
-  const envToken = Deno.env.get("SMS019_TOKEN")?.trim();
-  const envPass = Deno.env.get("SMS019_PASSWORD")?.trim();
-  const envSender = Deno.env.get("SMS019_SENDER")?.trim();
-  if (envUser && (envToken || envPass)) {
+  return envSms019Config();
+}
+
+const env = (...names: string[]) => {
+  for (const n of names) {
+    const v = Deno.env.get(n)?.trim();
+    if (v) return v;
+  }
+  return null;
+};
+
+/**
+ * Platform 019 credentials straight from the project secrets. Both naming
+ * conventions are accepted (`SMS_019_TOKEN` is the canonical secret name).
+ */
+export function envSms019Config(): Sms019Config | null {
+  const envUser = env("SMS_019_USERNAME", "SMS019_USERNAME");
+  const envToken = env("SMS_019_TOKEN", "SMS019_TOKEN");
+  const envPass = env("SMS_019_PASSWORD", "SMS019_PASSWORD");
+  const envSender = env("SMS_019_SENDER", "SMS019_SENDER");
+  if ((envUser || envToken) && (envToken || envPass)) {
     return {
-      username: envUser,
-      token: envToken ?? null,
-      password: envPass ?? null,
+      username: envUser ?? "",
+      token: envToken,
+      password: envPass,
       sender: envSender ?? "",
       scope: "platform",
     };
