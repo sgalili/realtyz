@@ -269,6 +269,67 @@ export function ClosingRoomDialog({
             </Select>
           </div>
 
+          {/* Deal type + commission terms written into the form's fee clause. */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">סוג עסקה</Label>
+              <Select value={dealType} onValueChange={(v) => setDealType(v as 'sale' | 'rent')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sale">מכירה</SelectItem>
+                  <SelectItem value="rent">שכירות</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">דמי תיווך</Label>
+              <Select
+                value={commissionMode}
+                onValueChange={(v) => setCommissionMode(v as 'percent' | 'fixed' | 'first_month')}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {dealType === 'rent' && <SelectItem value="first_month">חודש שכירות אחד</SelectItem>}
+                  <SelectItem value="percent">אחוז ממחיר העסקה</SelectItem>
+                  <SelectItem value="fixed">סכום קבוע</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {commissionMode === 'percent' && (
+            <div>
+              <Label className="text-xs">אחוז דמי תיווך (%)</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                placeholder="לדוגמה: 2"
+                value={commissionPercent}
+                onChange={(e) => setCommissionPercent(e.target.value)}
+              />
+            </div>
+          )}
+
+          {commissionMode === 'fixed' && (
+            <div>
+              <Label className="text-xs">סכום דמי תיווך (₪)</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder="לדוגמה: 7000"
+                value={commissionAmount}
+                onChange={(e) => setCommissionAmount(e.target.value)}
+              />
+            </div>
+          )}
+
+
+
           <div>
             <Label className="text-xs">נכס מקושר</Label>
             <Select value={listingId || 'none'} onValueChange={(v) => setListingId(v === 'none' ? '' : v)}>
