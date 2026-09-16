@@ -224,7 +224,8 @@ const Auth = () => {
     if (code.length === 4) {
       const ok = await tryMasterOtp(code, normalizedPhone);
       if (ok) { setLoading(false); return; }
-      if (isPreviewHost && activeMethod !== 'whatsapp') {
+      // Phone codes fall through to real verification; only email stops here.
+      if (isPreviewHost && !isPhoneFlow) {
         setOtpAttempts((a) => a + 1);
         setOtp('');
         toast.error('קוד מאסטר שגוי');
