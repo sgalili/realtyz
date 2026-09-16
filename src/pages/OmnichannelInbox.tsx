@@ -1027,20 +1027,22 @@ const OmnichannelInbox = () => {
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('realtyz:inbox-chat-state', { detail: { open: !!selectedVoterId } }));
-    return () => window.dispatchEvent(new CustomEvent('realtyz:inbox-chat-state', { detail: { open: false } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('realtyz:inbox-chat-state', { detail: { open: false } }));
+    };
   }, [selectedVoterId]);
 
   return (
     <div dir="rtl" className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       {/* Queue tabs match the campaigns layout; bookmark stays a square control. */}
       <div className="mx-auto flex w-full max-w-2xl shrink-0 items-center gap-2" dir="rtl">
-        <div className="grid min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+        <div className="grid h-[44px] min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
           <Button
             variant="ghost"
             type="button"
             onClick={() => { setActiveTab('all'); setSelectedVoterId(null); }}
             style={{ fontSize: 'calc(0.875rem + 3px)' }}
-            className={`min-w-0 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'all' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`h-9 min-w-0 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'all' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             כל השיחות ({totalCount})
           </Button>
@@ -1049,7 +1051,7 @@ const OmnichannelInbox = () => {
             type="button"
             onClick={() => { setActiveTab('waiting'); setSelectedVoterId(null); }}
             style={{ fontSize: 'calc(0.875rem + 3px)' }}
-            className={`min-w-0 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'waiting' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`h-9 min-w-0 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'waiting' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             ממתינות ({waitingCount})
           </Button>
@@ -1058,7 +1060,7 @@ const OmnichannelInbox = () => {
             type="button"
             onClick={() => { setActiveTab('handling'); setSelectedVoterId(null); }}
             style={{ fontSize: 'calc(0.875rem + 3px)' }}
-            className={`min-w-0 gap-1 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'handling' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`h-9 min-w-0 gap-1 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'handling' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             <RitaAvatar className="h-7 w-7 border-0 ring-0" />
             <span>ריטה ({handlingCount})</span>
