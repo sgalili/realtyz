@@ -1046,6 +1046,8 @@
 
   /* Property detail: the sticky action bar sits exactly 10px below the blue
       hero — tighter than the app-wide 20px rhythm (wins over the reset above). */
+  .realtyz-main-surface > div > *:first-child > *:first-child.property-action-bar,
+  .realtyz-main-surface > div > *:first-child.property-action-bar,
   .realtyz-main-surface .property-action-bar {
     margin-top: -10px !important;
   }
