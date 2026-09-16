@@ -328,12 +328,12 @@ export default function CommandCenter() {
                 </span>
               )}
             </span>
-          </div>
-          {/* Status pill + action row sit at the bottom of the card so they never cover the text */}
-          <div className="mt-3 flex flex-col items-end gap-2" onClick={(event) => event.stopPropagation()}>
             {TASK_STATUS_LABEL[task.status] && (
-              <Badge variant="outline" className="text-[13px]">{TASK_STATUS_LABEL[task.status]}</Badge>
+              <Badge variant="outline" className="shrink-0 self-start text-[13px]">{TASK_STATUS_LABEL[task.status]}</Badge>
             )}
+          </div>
+          {/* Action row sits at the bottom of the card so it never covers the text */}
+          <div className="mt-3 flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center gap-2">
               {task.leadId && <IconAction label="WhatsApp" onClick={() => navigate(`/inbox?lead=${task.leadId}&channel=whatsapp`)}><BrandIcon name="whatsapp" className="h-4 w-4 text-[hsl(var(--social-whatsapp))]" /></IconAction>}
               {task.leadPhone && <Button asChild type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground"><a href={`tel:${task.leadPhone}`} aria-label="שיחת טלפון" title="שיחת טלפון"><Phone className="h-4 w-4" /></a></Button>}
