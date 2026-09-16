@@ -3,7 +3,7 @@ import { fetchWorkspaceCrmCounts, renderCrmCountsAnswer } from "../_shared/crmCo
 import { cleanSqm } from "../_shared/measures.ts";
 import { CRM_ACTIONS_CONTRACT, executeCrmActions } from "../_shared/crmActions.ts";
 import { extractActionEnvelopes, stripRawJson, summarizeCrmResults } from "../_shared/agentOutput.ts";
-import { CRM_TOOL_DEFS, NATIVE_TOOLS_CONTRACT, hasNativeToolCall, toolCallsToActions } from "../_shared/crmTools.ts";
+import { CRM_TOOL_DEFS, PUBLIC_PROPERTY_TOOL_DEFS, NATIVE_TOOLS_CONTRACT, hasNativeToolCall, nativeToolArguments, toolCallsToActions } from "../_shared/crmTools.ts";
 
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -1144,7 +1144,8 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
 
           let q = userClient
             .from("listings")
-            .select("id, property_title, asking_price, features, description, office_notes, deal_type")
+            .select("id, property_title, address, city, neighborhood, rooms, sqm, asking_price, features, description, office_notes, deal_type")
+            .eq("workspace_owner_id", currentOwnerId)
             .eq("is_published", true)
             .order("created_at", { ascending: false })
             .limit(30);
@@ -1229,9 +1230,9 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
           const scored = candidates.map((l) => {
             const f = l.features ?? {};
             let score = 0;
-            if (desiredRooms && Number(f.rooms ?? f.room_count) === desiredRooms) score += 3;
+            if (desiredRooms && Number(l.rooms ?? f.rooms ?? f.room_count) === desiredRooms) score += 3;
             if (desiredCity) {
-              const lc = String(f.city ?? f.neighborhood ?? "").toLowerCase();
+              const lc = String(l.city ?? l.neighborhood ?? f.city ?? f.neighborhood ?? "").toLowerCase();
               if (lc && lc.includes(String(desiredCity).toLowerCase())) score += 2;
             }
             if (budgetMax && Number(l.asking_price) <= budgetMax) score += 1;
@@ -1243,9 +1244,9 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
             const priceLabel = isRent ? "שכ\"ד" : "מחיר";
             const fmt = (l: any) => {
               const f = l.features ?? {};
-              const city = f.city ?? f.neighborhood ?? "—";
-              const rooms = f.rooms ?? f.room_count ?? "—";
-              const sqm = f.size_sqm ?? f.size ?? "—";
+              const city = l.city ?? l.neighborhood ?? f.city ?? f.neighborhood ?? "—";
+              const rooms = l.rooms ?? f.rooms ?? f.room_count ?? "—";
+              const sqm = l.sqm ?? f.size_sqm ?? f.size ?? "—";
               const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}${isRent ? "/חודש" : ""}` : "—";
               const notes = l.office_notes ? `\n   הערות משרד: ${String(l.office_notes).replace(/\s+/g, " ").slice(0, 240)}` : "";
               return `• ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${sqm} מ"ר | ${priceLabel}: ${price}${notes}`;
@@ -1831,7 +1832,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
         max_tokens: attachments.length > 0 || researchBlock ? 2400 : 1200,
         // NATIVE FUNCTION CALLING: CRM writes travel through tool_calls, never
         // as JSON text inside the assistant message.
-        tools: CRM_TOOL_DEFS,
+        tools: isInternalDashboard ? CRM_TOOL_DEFS : PUBLIC_PROPERTY_TOOL_DEFS,
         tool_choice: "auto",
         messages: [
           { role: "system", content: `${systemPrompt}\n\n${NATIVE_TOOLS_CONTRACT}${richResponseHint}` },
@@ -1861,6 +1862,59 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     const aiData = await aiResponse.json();
     const aiMessage = aiData.choices?.[0]?.message ?? {};
     const rawContent = String(aiMessage.content ?? "").trim();
+
+    const contactSearches = isInternalDashboard ? nativeToolArguments(aiMessage.tool_calls, "search_contacts") : [];
+    if (contactSearches.length > 0 && currentOwnerId) {
+      const args = contactSearches[0];
+      const text = String(args.query ?? "").trim().slice(0, 120);
+      let query = supabase.from("leads")
+        .select("id, full_name, phone_number, email, city, deal_type, lead_stage, status")
+        .eq("workspace_owner_id", currentOwnerId)
+        .not("is_demo", "is", true)
+        .limit(20);
+      if (text) query = query.or(`full_name.ilike.%${text}%,phone_number.ilike.%${text}%,city.ilike.%${text}%`);
+      if (args.city) query = query.eq("city", String(args.city));
+      if (args.deal_type === "sale" || args.deal_type === "rent") query = query.eq("deal_type", args.deal_type);
+      const { data, error } = await query;
+      if (error) throw error;
+      const rows = data ?? [];
+      const content = rows.length
+        ? rows.map((row: any, index: number) => `${index + 1}. ${row.full_name || "ללא שם"}, ${row.city || "עיר לא צוינה"}, ${row.phone_number || "ללא טלפון"}`).join("\n")
+        : "לא נמצאו אנשי קשר שמתאימים לחיפוש במרחב העבודה הפעיל.";
+      return new Response(JSON.stringify({ type: "text", content, data: rows }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const propertySearches = nativeToolArguments(aiMessage.tool_calls, "search_properties");
+    if (propertySearches.length > 0 && currentOwnerId) {
+      const args = propertySearches[0];
+      const text = String(args.query ?? "").trim().slice(0, 120);
+      let query = supabase.from("listings")
+        .select("id, property_title, address, city, neighborhood, rooms, sqm, asking_price, deal_type, status, is_published")
+        .eq("workspace_owner_id", currentOwnerId)
+        .limit(10);
+      if (!isInternalDashboard) query = query.eq("is_published", true).eq("status", "live");
+      if (text) query = query.or(`property_title.ilike.%${text}%,address.ilike.%${text}%,city.ilike.%${text}%,neighborhood.ilike.%${text}%`);
+      if (args.city) query = query.eq("city", String(args.city));
+      if (args.neighborhood) query = query.eq("neighborhood", String(args.neighborhood));
+      if (args.deal_type === "sale" || args.deal_type === "rent") query = query.eq("deal_type", args.deal_type);
+      if (Number(args.min_rooms) > 0) query = query.gte("rooms", Number(args.min_rooms));
+      if (Number(args.max_price) > 0) query = query.lte("asking_price", Number(args.max_price));
+      const { data, error } = await query.order("created_at", { ascending: false });
+      if (error) throw error;
+      const rows = data ?? [];
+      const content = rows.length
+        ? rows.slice(0, 5).map((row: any, index: number) => {
+            const location = [row.address, row.city].filter(Boolean).join(", ") || row.property_title || "נכס";
+            const price = row.asking_price ? `${Number(row.asking_price).toLocaleString("he-IL")} ₪` : "מחיר לא צוין";
+            return `${index + 1}. ${location}, ${row.rooms ?? "?"} חדרים, ${row.sqm ?? "?"} מ״ר, ${price}`;
+          }).join("\n")
+        : "לא מצאתי כרגע נכסים מתאימים במאגר החי.";
+      return new Response(JSON.stringify({ type: "text", content, data: rows }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (hasNativeToolCall(aiMessage.tool_calls, "get_crm_counts")) {
       // Counters are scoped to the active workspace owner only, and the tool
@@ -1899,7 +1953,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     // The model asked for CRM writes through function calling. We run them
     // here, swallow any DB failure (logged, never leaked), and answer with a
     // clean Hebrew report derived from what actually succeeded.
-    const nativeActions = toolCallsToActions(aiMessage.tool_calls);
+    const nativeActions = isInternalDashboard ? toolCallsToActions(aiMessage.tool_calls) : [];
     if (nativeActions.length > 0) {
       let results: Awaited<ReturnType<typeof executeCrmActions>> = [];
       try {
@@ -1991,7 +2045,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
       // Intercept it: execute any action envelope server-side and NEVER return
       // raw JSON / code to the chat or WhatsApp.
       const extracted = extractActionEnvelopes(rawContent);
-      if (extracted.actions.length > 0) {
+      if (isInternalDashboard && extracted.actions.length > 0) {
         const results = await executeCrmActions(supabase, currentOwnerId, extracted.actions as any);
         const failed = results.filter((r) => !r.ok);
         let content = stripRawJson(stripBrokerLicense(extracted.content || "")).trim();
@@ -2029,7 +2083,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     // ─── CRM write actions (quick actions the owner asked the AI to do) ───
     // Executed deterministically server-side so notes / reminders / calls /
     // contacts appear instantly on "משימות היום" and in the CRM.
-    if (Array.isArray(parsed?.actions) && parsed.actions.length > 0) {
+    if (isInternalDashboard && Array.isArray(parsed?.actions) && parsed.actions.length > 0) {
       const results = await executeCrmActions(supabase, currentOwnerId, parsed.actions);
       const failed = results.filter((r) => !r.ok);
       let content = stripRawJson(stripBrokerLicense(String(parsed.content || ""))).trim();

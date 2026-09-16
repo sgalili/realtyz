@@ -10,9 +10,8 @@
  *      CREATE a new contact card immediately when the number is unknown.
  *   3. Store the inbound SMS in public.messages (platform/channel = 'sms') so
  *      the whole conversation shows in /inbox on the contact's chat window.
- *   4. Trigger Rita: the FIRST automated SMS reply greets the contact and offers
- *      to continue on WhatsApp with a direct clickable chat link. Later replies
- *      run through `ai-agent` and are answered on the same SMS channel.
+ *   4. Trigger Rita on the same SMS channel. The WhatsApp handoff is offered
+ *      once, only after the client has sent at least two inbound SMS messages.
  *   5. Every outbound SMS is stored too, so the thread is complete.
  *
  * Optional shared-secret protection: SMS_INBOUND_WEBHOOK_SECRET, sent either as
