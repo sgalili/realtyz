@@ -1261,7 +1261,7 @@ async function handleLeadInboxInbound(
         // System context: the webhook has no interactive user session, so we
         // hand ai-agent the verified workspace owner explicitly.
         workspace_owner_id: aiOwnerId || undefined,
-        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}${referral ? `\n[REFERRAL_CONTEXT] The contact arrived through an affiliate marketing link for this property: ${referralPropertyLabel(referral)}. It is ALREADY linked to their CRM card — never say you failed to find it. Greet warmly, confirm the property by name and offer a viewing.` : ""}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
+        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${promptInboundText}${referral ? `\n[REFERRAL_CONTEXT] The contact arrived through an affiliate marketing link for this property: ${referralPropertyLabel(referral)}. It is ALREADY linked to their CRM card — never say you failed to find it. Greet warmly, confirm the property by name and offer a viewing.` : ""}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
         messages: aiMessages,
         enable_research: agentCommand ? true : undefined,
       }),
