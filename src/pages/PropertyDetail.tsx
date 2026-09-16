@@ -226,12 +226,13 @@ export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const detailState = location.state as { propertySnapshot?: UnifiedResult; returnTo?: string } | null;
+  const detailState = location.state as { propertySnapshot?: UnifiedResult; returnTo?: string; openEdit?: boolean } | null;
   const propertySnapshot = detailState?.propertySnapshot;
   const qc = useQueryClient();
   const [activePhoto, setActivePhoto] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  // Callers (e.g. the affiliate list) can open the page straight in edit mode.
+  const [editMode, setEditMode] = useState(Boolean(detailState?.openEdit));
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [pullingImages, setPullingImages] = useState(false);
