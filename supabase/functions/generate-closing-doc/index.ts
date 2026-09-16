@@ -179,9 +179,14 @@ Deno.serve(async (req) => {
       if (data) listing = data;
     }
 
-    const dealType: "rent" | "sale" =
+    // The broker's explicit choice wins; otherwise fall back to the template and
+    // the stored property/contact deal type.
+    const dealType: "rent" | "sale" = parsed.data.deal_type ??
       (template_key === "lease_agreement" ? "rent" : null) ??
         (String(listing.deal_type ?? lead.deal_type ?? "").toLowerCase() === "sale" ? "sale" : "rent");
+
+    const feeText = buildFeeText(dealType, parsed.data);
+
 
     const price = price_override ?? listing.asking_price ?? null;
     const propertyAddress = [listing.address, listing.city].filter(Boolean).join(", ") ||
