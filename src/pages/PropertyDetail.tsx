@@ -761,6 +761,9 @@ export default function PropertyDetail() {
         latitude: form.latitude ? Number(form.latitude) : null,
         longitude: form.longitude ? Number(form.longitude) : null,
         available_from: form.available_from || null,
+        // The sale/rent choice must land on the column every list reads from,
+        // not only inside source_metadata.
+        ...(form.deal_type === 'rent' || form.deal_type === 'sale' ? { deal_type: form.deal_type } : {}),
         ...(form.status ? { status: form.status } : {}),
         source_url: form.source_url || null,
         media_photos: form.photos,
