@@ -47,7 +47,8 @@ type PublicListing = {
 
 const DETAIL_LABELS: Record<string, string> = {
   neighborhood: 'שכונה', available_from: 'כניסה', project_name: 'פרויקט', elevator: 'מעלית', parking: 'חניה',
-  source: 'מקור', latitude: 'קו רוחב', longitude: 'קו אורך',
+  source: 'מקור', latitude: 'קו רוחב', longitude: 'קו אורך', external_id: 'מזהה במקור', status: 'סטטוס שמור',
+  created_at: 'נוסף למאגר', updated_at: 'עודכן לאחרונה', media_documents: 'מסמכים',
 };
 
 function detailRows(row: any): Array<{ label: string; value: string }> {
@@ -57,7 +58,7 @@ function detailRows(row: any): Array<{ label: string; value: string }> {
     const text = typeof value === 'boolean' ? 'כן' : typeof value === 'object' ? JSON.stringify(value) : String(value);
     if (text && text !== '{}' && text !== '[]') rows.push({ label, value: text });
   };
-  for (const key of ['neighborhood', 'available_from', 'project_name', 'elevator', 'parking', 'source', 'latitude', 'longitude']) add(DETAIL_LABELS[key], row?.[key]);
+  for (const key of ['neighborhood', 'available_from', 'project_name', 'elevator', 'parking', 'source', 'latitude', 'longitude', 'external_id', 'status', 'created_at', 'updated_at', 'media_documents']) add(DETAIL_LABELS[key], row?.[key]);
   for (const [group, value] of [['מאפיינים', row?.features], ['נתוני נכס', row?.attributes], ['פרטים נוספים', row?.additional_details], ['ריהוט', row?.furniture_details], ['הסביבה', row?.area_perks], ['פרטי מקור', row?.source_metadata], ['היסטוריית מחיר', row?.price_history]]) {
     if (value && typeof value === 'object') {
       for (const [key, item] of Object.entries(value)) add(`${group}: ${key}`, item);
