@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cleanMeasurementValue, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
+import { cleanDisplayValue, isJunkValue } from '@/lib/cleanValue';
 
 import {
   Sofa, TrendingUp, MapPin, Navigation, Pencil, Plus, Trash2, X, Save,
@@ -252,10 +253,9 @@ function formatDateish(v: unknown): string | null {
 
 function renderValue(v: unknown): string {
   if (typeof v === 'boolean') return v ? 'יש' : 'אין';
-  if (Array.isArray(v)) return v.map((x) => String(x)).join(', ');
   const d = formatDateish(v);
   if (d) return d;
-  return String(v ?? '');
+  return cleanDisplayValue(v) ?? '';
 }
 
 type Entry = [string, unknown];
@@ -263,7 +263,11 @@ type Entry = [string, unknown];
 function entriesOf(obj: Record<string, unknown> | null | undefined): Entry[] {
   if (!obj || typeof obj !== 'object') return [];
   return Object.entries(obj).filter(
-    ([k, v]) => v !== null && v !== '' && v !== undefined && !HIDDEN_KEYS.has(normalizeKey(k)),
+    ([k, v]) =>
+      v !== null && v !== '' && v !== undefined &&
+      !HIDDEN_KEYS.has(normalizeKey(k)) &&
+      // Identifiers, hashes and JSON fragments from the scraper never render.
+      !isJunkValue(v),
   );
 }
 
