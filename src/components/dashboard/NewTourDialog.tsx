@@ -107,6 +107,11 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
   const [sendWa, setSendWa] = useState(true);
   const [sendSignature, setSendSignature] = useState(false);
   const [signatureForm, setSignatureForm] = useState<SignatureTemplate>('tour_agreement');
+  const [dealType, setDealType] = useState<'sale' | 'rent'>('sale');
+  const [commissionMode, setCommissionMode] = useState<'percent' | 'fixed' | 'first_month'>('percent');
+  const [commissionPercent, setCommissionPercent] = useState('2');
+  const [commissionAmount, setCommissionAmount] = useState('');
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
