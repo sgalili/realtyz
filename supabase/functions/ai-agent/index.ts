@@ -1889,28 +1889,18 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     const propertySearches = nativeToolArguments(aiMessage.tool_calls, "search_properties");
     if (propertySearches.length > 0 && currentOwnerId) {
       const args = propertySearches[0];
-      const text = String(args.query ?? "").trim().slice(0, 120);
-      let query = supabase.from("listings")
-        .select("id, property_title, address, city, neighborhood, rooms, sqm, asking_price, deal_type, status, is_published")
-        .eq("workspace_owner_id", currentOwnerId)
-        .limit(10);
-      if (!isInternalDashboard) query = query.eq("is_published", true).eq("status", "live");
-      if (text) query = query.or(`property_title.ilike.%${text}%,address.ilike.%${text}%,city.ilike.%${text}%,neighborhood.ilike.%${text}%`);
-      if (args.city) query = query.eq("city", String(args.city));
-      if (args.neighborhood) query = query.eq("neighborhood", String(args.neighborhood));
-      if (args.deal_type === "sale" || args.deal_type === "rent") query = query.eq("deal_type", args.deal_type);
-      if (Number(args.min_rooms) > 0) query = query.gte("rooms", Number(args.min_rooms));
-      if (Number(args.max_price) > 0) query = query.lte("asking_price", Number(args.max_price));
-      const { data, error } = await query.order("created_at", { ascending: false });
-      if (error) throw error;
-      const rows = data ?? [];
+      const { searchProperties } = await import("../_shared/crmActions.ts");
+      const rows = await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
       const content = rows.length
         ? rows.slice(0, 5).map((row: any, index: number) => {
             const location = [row.address, row.city].filter(Boolean).join(", ") || row.property_title || "נכס";
             const price = row.asking_price ? `${Number(row.asking_price).toLocaleString("he-IL")} ₪` : "מחיר לא צוין";
-            return `${index + 1}. ${location}, ${row.rooms ?? "?"} חדרים, ${row.sqm ?? "?"} מ״ר, ${price}`;
+            const highlights = [row.neighborhood, row.rooms ? `${row.rooms} חדרים` : null, row.sqm ? `${row.sqm} מ״ר` : null].filter(Boolean).join(", ");
+            const description = String(row.short_description || row.description || "").trim().slice(0, 110);
+            const link = `https://realtyz.co.il/p/${row.slug || row.id}`;
+            return `${index + 1}. ${location}\n${price}${highlights ? ` | ${highlights}` : ""}${description ? `\n${description}` : ""}\n${link}`;
           }).join("\n")
-        : "לא מצאתי כרגע נכסים מתאימים במאגר החי.";
+        : "אני בודקת כעת חלופות נוספות במאגר הנכסים ואחזור עם אפשרויות מתאימות.";
       return new Response(JSON.stringify({ type: "text", content, data: rows }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
