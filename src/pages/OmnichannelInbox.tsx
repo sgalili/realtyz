@@ -562,7 +562,7 @@ const OmnichannelInbox = () => {
   const { data: dbChatMessages } = useQuery({
     queryKey: ['chat-messages', selectedVoterId, selectedThread.ids.join(','), selectedThread.phones.join(',')],
     enabled: !!selectedVoterId && !isDemoMode,
-    refetchInterval: 3000,
+    refetchInterval: 1500,
     queryFn: async () => {
       const out: any[] = [];
       if (selectedThread.ids.length > 0) {
@@ -616,7 +616,9 @@ const OmnichannelInbox = () => {
         )
       : (dbChatMessages ?? []);
     if (channelFilter.size === 0) return base;
-    return base.filter((m: any) => channelFilter.has(String(m?.channel || '')));
+    // SMS (and email) rows may carry only `platform`; fall back so those
+    // conversations never disappear behind an active channel chip.
+    return base.filter((m: any) => channelFilter.has(String(m?.channel || m?.platform || '').toLowerCase()));
   }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages, channelFilter]);
 
 
@@ -1087,7 +1089,8 @@ const OmnichannelInbox = () => {
                 const channelsInList = new Set<string>();
                 (leadChannels instanceof Map ? Array.from(leadChannels.values()) : []).forEach((set: Set<string>) => set.forEach((channel) => channelsInList.add(channel)));
                 (lastMessages instanceof Map ? Array.from(lastMessages.values()) : []).forEach((message: any) => {
-                  if (message?.channel) channelsInList.add(String(message.channel).toLowerCase());
+                  const key = String(message?.channel || message?.platform || '').toLowerCase();
+                  if (key) channelsInList.add(key);
                 });
                 return ([
                   { key: 'whatsapp', label: 'WhatsApp' }, { key: 'sms', label: 'SMS' },

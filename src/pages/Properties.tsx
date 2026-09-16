@@ -21,7 +21,7 @@ import {
   Megaphone, BedDouble, Ruler, MapPin, Building2, List, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon,
-  RefreshCw, Handshake,
+  RefreshCw, Handshake, Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -1414,12 +1414,21 @@ export function ResultTable({
   onSelect,
   onCampaign,
   onAffiliate,
+  affiliateCell,
+  commissionCell,
+  onEdit,
 }: {
   results: UnifiedResult[];
   importingKey: string | null;
   onSelect: (r: UnifiedResult) => void;
   onCampaign?: (r: UnifiedResult) => void;
   onAffiliate?: (r: UnifiedResult) => void;
+  /** Affiliate status control, rendered as the first column when provided. */
+  affiliateCell?: (r: UnifiedResult) => React.ReactNode;
+  /** Commission summary, rendered right after the affiliate column. */
+  commissionCell?: (r: UnifiedResult) => React.ReactNode;
+  /** Full property editing, rendered as an extra action button. */
+  onEdit?: (r: UnifiedResult) => void;
 }) {
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -1492,6 +1501,8 @@ export function ResultTable({
       <table className="w-full text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
+            {affiliateCell ? <th className="px-2 py-2 font-semibold whitespace-nowrap">שותפים</th> : null}
+            {commissionCell ? <th className="px-2 py-2 font-semibold whitespace-nowrap">עמלות</th> : null}
             <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
 
             <HeaderCell col="name" label="רחוב" />
@@ -1519,6 +1530,12 @@ export function ResultTable({
             return (
               <Fragment key={r.key}>
               <tr className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
+                {affiliateCell ? (
+                  <td className="px-2 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>{affiliateCell(r)}</td>
+                ) : null}
+                {commissionCell ? (
+                  <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{commissionCell(r)}</td>
+                ) : null}
                 <td className="px-2 py-1.5">
                   <div className="relative h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
@@ -1619,7 +1636,12 @@ export function ResultTable({
                     </Button>
 
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
-                    {onAffiliate ? (
+                    {onEdit ? (
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="עריכת הנכס" aria-label="עריכת הנכס" onClick={() => onEdit(r)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    ) : null}
+                    {affiliateCell ? null : onAffiliate ? (
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="הגדר שיווק שותפים" aria-label="הגדר שיווק שותפים" onClick={() => onAffiliate(r)}>
                         <Handshake className="h-4 w-4" />
                       </Button>
@@ -1632,7 +1654,7 @@ export function ResultTable({
               {rowNotes && rowNotes.length > 0 && (
                 <tr className="border-t-0 bg-amber-50/40">
                   <td className="px-2 pb-2" />
-                  <td className="px-2 pb-2" colSpan={12}>
+                  <td className="px-2 pb-2" colSpan={12 + (affiliateCell ? 1 : 0) + (commissionCell ? 1 : 0)}>
                     <PropertyNotesBlock notes={rowNotes} />
                   </td>
                 </tr>

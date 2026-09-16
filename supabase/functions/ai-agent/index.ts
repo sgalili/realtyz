@@ -1898,7 +1898,8 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
             const highlights = [row.neighborhood, row.rooms ? `${row.rooms} חדרים` : null, row.sqm ? `${row.sqm} מ״ר` : null].filter(Boolean).join(", ");
             const description = String(row.short_description || row.description || "").trim().slice(0, 110);
             const link = row.short_url || `https://realtyz.co.il/p/${row.slug || row.id}`;
-            return `${index + 1}. ${location}\n${price}${highlights ? ` | ${highlights}` : ""}${description ? `\n${description}` : ""}\n${link}`;
+            const note = row.over_budget ? " (מעל התקציב שציינת, חלופה קרובה)" : "";
+            return `${index + 1}. ${location}${note}\n${price}${highlights ? ` | ${highlights}` : ""}${description ? `\n${description}` : ""}\n${link}`;
           }).join("\n")
         : "אני בודקת כעת חלופות נוספות במאגר הנכסים ואחזור עם אפשרויות מתאימות.";
       return new Response(JSON.stringify({ type: "text", content, data: rows }), {

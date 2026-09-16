@@ -187,13 +187,18 @@ export type PropertySearchArgs = {
   deal_type?: unknown;
   min_rooms?: unknown;
   max_rooms?: unknown;
+  min_price?: unknown;
   max_price?: unknown;
 };
 
 /**
- * Workspace-scoped property search with deterministic widening. Exact matches
- * are ranked first; when fewer than three exist, the closest live properties
- * are appended so lead-facing conversations never dead-end.
+ * Workspace-scoped property search with STRICT budget handling.
+ *
+ * The budget is a hard constraint: a listing priced above the requested maximum
+ * is never returned as a match. When fewer than three listings fit, the budget
+ * is widened in small deterministic steps (+10%, +20%, +30%) and the extra rows
+ * are flagged `over_budget` so the answer can say so honestly. A property that
+ * costs roughly double the budget is never surfaced.
  */
 export async function searchProperties(
   supabase: any,
@@ -208,37 +213,72 @@ export async function searchProperties(
   const dealType = args.deal_type === "sale" || args.deal_type === "rent" ? String(args.deal_type) : "";
   const minRooms = Number(args.min_rooms) > 0 ? Number(args.min_rooms) : null;
   const maxRooms = Number(args.max_rooms) > 0 ? Number(args.max_rooms) : null;
+  const minPrice = Number(args.min_price) > 0 ? Number(args.min_price) : null;
   const maxPrice = Number(args.max_price) > 0 ? Number(args.max_price) : null;
 
   let query = supabase.from("listings")
     .select("id, slug, property_title, short_description, description, address, city, neighborhood, rooms, sqm, asking_price, deal_type, features, image_url, media_photos, status, is_published, created_at")
     .eq("workspace_owner_id", ownerId)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(200);
   if (publicOnly) query = query.eq("is_published", true);
   const { data, error } = await query;
   if (error) throw error;
 
-  const rows = data ?? [];
-  const score = (row: any) => {
-    let distance = 0;
-    const haystack = [row.property_title, row.address, row.city, row.neighborhood].filter(Boolean).join(" ").toLowerCase();
-    if (text && !haystack.includes(text)) distance += 25;
-    if (city && String(row.city ?? "").toLowerCase() !== city) distance += 20;
-    if (neighborhood && String(row.neighborhood ?? "").toLowerCase() !== neighborhood) distance += 12;
-    if (dealType && row.deal_type !== dealType) distance += 100;
-    const rooms = Number(row.rooms);
-    if (minRooms && Number.isFinite(rooms) && rooms < minRooms) distance += (minRooms - rooms) * 8;
-    if (maxRooms && Number.isFinite(rooms) && rooms > maxRooms) distance += (rooms - maxRooms) * 8;
+  const rows = (data ?? []).filter((row: any) => !dealType || row.deal_type === dealType);
+
+  const priceOf = (row: any) => {
     const price = Number(row.asking_price);
-    if (maxPrice && Number.isFinite(price) && price > maxPrice) distance += Math.min(40, ((price - maxPrice) / maxPrice) * 30);
-    return distance;
+    return Number.isFinite(price) && price > 0 ? price : null;
+  };
+  const roomsFit = (row: any, slack: number) => {
+    const rooms = Number(row.rooms);
+    if (!Number.isFinite(rooms) || rooms <= 0) return true;
+    if (minRooms && rooms < minRooms - slack) return false;
+    if (maxRooms && rooms > maxRooms + slack) return false;
+    return true;
+  };
+  const textFit = (row: any) => {
+    if (!text && !city && !neighborhood) return true;
+    const haystack = [row.property_title, row.address, row.city, row.neighborhood].filter(Boolean).join(" ").toLowerCase();
+    if (city && !haystack.includes(city)) return false;
+    if (neighborhood && !haystack.includes(neighborhood)) return false;
+    if (text && !haystack.includes(text)) return false;
+    return true;
+  };
+  const budgetFit = (row: any, ceilingFactor: number) => {
+    const price = priceOf(row);
+    if (price === null) return true;
+    if (minPrice && price < minPrice * 0.9) return false;
+    if (maxPrice && price > maxPrice * ceilingFactor) return false;
+    return true;
   };
 
-  const ranked = [...rows]
-    .filter((row: any) => !dealType || row.deal_type === dealType)
-    .sort((a: any, b: any) => score(a) - score(b))
-    .slice(0, Math.max(3, Math.min(10, rows.length)));
+  // Tiered relaxation: budget first (small steps), then rooms, then free text.
+  const tiers: Array<{ ceiling: number; roomSlack: number; requireText: boolean }> = [
+    { ceiling: 1.0, roomSlack: 0, requireText: true },
+    { ceiling: 1.1, roomSlack: 0.5, requireText: true },
+    { ceiling: 1.2, roomSlack: 1, requireText: true },
+    { ceiling: 1.3, roomSlack: 1, requireText: false },
+  ];
+
+  const picked: any[] = [];
+  const seen = new Set<string>();
+  for (const tier of tiers) {
+    const batch = rows
+      .filter((row: any) => !seen.has(row.id))
+      .filter((row: any) => budgetFit(row, tier.ceiling) && roomsFit(row, tier.roomSlack) && (!tier.requireText || textFit(row)))
+      .sort((a: any, b: any) => (priceOf(a) ?? Infinity) - (priceOf(b) ?? Infinity));
+    for (const row of batch) {
+      const price = priceOf(row);
+      picked.push({ ...row, over_budget: Boolean(maxPrice && price !== null && price > maxPrice) });
+      seen.add(row.id);
+      if (picked.length >= 10) break;
+    }
+    if (picked.length >= 3) break;
+  }
+
+  const ranked = picked.slice(0, 10);
 
   return await Promise.all(ranked.map(async (row: any) => {
     const longUrl = `https://realtyz.co.il/p/${row.slug || row.id}`;

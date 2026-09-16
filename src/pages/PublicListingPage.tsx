@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bed, Building2, ImageIcon, Layers, Loader2, MapPin, Ruler, Share2 } from 'lucide-react';
+import { Bed, Building2, ImageIcon, Layers, Loader2, MapPin, Navigation as NavigationIcon, Ruler, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,28 +43,70 @@ type PublicListing = {
   brokerLicenceNumber: string | null;
   agencyLogoUrl: string | null;
   details: Array<{ label: string; value: string }>;
+  /** Rich data grouped into readable blocks (features, environment, source…). */
+  groups: Array<{ title: string; rows: Array<{ label: string; value: string }> }>;
+  latitude: number | null;
+  longitude: number | null;
+  addressForMap: string;
 };
 
 const DETAIL_LABELS: Record<string, string> = {
   neighborhood: 'שכונה', available_from: 'כניסה', project_name: 'פרויקט', elevator: 'מעלית', parking: 'חניה',
-  source: 'מקור', latitude: 'קו רוחב', longitude: 'קו אורך', external_id: 'מזהה במקור', status: 'סטטוס שמור',
-  created_at: 'נוסף למאגר', updated_at: 'עודכן לאחרונה', media_documents: 'מסמכים',
+  source: 'מקור', external_id: 'מזהה במקור', status: 'סטטוס שמור',
+  created_at: 'נוסף למאגר', updated_at: 'עודכן לאחרונה',
 };
+
+/** Turns any value (including nested JSON) into short readable Hebrew text. */
+function readable(value: unknown): string {
+  if (value === null || value === undefined || value === '' || value === false) return '';
+  if (typeof value === 'boolean') return 'כן';
+  if (Array.isArray(value)) return value.map(readable).filter(Boolean).join(', ');
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => {
+        const text = readable(item);
+        return text ? `${key}: ${text}` : '';
+      })
+      .filter(Boolean)
+      .join(' · ');
+  }
+  return String(value).trim();
+}
 
 function detailRows(row: any): Array<{ label: string; value: string }> {
   const rows: Array<{ label: string; value: string }> = [];
-  const add = (label: string, value: unknown) => {
-    if (value === null || value === undefined || value === '' || value === false) return;
-    const text = typeof value === 'boolean' ? 'כן' : typeof value === 'object' ? JSON.stringify(value) : String(value);
-    if (text && text !== '{}' && text !== '[]') rows.push({ label, value: text });
-  };
-  for (const key of ['neighborhood', 'available_from', 'project_name', 'elevator', 'parking', 'source', 'latitude', 'longitude', 'external_id', 'status', 'created_at', 'updated_at', 'media_documents']) add(DETAIL_LABELS[key], row?.[key]);
-  for (const [group, value] of [['מאפיינים', row?.features], ['נתוני נכס', row?.attributes], ['פרטים נוספים', row?.additional_details], ['ריהוט', row?.furniture_details], ['הסביבה', row?.area_perks], ['פרטי מקור', row?.source_metadata], ['היסטוריית מחיר', row?.price_history]]) {
-    if (value && typeof value === 'object') {
-      for (const [key, item] of Object.entries(value)) add(`${group}: ${key}`, item);
-    }
+  for (const key of ['neighborhood', 'available_from', 'project_name', 'elevator', 'parking', 'source', 'external_id', 'status', 'created_at', 'updated_at']) {
+    const text = readable(row?.[key]);
+    if (text) rows.push({ label: DETAIL_LABELS[key], value: text });
   }
   return rows;
+}
+
+/** Every remaining rich block from the DB / original ad, kept human-readable. */
+function detailGroups(row: any): Array<{ title: string; rows: Array<{ label: string; value: string }> }> {
+  const sources: Array<[string, unknown]> = [
+    ['מאפיינים', row?.features],
+    ['נתוני הנכס', row?.attributes],
+    ['פרטים נוספים', row?.additional_details],
+    ['ריהוט', row?.furniture_details],
+    ['הסביבה', row?.area_perks],
+    ['פרטי המודעה במקור', row?.source_metadata],
+    ['היסטוריית מחיר', row?.price_history],
+  ];
+  const groups: Array<{ title: string; rows: Array<{ label: string; value: string }> }> = [];
+  for (const [title, value] of sources) {
+    if (!value || typeof value !== 'object') continue;
+    const rows: Array<{ label: string; value: string }> = [];
+    const entries = Array.isArray(value)
+      ? (value as unknown[]).map((item, index) => [String(index + 1), item] as [string, unknown])
+      : Object.entries(value as Record<string, unknown>);
+    for (const [key, item] of entries) {
+      const text = readable(item);
+      if (text) rows.push({ label: key, value: text });
+    }
+    if (rows.length) groups.push({ title, rows });
+  }
+  return groups;
 }
 
 /** Public pages must never expose house / apartment numbers. */
@@ -141,6 +183,10 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
     brokerLicenceNumber: typeof attribution?.broker_license_number === 'string' ? attribution.broker_license_number : null,
     agencyLogoUrl: typeof attribution?.agency_logo_url === 'string' ? attribution.agency_logo_url : null,
     details: detailRows(row),
+    groups: detailGroups(row),
+    latitude: Number.isFinite(Number(row?.latitude)) && Number(row?.latitude) !== 0 ? Number(row.latitude) : null,
+    longitude: Number.isFinite(Number(row?.longitude)) && Number(row?.longitude) !== 0 ? Number(row.longitude) : null,
+    addressForMap: [address, city].filter(Boolean).join(', '),
   };
 }
 
@@ -265,6 +311,19 @@ function PublicListingContent() {
   }`;
   const cover = data.photos[Math.min(slide, Math.max(0, data.photos.length - 1))];
 
+  // Map + navigation: coordinates when we have them, otherwise the address.
+  const hasCoords = data.latitude !== null && data.longitude !== null;
+  const mapQuery = hasCoords ? `${data.latitude},${data.longitude}` : data.addressForMap;
+  const mapEmbed = hasCoords
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${(data.longitude as number) - 0.006}%2C${(data.latitude as number) - 0.004}%2C${(data.longitude as number) + 0.006}%2C${(data.latitude as number) + 0.004}&layer=mapnik&marker=${data.latitude}%2C${data.longitude}`
+    : '';
+  const googleUrl = mapQuery ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapQuery)}` : '';
+  const wazeUrl = hasCoords
+    ? `https://waze.com/ul?ll=${data.latitude},${data.longitude}&navigate=yes`
+    : mapQuery
+      ? `https://waze.com/ul?q=${encodeURIComponent(mapQuery)}&navigate=yes`
+      : '';
+
   return (
     <div className="min-h-screen bg-secondary pb-12" dir="rtl">
       <div className="mx-auto max-w-4xl space-y-5 px-4 pt-5">
@@ -346,6 +405,50 @@ function PublicListingContent() {
                   </div>
                 ))}
               </dl>
+            )}
+
+            {data.groups.map((group) => (
+              <div key={group.title} className="border-t pt-4">
+                <h2 className="mb-2 text-sm font-bold text-foreground">{group.title}</h2>
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+                  {group.rows.map((row, index) => (
+                    <div key={`${group.title}-${row.label}-${index}`} className="min-w-0">
+                      <dt className="text-xs font-semibold text-muted-foreground">{row.label}</dt>
+                      <dd className="mt-0.5 break-words text-sm text-foreground">{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+
+            {(mapEmbed || googleUrl) && (
+              <div className="border-t pt-4">
+                <h2 className="mb-2 text-sm font-bold text-foreground">מיקום והגעה</h2>
+                {mapEmbed && (
+                  <iframe
+                    title="מיקום הנכס על המפה"
+                    src={mapEmbed}
+                    loading="lazy"
+                    className="h-56 w-full rounded-lg border"
+                  />
+                )}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {googleUrl && (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={googleUrl} target="_blank" rel="noopener noreferrer">
+                        <MapPin className="h-4 w-4" /> ניווט ב-Google Maps
+                      </a>
+                    </Button>
+                  )}
+                  {wazeUrl && (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={wazeUrl} target="_blank" rel="noopener noreferrer">
+                        <NavigationIcon className="h-4 w-4" /> ניווט ב-Waze
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </div>
             )}
 
             <div className="flex flex-wrap gap-2">

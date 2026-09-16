@@ -41,20 +41,19 @@ function formatTime(iso: string) {
   });
 }
 
-/** List / calendar switch with month navigation while the calendar is active. */
+/** Single square list / calendar switch. Month navigation lives in the grid. */
 export function ScheduleViewToggle({
   view,
   onViewChange,
-  monthCursor,
-  onMonthChange,
 }: {
   view: ScheduleView;
   onViewChange: (v: ScheduleView) => void;
-  monthCursor: Date;
-  onMonthChange: (d: Date) => void;
+  monthCursor?: Date;
+  onMonthChange?: (d: Date) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="flex shrink-0 items-center">
+
       <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label="מצב תצוגה">
         <Button
           size="icon"
@@ -67,30 +66,44 @@ export function ScheduleViewToggle({
           {view === 'list' ? <CalendarDays className="h-5 w-5" /> : <List className="h-5 w-5" />}
         </Button>
       </div>
-      {view === 'calendar' && (
-        <div className="flex items-center gap-1">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            onClick={() => onMonthChange(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[7.5rem] text-center text-sm font-semibold">
-            {monthCursor.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
-          </span>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            onClick={() => onMonthChange(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-      {view !== 'calendar' ? <span aria-hidden="true" /> : null}
+    </div>
+  );
+}
+
+/**
+ * Month navigation. Rendered on its own row above the calendar grid so it can
+ * never overlap the section tabs on narrow screens.
+ */
+export function ScheduleMonthNav({
+  monthCursor,
+  onMonthChange,
+}: {
+  monthCursor: Date;
+  onMonthChange: (d: Date) => void;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-8 w-8"
+        aria-label="חודש קודם"
+        onClick={() => onMonthChange(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      <span className="min-w-[7.5rem] text-center text-sm font-semibold">
+        {monthCursor.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
+      </span>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-8 w-8"
+        aria-label="חודש הבא"
+        onClick={() => onMonthChange(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1))}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
@@ -99,6 +112,7 @@ export function ScheduleViewToggle({
 export function ScheduleMonthGrid<T extends ScheduleItem>({
   items,
   monthCursor,
+  onMonthChange,
   openDay,
   onOpenDay,
   renderItem,
@@ -106,6 +120,7 @@ export function ScheduleMonthGrid<T extends ScheduleItem>({
 }: {
   items: T[];
   monthCursor: Date;
+  onMonthChange?: (d: Date) => void;
   openDay: string | null;
   onOpenDay: (k: string) => void;
   renderItem: (item: T) => React.ReactNode;
@@ -137,6 +152,7 @@ export function ScheduleMonthGrid<T extends ScheduleItem>({
 
   return (
     <div className="space-y-3">
+      {onMonthChange ? <ScheduleMonthNav monthCursor={monthCursor} onMonthChange={onMonthChange} /> : null}
       <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-muted-foreground">
         {DAY_LABELS.map((d) => <div key={d}>{d}</div>)}
       </div>
