@@ -183,6 +183,10 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
     brokerLicenceNumber: typeof attribution?.broker_license_number === 'string' ? attribution.broker_license_number : null,
     agencyLogoUrl: typeof attribution?.agency_logo_url === 'string' ? attribution.agency_logo_url : null,
     details: detailRows(row),
+    groups: detailGroups(row),
+    latitude: Number.isFinite(Number(row?.latitude)) && Number(row?.latitude) !== 0 ? Number(row.latitude) : null,
+    longitude: Number.isFinite(Number(row?.longitude)) && Number(row?.longitude) !== 0 ? Number(row.longitude) : null,
+    addressForMap: [address, city].filter(Boolean).join(', '),
   };
 }
 
