@@ -490,10 +490,29 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
     }
 
     if (!reply) {
-      reply =
-        `קיבלנו את ההודעה שלך ונחזור אליך עם תשובה מדויקת. ` +
-        `להמשך נוח יותר בוואטסאפ: https://wa.me/${OFFICIAL_WABA_PHONE}`;
+      reply = `קיבלנו את ההודעה שלך ונחזור אליך עם תשובה מדויקת.`;
     }
+  }
+
+  // ── WhatsApp handoff: only from the client's 2nd reply onwards ────────────
+  if (offerHandoff) {
+    let waPhone = OFFICIAL_WABA_PHONE;
+    try {
+      const { data: prov } = await admin
+        .from("wa_providers").select("config").eq("is_official", true).eq("is_active", true)
+        .limit(1).maybeSingle();
+      const cfg = ((prov as any)?.config ?? {}) as Record<string, unknown>;
+      const digits = String(cfg.display_phone_number ?? cfg.phone_number ?? "").replace(/\D/g, "");
+      if (digits.length >= 9) waPhone = digits;
+    } catch { /* keep the official constant */ }
+
+    const contextName = String(lead.full_name ?? "").trim();
+    const prefill =
+      `היי, זה ${contextName && !/^\d|^0\d/.test(contextName) ? contextName : "אני"} ` +
+      `בהמשך להתכתבות ב-SMS: ${bodyText.slice(0, 160)}`;
+    const waLink = `https://wa.me/${waPhone}?text=${encodeURIComponent(prefill)}`;
+    const shortLink = await shortenLink(admin, waLink, workspaceOwnerId);
+    reply = `${reply}\nנוח יותר להמשיך בוואטסאפ: ${shortLink}`;
   }
 
   // SMS is one segment-priced channel: keep the reply short.
