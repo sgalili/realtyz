@@ -1414,12 +1414,21 @@ export function ResultTable({
   onSelect,
   onCampaign,
   onAffiliate,
+  affiliateCell,
+  commissionCell,
+  onEdit,
 }: {
   results: UnifiedResult[];
   importingKey: string | null;
   onSelect: (r: UnifiedResult) => void;
   onCampaign?: (r: UnifiedResult) => void;
   onAffiliate?: (r: UnifiedResult) => void;
+  /** Affiliate status control, rendered as the first column when provided. */
+  affiliateCell?: (r: UnifiedResult) => React.ReactNode;
+  /** Commission summary, rendered right after the affiliate column. */
+  commissionCell?: (r: UnifiedResult) => React.ReactNode;
+  /** Full property editing, rendered as an extra action button. */
+  onEdit?: (r: UnifiedResult) => void;
 }) {
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
