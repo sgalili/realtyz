@@ -238,7 +238,7 @@ export default function AffiliateNetwork() {
   const updateReferral = useUpdateReferral();
 
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
   const [previewing, setPreviewing] = useState<BrokerAffiliateListing | null>(null);
 
@@ -308,9 +308,9 @@ export default function AffiliateNetwork() {
 
         <Tabs defaultValue="rewards">
           <TabsList className="mx-auto grid h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
-            <TabsTrigger value="rewards" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">נכסים ותגמולים</TabsTrigger>
-            <TabsTrigger value="tracking" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">אנשי קשר משותפים</TabsTrigger>
-            <TabsTrigger value="submissions" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">הגשות שותפים</TabsTrigger>
+            <TabsTrigger value="rewards" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">נכסים ותגמולים</TabsTrigger>
+            <TabsTrigger value="tracking" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">אנשי קשר משותפים</TabsTrigger>
+            <TabsTrigger value="submissions" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">הגשות שותפים</TabsTrigger>
           </TabsList>
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
@@ -352,6 +352,10 @@ export default function AffiliateNetwork() {
                 }}
                 onCampaign={(result) => {
                   if (result.localId) navigate(`/campaigns?tab=create&channel=facebook&properties=${result.localId}&listing=${result.localId}`);
+                }}
+                onAffiliate={(result) => {
+                  const listing = filteredListings.find((item) => item.id === result.localId);
+                  if (listing) setEditing(listing);
                 }}
               />
             ) : (
@@ -399,7 +403,25 @@ export default function AffiliateNetwork() {
                             {formatReward(l.affiliate_reward_type, l.affiliate_reward_amount)}
                           </Badge>
                         )}
-                        <Button size="sm" variant="outline" className="ms-auto" onClick={(event) => { event.stopPropagation(); setEditing(l); }}>
+                        <div className="ms-auto flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                          <Label htmlFor={`affiliate-${l.id}`} className="text-xs text-muted-foreground">שיתוף שותפים</Label>
+                          <Switch
+                            id={`affiliate-${l.id}`}
+                            checked={l.affiliate_enabled}
+                            disabled={save.isPending}
+                            onCheckedChange={(enabled) => save.mutate({
+                              listingId: l.id,
+                              enabled,
+                              rewardType: l.affiliate_reward_type ?? 'fixed',
+                              rewardAmount: Number(l.affiliate_reward_amount ?? 0),
+                              tier1Amount: Number(l.affiliate_tier1_amount ?? 0),
+                              tier2Amount: Number(l.affiliate_tier2_amount ?? 0),
+                              tier3Type: l.affiliate_tier3_type ?? 'fixed',
+                              tier3Amount: Number(l.affiliate_tier3_amount ?? 0),
+                            }, { onError: () => toast.error('העדכון נכשל') })}
+                          />
+                        </div>
+                        <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); setEditing(l); }}>
                           קביעת תגמול
                         </Button>
                       </div>
