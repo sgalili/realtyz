@@ -118,7 +118,7 @@ export default function NotificationCenter() {
   const { data: inbound = [] } = useQuery({
     queryKey: ['notif-inbound-messages', scope],
     enabled: !!scope,
-    refetchInterval: 15_000,
+    refetchInterval: 5_000,
     queryFn: async () => {
       const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase

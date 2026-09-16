@@ -67,6 +67,23 @@ function displayIL(raw: string): string {
   return `${local.slice(0, 3)}-${local.slice(3)}`;
 }
 
+/** Branded short link (https://realtyz.co.il/r/<slug>) for an SMS-safe URL. */
+async function shortenLink(admin: any, longUrl: string, createdBy: string | null): Promise<string> {
+  const alpha = "abcdefghijkmnpqrstuvwxyz23456789";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const buf = new Uint8Array(7);
+    crypto.getRandomValues(buf);
+    let slug = "";
+    for (const b of buf) slug += alpha[b % alpha.length];
+    const { error } = await admin
+      .from("short_urls")
+      .insert({ slug, property_id: null, long_url: longUrl, created_by: createdBy });
+    if (!error) return `https://realtyz.co.il/r/${slug}`;
+  }
+  // Never block the reply on the shortener.
+  return longUrl;
+}
+
 function extractXml(raw: string, tag: string): string {
   return raw.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"))?.[1]?.trim() ?? "";
 }
@@ -251,7 +268,17 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   }
 
   // ── 4. Store the inbound SMS in the inbox (idempotent per provider id) ───
+  // HARD RULE: this leg runs before (and independently of) every AI switch, and
+  // falls back to a direct insert so a broken RPC can never lose a message.
   let duplicate = false;
+  let inboundStored = false;
+  const inboundMetadata = {
+    provider: "019 SMS",
+    message_id: providerMessageId || null,
+    sender_phone: fromNormalized,
+    did: toLocal ?? null,
+    source: "sms-inbound-webhook",
+  };
   try {
     if (providerMessageId) {
       const { data: dup } = await admin
@@ -264,7 +291,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
       duplicate = !!(dup as any)?.id;
     }
     if (!duplicate) {
-      await admin.rpc("record_interaction_message", {
+      const { error: rpcErr } = await admin.rpc("record_interaction_message", {
         _lead_id: lead.id,
         _platform: "sms",
         _direction: "inbound",
@@ -272,24 +299,55 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
         _content: bodyText,
         _external_id: providerMessageId || `sms-in:${crypto.randomUUID()}`,
         _created_at: new Date().toISOString(),
-        _metadata: {
-          provider: "019 SMS",
-          message_id: providerMessageId || null,
-          sender_phone: fromNormalized,
-          did: toLocal ?? null,
-          source: "sms-inbound-webhook",
-        },
+        _metadata: inboundMetadata,
       });
+      if (rpcErr) throw new Error(rpcErr.message);
+      inboundStored = true;
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("[sms-inbound] inbound store failed", msg);
-    await logIntegrationError({
-      integration: "sms",
-      functionName: "sms-inbound-webhook",
-      errorMessage: `failed to store an inbound SMS: ${msg}`,
-      context: { lead_id: lead.id },
-    });
+    console.error("[sms-inbound] inbound store via RPC failed", msg);
+    // Fallback: plain insert, so the conversation always shows in /inbox.
+    try {
+      const { error: insErr } = await admin.from("messages").insert({
+        lead_id: lead.id,
+        platform: "sms",
+        channel: "sms",
+        direction: "inbound",
+        sender_type: "voter",
+        content: bodyText,
+        metadata: inboundMetadata,
+      });
+      if (insErr) throw new Error(insErr.message);
+      inboundStored = true;
+    } catch (e2) {
+      const msg2 = e2 instanceof Error ? e2.message : String(e2);
+      console.error("[sms-inbound] inbound direct insert failed", msg2);
+      await logIntegrationError({
+        integration: "sms",
+        functionName: "sms-inbound-webhook",
+        errorMessage: `failed to store an inbound SMS: ${msg} | ${msg2}`,
+        context: { lead_id: lead.id },
+      });
+    }
+  }
+
+  // In-app notification for the inbound SMS itself (independent of Rita).
+  if (inboundStored && workspaceOwnerId) {
+    try {
+      await admin.from("notifications").insert({
+        user_id: workspaceOwnerId,
+        lead_id: lead.id,
+        event_type: "inbound_sms",
+        title: `הודעת SMS חדשה מ${lead.full_name ?? displayIL(fromNormalized)}`,
+        body: bodyText.slice(0, 300),
+        deep_link: `/inbox?chat=${lead.id}`,
+        channel: "in_app",
+        delivered: true,
+      });
+    } catch (e) {
+      console.warn("[sms-inbound] inbound notification soft-fail", e instanceof Error ? e.message : e);
+    }
   }
 
   try {
@@ -358,50 +416,35 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   } catch { /* soft-fail: never block the reply on the gate lookup */ }
 
 
-  // Has Rita already offered the WhatsApp switch on this SMS thread?
-  let alreadyGreeted = false;
+  // How many replies has the CLIENT sent on this thread, and did Rita already
+  // offer the WhatsApp switch? The switch is offered only from the 2nd reply on.
+  let clientReplies = 1;
+  let handoffOffered = false;
+  try {
+    const { count } = await admin
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("lead_id", lead.id)
+      .eq("direction", "inbound");
+    if (typeof count === "number" && count > 0) clientReplies = count;
+  } catch { /* soft-fail */ }
   try {
     const { data: prior } = await admin
       .from("messages")
       .select("id")
       .eq("lead_id", lead.id)
-      .eq("platform", "sms")
       .eq("direction", "outbound")
+      .eq("metadata->>whatsapp_handoff", "true")
       .limit(1)
       .maybeSingle();
-    alreadyGreeted = !!(prior as any)?.id;
+    handoffOffered = !!(prior as any)?.id;
   } catch { /* soft-fail */ }
 
+  const offerHandoff = clientReplies >= 2 && !handoffOffered;
+
   let reply = "";
-
-  if (!alreadyGreeted) {
-    // FIRST automated SMS reply: greet + offer the WhatsApp switch with a
-    // direct clickable chat link to the official WBA number only.
-    let waPhone = OFFICIAL_WABA_PHONE;
-    try {
-      const { data: prov } = await admin
-        .from("wa_providers").select("config").eq("is_official", true).eq("is_active", true)
-        .limit(1).maybeSingle();
-      const cfg = ((prov as any)?.config ?? {}) as Record<string, unknown>;
-      const digits = String(cfg.display_phone_number ?? cfg.phone_number ?? "").replace(/\D/g, "");
-      if (digits.length >= 9) waPhone = digits;
-    } catch { /* keep the official constant */ }
-
-    let brandName = "Realtyz";
-    try {
-      const { data: wl } = await admin
-        .from("white_label_settings").select("agency_name").eq("user_id", workspaceOwnerId!)
-        .limit(1).maybeSingle();
-      const name = String((wl as any)?.agency_name ?? "").trim();
-      if (name) brandName = name;
-    } catch { /* keep the default */ }
-
-    reply =
-      `שלום, זו ריטה מ${brandName}. קיבלנו את ההודעה שלך ואנחנו כבר על זה.\n` +
-      `נוח יותר להמשיך בוואטסאפ (תמונות, נכסים וקישורים): https://wa.me/${waPhone}\n` +
-      `אפשר גם להמשיך כאן ב-SMS, כמו שנוח לך.`;
-  } else {
-    // Ongoing SMS conversation: answer with the normal Rita pipeline.
+  {
+    // Rita always answers through the normal pipeline on the SMS channel.
     const rawName = String(lead.full_name ?? "").trim();
     const realName = rawName && /[A-Za-z\u0590-\u05FF]/.test(rawName) ? rawName : null;
     let history: Array<{ role: string; content: string }> = [];
@@ -432,7 +475,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
           context:
             `Inbound SMS from ${realName ?? "the contact (name unknown — do not invent one)"}: ${bodyText}\n` +
             `[CHANNEL: SMS] Keep the reply short (under 300 characters), plain text, no markdown and no emojis. ` +
-            `When it helps, invite them to continue on WhatsApp at https://wa.me/${OFFICIAL_WABA_PHONE}.`,
+            `Never mention WhatsApp and never include any link — the system appends the WhatsApp invitation itself when it is due.`,
           messages: history,
         }),
       });
@@ -464,10 +507,29 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
     }
 
     if (!reply) {
-      reply =
-        `קיבלנו את ההודעה שלך ונחזור אליך עם תשובה מדויקת. ` +
-        `להמשך נוח יותר בוואטסאפ: https://wa.me/${OFFICIAL_WABA_PHONE}`;
+      reply = `קיבלנו את ההודעה שלך ונחזור אליך עם תשובה מדויקת.`;
     }
+  }
+
+  // ── WhatsApp handoff: only from the client's 2nd reply onwards ────────────
+  if (offerHandoff) {
+    let waPhone = OFFICIAL_WABA_PHONE;
+    try {
+      const { data: prov } = await admin
+        .from("wa_providers").select("config").eq("is_official", true).eq("is_active", true)
+        .limit(1).maybeSingle();
+      const cfg = ((prov as any)?.config ?? {}) as Record<string, unknown>;
+      const digits = String(cfg.display_phone_number ?? cfg.phone_number ?? "").replace(/\D/g, "");
+      if (digits.length >= 9) waPhone = digits;
+    } catch { /* keep the official constant */ }
+
+    const contextName = String(lead.full_name ?? "").trim();
+    const prefill =
+      `היי, זה ${contextName && !/^\d|^0\d/.test(contextName) ? contextName : "אני"} ` +
+      `בהמשך להתכתבות ב-SMS: ${bodyText.slice(0, 160)}`;
+    const waLink = `https://wa.me/${waPhone}?text=${encodeURIComponent(prefill)}`;
+    const shortLink = await shortenLink(admin, waLink, workspaceOwnerId);
+    reply = `${reply}\nנוח יותר להמשיך בוואטסאפ: ${shortLink}`;
   }
 
   // SMS is one segment-priced channel: keep the reply short.
@@ -501,7 +563,8 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
         status: sent.ok ? "sent" : "failed",
         error: sent.ok ? null : sent.error ?? null,
         ai_assisted: true,
-        greeting_with_whatsapp_switch: !alreadyGreeted,
+        whatsapp_handoff: offerHandoff ? "true" : "false",
+        client_replies: clientReplies,
         source: "sms-inbound-webhook",
       },
     });
@@ -540,7 +603,8 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   console.log("[sms-inbound] Rita replied", {
     lead_id: lead.id,
     replied: sent.ok,
-    reply_kind: alreadyGreeted ? "rita_ai" : "greeting_whatsapp_switch",
+    client_replies: clientReplies,
+    whatsapp_handoff: offerHandoff,
   });
   };
 
