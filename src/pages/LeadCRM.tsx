@@ -2735,10 +2735,11 @@ const LeadCRM = () => {
                     phone={selectedVoter.phone_number}
                     vars={{ name: selectedVoter.full_name, city: selectedVoter.city }}
                     leadKind={(selectedVoter as any)?.preferences?.lead_kind ?? null}
+                    collapsible
                   />
 
                   {/* Smart timeline + quick note + follow-up extraction */}
-                  <SmartTimelineCard leadId={selectedVoter.id} title="ציר זמן מלא" />
+                  <SmartTimelineCard leadId={selectedVoter.id} title="ציר זמן מלא" collapsible />
 
 
                 </div>
