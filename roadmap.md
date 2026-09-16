@@ -32,3 +32,4 @@
 32. [x] Enforce workspace and per-contact Auto AI switches for SMS replies
 33. [x] Refine inbox bubble sides, CRM avatar navigation, icon sizing, fixed layout, and centered tabs
 34. [x] Match task-page tabs to the inbox tab styling and sizing
+35. [x] Align campaign, inbox, and task tabs; refine inbox navigation and task property labels
