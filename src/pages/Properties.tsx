@@ -21,7 +21,7 @@ import {
   Megaphone, BedDouble, Ruler, MapPin, Building2, List, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon,
-  RefreshCw,
+  RefreshCw, Handshake,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -1356,6 +1356,7 @@ function ResultCard({
           </div>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <PropertyShareMenu results={[result]} />
+            {result.localId ? <AffiliateCommissionButton listingId={result.localId} /> : null}
             {onCampaign && (
               <Button
                 size="sm"

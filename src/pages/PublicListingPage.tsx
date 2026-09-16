@@ -42,7 +42,29 @@ type PublicListing = {
   officeName: string;
   brokerLicenceNumber: string | null;
   agencyLogoUrl: string | null;
+  details: Array<{ label: string; value: string }>;
 };
+
+const DETAIL_LABELS: Record<string, string> = {
+  neighborhood: 'שכונה', available_from: 'כניסה', project_name: 'פרויקט', elevator: 'מעלית', parking: 'חניה',
+  source: 'מקור', latitude: 'קו רוחב', longitude: 'קו אורך',
+};
+
+function detailRows(row: any): Array<{ label: string; value: string }> {
+  const rows: Array<{ label: string; value: string }> = [];
+  const add = (label: string, value: unknown) => {
+    if (value === null || value === undefined || value === '' || value === false) return;
+    const text = typeof value === 'boolean' ? 'כן' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+    if (text && text !== '{}' && text !== '[]') rows.push({ label, value: text });
+  };
+  for (const key of ['neighborhood', 'available_from', 'project_name', 'elevator', 'parking', 'source', 'latitude', 'longitude']) add(DETAIL_LABELS[key], row?.[key]);
+  for (const [group, value] of [['מאפיינים', row?.features], ['פרטים נוספים', row?.additional_details], ['ריהוט', row?.furniture_details], ['הסביבה', row?.area_perks], ['פרטי מקור', row?.source_metadata]]) {
+    if (value && typeof value === 'object') {
+      for (const [key, item] of Object.entries(value)) add(`${group}: ${key}`, item);
+    }
+  }
+  return rows;
+}
 
 /** Public pages must never expose house / apartment numbers. */
 function publicAddress(raw?: string | null): string {
@@ -81,7 +103,7 @@ function collectPhotos(row: any): string[] {
   } catch {
     /* malformed media payload — ignore */
   }
-  return out.slice(0, 8);
+  return out;
 }
 
 /** Never throws: turns any DB row shape into safe display values. */
@@ -108,7 +130,8 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
     sqm: toNumber(row?.sqm),
     floor: Number.isFinite(floorRaw) ? floorRaw : null,
     description:
-      (typeof row?.short_description === 'string' && row.short_description.trim()) ||
+       (typeof row?.long_description === 'string' && row.long_description.trim()) ||
+       (typeof row?.short_description === 'string' && row.short_description.trim()) ||
       (typeof row?.description === 'string' && row.description.trim()) ||
       '',
     photos: collectPhotos(row),
@@ -116,6 +139,7 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
     officeName: typeof attribution?.office_name === 'string' ? attribution.office_name : 'שם המשרד לא צוין',
     brokerLicenceNumber: typeof attribution?.broker_license_number === 'string' ? attribution.broker_license_number : null,
     agencyLogoUrl: typeof attribution?.agency_logo_url === 'string' ? attribution.agency_logo_url : null,
+    details: detailRows(row),
   };
 }
 
@@ -310,6 +334,17 @@ function PublicListingContent() {
 
             {data.description && (
               <p className="whitespace-pre-line text-base leading-7 text-foreground">{data.description}</p>
+            )}
+
+            {data.details.length > 0 && (
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t pt-4 sm:grid-cols-2">
+                {data.details.map((detail, index) => (
+                  <div key={`${detail.label}-${index}`} className="min-w-0">
+                    <dt className="text-xs font-semibold text-muted-foreground">{detail.label}</dt>
+                    <dd className="mt-1 break-words text-sm text-foreground">{detail.value}</dd>
+                  </div>
+                ))}
+              </dl>
             )}
 
             <div className="flex flex-wrap gap-2">
