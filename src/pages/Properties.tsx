@@ -61,6 +61,7 @@ import { listingPublishedAt } from '@/lib/listingFreshness';
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
+import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
 
 
 const PRICE_MIN = 0;
@@ -1411,11 +1412,13 @@ export function ResultTable({
   importingKey,
   onSelect,
   onCampaign,
+  onAffiliate,
 }: {
   results: UnifiedResult[];
   importingKey: string | null;
   onSelect: (r: UnifiedResult) => void;
   onCampaign?: (r: UnifiedResult) => void;
+  onAffiliate?: (r: UnifiedResult) => void;
 }) {
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -1615,6 +1618,11 @@ export function ResultTable({
                     </Button>
 
                     <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
+                    {onAffiliate ? (
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="הגדר שיווק שותפים" aria-label="הגדר שיווק שותפים" onClick={() => onAffiliate(r)}>
+                        <Handshake className="h-4 w-4" />
+                      </Button>
+                    ) : r.localId ? <AffiliateCommissionButton listingId={r.localId} /> : null}
                   </div>
                 </td>
 

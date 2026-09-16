@@ -180,6 +180,67 @@ export type CrmActionResult = {
   report?: unknown;
 };
 
+export type PropertySearchArgs = {
+  query?: unknown;
+  city?: unknown;
+  neighborhood?: unknown;
+  deal_type?: unknown;
+  min_rooms?: unknown;
+  max_rooms?: unknown;
+  max_price?: unknown;
+};
+
+/**
+ * Workspace-scoped property search with deterministic widening. Exact matches
+ * are ranked first; when fewer than three exist, the closest live properties
+ * are appended so lead-facing conversations never dead-end.
+ */
+export async function searchProperties(
+  supabase: any,
+  ownerId: string | null,
+  args: PropertySearchArgs,
+  publicOnly = true,
+): Promise<any[]> {
+  if (!ownerId) return [];
+  const text = String(args.query ?? "").trim().toLowerCase().slice(0, 120);
+  const city = String(args.city ?? "").trim().toLowerCase();
+  const neighborhood = String(args.neighborhood ?? "").trim().toLowerCase();
+  const dealType = args.deal_type === "sale" || args.deal_type === "rent" ? String(args.deal_type) : "";
+  const minRooms = Number(args.min_rooms) > 0 ? Number(args.min_rooms) : null;
+  const maxRooms = Number(args.max_rooms) > 0 ? Number(args.max_rooms) : null;
+  const maxPrice = Number(args.max_price) > 0 ? Number(args.max_price) : null;
+
+  let query = supabase.from("listings")
+    .select("id, slug, property_title, short_description, description, address, city, neighborhood, rooms, sqm, asking_price, deal_type, features, image_url, media_photos, status, is_published, created_at")
+    .eq("workspace_owner_id", ownerId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (publicOnly) query = query.eq("is_published", true).eq("status", "live");
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const rows = data ?? [];
+  const score = (row: any) => {
+    let distance = 0;
+    const haystack = [row.property_title, row.address, row.city, row.neighborhood].filter(Boolean).join(" ").toLowerCase();
+    if (text && !haystack.includes(text)) distance += 25;
+    if (city && String(row.city ?? "").toLowerCase() !== city) distance += 20;
+    if (neighborhood && String(row.neighborhood ?? "").toLowerCase() !== neighborhood) distance += 12;
+    if (dealType && row.deal_type !== dealType) distance += 100;
+    const rooms = Number(row.rooms);
+    if (minRooms && Number.isFinite(rooms) && rooms < minRooms) distance += (minRooms - rooms) * 8;
+    if (maxRooms && Number.isFinite(rooms) && rooms > maxRooms) distance += (rooms - maxRooms) * 8;
+    const price = Number(row.asking_price);
+    if (maxPrice && Number.isFinite(price) && price > maxPrice) distance += Math.min(40, ((price - maxPrice) / maxPrice) * 30);
+    return distance;
+  };
+
+  return [...rows]
+    .filter((row: any) => !dealType || row.deal_type === dealType)
+    .sort((a: any, b: any) => score(a) - score(b))
+    .slice(0, Math.max(3, Math.min(10, rows.length)));
+}
+
 /**
  * Execute the model's action envelope. Returns one result per action; a failing
  * action never aborts the rest.

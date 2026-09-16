@@ -40,3 +40,5 @@
 40. [ ] Remove the Yad2 schedule notice and standardize list/grid controls
 41. [ ] Repair Rita CRM/property tools and delay SMS-to-WhatsApp handoff until two client replies
 42. [x] Add affiliate property list/grid views, fix search spacing, color summary metrics, and match inbox tabs
+
+43. [ ] Tighten Rita property search, SMS inbox sync, affiliate actions, and public property completeness

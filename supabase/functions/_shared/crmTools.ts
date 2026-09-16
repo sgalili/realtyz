@@ -80,6 +80,7 @@ export const CRM_TOOL_DEFS: ToolDef[] = [
     neighborhood: str("שכונה"),
     deal_type: str("sale או rent"),
     min_rooms: num("מינימום חדרים"),
+    max_rooms: num("מקסימום חדרים"),
     max_price: num("מחיר מרבי"),
   }),
   fn("create_contact", "פתיחת כרטיס איש קשר חדש ב-CRM. חובה טלפון.", CONTACT_FIELDS, ["full_name", "phone"]),
@@ -199,6 +200,7 @@ export const NATIVE_TOOLS_CONTRACT = `
 [NATIVE TOOL CALLING - MANDATORY]
 כל בקשת ספירה עדכנית, כולל "כמה אנשי קשר יש", מחייבת קריאה ל-get_crm_counts. אין לנחש מספרים מהיסטוריית השיחה.
 כל בקשה לרשימת אנשי קשר או נכסים מחייבת search_contacts או search_properties. אין ליצור SQL לקריאות אלה.
+search_properties תמיד מחזיר לפחות 3 נכסים כאשר קיימים לפחות 3 נכסים חיים מאותו סוג עסקה. אם אין 3 התאמות מדויקות, הוא מרחיב אוטומטית את התקציב ומספר החדרים ומחזיר את החלופות הקרובות ביותר.
 כל כתיבה ל-CRM (הוספה, עדכון, מחיקה, איחוד, הערות, שיחות, תזכורות, משימות) מתבצעת
 אך ורק דרך קריאות הכלים הנייטיביות (function calling) שסופקו לך. אסור לחלוטין לכתוב
 JSON, מעטפת actions, code fences, SQL של כתיבה, שמות שדות או UUID בתוך הטקסט שהמשתמש רואה.
