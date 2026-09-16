@@ -1238,16 +1238,16 @@ export default function PropertyDetail() {
 
 
 
-      {owner ? (
-        <Link to={`/crm/profile/${owner.id}`} className="shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
-          {owner.full_name}
-        </Link>
-      ) : null}
-
       {/* The management controls are the single action bar for every internal
-          property page. It stays pinned below the global header while the
-          property content scrolls underneath it. */}
-      <div className="sticky top-[calc(env(safe-area-inset-top)+65px)] z-30 flex min-h-10 justify-end pointer-events-none">
+          property page. Owner link sits at the start (right in RTL) and the
+          action bar is pinned to the top-left corner, below the global header
+          while the property content scrolls underneath. */}
+      <div className="sticky top-[calc(env(safe-area-inset-top)+65px)] z-30 flex min-h-10 items-center justify-between gap-2 pointer-events-none">
+        {owner ? (
+          <Link to={`/crm/profile/${owner.id}`} className="pointer-events-auto shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
+            {owner.full_name}
+          </Link>
+        ) : <span aria-hidden className="flex-1" />}
         <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-end gap-2 rounded-md border border-border/70 bg-background/95 px-2 py-1 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85">
         {!editMode ? (
           <>
