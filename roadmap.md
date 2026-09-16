@@ -25,3 +25,6 @@
 - [x] Clean up tour card communication and status actions
 - [x] Add send-digiform action when no tour form was sent
 - [x] Preserve exact page position when opening and closing CRM cards
+- [x] Simplify task cards and align date, actions, status, and expansion control
+- [x] Add tour editing beside completion and cancellation actions
+- [x] Preserve exact property-list position after returning from property details

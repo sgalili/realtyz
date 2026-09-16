@@ -34,19 +34,15 @@ import {
   Phone,
   Plus,
   Trash2,
-  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatPhoneDisplay } from '@/lib/formatPhone';
 import TaskFormDialog, { localDefaultDue, type TaskFormValues } from '@/components/tasks/TaskFormDialog';
 import {
   useCommandCenterTasks,
   useCommandCenterPosts,
-  ACTION_TYPE_LABEL,
   TASK_STATUS_LABEL,
   POST_STATUS_LABEL,
   CHANNEL_LABEL,
-  NOTE_ACTION_LABEL,
   deleteCommandTask,
   deletePostActivity,
   updateCommandTask,
@@ -68,18 +64,6 @@ const PRIORITY_BORDER: Record<CommandTask['priority'], string> = {
   high: 'border-destructive',
   medium: 'border-amber-500',
   low: 'border-border',
-};
-
-const PRIORITY_STYLE: Record<CommandTask['priority'], string> = {
-  high: 'bg-destructive/10 text-destructive ring-1 ring-destructive/20',
-  medium: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  low: 'bg-muted text-muted-foreground ring-1 ring-border',
-};
-
-const PRIORITY_LABEL: Record<CommandTask['priority'], string> = {
-  high: 'דחוף',
-  medium: 'רגיל',
-  low: 'נמוך',
 };
 
 type SectionTab = 'tours' | 'tasks' | 'leads' | 'demos' | 'notes' | 'calls';

@@ -224,13 +224,15 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
         property_address: [selectedListing?.address, selectedListing?.city].filter(Boolean).join(', ') || null,
         scheduled_at: scheduledAt.toISOString(),
         notes: notes.trim() || null,
-        // The client has NOT accepted yet — only an explicit acceptance confirms.
-        status: 'pending',
         timezone: 'Asia/Jerusalem',
       };
       const request = tour
         ? supabase.from('property_tours').update(payload).eq('id', tour.id).eq('owner_id', ownerId)
-        : supabase.from('property_tours').insert(payload);
+        : supabase.from('property_tours').insert({
+            ...payload,
+            // A new tour is pending until the client explicitly accepts it.
+            status: 'pending',
+          });
       const { data: created, error } = await request.select('id').maybeSingle();
       if (error) throw error;
 

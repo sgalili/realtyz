@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const scrollKey = (key: string) => `realtyz:route-scroll:${key}`;
@@ -6,8 +6,6 @@ const scrollKey = (key: string) => `realtyz:route-scroll:${key}`;
 /** Preserves the exact page position when navigating into CRM or property details. */
 export function RouteScrollRestoration() {
   const location = useLocation();
-  const previousKey = useRef(location.key);
-
   useLayoutEffect(() => {
     const key = location.key;
     const scrollSurface = () => document.querySelector<HTMLElement>('.realtyz-main-surface');
@@ -32,8 +30,6 @@ export function RouteScrollRestoration() {
         };
       }
     }
-    previousKey.current = key;
-
     return () => {
       sessionStorage.setItem(scrollKey(key), String(readTop()));
     };
