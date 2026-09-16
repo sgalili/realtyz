@@ -270,6 +270,11 @@ Deno.serve(async (req) => {
         deal_type: dealType,
         terms: terms ?? null,
         tour_date: tour_date ?? null,
+        fee_text: feeText,
+        commission_mode: parsed.data.commission_mode ?? (dealType === "rent" ? "first_month" : "percent"),
+        commission_percent: parsed.data.commission_percent ?? null,
+        commission_amount: parsed.data.commission_amount ?? null,
+
       },
     });
     if (insErr) throw insErr;
