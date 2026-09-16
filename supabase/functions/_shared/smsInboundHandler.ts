@@ -251,7 +251,17 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   }
 
   // ── 4. Store the inbound SMS in the inbox (idempotent per provider id) ───
+  // HARD RULE: this leg runs before (and independently of) every AI switch, and
+  // falls back to a direct insert so a broken RPC can never lose a message.
   let duplicate = false;
+  let inboundStored = false;
+  const inboundMetadata = {
+    provider: "019 SMS",
+    message_id: providerMessageId || null,
+    sender_phone: fromNormalized,
+    did: toLocal ?? null,
+    source: "sms-inbound-webhook",
+  };
   try {
     if (providerMessageId) {
       const { data: dup } = await admin
@@ -264,7 +274,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
       duplicate = !!(dup as any)?.id;
     }
     if (!duplicate) {
-      await admin.rpc("record_interaction_message", {
+      const { error: rpcErr } = await admin.rpc("record_interaction_message", {
         _lead_id: lead.id,
         _platform: "sms",
         _direction: "inbound",
@@ -272,24 +282,55 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
         _content: bodyText,
         _external_id: providerMessageId || `sms-in:${crypto.randomUUID()}`,
         _created_at: new Date().toISOString(),
-        _metadata: {
-          provider: "019 SMS",
-          message_id: providerMessageId || null,
-          sender_phone: fromNormalized,
-          did: toLocal ?? null,
-          source: "sms-inbound-webhook",
-        },
+        _metadata: inboundMetadata,
       });
+      if (rpcErr) throw new Error(rpcErr.message);
+      inboundStored = true;
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("[sms-inbound] inbound store failed", msg);
-    await logIntegrationError({
-      integration: "sms",
-      functionName: "sms-inbound-webhook",
-      errorMessage: `failed to store an inbound SMS: ${msg}`,
-      context: { lead_id: lead.id },
-    });
+    console.error("[sms-inbound] inbound store via RPC failed", msg);
+    // Fallback: plain insert, so the conversation always shows in /inbox.
+    try {
+      const { error: insErr } = await admin.from("messages").insert({
+        lead_id: lead.id,
+        platform: "sms",
+        channel: "sms",
+        direction: "inbound",
+        sender_type: "voter",
+        content: bodyText,
+        metadata: inboundMetadata,
+      });
+      if (insErr) throw new Error(insErr.message);
+      inboundStored = true;
+    } catch (e2) {
+      const msg2 = e2 instanceof Error ? e2.message : String(e2);
+      console.error("[sms-inbound] inbound direct insert failed", msg2);
+      await logIntegrationError({
+        integration: "sms",
+        functionName: "sms-inbound-webhook",
+        errorMessage: `failed to store an inbound SMS: ${msg} | ${msg2}`,
+        context: { lead_id: lead.id },
+      });
+    }
+  }
+
+  // In-app notification for the inbound SMS itself (independent of Rita).
+  if (inboundStored && workspaceOwnerId) {
+    try {
+      await admin.from("notifications").insert({
+        user_id: workspaceOwnerId,
+        lead_id: lead.id,
+        event_type: "inbound_sms",
+        title: `הודעת SMS חדשה מ${lead.full_name ?? displayIL(fromNormalized)}`,
+        body: bodyText.slice(0, 300),
+        deep_link: `/inbox?chat=${lead.id}`,
+        channel: "in_app",
+        delivered: true,
+      });
+    } catch (e) {
+      console.warn("[sms-inbound] inbound notification soft-fail", e instanceof Error ? e.message : e);
+    }
   }
 
   try {
