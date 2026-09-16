@@ -1230,7 +1230,7 @@ export default function PropertyDetail() {
   };
 
   return (
-    <div className="p-3 sm:p-6 space-y-6" dir="rtl">
+    <div className="px-3 pb-3 pt-0 sm:px-6 sm:pb-6 space-y-6" dir="rtl">
       {/* Background sync is NEVER blocking: the whole page stays interactive and
           a subtle corner pill reports honest progress (no fake 100%). */}
       {hydrating && <BackgroundSyncPill />}
@@ -1240,9 +1240,9 @@ export default function PropertyDetail() {
 
       {/* The management controls are the single action bar for every internal
           property page. Owner link sits at the start (right in RTL) and the
-          action bar is pinned to the top-left corner, below the global header
+          action bar is pinned to the top-left corner, 10px below the blue hero
           while the property content scrolls underneath. */}
-      <div className="sticky top-[calc(env(safe-area-inset-top)+65px)] z-30 flex min-h-10 items-center justify-between gap-2 pointer-events-none">
+      <div className="sticky top-[10px] z-30 -mt-[10px] flex min-h-10 items-center justify-between gap-2 pointer-events-none">
         {owner ? (
           <Link to={`/crm/profile/${owner.id}`} className="pointer-events-auto shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
             {owner.full_name}
