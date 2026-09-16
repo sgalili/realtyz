@@ -443,17 +443,67 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
                 שליחת טופס לחתימה דיגיטלית בוואטסאפ
               </label>
               {sendSignature ? (
-                <Select value={signatureForm} onValueChange={(v) => setSignatureForm(v as SignatureTemplate)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="בחירת טופס" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SIGNATURE_FORMS.map((f) => (
-                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <Select value={signatureForm} onValueChange={(v) => setSignatureForm(v as SignatureTemplate)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="בחירת טופס" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SIGNATURE_FORMS.map((f) => (
+                        <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Deal type + commission terms printed in the form's fee clause. */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">סוג עסקה</Label>
+                      <Select value={dealType} onValueChange={(v) => setDealType(v as 'sale' | 'rent')}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sale">מכירה</SelectItem>
+                          <SelectItem value="rent">שכירות</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">דמי תיווך</Label>
+                      <Select
+                        value={commissionMode}
+                        onValueChange={(v) => setCommissionMode(v as 'percent' | 'fixed' | 'first_month')}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {dealType === 'rent' && <SelectItem value="first_month">חודש שכירות אחד</SelectItem>}
+                          <SelectItem value="percent">אחוז ממחיר העסקה</SelectItem>
+                          <SelectItem value="fixed">סכום קבוע</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {commissionMode === 'percent' && (
+                    <Input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      placeholder="אחוז דמי תיווך, לדוגמה 2"
+                      value={commissionPercent}
+                      onChange={(e) => setCommissionPercent(e.target.value)}
+                    />
+                  )}
+                  {commissionMode === 'fixed' && (
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="סכום דמי תיווך ב-₪"
+                      value={commissionAmount}
+                      onChange={(e) => setCommissionAmount(e.target.value)}
+                    />
+                  )}
+                </div>
               ) : null}
+
             </div>
           </div>
 
