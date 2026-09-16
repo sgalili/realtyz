@@ -150,6 +150,7 @@ export function ScheduleMonthGrid<T extends ScheduleItem>({
 
   return (
     <div className="space-y-3">
+      {onMonthChange ? <ScheduleMonthNav monthCursor={monthCursor} onMonthChange={onMonthChange} /> : null}
       <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-muted-foreground">
         {DAY_LABELS.map((d) => <div key={d}>{d}</div>)}
       </div>
