@@ -84,6 +84,13 @@ export function ClosingRoomDialog({
   const [terms, setTerms] = useState<string>('');
   const [tourDate, setTourDate] = useState<string>('');
   const [identityNumber, setIdentityNumber] = useState<string>('');
+  const [dealType, setDealType] = useState<'sale' | 'rent'>(
+    defaultTemplate === 'lease_agreement' ? 'rent' : 'sale',
+  );
+  // Sale defaults to a percentage of the price; rent defaults to one month's rent.
+  const [commissionMode, setCommissionMode] = useState<'percent' | 'fixed' | 'first_month'>('percent');
+  const [commissionPercent, setCommissionPercent] = useState<string>('2');
+  const [commissionAmount, setCommissionAmount] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -98,9 +105,24 @@ export function ClosingRoomDialog({
       setTerms('');
       setTourDate('');
       setIdentityNumber('');
+      setCommissionAmount('');
+      setCommissionPercent('2');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Deal type follows the chosen template, and the commission mode follows the
+  // deal type (rent = first month's rent, sale = percentage).
+  useEffect(() => {
+    const next: 'sale' | 'rent' = template === 'lease_agreement' ? 'rent' : template === 'offer_letter' ? 'sale' : dealType;
+    if (next !== dealType) setDealType(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template]);
+
+  useEffect(() => {
+    setCommissionMode(dealType === 'rent' ? 'first_month' : 'percent');
+  }, [dealType]);
+
 
   const { data: listings = [] } = useQuery({
     queryKey: ['listings-mini'],
@@ -174,6 +196,13 @@ export function ClosingRoomDialog({
           price_override: price ? Number(price) : undefined,
           tour_date: template === 'tour_agreement' && tourDate ? tourDate : undefined,
           identity_number: identityNumber.trim() || undefined,
+          deal_type: dealType,
+          commission_mode: commissionMode,
+          commission_percent:
+            commissionMode === 'percent' && commissionPercent ? Number(commissionPercent) : undefined,
+          commission_amount:
+            commissionMode === 'fixed' && commissionAmount ? Number(commissionAmount) : undefined,
+
         },
       });
       if (genErr) throw new Error(await edgeMessage(genErr, 'הפקת המסמך נכשלה'));
@@ -239,6 +268,67 @@ export function ClosingRoomDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Deal type + commission terms written into the form's fee clause. */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">סוג עסקה</Label>
+              <Select value={dealType} onValueChange={(v) => setDealType(v as 'sale' | 'rent')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sale">מכירה</SelectItem>
+                  <SelectItem value="rent">שכירות</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">דמי תיווך</Label>
+              <Select
+                value={commissionMode}
+                onValueChange={(v) => setCommissionMode(v as 'percent' | 'fixed' | 'first_month')}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {dealType === 'rent' && <SelectItem value="first_month">חודש שכירות אחד</SelectItem>}
+                  <SelectItem value="percent">אחוז ממחיר העסקה</SelectItem>
+                  <SelectItem value="fixed">סכום קבוע</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {commissionMode === 'percent' && (
+            <div>
+              <Label className="text-xs">אחוז דמי תיווך (%)</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                placeholder="לדוגמה: 2"
+                value={commissionPercent}
+                onChange={(e) => setCommissionPercent(e.target.value)}
+              />
+            </div>
+          )}
+
+          {commissionMode === 'fixed' && (
+            <div>
+              <Label className="text-xs">סכום דמי תיווך (₪)</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder="לדוגמה: 7000"
+                value={commissionAmount}
+                onChange={(e) => setCommissionAmount(e.target.value)}
+              />
+            </div>
+          )}
+
+
 
           <div>
             <Label className="text-xs">נכס מקושר</Label>

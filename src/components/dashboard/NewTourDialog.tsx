@@ -107,6 +107,11 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
   const [sendWa, setSendWa] = useState(true);
   const [sendSignature, setSendSignature] = useState(false);
   const [signatureForm, setSignatureForm] = useState<SignatureTemplate>('tour_agreement');
+  const [dealType, setDealType] = useState<'sale' | 'rent'>('sale');
+  const [commissionMode, setCommissionMode] = useState<'percent' | 'fixed' | 'first_month'>('percent');
+  const [commissionPercent, setCommissionPercent] = useState('2');
+  const [commissionAmount, setCommissionAmount] = useState('');
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -162,6 +167,21 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
     return [selectedListing.property_title, selectedListing.address, selectedListing.city].filter(Boolean).join(', ');
   }, [selectedListing]);
 
+  // Deal type follows the picked property / chosen form, and the commission mode
+  // follows the deal type (rent = one month's rent, sale = percentage).
+  useEffect(() => {
+    const fromForm = signatureForm === 'lease_agreement' ? 'rent' : signatureForm === 'offer_letter' ? 'sale' : null;
+    const fromListing = selectedListing?.deal_type === 'rent' ? 'rent' : selectedListing?.deal_type === 'sale' ? 'sale' : null;
+    const next = fromForm ?? fromListing;
+    if (next) setDealType(next);
+  }, [signatureForm, selectedListing]);
+
+  useEffect(() => {
+    setCommissionMode(dealType === 'rent' ? 'first_month' : 'percent');
+  }, [dealType]);
+
+
+
   const pickLead = (l: LeadOption) => {
     setSelectedLead(l);
     setContactQuery('');
@@ -180,23 +200,50 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
     setSignatureForm('tour_agreement');
   };
 
+  /**
+   * Edge errors arrive as a generic "non-2xx status code" — read the response
+   * body so the broker sees the real reason a form failed to send.
+   */
+  const edgeMessage = async (err: any, fallback: string): Promise<string> => {
+    try {
+      const res = err?.context;
+      if (res && typeof res.clone === 'function') {
+        const j = await res.clone().json();
+        const e = j?.error;
+        if (typeof e === 'string') return e;
+        if (e?.fieldErrors) return Object.values(e.fieldErrors).flat().join(', ');
+        if (j?.details) return String(j.details);
+      }
+    } catch { /* body already consumed or not JSON */ }
+    return err?.message || fallback;
+  };
+
   /** Generates the chosen form and sends its secure signature link on WhatsApp. */
   const sendSignatureForm = async (leadId: string, scheduledAt: Date) => {
+
     const { data: gen, error: genErr } = await supabase.functions.invoke('generate-closing-doc', {
       body: {
         lead_id: leadId,
         template_key: signatureForm,
         listing_id: selectedListing?.id || undefined,
         tour_date: signatureForm === 'tour_agreement' ? scheduledAt.toISOString() : undefined,
+        deal_type: dealType,
+        commission_mode: commissionMode,
+        commission_percent:
+          commissionMode === 'percent' && commissionPercent ? Number(commissionPercent) : undefined,
+        commission_amount:
+          commissionMode === 'fixed' && commissionAmount ? Number(commissionAmount) : undefined,
+
       },
     });
-    if (genErr) throw new Error(genErr.message || 'הפקת המסמך נכשלה');
+    if (genErr) throw new Error(await edgeMessage(genErr, 'הפקת המסמך נכשלה'));
     const documentId = (gen as any)?.document_id;
     if (!documentId) throw new Error('לא הוחזר מזהה מסמך');
     const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-closing-doc', {
       body: { document_id: documentId, site_url: publicUrl('').replace(/\/$/, '') },
     });
-    if (sendErr) throw new Error(sendErr.message || 'שליחת המסמך נכשלה');
+    if (sendErr) throw new Error(await edgeMessage(sendErr, 'שליחת המסמך נכשלה'));
+
     if ((sendRes as any)?.success === false) throw new Error((sendRes as any)?.error || 'שליחת המסמך נכשלה');
   };
 
@@ -443,17 +490,67 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
                 שליחת טופס לחתימה דיגיטלית בוואטסאפ
               </label>
               {sendSignature ? (
-                <Select value={signatureForm} onValueChange={(v) => setSignatureForm(v as SignatureTemplate)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="בחירת טופס" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SIGNATURE_FORMS.map((f) => (
-                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <Select value={signatureForm} onValueChange={(v) => setSignatureForm(v as SignatureTemplate)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="בחירת טופס" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SIGNATURE_FORMS.map((f) => (
+                        <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Deal type + commission terms printed in the form's fee clause. */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">סוג עסקה</Label>
+                      <Select value={dealType} onValueChange={(v) => setDealType(v as 'sale' | 'rent')}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sale">מכירה</SelectItem>
+                          <SelectItem value="rent">שכירות</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">דמי תיווך</Label>
+                      <Select
+                        value={commissionMode}
+                        onValueChange={(v) => setCommissionMode(v as 'percent' | 'fixed' | 'first_month')}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {dealType === 'rent' && <SelectItem value="first_month">חודש שכירות אחד</SelectItem>}
+                          <SelectItem value="percent">אחוז ממחיר העסקה</SelectItem>
+                          <SelectItem value="fixed">סכום קבוע</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {commissionMode === 'percent' && (
+                    <Input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      placeholder="אחוז דמי תיווך, לדוגמה 2"
+                      value={commissionPercent}
+                      onChange={(e) => setCommissionPercent(e.target.value)}
+                    />
+                  )}
+                  {commissionMode === 'fixed' && (
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="סכום דמי תיווך ב-₪"
+                      value={commissionAmount}
+                      onChange={(e) => setCommissionAmount(e.target.value)}
+                    />
+                  )}
+                </div>
               ) : null}
+
             </div>
           </div>
 

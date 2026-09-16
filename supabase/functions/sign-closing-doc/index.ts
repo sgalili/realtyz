@@ -306,6 +306,8 @@ Deno.serve(async (req) => {
                 message: [
                   `✍️ איש הקשר חתם על ${doc.title}`,
                   `👤 איש קשר: ${clientName}`,
+                  `🆔 ת״ז: ${identityNumber}`,
+
                   ...((leadRow as any)?.phone_number ? [`📞 טלפון: ${(leadRow as any).phone_number}`] : []),
                   ...(address ? [`🏠 נכס: ${address}`] : []),
                 ].join("\n"),
