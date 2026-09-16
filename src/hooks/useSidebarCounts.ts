@@ -115,7 +115,7 @@ export function useSidebarCounts() {
             ? tasksRes.data.filter((row: any) => !closed.has(String(row.status ?? '').toLowerCase()) && !postTypes.has(String(row.item_type ?? '').toLowerCase())).length
             : 0;
           const tourCount = Array.isArray(toursRes.data)
-            ? toursRes.data.filter((row: any) => String(row.status ?? '').toLowerCase() !== 'cancelled').length
+            ? toursRes.data.filter((row: any) => !closed.has(String(row.status ?? '').toLowerCase())).length
             : 0;
           return taskCount + tourCount;
         } catch {

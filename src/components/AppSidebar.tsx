@@ -318,7 +318,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         )}
                         {!collapsed && !item.badge && (() => {
                           const c = countFor(item.url);
-                          if (c === undefined || c === 0) return null;
+                          if (c === undefined || (c === 0 && item.url !== '/')) return null;
                           return (
                             <span className="ms-auto rounded-full bg-background px-2 py-0.5 text-[11px] font-bold leading-none text-foreground ring-1 ring-border">
                               {formatCount(c)}
