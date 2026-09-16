@@ -195,8 +195,26 @@ export default function NotificationCenter() {
       try { stored = JSON.parse(localStorage.getItem(TOASTED_KEY) || '[]'); } catch { /* noop */ }
       seenRef.current = { ready: true, ids: new Set(stored) };
     }
+    // Consecutive messages from the SAME contact are merged into ONE alert:
+    // only the newest message of each chat toasts, with a counter for the rest.
+    const inboundByLead = new Map<string, { row: any; count: number; ids: string[] }>();
+    inbound.forEach((m: any) => {
+      const key = String(m.lead_id ?? m.id);
+      const existing = inboundByLead.get(key);
+      if (!existing) inboundByLead.set(key, { row: m, count: 1, ids: [m.id] });
+      else { existing.count += 1; existing.ids.push(m.id); }
+    });
     const items = [
-      ...inbound.map((m: any) => ({ id: m.id, at: m.created_at, msg: `הודעה חדשה מ${m.leads?.full_name || 'מתעניין'}` })),
+      ...[...inboundByLead.values()].map((g) => ({
+        id: g.row.id,
+        at: g.row.created_at,
+        // Every message id of the chat is baselined, so the older ones in the
+        // same burst can never produce a second toast later.
+        alsoSeen: g.ids,
+        msg: g.count > 1
+          ? `${g.count} הודעות חדשות מ${g.row.leads?.full_name || 'איש קשר'}`
+          : `הודעה חדשה מ${g.row.leads?.full_name || 'איש קשר'}`,
+      })),
       ...tours.map((t: any) => ({ id: t.id, at: t.created_at, msg: `סיור חדש נקבע: ${t.client_name || 'לקוח'}` })),
       ...newLeads.map((l: any) => ({ id: `lead-${l.id}`, at: l.created_at, msg: `ליד חדש נכנס: ${l.full_name || 'איש קשר חדש'}` })),
     ];
