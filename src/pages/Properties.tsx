@@ -21,7 +21,7 @@ import {
   Megaphone, BedDouble, Ruler, MapPin, Building2, List, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon,
-  RefreshCw, Handshake,
+  RefreshCw, Handshake, Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
