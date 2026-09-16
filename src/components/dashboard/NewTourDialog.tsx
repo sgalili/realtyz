@@ -167,6 +167,21 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
     return [selectedListing.property_title, selectedListing.address, selectedListing.city].filter(Boolean).join(', ');
   }, [selectedListing]);
 
+  // Deal type follows the picked property / chosen form, and the commission mode
+  // follows the deal type (rent = one month's rent, sale = percentage).
+  useEffect(() => {
+    const fromForm = signatureForm === 'lease_agreement' ? 'rent' : signatureForm === 'offer_letter' ? 'sale' : null;
+    const fromListing = selectedListing?.deal_type === 'rent' ? 'rent' : selectedListing?.deal_type === 'sale' ? 'sale' : null;
+    const next = fromForm ?? fromListing;
+    if (next) setDealType(next);
+  }, [signatureForm, selectedListing]);
+
+  useEffect(() => {
+    setCommissionMode(dealType === 'rent' ? 'first_month' : 'percent');
+  }, [dealType]);
+
+
+
   const pickLead = (l: LeadOption) => {
     setSelectedLead(l);
     setContactQuery('');
