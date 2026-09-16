@@ -468,6 +468,7 @@ export function ScheduledToursCard({
         <ScheduleMonthGrid
           items={tours.map((t) => ({ id: t.id, at: t.scheduled_at, label: t.client_name, tour: t }))}
           monthCursor={monthCursor}
+          onMonthChange={onMonthChange ?? setMonthCursor}
           openDay={openDay}
           onOpenDay={setOpenDay}
           emptyLabel="אין סיורים ביום שנבחר"

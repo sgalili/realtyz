@@ -427,6 +427,7 @@ export default function CommandCenter() {
                   task: t,
                 }))}
                 monthCursor={taskMonth}
+                onMonthChange={setTaskMonth}
                 openDay={taskDay}
                 onOpenDay={setTaskDay}
                 emptyLabel="אין משימות ביום שנבחר"
