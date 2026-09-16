@@ -193,6 +193,13 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
         template_key: signatureForm,
         listing_id: selectedListing?.id || undefined,
         tour_date: signatureForm === 'tour_agreement' ? scheduledAt.toISOString() : undefined,
+        deal_type: dealType,
+        commission_mode: commissionMode,
+        commission_percent:
+          commissionMode === 'percent' && commissionPercent ? Number(commissionPercent) : undefined,
+        commission_amount:
+          commissionMode === 'fixed' && commissionAmount ? Number(commissionAmount) : undefined,
+
       },
     });
     if (genErr) throw new Error(genErr.message || 'הפקת המסמך נכשלה');
