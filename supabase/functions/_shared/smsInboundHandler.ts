@@ -603,7 +603,8 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   console.log("[sms-inbound] Rita replied", {
     lead_id: lead.id,
     replied: sent.ok,
-    reply_kind: alreadyGreeted ? "rita_ai" : "greeting_whatsapp_switch",
+    client_replies: clientReplies,
+    whatsapp_handoff: offerHandoff,
   });
   };
 
