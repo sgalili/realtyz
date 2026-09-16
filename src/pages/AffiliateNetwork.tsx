@@ -354,9 +354,42 @@ export default function AffiliateNetwork() {
                 onCampaign={(result) => {
                   if (result.localId) navigate(`/campaigns?tab=create&channel=facebook&properties=${result.localId}&listing=${result.localId}`);
                 }}
-                onAffiliate={(result) => {
+                onEdit={(result) => {
+                  if (result.localId) navigate(`/properties/${result.localId}`, { state: { returnTo: '/affiliate-network', openEdit: true } });
+                }}
+                // First column: shared properties are green; clicking a shared
+                // property asks before pulling it out of the marketplace.
+                affiliateCell={(result) => {
                   const listing = filteredListings.find((item) => item.id === result.localId);
-                  if (listing) setEditing(listing);
+                  if (!listing) return null;
+                  const shared = Boolean(listing.affiliate_enabled);
+                  return (
+                    <Button
+                      size="sm"
+                      variant={shared ? 'default' : 'outline'}
+                      className={`h-8 gap-1.5 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
+                      title={shared ? 'הנכס פתוח לשותפים — לחיצה תסיר אותו' : 'פתיחת הנכס לשיווק שותפים'}
+                      onClick={() => (shared ? setUnsharing(listing) : setEditing(listing))}
+                    >
+                      <Handshake className="h-4 w-4" />
+                      {shared ? 'משותף' : 'שיתוף'}
+                    </Button>
+                  );
+                }}
+                commissionCell={(result) => {
+                  const listing = filteredListings.find((item) => item.id === result.localId);
+                  if (!listing) return null;
+                  return (
+                    <CommissionTierBadges
+                      compact
+                      tiers={{
+                        tier1: Number(listing.affiliate_tier1_amount ?? 0),
+                        tier2: Number(listing.affiliate_tier2_amount ?? 0),
+                        tier3: Number(listing.affiliate_tier3_amount ?? 0),
+                        tier3Type: (listing.affiliate_tier3_type ?? 'fixed') as RewardType,
+                      }}
+                    />
+                  );
                 }}
               />
             ) : (
