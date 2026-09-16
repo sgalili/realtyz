@@ -95,7 +95,7 @@ function extractCity(text: string): string | null {
   return null;
 }
 
-const PROPERTY_SEARCH_INTENT_RE = /(נכס(?:ים)?|דיר(?:ה|ות)|בית|פנטהאוז|דופלקס|להשכרה|לשכירות|למכירה|לקנייה|חדרים|תקציב|חלופ(?:ה|ות)|אופצי(?:ה|ות)|עוד\s+(?:אפשרויות|נכסים|דירות)|תמצא(?:י)?|תחפש(?:י)?|מחפש[ת]?|property|properties|apartment|rent|sale)/i;
+const PROPERTY_SEARCH_INTENT_RE = /(תמצא(?:י)?|תחפש(?:י)?|מחפש[ת]?)\s+(?:לי\s+)?(?:נכס|נכסים|דירה|דירות|בית|פנטהאוז|דופלקס)|(נכסים|דירות|בתים|פנטהאוזים)\s+(?:ב|למכירה|להשכרה|לשכירות)|עוד\s+(?:אפשרויות|נכסים|דירות)|חלופ(?:ה|ות)(?:\s+(?:לנכס|לדירה|באזור|בתקציב|קרובות))?|אופצי(?:ה|ות)\s+(?:נוספות|אחרות|לנכס)|\d+(?:\.\d+)?\s*חדרים[^\n]{0,80}(?:ב|להשכרה|למכירה|עד\s*\d)|(?:find|search|show)\s+(?:me\s+)?(?:properties|property|apartments?|homes?)|(?:properties|apartments?|homes?)\s+(?:in|for\s+(?:rent|sale))/i;
 const STALLING_PROPERTY_REPLY_RE = /(אני\s+(?:בודקת|מחפשת)|אחזור\s+(?:אליך|עם)|ממשיכה\s+(?:לבדוק|לחפש)|חלופות\s+נוספות.*(?:אחזור|אעדכן))/i;
 
 function latestText(messages: Array<{ role?: string; content?: unknown }>, role: string): string {
@@ -962,6 +962,28 @@ serve(async (req) => {
       domain: wsPersona.domain,
     });
     console.log("agent identity:", identity.mode, "-", identity.reason);
+
+    // A property-search turn is deterministic: execute it before asking the
+    // language model anything. This removes the tool-choice dead end where the
+    // model could promise to look for alternatives without ever calling the
+    // search tool. A zero-result search returns one concrete adjustment choice.
+    const immediatePropertySearch = !isBrokerLead
+      && isPropertySearchTurn(messages as Array<{ role?: string; content?: unknown }>, context);
+    if (immediatePropertySearch && currentOwnerId) {
+      const { searchProperties } = await import("../_shared/crmActions.ts");
+      const args = propertySearchArgsFromTurn(
+        messages as Array<{ role?: string; content?: unknown }>,
+        (leadPreferences ?? {}) as Record<string, unknown>,
+        dealType,
+      );
+      const rows = await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
+      return new Response(JSON.stringify({
+        type: "text",
+        content: renderPropertySearchAnswer(rows),
+        data: rows,
+        property_search_executed: true,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // === MASTER AGENT MODE (internal dashboard chief-of-staff) ===
     // When the workspace owner/manager chats from the dashboard sidebar (no lead_id),
