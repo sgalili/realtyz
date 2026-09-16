@@ -406,7 +406,7 @@ export default function CommandCenter() {
 
 
         {tab === 'tours' ? (
-          <ScheduledToursCard view={taskView} onViewChange={setTaskView} />
+          <ScheduledToursCard view={taskView} onViewChange={setTaskView} month={taskMonth} />
         ) : tab === 'leads' || tab === 'demos' ? (
           <IncomingLeadsPanel mode={tab} />
 
