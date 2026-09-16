@@ -1242,7 +1242,7 @@ export default function PropertyDetail() {
           property page. Owner link sits at the start (right in RTL) and the
           action bar is pinned to the top-left corner, 10px below the blue hero
           while the property content scrolls underneath. */}
-      <div className="sticky top-[-10px] z-30 -mt-[20px] flex min-h-10 items-center justify-between gap-2 pointer-events-none">
+      <div className="property-action-bar sticky top-[-10px] z-30 flex min-h-10 items-center justify-between gap-2 pointer-events-none">
         {owner ? (
           <Link to={`/crm/profile/${owner.id}`} className="pointer-events-auto shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
             {owner.full_name}

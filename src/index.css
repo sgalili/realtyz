@@ -1044,6 +1044,12 @@
     margin-top: 0 !important;
   }
 
+  /* Property detail: the sticky action bar sits exactly 10px below the blue
+      hero — tighter than the app-wide 20px rhythm (wins over the reset above). */
+  .realtyz-main-surface .property-action-bar {
+    margin-top: -10px !important;
+  }
+
   /* Stop descendant top margins from collapsing out and pushing content down,
      without altering the element's own display mode. */
   .realtyz-main-surface > div > *:first-child,
