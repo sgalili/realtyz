@@ -29,6 +29,8 @@ project_id = "gvylyghwfysvydygqdtf"
     verify_jwt = false
   [functions.sms-inbound-webhook]
     verify_jwt = false
+  [functions.sms-019-webhook]
+    verify_jwt = false
   [functions.telegram-webhook]
     verify_jwt = false
   [functions.tour-confirm]
