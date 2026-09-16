@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { useState, useRef, useEffect, useMemo, cloneElement, type ReactElement } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { NewWhatsAppChatDialog } from '@/components/whatsapp/NewWhatsAppChatDialog';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -972,7 +971,6 @@ const OmnichannelInbox = () => {
     (v: any) => (v?.phone_number || '').replace(/\D/g, '') === searchedPhone,
   );
   const [creatingLead, setCreatingLead] = useState(false);
-  const [newChatOpen, setNewChatOpen] = useState(false);
   const startChatWithPhone = async () => {
     if (!searchedPhone || creatingLead) return;
     setCreatingLead(true);
@@ -1021,18 +1019,19 @@ const OmnichannelInbox = () => {
     setAttachment(file);
   };
 
+  useEffect(() => {
+    const closeChat = () => setSelectedVoterId(null);
+    window.addEventListener('realtyz:inbox-back', closeChat);
+    return () => window.removeEventListener('realtyz:inbox-back', closeChat);
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('realtyz:inbox-chat-state', { detail: { open: !!selectedVoterId } }));
+    return () => window.dispatchEvent(new CustomEvent('realtyz:inbox-chat-state', { detail: { open: false } }));
+  }, [selectedVoterId]);
+
   return (
     <div dir="rtl" className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      <NewWhatsAppChatDialog
-        open={newChatOpen}
-        onOpenChange={setNewChatOpen}
-        currentUserId={user?.id}
-        onStarted={(leadId) => {
-          queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
-          setSendChannel('whatsapp');
-          setSelectedVoterId(leadId);
-        }}
-      />
       {/* Queue tabs match the campaigns layout; bookmark stays a square control. */}
       <div className="mx-auto flex w-full max-w-2xl shrink-0 items-center gap-2" dir="rtl">
         <div className="grid min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
@@ -1061,7 +1060,7 @@ const OmnichannelInbox = () => {
             style={{ fontSize: 'calc(0.875rem + 3px)' }}
             className={`min-w-0 gap-1 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'handling' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            <RitaAvatar className="h-3.5 w-3.5 border-0 ring-0" />
+            <RitaAvatar className="h-7 w-7 border-0 ring-0" />
             <span>ריטה ({handlingCount})</span>
           </Button>
         </div>
@@ -1077,73 +1076,51 @@ const OmnichannelInbox = () => {
         </Button>
       </div>
 
-      {/* Channel filter — icons only, no pill background */}
-      <div className="flex shrink-0 items-center justify-center gap-1.5 overflow-x-auto">
-        {(() => {
-          const channelsInList = new Set<string>();
-          (leadChannels instanceof Map ? Array.from(leadChannels.values()) : []).forEach((set: Set<string>) => {
-            set.forEach((c) => channelsInList.add(c));
-          });
-          (lastMessages instanceof Map ? Array.from(lastMessages.values()) : []).forEach((m: any) => {
-            if (m?.channel) channelsInList.add(String(m.channel).toLowerCase());
-          });
-          return ([
-            { key: 'whatsapp', label: 'WhatsApp' },
-            { key: 'sms', label: 'SMS' },
-            { key: 'telegram', label: 'Telegram' },
-            { key: 'messenger', label: 'Messenger' },
-            { key: 'instagram', label: 'Instagram' },
-            { key: 'email', label: 'Email' },
-            { key: 'facebook', label: 'Facebook' },
-            { key: 'linkedin', label: 'LinkedIn' },
-            { key: 'x', label: 'X' },
-            { key: 'tiktok', label: 'TikTok' },
-          ] as const).map((c) => {
-            const active = channelFilter.has(c.key);
-            const hasChats = channelsInList.has(c.key);
-            const handleClick = (e: React.MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
-              let selected = false;
-              setChannelFilter((prev) => {
-                const next = new Set(prev);
-                if (next.has(c.key)) {
-                  next.delete(c.key);
-                } else {
-                  next.add(c.key);
-                  selected = true;
-                }
-                return next;
-              });
-              // Only switch the composer channel when the button was turned ON.
-              if (selected && selectedVoterId) setSendChannel(c.key);
-            };
-            return (
-              <button
-                key={c.key}
-                type="button"
-                onClick={handleClick}
-                aria-label={c.label}
-                title={c.label}
-                aria-pressed={active}
-                className={`h-7 w-7 shrink-0 inline-flex items-center justify-center bg-transparent border-0 p-0 transition-all ${active ? 'opacity-100 scale-110' : hasChats ? 'opacity-70 hover:opacity-100' : 'opacity-35 grayscale hover:opacity-70'}`}
-              >
-                <ChannelIcon channel={c.key} size="md" />
-              </button>
-            );
-          });
-        })()}
-      </div>
-
-
-
-
-
-
       <div className="grid min-h-0 flex-1 w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:grid-cols-[20rem_minmax(0,1fr)]">
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden border-l bg-card`}>
           <div className="p-3 border-b space-y-2">
+            <div className="flex items-center justify-center gap-1.5 overflow-x-auto" aria-label="סינון לפי ערוץ">
+              {(() => {
+                const channelsInList = new Set<string>();
+                (leadChannels instanceof Map ? Array.from(leadChannels.values()) : []).forEach((set: Set<string>) => set.forEach((channel) => channelsInList.add(channel)));
+                (lastMessages instanceof Map ? Array.from(lastMessages.values()) : []).forEach((message: any) => {
+                  if (message?.channel) channelsInList.add(String(message.channel).toLowerCase());
+                });
+                return ([
+                  { key: 'whatsapp', label: 'WhatsApp' }, { key: 'sms', label: 'SMS' },
+                  { key: 'telegram', label: 'Telegram' }, { key: 'messenger', label: 'Messenger' },
+                  { key: 'instagram', label: 'Instagram' }, { key: 'email', label: 'Email' },
+                  { key: 'facebook', label: 'Facebook' }, { key: 'linkedin', label: 'LinkedIn' },
+                  { key: 'x', label: 'X' }, { key: 'tiktok', label: 'TikTok' },
+                ] as const).map((channel) => {
+                  const active = channelFilter.has(channel.key);
+                  const hasChats = channelsInList.has(channel.key);
+                  return (
+                    <button
+                      key={channel.key}
+                      type="button"
+                      onClick={() => {
+                        let selected = false;
+                        setChannelFilter((previous) => {
+                          const next = new Set(previous);
+                          if (next.has(channel.key)) next.delete(channel.key);
+                          else { next.add(channel.key); selected = true; }
+                          return next;
+                        });
+                        if (selected && selectedVoterId) setSendChannel(channel.key);
+                      }}
+                      aria-label={channel.label}
+                      title={channel.label}
+                      aria-pressed={active}
+                      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center border-0 bg-transparent p-0 transition-all ${active ? 'scale-110 opacity-100' : hasChats ? 'opacity-70 hover:opacity-100' : 'grayscale opacity-35 hover:opacity-70'}`}
+                    >
+                      <ChannelIcon channel={channel.key} size="md" />
+                    </button>
+                  );
+                });
+              })()}
+            </div>
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -1153,15 +1130,6 @@ const OmnichannelInbox = () => {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full h-9 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-              onClick={() => setNewChatOpen(true)}
-            >
-              <BrandIcon name="whatsapp" className="ml-2 h-4 w-4" />
-              שיחת WhatsApp חדשה
-            </Button>
           </div>
 
           <ScrollArea className="min-h-0 flex-1 overflow-y-auto">

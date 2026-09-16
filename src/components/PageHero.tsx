@@ -301,6 +301,23 @@ export function PageHero() {
   void propertySuffix;
   void isPropertyDetail;
   const displayTitle = isCampaignsCreate ? "פרסום פוסט חדש" : isCampaignsCalendar ? "פרסומים מתוזמנים" : title;
+  const [inboxChatOpen, setInboxChatOpen] = React.useState(
+    location.pathname.startsWith('/inbox') && !!(searchParams.get('chat') || searchParams.get('lead')),
+  );
+
+  React.useEffect(() => {
+    if (!location.pathname.startsWith('/inbox')) {
+      setInboxChatOpen(false);
+      return;
+    }
+    setInboxChatOpen(!!(searchParams.get('chat') || searchParams.get('lead')));
+    const update = (event: Event) => {
+      const detail = (event as CustomEvent<{ open?: boolean }>).detail;
+      setInboxChatOpen(detail?.open === true);
+    };
+    window.addEventListener('realtyz:inbox-chat-state', update);
+    return () => window.removeEventListener('realtyz:inbox-chat-state', update);
+  }, [location.pathname, searchParams]);
 
   // On /campaigns with a lead context, CampaignCenter renders its own
   // avatar+name hero — skip the default hero to avoid a stacked duplicate.
@@ -340,6 +357,21 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
+          {location.pathname.startsWith('/inbox') && inboxChatOpen && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => {
+                window.dispatchEvent(new Event('realtyz:inbox-back'));
+                navigate('/inbox', { replace: true });
+              }}
+              aria-label="חזרה לרשימת השיחות"
+              title="חזרה לרשימת השיחות"
+              className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+            >
+              <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
+            </Button>
+          )}
           {location.pathname === "/properties" && <PropertiesHeroAddButton />}
           {location.pathname.startsWith("/lead-crm") && <LeadsHeroAddButton />}
           {location.pathname.startsWith("/campaigns") && !isCampaignsCreate && <CampaignsHeroSyncButton />}

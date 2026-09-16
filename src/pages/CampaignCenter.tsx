@@ -5729,8 +5729,8 @@ const PublishedFeed = ({
       />
 
       {/* Inline queue tabs — published / future / drafts, all managed on this page. */}
-      <div className="flex items-center gap-2" dir="rtl">
-        <div className="grid flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+      <div className="relative -top-[25px] flex h-[44px] items-center gap-2" dir="rtl">
+        <div className="grid h-[44px] flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
           {([
             { v: 'published' as FeedSubTab, label: 'פורסמו' },
             { v: 'future' as FeedSubTab, label: 'מתוזמנים' },
@@ -5742,7 +5742,7 @@ const PublishedFeed = ({
               onClick={() => onSubTabChange?.(t.v)}
               style={{ fontSize: 'calc(0.875rem + 3px)' }}
               className={cn(
-                'rounded-lg px-2 py-2 font-semibold transition',
+                'h-9 rounded-lg px-2 py-2 font-semibold transition',
                 subTab === t.v
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground',

@@ -322,7 +322,7 @@ export default function CommandCenter() {
                         }}
                       >
                         <span className="truncate">{task.listingLabel ?? 'כרטיס נכס'}</span>
-                        {task.listingDealType && <span className="shrink-0 text-muted-foreground">· {task.listingDealType}</span>}
+                        {task.listingDealType && <span className="shrink-0 text-muted-foreground">· {task.listingDealType === 'rent' ? 'השכרה' : 'מכירה'}</span>}
                       </Button>
                     )}
                   </span>
@@ -398,10 +398,10 @@ export default function CommandCenter() {
             exact 50px gap under the tabs; mobile stays as it was. */}
         <div className="mb-4 flex flex-col items-center justify-center gap-[25px] md:gap-0">
           <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)} className="mx-auto w-full max-w-2xl">
-            <TabsList className="grid h-auto w-full gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
+            <TabsList className="grid h-[44px] w-full gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
 
               {visibleTabs.map((key) => (
-                <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="min-w-0 rounded-lg px-2 py-2 font-semibold transition data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 min-w-0 rounded-lg px-2 py-2 font-semibold transition data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
                   {TAB_LABEL[key]
                     ? TABS_WITHOUT_COUNT.has(key)
                       ? TAB_LABEL[key]
@@ -411,7 +411,7 @@ export default function CommandCenter() {
               ))}
             </TabsList>
           </Tabs>
-          <Button size="sm" className="h-9 gap-1 bg-success text-success-foreground hover:bg-success/90 text-sm md:mt-[50px]" onClick={() => addNew(tab)}>
+          <Button size="sm" className="h-10 gap-1 bg-success text-lg font-bold text-success-foreground hover:bg-success/90 md:mt-[50px]" onClick={() => addNew(tab)}>
             <Plus className="h-4 w-4" />
             {ADD_LABEL[tab]}
           </Button>
