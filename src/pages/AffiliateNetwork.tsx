@@ -30,6 +30,7 @@ import {
 import { toast } from 'sonner';
 import { Banknote, BedDouble, Building2, Handshake, LayoutGrid, List, MapPin, Ruler, Search, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 
 import {
   SUBMISSION_STATUS_LABELS,
