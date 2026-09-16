@@ -111,15 +111,31 @@ export async function resolveSms019Config(
   }
 
   // Last resort: the platform-wide Realtyz 019 credentials from env secrets.
-  const envUser = Deno.env.get("SMS019_USERNAME")?.trim();
-  const envToken = Deno.env.get("SMS019_TOKEN")?.trim();
-  const envPass = Deno.env.get("SMS019_PASSWORD")?.trim();
-  const envSender = Deno.env.get("SMS019_SENDER")?.trim();
-  if (envUser && (envToken || envPass)) {
+  return envSms019Config();
+}
+
+const env = (...names: string[]) => {
+  for (const n of names) {
+    const v = Deno.env.get(n)?.trim();
+    if (v) return v;
+  }
+  return null;
+};
+
+/**
+ * Platform 019 credentials straight from the project secrets. Both naming
+ * conventions are accepted (`SMS_019_TOKEN` is the canonical secret name).
+ */
+export function envSms019Config(): Sms019Config | null {
+  const envUser = env("SMS_019_USERNAME", "SMS019_USERNAME");
+  const envToken = env("SMS_019_TOKEN", "SMS019_TOKEN");
+  const envPass = env("SMS_019_PASSWORD", "SMS019_PASSWORD");
+  const envSender = env("SMS_019_SENDER", "SMS019_SENDER");
+  if ((envUser || envToken) && (envToken || envPass)) {
     return {
-      username: envUser,
-      token: envToken ?? null,
-      password: envPass ?? null,
+      username: envUser ?? "",
+      token: envToken,
+      password: envPass,
       sender: envSender ?? "",
       scope: "platform",
     };
@@ -181,6 +197,39 @@ export async function sendSms019(
     });
     text = await res.text();
     status = parseInt(text.match(/<status>(-?\d+)<\/status>/)?.[1] ?? "-1", 10);
+  }
+
+  // Stored credentials rejected ("API token is invalid"): fall back to the
+  // platform SMS_019_TOKEN secret so replies still ship.
+  const envCfg = envSms019Config();
+  if (status !== 0 && envCfg?.token && envCfg.token !== cfg.token) {
+    const fallback: Sms019Config = {
+      ...envCfg,
+      username: envCfg.username || cfg.username,
+      sender: envCfg.sender || cfg.sender,
+    };
+    const fb = sms019Auth(fallback);
+    res = await fetch("https://www.019sms.co.il:8090/api", {
+      method: "POST",
+      headers: fb.headers,
+      body: `<?xml version="1.0" encoding="UTF-8"?>
+<sms>
+  ${fb.userXml}
+  <source>${escapeXml(fallback.sender)}</source>
+  <destinations><phone>${escapeXml(local)}</phone></destinations>
+  <message>${escapeXml(body)}</message>
+</sms>`,
+    });
+    text = await res.text();
+    status = parseInt(text.match(/<status>(-?\d+)<\/status>/)?.[1] ?? "-1", 10);
+    if (status === 0) {
+      return {
+        ok: true,
+        provider: "019 SMS",
+        message_id: text.match(/<message_id>(.*?)<\/message_id>/)?.[1] ?? null,
+        scope: "platform",
+      };
+    }
   }
 
   if (status === 0) {
