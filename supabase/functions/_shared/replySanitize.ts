@@ -42,11 +42,21 @@ export function sanitizeReplyText(raw: string | null | undefined): string {
     } catch { /* not JSON — leave as-is */ }
   }
 
-  text = text.replace(/^\s*\[(?:whatsapp|instagram|facebook|messenger|email|sms|telegram|web)\]\s*/i, "");
-  text = text.replace(/\[[0-9a-f]{6,8}\]\s*/gi, "");
+  // Channel tags are stripped ANYWHERE in the text, not only at the start.
+  text = text.replace(/\[\s*(?:whatsapp|wa|instagram|ig|facebook|fb|messenger|email|mail|sms|telegram|web|chat|inbound|outbound)\s*\]/gi, " ");
+  text = text.replace(/\[[0-9a-f]{6,}\]/gi, " ");
   // Internal markers must never reach a human, even if the model echoes them.
   text = text.replace(/\[ref[:=]\s*[A-Za-z0-9_-]{4,}\]?/gi, "");
   text = text.replace(/\[(?:AGENT_COMMAND|REFERRAL_CONTEXT)[^\]]*\]/gi, "");
+  // Bare UUIDs / long hashes and debug key=value pairs the model may echo.
+  text = text.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "");
+  text = text.replace(/\b[0-9a-f]{24,}\b/gi, "");
+  text = text.replace(
+    /\b(?:lead_id|listing_id|workspace_owner_id|workspace_id|external_id|message_id|user_id|thread_id|channel|platform|source_metadata|scrape_token|slug)\s*[:=]\s*\S+/gi,
+    "",
+  );
+  // Leftover empty brackets/parentheses after stripping internal markers.
+  text = text.replace(/\[\s*\]|\(\s*\)/g, " ");
   text = text.replace(/^\s*(?:===\s*)?(?:REALTYZ MASTER AGENT DIRECTIVE|END MASTER AGENT DIRECTIVE)[^\n]*\n?/gim, "");
   text = text.replace(/\*\*\s*\*\*/g, "").replace(/__\s*__/g, "");
 
