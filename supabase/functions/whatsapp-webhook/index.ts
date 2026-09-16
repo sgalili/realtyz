@@ -631,7 +631,7 @@ function sanitizeAiReply(raw: string): string {
 // that must always route through ai-agent — regardless of the lead-level or
 // global AI autopilot switch. This is the "Bridge Agent to WA" hook.
 const AGENT_COMMAND_RE =
-  /(תמצא(?:י)?\s+לי|מחפש[ת]?\s+דירה|דירה\s+ל(?:מכירה|השכרה)|\d+\s*חדרים.*ב[א-ת]|market\s+intel|price\s+history|comparable|sold\s+price|find\s+(?:me\s+)?(?:a|an|another)?\s*\d*\s*[- ]?(?:bed|bdr|room|br)\s*(?:apartment|apt|home|flat)|search\s+propert|properties?\s+in\s+|apartment\s+in\s+|מחירי\s+עסקאות|היסטוריית?\s+עסקאות|נמכר[הו]?\s+לאחרונה|הערכת\s+שווי|מגמת\s+מחיר|הוסף\s+ליד|הוסיפ[יו]?\s+ליד|add\s+(?:this\s+)?lead|add\s+contact|save\s+(?:this\s+)?contact)/i;
+  /(תמצא(?:י)?\s+לי|תחפש(?:י)?\s+(?:לי\s+)?(?:נכס|דירה|בית)|מחפש[ת]?\s+(?:נכס|דירה|בית)|דירה\s+ל(?:מכירה|השכרה)|\d+\s*חדרים.*ב[א-ת]|עוד\s+(?:אפשרויות|נכסים|דירות)|חלופ(?:ה|ות)\s+(?:לנכס|לדירה|באזור|בתקציב)?|אופצי(?:ה|ות)\s+(?:נוספות|אחרות)?|market\s+intel|price\s+history|comparable|sold\s+price|find\s+(?:me\s+)?(?:a|an|another)?\s*\d*\s*[- ]?(?:bed|bdr|room|br)\s*(?:apartment|apt|home|flat)|search\s+propert|properties?\s+in\s+|apartment\s+in\s+|מחירי\s+עסקאות|היסטוריית?\s+עסקאות|נמכר[הו]?\s+לאחרונה|הערכת\s+שווי|מגמת\s+מחיר|הוסף\s+ליד|הוסיפ[יו]?\s+ליד|add\s+(?:this\s+)?lead|add\s+contact|save\s+(?:this\s+)?contact)/i;
 
 function isAgentCommand(text: string): boolean {
   return AGENT_COMMAND_RE.test(String(text ?? ""));
@@ -2028,7 +2028,7 @@ Deno.serve(async (req) => {
           const aiJson: any = await aiRes.json().catch(() => ({}));
           replyText = sanitizeAiReply(extractAiText(aiJson?.content ?? aiJson?.message ?? aiJson?.reply ?? aiJson));
           if (!aiRes.ok || !replyText) {
-            replyText = "ריטה קלטה את הבקשה וממשיכה לעבד אותה על בסיס נתוני המשרד. שלח עוד פרט אחד אם תרצה דיוק נוסף.";
+            replyText = "לא הצלחתי להשלים את הבקשה כרגע. אפשר לנסות שוב בניסוח קצר וממוקד.";
             companionAction = "intelligence_agent_soft_fallback";
           }
           meta = { ai_status: aiRes.status, sources: aiJson?.sources ?? null, research_sources: aiJson?.research_sources ?? null };

@@ -95,6 +95,68 @@ function extractCity(text: string): string | null {
   return null;
 }
 
+const PROPERTY_SEARCH_INTENT_RE = /(תמצא(?:י)?|תחפש(?:י)?|מחפש[ת]?)\s+(?:לי\s+)?(?:נכס|נכסים|דירה|דירות|בית|פנטהאוז|דופלקס)|(נכסים|דירות|בתים|פנטהאוזים)\s+(?:ב|למכירה|להשכרה|לשכירות)|עוד\s+(?:אפשרויות|נכסים|דירות)|חלופ(?:ה|ות)(?:\s+(?:לנכס|לדירה|באזור|בתקציב|קרובות))?|אופצי(?:ה|ות)\s+(?:נוספות|אחרות|לנכס)|\d+(?:\.\d+)?\s*חדרים[^\n]{0,80}(?:ב|להשכרה|למכירה|עד\s*\d)|(?:find|search|show)\s+(?:me\s+)?(?:properties|property|apartments?|homes?)|(?:properties|apartments?|homes?)\s+(?:in|for\s+(?:rent|sale))/i;
+const STALLING_PROPERTY_REPLY_RE = /(אני\s+(?:בודקת|מחפשת)|אחזור\s+(?:אליך|עם)|ממשיכה\s+(?:לבדוק|לחפש)|חלופות\s+נוספות.*(?:אחזור|אעדכן))/i;
+
+function latestText(messages: Array<{ role?: string; content?: unknown }>, role: string): string {
+  return String([...messages].reverse().find((message) => message?.role === role)?.content ?? "").trim();
+}
+
+function isPropertySearchTurn(messages: Array<{ role?: string; content?: unknown }>, context: unknown): boolean {
+  const user = latestText(messages, "user");
+  const priorAssistant = latestText(messages.slice(0, -1), "assistant");
+  const affirmativeContinuation = /^(?:כן|כן\s+בבקשה|תמשיכי|בסדר|אוקיי|יאללה|מעולה|עוד)$/i.test(user);
+  return PROPERTY_SEARCH_INTENT_RE.test(`${user}\n${String(context ?? "")}`)
+    || (affirmativeContinuation && STALLING_PROPERTY_REPLY_RE.test(priorAssistant));
+}
+
+function propertySearchArgsFromTurn(
+  messages: Array<{ role?: string; content?: unknown }>,
+  preferences: Record<string, unknown>,
+  knownDealType: string | null,
+): Record<string, unknown> {
+  const user = latestText(messages, "user");
+  const recentUserText = messages.filter((message) => message?.role === "user").slice(-4).map((message) => String(message.content ?? "")).join(" ");
+  const city = extractCity(user) ?? extractCity(recentUserText) ?? String(preferences.desired_city ?? preferences.city ?? "").trim();
+  const roomsMatch = recentUserText.match(/(\d+(?:\.\d+)?)\s*חדרים/);
+  const budgetMatch = recentUserText.match(/(?:עד|תקציב(?:\s+של)?|מקסימום)\s*(?:₪\s*)?([\d,.]+)\s*(?:₪|ש["״']?ח|שקל(?:ים)?)?/i);
+  const normalizeAmount = (raw: string) => {
+    const compact = raw.replace(/,/g, "");
+    const n = Number(compact);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  };
+  const maxPrice = budgetMatch?.[1]
+    ? normalizeAmount(budgetMatch[1])
+    : Number(preferences.budget_max ?? preferences.price_max ?? preferences.max_price ?? 0) || undefined;
+  const dealType = /להשכרה|לשכירות|לשכור|שכ["״]?ד/i.test(recentUserText)
+    ? "rent"
+    : /למכירה|לקנייה|לקנות|לרכוש/i.test(recentUserText)
+      ? "sale"
+      : knownDealType === "rent" || knownDealType === "sale" ? knownDealType : undefined;
+  const rooms = roomsMatch ? Number(roomsMatch[1]) : Number(preferences.rooms ?? preferences.room_count ?? 0) || undefined;
+  return {
+    ...(city ? { city } : {}),
+    ...(dealType ? { deal_type: dealType } : {}),
+    ...(rooms ? { min_rooms: rooms, max_rooms: rooms } : {}),
+    ...(maxPrice ? { max_price: maxPrice } : {}),
+  };
+}
+
+function renderPropertySearchAnswer(rows: any[]): string {
+  if (!rows.length) {
+    return "כדי לדייק לחלופות זמינות, מה עדיף לשנות: להעלות מעט את התקציב או לחפש באזור סמוך?";
+  }
+  return rows.slice(0, 5).map((row: any, index: number) => {
+    const location = [row.address, row.city].filter(Boolean).join(", ") || row.property_title || "נכס";
+    const price = row.asking_price ? `${Number(row.asking_price).toLocaleString("he-IL")} ₪` : "מחיר לא צוין";
+    const highlights = [row.neighborhood, row.rooms ? `${row.rooms} חדרים` : null, row.sqm ? `${row.sqm} מ״ר` : null].filter(Boolean).join(", ");
+    const description = String(row.short_description || row.description || "").trim().slice(0, 110);
+    const link = row.short_url || `https://realtyz.co.il/p/${row.slug || row.id}`;
+    const note = row.over_budget ? " (מעל התקציב שציינת, חלופה קרובה)" : "";
+    return `${index + 1}. ${location}${note}\n${price}${highlights ? ` | ${highlights}` : ""}${description ? `\n${description}` : ""}\n${link}`;
+  }).join("\n\n");
+}
+
 const SCHEMA_CONTEXT = `
 You are the Agent's Virtual Twin, drafting messages AS the human Agent of the ACTIVE workspace to Leads in the real-estate Deal Room. You are NEVER "Realtyz AI", a chatbot, or a generic assistant, your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
 You speak Hebrew and English. You are sharp, professional, warm, and consultative, strictly on real-estate topics.
@@ -901,6 +963,28 @@ serve(async (req) => {
     });
     console.log("agent identity:", identity.mode, "-", identity.reason);
 
+    // A property-search turn is deterministic: execute it before asking the
+    // language model anything. This removes the tool-choice dead end where the
+    // model could promise to look for alternatives without ever calling the
+    // search tool. A zero-result search returns one concrete adjustment choice.
+    const immediatePropertySearch = !isBrokerLead
+      && isPropertySearchTurn(messages as Array<{ role?: string; content?: unknown }>, context);
+    if (immediatePropertySearch && currentOwnerId) {
+      const { searchProperties } = await import("../_shared/crmActions.ts");
+      const args = propertySearchArgsFromTurn(
+        messages as Array<{ role?: string; content?: unknown }>,
+        (leadPreferences ?? {}) as Record<string, unknown>,
+        dealType,
+      );
+      const rows = await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
+      return new Response(JSON.stringify({
+        type: "text",
+        content: renderPropertySearchAnswer(rows),
+        data: rows,
+        property_search_executed: true,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // === MASTER AGENT MODE (internal dashboard chief-of-staff) ===
     // When the workspace owner/manager chats from the dashboard sidebar (no lead_id),
     // we DO NOT impersonate the human Agent. We act as their Master AI Agent /
@@ -1115,7 +1199,7 @@ serve(async (req) => {
 ביצוע שקט של פעולות:
 - הרץ כלים ושליפות נתונים בשקט ברקע והצג רק את התוצאה הסופית, מסודרת ונקייה.
 - פתח בניסוח אנושי טבעי, לדוגמה: "בשמחה, הנה רשימת אנשי הקשר שחסרים להם מספרי טלפון במערכת:" ואחריו הרשימה.
-- אם כלי או שליפה נכשלו, אל תחשוף שגיאה גולמית. השב בנימה מקצועית: "אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודקת את זה ומעדכנת אותך."
+- אם כלי או שליפה נכשלו, אל תחשוף שגיאה גולמית ואל תבטיח עדכון עתידי. הצע ניסיון חוזר או שינוי אחד מדויק בחיפוש.
 
 RESPONSE FORMAT (JSON בלבד, ללא markdown):
 - אם נדרשת שאילתת קריאה: {"type":"sql","query":"SELECT ... LIMIT 50","explanation":"הסבר קצר למנהל"}
@@ -1887,21 +1971,16 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     }
 
     const propertySearches = nativeToolArguments(aiMessage.tool_calls, "search_properties");
-    if (propertySearches.length > 0 && currentOwnerId) {
-      const args = propertySearches[0];
+    const propertyIntent = isPropertySearchTurn(messages as Array<{ role?: string; content?: unknown }>, context);
+    if ((propertySearches.length > 0 || propertyIntent || STALLING_PROPERTY_REPLY_RE.test(rawContent)) && currentOwnerId) {
+      const args = propertySearches[0] ?? propertySearchArgsFromTurn(
+        messages as Array<{ role?: string; content?: unknown }>,
+        (leadPreferences ?? {}) as Record<string, unknown>,
+        dealType,
+      );
       const { searchProperties } = await import("../_shared/crmActions.ts");
       const rows = await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
-      const content = rows.length
-        ? rows.slice(0, 5).map((row: any, index: number) => {
-            const location = [row.address, row.city].filter(Boolean).join(", ") || row.property_title || "נכס";
-            const price = row.asking_price ? `${Number(row.asking_price).toLocaleString("he-IL")} ₪` : "מחיר לא צוין";
-            const highlights = [row.neighborhood, row.rooms ? `${row.rooms} חדרים` : null, row.sqm ? `${row.sqm} מ״ר` : null].filter(Boolean).join(", ");
-            const description = String(row.short_description || row.description || "").trim().slice(0, 110);
-            const link = row.short_url || `https://realtyz.co.il/p/${row.slug || row.id}`;
-            const note = row.over_budget ? " (מעל התקציב שציינת, חלופה קרובה)" : "";
-            return `${index + 1}. ${location}${note}\n${price}${highlights ? ` | ${highlights}` : ""}${description ? `\n${description}` : ""}\n${link}`;
-          }).join("\n")
-        : "אני בודקת כעת חלופות נוספות במאגר הנכסים ואחזור עם אפשרויות מתאימות.";
+      const content = renderPropertySearchAnswer(rows);
       return new Response(JSON.stringify({ type: "text", content, data: rows }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
