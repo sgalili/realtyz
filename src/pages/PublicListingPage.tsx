@@ -311,6 +311,19 @@ function PublicListingContent() {
   }`;
   const cover = data.photos[Math.min(slide, Math.max(0, data.photos.length - 1))];
 
+  // Map + navigation: coordinates when we have them, otherwise the address.
+  const hasCoords = data.latitude !== null && data.longitude !== null;
+  const mapQuery = hasCoords ? `${data.latitude},${data.longitude}` : data.addressForMap;
+  const mapEmbed = hasCoords
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${(data.longitude as number) - 0.006}%2C${(data.latitude as number) - 0.004}%2C${(data.longitude as number) + 0.006}%2C${(data.latitude as number) + 0.004}&layer=mapnik&marker=${data.latitude}%2C${data.longitude}`
+    : '';
+  const googleUrl = mapQuery ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapQuery)}` : '';
+  const wazeUrl = hasCoords
+    ? `https://waze.com/ul?ll=${data.latitude},${data.longitude}&navigate=yes`
+    : mapQuery
+      ? `https://waze.com/ul?q=${encodeURIComponent(mapQuery)}&navigate=yes`
+      : '';
+
   return (
     <div className="min-h-screen bg-secondary pb-12" dir="rtl">
       <div className="mx-auto max-w-4xl space-y-5 px-4 pt-5">
