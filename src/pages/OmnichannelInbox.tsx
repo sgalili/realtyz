@@ -562,7 +562,7 @@ const OmnichannelInbox = () => {
   const { data: dbChatMessages } = useQuery({
     queryKey: ['chat-messages', selectedVoterId, selectedThread.ids.join(','), selectedThread.phones.join(',')],
     enabled: !!selectedVoterId && !isDemoMode,
-    refetchInterval: 3000,
+    refetchInterval: 1500,
     queryFn: async () => {
       const out: any[] = [];
       if (selectedThread.ids.length > 0) {
@@ -616,7 +616,9 @@ const OmnichannelInbox = () => {
         )
       : (dbChatMessages ?? []);
     if (channelFilter.size === 0) return base;
-    return base.filter((m: any) => channelFilter.has(String(m?.channel || '')));
+    // SMS (and email) rows may carry only `platform`; fall back so those
+    // conversations never disappear behind an active channel chip.
+    return base.filter((m: any) => channelFilter.has(String(m?.channel || m?.platform || '').toLowerCase()));
   }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages, channelFilter]);
 
 
