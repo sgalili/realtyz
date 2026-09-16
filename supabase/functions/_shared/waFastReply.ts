@@ -89,11 +89,7 @@ ${input.focusProperty}
     parts.push(`הבהרת תפקיד (חובה, פעם אחת): הפונה${who ? ` (${who})` : ""} הוא משתמש רשום במערכת${input.staff?.role ? ` בתפקיד ${input.staff.role}` : ""}, אך ההודעה הגיעה בהקשר של פנייה על נכס. פתחי בשאלה קצרה אחת בלבד: האם הוא פונה כמתעניין/מתווך חיצוני עבור לקוח, או בודק את המערכת כמנהל. בלי פיץ', בלי דמו, בלי תשאול נוסף, עד 30 מילים.`);
   }
   if (!parts.length) return "";
-  return `
-
-${parts.join("
-
-")}`;
+  return "\n\n" + parts.join("\n\n");
 }
 
 /** Removes internal channel/ref markers from history so they never get echoed. */
