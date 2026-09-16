@@ -10,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MODEL = "openai/gpt-4o-transcribe";
+const MODEL = "google/gemini-3.5-transcribe";
 const MAX_BYTES = 24 * 1024 * 1024;
 
 const json = (body: unknown, status = 200) =>
@@ -102,7 +102,14 @@ Deno.serve(async (req) => {
 
 
     if (audio.size < 1024) return json({ error: "empty_recording" }, 400);
-    if (audio.size > MAX_BYTES) return json({ error: "audio too large (max 24MB)" }, 400);
+    if (audio.size > MAX_BYTES) return json({ error: "recording_too_large" }, 400);
+    const bytes = new Uint8Array(await audio.slice(0, 12).arrayBuffer());
+    const isWav = bytes.length >= 12
+      && String.fromCharCode(...bytes.slice(0, 4)) === "RIFF"
+      && String.fromCharCode(...bytes.slice(8, 12)) === "WAVE";
+    if ((audio.type === "audio/wav" || audio.type === "audio/x-wav") && !isWav) {
+      return json({ error: "invalid_recording" }, 400);
+    }
 
     const upstream = new FormData();
     upstream.append("model", MODEL);
@@ -125,7 +132,12 @@ Deno.serve(async (req) => {
         errorCode: res.status,
         errorMessage: detail,
       });
-      return json({ error: `transcription failed: ${detail || res.status}` }, res.status);
+      const friendly = res.status === 429 ? "transcription_busy"
+        : res.status === 402 ? "ai_credits_required"
+        : res.status === 403 ? "transcription_unavailable"
+        : res.status >= 500 ? "transcription_temporarily_unavailable"
+        : "invalid_recording";
+      return json({ error: friendly }, res.status);
     }
 
     const out = await res.json().catch(() => ({}));

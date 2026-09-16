@@ -200,7 +200,7 @@ export async function executeCrmActions(
 
   const findLead = async (a: CrmAction): Promise<any | null> => {
     if (a.lead_id) {
-      const { data } = await supabase.from("leads").select("id, full_name, phone_number").eq("id", a.lead_id).maybeSingle();
+      const { data } = await supabase.from("leads").select("id, full_name, phone_number").eq("id", a.lead_id).eq("workspace_owner_id", ownerId).maybeSingle();
       if (data) return data;
     }
     const phone = normalizeIlPhone(a.phone ?? a.phone_number);
@@ -250,7 +250,7 @@ export async function executeCrmActions(
 
   const findListing = async (a: CrmAction): Promise<any | null> => {
     if (a.listing_id) {
-      const { data } = await supabase.from("listings").select("id, address, city").eq("id", a.listing_id).maybeSingle();
+      const { data } = await supabase.from("listings").select("id, address, city").eq("id", a.listing_id).eq("workspace_owner_id", ownerId).maybeSingle();
       if (data) return data;
     }
     const wanted = addrKey(a.address ?? a.property_title);
@@ -258,7 +258,7 @@ export async function executeCrmActions(
     const { data } = await supabase
       .from("listings")
       .select("id, address, city, property_title")
-      .eq("user_id", ownerId)
+      .eq("workspace_owner_id", ownerId)
       .limit(500);
     const city = addrKey(a.city);
     return (
@@ -432,7 +432,7 @@ export async function executeCrmActions(
           const fields = leadFields(a);
           if (existing) {
             // Dedupe: never create a second card for the same person.
-            const { error } = await supabase.from("leads").update(fields).eq("id", existing.id);
+            const { error } = await supabase.from("leads").update(fields).eq("id", existing.id).eq("workspace_owner_id", ownerId);
             if (error) throw error;
             if (a.notes) await logActivity({ ...a, lead_id: existing.id }, "note", "internal", String(a.notes));
             out.push({ kind, ok: true, id: existing.id });
@@ -455,7 +455,7 @@ export async function executeCrmActions(
           if (!existing) throw new Error("contact_not_found");
           const fields = leadFields(a);
           if (Object.keys(fields).length === 0) throw new Error("nothing_to_update");
-          const { error } = await supabase.from("leads").update(fields).eq("id", existing.id);
+          const { error } = await supabase.from("leads").update(fields).eq("id", existing.id).eq("workspace_owner_id", ownerId);
           if (error) throw error;
           out.push({ kind, ok: true, id: existing.id });
           break;
@@ -463,7 +463,7 @@ export async function executeCrmActions(
         case "delete_contact": {
           const existing = await findLead(a);
           if (!existing) throw new Error("contact_not_found");
-          const { error } = await supabase.from("leads").delete().eq("id", existing.id);
+          const { error } = await supabase.from("leads").delete().eq("id", existing.id).eq("workspace_owner_id", ownerId);
           if (error) throw error;
           out.push({ kind, ok: true, id: existing.id });
           break;
@@ -473,7 +473,7 @@ export async function executeCrmActions(
           const dupId = String(a.duplicate_lead_id ?? "");
           if (!primaryId || !dupId || primaryId === dupId) throw new Error("missing_merge_ids");
           const { data: rows } = await supabase
-            .from("leads").select("*").in("id", [primaryId, dupId]);
+            .from("leads").select("*").in("id", [primaryId, dupId]).eq("workspace_owner_id", ownerId);
           const primary = (rows ?? []).find((r: any) => r.id === primaryId);
           const dup = (rows ?? []).find((r: any) => r.id === dupId);
           if (!primary || !dup) throw new Error("contact_not_found");
@@ -485,14 +485,14 @@ export async function executeCrmActions(
             if (cur === null || cur === "" || cur === undefined) patch[k] = v;
           }
           if (Object.keys(patch).length) {
-            const { error } = await supabase.from("leads").update(patch).eq("id", primaryId);
+            const { error } = await supabase.from("leads").update(patch).eq("id", primaryId).eq("workspace_owner_id", ownerId);
             if (error) throw error;
           }
           // Move history over, then drop the duplicate card.
           await supabase.from("messages").update({ lead_id: primaryId }).eq("lead_id", dupId);
           await supabase.from("interaction_activity_log")
             .update({ thread_key: `lead:${primaryId}` }).eq("thread_key", `lead:${dupId}`);
-          const { error: delErr } = await supabase.from("leads").delete().eq("id", dupId);
+          const { error: delErr } = await supabase.from("leads").delete().eq("id", dupId).eq("workspace_owner_id", ownerId);
           if (delErr) throw delErr;
           out.push({ kind, ok: true, id: primaryId });
           break;
@@ -527,7 +527,7 @@ export async function executeCrmActions(
               };
             }
             if (Object.keys(fields).length === 0) throw new Error("nothing_to_update");
-            const { error } = await supabase.from("listings").update(fields).eq("id", existing.id);
+            const { error } = await supabase.from("listings").update(fields).eq("id", existing.id).eq("workspace_owner_id", ownerId);
             if (error) throw error;
             out.push({ kind, ok: true, id: existing.id });
             break;
@@ -541,6 +541,7 @@ export async function executeCrmActions(
             .from("listings")
             .insert({
               user_id: ownerId,
+              workspace_owner_id: ownerId,
               property_title: title,
               description: fields.description ?? "",
               asking_price: fields.asking_price ?? 0,
@@ -565,7 +566,7 @@ export async function executeCrmActions(
         case "delete_property": {
           const existing = await findListing(a);
           if (!existing) throw new Error("property_not_found");
-          const { error } = await supabase.from("listings").delete().eq("id", existing.id);
+          const { error } = await supabase.from("listings").delete().eq("id", existing.id).eq("workspace_owner_id", ownerId);
           if (error) throw error;
           out.push({ kind, ok: true, id: existing.id });
           break;

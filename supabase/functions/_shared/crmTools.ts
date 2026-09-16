@@ -69,6 +69,19 @@ const PROPERTY_FIELDS = {
 /** OpenAI-compatible tool list sent to the Lovable AI Gateway. */
 export const CRM_TOOL_DEFS: ToolDef[] = [
   fn("get_crm_counts", "שליפת ספירות CRM חיות ומדויקות עבור סביבת העבודה הפעילה. יש להשתמש בכלי בכל שאלה על כמה אנשי קשר או נכסים קיימים כרגע.", {}),
+  fn("search_contacts", "חיפוש אנשי קשר חיים בסביבת העבודה הפעילה בלבד.", {
+    query: str("שם, טלפון, עיר או טקסט לחיפוש"),
+    city: str("סינון עיר אופציונלי"),
+    deal_type: str("sale או rent"),
+  }),
+  fn("search_properties", "חיפוש נכסים חיים בסביבת העבודה הפעילה לפי דרישות.", {
+    query: str("כתובת, עיר, שכונה או כותרת"),
+    city: str("עיר"),
+    neighborhood: str("שכונה"),
+    deal_type: str("sale או rent"),
+    min_rooms: num("מינימום חדרים"),
+    max_price: num("מחיר מרבי"),
+  }),
   fn("create_contact", "פתיחת כרטיס איש קשר חדש ב-CRM. חובה טלפון.", CONTACT_FIELDS, ["full_name", "phone"]),
   fn("update_contact", "עדכון פרטי איש קשר קיים. זיהוי לפי lead_id, ואם אינו ידוע לפי phone.", {
     lead_id: str("מזהה איש הקשר אם ידוע"),
@@ -120,7 +133,10 @@ export const CRM_TOOL_DEFS: ToolDef[] = [
   fn("delete_task", "מחיקת משימה.", { task_id: str("מזהה המשימה") }, ["task_id"]),
 ];
 
-const WRITE_TOOL_NAMES = new Set(CRM_TOOL_DEFS.map((t) => t.function.name).filter((name) => name !== "get_crm_counts"));
+export const PUBLIC_PROPERTY_TOOL_DEFS = CRM_TOOL_DEFS.filter((tool) => tool.function.name === "search_properties");
+
+const READ_TOOL_NAMES = new Set(["get_crm_counts", "search_contacts", "search_properties"]);
+const WRITE_TOOL_NAMES = new Set(CRM_TOOL_DEFS.map((t) => t.function.name).filter((name) => !READ_TOOL_NAMES.has(name)));
 
 type RawToolCall = {
   id?: string;
@@ -161,10 +177,28 @@ export function hasNativeToolCall(toolCalls: unknown, name: string): boolean {
   return (toolCalls as RawToolCall[]).some((call) => call?.function?.name === name);
 }
 
+export function nativeToolArguments(toolCalls: unknown, name: string): Record<string, unknown>[] {
+  if (!Array.isArray(toolCalls)) return [];
+  const out: Record<string, unknown>[] = [];
+  for (const call of toolCalls as RawToolCall[]) {
+    if (call?.function?.name !== name) continue;
+    const raw = call.function.arguments;
+    if (raw && typeof raw === "object") out.push(raw as Record<string, unknown>);
+    else if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw || "{}");
+        if (parsed && typeof parsed === "object") out.push(parsed as Record<string, unknown>);
+      } catch { /* malformed calls are ignored */ }
+    }
+  }
+  return out;
+}
+
 /** Extra system-prompt clause pinning the model to native tool calling. */
 export const NATIVE_TOOLS_CONTRACT = `
 [NATIVE TOOL CALLING - MANDATORY]
 כל בקשת ספירה עדכנית, כולל "כמה אנשי קשר יש", מחייבת קריאה ל-get_crm_counts. אין לנחש מספרים מהיסטוריית השיחה.
+כל בקשה לרשימת אנשי קשר או נכסים מחייבת search_contacts או search_properties. אין ליצור SQL לקריאות אלה.
 כל כתיבה ל-CRM (הוספה, עדכון, מחיקה, איחוד, הערות, שיחות, תזכורות, משימות) מתבצעת
 אך ורק דרך קריאות הכלים הנייטיביות (function calling) שסופקו לך. אסור לחלוטין לכתוב
 JSON, מעטפת actions, code fences, SQL של כתיבה, שמות שדות או UUID בתוך הטקסט שהמשתמש רואה.
