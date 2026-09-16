@@ -112,6 +112,7 @@ export function ScheduleMonthNav({
 export function ScheduleMonthGrid<T extends ScheduleItem>({
   items,
   monthCursor,
+  onMonthChange,
   openDay,
   onOpenDay,
   renderItem,
@@ -119,6 +120,7 @@ export function ScheduleMonthGrid<T extends ScheduleItem>({
 }: {
   items: T[];
   monthCursor: Date;
+  onMonthChange?: (d: Date) => void;
   openDay: string | null;
   onOpenDay: (k: string) => void;
   renderItem: (item: T) => React.ReactNode;
