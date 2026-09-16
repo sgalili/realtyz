@@ -304,6 +304,9 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   }
 
   // ── 5. Rita ──────────────────────────────────────────────────────────────
+  // NOTE: the inbound message is ALREADY stored above. Nothing in this block
+  // may ever affect inbox logging — the AI switches only decide whether an
+  // automated REPLY goes out.
   // Runs as a BACKGROUND task: the AI leg can take a minute, and 019 re-posts
   // the same SMS when the webhook does not answer quickly.
   const runRita = async () => {
@@ -316,13 +319,35 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
       console.log("[sms-inbound] no workspace owner — no auto reply", { lead_id: lead.id });
       return;
     }
-    const { data: workspaceSettings } = await admin
-      .from("platform_settings")
-      .select("enable_ai_autopilot, ai_paused")
-      .eq("user_id", workspaceOwnerId)
-      .maybeSingle();
-    if ((workspaceSettings as any)?.enable_ai_autopilot !== true) {
-      console.log("[sms-inbound] workspace Auto AI is off — no auto reply", { lead_id: lead.id });
+    // The UI writes to TWO places: the inbox autopilot switch →
+    // platform_settings.enable_ai_autopilot, and the sentiment switches →
+    // profiles.auto_reply_positive / auto_reply_negative. Read both, and treat
+    // a MISSING platform_settings row as "not configured" instead of "off".
+    const [settingsRes, profileRes] = await Promise.all([
+      admin
+        .from("platform_settings")
+        .select("enable_ai_autopilot, ai_paused")
+        .eq("user_id", workspaceOwnerId)
+        .maybeSingle(),
+      admin
+        .from("profiles")
+        .select("auto_reply_positive, auto_reply_negative")
+        .eq("id", workspaceOwnerId)
+        .maybeSingle(),
+    ]);
+    const settings = (settingsRes.data ?? null) as any;
+    const profile = (profileRes.data ?? null) as any;
+    const autopilotFlag = settings?.enable_ai_autopilot;
+    const sentimentOn = profile?.auto_reply_positive === true || profile?.auto_reply_negative === true;
+    const autoEnabled = autopilotFlag === true || sentimentOn ||
+      // No explicit workspace decision yet: fall back to the contact-level flag.
+      (autopilotFlag === undefined || autopilotFlag === null ? lead.ai_autopilot !== false : false);
+    if (!autoEnabled) {
+      console.log("[sms-inbound] workspace Auto AI is off — no auto reply", {
+        lead_id: lead.id,
+        enable_ai_autopilot: autopilotFlag ?? null,
+        sentiment_flags: sentimentOn,
+      });
       return;
     }
     const { data: paused } = await admin.rpc("is_ai_paused", { _user_id: workspaceOwnerId });
@@ -331,6 +356,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
       return;
     }
   } catch { /* soft-fail: never block the reply on the gate lookup */ }
+
 
   // Has Rita already offered the WhatsApp switch on this SMS thread?
   let alreadyGreeted = false;
