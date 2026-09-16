@@ -330,6 +330,9 @@ export default function CommandCenter() {
             </span>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
+            {TASK_STATUS_LABEL[task.status] && (
+              <Badge variant="outline" className="text-[13px]">{TASK_STATUS_LABEL[task.status]}</Badge>
+            )}
             <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
               {task.leadId && <IconAction label="WhatsApp" onClick={() => navigate(`/inbox?lead=${task.leadId}&channel=whatsapp`)}><BrandIcon name="whatsapp" className="h-4 w-4 text-[hsl(var(--social-whatsapp))]" /></IconAction>}
               {task.leadPhone && <Button asChild type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground"><a href={`tel:${task.leadPhone}`} aria-label="שיחת טלפון" title="שיחת טלפון"><Phone className="h-4 w-4" /></a></Button>}
@@ -342,9 +345,6 @@ export default function CommandCenter() {
                 <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? '' : 'rotate-90'}`} />
               </IconAction>
             </div>
-            {TASK_STATUS_LABEL[task.status] && (
-              <Badge variant="outline" className="text-[13px]">{TASK_STATUS_LABEL[task.status]}</Badge>
-            )}
           </div>
         </div>
 
