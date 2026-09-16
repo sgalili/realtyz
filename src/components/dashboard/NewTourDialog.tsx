@@ -221,13 +221,14 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
 
       },
     });
-    if (genErr) throw new Error(genErr.message || 'הפקת המסמך נכשלה');
+    if (genErr) throw new Error(await edgeMessage(genErr, 'הפקת המסמך נכשלה'));
     const documentId = (gen as any)?.document_id;
     if (!documentId) throw new Error('לא הוחזר מזהה מסמך');
     const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-closing-doc', {
       body: { document_id: documentId, site_url: publicUrl('').replace(/\/$/, '') },
     });
-    if (sendErr) throw new Error(sendErr.message || 'שליחת המסמך נכשלה');
+    if (sendErr) throw new Error(await edgeMessage(sendErr, 'שליחת המסמך נכשלה'));
+
     if ((sendRes as any)?.success === false) throw new Error((sendRes as any)?.error || 'שליחת המסמך נכשלה');
   };
 
