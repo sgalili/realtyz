@@ -507,7 +507,6 @@ export default function AffiliateNetwork() {
                           </div>
                           <div className="truncate text-[11px] text-slate-500">
                             שותף: {r.affiliate?.display_name || 'שותף ללא שם'}
-                            {r.affiliate?.phone ? ` · ${r.affiliate.phone}` : ''}
                             {' · '}
                             {r.clicks} כניסות
                           </div>
