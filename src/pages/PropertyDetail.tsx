@@ -15,7 +15,7 @@ import {
   BedDouble, Ruler, MapPin, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink, Pencil, Save, X,
-  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2, ChevronLeft, ChevronRight, Megaphone, NotebookPen } from 'lucide-react';
+  Trash2, Plus, Upload, Image as ImageIcon, Images, Loader2, ChevronLeft, ChevronRight, Megaphone, NotebookPen, RefreshCw } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
   type HomelyProperty,
@@ -1257,6 +1257,22 @@ export default function PropertyDetail() {
                 <Yad2Icon className="h-6 w-6" />
               </a>
             )}
+
+            {/* Prominent manual refresh of every field from the Yad2 data. */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={syncFromYad2}
+              disabled={syncingSource}
+              aria-label="סנכרון מ-Yad2"
+              title="סנכרון כל פרטי הנכס מ-Yad2"
+              className="h-8 gap-1.5 border-primary/40 px-2.5 text-[13px] font-semibold text-primary hover:bg-primary/10"
+            >
+              {syncingSource
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <RefreshCw className="h-4 w-4" />}
+              <span>סנכרון מ-Yad2</span>
+            </Button>
 
             {isHomelyListing && resolvedSourceUrl && (
               <a href={resolvedSourceUrl} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה המקורית ב-Homely" title="צפייה במודעה המקורית ב-Homely" className="inline-flex h-7 w-7 items-center justify-center rounded border border-primary text-sm font-extrabold text-primary transition hover:bg-primary hover:text-primary-foreground">H</a>
