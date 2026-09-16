@@ -126,25 +126,8 @@ export default function OwnerPropertyGrid({ lead }: { lead: Lead & Record<string
       <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
         <Building2 className="h-3.5 w-3.5 text-primary" />
         פרטי הנכס (בעלים)
-        {!linkedId && <span className="font-normal text-muted-foreground">— יווצר אוטומטית בעריכה ראשונה</span>}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-        <Cell label="סידורי">
-          <Input value={String(v('external_id') || extId || '')}
-            onChange={(e) => setBuf((b) => ({ ...b, external_id: e.target.value }))}
-            onBlur={(e) => commit('external_id', e.target.value)}
-            placeholder="—" className="h-7 text-sm" />
-        </Cell>
-        <Cell label="סוכן אחראי">
-          <Input value={String(meta.agent ?? buf.__agent ?? '')}
-            onChange={(e) => setBuf((b) => ({ ...b, __agent: e.target.value }))}
-            onBlur={(e) => {
-              const next = { ...meta, agent: e.target.value || null };
-              ensureListingAndPatch({ source_metadata: next });
-              setBuf((b) => { const n = { ...b }; delete n.__agent; return n; });
-            }}
-            placeholder="—" className="h-7 text-sm" />
-        </Cell>
         <Cell label="סוג נכס">
           <Select value={(v('features')?.property_type) || meta.property_type || ''}
             onValueChange={(val) => {
