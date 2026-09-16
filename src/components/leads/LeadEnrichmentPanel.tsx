@@ -74,6 +74,7 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   const prefs = (lead.preferences ?? {}) as Record<string, any>;
 
   const [gender, setGender] = useState<string>(lead.gender ?? prefs.gender ?? '');
+  const [leadKind, setLeadKind] = useState<string>(String(prefs.lead_kind ?? ''));
   const [email, setEmail] = useState<string>(lead.email ?? '');
   const [phone, setPhone] = useState<string>(formatPhoneAsTyped(lead.phone_number));
   const [city, setCity] = useState<string>(lead.city ?? '');
