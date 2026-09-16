@@ -92,7 +92,11 @@ Deno.serve(async (req) => {
       if (!parsed.success) {
         return new Response(JSON.stringify({ error: parsed.error.flatten() }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      const { token: tk, signature_data, signer_name } = parsed.data;
+      const { token: tk, signature_data, first_name, last_name } = parsed.data;
+      const identityNumber = parsed.data.identity_number.replace(/\D/g, "");
+      // The signed name is always built from the two mandatory name fields.
+      const signer_name = `${first_name} ${last_name}`.replace(/\s+/g, " ").trim();
+
 
       const { data: doc, error } = await admin
         .from("closing_documents")
