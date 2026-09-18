@@ -4232,6 +4232,23 @@ try {
 
 type FeedSubTab = 'published' | 'drafts' | 'future';
 
+/**
+ * Exact Facebook failure text returned by the sync function
+ * (`sync_error.message_he` carries the Graph code, subcode, type and trace id).
+ * Returns null when the payload reports no failure at all.
+ */
+const facebookSyncErrorText = (payload: unknown, invokeError?: unknown): string | null => {
+  const data = payload as any;
+  const detailed = typeof data?.sync_error?.message_he === 'string' ? data.sync_error.message_he : null;
+  if (detailed) return detailed;
+  if (typeof data?.error === 'string' && data.error.trim()) return data.error.trim();
+  if (invokeError) {
+    const msg = invokeError instanceof Error ? invokeError.message : String(invokeError);
+    return msg ? `הסנכרון מפייסבוק נכשל. פירוט: ${msg}` : null;
+  }
+  return null;
+};
+
 const PublishedFeed = ({
   subTab = 'published',
   onSubTabChange,
