@@ -355,7 +355,7 @@ export function ConnectionsTab() {
     refetchOnWindowFocus: false,
   });
 
-  const sms019Connected = sms019Status?.connected === true || !!sms019Sender;
+  const sms019Connected = sms019Status?.connected === true;
   const sms019DisplaySender = sms019Status?.sender ?? sms019Sender;
   const sms019BadgeText = sms019Connected ? 'מחובר' : sms019Pending ? 'בודק חיבור…' : 'לא מחובר';
 
