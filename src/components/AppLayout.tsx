@@ -87,10 +87,11 @@ function HeaderCrisisAlert() {
     queryKey: ['header-crisis-alerts', user?.id],
     enabled: !!user?.id && !isDemoMode,
     queryFn: async () => {
+      if (!user?.id) return [];
       const { data } = await (supabase as any)
         .from('crisis_alerts')
         .select('*')
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .eq('status', 'open')
         .order('created_at', { ascending: false })
         .limit(1);
@@ -269,10 +270,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
     queryKey: ['onboarding-state', user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
+      if (!user?.id) return null;
       const { data } = await supabase
         .from('onboarding_state')
         .select('completed_at')
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .maybeSingle();
       return data;
     },
@@ -283,10 +285,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
+      if (!user?.id) return null;
       const { data } = await supabase
         .from('profiles')
         .select('full_name')
-        .eq('id', user!.id)
+        .eq('id', user.id)
         .maybeSingle();
       return (data as any) ?? null;
     },

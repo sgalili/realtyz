@@ -7,7 +7,6 @@ import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -74,13 +73,6 @@ const statusLed: Record<string, { dot: string; ring: string; note: string }> = {
   lead: { dot: 'bg-warning', ring: 'ring-warning/20', note: 'מתעניין חדש שדורש טיפוח' },
   inactive: { dot: 'bg-muted-foreground', ring: 'ring-muted', note: 'פעילות נמוכה או ללא תגובה לאחרונה' },
 };
-
-const senderBadge: Record<string, { label: string; className: string }> = {
-  ai: { label: 'Realtyz AI', className: 'bg-primary/15 text-primary border-primary/30' },
-  agent: { label: 'נציג', className: 'bg-blue-500/15 text-blue-700 border-blue-300' },
-  voter: { label: 'מתעניין', className: 'bg-slate-500/15 text-slate-700 border-slate-300' },
-};
-
 
 // Session flag: set once the avatar service reports it isn't configured, so
 // we stop re-requesting WhatsApp profile photos on every render pass.
