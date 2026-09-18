@@ -1012,16 +1012,42 @@ serve(async (req) => {
     const immediatePropertySearch = !isBrokerLead
       && isPropertySearchTurn(messages as Array<{ role?: string; content?: unknown }>, context);
     if (immediatePropertySearch && currentOwnerId) {
-      const { searchProperties } = await import("../_shared/crmActions.ts");
-      const args = propertySearchArgsFromTurn(
-        messages as Array<{ role?: string; content?: unknown }>,
-        (leadPreferences ?? {}) as Record<string, unknown>,
-        dealType,
+      // An objection ("קטנה מדי", "יקר מדי") is a refinement: shift the search
+      // window before running it, and never answer with an error notice.
+      const objection = detectObjection(latestText(messages as Array<{ role?: string; content?: unknown }>, "user"));
+      const searchResult = await safeTool(
+        { functionName: "ai-agent", tool: "search_properties", context: { objection } },
+        async () => {
+          const { searchProperties } = await import("../_shared/crmActions.ts");
+          let args = propertySearchArgsFromTurn(
+            messages as Array<{ role?: string; content?: unknown }>,
+            (leadPreferences ?? {}) as Record<string, unknown>,
+            dealType,
+          );
+          if (objection) args = applyObjection(args, objection);
+          return await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
+        },
       );
-      const rows = await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
+      if (!searchResult.ok) {
+        return new Response(JSON.stringify({
+          type: "text",
+          content: searchResult.fallback,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const rows = searchResult.data;
+      const lead = objection === "too_small"
+        ? "הבנתי, נחפש משהו גדול יותר."
+        : objection === "too_expensive"
+          ? "הבנתי, נוריד את התקציב."
+          : objection === "too_far"
+            ? "הבנתי, נבדוק גם באזור רחב יותר."
+            : objection
+              ? "הבנתי, הנה חלופות אחרות."
+              : "";
+      const body = renderPropertySearchAnswer(rows);
       return new Response(JSON.stringify({
         type: "text",
-        content: renderPropertySearchAnswer(rows),
+        content: lead && rows.length ? `${lead}\n\n${body}` : body,
         data: rows,
         property_search_executed: true,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
