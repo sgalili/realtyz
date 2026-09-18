@@ -4232,6 +4232,23 @@ try {
 
 type FeedSubTab = 'published' | 'drafts' | 'future';
 
+/**
+ * Exact Facebook failure text returned by the sync function
+ * (`sync_error.message_he` carries the Graph code, subcode, type and trace id).
+ * Returns null when the payload reports no failure at all.
+ */
+const facebookSyncErrorText = (payload: unknown, invokeError?: unknown): string | null => {
+  const data = payload as any;
+  const detailed = typeof data?.sync_error?.message_he === 'string' ? data.sync_error.message_he : null;
+  if (detailed) return detailed;
+  if (typeof data?.error === 'string' && data.error.trim()) return data.error.trim();
+  if (invokeError) {
+    const msg = invokeError instanceof Error ? invokeError.message : String(invokeError);
+    return msg ? `הסנכרון מפייסבוק נכשל. פירוט: ${msg}` : null;
+  }
+  return null;
+};
+
 const PublishedFeed = ({
   subTab = 'published',
   onSubTabChange,
@@ -4812,15 +4829,17 @@ const PublishedFeed = ({
               },
             });
             const importedCount = Number((importData as any)?.count) || 0;
-            if (importError) {
-              console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
-            } else if ((importData as any)?.ok === false) {
-              console.warn('[PublishedFeed] fb persistent import returned error', importData);
+            const importFailure = facebookSyncErrorText(importData, importError);
+            if (importError || (importData as any)?.ok === false || (importedCount === 0 && importFailure)) {
+              console.warn('[PublishedFeed] fb persistent import failed', { importError, importData });
+              if (importFailure) setFacebookSyncWarning(importFailure);
             } else if (importedCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
+              setFacebookSyncWarning(null);
               try { sessionStorage.setItem(importKey, String(Date.now())); } catch { /* quota */ }
             }
           } catch (err) {
-            console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
+            console.warn('[PublishedFeed] fb persistent import crashed', err);
+            setFacebookSyncWarning(facebookSyncErrorText(null, err));
           }
         })();
       }
@@ -4841,7 +4860,7 @@ const PublishedFeed = ({
           try { sessionStorage.setItem(syncKey, String(Date.now())); } catch { /* quota */ }
           void (async () => {
             try {
-              const { data } = await supabase.functions.invoke('fb-recent-posts', {
+              const { data, error: reconcileError } = await supabase.functions.invoke('fb-recent-posts', {
                 body: {
                   lastRecords: 100,
                   pageSize: 50,
@@ -4850,13 +4869,19 @@ const PublishedFeed = ({
                   prune_missing: true,
                 },
               });
+              const reconcileFailure = facebookSyncErrorText(data, reconcileError);
+              if (reconcileFailure) {
+                console.warn('[PublishedFeed] native reconcile failed', { reconcileError, data });
+                setFacebookSyncWarning(reconcileFailure);
+              }
               const removed = Number((data as any)?.pruned_missing) || 0;
               if (removed > 0 || Number((data as any)?.upserted) > 0) {
                 // Repaint from the DB (skip a second provider round-trip).
                 void loadRef.current({ skipFbImport: true });
               }
             } catch (err) {
-              console.warn('[PublishedFeed] native reconcile failed (non-fatal)', err);
+              console.warn('[PublishedFeed] native reconcile crashed', err);
+              setFacebookSyncWarning(facebookSyncErrorText(null, err));
             }
           })();
         }
@@ -5200,11 +5225,15 @@ const PublishedFeed = ({
             // binding. While a Page with a live token is bound we keep the
             // existing posts and stay silent instead of forcing a reconnect.
             const isScopeLimitation = graphFailure === 'permission';
+            // Always tell the user the exact Graph reason, even for a transient
+            // blip — silence used to hide expired tokens and missing scopes.
+            const exactReason = facebookSyncErrorText(syncData, syncError)
+              ?? 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
+            setFacebookSyncWarning(exactReason);
             if (isFbConnected && (isTransient || isScopeLimitation)) {
               hadTransientIssue = true;
             } else {
-              refreshWarning = 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
-              setFacebookSyncWarning(refreshWarning);
+              refreshWarning = exactReason;
             }
           } else {
             setFacebookSyncWarning(null);
@@ -5766,8 +5795,14 @@ const PublishedFeed = ({
       </div>
 
       {fbSyncWarning ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/50 p-3 text-right">
-          <p className="min-w-0 flex-1 text-xs font-medium leading-5 text-muted-foreground">{fbSyncWarning}</p>
+        <div
+          role="alert"
+          className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-right"
+        >
+          <div className="flex min-w-0 flex-1 items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <p className="min-w-0 flex-1 whitespace-pre-line break-words text-xs font-medium leading-5 text-destructive">{fbSyncWarning}</p>
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             <Button
               type="button"
