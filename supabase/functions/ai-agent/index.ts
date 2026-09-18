@@ -736,6 +736,17 @@ serve(async (req) => {
         currentOwnerId = uRes?.user?.id ?? null;
       } catch { /* service calls and public invocations may not map to a user */ }
     }
+    // Lead-facing turns (post-tour follow-up replies, inbound SMS/WhatsApp) may
+    // arrive without an explicit workspace. Derive it from the contact so the
+    // deterministic property search stays scoped to the right workspace.
+    if (!currentOwnerId && lead_id) {
+      const { data: ownerRow } = await supabase
+        .from("leads")
+        .select("workspace_owner_id")
+        .eq("id", lead_id)
+        .maybeSingle();
+      currentOwnerId = (ownerRow as { workspace_owner_id?: string } | null)?.workspace_owner_id ?? null;
+    }
 
     // Load Agent settings (real-estate). The legacy `campaign_settings` table is
     // kept for backward compat but only the AI tone is used; political fields
