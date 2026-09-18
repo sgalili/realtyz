@@ -5225,11 +5225,15 @@ const PublishedFeed = ({
             // binding. While a Page with a live token is bound we keep the
             // existing posts and stay silent instead of forcing a reconnect.
             const isScopeLimitation = graphFailure === 'permission';
+            // Always tell the user the exact Graph reason, even for a transient
+            // blip — silence used to hide expired tokens and missing scopes.
+            const exactReason = facebookSyncErrorText(syncData, syncError)
+              ?? 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
+            setFacebookSyncWarning(exactReason);
             if (isFbConnected && (isTransient || isScopeLimitation)) {
               hadTransientIssue = true;
             } else {
-              refreshWarning = 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
-              setFacebookSyncWarning(refreshWarning);
+              refreshWarning = exactReason;
             }
           } else {
             setFacebookSyncWarning(null);
