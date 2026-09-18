@@ -1326,11 +1326,9 @@ Deno.serve(async (req) => {
         needs_extension: permissionBlocked && posts.length === 0,
         // Exact Graph failure (code/subcode/type/message/trace) so the UI can
         // tell the user precisely why the sync did not complete.
-        sync_error: lastError ? describeMetaError(lastError, lastStatus) : null,
+        sync_error: syncErrorDetail,
         // Clear, human-readable reason when a refresh returned nothing.
-        error: posts.length === 0 && lastError
-          ? describeMetaError(lastError, lastStatus).message_he
-          : null,
+        error: posts.length === 0 && syncErrorDetail ? syncErrorDetail.message_he : null,
         diagnostics,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
