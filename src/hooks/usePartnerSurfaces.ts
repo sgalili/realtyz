@@ -170,7 +170,7 @@ export function usePartnerSendMessage() {
       channel,
     }: { leadId: string; content: string; channel?: string | null }) => {
       const { data, error } = await supabase.functions.invoke('send-message', {
-        body: { leadId, message: content, channel: channel || 'whatsapp' },
+        body: { lead_id: leadId, content, channel: channel || 'whatsapp' },
       });
       if (error) throw error;
       return data;
