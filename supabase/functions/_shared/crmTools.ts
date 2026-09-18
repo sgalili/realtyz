@@ -84,6 +84,17 @@ export const CRM_TOOL_DEFS: ToolDef[] = [
     min_price: num("מחיר מינימלי אם צוין"),
     max_price: num("תקציב מרבי בשקלים כפי שהלקוח ציין; הכלי לא יחזיר נכסים מעל התקציב"),
   }),
+  fn("market_research", "מחקר שוק והערכת שווי (CMA) על בסיס עסקאות היסטוריות ומודעות עבר, כולל עסקאות שנסגרו ומודעות שהוסרו מיד2, ולא רק נכסים פעילים. יש להשתמש בכלי בכל שאלה על שווי, מחיר מומלץ, טווח מחירים, השוואת נכסים או מצב השוק בכתובת או ברחוב.", {
+    query: str("כתובת או רחוב לבדיקה, למשל מוהליבר 1"),
+    street: str("שם הרחוב בלבד אם ידוע"),
+    city: str("עיר"),
+    neighborhood: str("שכונה"),
+    deal_type: str("sale או rent"),
+    min_rooms: num("מינימום חדרים להשוואה"),
+    max_rooms: num("מקסימום חדרים להשוואה"),
+    sqm: num("שטח הנכס הנבדק במ\"ר, לחישוב שווי לפי מחיר למ\"ר"),
+    months_back: num("כמה חודשים אחורה לבדוק, ברירת מחדל 36"),
+  }),
   fn("create_contact", "פתיחת כרטיס איש קשר חדש ב-CRM. חובה טלפון.", CONTACT_FIELDS, ["full_name", "phone"]),
   fn("update_contact", "עדכון פרטי איש קשר קיים. זיהוי לפי lead_id, ואם אינו ידוע לפי phone.", {
     lead_id: str("מזהה איש הקשר אם ידוע"),
@@ -135,9 +146,11 @@ export const CRM_TOOL_DEFS: ToolDef[] = [
   fn("delete_task", "מחיקת משימה.", { task_id: str("מזהה המשימה") }, ["task_id"]),
 ];
 
-export const PUBLIC_PROPERTY_TOOL_DEFS = CRM_TOOL_DEFS.filter((tool) => tool.function.name === "search_properties");
+export const PUBLIC_PROPERTY_TOOL_DEFS = CRM_TOOL_DEFS.filter(
+  (tool) => tool.function.name === "search_properties" || tool.function.name === "market_research",
+);
 
-const READ_TOOL_NAMES = new Set(["get_crm_counts", "search_contacts", "search_properties"]);
+const READ_TOOL_NAMES = new Set(["get_crm_counts", "search_contacts", "search_properties", "market_research"]);
 const WRITE_TOOL_NAMES = new Set(CRM_TOOL_DEFS.map((t) => t.function.name).filter((name) => !READ_TOOL_NAMES.has(name)));
 
 type RawToolCall = {
@@ -201,6 +214,7 @@ export const NATIVE_TOOLS_CONTRACT = `
 [NATIVE TOOL CALLING - MANDATORY]
 כל בקשת ספירה עדכנית, כולל "כמה אנשי קשר יש", מחייבת קריאה ל-get_crm_counts. אין לנחש מספרים מהיסטוריית השיחה.
 כל בקשה לרשימת אנשי קשר או נכסים מחייבת search_contacts או search_properties. אין ליצור SQL לקריאות אלה.
+כל שאלה על שווי נכס, מחיר מומלץ, טווח מחירים, הערכת שווי, השוואת נכסים (CMA) או מצב השוק ברחוב מחייבת קריאה ל-market_research באותו תור. לכלי הזה יש גישה מלאה לעסקאות היסטוריות, למודעות עבר ולמודעות שהוסרו מהמקור (עסקאות שנסגרו בסבירות גבוהה), ולא רק לנכסים פעילים. אסור לומר שאין גישה לעסקאות שהושלמו או שהמידע מוגבל למלאי פעיל.
 search_properties מסנן בקשיחות לפי התקציב: חובה להעביר את התקציב שהלקוח ציין ב-max_price, את סוג העסקה ב-deal_type ואת העיר והחדרים אם צוינו. בקשת נכסים מחייבת קריאה לכלי באותו תור, בלי הודעת המתנה או הבטחה לחזור מאוחר יותר. הכלי מרחיב את החיפוש בצעדים קטנים בלבד (עד 30%) ומסמן חלופות מעל התקציב. אסור להציג נכס שהכלי לא החזיר, ואסור להציג נכס יקר בהרבה מהתקציב כאילו הוא מתאים. אם הכלי מחזיר מערך ריק, שאל שאלה אחת בלבד: האם להעלות מעט את התקציב או לחפש באזור סמוך.
 כל כתיבה ל-CRM (הוספה, עדכון, מחיקה, איחוד, הערות, שיחות, תזכורות, משימות) מתבצעת
 אך ורק דרך קריאות הכלים הנייטיביות (function calling) שסופקו לך. אסור לחלוטין לכתוב
