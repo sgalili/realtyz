@@ -412,12 +412,22 @@ type TokenPermissionProbe = {
 };
 
 const tokenHasScopeForPage = (scope: string, pageId: string | null, scopes: string[], granularScopes: any[]): boolean => {
-  if (scopes.includes(scope)) return true;
-  return granularScopes.some((entry) => {
+  const granular = granularScopes.filter((entry) => String(entry?.scope ?? "") === scope);
+  if (granular.length > 0) {
+    return granular.some((entry) => {
+      const targets = Array.isArray(entry?.target_ids) ? entry.target_ids.map((id: unknown) => String(id)) : [];
+      return targets.length === 0 || !pageId || targets.includes(String(pageId));
+    });
+  }
+  return scopes.includes(scope);
+};
+
+const tokenGranularScopeTargets = (scope: string, granularScopes: any[]): string[] => {
+  const targets = granularScopes.flatMap((entry) => {
     if (String(entry?.scope ?? "") !== scope) return false;
-    const targets = Array.isArray(entry?.target_ids) ? entry.target_ids.map((id: unknown) => String(id)) : [];
-    return targets.length === 0 || !pageId || targets.includes(String(pageId));
+    return Array.isArray(entry?.target_ids) ? entry.target_ids.map((id: unknown) => String(id)) : [];
   });
+  return targets.filter((value): value is string => typeof value === "string" && value.length > 0);
 };
 
 const inspectTokenPermissions = async (cred: GraphCred): Promise<TokenPermissionProbe> => {
@@ -1006,6 +1016,7 @@ Deno.serve(async (req) => {
               binding_record_id: cred.recordId ?? null,
               required_scope: REQUIRED_PAGE_READ_SCOPE,
               scopes: finalProbe.scopes,
+              required_scope_target_ids: tokenGranularScopeTargets(REQUIRED_PAGE_READ_SCOPE, finalProbe.granularScopes),
               granular_scopes: finalProbe.granularScopes,
               error: finalProbe.error,
             });
