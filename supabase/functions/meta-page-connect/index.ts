@@ -892,8 +892,13 @@ async function handleRequest(req: Request): Promise<Response> {
             fb_exchange_token: userToken,
           })}`,
         );
-        if (longRes.ok && longRes.payload?.access_token) userToken = String(longRes.payload.access_token);
-        else logGraphFailure("long_lived_token", longRes.payload);
+        if (longRes.ok && longRes.payload?.access_token) {
+          userToken = String(longRes.payload.access_token);
+          const expiresIn = Number(longRes.payload?.expires_in ?? 0);
+          if (Number.isFinite(expiresIn) && expiresIn > 0) {
+            userTokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+          }
+        } else logGraphFailure("long_lived_token", longRes.payload);
       }
 
 
@@ -1211,6 +1216,14 @@ async function handleRequest(req: Request): Promise<Response> {
           .update({ is_selected: false })
           .eq("owner_id", ownerId)
           .neq("page_id", target.id);
+        // Fresh token stored: forget any cached verdict about the old one.
+        try {
+          const { invalidateMetaTokenCache } = await import("../_shared/metaPage.ts");
+          invalidateMetaTokenCache([target.id]);
+        } catch (cacheErr) {
+          console.warn("[meta-page-connect] token cache invalidation skipped", String(cacheErr));
+        }
+
 
 
         return json({
