@@ -933,6 +933,7 @@ async function handleRequest(req: Request): Promise<Response> {
           fb_user_name: meRes.payload?.name ?? null,
           fb_avatar_url: meRes.payload?.picture?.data?.url ?? null,
           access_token: userToken,
+          token_expires_at: userTokenExpiresAt,
           scopes: grantedScopes,
           connected_by: caller.userId,
           connected_at: new Date().toISOString(),
