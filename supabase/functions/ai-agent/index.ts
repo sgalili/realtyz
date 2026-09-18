@@ -148,6 +148,7 @@ function isPropertySearchTurn(messages: Array<{ role?: string; content?: unknown
   const priorAssistant = latestText(messages.slice(0, -1), "assistant");
   const affirmativeContinuation = /^(?:כן|כן\s+בבקשה|תמשיכי|בסדר|אוקיי|יאללה|מעולה|עוד)$/i.test(user);
   return PROPERTY_SEARCH_INTENT_RE.test(`${user}\n${String(context ?? "")}`)
+    || detectObjection(user) !== null
     || (affirmativeContinuation && STALLING_PROPERTY_REPLY_RE.test(priorAssistant));
 }
 
