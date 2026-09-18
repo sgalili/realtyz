@@ -82,6 +82,11 @@ export function describeMetaError(raw: unknown, httpStatus?: number | null): Met
   ].filter(Boolean).join(", ");
   if (codes) parts.push(`(${codes})`);
 
+  // Code 10 ("application does not have permission for this action") is the
+  // signature refusal while the app is still in Development Mode / limited to
+  // Standard Access, so the tester-role note is the actionable fix.
+  const devModeRestricted = kind === "missing_scope" && (code === 10 || DEV_MODE_RE.test(text));
+
   return {
     code,
     subcode,
@@ -91,5 +96,7 @@ export function describeMetaError(raw: unknown, httpStatus?: number | null): Met
     http_status: httpStatus ?? null,
     kind,
     message_he: [head, ...parts].join(" "),
+    dev_mode_restricted: devModeRestricted,
+    dev_note_he: devModeRestricted ? META_DEV_MODE_NOTE_HE : null,
   };
 }
