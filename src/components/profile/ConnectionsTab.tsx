@@ -30,6 +30,12 @@ import {
 
 type Tone = 'ok' | 'idle';
 
+type Sms019Status = {
+  connected: boolean;
+  sender: string | null;
+  error: string | null;
+};
+
 function StatusPill({ label, tone }: { label: string; tone: Tone }) {
   // Inline styles on purpose: global CSS neutralizes utility color classes
   // (bg-emerald/bg-slate...) with !important, which washed these pills out.
@@ -319,6 +325,40 @@ export function ConnectionsTab() {
 
   const [sms019Sender, setSms019Sender] = useState<string | null>(null);
 
+  const { data: sms019Status, isPending: sms019Pending, refetch: refetchSms019Status } = useQuery<Sms019Status>({
+    queryKey: ['sms019-connection-status', activeWorkspaceId],
+    enabled: isSuperAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('test-sms-connection', {
+        body: {
+          mode: 'balance',
+          workspace_owner_id: activeWorkspaceId ?? undefined,
+        },
+      });
+
+      const result = (data ?? {}) as { success?: boolean; sender?: string | null; error?: string | null };
+      if (error || result.success !== true) {
+        return {
+          connected: false,
+          sender: result.sender ? String(result.sender) : null,
+          error: result.error ?? error?.message ?? 'sms_connection_check_failed',
+        };
+      }
+
+      return {
+        connected: true,
+        sender: result.sender ? String(result.sender) : null,
+        error: null,
+      };
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const sms019Connected = sms019Status?.connected === true || !!sms019Sender;
+  const sms019DisplaySender = sms019Status?.sender ?? sms019Sender;
+  const sms019BadgeText = sms019Connected ? 'מחובר' : sms019Pending ? 'בודק חיבור…' : 'לא מחובר';
+
   // Portal connection state drives the Yad2 / Homely brand marks in the header.
   const { data: portalStatus = { yad2: false, homely: false } } = useQuery({
     queryKey: ['listing-portals-status'],
@@ -480,14 +520,22 @@ export function ConnectionsTab() {
       id: 'sms019',
       titleLead: (
         <MessageSquare
-          className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !sms019Sender && 'grayscale opacity-40')}
+          className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !sms019Connected && 'grayscale opacity-40')}
           strokeWidth={2.25}
         />
       ),
       title: 'SMS ',
-      status: sms019Sender ? sms019Sender : 'לא הוגדר',
-      tone: (sms019Sender ? 'ok' : 'idle') as Tone,
-      node: <WorkspaceSmsCard onStatus={setSms019Sender} />,
+      titleAside: sms019DisplaySender ? (
+        <span className="text-xs font-medium text-muted-foreground" dir="ltr">
+          {formatPhoneDisplay(sms019DisplaySender)}
+        </span>
+      ) : undefined,
+      status: sms019BadgeText,
+      tone: (sms019Connected ? 'ok' : 'idle') as Tone,
+      node: <WorkspaceSmsCard onStatus={(sender) => {
+        setSms019Sender(sender);
+        void refetchSms019Status();
+      }} />,
       restricted: true,
     }] : []),
 
