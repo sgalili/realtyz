@@ -51,3 +51,5 @@
 48. [x] Unify internal property details, pin the action bar, refine live Yad2 sync, and shorten date labels
 49. [x] Prevent Rita property-search dead loops and guarantee immediate results or one concrete adjustment question
 50. [x] Give Rita historical/closed-deal market research for valuations and remove refusal wording
+51. [ ] Merge partner marketing pages, unify navigation, and fix the workspace header layout
+52. [ ] Add partner Rita/auto-funnel controls and an RTL smart property filter panel
