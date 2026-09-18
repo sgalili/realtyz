@@ -4268,14 +4268,19 @@ const facebookDevModeNote = (payload: unknown, message?: string | null): string 
 
 const facebookSyncErrorText = (payload: unknown, invokeError?: unknown): string | null => {
   const data = payload as any;
-  const detailed = typeof data?.sync_error?.message_he === 'string' ? data.sync_error.message_he : null;
-  if (detailed) return detailed;
-  if (typeof data?.error === 'string' && data.error.trim()) return data.error.trim();
-  if (invokeError) {
-    const msg = invokeError instanceof Error ? invokeError.message : String(invokeError);
-    return msg ? `הסנכרון מפייסבוק נכשל. פירוט: ${msg}` : null;
-  }
-  return null;
+  const base = (() => {
+    const detailed = typeof data?.sync_error?.message_he === 'string' ? data.sync_error.message_he : null;
+    if (detailed) return detailed;
+    if (typeof data?.error === 'string' && data.error.trim()) return data.error.trim();
+    if (invokeError) {
+      const msg = invokeError instanceof Error ? invokeError.message : String(invokeError);
+      return msg ? `הסנכרון מפייסבוק נכשל. פירוט: ${msg}` : null;
+    }
+    return null;
+  })();
+  if (!base) return null;
+  const note = facebookDevModeNote(payload, base);
+  return note ? `${base}\n\n${note}` : base;
 };
 
 const PublishedFeed = ({
