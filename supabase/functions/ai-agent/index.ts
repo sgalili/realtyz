@@ -2113,6 +2113,31 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
       });
     }
 
+    // Market research / CMA runs on HISTORICAL records (closed deals, removed
+    // ads, every workspace listing) so a valuation question is never refused.
+    const marketResearchCalls = nativeToolArguments(aiMessage.tool_calls, "market_research");
+    if (marketResearchCalls.length > 0 || isValuationTurn(messages as Array<{ role?: string; content?: unknown }>, context)) {
+      const researchArgs = marketResearchCalls[0] ?? marketResearchArgsFromTurn(
+        messages as Array<{ role?: string; content?: unknown }>,
+        (leadPreferences ?? {}) as Record<string, unknown>,
+        dealType,
+      );
+      const researchResult = await safeTool(
+        { functionName: "ai-agent", tool: "market_research", context: { args: researchArgs } },
+        async () => {
+          const { marketResearch } = await import("../_shared/crmActions.ts");
+          return await marketResearch(supabase, currentOwnerId, researchArgs);
+        },
+      );
+      if (researchResult.ok) {
+        return new Response(JSON.stringify({
+          type: "text",
+          content: renderMarketResearchAnswer(researchResult.data as Record<string, any>),
+          data: researchResult.data,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     const propertySearches = nativeToolArguments(aiMessage.tool_calls, "search_properties");
     const propertyIntent = isPropertySearchTurn(messages as Array<{ role?: string; content?: unknown }>, context);
     if ((propertySearches.length > 0 || propertyIntent || STALLING_PROPERTY_REPLY_RE.test(rawContent)) && currentOwnerId) {
