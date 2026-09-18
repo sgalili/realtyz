@@ -1298,6 +1298,24 @@ Deno.serve(async (req) => {
 
 
 
+    const syncErrorDetail = lastError ? describeMetaError(lastError, lastStatus) : null;
+    if (syncErrorDetail) {
+      // Full Graph refusal payload in the logs: Development Mode / unverified
+      // business blocks are otherwise indistinguishable from a declined scope.
+      console.error("[fb-recent-posts] graph refusal", JSON.stringify({
+        owner_id: ownerId,
+        page_id: page?.pageId ?? null,
+        http_status: lastStatus,
+        kind: syncErrorDetail.kind,
+        code: syncErrorDetail.code,
+        subcode: syncErrorDetail.subcode,
+        type: syncErrorDetail.type,
+        fbtrace_id: syncErrorDetail.fbtrace_id,
+        dev_mode_restricted: syncErrorDetail.dev_mode_restricted,
+        raw: lastError,
+      }));
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
