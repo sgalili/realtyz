@@ -68,13 +68,34 @@ export async function resolveSharedMetaPage(db: SupabaseClient): Promise<MetaPag
   };
 }
 
-const tokenProbeCache = new Map<string, boolean>();
+const tokenProbeCache = new Map<string, { ok: boolean; at: number }>();
+/**
+ * Short TTL so a reconnect that granted new permissions takes effect on the very
+ * next call, even in a warm isolate that already probed the previous grant.
+ */
+const TOKEN_PROBE_TTL_MS = 60_000;
+
+/**
+ * Drop cached token probes after a reconnect rewrote the stored Page tokens.
+ * Without this, a warm isolate could keep answering from the grant that was
+ * missing pages_read_engagement.
+ */
+export function invalidateMetaTokenCache(pageIds?: string[]): void {
+  if (!pageIds || pageIds.length === 0) {
+    tokenProbeCache.clear();
+    return;
+  }
+  const wanted = new Set(pageIds.map((id) => String(id)));
+  for (const key of [...tokenProbeCache.keys()]) {
+    if (wanted.has(key.split(":")[0])) tokenProbeCache.delete(key);
+  }
+}
 
 /** Cheap, cached probe: can this Page token still read the Page itself? */
 export async function tokenUsable(page: MetaPage): Promise<boolean> {
   const key = `${page.pageId}:${page.token.slice(-12)}`;
   const cached = tokenProbeCache.get(key);
-  if (typeof cached === "boolean") return cached;
+  if (cached && Date.now() - cached.at < TOKEN_PROBE_TTL_MS) return cached.ok;
   let ok = true;
   try {
     const res = await fetch(
