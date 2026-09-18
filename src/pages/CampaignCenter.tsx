@@ -4967,7 +4967,9 @@ const PublishedFeed = ({
           // we have no bound Page; otherwise stay silent so a transient
           // permission blip does not hijack the UI.
           if (!facebookIsLive()) {
-            setFacebookSyncWarning('החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).');
+            setFacebookSyncWarning(
+              `החיבור לעמוד הפייסבוק חסר הרשאת קריאה (pages_read_engagement).\n\n${FB_DEV_MODE_NOTE}`,
+            );
           }
         }
         return false;
