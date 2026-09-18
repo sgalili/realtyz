@@ -5840,6 +5840,13 @@ const PublishedFeed = ({
             <p className="min-w-0 flex-1 whitespace-pre-line break-words text-xs font-medium leading-5 text-destructive">{fbSyncWarning}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {fbSyncWarning.includes('developers.facebook.com') ? (
+              <Button asChild type="button" size="sm" variant="outline">
+                <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer">
+                  Meta App Dashboard
+                </a>
+              </Button>
+            ) : null}
             <Button
               type="button"
               size="sm"
