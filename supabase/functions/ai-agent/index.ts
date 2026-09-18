@@ -98,6 +98,47 @@ function extractCity(text: string): string | null {
 const PROPERTY_SEARCH_INTENT_RE = /(תמצא(?:י)?|תחפש(?:י)?|מחפש[ת]?)\s+(?:לי\s+)?(?:נכס|נכסים|דירה|דירות|בית|פנטהאוז|דופלקס)|(נכסים|דירות|בתים|פנטהאוזים)\s+(?:ב|למכירה|להשכרה|לשכירות)|עוד\s+(?:אפשרויות|נכסים|דירות)|חלופ(?:ה|ות)(?:\s+(?:לנכס|לדירה|באזור|בתקציב|קרובות))?|אופצי(?:ה|ות)\s+(?:נוספות|אחרות|לנכס)|\d+(?:\.\d+)?\s*חדרים[^\n]{0,80}(?:ב|להשכרה|למכירה|עד\s*\d)|(?:find|search|show)\s+(?:me\s+)?(?:properties|property|apartments?|homes?)|(?:properties|apartments?|homes?)\s+(?:in|for\s+(?:rent|sale))/i;
 const STALLING_PROPERTY_REPLY_RE = /(אני\s+(?:בודקת|מחפשת)|אחזור\s+(?:אליך|עם)|ממשיכה\s+(?:לבדוק|לחפש)|חלופות\s+נוספות.*(?:אחזור|אעדכן))/i;
 
+/**
+ * Post-tour / post-listing objections. A reply like "הדירה קטנה מדי" or
+ * "יקר מדי" is a search-refinement turn: parse the constraint, adjust the
+ * preferences and run the property search in the same turn.
+ */
+const OBJECTION_RE =
+  /(קטנ(?:ה|ים|ות)?\s*מדי|קטן\s*מדי|צר(?:ה)?\s*מדי|גדול(?:ה)?\s*מדי|יקר(?:ה)?\s*מדי|מעל\s+התקציב|גבוה\s*מדי\s*(?:במחיר|מחיר)?|לא\s*(?:מתאים|מתאימה|התאים|התאימה|אהבתי|בשבילי)|רחוק\s*מדי|חסר(?:ים|ות)?\s+חדר(?:ים)?|צריכ(?:ה|ים)\s+(?:עוד|יותר)\s+(?:חדר|חדרים|מ"ר|מטר)|too\s+(?:small|expensive|far|big)|not\s+(?:a\s+)?(?:good\s+)?(?:fit|suitable))/i;
+
+type ObjectionKind = "too_small" | "too_big" | "too_expensive" | "too_far" | "generic";
+
+function detectObjection(text: string): ObjectionKind | null {
+  const t = String(text ?? "");
+  if (!OBJECTION_RE.test(t)) return null;
+  if (/יקר|מעל\s+התקציב|גבוה\s*מדי|too\s+expensive/i.test(t)) return "too_expensive";
+  if (/גדול(?:ה)?\s*מדי|too\s+big/i.test(t)) return "too_big";
+  if (/קטנ|קטן|צר(?:ה)?\s*מדי|חסר|עוד\s+חדר|יותר\s+חדר|מ"ר|too\s+small/i.test(t)) return "too_small";
+  if (/רחוק|too\s+far/i.test(t)) return "too_far";
+  return "generic";
+}
+
+/** Shift the search window according to the objection the client raised. */
+function applyObjection(args: Record<string, unknown>, kind: ObjectionKind): Record<string, unknown> {
+  const next = { ...args };
+  const rooms = Number(next.min_rooms ?? next.max_rooms ?? 0) || null;
+  const maxPrice = Number(next.max_price ?? 0) || null;
+  if (kind === "too_small") {
+    delete next.max_rooms;
+    if (rooms) next.min_rooms = rooms + 1;
+  } else if (kind === "too_big") {
+    delete next.min_rooms;
+    if (rooms) next.max_rooms = Math.max(1, rooms - 1);
+  } else if (kind === "too_expensive") {
+    delete next.min_price;
+    if (maxPrice) next.max_price = Math.round(maxPrice * 0.85);
+  } else if (kind === "too_far") {
+    // Widen the geography: city stays out so nearby areas can surface.
+    delete next.neighborhood;
+  }
+  return next;
+}
+
 function latestText(messages: Array<{ role?: string; content?: unknown }>, role: string): string {
   return String([...messages].reverse().find((message) => message?.role === role)?.content ?? "").trim();
 }
@@ -107,6 +148,7 @@ function isPropertySearchTurn(messages: Array<{ role?: string; content?: unknown
   const priorAssistant = latestText(messages.slice(0, -1), "assistant");
   const affirmativeContinuation = /^(?:כן|כן\s+בבקשה|תמשיכי|בסדר|אוקיי|יאללה|מעולה|עוד)$/i.test(user);
   return PROPERTY_SEARCH_INTENT_RE.test(`${user}\n${String(context ?? "")}`)
+    || detectObjection(user) !== null
     || (affirmativeContinuation && STALLING_PROPERTY_REPLY_RE.test(priorAssistant));
 }
 
@@ -694,6 +736,17 @@ serve(async (req) => {
         currentOwnerId = uRes?.user?.id ?? null;
       } catch { /* service calls and public invocations may not map to a user */ }
     }
+    // Lead-facing turns (post-tour follow-up replies, inbound SMS/WhatsApp) may
+    // arrive without an explicit workspace. Derive it from the contact so the
+    // deterministic property search stays scoped to the right workspace.
+    if (!currentOwnerId && lead_id) {
+      const { data: ownerRow } = await supabase
+        .from("leads")
+        .select("workspace_owner_id")
+        .eq("id", lead_id)
+        .maybeSingle();
+      currentOwnerId = (ownerRow as { workspace_owner_id?: string } | null)?.workspace_owner_id ?? null;
+    }
 
     // Load Agent settings (real-estate). The legacy `campaign_settings` table is
     // kept for backward compat but only the AI tone is used; political fields
@@ -970,16 +1023,34 @@ serve(async (req) => {
     const immediatePropertySearch = !isBrokerLead
       && isPropertySearchTurn(messages as Array<{ role?: string; content?: unknown }>, context);
     if (immediatePropertySearch && currentOwnerId) {
-      const { searchProperties } = await import("../_shared/crmActions.ts");
-      const args = propertySearchArgsFromTurn(
-        messages as Array<{ role?: string; content?: unknown }>,
-        (leadPreferences ?? {}) as Record<string, unknown>,
-        dealType,
+      // An objection ("קטנה מדי", "יקר מדי") is a refinement: shift the search
+      // window before running it, and never answer with an error notice.
+      const objection = detectObjection(latestText(messages as Array<{ role?: string; content?: unknown }>, "user"));
+      const searchResult = await safeTool(
+        { functionName: "ai-agent", tool: "search_properties", context: { objection } },
+        async () => {
+          const { searchProperties } = await import("../_shared/crmActions.ts");
+          let args = propertySearchArgsFromTurn(
+            messages as Array<{ role?: string; content?: unknown }>,
+            (leadPreferences ?? {}) as Record<string, unknown>,
+            dealType,
+          );
+          if (objection) args = applyObjection(args, objection);
+          return await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
+        },
       );
-      const rows = await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
+      if (!searchResult.ok) {
+        return new Response(JSON.stringify({
+          type: "text",
+          content: searchResult.fallback,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const rows = searchResult.data;
+      const lead = objectionLeadIn(objection, rows.length);
+      const body = renderPropertySearchAnswer(rows);
       return new Response(JSON.stringify({
         type: "text",
-        content: renderPropertySearchAnswer(rows),
+        content: lead && rows.length ? `${lead}\n\n${body}` : body,
         data: rows,
         property_search_executed: true,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -1973,14 +2044,28 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     const propertySearches = nativeToolArguments(aiMessage.tool_calls, "search_properties");
     const propertyIntent = isPropertySearchTurn(messages as Array<{ role?: string; content?: unknown }>, context);
     if ((propertySearches.length > 0 || propertyIntent || STALLING_PROPERTY_REPLY_RE.test(rawContent)) && currentOwnerId) {
-      const args = propertySearches[0] ?? propertySearchArgsFromTurn(
+      const objection = detectObjection(latestText(messages as Array<{ role?: string; content?: unknown }>, "user"));
+      let args = propertySearches[0] ?? propertySearchArgsFromTurn(
         messages as Array<{ role?: string; content?: unknown }>,
         (leadPreferences ?? {}) as Record<string, unknown>,
         dealType,
       );
-      const { searchProperties } = await import("../_shared/crmActions.ts");
-      const rows = await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
-      const content = renderPropertySearchAnswer(rows);
+      if (objection && propertySearches.length === 0) args = applyObjection(args, objection);
+      const searchResult = await safeTool(
+        { functionName: "ai-agent", tool: "search_properties", context: { objection } },
+        async () => {
+          const { searchProperties } = await import("../_shared/crmActions.ts");
+          return await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
+        },
+      );
+      if (!searchResult.ok) {
+        return new Response(JSON.stringify({ type: "text", content: searchResult.fallback }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const rows = searchResult.data;
+      const content = [objectionLeadIn(objection, rows.length), renderPropertySearchAnswer(rows)]
+        .filter(Boolean).join("\n\n");
       return new Response(JSON.stringify({ type: "text", content, data: rows }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
