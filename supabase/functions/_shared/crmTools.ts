@@ -146,9 +146,11 @@ export const CRM_TOOL_DEFS: ToolDef[] = [
   fn("delete_task", "מחיקת משימה.", { task_id: str("מזהה המשימה") }, ["task_id"]),
 ];
 
-export const PUBLIC_PROPERTY_TOOL_DEFS = CRM_TOOL_DEFS.filter((tool) => tool.function.name === "search_properties");
+export const PUBLIC_PROPERTY_TOOL_DEFS = CRM_TOOL_DEFS.filter(
+  (tool) => tool.function.name === "search_properties" || tool.function.name === "market_research",
+);
 
-const READ_TOOL_NAMES = new Set(["get_crm_counts", "search_contacts", "search_properties"]);
+const READ_TOOL_NAMES = new Set(["get_crm_counts", "search_contacts", "search_properties", "market_research"]);
 const WRITE_TOOL_NAMES = new Set(CRM_TOOL_DEFS.map((t) => t.function.name).filter((name) => !READ_TOOL_NAMES.has(name)));
 
 type RawToolCall = {
