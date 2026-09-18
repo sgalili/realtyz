@@ -1058,20 +1058,45 @@ async function handleRequest(req: Request): Promise<Response> {
           updated_at: new Date().toISOString(),
         });
       }
+      // A reconnect must OVERWRITE the stored credentials for this workspace:
+      // `upsert` on (owner_id, page_id) replaces page_access_token with the token
+      // minted from the grant we just validated, so no old token survives.
       const { error: upsertErr } = await admin
         .from("messenger_page_bindings")
         .upsert(rows, { onConflict: "owner_id,page_id" });
-      if (!upsertErr) {
-        await admin
-          .from("messenger_page_bindings")
-          .update({ is_selected: false })
-          .eq("owner_id", ownerId)
-          .neq("page_id", String(chosen.id));
-      }
       if (upsertErr) {
         console.error("[meta-page-connect] upsert failed", upsertErr);
         return json({ error: `שמירת חיבור העמוד נכשלה: ${upsertErr.message}`, stage: "db_save" }, 200);
       }
+      await admin
+        .from("messenger_page_bindings")
+        .update({ is_selected: false })
+        .eq("owner_id", ownerId)
+        .neq("page_id", String(chosen.id));
+      // Pages that this grant no longer covers still hold a stale token that
+      // would fail every later read: drop those rows (never the shared platform
+      // binding, and never another workspace's rows).
+      const freshIds = rows.map((r) => r.page_id);
+      const { error: pruneErr } = await admin
+        .from("messenger_page_bindings")
+        .delete()
+        .eq("owner_id", ownerId)
+        .not("is_platform_shared", "is", true)
+        .not("page_id", "in", `(${freshIds.map((id) => `"${id}"`).join(",")})`);
+      if (pruneErr) console.warn("[meta-page-connect] stale binding prune failed", pruneErr.message);
+      // Clear the in-isolate token probe cache so the next Graph call uses the
+      // fresh permissions instead of the previous grant's cached verdict.
+      try {
+        const { invalidateMetaTokenCache } = await import("../_shared/metaPage.ts");
+        invalidateMetaTokenCache();
+      } catch (cacheErr) {
+        console.warn("[meta-page-connect] token cache invalidation skipped", String(cacheErr));
+      }
+      console.log(
+        "[meta-page-connect] tokens overwritten",
+        JSON.stringify({ owner: ownerId, pages: freshIds, granted: grantedScopes }),
+      );
+
 
 
       return json({
