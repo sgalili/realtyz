@@ -194,10 +194,11 @@ const OmnichannelInbox = () => {
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
+      if (!user?.id) return null;
       const { data } = await supabase
         .from('profiles')
         .select('full_name, avatar_url')
-        .eq('id', user!.id)
+        .eq('id', user.id)
         .maybeSingle();
       return (data as any) ?? null;
     },
