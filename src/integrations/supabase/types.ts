@@ -6472,6 +6472,10 @@ export type Database = {
         Returns: Json
       }
       admin_unlink_referral: { Args: { _referred: string }; Returns: Json }
+      affiliate_can_access_lead: {
+        Args: { _lead_id: string }
+        Returns: boolean
+      }
       bulk_update_leads: {
         Args: {
           lead_ids: string[]
@@ -6617,6 +6621,57 @@ export type Database = {
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
       gen_referral_code: { Args: never; Returns: string }
       get_account_integrations: { Args: never; Returns: Json }
+      get_affiliate_chat_messages: {
+        Args: { p_lead_id: string }
+        Returns: {
+          ai_assisted: boolean
+          channel: string
+          content: string
+          created_at: string
+          direction: string
+          id: string
+          platform: string
+          sender_type: string
+        }[]
+      }
+      get_affiliate_chats: {
+        Args: never
+        Returns: {
+          ai_autopilot: boolean
+          city: string
+          full_name: string
+          last_channel: string
+          last_direction: string
+          last_message: string
+          last_message_at: string
+          lead_id: string
+          message_count: number
+          phone_number: string
+          profile_picture_url: string
+        }[]
+      }
+      get_affiliate_contacts: {
+        Args: never
+        Returns: {
+          city: string
+          created_at: string
+          deal_type: string
+          earned_amount: number
+          email: string
+          full_name: string
+          last_interaction_at: string
+          lead_id: string
+          lead_stage: string
+          listing_id: string
+          message_count: number
+          neighborhood: string
+          phone_number: string
+          profile_picture_url: string
+          settlement_status: string
+          status: string
+          submission_status: string
+        }[]
+      }
       get_affiliate_marketplace: {
         Args: never
         Returns: {
@@ -6673,6 +6728,27 @@ export type Database = {
           tier2_amount: number
           tier3_amount: number
           tier3_type: string
+        }[]
+      }
+      get_affiliate_posts: {
+        Args: never
+        Returns: {
+          campaign_name: string
+          channel: string
+          comment_count: number
+          created_at: string
+          failure_reason: string
+          first_comment: string
+          group_ids: Json
+          id: string
+          like_count: number
+          listing_id: string
+          media_urls: Json
+          message_body: string
+          sent_at: string
+          share_count: number
+          status: string
+          view_count: number
         }[]
       }
       get_business_performance: {
