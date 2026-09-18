@@ -4,11 +4,13 @@
 // browses broker-approved properties, sees exactly what they earn per closing,
 // and generates a personal tracking link to market with.
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import {
@@ -29,6 +31,7 @@ import {
   Megaphone,
   MousePointerClick,
   Search,
+  SlidersHorizontal,
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
@@ -55,9 +58,17 @@ import {
   useStartPromoting,
   type MarketplaceListing,
 } from '@/hooks/useAffiliate';
+import { useAffiliatePreferences } from '@/hooks/useAffiliate';
 import { useUserRole } from '@/hooks/useUserRole';
 import { fmtILS } from '@/lib/formatCurrency';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { RitaAvatar } from '@/components/RitaAvatar';
+import { ResultTable } from '@/pages/Properties';
+import type { UnifiedResult } from '@/lib/propertySearch';
 
 const DEAL_TYPE_LABELS: Record<string, string> = {
   sale: 'למכירה',
@@ -75,6 +86,66 @@ function firstPhoto(listing: MarketplaceListing): string | null {
     }
   }
   return null;
+}
+
+function commissionPotential(listing: MarketplaceListing): number {
+  const tiers = listingTiers(listing);
+  const fixedClosing = tiers.tier3Type === 'fixed' ? tiers.tier3 : 0;
+  return tiers.tier1 + tiers.tier2 + fixedClosing;
+}
+
+function marketplaceResult(listing: MarketplaceListing): UnifiedResult {
+  return {
+    key: `affiliate:${listing.listing_id}`,
+    source: 'mine',
+    sources: ['mine'],
+    localId: listing.listing_id,
+    title: listing.property_title || 'נכס ללא כותרת',
+    price: listing.asking_price,
+    city: listing.city,
+    address: listing.address,
+    neighborhood: listing.neighborhood,
+    rooms: listing.rooms,
+    size_sqm: listing.sqm,
+    photos: allPhotos(listing),
+    url: null,
+    listing_type: listing.deal_type === 'rent' ? 'rent' : 'sale',
+    property_type: listing.property_type,
+    raw: listing,
+    updated_at: listing.approved_at,
+  };
+}
+
+function PartnerListingActions({ listing }: { listing: MarketplaceListing }) {
+  const promote = useStartPromoting();
+  const [link, setLink] = useState<string | null>(null);
+  const copy = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success('הקישור הועתק');
+    } catch {
+      toast.error('ההעתקה נכשלה');
+    }
+  };
+  const createOrCopy = () => {
+    if (link) return void copy(link);
+    promote.mutate({ listing }, {
+      onSuccess: (result) => {
+        setLink(result.link);
+        void copy(result.link);
+      },
+      onError: () => toast.error('יצירת הקישור נכשלה'),
+    });
+  };
+  return (
+    <div className="flex items-center gap-1.5">
+      <Button type="button" size="sm" onClick={createOrCopy} disabled={promote.isPending} className="h-8 gap-1.5">
+        {link ? <Copy className="h-3.5 w-3.5" /> : <Megaphone className="h-3.5 w-3.5" />}
+        {link ? 'העתקה' : 'שיווק'}
+      </Button>
+      <SubmitLeadDialog listing={listing} />
+    </div>
+  );
 }
 
 /** Self-signup card for a signed-in user who is not yet an affiliate. */
@@ -493,21 +564,64 @@ function AffiliateKpiCard({
 }
 
 export default function AffiliatePortal() {
+  const navigate = useNavigate();
   const { isAffiliate, loading: roleLoading } = useUserRole();
   const { data: marketplace = [], isLoading: marketLoading } = useAffiliateMarketplace();
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
   const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
+  const { preferences, update: updatePreferences, isUpdating: preferencesUpdating } = useAffiliatePreferences();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('marketplace');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [commissionRange, setCommissionRange] = useState<[number, number]>([0, 0]);
+  const [propertyType, setPropertyType] = useState('all');
+  const [city, setCity] = useState('all');
+  const [neighborhood, setNeighborhood] = useState('all');
+  const [rooms, setRooms] = useState('all');
+  const [dealType, setDealType] = useState('all');
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
+
+  const commissionMax = useMemo(() => Math.max(1000, ...marketplace.map(commissionPotential)), [marketplace]);
+  const priceMax = useMemo(() => Math.max(10000, ...marketplace.map((item) => Number(item.asking_price ?? 0))), [marketplace]);
+  const effectiveCommissionRange: [number, number] = commissionRange[1] > 0 ? commissionRange : [0, commissionMax];
+  const effectivePriceRange: [number, number] = priceRange[1] > 0 ? priceRange : [0, priceMax];
+  const propertyTypes = useMemo(() => [...new Set(marketplace.map((item) => item.property_type).filter(Boolean))] as string[], [marketplace]);
+  const cities = useMemo(() => [...new Set(marketplace.map((item) => item.city).filter(Boolean))] as string[], [marketplace]);
+  const neighborhoods = useMemo(() => [...new Set(marketplace.filter((item) => city === 'all' || item.city === city).map((item) => item.neighborhood).filter(Boolean))] as string[], [marketplace, city]);
+  const activeFilterCount = [propertyType, city, neighborhood, rooms, dealType].filter((value) => value !== 'all').length
+    + (effectiveCommissionRange[0] > 0 || effectiveCommissionRange[1] < commissionMax ? 1 : 0)
+    + (effectivePriceRange[0] > 0 || effectivePriceRange[1] < priceMax ? 1 : 0);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return marketplace;
-    return marketplace.filter((l) =>
-      [l.property_title, l.address, l.city].some((f) => (f ?? '').toLowerCase().includes(q)),
-    );
-  }, [marketplace, search]);
+    return marketplace.filter((l) => {
+      const matchesText = !q || [l.property_title, l.address, l.city, l.neighborhood, l.property_type]
+        .some((f) => (f ?? '').toLowerCase().includes(q));
+      const commission = commissionPotential(l);
+      const price = Number(l.asking_price ?? 0);
+      return matchesText
+        && commission >= effectiveCommissionRange[0]
+        && commission <= effectiveCommissionRange[1]
+        && price >= effectivePriceRange[0]
+        && price <= effectivePriceRange[1]
+        && (propertyType === 'all' || l.property_type === propertyType)
+        && (city === 'all' || l.city === city)
+        && (neighborhood === 'all' || l.neighborhood === neighborhood)
+        && (rooms === 'all' || Number(l.rooms) >= Number(rooms))
+        && (dealType === 'all' || l.deal_type === dealType);
+    });
+  }, [marketplace, search, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType]);
+
+  const clearFilters = () => {
+    setCommissionRange([0, commissionMax]);
+    setPriceRange([0, priceMax]);
+    setPropertyType('all');
+    setCity('all');
+    setNeighborhood('all');
+    setRooms('all');
+    setDealType('all');
+  };
 
   const filteredSubmissions = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -574,6 +688,36 @@ export default function AffiliatePortal() {
           </p>
         </header>
 
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <RitaAvatar className="h-9 w-9" />
+              <div className="min-w-0">
+                <div className="text-sm font-semibold">ריטה, הסוכנת האישית</div>
+                <div className="text-xs text-muted-foreground">{preferences.rita_auto_mode ? 'מצב אוטומטי' : 'מצב ידני'}</div>
+              </div>
+            </div>
+            <Switch
+              checked={preferences.rita_auto_mode}
+              disabled={preferencesUpdating}
+              onCheckedChange={(checked) => updatePreferences({ rita_auto_mode: checked }, { onError: () => toast.error('שמירת מצב ריטה נכשלה') })}
+              aria-label="הפעלה אוטומטית של ריטה"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-3">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold">הוספה אוטומטית למשפך</div>
+              <div className="text-xs text-muted-foreground">נכסים חדשים יתווספו לשיווק באופן אוטומטי</div>
+            </div>
+            <Switch
+              checked={preferences.auto_funnel_enabled}
+              disabled={preferencesUpdating}
+              onCheckedChange={(checked) => updatePreferences({ auto_funnel_enabled: checked }, { onError: () => toast.error('שמירת הגדרת המשפך נכשלה') })}
+              aria-label="הוספה אוטומטית למשפך"
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
             {
@@ -626,9 +770,17 @@ export default function AffiliatePortal() {
             </div>
           </div>
 
-          <div className="relative mt-4 max-w-sm">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9" />
+          <div className="mt-4 flex max-w-lg items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" />
+            </div>
+            {activeTab === 'marketplace' ? (
+              <Button type="button" size="icon" variant={activeFilterCount ? 'default' : 'outline'} onClick={() => setFiltersOpen(true)} className="relative shrink-0" aria-label="סינון נכסים" title="סינון נכסים">
+                <SlidersHorizontal className="h-4 w-4" />
+                {activeFilterCount ? <span className="absolute -left-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{activeFilterCount}</span> : null}
+              </Button>
+            ) : null}
           </div>
 
           <TabsContent value="marketplace" className="space-y-4 pt-4">
@@ -643,9 +795,33 @@ export default function AffiliatePortal() {
                 </CardContent>
               </Card>
             ) : (
-              <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3'}>
-                {filtered.map((l) => <MarketplaceCard key={l.listing_id} listing={l} compact={viewMode === 'list'} />)}
-              </div>
+              viewMode === 'list' ? (
+                <ResultTable
+                  results={filtered.map(marketplaceResult)}
+                  importingKey={null}
+                  onSelect={(result) => {
+                    const listing = filtered.find((item) => item.listing_id === result.localId);
+                    if (listing) navigate(`/p/${listing.slug || listing.listing_id}`);
+                  }}
+                  propertyHref={(result) => {
+                    const listing = filtered.find((item) => item.listing_id === result.localId);
+                    return listing ? `/p/${listing.slug || listing.listing_id}` : null;
+                  }}
+                  hideDefaultActions
+                  affiliateCell={(result) => {
+                    const listing = filtered.find((item) => item.listing_id === result.localId);
+                    return listing ? <PartnerListingActions listing={listing} /> : null;
+                  }}
+                  commissionCell={(result) => {
+                    const listing = filtered.find((item) => item.listing_id === result.localId);
+                    return listing ? <CommissionTierBadges tiers={listingTiers(listing)} compact /> : null;
+                  }}
+                />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filtered.map((l) => <MarketplaceCard key={l.listing_id} listing={l} />)}
+                </div>
+              )
             )}
           </TabsContent>
 
@@ -761,6 +937,35 @@ export default function AffiliatePortal() {
             )}
           </TabsContent>
         </Tabs>
+
+        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <SheetContent side="right" dir="rtl" className="w-[92vw] overflow-y-auto sm:max-w-md">
+            <SheetHeader className="text-right">
+              <SheetTitle>סינון חכם לנכסים</SheetTitle>
+            </SheetHeader>
+            <div className="space-y-6 py-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3"><Label>פוטנציאל תגמול</Label><bdi dir="ltr" className="text-sm font-semibold">{fmtILS(effectiveCommissionRange[0])} – {fmtILS(effectiveCommissionRange[1])}</bdi></div>
+                <Slider min={0} max={commissionMax} step={100} value={effectiveCommissionRange} onValueChange={(value) => setCommissionRange([value[0] ?? 0, value[1] ?? commissionMax])} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label>סוג נכס</Label><Select value={propertyType} onValueChange={setPropertyType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">כל הסוגים</SelectItem>{propertyTypes.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>עיר</Label><Select value={city} onValueChange={(value) => { setCity(value); setNeighborhood('all'); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">כל הערים</SelectItem>{cities.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>שכונה</Label><Select value={neighborhood} onValueChange={setNeighborhood}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">כל השכונות</SelectItem>{neighborhoods.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>מספר חדרים</Label><Select value={rooms} onValueChange={setRooms}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">הכול</SelectItem>{['2','3','4','5','6'].map((value) => <SelectItem key={value} value={value}>{value}+ חדרים</SelectItem>)}</SelectContent></Select></div>
+                <div className="col-span-2 space-y-2"><Label>סוג עסקה</Label><Select value={dealType} onValueChange={setDealType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">השכרה ומכירה</SelectItem><SelectItem value="rent">להשכרה</SelectItem><SelectItem value="sale">למכירה</SelectItem></SelectContent></Select></div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3"><Label>מחיר הנכס</Label><bdi dir="ltr" className="text-sm font-semibold">{fmtILS(effectivePriceRange[0])} – {fmtILS(effectivePriceRange[1])}</bdi></div>
+                <Slider min={0} max={priceMax} step={dealType === 'rent' ? 500 : 50000} value={effectivePriceRange} onValueChange={(value) => setPriceRange([value[0] ?? 0, value[1] ?? priceMax])} />
+              </div>
+            </div>
+            <SheetFooter className="gap-2 sm:space-x-0">
+              <Button onClick={() => setFiltersOpen(false)}>הצגת {filtered.length} נכסים</Button>
+              <Button variant="outline" onClick={clearFilters}>ניקוי מסננים</Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
       </div>
     </>
   );

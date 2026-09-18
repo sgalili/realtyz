@@ -201,26 +201,32 @@ export type Database = {
       }
       affiliate_profiles: {
         Row: {
+          auto_funnel_enabled: boolean
           created_at: string
           display_name: string | null
           payout_details: string | null
           phone: string | null
+          rita_auto_mode: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
+          auto_funnel_enabled?: boolean
           created_at?: string
           display_name?: string | null
           payout_details?: string | null
           phone?: string | null
+          rita_auto_mode?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
+          auto_funnel_enabled?: boolean
           created_at?: string
           display_name?: string | null
           payout_details?: string | null
           phone?: string | null
+          rita_auto_mode?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -6628,6 +6634,36 @@ export type Database = {
           media_photos: Json
           office_name: string
           property_title: string
+          reward_amount: number
+          reward_type: string
+          rooms: number
+          slug: string
+          sqm: number
+          tier1_amount: number
+          tier2_amount: number
+          tier3_amount: number
+          tier3_type: string
+        }[]
+      }
+      get_affiliate_marketplace_v2: {
+        Args: never
+        Returns: {
+          address: string
+          agency_logo_url: string
+          approved_at: string
+          asking_price: number
+          broker_id: string
+          broker_license_number: string
+          broker_name: string
+          city: string
+          deal_type: string
+          image_url: string
+          listing_id: string
+          media_photos: Json
+          neighborhood: string
+          office_name: string
+          property_title: string
+          property_type: string
           reward_amount: number
           reward_type: string
           rooms: number

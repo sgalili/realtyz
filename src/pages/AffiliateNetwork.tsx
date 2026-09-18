@@ -57,6 +57,9 @@ import { PropertyThumb, propertyFullAddress } from '@/components/leads/LinkedPro
 import ContactAvatar from '@/components/contacts/ContactAvatar';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { ResultTable } from '@/pages/Properties';
+import AffiliatePortal from '@/pages/AffiliatePortal';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAppMode } from '@/hooks/useAppMode';
 
 const AFFILIATE_SCROLL_KEY = 'affiliate-network:scroll-y';
 
@@ -229,7 +232,7 @@ function RewardDialog({
   );
 }
 
-export default function AffiliateNetwork() {
+function BrokerAffiliateNetwork() {
   const navigate = useNavigate();
   const { data: listings = [], isLoading: listingsLoading } = useBrokerAffiliateListings();
   const { data: referrals = [], isLoading: refsLoading } = useBrokerReferrals();
@@ -678,4 +681,10 @@ export default function AffiliateNetwork() {
       </div>
     </>
   );
+}
+
+export default function AffiliateNetwork() {
+  const { isAffiliateOnly } = useUserRole();
+  const { isPartnerMode } = useAppMode();
+  return isAffiliateOnly || isPartnerMode ? <AffiliatePortal /> : <BrokerAffiliateNetwork />;
 }

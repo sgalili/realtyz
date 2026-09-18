@@ -61,6 +61,8 @@ export type MarketplaceListing = {
   property_title: string | null;
   address: string | null;
   city: string | null;
+  neighborhood: string | null;
+  property_type: string | null;
   deal_type: string | null;
   rooms: number | null;
   sqm: number | null;
@@ -146,11 +148,59 @@ export function useAffiliateMarketplace() {
     enabled: isAffiliate,
     staleTime: 60_000,
     queryFn: async (): Promise<MarketplaceListing[]> => {
-      const { data, error } = await supabase.rpc('get_affiliate_marketplace');
+      const { data, error } = await supabase.rpc('get_affiliate_marketplace_v2' as never);
       if (error) throw error;
       return (data ?? []) as MarketplaceListing[];
     },
   });
+}
+
+export type AffiliatePreferences = {
+  rita_auto_mode: boolean;
+  auto_funnel_enabled: boolean;
+};
+
+export function useAffiliatePreferences() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const queryKey = ['affiliate-preferences', user?.id] as const;
+  const query = useQuery({
+    queryKey,
+    enabled: !!user?.id,
+    queryFn: async (): Promise<AffiliatePreferences> => {
+      if (!user?.id) return { rita_auto_mode: false, auto_funnel_enabled: false };
+      const { data, error } = await supabase
+        .from('affiliate_profiles')
+        .select('rita_auto_mode, auto_funnel_enabled')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return {
+        rita_auto_mode: Boolean((data as any)?.rita_auto_mode),
+        auto_funnel_enabled: Boolean((data as any)?.auto_funnel_enabled),
+      };
+    },
+  });
+  const update = useMutation({
+    mutationFn: async (patch: Partial<AffiliatePreferences>) => {
+      if (!user?.id) throw new Error('not_authenticated');
+      const { error } = await supabase
+        .from('affiliate_profiles')
+        .update(patch as never)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ['affiliate-my-referrals'] });
+    },
+  });
+  return {
+    preferences: query.data ?? { rita_auto_mode: false, auto_funnel_enabled: false },
+    isLoading: query.isLoading,
+    update: update.mutate,
+    isUpdating: update.isPending,
+  };
 }
 
 /** The signed-in affiliate's own referrals (RLS scopes to affiliate_id). */

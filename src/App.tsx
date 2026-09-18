@@ -82,7 +82,6 @@ const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
 const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const AffiliateSignup = lazy(() => import("./pages/AffiliateSignup"));
-const AffiliatePortal = lazy(() => import("./pages/AffiliatePortal"));
 const AffiliateNetwork = lazy(() => import("./pages/AffiliateNetwork"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 
@@ -265,6 +264,9 @@ function DealsRoute({ children }: { children: React.ReactNode }) {
 
 function PartnersRoute({ children }: { children: React.ReactNode }) {
   const { partnersEnabled } = useWorkspaceFeatures();
+  const { isAffiliate } = useUserRole();
+  const { isPartnerMode } = useAppMode();
+  if (isAffiliate || isPartnerMode) return <>{children}</>;
   if (!partnersEnabled) return <Navigate to="/lead-crm" replace />;
   return <>{children}</>;
 }
@@ -331,7 +333,7 @@ const App = () => (
               <Route path="/automations" element={<ProtectedRoute allowGuestDemo><AutomationStudioPage /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
-              <Route path="/affiliate" element={<ProtectedRoute><AffiliatePortal /></ProtectedRoute>} />
+              <Route path="/affiliate" element={<Navigate to="/affiliate-network" replace />} />
               <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
               <Route path="/referral" element={<ProtectedRoute><PartnerNetwork /></ProtectedRoute>} />
 
