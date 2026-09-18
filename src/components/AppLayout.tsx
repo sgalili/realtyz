@@ -44,6 +44,7 @@ import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 // DemoModeToggle removed from app
 import { PageHero } from '@/components/PageHero';
 import { FacebookConnectionBanner } from '@/components/social/FacebookConnectionBanner';
+import HeaderProfileMenu from '@/components/header/HeaderProfileMenu';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 const TUTORIAL_STEPS = [
@@ -473,34 +474,29 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="realtyz-app-shell h-screen overflow-hidden flex w-full bg-background pt-[env(safe-area-inset-top)]">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
-          <header className="h-16 border-b border-border bg-background text-foreground flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30 relative" dir="rtl">
-            {/* Profile avatar on visual right (RTL start) — bell sits right next to it */}
-            <div className="flex items-center gap-2">
+          <header className="grid min-h-16 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-border bg-background px-3 text-foreground sticky top-0 z-30 sm:px-4" dir="rtl">
+            <div className="flex items-center gap-1 sm:gap-2">
               <HeaderProfileLink />
+              <HeaderProfileMenu />
               <NotificationCenter />
             </div>
-
-            <div className="flex-1" />
-
-            {/* Centered active workspace brand */}
             <Link
               to="/"
               aria-label={`${headerName} - דף הבית`}
-              className="absolute left-1/2 top-1/2 inline-flex max-w-[52vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-0.5 overflow-hidden text-center leading-none"
+              className="flex min-w-0 flex-col items-start justify-center gap-0.5 overflow-hidden text-right leading-none"
             >
-              <span className="flex max-w-full items-center justify-center gap-2 overflow-hidden">
-                <img src={headerLogo || realtyzLogo} alt={headerName || 'Realtyz AI'} className="h-8 max-w-[128px] shrink-0 object-contain" />
+              <span className="flex max-w-full items-center gap-2 overflow-hidden">
+                <img src={headerLogo || realtyzLogo} alt={headerName || 'Realtyz AI'} className="h-7 max-w-16 shrink-0 object-contain sm:h-8 sm:max-w-[110px]" />
                 <span className="min-w-0 truncate text-sm font-bold text-foreground">{headerName}</span>
               </span>
               {headerUserName ? (
-                <span className="max-w-full truncate text-[11px] font-semibold text-muted-foreground">
+                <span className="max-w-full truncate pe-0.5 text-[11px] font-semibold text-muted-foreground">
                   {headerUserName}
                 </span>
               ) : null}
             </Link>
 
-            {/* Action buttons on visual left (RTL end) */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <HeaderCrisisAlert />
               <Button
                 variant="ghost"

@@ -27,7 +27,7 @@ export function AppModeSwitcher() {
         // Idempotent: makes sure the account really has a partner profile.
         await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
         setMode('partner');
-        navigate('/affiliate');
+        navigate('/affiliate-network');
         toast.success('עברת למצב שותף');
       } else {
         setMode('broker');

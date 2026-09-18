@@ -136,13 +136,6 @@ const NAV_ITEMS: NavItem[] = [
  */
 const PARTNER_NAV_ITEMS: NavItem[] = [
   {
-    title: 'נכסים לשיווק',
-    url: '/affiliate',
-    icon: Home,
-    iconColor: '!text-[#0369a1]', // sky-700
-    badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
-  },
-  {
     title: 'שיווק שותפים',
     url: '/affiliate-network',
     icon: AffiliateFlowchartIcon,
