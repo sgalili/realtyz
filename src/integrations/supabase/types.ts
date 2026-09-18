@@ -201,26 +201,32 @@ export type Database = {
       }
       affiliate_profiles: {
         Row: {
+          auto_funnel_enabled: boolean
           created_at: string
           display_name: string | null
           payout_details: string | null
           phone: string | null
+          rita_auto_mode: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
+          auto_funnel_enabled?: boolean
           created_at?: string
           display_name?: string | null
           payout_details?: string | null
           phone?: string | null
+          rita_auto_mode?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
+          auto_funnel_enabled?: boolean
           created_at?: string
           display_name?: string | null
           payout_details?: string | null
           phone?: string | null
+          rita_auto_mode?: boolean
           updated_at?: string
           user_id?: string
         }
