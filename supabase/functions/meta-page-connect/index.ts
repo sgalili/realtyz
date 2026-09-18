@@ -11,6 +11,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { adminClient, fbAppCredentials, GRAPH, humanizeGraphError, resolveCaller, validateFbApp } from "../_shared/fbPersonal.ts";
 import { isBlockedPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
+import { describeMetaError, META_DEV_MODE_NOTE_HE } from "../_shared/metaErrorDetail.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
