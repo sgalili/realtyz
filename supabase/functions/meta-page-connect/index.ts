@@ -969,6 +969,10 @@ async function handleRequest(req: Request): Promise<Response> {
             missing_scopes: ["pages_read_engagement"],
             granted_scopes: grantedScopes,
             retry_basic: true,
+            // While the Meta app is in Development Mode the consent dialog can
+            // silently drop the scope for accounts that are not app testers.
+            dev_mode_restricted: true,
+            dev_note_he: META_DEV_MODE_NOTE_HE,
           },
           200,
         );
