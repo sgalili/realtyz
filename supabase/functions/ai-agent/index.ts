@@ -209,6 +209,68 @@ function renderPropertySearchAnswer(rows: any[]): string {
   }).join("\n\n");
 }
 
+/** Valuation / CMA / market-research intent (historical deals, not live stock). */
+const VALUATION_INTENT_RE = /(שווי|הערכת\s*שווי|כמה\s*שוו[הי]|במה\s*למכור|מחיר\s*(?:מומלץ|מבוקש|ריאלי|שוק)|טווח\s*מחירים|מחיר\s*למ["״']?ר|עסקאות\s*(?:דומות|שנסגרו|אחרונות|עבר|היסטורי)|נמכר[וה]?\s*ב|השוואת\s*(?:מחירים|נכסים)|מצב\s*השוק|CMA|comparable|market\s*(?:value|analysis)|valuation)/i;
+
+function isValuationTurn(messages: Array<{ role?: string; content?: unknown }>, context: unknown): boolean {
+  return VALUATION_INTENT_RE.test(`${latestText(messages, "user")}\n${String(context ?? "")}`);
+}
+
+function marketResearchArgsFromTurn(
+  messages: Array<{ role?: string; content?: unknown }>,
+  preferences: Record<string, unknown>,
+  knownDealType: string | null,
+): Record<string, unknown> {
+  const user = latestText(messages, "user");
+  const recent = messages.filter((m) => m?.role === "user").slice(-4).map((m) => String(m.content ?? "")).join(" ");
+  const city = extractCity(user) ?? extractCity(recent) ?? String(preferences.desired_city ?? preferences.city ?? "").trim();
+  // "מוהליבר 1" / "ברחוב אחי דקר 5" — keep the street, drop the house number.
+  const streetMatch = user.match(/(?:ברחוב|רחוב|ב)?\s*([\u0590-\u05FF'"״]{3,}(?:\s+[\u0590-\u05FF'"״]{2,})?)\s*(\d{1,3})\b/);
+  const roomsMatch = recent.match(/(\d+(?:\.\d+)?)\s*חדרים/);
+  const sqmMatch = recent.match(/(\d{2,4})\s*(?:מ["״']?ר|מטר)/);
+  const dealType = /להשכרה|לשכירות|שכ["״]?ד/i.test(recent)
+    ? "rent"
+    : /למכירה|למכור|לקנות|רכישה/i.test(recent)
+      ? "sale"
+      : knownDealType === "rent" || knownDealType === "sale" ? knownDealType : undefined;
+  const rooms = roomsMatch ? Number(roomsMatch[1]) : undefined;
+  return {
+    ...(streetMatch?.[1] ? { street: streetMatch[1].trim(), query: `${streetMatch[1].trim()} ${streetMatch[2]}`.trim() } : { query: user.slice(0, 80) }),
+    ...(city ? { city } : {}),
+    ...(dealType ? { deal_type: dealType } : {}),
+    ...(rooms ? { min_rooms: rooms, max_rooms: rooms } : {}),
+    ...(sqmMatch ? { sqm: Number(sqmMatch[1]) } : {}),
+  };
+}
+
+function renderMarketResearchAnswer(report: Record<string, any>): string {
+  const money = (value: unknown) => Number.isFinite(Number(value)) && Number(value) > 0
+    ? `${Number(value).toLocaleString("he-IL")} ₪`
+    : null;
+  const comps: any[] = Array.isArray(report?.comps) ? report.comps : [];
+  if (!comps.length) {
+    return "לא נמצאו עסקאות השוואה בטווח שבדקתי. להרחיב לשכונה סמוכה או לטווח חדרים אחר?";
+  }
+  const range = report.estimated_range
+    ? `טווח שווי משוער: ${money(report.estimated_range.low)} - ${money(report.estimated_range.high)}`
+    : null;
+  const stats = [
+    report.price_median ? `חציון: ${money(report.price_median)}` : null,
+    report.price_per_sqm_median ? `מחיר למ״ר: ${money(report.price_per_sqm_median)}` : null,
+    `נבדקו ${report.comps_count} רשומות ב${report.scope}, מהן ${report.closed_count} עסקאות שנסגרו`,
+  ].filter(Boolean).join(" | ");
+  const lines = comps.slice(0, 5).map((comp: any, index: number) => {
+    const details = [
+      comp.rooms ? `${comp.rooms} חדרים` : null,
+      comp.sqm ? `${comp.sqm} מ״ר` : null,
+      money(comp.price),
+      comp.likely_closed ? "עסקה שנסגרה" : "מודעה פעילה",
+    ].filter(Boolean).join(", ");
+    return `${index + 1}. ${comp.address}${comp.neighborhood ? `, ${comp.neighborhood}` : ""} - ${details}`;
+  });
+  return [range, stats, lines.join("\n")].filter(Boolean).join("\n");
+}
+
 const SCHEMA_CONTEXT = `
 You are the Agent's Virtual Twin, drafting messages AS the human Agent of the ACTIVE workspace to Leads in the real-estate Deal Room. You are NEVER "Realtyz AI", a chatbot, or a generic assistant, your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
 You speak Hebrew and English. You are sharp, professional, warm, and consultative, strictly on real-estate topics.
