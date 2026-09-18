@@ -12,7 +12,14 @@ const KEY = 'realtyz-app-mode';
 const EVENT = 'realtyz-app-mode-change';
 
 /** Paths a partner-mode session is allowed to reach. */
-export const PARTNER_MODE_PATHS = ['/affiliate-network', '/referral', '/profile'];
+export const PARTNER_MODE_PATHS = [
+  '/affiliate-network',
+  '/referral',
+  '/profile',
+  '/partner/posts',
+  '/partner/chats',
+  '/partner/contacts',
+];
 
 export function readAppMode(): AppMode {
   try {

@@ -136,6 +136,27 @@ const NAV_ITEMS: NavItem[] = [
  */
 const PARTNER_NAV_ITEMS: NavItem[] = [
   {
+    title: 'פוסטים',
+    url: '/partner/posts',
+    icon: Megaphone,
+    iconColor: '!text-[#b45309]', // amber-700
+    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
+  },
+  {
+    title: 'צ׳אטים',
+    url: '/partner/chats',
+    icon: MessageCircle,
+    iconColor: '!text-[#0e7490]', // cyan-700
+    badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
+  },
+  {
+    title: 'אנשי קשר',
+    url: '/partner/contacts',
+    icon: Users,
+    iconColor: '!text-[#1d4ed8]', // blue-700
+    badgeClass: 'bg-blue-50 text-blue-700 ring-blue-200',
+  },
+  {
     title: 'שיווק שותפים',
     url: '/affiliate-network',
     icon: AffiliateFlowchartIcon,

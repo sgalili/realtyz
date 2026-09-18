@@ -1,0 +1,10 @@
+REVOKE ALL ON FUNCTION public.affiliate_can_access_lead(uuid) FROM anon, PUBLIC;
+REVOKE ALL ON FUNCTION public.get_affiliate_posts() FROM anon, PUBLIC;
+REVOKE ALL ON FUNCTION public.get_affiliate_chats() FROM anon, PUBLIC;
+REVOKE ALL ON FUNCTION public.get_affiliate_chat_messages(uuid) FROM anon, PUBLIC;
+REVOKE ALL ON FUNCTION public.get_affiliate_contacts() FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.affiliate_can_access_lead(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_affiliate_posts() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_affiliate_chats() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_affiliate_chat_messages(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_affiliate_contacts() TO authenticated;
