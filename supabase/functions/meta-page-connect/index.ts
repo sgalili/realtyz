@@ -859,6 +859,7 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       let userToken = suppliedToken;
+      let userTokenExpiresAt: string | null = null;
       if (!userToken) {
         const tokenRes = await graph(
           `/oauth/access_token?${new URLSearchParams({
