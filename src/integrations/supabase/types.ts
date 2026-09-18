@@ -6645,6 +6645,36 @@ export type Database = {
           tier3_type: string
         }[]
       }
+      get_affiliate_marketplace_v2: {
+        Args: never
+        Returns: {
+          address: string
+          agency_logo_url: string
+          approved_at: string
+          asking_price: number
+          broker_id: string
+          broker_license_number: string
+          broker_name: string
+          city: string
+          deal_type: string
+          image_url: string
+          listing_id: string
+          media_photos: Json
+          neighborhood: string
+          office_name: string
+          property_title: string
+          property_type: string
+          reward_amount: number
+          reward_type: string
+          rooms: number
+          slug: string
+          sqm: number
+          tier1_amount: number
+          tier2_amount: number
+          tier3_amount: number
+          tier3_type: string
+        }[]
+      }
       get_business_performance: {
         Args: { days_window?: number; user_uuid: string }
         Returns: Json
