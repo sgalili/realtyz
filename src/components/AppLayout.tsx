@@ -38,6 +38,7 @@ import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 
 import { resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
+import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 
 
 // DemoModeToggle removed from app
@@ -277,6 +278,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
     },
   });
 
+  const { data: headerUserProfile } = useQuery({
+    queryKey: ['app-header-user-profile', user?.id],
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user!.id)
+        .maybeSingle();
+      return (data as any) ?? null;
+    },
+  });
+
   useEffect(() => {
     if (localStorage.getItem(DEMO_EXIT_PENDING_KEY) === 'true' || quickConnectOpen) return;
     // Never auto-open the onboarding wizard on the subscription page — it
@@ -435,6 +450,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const headerIdentity = resolveWorkspaceIdentity(activeWorkspace, brand as any);
   const headerLogo = headerIdentity.logo || '';
   const headerName = headerIdentity.name;
+  const headerUserName = String((headerUserProfile as any)?.full_name || friendlyUserDisplayName(user, '') || '').trim();
 
 
   const advanceTutorial = () => {
@@ -467,16 +483,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <Link
               to="/"
               aria-label={`${headerName} - דף הבית`}
-              className="absolute left-1/2 top-1/2 inline-flex max-w-[48vw] -translate-x-1/2 -translate-y-1/2 items-center gap-2 overflow-hidden text-center"
+              className="absolute left-1/2 top-1/2 inline-flex max-w-[52vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-0.5 overflow-hidden text-center leading-none"
             >
-              {headerLogo ? (
-                <>
-                  <img src={headerLogo} alt={headerName} className="h-10 max-w-[160px] object-contain" />
-                  <span className="truncate text-sm font-bold text-foreground">{headerName}</span>
-                </>
-              ) : (
-                <img src={realtyzLogo} alt="Realtyz AI" className="h-11 max-w-[190px] object-contain" />
-              )}
+              <span className="flex max-w-full items-center justify-center gap-2 overflow-hidden">
+                <img src={headerLogo || realtyzLogo} alt={headerName || 'Realtyz AI'} className="h-8 max-w-[128px] shrink-0 object-contain" />
+                <span className="min-w-0 truncate text-sm font-bold text-foreground">{headerName}</span>
+              </span>
+              {headerUserName ? (
+                <span className="max-w-full truncate text-[11px] font-semibold text-muted-foreground">
+                  {headerUserName}
+                </span>
+              ) : null}
             </Link>
 
             {/* Action buttons on visual left (RTL end) */}

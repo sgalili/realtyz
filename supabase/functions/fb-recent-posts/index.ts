@@ -400,6 +400,90 @@ type GraphCred = {
   updatedAt?: string | null;
 };
 
+const REQUIRED_PAGE_READ_SCOPE = "pages_read_engagement";
+
+type TokenPermissionProbe = {
+  inspected: boolean;
+  ok: boolean;
+  status: number;
+  error: any | null;
+  scopes: string[];
+  granularScopes: any[];
+};
+
+const tokenHasScopeForPage = (scope: string, pageId: string | null, scopes: string[], granularScopes: any[]): boolean => {
+  if (scopes.includes(scope)) return true;
+  return granularScopes.some((entry) => {
+    if (String(entry?.scope ?? "") !== scope) return false;
+    const targets = Array.isArray(entry?.target_ids) ? entry.target_ids.map((id: unknown) => String(id)) : [];
+    return targets.length === 0 || !pageId || targets.includes(String(pageId));
+  });
+};
+
+const inspectTokenPermissions = async (cred: GraphCred): Promise<TokenPermissionProbe> => {
+  const appId = Deno.env.get("META_APP_ID") || "2885631568443536";
+  const appSecret = Deno.env.get("META_APP_SECRET") || "";
+  if (!cred.token || !cred.pageId || !appSecret) {
+    return { inspected: false, ok: true, status: 0, error: null, scopes: [], granularScopes: [] };
+  }
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v26.0/debug_token?input_token=${
+        encodeURIComponent(cred.token)
+      }&access_token=${encodeURIComponent(`${appId}|${appSecret}`)}`,
+    );
+    const body = await res.text().catch(() => "");
+    let parsed: any = {};
+    try { parsed = body ? JSON.parse(body) : {}; } catch { parsed = {}; }
+    const info = parsed?.data ?? {};
+    const scopes: string[] = Array.isArray(info?.scopes) ? info.scopes.map((s: unknown) => String(s)) : [];
+    const granularScopes: any[] = Array.isArray(info?.granular_scopes) ? info.granular_scopes : [];
+    const isValid = info?.is_valid !== false;
+    const hasRead = tokenHasScopeForPage(REQUIRED_PAGE_READ_SCOPE, cred.pageId, scopes, granularScopes);
+    console.log("[fb-recent-posts] active token permission probe", {
+      page_id: cred.pageId,
+      token_source: cred.source,
+      binding_record_id: cred.recordId ?? null,
+      token_type: info?.type ?? null,
+      token_is_valid: info?.is_valid ?? null,
+      has_pages_read_engagement: hasRead,
+      http_status: res.status,
+    });
+    if (!res.ok || !isValid) {
+      return {
+        inspected: true,
+        ok: false,
+        status: res.status,
+        error: parsed?.error ?? {
+          code: 190,
+          type: "OAuthException",
+          message: "Facebook Page access token is invalid or expired.",
+        },
+        scopes,
+        granularScopes,
+      };
+    }
+    if (!hasRead) {
+      return {
+        inspected: true,
+        ok: false,
+        status: 403,
+        error: {
+          code: 10,
+          type: "OAuthException",
+          message: "Missing active pages_read_engagement permission for the connected Facebook Page. Reconnect the Page and approve pages_read_engagement. If the Meta app is in Development Mode, the connected account must be an Administrator, Developer, or Tester in the Meta App Dashboard and the permission must be enabled for development.",
+        },
+        scopes,
+        granularScopes,
+      };
+    }
+    return { inspected: true, ok: true, status: res.status, error: null, scopes, granularScopes };
+  } catch (e) {
+    console.warn("[fb-recent-posts] token permission probe failed", e instanceof Error ? e.message : e);
+    return { inspected: false, ok: true, status: 0, error: null, scopes: [], granularScopes: [] };
+  }
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -895,6 +979,38 @@ Deno.serve(async (req) => {
           const minted = await refreshPageTokenFromPersonal();
           if (minted && minted.pageId === cred.pageId && await verifyPageToken(minted)) {
             cred = minted;
+          }
+        }
+        const permissionProbe = await inspectTokenPermissions(cred);
+        if (!permissionProbe.ok) {
+          let finalProbe = permissionProbe;
+          const minted = await refreshPageTokenFromPersonal();
+          if (minted && minted.pageId === cred.pageId && await verifyPageToken(minted)) {
+            const retryProbe = await inspectTokenPermissions(minted);
+            if (retryProbe.ok) {
+              cred = minted;
+            } else {
+              finalProbe = retryProbe;
+            }
+          }
+          if (!finalProbe.ok) {
+            last = {
+              posts: [],
+              status: finalProbe.status,
+              error: finalProbe.error,
+              source: cred.source,
+            };
+            console.error("[fb-recent-posts] active token missing required permissions", {
+              page_id: cred.pageId,
+              token_source: cred.source,
+              binding_record_id: cred.recordId ?? null,
+              required_scope: REQUIRED_PAGE_READ_SCOPE,
+              scopes: finalProbe.scopes,
+              granular_scopes: finalProbe.granularScopes,
+              error: finalProbe.error,
+            });
+            if (isMetaPermissionError(finalProbe.error)) continue;
+            break;
           }
         }
         const res = await fetchGraphHistoryWith(cred);
