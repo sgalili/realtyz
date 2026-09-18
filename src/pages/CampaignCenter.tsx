@@ -4860,7 +4860,7 @@ const PublishedFeed = ({
           try { sessionStorage.setItem(syncKey, String(Date.now())); } catch { /* quota */ }
           void (async () => {
             try {
-              const { data } = await supabase.functions.invoke('fb-recent-posts', {
+              const { data, error: reconcileError } = await supabase.functions.invoke('fb-recent-posts', {
                 body: {
                   lastRecords: 100,
                   pageSize: 50,
@@ -4869,13 +4869,19 @@ const PublishedFeed = ({
                   prune_missing: true,
                 },
               });
+              const reconcileFailure = facebookSyncErrorText(data, reconcileError);
+              if (reconcileFailure) {
+                console.warn('[PublishedFeed] native reconcile failed', { reconcileError, data });
+                setFacebookSyncWarning(reconcileFailure);
+              }
               const removed = Number((data as any)?.pruned_missing) || 0;
               if (removed > 0 || Number((data as any)?.upserted) > 0) {
                 // Repaint from the DB (skip a second provider round-trip).
                 void loadRef.current({ skipFbImport: true });
               }
             } catch (err) {
-              console.warn('[PublishedFeed] native reconcile failed (non-fatal)', err);
+              console.warn('[PublishedFeed] native reconcile crashed', err);
+              setFacebookSyncWarning(facebookSyncErrorText(null, err));
             }
           })();
         }
