@@ -5833,15 +5833,15 @@ const PublishedFeed = ({
       {fbSyncWarning ? (
         <div
           role="alert"
-          className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-right"
+          className="mb-3 flex w-full min-w-0 max-w-full flex-col items-stretch gap-3 overflow-hidden rounded-md border border-destructive/40 bg-destructive/10 p-3 text-right sm:flex-row sm:items-start sm:justify-between"
         >
-          <div className="flex min-w-0 flex-1 items-start gap-2">
+          <div className="flex w-full min-w-0 flex-1 items-start gap-2 overflow-hidden">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-            <p className="min-w-0 flex-1 whitespace-pre-line break-words text-xs font-medium leading-5 text-destructive">{fbSyncWarning}</p>
+            <p className="min-w-0 max-w-full flex-1 whitespace-pre-line break-words text-xs font-medium leading-5 text-destructive [overflow-wrap:break-word] [word-break:break-word]">{fbSyncWarning}</p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
             {fbSyncWarning.includes('developers.facebook.com') ? (
-              <Button asChild type="button" size="sm" variant="outline">
+              <Button asChild type="button" size="sm" variant="outline" className="min-w-0 flex-1 sm:flex-none">
                 <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer">
                   Meta App Dashboard
                 </a>
@@ -5850,6 +5850,7 @@ const PublishedFeed = ({
             <Button
               type="button"
               size="sm"
+              className="min-w-0 flex-1 sm:flex-none"
               onClick={() => void handleFeedConnect('facebook')}
             >
               התחבר מחדש

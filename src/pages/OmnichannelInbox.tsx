@@ -7,7 +7,6 @@ import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -74,13 +73,6 @@ const statusLed: Record<string, { dot: string; ring: string; note: string }> = {
   lead: { dot: 'bg-warning', ring: 'ring-warning/20', note: 'מתעניין חדש שדורש טיפוח' },
   inactive: { dot: 'bg-muted-foreground', ring: 'ring-muted', note: 'פעילות נמוכה או ללא תגובה לאחרונה' },
 };
-
-const senderBadge: Record<string, { label: string; className: string }> = {
-  ai: { label: 'Realtyz AI', className: 'bg-primary/15 text-primary border-primary/30' },
-  agent: { label: 'נציג', className: 'bg-blue-500/15 text-blue-700 border-blue-300' },
-  voter: { label: 'מתעניין', className: 'bg-slate-500/15 text-slate-700 border-slate-300' },
-};
-
 
 // Session flag: set once the avatar service reports it isn't configured, so
 // we stop re-requesting WhatsApp profile photos on every render pass.
@@ -202,10 +194,11 @@ const OmnichannelInbox = () => {
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
+      if (!user?.id) return null;
       const { data } = await supabase
         .from('profiles')
         .select('full_name, avatar_url')
-        .eq('id', user!.id)
+        .eq('id', user.id)
         .maybeSingle();
       return (data as any) ?? null;
     },
@@ -1295,8 +1288,8 @@ const OmnichannelInbox = () => {
               )}
 
               {/* Messages */}
-              <ScrollArea className="min-w-0 flex-1 p-2 sm:p-4 whatsapp-chat-bg">
-                <div className="mx-auto w-full min-w-0 max-w-3xl space-y-2 px-1 pb-3 sm:px-2">
+              <ScrollArea className="min-w-0 flex-1 overflow-x-hidden p-2 sm:p-4 whatsapp-chat-bg">
+                <div className="mx-auto w-full min-w-0 max-w-3xl space-y-2 overflow-x-hidden px-1 pb-3 sm:px-2">
                   {chatMessages?.length === 0 && (
                     <p className="rounded-lg bg-whatsapp-bubble-in/80 px-3 py-2 text-center text-sm text-muted-foreground shadow-sm">אין הודעות עדיין</p>
                   )}
@@ -1304,10 +1297,60 @@ const OmnichannelInbox = () => {
                     const isOutbound = msg.direction === 'outbound';
                     const senderType = msg.sender_type || (isOutbound ? 'agent' : 'lead');
                     const isAiMessage = isOutbound && (senderType === 'ai' || senderType === 'ai_agent' || (msg as any).ai_assisted === true);
-                    const badge = senderBadge[senderType] || senderBadge.voter;
                     const prevMsg = idx > 0 ? chatMessages[idx - 1] : null;
                     const channelChanged = prevMsg && prevMsg.channel !== msg.channel && msg.channel;
                     const channelLabel = channelConfig[msg.channel || '']?.label || msg.channel;
+                    const avatarNode = isAiMessage ? (
+                      <RitaAvatar className="h-7 w-7 shrink-0" />
+                    ) : isOutbound ? (
+                      <VoterAvatar
+                        fullName={agentProfile?.full_name ?? 'סוכן'}
+                        profilePictureUrl={agentProfile?.avatar_url ?? null}
+                        className="h-7 w-7 shrink-0"
+                        textClassName="text-[10px]"
+                      />
+                    ) : (
+                      <button type="button" onClick={openCrmCard} className="shrink-0 rounded-full" aria-label="פתיחת כרטיס איש קשר">
+                        <VoterAvatar
+                          fullName={selectedVoter?.full_name}
+                          profilePictureUrl={(selectedVoter as any)?.profile_picture_url}
+                          className="h-7 w-7 shrink-0"
+                          textClassName="text-[10px]"
+                        />
+                      </button>
+                    );
+                    const bubbleNode = (
+                      <MessageContent className={`relative min-w-0 max-w-[calc(100%-2.75rem)] gap-0 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word] rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isAiMessage ? 'border border-primary/20 bg-primary/10 text-foreground rounded-es-sm' : isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
+                        {msg.id === lastAiMessageId && selectedVoterId && (
+                          <UndoLastAiMessage
+                            messageId={msg.id as string}
+                            leadId={selectedVoterId}
+                            leadName={selectedVoter?.full_name ?? null}
+                            leadCity={(selectedVoter as any)?.city ?? null}
+                            leadStage={(selectedVoter as any)?.lead_stage ?? null}
+                            onRegenerated={(draft) => { setNewMessage(draft); setOriginalAiDraft(draft); }}
+                            onDeleted={() => {
+                              queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedVoterId] });
+                              queryClient.invalidateQueries({ queryKey: ['last-messages'] });
+                            }}
+                          />
+                        )}
+                        <div className="mb-1 flex items-center justify-end gap-1.5">
+                          <ChannelIcon channel={msg.channel} />
+                        </div>
+                        {(() => {
+                          const media = extractChatMedia(msg);
+                          if (media) return <MediaMessage media={media} />;
+                          return (
+                            <ChatMessageText content={msg.content} />
+                          );
+                        })()}
+                        <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+                          <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
+                          {isOutbound && <WhatsAppTicks status={((msg as any)?.metadata?.status as 'sent' | 'delivered' | 'read') || 'delivered'} />}
+                        </p>
+                      </MessageContent>
+                    );
 
                     return (
                       <div
@@ -1326,56 +1369,8 @@ const OmnichannelInbox = () => {
                             <div className="flex-1 h-px bg-border" />
                           </div>
                         )}
-                        <Message from={isOutbound ? 'assistant' : 'user'} className={`min-w-0 max-w-full flex-row items-end gap-2 px-0.5 ${isOutbound ? 'justify-start' : 'justify-end'}`}>
-                          {isAiMessage ? (
-                            <RitaAvatar className="h-7 w-7" />
-                          ) : isOutbound ? (
-                            <VoterAvatar
-                              fullName={agentProfile?.full_name ?? 'סוכן'}
-                              profilePictureUrl={agentProfile?.avatar_url ?? null}
-                              className="h-7 w-7 shrink-0"
-                              textClassName="text-[10px]"
-                            />
-                          ) : (
-                            <button type="button" onClick={openCrmCard} className="shrink-0 rounded-full" aria-label="פתיחת כרטיס איש קשר">
-                              <VoterAvatar
-                                fullName={selectedVoter?.full_name}
-                                profilePictureUrl={(selectedVoter as any)?.profile_picture_url}
-                                className="h-7 w-7 shrink-0"
-                                textClassName="text-[10px]"
-                              />
-                            </button>
-                          )}
-                          <MessageContent className={`relative min-w-0 max-w-[calc(100%-2.5rem)] gap-0 break-words [overflow-wrap:anywhere] rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isAiMessage ? 'border border-primary/20 bg-primary/10 text-foreground rounded-es-sm' : isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
-                            {msg.id === lastAiMessageId && selectedVoterId && (
-                              <UndoLastAiMessage
-                                messageId={msg.id as string}
-                                leadId={selectedVoterId}
-                                leadName={selectedVoter?.full_name ?? null}
-                                leadCity={(selectedVoter as any)?.city ?? null}
-                                leadStage={(selectedVoter as any)?.lead_stage ?? null}
-                                onRegenerated={(draft) => { setNewMessage(draft); setOriginalAiDraft(draft); }}
-                                onDeleted={() => {
-                                  queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedVoterId] });
-                                  queryClient.invalidateQueries({ queryKey: ['last-messages'] });
-                                }}
-                              />
-                            )}
-                            <div className="mb-1 flex items-center justify-end gap-1.5">
-                              <ChannelIcon channel={msg.channel} />
-                            </div>
-                            {(() => {
-                              const media = extractChatMedia(msg);
-                              if (media) return <MediaMessage media={media} />;
-                              return (
-                                <ChatMessageText content={msg.content} />
-                              );
-                            })()}
-                            <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
-                              <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
-                              {isOutbound && <WhatsAppTicks status={((msg as any)?.metadata?.status as 'sent' | 'delivered' | 'read') || 'delivered'} />}
-                            </p>
-                          </MessageContent>
+                        <Message from={isOutbound ? 'assistant' : 'user'} className={`min-w-0 max-w-full overflow-hidden flex-row items-end gap-2 px-0.5 ${isOutbound ? 'justify-start' : 'justify-end'}`}>
+                          {isOutbound ? <>{bubbleNode}{avatarNode}</> : <>{avatarNode}{bubbleNode}</>}
                         </Message>
                       </div>
                     );

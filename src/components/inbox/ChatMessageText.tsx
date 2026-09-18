@@ -11,7 +11,7 @@ export function ChatMessageText({ content, className }: { content: string | null
   if (!blocks.length) return null;
 
   return (
-    <div className={`max-w-full space-y-2 overflow-hidden break-words text-sm leading-relaxed ${className ?? ''}`}>
+    <div className={`min-w-0 max-w-full space-y-2 overflow-hidden break-words text-sm leading-relaxed [overflow-wrap:anywhere] [word-break:break-word] ${className ?? ''}`}>
       {blocks.map((block, i) =>
         block.kind === 'list' ? (
           block.ordered ? (
@@ -68,7 +68,7 @@ function Inline({ text }: { text: string }) {
               href={part.value}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary underline underline-offset-2"
+            className="break-all text-primary underline underline-offset-2 [overflow-wrap:anywhere]"
             >
               {part.value}
             </a>
