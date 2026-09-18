@@ -1324,23 +1324,24 @@ Deno.serve(async (req) => {
         // is refused, so the client must never flip to "disconnected" here.
         page_connected: !!page?.pageId,
         needs_extension: permissionBlocked && posts.length === 0,
+        // Exact Graph failure (code/subcode/type/message/trace) so the UI can
+        // tell the user precisely why the sync did not complete.
+        sync_error: lastError ? describeMetaError(lastError, lastStatus) : null,
         // Clear, human-readable reason when a refresh returned nothing.
-        error: posts.length === 0
-          ? (lastError === "facebook_page_access_token_missing"
-            ? "לא נמצא חיבור פעיל לעמוד הפייסבוק — יש להתחבר מחדש בהגדרות הערוצים"
-            : (lastError as any)?.message
-            ? `Facebook Graph: ${(lastError as any).message}`
-            : null)
+        error: posts.length === 0 && lastError
+          ? describeMetaError(lastError, lastStatus).message_he
           : null,
         diagnostics,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
+    const detail = describeMetaError(e instanceof Error ? e.message : String(e), null);
     return new Response(
       JSON.stringify({
         ok: false,
-        error: e instanceof Error ? e.message : String(e),
+        sync_error: detail,
+        error: detail.message_he,
       }),
       {
         status: 200,
