@@ -5795,8 +5795,14 @@ const PublishedFeed = ({
       </div>
 
       {fbSyncWarning ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/50 p-3 text-right">
-          <p className="min-w-0 flex-1 text-xs font-medium leading-5 text-muted-foreground">{fbSyncWarning}</p>
+        <div
+          role="alert"
+          className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-right"
+        >
+          <div className="flex min-w-0 flex-1 items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <p className="min-w-0 flex-1 whitespace-pre-line break-words text-xs font-medium leading-5 text-destructive">{fbSyncWarning}</p>
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             <Button
               type="button"
