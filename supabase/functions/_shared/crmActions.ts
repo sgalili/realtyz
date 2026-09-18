@@ -298,6 +298,177 @@ export async function searchProperties(
   }));
 }
 
+export type MarketResearchArgs = {
+  query?: unknown;
+  street?: unknown;
+  city?: unknown;
+  neighborhood?: unknown;
+  deal_type?: unknown;
+  min_rooms?: unknown;
+  max_rooms?: unknown;
+  sqm?: unknown;
+  months_back?: unknown;
+};
+
+const median = (values: number[]): number | null => {
+  const sorted = values.filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+};
+
+/**
+ * Market research / CMA over HISTORICAL real-estate records, not just the live
+ * inventory: the central Yad2 pool (`market_listings`, including ads that have
+ * disappeared from the source and therefore represent transactions that most
+ * likely closed) plus every listing of the workspace in any status.
+ *
+ * Comps are widened deterministically — exact street, then neighborhood, then
+ * city — so the agent always has material for a professional price range and
+ * never has to claim it "cannot access completed deals".
+ */
+export async function marketResearch(
+  supabase: any,
+  ownerId: string | null,
+  args: MarketResearchArgs,
+): Promise<Record<string, any>> {
+  const norm = (value: unknown) => String(value ?? "").trim().toLowerCase();
+  const street = norm(args.street) || norm(args.query);
+  const city = norm(args.city);
+  const neighborhood = norm(args.neighborhood);
+  const dealType = args.deal_type === "sale" || args.deal_type === "rent" ? String(args.deal_type) : "";
+  const minRooms = Number(args.min_rooms) > 0 ? Number(args.min_rooms) : null;
+  const maxRooms = Number(args.max_rooms) > 0 ? Number(args.max_rooms) : null;
+  const monthsBack = Number(args.months_back) > 0 ? Math.min(Number(args.months_back), 60) : 36;
+  const since = new Date(Date.now() - monthsBack * 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Street names carry a house number in free text ("מוהליבר 1"); comps are
+  // matched on the street name itself, never on the exact apartment.
+  const streetName = street.replace(/\d+/g, " ").replace(/\s+/g, " ").trim();
+
+  // 1) Central historical pool (shared across workspaces by design).
+  let poolQuery = supabase.from("market_listings")
+    .select("id, source, source_url, deal_type, title, address, house_number, city, neighborhood, price, rooms, sqm, floor, property_type, published_at, last_seen_at")
+    .order("last_seen_at", { ascending: false })
+    .limit(600);
+  if (city) poolQuery = poolQuery.ilike("city", `%${city}%`);
+  const { data: poolRows, error: poolError } = await poolQuery;
+  if (poolError) throw poolError;
+
+  // 2) The workspace's own records, in EVERY status (live, pending, archived).
+  let ownRows: any[] = [];
+  if (ownerId) {
+    const { data } = await supabase.from("listings")
+      .select("id, property_title, address, city, neighborhood, rooms, sqm, asking_price, deal_type, status, created_at, updated_at")
+      .eq("workspace_owner_id", ownerId)
+      .limit(400);
+    ownRows = data ?? [];
+  }
+
+  const staleDays = 21;
+  const staleBefore = Date.now() - staleDays * 24 * 60 * 60 * 1000;
+
+  type Comp = {
+    source: string;
+    address: string;
+    city: string;
+    neighborhood: string;
+    deal_type: string;
+    rooms: number | null;
+    sqm: number | null;
+    price: number | null;
+    price_per_sqm: number | null;
+    floor: number | null;
+    published_at: string | null;
+    last_seen_at: string | null;
+    /** The ad is gone from the source: the deal most likely closed. */
+    likely_closed: boolean;
+    match_level: "street" | "neighborhood" | "city";
+  };
+
+  const toComp = (row: any, fromPool: boolean): Comp | null => {
+    const price = Number(fromPool ? row.price : row.asking_price);
+    const sqm = Number(row.sqm);
+    const lastSeen = fromPool ? (row.last_seen_at ?? null) : (row.updated_at ?? row.created_at ?? null);
+    const address = [row.address, fromPool ? row.house_number : null].filter(Boolean).join(" ").trim()
+      || String(row.property_title ?? row.title ?? "").trim();
+    const haystack = [address, row.city, row.neighborhood, row.title, row.property_title].filter(Boolean).join(" ").toLowerCase();
+    if (city && !haystack.includes(city)) return null;
+    if (dealType && row.deal_type && row.deal_type !== dealType) return null;
+    const rooms = Number(row.rooms);
+    if (minRooms && Number.isFinite(rooms) && rooms > 0 && rooms < minRooms - 0.5) return null;
+    if (maxRooms && Number.isFinite(rooms) && rooms > 0 && rooms > maxRooms + 0.5) return null;
+    if (lastSeen && String(lastSeen) < since) return null;
+    const matchLevel: Comp["match_level"] = streetName && haystack.includes(streetName)
+      ? "street"
+      : (neighborhood && haystack.includes(neighborhood) ? "neighborhood" : "city");
+    return {
+      source: fromPool ? String(row.source ?? "yad2") : "crm",
+      address: address || "כתובת לא צוינה",
+      city: String(row.city ?? ""),
+      neighborhood: String(row.neighborhood ?? ""),
+      deal_type: String(row.deal_type ?? ""),
+      rooms: Number.isFinite(rooms) && rooms > 0 ? rooms : null,
+      sqm: Number.isFinite(sqm) && sqm > 0 ? sqm : null,
+      price: Number.isFinite(price) && price > 0 ? price : null,
+      price_per_sqm: Number.isFinite(price) && price > 0 && Number.isFinite(sqm) && sqm > 0
+        ? Math.round(price / sqm)
+        : null,
+      floor: Number.isFinite(Number(row.floor)) ? Number(row.floor) : null,
+      published_at: fromPool ? (row.published_at ?? null) : (row.created_at ?? null),
+      last_seen_at: lastSeen ? String(lastSeen) : null,
+      likely_closed: fromPool
+        ? Boolean(lastSeen && new Date(String(lastSeen)).getTime() < staleBefore)
+        : String(row.status ?? "") === "discarded",
+      match_level: matchLevel,
+    };
+  };
+
+  const all: Comp[] = [
+    ...(poolRows ?? []).map((row: any) => toComp(row, true)),
+    ...ownRows.map((row: any) => toComp(row, false)),
+  ].filter((comp): comp is Comp => Boolean(comp) && comp!.price !== null);
+
+  // Widen only when the tighter ring has too little material for a range.
+  const byLevel = (level: Comp["match_level"]) => all.filter((c) => c.match_level === level);
+  let comps = byLevel("street");
+  let scope: string = streetName ? `רחוב ${streetName}` : "אזור";
+  if (comps.length < 3) {
+    comps = [...comps, ...byLevel("neighborhood")];
+    scope = neighborhood ? `שכונת ${neighborhood}` : scope;
+  }
+  if (comps.length < 3) {
+    comps = all;
+    scope = city ? `העיר ${city}` : scope;
+  }
+
+  comps = comps
+    .sort((a, b) => (b.last_seen_at ?? "").localeCompare(a.last_seen_at ?? ""))
+    .slice(0, 25);
+
+  const prices = comps.map((c) => c.price!).filter((p) => Number.isFinite(p));
+  const perSqm = comps.map((c) => c.price_per_sqm).filter((v): v is number => Number.isFinite(v as number));
+  const medianPrice = median(prices);
+  const medianPerSqm = median(perSqm);
+  const targetSqm = Number(args.sqm) > 0 ? Number(args.sqm) : null;
+  const estimateBase = targetSqm && medianPerSqm ? medianPerSqm * targetSqm : medianPrice;
+
+  return {
+    scope,
+    deal_type: dealType || null,
+    months_back: monthsBack,
+    comps_count: comps.length,
+    closed_count: comps.filter((c) => c.likely_closed).length,
+    price_min: prices.length ? Math.min(...prices) : null,
+    price_max: prices.length ? Math.max(...prices) : null,
+    price_median: medianPrice,
+    price_per_sqm_median: medianPerSqm,
+    estimated_range: estimateBase
+      ? { low: Math.round(estimateBase * 0.93), high: Math.round(estimateBase * 1.07) }
+      : null,
+    comps,
+  };
+}
+
 /**
  * Execute the model's action envelope. Returns one result per action; a failing
  * action never aborts the rest.
