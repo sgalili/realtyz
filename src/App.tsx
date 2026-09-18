@@ -264,6 +264,9 @@ function DealsRoute({ children }: { children: React.ReactNode }) {
 
 function PartnersRoute({ children }: { children: React.ReactNode }) {
   const { partnersEnabled } = useWorkspaceFeatures();
+  const { isAffiliate } = useUserRole();
+  const { isPartnerMode } = useAppMode();
+  if (isAffiliate || isPartnerMode) return <>{children}</>;
   if (!partnersEnabled) return <Navigate to="/lead-crm" replace />;
   return <>{children}</>;
 }

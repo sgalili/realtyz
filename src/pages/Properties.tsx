@@ -1389,6 +1389,8 @@ export function ResultTable({
   affiliateCell,
   commissionCell,
   onEdit,
+  propertyHref,
+  hideDefaultActions = false,
 }: {
   results: UnifiedResult[];
   importingKey: string | null;
@@ -1401,6 +1403,10 @@ export function ResultTable({
   commissionCell?: (r: UnifiedResult) => React.ReactNode;
   /** Full property editing, rendered as an extra action button. */
   onEdit?: (r: UnifiedResult) => void;
+  /** Optional safe destination for rows rendered outside the owning workspace. */
+  propertyHref?: (r: UnifiedResult) => string | null;
+  /** Hide workspace-only campaign, share and edit controls. */
+  hideDefaultActions?: boolean;
 }) {
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -1544,8 +1550,9 @@ export function ResultTable({
                       title: r.title,
                       raw: r.raw,
                     });
-                    const link = r.localId
-                      ? <Link to={`/properties/${r.localId}`} state={{ propertySnapshot: r }} className="hover:underline" onClick={(e) => e.stopPropagation()} title={label}>{label}</Link>
+                    const destination = propertyHref?.(r) ?? (propertyHref ? null : r.localId ? `/properties/${r.localId}` : null);
+                    const link = destination
+                      ? <Link to={destination} state={{ propertySnapshot: r }} className="hover:underline" onClick={(e) => e.stopPropagation()} title={label}>{label}</Link>
                       : <span title={label}>{label}</span>;
                     return (
                       <span className="inline-flex items-center gap-1.5 min-w-0">
@@ -1587,7 +1594,7 @@ export function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground"><ListingDateCell row={r} /></td>
 
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
-                  <div className="inline-flex items-center gap-1.5">
+                  {hideDefaultActions ? null : <div className="inline-flex items-center gap-1.5">
                     {/* Yad2 ad first, campaign second (swapped per workspace spec). */}
                     {(() => {
                       const live = sourceYad2Url(r);
@@ -1618,7 +1625,7 @@ export function ResultTable({
                         <Handshake className="h-4 w-4" />
                       </Button>
                     ) : r.localId ? <AffiliateCommissionButton listingId={r.localId} /> : null}
-                  </div>
+                  </div>}
                 </td>
 
 

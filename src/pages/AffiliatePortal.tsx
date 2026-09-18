@@ -803,6 +803,11 @@ export default function AffiliatePortal() {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
                     if (listing) navigate(`/p/${listing.slug || listing.listing_id}`);
                   }}
+                  propertyHref={(result) => {
+                    const listing = filtered.find((item) => item.listing_id === result.localId);
+                    return listing ? `/p/${listing.slug || listing.listing_id}` : null;
+                  }}
+                  hideDefaultActions
                   affiliateCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
                     return listing ? <PartnerListingActions listing={listing} /> : null;
