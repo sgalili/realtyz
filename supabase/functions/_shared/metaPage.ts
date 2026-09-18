@@ -106,7 +106,7 @@ export async function tokenUsable(page: MetaPage): Promise<boolean> {
   } catch {
     ok = true; // network hiccup: don't discard a valid token
   }
-  tokenProbeCache.set(key, ok);
+  tokenProbeCache.set(key, { ok, at: Date.now() });
   return ok;
 }
 
