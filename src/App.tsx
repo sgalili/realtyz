@@ -83,6 +83,9 @@ const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const AffiliateSignup = lazy(() => import("./pages/AffiliateSignup"));
 const AffiliateNetwork = lazy(() => import("./pages/AffiliateNetwork"));
+const PartnerPosts = lazy(() => import("./pages/partner/PartnerPosts"));
+const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
+const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 
 const Landing = lazy(() => import("./pages/Landing"));
@@ -271,6 +274,19 @@ function PartnersRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Partner-exclusive surfaces (posts / chats / contacts). Only an affiliate
+ * account — or a dual-role account currently in partner mode — may enter;
+ * brokers and property owners are sent back to their own CRM.
+ */
+function PartnerOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { isAffiliate, isAffiliateOnly, isLoading } = useUserRole();
+  const { isPartnerMode } = useAppMode();
+  if (isLoading) return null;
+  if (isAffiliateOnly || (isAffiliate && isPartnerMode)) return <>{children}</>;
+  return <Navigate to="/lead-crm" replace />;
+}
+
 function AuthRoute() {
   const { user, loading } = useAuth();
   if (loading) return (
@@ -336,6 +352,9 @@ const App = () => (
               <Route path="/affiliate" element={<Navigate to="/affiliate-network" replace />} />
               <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
               <Route path="/referral" element={<ProtectedRoute><PartnerNetwork /></ProtectedRoute>} />
+              <Route path="/partner/posts" element={<ProtectedRoute><PartnerOnlyRoute><PartnerPosts /></PartnerOnlyRoute></ProtectedRoute>} />
+              <Route path="/partner/chats" element={<ProtectedRoute><PartnerOnlyRoute><PartnerChats /></PartnerOnlyRoute></ProtectedRoute>} />
+              <Route path="/partner/contacts" element={<ProtectedRoute><PartnerOnlyRoute><PartnerContacts /></PartnerOnlyRoute></ProtectedRoute>} />
 
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />
               <Route path="/ads" element={<Navigate to="/campaigns?tab=campaigns" replace />} />
