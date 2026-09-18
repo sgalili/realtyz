@@ -139,6 +139,16 @@ function applyObjection(args: Record<string, unknown>, kind: ObjectionKind): Rec
   return next;
 }
 
+/** Short Hebrew acknowledgement shown above refreshed results after an objection. */
+function objectionLeadIn(kind: ObjectionKind | null, resultCount: number): string {
+  if (!kind || resultCount <= 0) return "";
+  if (kind === "too_small") return "הבנתי, נחפש משהו גדול יותר.";
+  if (kind === "too_big") return "הבנתי, נחפש משהו קומפקטי יותר.";
+  if (kind === "too_expensive") return "הבנתי, נוריד את התקציב.";
+  if (kind === "too_far") return "הבנתי, נבדוק גם באזור רחב יותר.";
+  return "הבנתי, הנה חלופות אחרות.";
+}
+
 function latestText(messages: Array<{ role?: string; content?: unknown }>, role: string): string {
   return String([...messages].reverse().find((message) => message?.role === role)?.content ?? "").trim();
 }
