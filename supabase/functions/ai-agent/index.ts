@@ -1046,15 +1046,7 @@ serve(async (req) => {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const rows = searchResult.data;
-      const lead = objection === "too_small"
-        ? "הבנתי, נחפש משהו גדול יותר."
-        : objection === "too_expensive"
-          ? "הבנתי, נוריד את התקציב."
-          : objection === "too_far"
-            ? "הבנתי, נבדוק גם באזור רחב יותר."
-            : objection
-              ? "הבנתי, הנה חלופות אחרות."
-              : "";
+      const lead = objectionLeadIn(objection, rows.length);
       const body = renderPropertySearchAnswer(rows);
       return new Response(JSON.stringify({
         type: "text",
