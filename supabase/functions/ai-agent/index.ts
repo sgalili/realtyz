@@ -2052,14 +2052,28 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     const propertySearches = nativeToolArguments(aiMessage.tool_calls, "search_properties");
     const propertyIntent = isPropertySearchTurn(messages as Array<{ role?: string; content?: unknown }>, context);
     if ((propertySearches.length > 0 || propertyIntent || STALLING_PROPERTY_REPLY_RE.test(rawContent)) && currentOwnerId) {
-      const args = propertySearches[0] ?? propertySearchArgsFromTurn(
+      const objection = detectObjection(latestText(messages as Array<{ role?: string; content?: unknown }>, "user"));
+      let args = propertySearches[0] ?? propertySearchArgsFromTurn(
         messages as Array<{ role?: string; content?: unknown }>,
         (leadPreferences ?? {}) as Record<string, unknown>,
         dealType,
       );
-      const { searchProperties } = await import("../_shared/crmActions.ts");
-      const rows = await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
-      const content = renderPropertySearchAnswer(rows);
+      if (objection && propertySearches.length === 0) args = applyObjection(args, objection);
+      const searchResult = await safeTool(
+        { functionName: "ai-agent", tool: "search_properties", context: { objection } },
+        async () => {
+          const { searchProperties } = await import("../_shared/crmActions.ts");
+          return await searchProperties(supabase, currentOwnerId, args, !isInternalDashboard);
+        },
+      );
+      if (!searchResult.ok) {
+        return new Response(JSON.stringify({ type: "text", content: searchResult.fallback }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const rows = searchResult.data;
+      const content = [objectionLeadIn(objection, rows.length), renderPropertySearchAnswer(rows)]
+        .filter(Boolean).join("\n\n");
       return new Response(JSON.stringify({ type: "text", content, data: rows }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
