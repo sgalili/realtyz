@@ -232,9 +232,7 @@ function RewardDialog({
   );
 }
 
-export default function AffiliateNetwork() {
-  const { isAffiliateOnly } = useUserRole();
-  const { isPartnerMode } = useAppMode();
+function BrokerAffiliateNetwork() {
   const navigate = useNavigate();
   const { data: listings = [], isLoading: listingsLoading } = useBrokerAffiliateListings();
   const { data: referrals = [], isLoading: refsLoading } = useBrokerReferrals();
@@ -246,8 +244,6 @@ export default function AffiliateNetwork() {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
-
-  if (isAffiliateOnly || isPartnerMode) return <AffiliatePortal />;
 
   useEffect(() => {
     if (listingsLoading || refsLoading || subsLoading) return;
@@ -685,4 +681,10 @@ export default function AffiliateNetwork() {
       </div>
     </>
   );
+}
+
+export default function AffiliateNetwork() {
+  const { isAffiliateOnly } = useUserRole();
+  const { isPartnerMode } = useAppMode();
+  return isAffiliateOnly || isPartnerMode ? <AffiliatePortal /> : <BrokerAffiliateNetwork />;
 }

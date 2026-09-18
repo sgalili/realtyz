@@ -4,6 +4,7 @@
 // browses broker-approved properties, sees exactly what they earn per closing,
 // and generates a personal tracking link to market with.
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -563,6 +564,7 @@ function AffiliateKpiCard({
 }
 
 export default function AffiliatePortal() {
+  const navigate = useNavigate();
   const { isAffiliate, loading: roleLoading } = useUserRole();
   const { data: marketplace = [], isLoading: marketLoading } = useAffiliateMarketplace();
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
@@ -797,7 +799,10 @@ export default function AffiliatePortal() {
                 <ResultTable
                   results={filtered.map(marketplaceResult)}
                   importingKey={null}
-                  onSelect={() => undefined}
+                  onSelect={(result) => {
+                    const listing = filtered.find((item) => item.listing_id === result.localId);
+                    if (listing) navigate(`/p/${listing.slug || listing.listing_id}`);
+                  }}
                   affiliateCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
                     return listing ? <PartnerListingActions listing={listing} /> : null;
