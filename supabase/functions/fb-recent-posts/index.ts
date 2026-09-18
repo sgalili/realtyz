@@ -5,6 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { isMetaPermissionError, resolveMetaPage, resolveMetaPageCandidates } from "../_shared/metaPage.ts";
 import { resolveCaller } from "../_shared/fbPersonal.ts";
+import { describeMetaError } from "../_shared/metaErrorDetail.ts";
 
 // No default owner: a missing user_id must NOT resolve to another tenant.
 const MIN_SAFE_PURGE_POSTS = 50;
