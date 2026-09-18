@@ -11,6 +11,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { adminClient, fbAppCredentials, GRAPH, humanizeGraphError, resolveCaller, validateFbApp } from "../_shared/fbPersonal.ts";
 import { isBlockedPage, PRIMARY_PAGE_ID } from "../_shared/metaPages.ts";
+import { describeMetaError, META_DEV_MODE_NOTE_HE } from "../_shared/metaErrorDetail.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -88,7 +89,18 @@ function graphErrorDetail(payload: any): {
 /** Logs the verbatim Graph payload and returns the structured detail. */
 function logGraphFailure(stage: string, payload: any) {
   const detail = graphErrorDetail(payload);
-  console.error(`[meta-page-connect] ${stage} failed`, JSON.stringify({ detail, payload }));
+  // describeMetaError flags Development Mode / unverified-business refusals so
+  // the logs say whether the account simply needs a tester role in the app.
+  const meta = describeMetaError(payload, null);
+  console.error(`[meta-page-connect] ${stage} failed`, JSON.stringify({
+    detail,
+    kind: meta.kind,
+    dev_mode_restricted: meta.dev_mode_restricted,
+    payload,
+  }));
+  if (meta.dev_mode_restricted) {
+    console.error(`[meta-page-connect] ${stage} blocked by app access level`, META_DEV_MODE_NOTE_HE);
+  }
   return detail;
 }
 
@@ -969,6 +981,10 @@ async function handleRequest(req: Request): Promise<Response> {
             missing_scopes: ["pages_read_engagement"],
             granted_scopes: grantedScopes,
             retry_basic: true,
+            // While the Meta app is in Development Mode the consent dialog can
+            // silently drop the scope for accounts that are not app testers.
+            dev_mode_restricted: true,
+            dev_note_he: META_DEV_MODE_NOTE_HE,
           },
           200,
         );

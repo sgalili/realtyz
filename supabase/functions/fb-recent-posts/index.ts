@@ -1298,6 +1298,24 @@ Deno.serve(async (req) => {
 
 
 
+    const syncErrorDetail = lastError ? describeMetaError(lastError, lastStatus) : null;
+    if (syncErrorDetail) {
+      // Full Graph refusal payload in the logs: Development Mode / unverified
+      // business blocks are otherwise indistinguishable from a declined scope.
+      console.error("[fb-recent-posts] graph refusal", JSON.stringify({
+        owner_id: ownerId,
+        page_id: page?.pageId ?? null,
+        http_status: lastStatus,
+        kind: syncErrorDetail.kind,
+        code: syncErrorDetail.code,
+        subcode: syncErrorDetail.subcode,
+        type: syncErrorDetail.type,
+        fbtrace_id: syncErrorDetail.fbtrace_id,
+        dev_mode_restricted: syncErrorDetail.dev_mode_restricted,
+        raw: lastError,
+      }));
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
@@ -1326,11 +1344,9 @@ Deno.serve(async (req) => {
         needs_extension: permissionBlocked && posts.length === 0,
         // Exact Graph failure (code/subcode/type/message/trace) so the UI can
         // tell the user precisely why the sync did not complete.
-        sync_error: lastError ? describeMetaError(lastError, lastStatus) : null,
+        sync_error: syncErrorDetail,
         // Clear, human-readable reason when a refresh returned nothing.
-        error: posts.length === 0 && lastError
-          ? describeMetaError(lastError, lastStatus).message_he
-          : null,
+        error: posts.length === 0 && syncErrorDetail ? syncErrorDetail.message_he : null,
         diagnostics,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

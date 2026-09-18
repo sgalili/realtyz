@@ -15,7 +15,25 @@ export type MetaErrorDetail = {
   kind: "token_expired" | "missing_scope" | "rate_limited" | "network" | "no_connection" | "unknown";
   /** Hebrew, user-facing sentence including the exact Graph details. */
   message_he: string;
+  /**
+   * True when the refusal looks like the Meta app still being in Development
+   * Mode / lacking Advanced Access (unverified business), rather than the user
+   * simply unticking a checkbox in the consent dialog.
+   */
+  dev_mode_restricted: boolean;
+  /** Developer-facing Hebrew instructions for the Development Mode case. */
+  dev_note_he: string | null;
 };
+
+const DEV_MODE_RE =
+  /development mode|dev mode|advanced access|standard access|not been approved|has not been approved|not approved for|app review|unverified|business verification|verify your business|does not have permission to access/i;
+
+export const META_DEV_MODE_NOTE_HE = [
+  "הערה למפתח: נראה שאפליקציית Meta נמצאת במצב פיתוח (Development Mode) או שההרשאה מוגבלת ל-Standard Access.",
+  "במצב הזה חשבון הפייסבוק המחובר חייב להיות רשום באפליקציה ב-developers.facebook.com בתפקיד Administrator, Developer או Tester (App roles > Roles), ולאשר את ההזמנה.",
+  "בנוסף יש להפעיל את ההרשאה pages_read_engagement לפיתוח (App review > Permissions and features), ולהתחבר מחדש כדי לקבל טוקן חדש.",
+  "לגישה של חשבונות שאינם Testers נדרשת אימות עסקי (Business Verification) ו-App Review לקבלת Advanced Access.",
+].join(" ");
 
 function pick(raw: unknown): Record<string, any> {
   const any = raw as any;
@@ -64,6 +82,11 @@ export function describeMetaError(raw: unknown, httpStatus?: number | null): Met
   ].filter(Boolean).join(", ");
   if (codes) parts.push(`(${codes})`);
 
+  // Code 10 ("application does not have permission for this action") is the
+  // signature refusal while the app is still in Development Mode / limited to
+  // Standard Access, so the tester-role note is the actionable fix.
+  const devModeRestricted = kind === "missing_scope" && (code === 10 || DEV_MODE_RE.test(text));
+
   return {
     code,
     subcode,
@@ -73,5 +96,7 @@ export function describeMetaError(raw: unknown, httpStatus?: number | null): Met
     http_status: httpStatus ?? null,
     kind,
     message_he: [head, ...parts].join(" "),
+    dev_mode_restricted: devModeRestricted,
+    dev_note_he: devModeRestricted ? META_DEV_MODE_NOTE_HE : null,
   };
 }
