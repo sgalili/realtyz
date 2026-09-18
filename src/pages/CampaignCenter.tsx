@@ -4237,6 +4237,35 @@ type FeedSubTab = 'published' | 'drafts' | 'future';
  * (`sync_error.message_he` carries the Graph code, subcode, type and trace id).
  * Returns null when the payload reports no failure at all.
  */
+/**
+ * Developer note for the Development Mode / restricted-permission case: while
+ * the Meta app is not approved for Advanced Access, only accounts holding an
+ * Administrator / Developer / Tester role in the app dashboard can grant
+ * `pages_read_engagement`. Detected from the backend flag or from the classic
+ * "#10 application does not have permission" wording.
+ */
+const FB_DEV_MODE_NOTE =
+  'הערה למפתח: אפליקציית Meta במצב פיתוח (Development Mode) או ללא Advanced Access.\n' +
+  'במצב הזה חשבון הפייסבוק המחובר חייב להיות רשום באפליקציה ב-developers.facebook.com בתפקיד Administrator, Developer או Tester (App roles ‹ Roles) ולאשר את ההזמנה.\n' +
+  'בנוסף יש להפעיל את ההרשאה pages_read_engagement לפיתוח (App review ‹ Permissions and features) ואז להתחבר מחדש כדי לקבל טוקן חדש.\n' +
+  'לחשבונות שאינם Testers נדרשים אימות עסקי (Business Verification) ו-App Review.';
+
+const facebookDevModeNote = (payload: unknown, message?: string | null): string | null => {
+  const data = payload as any;
+  const flagged = data?.sync_error?.dev_mode_restricted === true || data?.dev_mode_restricted === true;
+  const note = typeof data?.sync_error?.dev_note_he === 'string'
+    ? data.sync_error.dev_note_he
+    : typeof data?.dev_note_he === 'string'
+      ? data.dev_note_he
+      : null;
+  const code = Number(data?.sync_error?.code ?? data?.code ?? 0);
+  const text = String(message ?? data?.sync_error?.message ?? '');
+  const looksRestricted = code === 10 ||
+    /\bcode 10\b|#10\b|development mode|advanced access|standard access|does not have permission|app review|unverified|business verification/i.test(text);
+  if (!flagged && !looksRestricted) return null;
+  return note ?? FB_DEV_MODE_NOTE;
+};
+
 const facebookSyncErrorText = (payload: unknown, invokeError?: unknown): string | null => {
   const data = payload as any;
   const detailed = typeof data?.sync_error?.message_he === 'string' ? data.sync_error.message_he : null;
