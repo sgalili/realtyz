@@ -50,3 +50,4 @@
 47. [x] Clean scraped junk from property data, add a Yad2 sync button, and harden Rita output sanitization
 48. [x] Unify internal property details, pin the action bar, refine live Yad2 sync, and shorten date labels
 49. [x] Prevent Rita property-search dead loops and guarantee immediate results or one concrete adjustment question
+50. [x] Give Rita historical/closed-deal market research for valuations and remove refusal wording
