@@ -98,6 +98,47 @@ function extractCity(text: string): string | null {
 const PROPERTY_SEARCH_INTENT_RE = /(תמצא(?:י)?|תחפש(?:י)?|מחפש[ת]?)\s+(?:לי\s+)?(?:נכס|נכסים|דירה|דירות|בית|פנטהאוז|דופלקס)|(נכסים|דירות|בתים|פנטהאוזים)\s+(?:ב|למכירה|להשכרה|לשכירות)|עוד\s+(?:אפשרויות|נכסים|דירות)|חלופ(?:ה|ות)(?:\s+(?:לנכס|לדירה|באזור|בתקציב|קרובות))?|אופצי(?:ה|ות)\s+(?:נוספות|אחרות|לנכס)|\d+(?:\.\d+)?\s*חדרים[^\n]{0,80}(?:ב|להשכרה|למכירה|עד\s*\d)|(?:find|search|show)\s+(?:me\s+)?(?:properties|property|apartments?|homes?)|(?:properties|apartments?|homes?)\s+(?:in|for\s+(?:rent|sale))/i;
 const STALLING_PROPERTY_REPLY_RE = /(אני\s+(?:בודקת|מחפשת)|אחזור\s+(?:אליך|עם)|ממשיכה\s+(?:לבדוק|לחפש)|חלופות\s+נוספות.*(?:אחזור|אעדכן))/i;
 
+/**
+ * Post-tour / post-listing objections. A reply like "הדירה קטנה מדי" or
+ * "יקר מדי" is a search-refinement turn: parse the constraint, adjust the
+ * preferences and run the property search in the same turn.
+ */
+const OBJECTION_RE =
+  /(קטנ(?:ה|ים|ות)?\s*מדי|קטן\s*מדי|צר(?:ה)?\s*מדי|גדול(?:ה)?\s*מדי|יקר(?:ה)?\s*מדי|מעל\s+התקציב|גבוה\s*מדי\s*(?:במחיר|מחיר)?|לא\s*(?:מתאים|מתאימה|התאים|התאימה|אהבתי|בשבילי)|רחוק\s*מדי|חסר(?:ים|ות)?\s+חדר(?:ים)?|צריכ(?:ה|ים)\s+(?:עוד|יותר)\s+(?:חדר|חדרים|מ"ר|מטר)|too\s+(?:small|expensive|far|big)|not\s+(?:a\s+)?(?:good\s+)?(?:fit|suitable))/i;
+
+type ObjectionKind = "too_small" | "too_big" | "too_expensive" | "too_far" | "generic";
+
+function detectObjection(text: string): ObjectionKind | null {
+  const t = String(text ?? "");
+  if (!OBJECTION_RE.test(t)) return null;
+  if (/יקר|מעל\s+התקציב|גבוה\s*מדי|too\s+expensive/i.test(t)) return "too_expensive";
+  if (/גדול(?:ה)?\s*מדי|too\s+big/i.test(t)) return "too_big";
+  if (/קטנ|קטן|צר(?:ה)?\s*מדי|חסר|עוד\s+חדר|יותר\s+חדר|מ"ר|too\s+small/i.test(t)) return "too_small";
+  if (/רחוק|too\s+far/i.test(t)) return "too_far";
+  return "generic";
+}
+
+/** Shift the search window according to the objection the client raised. */
+function applyObjection(args: Record<string, unknown>, kind: ObjectionKind): Record<string, unknown> {
+  const next = { ...args };
+  const rooms = Number(next.min_rooms ?? next.max_rooms ?? 0) || null;
+  const maxPrice = Number(next.max_price ?? 0) || null;
+  if (kind === "too_small") {
+    delete next.max_rooms;
+    if (rooms) next.min_rooms = rooms + 1;
+  } else if (kind === "too_big") {
+    delete next.min_rooms;
+    if (rooms) next.max_rooms = Math.max(1, rooms - 1);
+  } else if (kind === "too_expensive") {
+    delete next.min_price;
+    if (maxPrice) next.max_price = Math.round(maxPrice * 0.85);
+  } else if (kind === "too_far") {
+    // Widen the geography: city stays out so nearby areas can surface.
+    delete next.neighborhood;
+  }
+  return next;
+}
+
 function latestText(messages: Array<{ role?: string; content?: unknown }>, role: string): string {
   return String([...messages].reverse().find((message) => message?.role === role)?.content ?? "").trim();
 }

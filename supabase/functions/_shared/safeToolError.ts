@@ -1,15 +1,16 @@
 // Safe tool-failure handling for every AI surface.
 // Raw errors (SQL/schema/timeouts/HTTP) are logged internally and NEVER
-// surfaced to the user; the user always gets a professional Hebrew fallback.
+// surfaced to the user. The user always gets a natural Hebrew clarifying
+// question that keeps the conversation moving instead of an error notice.
 import { logIntegrationError } from "./logIntegrationError.ts";
 
-/** Professional Hebrew fallback shown when an internal tool fails. */
+/** Conversational fallback shown when an internal read tool fails. */
 export const GRACEFUL_TOOL_FALLBACK_HE =
-  "לא הצלחתי להשלים את השליפה כרגע. אפשר לנסות שוב או לשנות מעט את החיפוש.";
+  "כדי לדייק לך את האפשרויות, מה הכי חשוב כרגע: מספר החדרים או התקציב?";
 
-/** Slightly softer variant for write/CRM actions that did not complete. */
+/** Conversational fallback for write/CRM actions that did not complete. */
 export const GRACEFUL_ACTION_FALLBACK_HE =
-  "לא הצלחתי להשלים את הפעולה כרגע. אפשר לנסות שוב עם פרט אחד מדויק יותר.";
+  "רק שאדייק לפני שאני ממשיכה: על איזה נכס או איש קשר מדובר?";
 
 /**
  * Record a tool/DB failure for developer debugging.
