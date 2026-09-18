@@ -54,7 +54,7 @@ function ChatThread({ chat, onBack }: { chat: PartnerChat; onBack: () => void })
         <Button variant="ghost" size="icon" onClick={onBack} aria-label="חזרה">
           <ArrowRight className="h-4 w-4" />
         </Button>
-        <ContactAvatar name={chat.full_name} imageUrl={chat.profile_picture_url} size={32} />
+        <ContactAvatar name={chat.full_name ?? undefined} imageUrl={chat.profile_picture_url ?? undefined} className="h-8 w-8" />
         <div className="min-w-0">
           <p className="truncate text-[14px] font-medium text-slate-800">{chat.full_name || chat.phone_number || 'איש קשר'}</p>
           <p className="text-[12px] text-slate-500">
@@ -166,7 +166,7 @@ export default function PartnerChats() {
               className="cursor-pointer border-slate-200 transition hover:bg-slate-50"
             >
               <CardContent className="flex items-start gap-3 p-3">
-                <ContactAvatar name={c.full_name} imageUrl={c.profile_picture_url} size={36} />
+                <ContactAvatar name={c.full_name ?? undefined} imageUrl={c.profile_picture_url ?? undefined} className="h-9 w-9" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="min-w-0 flex-1 truncate text-[14px] font-medium text-slate-800">
