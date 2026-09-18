@@ -4829,15 +4829,17 @@ const PublishedFeed = ({
               },
             });
             const importedCount = Number((importData as any)?.count) || 0;
-            if (importError) {
-              console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
-            } else if ((importData as any)?.ok === false) {
-              console.warn('[PublishedFeed] fb persistent import returned error', importData);
+            const importFailure = facebookSyncErrorText(importData, importError);
+            if (importError || (importData as any)?.ok === false || (importedCount === 0 && importFailure)) {
+              console.warn('[PublishedFeed] fb persistent import failed', { importError, importData });
+              if (importFailure) setFacebookSyncWarning(importFailure);
             } else if (importedCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
+              setFacebookSyncWarning(null);
               try { sessionStorage.setItem(importKey, String(Date.now())); } catch { /* quota */ }
             }
           } catch (err) {
-            console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
+            console.warn('[PublishedFeed] fb persistent import crashed', err);
+            setFacebookSyncWarning(facebookSyncErrorText(null, err));
           }
         })();
       }
