@@ -88,7 +88,18 @@ function graphErrorDetail(payload: any): {
 /** Logs the verbatim Graph payload and returns the structured detail. */
 function logGraphFailure(stage: string, payload: any) {
   const detail = graphErrorDetail(payload);
-  console.error(`[meta-page-connect] ${stage} failed`, JSON.stringify({ detail, payload }));
+  // describeMetaError flags Development Mode / unverified-business refusals so
+  // the logs say whether the account simply needs a tester role in the app.
+  const meta = describeMetaError(payload, null);
+  console.error(`[meta-page-connect] ${stage} failed`, JSON.stringify({
+    detail,
+    kind: meta.kind,
+    dev_mode_restricted: meta.dev_mode_restricted,
+    payload,
+  }));
+  if (meta.dev_mode_restricted) {
+    console.error(`[meta-page-connect] ${stage} blocked by app access level`, META_DEV_MODE_NOTE_HE);
+  }
   return detail;
 }
 
