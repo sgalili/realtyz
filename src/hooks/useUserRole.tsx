@@ -111,6 +111,8 @@ export function useUserRole() {
     isJuniorOnly,
     isAffiliate,
     isAffiliateOnly,
+    isPropertyOwner,
+    isPropertyOwnerOnly,
     isTeamMember,
 
     canCloseDeals,
