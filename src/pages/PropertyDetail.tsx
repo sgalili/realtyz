@@ -1296,7 +1296,7 @@ export default function PropertyDetail() {
           description: 'חלק מהשדות לא התעדכנו. נתוני יד2 מתרעננים גם אוטומטית פעמיים ביום.',
         });
       } else {
-        toast.success('נתוני הנכס סונכרנו', { id: toastId });
+        toast.success(traced ? 'המודעה החיה ביד2 נמצאה והנתונים סונכרנו' : 'נתוני הנכס סונכרנו', { id: toastId });
       }
     } catch (e: any) {
       toast.error('הסנכרון נכשל', { id: toastId, description: e?.message ?? String(e) });
