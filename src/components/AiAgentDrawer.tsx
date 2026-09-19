@@ -643,9 +643,9 @@ ${shareUrl}
         {/* Messages */}
         <Conversation className="min-h-0" initial="instant" resize="instant">
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
-          {messages.length === 0 && (
+          {(messages.length === 0 || showSuggestions) && (
             <div className="space-y-5 py-2">
-              <div className="flex items-start gap-2.5 rounded-2xl border border-border bg-card px-3 py-3">
+              <div className={`flex items-start gap-2.5 rounded-2xl border border-border bg-card px-3 py-3 ${messages.length > 0 ? 'hidden' : ''}`}>
                 <RitaAvatar className="h-9 w-9 shrink-0" />
                 <div className="space-y-1 text-[16px] leading-relaxed">
                   <p className="font-semibold">היי, אני ריטה 👋</p>
@@ -677,7 +677,7 @@ ${shareUrl}
                             <button
                               key={pi}
                               type="button"
-                              onClick={() => sendMessage(p)}
+                              onClick={() => { setShowSuggestions(false); sendMessage(p); }}
                               disabled={isLoading}
                               className="w-full text-right text-[15px] leading-relaxed rounded-lg border border-border/60 bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-2.5 py-2 disabled:opacity-50"
                             >
