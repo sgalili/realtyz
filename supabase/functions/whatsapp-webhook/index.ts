@@ -575,6 +575,83 @@ async function resolveShortLinkListing(
   };
 }
 
+/** Every phone spelling a gateway may deliver (972…, +972…, 05…). */
+function phoneVariants(phone: string): string[] {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  if (!digits) return [];
+  return Array.from(new Set([
+    phone,
+    digits,
+    `+${digits}`,
+    digits.startsWith("972") ? `0${digits.slice(3)}` : digits,
+    digits.startsWith("0") ? `972${digits.slice(1)}` : digits,
+  ].filter(Boolean)));
+}
+
+/**
+ * SHARE CONTEXT — a property link sent to this exact phone from the share
+ * dialog (`property_shares.lead_phone`) or from an affiliate share delivery.
+ * Without this, a recipient who simply replies "מעניין" has no short-link
+ * signature and no ref tag, and Rita would ask "על איזה נכס מדובר?".
+ */
+async function resolveSharedPropertyForPhone(
+  admin: ReturnType<typeof createClient>,
+  senderPhone: string,
+): Promise<{
+  listing_id: string;
+  owner_id: string | null;
+  affiliate_id: string | null;
+  deal_type: string | null;
+  city: string | null;
+  neighborhood: string | null;
+} | null> {
+  const variants = phoneVariants(senderPhone);
+  if (!variants.length) return null;
+  try {
+    const { data: share } = await admin
+      .from("property_shares")
+      .select("listing_id, owner_id, created_at")
+      .in("lead_phone", variants)
+      .not("listing_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const { data: delivery } = await admin
+      .from("affiliate_share_deliveries")
+      .select("listing_id, affiliate_id, broker_id, created_at")
+      .in("recipient_phone", variants)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const shareAt = (share as any)?.created_at ? Date.parse((share as any).created_at) : 0;
+    const deliveryAt = (delivery as any)?.created_at ? Date.parse((delivery as any).created_at) : 0;
+    const winner = deliveryAt > shareAt
+      ? { listing_id: (delivery as any)?.listing_id, owner_id: (delivery as any)?.broker_id ?? null, affiliate_id: (delivery as any)?.affiliate_id ?? null }
+      : { listing_id: (share as any)?.listing_id, owner_id: (share as any)?.owner_id ?? null, affiliate_id: (delivery as any)?.affiliate_id ?? null };
+    if (!winner.listing_id) return null;
+
+    const { data: listing } = await admin
+      .from("listings")
+      .select("id, user_id, city, neighborhood, deal_type")
+      .eq("id", winner.listing_id)
+      .maybeSingle();
+
+    return {
+      listing_id: String(winner.listing_id),
+      owner_id: winner.owner_id ?? (listing as any)?.user_id ?? null,
+      affiliate_id: winner.affiliate_id ?? null,
+      deal_type: (listing as any)?.deal_type ?? null,
+      city: (listing as any)?.city ?? null,
+      neighborhood: (listing as any)?.neighborhood ?? null,
+    };
+  } catch (e) {
+    console.warn("[whatsapp-webhook] share context lookup soft-fail:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
 // Strip raw template markers / system prefixes that occasionally leak from the
 // LLM into customer-facing WhatsApp replies. Output must be pure conversational Hebrew.
 // The agent can answer with a plain string, a JSON-encoded block, or a
