@@ -778,6 +778,15 @@ async function handleLeadInboxInbound(
   // Detect short-link signature so we can auto-create / tag the lead before lookup.
   const shortLink = await resolveShortLinkListing(admin, inboundText);
   const hasShortLinkSignature = SHORTLINK_ANCHOR_RE.test(inboundText);
+  // Property shared to this exact phone from the share dialog / affiliate share.
+  const sharedContext = await resolveSharedPropertyForPhone(admin, senderPhone);
+  if (sharedContext) {
+    console.log("[whatsapp-webhook] share context resolved", {
+      listing_id: sharedContext.listing_id,
+      owner_id: sharedContext.owner_id,
+      affiliate_id: sharedContext.affiliate_id,
+    });
+  }
 
   // Affiliate referral tag `[ref:CODE]` from a public property page CTA.
   // Resolution is best-effort: an unknown or malformed code is logged and
