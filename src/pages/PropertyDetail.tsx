@@ -1183,8 +1183,21 @@ export default function PropertyDetail() {
    * It goes through `yad2-unlocker`, which serves the shared market pool
    * outside the twice-daily scrape window, so no extra provider calls are made.
    */
+  // One manual Yad2 refresh per property per calendar day. The timestamp lives
+  // on the listing itself, so the limit holds across devices and sessions.
+  const lastManualYad2Sync =
+    typeof meta.last_manual_yad2_sync_at === 'string' ? meta.last_manual_yad2_sync_at : null;
+  const yad2SyncUsedToday = !!lastManualYad2Sync
+    && new Date(lastManualYad2Sync).toDateString() === new Date().toDateString();
+
   const syncFromYad2 = async () => {
     if (!property?.id || syncingSource) return;
+    if (yad2SyncUsedToday) {
+      toast.info('רענון מיד2 זמין פעם ביום לכל נכס', {
+        description: 'נתוני יד2 מתרעננים גם אוטומטית פעמיים ביום.',
+      });
+      return;
+    }
     setSyncingSource(true);
     const toastId = toast.loading('מסנכרן את נתוני הנכס מ-Yad2…');
     try {
@@ -1204,6 +1217,20 @@ export default function PropertyDetail() {
       const failed = results.find(
         (r) => r.status === 'rejected' || (r.value as { error?: unknown } | null)?.error,
       );
+      // Stamp the daily limit regardless of partial failures so a broken source
+      // cannot be hammered repeatedly.
+      const { data: fresh } = await supabase
+        .from('listings')
+        .select('source_metadata')
+        .eq('id', property.id)
+        .maybeSingle();
+      const freshMeta = isRecord(fresh?.source_metadata) ? fresh!.source_metadata : {};
+      await supabase
+        .from('listings')
+        .update({
+          source_metadata: { ...freshMeta, last_manual_yad2_sync_at: new Date().toISOString() } as never,
+        })
+        .eq('id', property.id);
       await qc.refetchQueries({ queryKey: ['property-detail', id] });
       qc.invalidateQueries({ queryKey: ['listings'] });
       qc.invalidateQueries({ queryKey: ['properties-search'] });
