@@ -87,6 +87,11 @@ const PartnerPosts = lazy(() => import("./pages/partner/PartnerPosts"));
 const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
 const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
+const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
+const OwnerProperties = lazy(() => import("./pages/owner/OwnerProperties"));
+const OwnerLeads = lazy(() => import("./pages/owner/OwnerLeads"));
+const OwnerRewards = lazy(() => import("./pages/owner/OwnerRewards"));
+const OwnerRita = lazy(() => import("./pages/owner/OwnerRita"));
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Terms = lazy(() => import("./pages/Terms"));
@@ -144,6 +149,13 @@ function PageLoader() {
  */
 const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/profile'];
 
+/**
+ * Private property owners are a separate product: only their own properties,
+ * the leads interested in them, the reward settings and Rita. Broker CRM,
+ * recruitment and affiliate management are unreachable, not just hidden.
+ */
+export const OWNER_ALLOWED_PATHS = ['/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile'];
+
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
   // A role picked during registration (מתווך / שותף) is applied on the first
@@ -161,7 +173,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     });
     return () => { alive = false; };
   }, [user, roleApplied]);
-  const { roles, isAffiliateOnly, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
+  const { roles, isAffiliateOnly, isPropertyOwnerOnly, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const location = useLocation();
   if (loading) return (
@@ -189,6 +201,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
       (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
     );
     if (!allowed) return <Navigate to="/affiliate" replace />;
+  }
+
+  // Private property owners are locked to their own four screens.
+  if (!roleLoading && isPropertyOwnerOnly) {
+    const allowed = OWNER_ALLOWED_PATHS.some(
+      (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
+    );
+    if (!allowed) return <Navigate to="/owner/properties" replace />;
   }
 
   // Partner mode (dual-role accounts) keeps broker tooling out of reach until
@@ -280,9 +300,9 @@ function PartnersRoute({ children }: { children: React.ReactNode }) {
  * brokers and property owners are sent back to their own CRM.
  */
 function PartnerOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { isAffiliate, isAffiliateOnly, isLoading } = useUserRole();
+  const { isAffiliate, isAffiliateOnly, loading } = useUserRole();
   const { isPartnerMode } = useAppMode();
-  if (isLoading) return null;
+  if (loading) return null;
   if (isAffiliateOnly || (isAffiliate && isPartnerMode)) return <>{children}</>;
   return <Navigate to="/lead-crm" replace />;
 }
@@ -320,6 +340,7 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/oauth/callback" element={<Suspense fallback={<PageLoader />}><OAuthCallback /></Suspense>} />
               <Route path="/p/:slug" element={<Suspense fallback={<PageLoader />}><PublicListingPage /></Suspense>} />
+              <Route path="/public-listings" element={<Suspense fallback={<PageLoader />}><PublicListingsBoard /></Suspense>} />
               <Route path="/r/:slug" element={<Suspense fallback={<PageLoader />}><ShortLinkRedirect /></Suspense>} />
               <Route path="/portal/:token" element={<Suspense fallback={<PageLoader />}><ClientPortal /></Suspense>} />
               <Route path="/tour-confirm/:token" element={<Suspense fallback={<PageLoader />}><TourConfirm /></Suspense>} />
@@ -351,6 +372,10 @@ const App = () => (
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
               <Route path="/affiliate" element={<Navigate to="/affiliate-network" replace />} />
               <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
+              <Route path="/owner/properties" element={<ProtectedRoute><OwnerProperties /></ProtectedRoute>} />
+              <Route path="/owner/leads" element={<ProtectedRoute><OwnerLeads /></ProtectedRoute>} />
+              <Route path="/owner/rewards" element={<ProtectedRoute><OwnerRewards /></ProtectedRoute>} />
+              <Route path="/owner/rita" element={<ProtectedRoute><OwnerRita /></ProtectedRoute>} />
               <Route path="/referral" element={<ProtectedRoute><PartnerNetwork /></ProtectedRoute>} />
               <Route path="/partner/posts" element={<ProtectedRoute><PartnerOnlyRoute><PartnerPosts /></PartnerOnlyRoute></ProtectedRoute>} />
               <Route path="/partner/chats" element={<ProtectedRoute><PartnerOnlyRoute><PartnerChats /></PartnerOnlyRoute></ProtectedRoute>} />

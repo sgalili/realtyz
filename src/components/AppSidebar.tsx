@@ -9,6 +9,7 @@ import {
   ClipboardList,
   HelpCircle,
   Gift,
+  Coins,
   Settings,
   type LucideProps,
 } from 'lucide-react';
@@ -136,18 +137,11 @@ const NAV_ITEMS: NavItem[] = [
  */
 const PARTNER_NAV_ITEMS: NavItem[] = [
   {
-    title: 'פוסטים',
-    url: '/partner/posts',
-    icon: Megaphone,
-    iconColor: '!text-[#b45309]', // amber-700
-    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
-  },
-  {
-    title: 'צ׳אטים',
-    url: '/partner/chats',
-    icon: MessageCircle,
-    iconColor: '!text-[#0e7490]', // cyan-700
-    badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
+    title: 'שיווק שותפים',
+    url: '/affiliate-network',
+    icon: AffiliateFlowchartIcon,
+    iconColor: '!text-[#6d28d9]', // violet-700
+    badgeClass: 'bg-violet-50 text-violet-700 ring-violet-200',
   },
   {
     title: 'אנשי קשר',
@@ -157,18 +151,61 @@ const PARTNER_NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-blue-50 text-blue-700 ring-blue-200',
   },
   {
-    title: 'שיווק שותפים',
-    url: '/affiliate-network',
-    icon: AffiliateFlowchartIcon,
-    iconColor: '!text-[#6d28d9]', // violet-700
-    badgeClass: 'bg-violet-50 text-violet-700 ring-violet-200',
+    title: 'צ׳אטים',
+    url: '/partner/chats',
+    icon: MessageCircle,
+    iconColor: '!text-[#0e7490]', // cyan-700
+    badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
   },
   {
-    title: 'תגמולים',
+    title: 'פוסטים',
+    url: '/partner/posts',
+    icon: Megaphone,
+    iconColor: '!text-[#b45309]', // amber-700
+    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
+  },
+  {
+    title: 'הזמן חברים',
     url: '/referral',
     icon: Gift,
     iconColor: '!text-[#0f766e]', // teal-700
     badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
+  },
+];
+
+/**
+ * Private property owner navigation: only their own listings, the leads
+ * interested in them, the per-stage reward settings and Rita. No broker CRM,
+ * no recruitment, no affiliate management.
+ */
+const OWNER_NAV_ITEMS: NavItem[] = [
+  {
+    title: 'הנכסים שלי',
+    url: '/owner/properties',
+    icon: Home,
+    iconColor: '!text-[#b45309]', // amber-700
+    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
+  },
+  {
+    title: 'לידים מתעניינים',
+    url: '/owner/leads',
+    icon: Users,
+    iconColor: '!text-[#1d4ed8]', // blue-700
+    badgeClass: 'bg-blue-50 text-blue-700 ring-blue-200',
+  },
+  {
+    title: 'הגדרת תגמולים ועמלות',
+    url: '/owner/rewards',
+    icon: Coins,
+    iconColor: '!text-[#0f766e]', // teal-700
+    badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
+  },
+  {
+    title: 'צ׳אט עם ריטה',
+    url: '/owner/rita',
+    icon: MessageCircle,
+    iconColor: '!text-[#0e7490]', // cyan-700
+    badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
   },
 ];
 
@@ -184,7 +221,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin, isAffiliateOnly } = useUserRole();
+  const { isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
   const { isPartnerMode } = useAppMode();
@@ -196,6 +233,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const features = useWorkspaceFeatures();
   const affiliateOnlyNav = isPartnerMode || isAffiliateOnly;
   const navItems = useMemo(() => {
+    if (isPropertyOwnerOnly) return OWNER_NAV_ITEMS;
     if (affiliateOnlyNav) return PARTNER_NAV_ITEMS;
     return NAV_ITEMS.filter((item) => {
       if (item.url === '/properties') return features.listingsEnabled;
@@ -203,7 +241,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       if (item.url === '/affiliate-network') return features.partnersEnabled;
       return true;
     });
-  }, [features, affiliateOnlyNav]);
+  }, [features, affiliateOnlyNav, isPropertyOwnerOnly]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
@@ -214,6 +252,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       case '/inbox': return counts.chats;
       case '/deal-room': return counts.deals;
       case '/campaigns': return counts.campaigns;
+      // Partner mode: live shared properties, and total invitations sent.
+      case '/affiliate-network': return affiliateOnlyNav ? counts.sharedListings : undefined;
+      case '/referral': return affiliateOnlyNav ? counts.invitations : undefined;
       default: return undefined;
     }
   };

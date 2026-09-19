@@ -28,7 +28,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, BedDouble, Building2, Handshake, LayoutGrid, List, MapPin, Ruler, Search, Users } from 'lucide-react';
+import { Banknote, BedDouble, Building2, EyeOff, Handshake, LayoutGrid, List, MapPin, Ruler, Search, Users } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 
@@ -244,6 +254,10 @@ function BrokerAffiliateNetwork() {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
+  // Removing a property from partner marketing is destructive for partners who
+  // are already promoting it, so it always goes through a confirmation.
+  const [unpublishing, setUnpublishing] = useState<BrokerAffiliateListing | null>(null);
+  const setReward = useSetAffiliateReward();
 
   useEffect(() => {
     if (listingsLoading || refsLoading || subsLoading) return;
@@ -381,16 +395,30 @@ function BrokerAffiliateNetwork() {
                   }
                   return (
                     <div className="flex flex-col items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant={shared ? 'default' : 'outline'}
-                        className={`h-8 gap-1.5 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
-                        title={shared ? 'עריכת עמלות והפסקת שיווק שותפים' : 'פתיחת הנכס לשיווק שותפים'}
-                        onClick={() => setEditing(listing)}
-                      >
-                        <Handshake className="h-4 w-4" />
-                        {shared ? 'משותף' : 'שיתוף'}
-                      </Button>
+                      <div className="inline-flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant={shared ? 'default' : 'outline'}
+                          className={`h-8 w-8 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
+                          title={shared ? 'עריכת עמלות והפסקת שיווק שותפים' : 'פתיחת הנכס לשיווק שותפים'}
+                          aria-label={shared ? 'עריכת עמלות' : 'פתיחת הנכס לשיווק שותפים'}
+                          onClick={() => setEditing(listing)}
+                        >
+                          <Handshake className="h-4 w-4" />
+                        </Button>
+                        {shared ? (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            title="הפסקת שיווק ע״י שותפים"
+                            aria-label="הפסקת שיווק ע״י שותפים"
+                            onClick={() => setUnpublishing(listing)}
+                          >
+                            <EyeOff className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                      </div>
                       {tierTexts.length > 0 ? (
                         <div className="text-[11px] font-semibold whitespace-nowrap text-slate-600">
                           <bdi dir="ltr">{tierTexts.join(', ')}</bdi>
@@ -677,6 +705,44 @@ function BrokerAffiliateNetwork() {
         </Tabs>
 
         <RewardDialog listing={editing} open={!!editing} onOpenChange={(v) => !v && setEditing(null)} />
+
+        <AlertDialog open={!!unpublishing} onOpenChange={(v) => !v && setUnpublishing(null)}>
+          <AlertDialogContent dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-right">להפסיק שיווק ע״י שותפים?</AlertDialogTitle>
+              <AlertDialogDescription className="text-right">
+                הנכס {unpublishing?.property_title || ''} ייעלם מרשימת הנכסים לשיווק של כל השותפים. התגמולים שהוגדרו יישמרו.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2">
+              <AlertDialogCancel>ביטול</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  const target = unpublishing;
+                  if (!target) return;
+                  setUnpublishing(null);
+                  try {
+                    await setReward.mutateAsync({
+                      listingId: target.id,
+                      enabled: false,
+                      rewardType: (target.affiliate_reward_type ?? 'fixed') as RewardType,
+                      rewardAmount: Number(target.affiliate_reward_amount ?? 0),
+                      tier1Amount: Number(target.affiliate_tier1_amount ?? 0),
+                      tier2Amount: Number(target.affiliate_tier2_amount ?? 0),
+                      tier3Type: (target.affiliate_tier3_type ?? 'fixed') as RewardType,
+                      tier3Amount: Number(target.affiliate_tier3_amount ?? 0),
+                    });
+                    toast.success('הנכס הוסר משיווק שותפים');
+                  } catch {
+                    toast.error('ההסרה נכשלה');
+                  }
+                }}
+              >
+                הסרה
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
       </div>
     </>

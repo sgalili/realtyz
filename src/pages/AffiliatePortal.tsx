@@ -139,9 +139,17 @@ function PartnerListingActions({ listing }: { listing: MarketplaceListing }) {
   };
   return (
     <div className="flex items-center gap-1.5">
-      <Button type="button" size="sm" onClick={createOrCopy} disabled={promote.isPending} className="h-8 gap-1.5">
+      {/* Icon-only action: the title carries the meaning, no text label. */}
+      <Button
+        type="button"
+        size="icon"
+        onClick={createOrCopy}
+        disabled={promote.isPending}
+        className="h-8 w-8"
+        title={link ? 'העתקת קישור השיווק' : 'יצירת קישור שיווק'}
+        aria-label={link ? 'העתקת קישור השיווק' : 'יצירת קישור שיווק'}
+      >
         {link ? <Copy className="h-3.5 w-3.5" /> : <Megaphone className="h-3.5 w-3.5" />}
-        {link ? 'העתקה' : 'שיווק'}
       </Button>
       <SubmitLeadDialog listing={listing} />
     </div>
@@ -916,9 +924,11 @@ export default function AffiliatePortal() {
                       </div>
                       {r.listing_id && (
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          className="gap-1.5"
+                          className="h-8 w-8"
+                          title="העתקת הקישור"
+                          aria-label="העתקת הקישור"
                           onClick={async () => {
                             await navigator.clipboard.writeText(
                               affiliateTrackingLink(null, r.listing_id, r.tracking_code),
@@ -927,7 +937,6 @@ export default function AffiliatePortal() {
                           }}
                         >
                           <Copy className="h-3.5 w-3.5" />
-                          העתקה
                         </Button>
                       )}
                     </CardContent>

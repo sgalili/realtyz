@@ -346,6 +346,38 @@ export function useBrokerAffiliateListings() {
   });
 }
 
+export type AffiliateConfigRow = {
+  id: string;
+  affiliate_enabled: boolean | null;
+  affiliate_tier1_amount: number | null;
+  affiliate_tier2_amount: number | null;
+  affiliate_tier3_type: string | null;
+  affiliate_tier3_amount: number | null;
+};
+
+/**
+ * Partner-sharing state for a batch of listings, fetched in ONE query so a
+ * long property table never fires a request per row.
+ */
+export function useAffiliateConfigs(listingIds: string[]) {
+  const ids = Array.from(new Set(listingIds.filter(Boolean))).sort();
+  return useQuery({
+    queryKey: ['affiliate-configs', ids.join(',')],
+    enabled: ids.length > 0,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('id, affiliate_enabled, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount')
+        .in('id', ids);
+      if (error) throw error;
+      const map = new Map<string, AffiliateConfigRow>();
+      for (const row of (data ?? []) as AffiliateConfigRow[]) map.set(row.id, row);
+      return map;
+    },
+  });
+}
+
 /** Broker sets / clears the reward + 3-tier payouts offered per property. */
 export function useSetAffiliateReward() {
   const queryClient = useQueryClient();

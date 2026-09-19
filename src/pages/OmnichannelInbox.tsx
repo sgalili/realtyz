@@ -295,8 +295,8 @@ const OmnichannelInbox = () => {
   });
 
   const { data: dbLastMessages } = useQuery({
-    queryKey: ['last-messages'],
-    enabled: !isDemoMode,
+    queryKey: ['last-messages', workspaceScope],
+    enabled: !isDemoMode && !!workspaceScope,
     refetchInterval: 3000,
     queryFn: async () => {
       const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: false });
@@ -312,8 +312,8 @@ const OmnichannelInbox = () => {
   // channel filter so a conversation stays visible even when its most recent
   // message arrived on a different channel.
   const { data: leadChannels } = useQuery({
-    queryKey: ['lead-channels'],
-    enabled: !isDemoMode,
+    queryKey: ['lead-channels', workspaceScope],
+    enabled: !isDemoMode && !!workspaceScope,
     refetchInterval: 15000,
     queryFn: async () => {
       const { data } = await supabase.from('messages').select('lead_id, channel, platform');
@@ -334,8 +334,8 @@ const OmnichannelInbox = () => {
   // otherwise vanish from the inbox. Surface them grouped by sender_phone so
   // the broker never misses an inbound WhatsApp reply.
   const { data: orphanThreads } = useQuery({
-    queryKey: ['orphan-phone-threads'],
-    enabled: !isDemoMode,
+    queryKey: ['orphan-phone-threads', workspaceScope],
+    enabled: !isDemoMode && !!workspaceScope,
     refetchInterval: 3000,
     queryFn: async () => {
       const { data } = await supabase
@@ -553,8 +553,8 @@ const OmnichannelInbox = () => {
   };
 
   const { data: dbChatMessages } = useQuery({
-    queryKey: ['chat-messages', selectedVoterId, selectedThread.ids.join(','), selectedThread.phones.join(',')],
-    enabled: !!selectedVoterId && !isDemoMode,
+    queryKey: ['chat-messages', workspaceScope, selectedVoterId, selectedThread.ids.join(','), selectedThread.phones.join(',')],
+    enabled: !!selectedVoterId && !isDemoMode && !!workspaceScope,
     refetchInterval: 1500,
     queryFn: async () => {
       const out: any[] = [];

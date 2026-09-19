@@ -61,6 +61,8 @@ import { listingPublishedAt } from '@/lib/listingFreshness';
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
+import { AffiliateShareCell } from '@/components/properties/AffiliateShareCell';
+import { useAffiliateConfigs } from '@/hooks/useAffiliate';
 
 
 const PRICE_MIN = 0;
@@ -1413,6 +1415,19 @@ export function ResultTable({
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { notesByListing } = usePropertyNotesByListing();
 
+  // Partner sharing lives in ONE unified first column. Saved properties get it
+  // automatically; callers may override the cell with their own control.
+  const localIds = useMemo(
+    () => results.map((r) => r.localId).filter((id): id is string => !!id),
+    [results],
+  );
+  const { data: affiliateConfigs } = useAffiliateConfigs(hideDefaultActions ? [] : localIds);
+  const renderAffiliate = affiliateCell
+    ?? ((r: UnifiedResult) => (r.localId
+      ? <AffiliateShareCell listingId={r.localId} config={affiliateConfigs?.get(r.localId)} />
+      : null));
+  const showAffiliateColumn = !!affiliateCell || (!hideDefaultActions && localIds.length > 0);
+
   const toggleSort = (col: SortCol) => {
     if (sortCol === col) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -1479,7 +1494,7 @@ export function ResultTable({
       <table className="w-full text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
-            {affiliateCell ? <th className="px-2 py-2 font-semibold whitespace-nowrap">שותפים</th> : null}
+            {showAffiliateColumn ? <th className="px-2 py-2 font-semibold whitespace-nowrap">שותפים</th> : null}
             {commissionCell ? <th className="px-2 py-2 font-semibold whitespace-nowrap">עמלות</th> : null}
             <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
 
@@ -1508,8 +1523,8 @@ export function ResultTable({
             return (
               <Fragment key={r.key}>
               <tr className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
-                {affiliateCell ? (
-                  <td className="px-2 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>{affiliateCell(r)}</td>
+                {showAffiliateColumn ? (
+                  <td className="px-2 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>{renderAffiliate(r)}</td>
                 ) : null}
                 {commissionCell ? (
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{commissionCell(r)}</td>
@@ -1620,11 +1635,11 @@ export function ResultTable({
                         <Pencil className="h-4 w-4" />
                       </Button>
                     ) : null}
-                    {affiliateCell ? null : onAffiliate ? (
+                    {showAffiliateColumn ? null : onAffiliate ? (
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="הגדר שיווק שותפים" aria-label="הגדר שיווק שותפים" onClick={() => onAffiliate(r)}>
                         <Handshake className="h-4 w-4" />
                       </Button>
-                    ) : r.localId ? <AffiliateCommissionButton listingId={r.localId} /> : null}
+                    ) : null}
                   </div>}
                 </td>
 
@@ -1633,7 +1648,7 @@ export function ResultTable({
               {rowNotes && rowNotes.length > 0 && (
                 <tr className="border-t-0 bg-amber-50/40">
                   <td className="px-2 pb-2" />
-                  <td className="px-2 pb-2" colSpan={12 + (affiliateCell ? 1 : 0) + (commissionCell ? 1 : 0)}>
+                  <td className="px-2 pb-2" colSpan={12 + (showAffiliateColumn ? 1 : 0) + (commissionCell ? 1 : 0)}>
                     <PropertyNotesBlock notes={rowNotes} />
                   </td>
                 </tr>

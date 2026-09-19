@@ -5057,6 +5057,69 @@ export type Database = {
         }
         Relationships: []
       }
+      public_listing_interest: {
+        Row: {
+          access_token: string
+          callback_window: string | null
+          created_at: string
+          id: string
+          intent: string | null
+          lead_id: string | null
+          listing_id: string
+          rita_engaged_at: string | null
+          unlocked_at: string | null
+          updated_at: string
+          visitor_name: string
+          visitor_phone: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          access_token: string
+          callback_window?: string | null
+          created_at?: string
+          id?: string
+          intent?: string | null
+          lead_id?: string | null
+          listing_id: string
+          rita_engaged_at?: string | null
+          unlocked_at?: string | null
+          updated_at?: string
+          visitor_name: string
+          visitor_phone: string
+          workspace_owner_id: string
+        }
+        Update: {
+          access_token?: string
+          callback_window?: string | null
+          created_at?: string
+          id?: string
+          intent?: string | null
+          lead_id?: string | null
+          listing_id?: string
+          rita_engaged_at?: string | null
+          unlocked_at?: string | null
+          updated_at?: string
+          visitor_name?: string
+          visitor_phone?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_listing_interest_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_listing_interest_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_message_templates: {
         Row: {
           body: string
@@ -7065,6 +7128,7 @@ export type Database = {
         | "managing_broker"
         | "lead_agent"
         | "affiliate"
+        | "property_owner"
       listing_source: "yad2" | "madlan" | "manual"
     }
     CompositeTypes: {
@@ -7204,6 +7268,7 @@ export const Constants = {
         "managing_broker",
         "lead_agent",
         "affiliate",
+        "property_owner",
       ],
       listing_source: ["yad2", "madlan", "manual"],
     },

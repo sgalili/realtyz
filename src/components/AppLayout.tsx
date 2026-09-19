@@ -474,29 +474,31 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="realtyz-app-shell h-screen overflow-hidden flex w-full bg-background pt-[env(safe-area-inset-top)]">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
-          <header className="grid min-h-16 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-border bg-background px-3 text-foreground sticky top-0 z-30 sm:px-4" dir="rtl">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <HeaderProfileLink />
-              <HeaderProfileMenu />
-              <NotificationCenter />
-            </div>
+          {/* RTL header: workspace logo sits at the far right with the workspace
+              name beside it and the signed-in user's full name directly below,
+              right-aligned. Every icon control lives on the opposite side so
+              nothing can overlap the identity block on narrow phones. */}
+          <header className="grid min-h-16 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border bg-background px-3 text-foreground sticky top-0 z-30 sm:px-4" dir="rtl">
             <Link
               to="/"
               aria-label={`${headerName} - דף הבית`}
-              className="flex min-w-0 flex-col items-start justify-center gap-0.5 overflow-hidden text-right leading-none"
+              className="flex min-w-0 flex-col items-end justify-center gap-0.5 overflow-hidden text-right leading-none"
             >
-              <span className="flex max-w-full items-center gap-2 overflow-hidden">
+              <span className="flex max-w-full flex-row-reverse items-center gap-2 overflow-hidden">
                 <img src={headerLogo || realtyzLogo} alt={headerName || 'Realtyz AI'} className="h-7 max-w-16 shrink-0 object-contain sm:h-8 sm:max-w-[110px]" />
                 <span className="min-w-0 truncate text-sm font-bold text-foreground">{headerName}</span>
               </span>
               {headerUserName ? (
-                <span className="max-w-full truncate pe-0.5 text-[11px] font-semibold text-muted-foreground">
+                <span className="max-w-full truncate text-[11px] font-semibold text-muted-foreground">
                   {headerUserName}
                 </span>
               ) : null}
             </Link>
 
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
+              <HeaderProfileLink />
+              <HeaderProfileMenu />
+              <NotificationCenter />
               <HeaderCrisisAlert />
               <Button
                 variant="ghost"

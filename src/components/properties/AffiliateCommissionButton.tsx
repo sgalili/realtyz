@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useSetAffiliateReward, type RewardType } from '@/hooks/useAffiliate';
 
-export function AffiliateCommissionButton({ listingId }: { listingId: string }) {
+export function AffiliateCommissionButton({ listingId, shared }: { listingId: string; shared?: boolean }) {
   const [open, setOpen] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [amount, setAmount] = useState('0');
@@ -35,7 +35,14 @@ export function AffiliateCommissionButton({ listingId }: { listingId: string }) 
 
   return (
     <>
-      <Button size="icon" variant="ghost" className="h-8 w-8" title="הגדר שיווק שותפים" aria-label="הגדר שיווק שותפים" onClick={() => setOpen(true)}>
+      <Button
+        size="icon"
+        variant={shared ? 'default' : 'ghost'}
+        className={`h-8 w-8 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
+        title={shared ? 'עריכת עמלות שיווק שותפים' : 'הגדר שיווק שותפים'}
+        aria-label={shared ? 'עריכת עמלות שיווק שותפים' : 'הגדר שיווק שותפים'}
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+      >
         <Handshake className="h-4 w-4" />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
