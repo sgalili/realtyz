@@ -716,7 +716,9 @@ export default function AffiliatePortal() {
   return (
     <>
       <div className="space-y-5 p-4" dir="rtl">
-        <AffiliatePlansPanel selectedPlan={preferences.plan_slug} initialBilling={preferences.billing_period} />
+        <div className="flex justify-end">
+          <Button size="sm" variant="outline" onClick={() => navigate('/affiliate-pricing')}>חבילות שותפים</Button>
+        </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-3">
