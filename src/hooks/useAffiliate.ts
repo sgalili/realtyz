@@ -184,10 +184,12 @@ export function useAffiliatePreferences() {
   const update = useMutation({
     mutationFn: async (patch: Partial<AffiliatePreferences>) => {
       if (!user?.id) throw new Error('not_authenticated');
+      // Upsert, not update: a partner whose profile row was never created would
+      // otherwise silently save nothing (0 rows matched) and the switch would
+      // snap back on the next refetch.
       const { error } = await supabase
         .from('affiliate_profiles')
-        .update(patch as never)
-        .eq('user_id', user.id);
+        .upsert({ user_id: user.id, ...patch } as never, { onConflict: 'user_id' });
       if (error) throw error;
     },
     onSuccess: () => {
