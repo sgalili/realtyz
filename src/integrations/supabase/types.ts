@@ -7065,6 +7065,7 @@ export type Database = {
         | "managing_broker"
         | "lead_agent"
         | "affiliate"
+        | "property_owner"
       listing_source: "yad2" | "madlan" | "manual"
     }
     CompositeTypes: {
@@ -7204,6 +7205,7 @@ export const Constants = {
         "managing_broker",
         "lead_agent",
         "affiliate",
+        "property_owner",
       ],
       listing_source: ["yad2", "madlan", "manual"],
     },
