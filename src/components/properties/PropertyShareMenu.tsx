@@ -100,13 +100,13 @@ export function PropertyShareMenu({
           <div className="space-y-1.5"><Label htmlFor="share-recipient-name">שם</Label><Input id="share-recipient-name" value={recipientName} onChange={(event) => setRecipientName(event.target.value)} /></div>
           <div className="space-y-1.5">
             <Label htmlFor="share-recipient-value">{recipientMode === 'email' ? 'אימייל' : 'טלפון'}</Label>
-            <Input id="share-recipient-value" type={recipientMode === 'email' ? 'email' : 'tel'} inputMode={recipientMode === 'email' ? 'email' : 'tel'} value={recipientValue} onChange={(event) => setRecipientValue(event.target.value)} placeholder={recipientMode === 'email' ? 'name@mail.com' : '05X-XXXXXXX'} />
+            <Input id="share-recipient-value" type={recipientMode === 'email' ? 'email' : 'tel'} inputMode={recipientMode === 'email' ? 'email' : 'tel'} value={recipientValue} onChange={(event) => setRecipientValue(event.target.value)} />
           </div>
         </div>
-        <DialogFooter>
+        <div className="flex flex-row items-center justify-between gap-2 pt-1">
           <Button variant="outline" onClick={() => setRecipientMode(null)}>ביטול</Button>
           <Button disabled={busy || !recipientValue.trim()} onClick={() => recipientMode && void run(recipientMode)}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שליחה'}</Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
     </>
