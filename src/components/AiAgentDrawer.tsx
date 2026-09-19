@@ -658,7 +658,6 @@ ${shareUrl}
         <div ref={conversationWrapRef} className="flex min-h-0 flex-1 flex-col">
         <Conversation className="min-h-0 flex-1" initial="instant" resize="instant">
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
-          {
             <div className="space-y-5 py-2">
               <div className={`flex items-start gap-2.5 rounded-2xl border border-border bg-card px-3 py-3 ${messages.length > 0 ? 'hidden' : ''}`}>
                 <RitaAvatar className="h-9 w-9 shrink-0" />
@@ -692,7 +691,7 @@ ${shareUrl}
                             <button
                               key={pi}
                               type="button"
-                              onClick={() => { setShowSuggestions(false); sendMessage(p); }}
+                              onClick={() => sendMessage(p)}
                               disabled={isLoading}
                               className="w-full text-right text-[15px] leading-relaxed rounded-lg border border-border/60 bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-2.5 py-2 disabled:opacity-50"
                             >
