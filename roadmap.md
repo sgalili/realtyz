@@ -57,4 +57,4 @@
 54. [x] Single view switch everywhere, working auto-funnel save with explanation dialog, fixed top header on mobile, Rita chat sizing, and per-role intro slides
 
 55. [x] Center the workspace identity block and deliver the public board, owner publishing, affiliate pricing, touch-point, commission, and onboarding updates
-56. [ ] Fix affiliate pricing routing, rebuild new-user onboarding, refine the public board, and harden listing publication
+56. [x] Fix affiliate pricing routing, rebuild new-user onboarding, refine the public board, and harden listing publication
