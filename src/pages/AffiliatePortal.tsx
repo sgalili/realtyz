@@ -707,6 +707,7 @@ export default function AffiliatePortal() {
       <div className="space-y-5 p-4" dir="rtl">
 
 
+        {automationCardsVisible && (
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-3">
             <div className="flex min-w-0 items-center gap-2.5">

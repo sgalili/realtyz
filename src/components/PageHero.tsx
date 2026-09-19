@@ -296,6 +296,8 @@ export function PageHero() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { isSuperAdmin } = useUserRole();
+  const { preferences: affiliatePrefs } = useAffiliatePreferences();
+  const automationAnyOn = Boolean(affiliatePrefs.rita_auto_mode || affiliatePrefs.auto_funnel_enabled);
   const canSeeBalance = isSuperAdmin || BALANCE_OWNER_EMAILS.includes((user?.email ?? "").toLowerCase());
   const title = resolvePageTitle(location.pathname);
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
