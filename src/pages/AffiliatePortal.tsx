@@ -582,6 +582,7 @@ function AffiliateKpiCard({
 
 export default function AffiliatePortal() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAffiliate, loading: roleLoading } = useUserRole();
   const { data: marketplace = [], isLoading: marketLoading } = useAffiliateMarketplace();
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
@@ -601,6 +602,22 @@ export default function AffiliatePortal() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [propertySource, setPropertySource] = useState<'all' | 'private' | 'broker'>('all');
   const [citySearch, setCitySearch] = useState('');
+  const scrollKey = 'affiliate-portal:marketplace-scroll';
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem(scrollKey);
+    if (!stored || marketLoading) return;
+    const top = Number(stored);
+    if (!Number.isFinite(top)) return;
+    const restore = () => {
+      const surface = document.querySelector<HTMLElement>('.realtyz-main-surface');
+      if (surface) surface.scrollTo({ top, behavior: 'auto' });
+      else window.scrollTo({ top, behavior: 'auto' });
+    };
+    requestAnimationFrame(restore);
+    const timers = [120, 350, 700].map((delay) => window.setTimeout(restore, delay));
+    return () => timers.forEach(window.clearTimeout);
+  }, [location.key, marketLoading]);
 
 
   const commissionMax = useMemo(() => Math.max(1000, ...marketplace.map(commissionPotential)), [marketplace]);
@@ -836,13 +853,25 @@ export default function AffiliatePortal() {
                   importingKey={null}
                   onSelect={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
-                    if (listing) navigate(`/p/${listing.slug || listing.listing_id}`);
-                  }}
-                  propertyHref={(result) => {
-                    const listing = filtered.find((item) => item.listing_id === result.localId);
-                    return listing ? `/p/${listing.slug || listing.listing_id}` : null;
+                    if (listing) {
+                      const surface = document.querySelector<HTMLElement>('.realtyz-main-surface');
+                      sessionStorage.setItem(scrollKey, String(surface?.scrollTop ?? window.scrollY));
+                      navigate(`/properties/${listing.listing_id}`, {
+                        state: { propertySnapshot: result, returnTo: '/affiliate-network' },
+                      });
+                    }
                   }}
                   hideDefaultActions
+                  publishedLabel="פורסם לרשת"
+                  publishedAt={(result) => {
+                    const listing = filtered.find((item) => item.listing_id === result.localId);
+                    return listing?.approved_at ?? null;
+                  }}
+                  affiliateSortValue={(result) => referrals.some((referral) => referral.listing_id === result.localId) ? 1 : 0}
+                  commissionSortValue={(result) => {
+                    const listing = filtered.find((item) => item.listing_id === result.localId);
+                    return listing ? commissionPotential(listing) : 0;
+                  }}
                   affiliateCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
                     return listing ? <PartnerListingActions listing={listing} /> : null;

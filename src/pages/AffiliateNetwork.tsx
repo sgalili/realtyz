@@ -360,9 +360,22 @@ function BrokerAffiliateNetwork() {
                 results={filteredListings.map(toUnifiedResult)}
                 importingKey={null}
                 onSelect={(result) => {
-                  if (result.localId) navigate(`/properties/${result.localId}`, {
-                    state: { propertySnapshot: result, returnTo: '/affiliate-network' },
-                  });
+                  if (result.localId) {
+                    const surface = document.querySelector<HTMLElement>('.realtyz-main-surface');
+                    sessionStorage.setItem(AFFILIATE_SCROLL_KEY, String(surface?.scrollTop ?? window.scrollY));
+                    navigate(`/properties/${result.localId}`, {
+                      state: { propertySnapshot: result, returnTo: '/affiliate-network' },
+                    });
+                  }
+                }}
+                publishedLabel="פורסם לרשת"
+                publishedAt={(result) => filteredListings.find((item) => item.id === result.localId)?.affiliate_approved_at ?? null}
+                affiliateSortValue={(result) => filteredListings.find((item) => item.id === result.localId)?.affiliate_enabled ? 1 : 0}
+                commissionSortValue={(result) => {
+                  const listing = filteredListings.find((item) => item.id === result.localId);
+                  if (!listing) return 0;
+                  return Number(listing.affiliate_tier1_amount ?? 0) + Number(listing.affiliate_tier2_amount ?? 0)
+                    + (listing.affiliate_tier3_type === 'fixed' ? Number(listing.affiliate_tier3_amount ?? 0) : 0);
                 }}
                 onCampaign={(result) => {
                   if (result.localId) navigate(`/campaigns?tab=create&channel=facebook&properties=${result.localId}&listing=${result.localId}`);

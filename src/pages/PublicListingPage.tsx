@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bed, Building2, ImageIcon, Layers, Loader2, MapPin, Ruler, Share2 } from 'lucide-react';
+import { Bed, Building2, ImageIcon, Layers, Loader2, Navigation, Ruler, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +53,6 @@ type PublicListing = {
 
 const DETAIL_LABELS: Record<string, string> = {
   neighborhood: 'שכונה', available_from: 'כניסה', project_name: 'פרויקט', elevator: 'מעלית', parking: 'חניה',
-  status: 'סטטוס',
 };
 
 const GROUP_LABELS: Record<string, string> = {
@@ -100,7 +99,7 @@ function readable(value: unknown): string {
 
 function detailRows(row: any): Array<{ label: string; value: string }> {
   const rows: Array<{ label: string; value: string }> = [];
-  for (const key of ['neighborhood', 'available_from', 'project_name', 'elevator', 'parking', 'status']) {
+  for (const key of ['available_from', 'project_name', 'elevator', 'parking']) {
     const text = readable(row?.[key]);
     if (text) rows.push({ label: DETAIL_LABELS[key], value: text });
   }
@@ -179,11 +178,10 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
   const address = publicAddress(row?.address);
   const city = typeof row?.city === 'string' ? row.city : '';
   const location = [address, row?.neighborhood, city].filter((v) => typeof v === 'string' && v.trim()).join(' · ');
-  const title =
-    (typeof row?.property_title === 'string' && row.property_title.trim()) ||
-    address ||
-    city ||
-    'נכס';
+  const sourceTitle = typeof row?.property_title === 'string' ? publicAddress(row.property_title.trim()) : '';
+  const title = [address || sourceTitle, row?.neighborhood, city]
+    .filter((value, index, values) => typeof value === 'string' && value.trim() && values.indexOf(value) === index)
+    .join(' · ') || 'נכס';
   const dealType = row?.deal_type === 'rent' ? 'rent' : row?.deal_type === 'sale' ? 'sale' : null;
   const floorRaw = Number(row?.floor);
   return {
@@ -402,23 +400,11 @@ function PublicListingContent() {
           <CardContent className="space-y-4 pt-4 text-right">
             <div className="space-y-1">
               <h1 className="text-2xl font-black leading-tight md:text-3xl">{data.title}</h1>
-              {data.location && (
-                <p className="flex items-center justify-end gap-1 text-sm text-muted-foreground">
-                  <span>{data.location}</span>
-                  <MapPin className="h-4 w-4" />
-                </p>
-              )}
             </div>
 
             <p className="text-2xl font-black text-primary" dir="ltr">
               {formatPrice(data.price, data.dealType)}
             </p>
-
-            <div className="space-y-2 border-t pt-4">
-              <h2 className="text-lg font-bold text-foreground">מיקום והגעה</h2>
-              <WorkspacePropertiesMap properties={mapProperties} selectedId={data.id} onSelect={setSelectedId} />
-              {mapProperties.length > 1 && <p className="text-xs text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס מתחת למפה</p>}
-            </div>
 
             {specs.length > 0 && (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -460,6 +446,17 @@ function PublicListingContent() {
                 </dl>
               </div>
             ))}
+
+            {data.latitude !== null && data.longitude !== null ? (
+              <div className="space-y-2 border-t pt-4">
+                <WorkspacePropertiesMap properties={mapProperties} selectedId={data.id} onSelect={setSelectedId} />
+                {mapProperties.length > 1 && <p className="text-xs text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס</p>}
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild variant="outline" size="sm"><a href={`https://waze.com/ul?ll=${data.latitude},${data.longitude}&navigate=yes`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Waze</a></Button>
+                  <Button asChild variant="outline" size="sm"><a href={`https://www.google.com/maps/dir/?api=1&destination=${data.latitude},${data.longitude}`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Google Maps</a></Button>
+                </div>
+              </div>
+            ) : null}
 
             <div className="flex flex-wrap gap-2">
               <Button asChild className="flex-1 bg-social-whatsapp text-white hover:bg-social-whatsapp/90">
