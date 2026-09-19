@@ -362,6 +362,30 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
+          {/^\/affiliate(\/|$)/.test(location.pathname) || location.pathname.startsWith("/affiliate-network") ? (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => navigate("/affiliate-pricing")}
+              aria-label="חבילות שותפים"
+              title="חבילות שותפים"
+              className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+            >
+              <Gift className="!h-5 !w-5" strokeWidth={2.5} />
+            </Button>
+          ) : null}
+          {location.pathname.startsWith("/affiliate-pricing") && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => navigate("/affiliate-network")}
+              aria-label="חזרה לשיווק שותפים"
+              title="חזרה לשיווק שותפים"
+              className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+            >
+              <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
+            </Button>
+          )}
           {location.pathname.startsWith('/inbox') && inboxChatOpen && (
             <Button
               size="icon"
