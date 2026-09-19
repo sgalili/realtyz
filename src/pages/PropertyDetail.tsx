@@ -1287,15 +1287,17 @@ export default function PropertyDetail() {
               </a>
             )}
 
-            {yad2Url && liveYad2Status === 'live' && (
+            {/* Refresh sits right after the Yad2 icon and only while the ad is
+                still on Yad2. Limited to one manual refresh per day. */}
+            {yad2Url && liveYad2Status !== 'gone' && (
               <Button
                 size="icon"
                 variant="outline"
                 onClick={syncFromYad2}
-                disabled={syncingSource}
-                aria-label="סנכרון מ-Yad2"
-                title="סנכרון כל פרטי הנכס מ-Yad2"
-                className="h-8 w-8 border-primary/40 text-primary hover:bg-primary/10"
+                disabled={syncingSource || yad2SyncUsedToday}
+                aria-label="רענון נתונים מיד2"
+                title={yad2SyncUsedToday ? 'הרענון מיד2 בוצע היום. זמין שוב מחר' : 'רענון כל פרטי הנכס מיד2 (פעם ביום)'}
+                className="h-8 w-8 border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 ${syncingSource ? 'animate-spin' : ''}`} />
               </Button>
