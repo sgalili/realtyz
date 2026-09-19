@@ -105,7 +105,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         user_id: user.id, workspace_owner_id: user.id, owner_id: user.id,
         slug: slugFor(user.id), property_title: title, description: draftFields.description.trim(), asking_price: Number(draftFields.price),
         city: draftFields.city.trim(), neighborhood: draftFields.neighborhood.trim() || null, address,
-        street: street || null, house_number: draftFields.houseNumber.trim() || null,
+        house_number: draftFields.houseNumber.trim() || null,
         apartment_number: draftFields.apartmentNumber.trim() || null,
         deal_type: draftFields.dealType, rooms: draftFields.rooms ? Number(draftFields.rooms.replace('+', '')) : null,
         sqm: draftFields.sqm ? Number(draftFields.sqm) : (draftFields.builtSqm ? Number(draftFields.builtSqm) : null),
@@ -130,7 +130,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           contact_name: draftFields.contactName || null,
           contact_whatsapp: draftFields.contactWhatsapp || null,
         },
-        media_photos: photos, media_videos: clips, image_url: photos[0] ?? null,
+        media_photos: photos, image_url: photos[0] ?? null,
         status: 'live', source: 'manual', is_published: true, affiliate_enabled: true,
       } as never).select('id').single();
       if (error) throw error;
