@@ -933,6 +933,7 @@ export default function Properties() {
           <div className="ms-auto inline-flex items-center">
             <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
           </div>
+        </div>
 
 
 

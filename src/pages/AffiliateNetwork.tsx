@@ -345,6 +345,7 @@ function BrokerAffiliateNetwork() {
               <div className="ms-auto inline-flex items-center">
                 <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
               </div>
+            </div>
 
             {listingsLoading ? (
               <Skeleton className="h-64 w-full" />
