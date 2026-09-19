@@ -61,6 +61,8 @@ import { listingPublishedAt } from '@/lib/listingFreshness';
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
+import { AffiliateShareCell } from '@/components/properties/AffiliateShareCell';
+import { useAffiliateConfigs } from '@/hooks/useAffiliate';
 
 
 const PRICE_MIN = 0;
