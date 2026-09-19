@@ -48,9 +48,14 @@ export function SubmitLeadDialog({ listing }: { listing: MarketplaceListing }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="w-full gap-1.5">
+        <Button
+          size="icon"
+          variant="outline"
+          className="h-8 w-8"
+          title="הגשת מתעניין לנכס"
+          aria-label="הגשת מתעניין לנכס"
+        >
           <UserPlus className="h-3.5 w-3.5" />
-          הגשת מתעניין לנכס
         </Button>
       </DialogTrigger>
 
