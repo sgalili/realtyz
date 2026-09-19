@@ -14,11 +14,13 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Building2, Handshake, Sparkles, TrendingUp } from 'lucide-react';
 import { publicUrl } from '@/lib/publicUrl';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AFFILIATE_TERMS_VERSION } from '@/hooks/useAffiliateLicense';
 
 const PERKS = [
-  { icon: Building2, title: 'מאגר נכסים משותף', text: 'נכסים למכירה ולהשכרה שמתווכים פתחו לשיווק על ידכם.' },
-  { icon: Handshake, title: 'עמלה ב-3 שלבים', text: 'תגמול על ליד חם, תגמול כפול על ליד שאומת, ובונוס בסגירת עסקה.' },
-  { icon: TrendingUp, title: 'מעקב מלא', text: 'לוח מחוונים עם סטטוס כל איש קשר והתגמול שנצבר.' },
+  { icon: Building2, title: 'מאגר נכסים משותף', text: 'נכסים למכירה ולהשכרה שמתווכים פתחו לשיווק דיגיטלי על ידכם.' },
+  { icon: Handshake, title: 'דמי שיווק ויצירת לידים', text: 'שלב 1 על חשיפה ושיתוף קישור, שלב 2 על ליד מאומת ופגישה שנקבעה. שלב 3, עמלת סגירה, לבעלי רישיון תיווך מאומת בלבד.' },
+  { icon: TrendingUp, title: 'מעקב מלא', text: 'לוח מחוונים עם סטטוס כל ליד והתגמול שנצבר בכל שלב.' },
 ];
 
 export default function AffiliateSignup() {
@@ -29,6 +31,7 @@ export default function AffiliateSignup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Already signed in as an affiliate → straight to the portal.
   useEffect(() => {
@@ -47,10 +50,17 @@ export default function AffiliateSignup() {
       _display_name: fullName.trim() || null,
       _phone: phone.trim() || null,
     });
+    if (termsAccepted) {
+      await supabase.rpc('accept_affiliate_terms', { _version: AFFILIATE_TERMS_VERSION });
+    }
     navigate('/affiliate', { replace: true });
   };
 
   const submit = async () => {
+    if (mode === 'signup' && !termsAccepted) {
+      toast.error('יש לאשר את תנאי תוכנית השיווק הדיגיטלי');
+      return;
+    }
     if (!email.trim() || password.length < 6) {
       toast.error('נדרש אימייל וסיסמה באורך 6 תווים לפחות');
       return;
@@ -165,6 +175,21 @@ export default function AffiliateSignup() {
                     dir="ltr"
                   />
                 </div>
+                {mode === 'signup' ? (
+                  <label className="flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600 ring-1 ring-slate-200">
+                    <Checkbox
+                      checked={termsAccepted}
+                      onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                      className="mt-0.5"
+                      aria-label="אישור תנאי תוכנית השיווק"
+                    />
+                    <span>
+                      אני מאשר שאני מצטרף כשותף שיווק דיגיטלי ויצירת לידים, ושהתגמול בשלבים 1 ו-2 הוא דמי פרסום,
+                      חשיפה ויצירת לידים ולא עמלת תיווך. עמלת סגירת עסקה (שלב 3) תשולם רק לבעלי רישיון תיווך
+                      שאומת במערכת, בהתאם לחוק המתווכים במקרקעין.
+                    </span>
+                  </label>
+                ) : null}
                 <Button className="w-full" disabled={busy} onClick={submit}>
                   {busy ? 'רגע...' : mode === 'signup' ? 'הצטרפות לרשת השותפים' : 'התחברות'}
                 </Button>
