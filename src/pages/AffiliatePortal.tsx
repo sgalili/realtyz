@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import {
   Banknote,
   BedDouble,
+  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -56,7 +57,9 @@ import {
   SUBMISSION_STATUS_LABELS,
   useRegisterAffiliate,
   useStartPromoting,
+  useMyReferralListings,
   type MarketplaceListing,
+  type AffiliateReferral,
 } from '@/hooks/useAffiliate';
 import { useAffiliatePreferences } from '@/hooks/useAffiliate';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -81,6 +84,15 @@ const DEAL_TYPE_LABELS: Record<string, string> = {
   sale: 'למכירה',
   rent: 'להשכרה',
 };
+
+/** Strict dd/mm/yyyy — the single date format used across the app. */
+function fmtDMY(value: string | null | undefined): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
 
 function firstPhoto(listing: MarketplaceListing): string | null {
   if (listing.image_url) return listing.image_url;
@@ -209,7 +221,7 @@ function allPhotos(listing: MarketplaceListing): string[] {
  * navigation, badges over the image, compact meta row, and an expandable
  * details section holding the full affiliate tooling.
  */
-function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceListing; compact?: boolean }) {
+function MarketplaceCard({ listing, compact = false, referral }: { listing: MarketplaceListing; compact?: boolean; referral?: AffiliateReferral }) {
   const promote = useStartPromoting();
   const [link, setLink] = useState<string | null>(null);
   const photos = useMemo(() => allPhotos(listing), [listing]);
@@ -411,6 +423,39 @@ function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceLis
           </Button>
         </div>
 
+        {referral ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-2.5" onClick={stop}>
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {fmtDMY(referral.created_at)}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <MousePointerClick className="h-3.5 w-3.5" />
+              {referral.clicks ?? 0} כניסות
+            </span>
+            <Badge variant="outline" className="text-[11px] font-medium">
+              {REFERRAL_STATUS_LABELS[referral.status] ?? referral.status}
+            </Badge>
+            <Badge variant="outline" className="text-[11px] font-medium">
+              {SETTLEMENT_LABELS[referral.settlement_status] ?? referral.settlement_status}
+            </Badge>
+            <span className="text-xs font-bold text-emerald-700">
+              {formatReward(referral.reward_type, referral.reward_amount)}
+            </span>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="ms-auto h-8 w-8"
+              title="העתקת קישור השיווק"
+              aria-label="העתקת קישור השיווק"
+              onClick={(e) => { stop(e); copy(affiliateTrackingLink(null, referral.listing_id, referral.tracking_code)); }}
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : null}
+
         {expanded && (
           <div className="space-y-3 border-t pt-3" onClick={stop}>
             <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
@@ -443,7 +488,7 @@ function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceLis
               <div>
                 <dt className="text-muted-foreground">אושר לשיווק</dt>
                 <dd className="font-semibold text-slate-900">
-                  {listing.approved_at ? new Date(listing.approved_at).toLocaleDateString('he-IL') : '—'}
+                  {fmtDMY(listing.approved_at)}
                 </dd>
               </div>
             </dl>
