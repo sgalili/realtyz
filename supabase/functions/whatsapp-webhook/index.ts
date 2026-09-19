@@ -1271,7 +1271,8 @@ async function handleLeadInboxInbound(
     // otherwise a new enquiry about one address gets answered with another
     // property's price and link.
     let focusProperty = "";
-    const focusListingId = referral?.listing_id ?? shortLink?.listing_id ?? lead.interest_tag ?? null;
+    const focusListingId =
+      referral?.listing_id ?? shortLink?.listing_id ?? sharedContext?.listing_id ?? lead.interest_tag ?? null;
     try {
       if (focusListingId) {
         const { data: listing } = await admin
