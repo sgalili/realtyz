@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { BadgeCheck, Lock, ShieldCheck } from 'lucide-react';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import AffiliateEligibilityBadge from '@/components/affiliate/AffiliateEligibilityBadge';
-import { fmtDMY } from '@/lib/listingDates';
+import { formatIsoDate } from '@/lib/listingDates';
 
 export function AffiliateLicenseCard() {
   const { license, isLoading, tier3Unlocked, submit, isSubmitting } = useAffiliateLicense();
@@ -59,13 +59,13 @@ export function AffiliateLicenseCard() {
         {tier3Unlocked ? (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-[12px] font-semibold text-emerald-800 ring-1 ring-emerald-200">
             <BadgeCheck className="h-4 w-4 shrink-0" />
-            רישיון {license.licenseNumber} אומת ב{fmtDMY(license.verifiedAt)}. שלב 3 פעיל וניתן למשיכה.
+            רישיון {license.licenseNumber} אומת ב{formatIsoDate(license.verifiedAt) ?? '—'}. שלב 3 פעיל וניתן למשיכה.
           </div>
         ) : (
           <div className="space-y-3">
             {license.status === 'pending' ? (
               <div className="rounded-xl bg-amber-50 p-3 text-[12px] font-semibold text-amber-800 ring-1 ring-amber-200">
-                הרישיון הוגש ב{fmtDMY(license.submittedAt)} ונמצא בבדיקה. עד לאישור, תגמולי שלב 3 אינם נצברים.
+                הרישיון הוגש ב{formatIsoDate(license.submittedAt) ?? '—'} ונמצא בבדיקה. עד לאישור, תגמולי שלב 3 אינם נצברים.
               </div>
             ) : null}
             {license.status === 'rejected' ? (
