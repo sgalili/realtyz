@@ -378,6 +378,19 @@ export default function AiAgentDrawer() {
     window.requestAnimationFrame(() => document.getElementById('rita-chat-input')?.focus());
   }, []);
 
+  // When the Home button opens the suggestions panel above the transcript,
+  // jump the chat scroll container back to the very top so the panel is seen.
+  const conversationWrapRef = useRef<HTMLDivElement>(null);
+  const scrollConversationToTop = useCallback(() => {
+    // Double rAF: first lets the suggestions block mount, second lets the
+    // stick-to-bottom controller finish its own initial scroll pass.
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      const root = conversationWrapRef.current?.firstElementChild as HTMLElement | null;
+      if (root) root.scrollTop = 0;
+    }));
+  }, []);
+
+
 
   // Mint a share token via edge fn for a property card. Works for both local
   // listings (r.id looks like a UUID) and external Webtiv/Homely results
@@ -615,7 +628,11 @@ ${shareUrl}
             variant="ghost"
             size="icon"
             aria-label="שאלות מומלצות"
-            onClick={() => setShowSuggestions((v) => !v)}
+            onClick={() => {
+              const next = !showSuggestions;
+              setShowSuggestions(next);
+              if (next) scrollConversationToTop();
+            }}
             className="absolute end-[52px] top-3 text-muted-foreground"
           >
             <Home className="h-4 w-4" />
@@ -641,7 +658,8 @@ ${shareUrl}
         </div>
 
         {/* Messages */}
-        <Conversation className="min-h-0" initial="instant" resize="instant">
+        <div ref={conversationWrapRef} className="flex min-h-0 flex-1 flex-col">
+        <Conversation className="min-h-0 flex-1" initial="instant" resize="instant">
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
           {(messages.length === 0 || showSuggestions) && (
             <div className="space-y-5 py-2">
@@ -967,6 +985,8 @@ ${shareUrl}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
+        </div>
+
 
         {/* Quick-Actions pill bar removed by design — suggestions live in the
             empty-state topic list at the top of the transcript only. */}
