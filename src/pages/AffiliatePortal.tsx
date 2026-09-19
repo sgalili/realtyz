@@ -227,6 +227,7 @@ function allPhotos(listing: MarketplaceListing): string[] {
  */
 function MarketplaceCard({ listing, compact = false, referral }: { listing: MarketplaceListing; compact?: boolean; referral?: AffiliateReferral }) {
   const promote = useStartPromoting();
+  const { tier3Unlocked } = useAffiliateLicense();
   const [link, setLink] = useState<string | null>(null);
   const photos = useMemo(() => allPhotos(listing), [listing]);
   const hasPhotos = photos.length > 0;
@@ -609,6 +610,7 @@ export default function AffiliatePortal() {
   const { data: referralListings = [], isLoading: refListingsLoading } = useMyReferralListings();
   const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
   const { preferences, update: updatePreferences, isUpdating: preferencesUpdating } = useAffiliatePreferences();
+  const { license, tier3Unlocked } = useAffiliateLicense();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('marketplace');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
