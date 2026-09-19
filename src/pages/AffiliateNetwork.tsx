@@ -381,16 +381,30 @@ function BrokerAffiliateNetwork() {
                   }
                   return (
                     <div className="flex flex-col items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant={shared ? 'default' : 'outline'}
-                        className={`h-8 gap-1.5 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
-                        title={shared ? 'עריכת עמלות והפסקת שיווק שותפים' : 'פתיחת הנכס לשיווק שותפים'}
-                        onClick={() => setEditing(listing)}
-                      >
-                        <Handshake className="h-4 w-4" />
-                        {shared ? 'משותף' : 'שיתוף'}
-                      </Button>
+                      <div className="inline-flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant={shared ? 'default' : 'outline'}
+                          className={`h-8 w-8 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
+                          title={shared ? 'עריכת עמלות והפסקת שיווק שותפים' : 'פתיחת הנכס לשיווק שותפים'}
+                          aria-label={shared ? 'עריכת עמלות' : 'פתיחת הנכס לשיווק שותפים'}
+                          onClick={() => setEditing(listing)}
+                        >
+                          <Handshake className="h-4 w-4" />
+                        </Button>
+                        {shared ? (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            title="הפסקת שיווק ע״י שותפים"
+                            aria-label="הפסקת שיווק ע״י שותפים"
+                            onClick={() => setUnpublishing(listing)}
+                          >
+                            <EyeOff className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                      </div>
                       {tierTexts.length > 0 ? (
                         <div className="text-[11px] font-semibold whitespace-nowrap text-slate-600">
                           <bdi dir="ltr">{tierTexts.join(', ')}</bdi>
