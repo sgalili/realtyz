@@ -648,6 +648,9 @@ export default function AffiliatePortal() {
   const [rooms, setRooms] = useState('all');
   const [dealType, setDealType] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
+  const [propertySource, setPropertySource] = useState<'all' | 'private' | 'broker'>('all');
+  const [citySearch, setCitySearch] = useState('');
+
 
   const commissionMax = useMemo(() => Math.max(1000, ...marketplace.map(commissionPotential)), [marketplace]);
   const priceMax = useMemo(() => Math.max(10000, ...marketplace.map((item) => Number(item.asking_price ?? 0))), [marketplace]);
