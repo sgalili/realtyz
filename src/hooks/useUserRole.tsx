@@ -14,7 +14,8 @@ export type AppRole =
   | 'assistant'
   | 'junior_agent'
   | 'affiliate'
-  | 'property_owner';
+  | 'property_owner'
+  | 'property_seeker';
 
 export const userRolesQueryKey = (userId: string | undefined) => ['user-roles', userId] as const;
 
@@ -62,6 +63,7 @@ export function useUserRole() {
   const isJuniorAgent = roles.includes('junior_agent');
   const isAffiliate = roles.includes('affiliate');
   const isPropertyOwner = roles.includes('property_owner');
+  const isPropertySeeker = roles.includes('property_seeker');
   const isTeamMember =
     isManagingBroker || isLeadAgent || isAgent || isAssistant || isJuniorAgent || isAdmin;
 
@@ -75,6 +77,7 @@ export function useUserRole() {
   // Rita. Every broker CRM tool, recruitment screen and affiliate management
   // surface stays hidden for them.
   const isPropertyOwnerOnly = isPropertyOwner && !isTeamMember && !isModerator && !isAffiliate;
+  const isPropertySeekerOnly = isPropertySeeker && !isTeamMember && !isModerator && !isAffiliate && !isPropertyOwner;
 
   // True only when junior_agent is the user's *highest* role.
   // Used for Junior-Agent UI restrictions (own-leads-only view).
@@ -113,6 +116,8 @@ export function useUserRole() {
     isAffiliateOnly,
     isPropertyOwner,
     isPropertyOwnerOnly,
+    isPropertySeeker,
+    isPropertySeekerOnly,
     isTeamMember,
 
     canCloseDeals,

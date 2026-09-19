@@ -1,90 +1,61 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Heart, Lock, MapPin, Navigation, Phone, Search, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, LayoutGrid, List, MapPin, Search, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 
-/** Masked card shape — the only property data an anonymous visitor receives. */
-type PublicCard = {
-  id: string;
-  slug: string | null;
-  title: string | null;
-  city: string | null;
-  neighborhood: string | null;
-  street: string;
-  deal_type: string | null;
-  rooms: number | null;
-  sqm: number | null;
-  floor: number | null;
-  price: number | null;
-  description: string | null;
-  photos: string[];
+export type PublicCard = {
+  id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
+  street: string; deal_type: string | null; rooms: number | null; sqm: number | null; floor: number | null;
+  price: number | null; description: string | null; photos: string[];
 };
 
-type GateIntent = 'favorite' | 'details' | 'navigation' | 'contact';
+type GateIntent = 'favorite' | 'details';
+const shekel = (n: number | null) => typeof n === 'number' && n > 0 ? `₪${n.toLocaleString('he-IL')}` : 'מחיר לא צוין';
+const dealLabel = (t: string | null) => t === 'rent' ? 'להשכרה' : 'למכירה';
+const stripAddressNumbers = (value: string) => value
+  .replace(/(?:,|\s)+(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)\s*\d{1,4}[א-תA-Za-z]?/gi, '')
+  .replace(/\s+\d{1,4}[א-תA-Za-z]?(?=\s*(?:,|$))/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
 
-const INTENT_TITLES: Record<GateIntent, string> = {
-  favorite: 'שמירת הנכס במועדפים',
-  details: 'צפייה בפרטים המלאים',
-  navigation: 'ניווט לכתובת המדויקת',
-  contact: 'יצירת קשר לגבי הנכס',
-};
-
-const CALLBACK_WINDOWS = ['בוקר (08:00-12:00)', 'צהריים (12:00-16:00)', 'אחר הצהריים (16:00-19:00)', 'ערב (19:00-21:00)'];
-
-const shekel = (n: number | null) =>
-  typeof n === 'number' && n > 0 ? `₪${n.toLocaleString('he-IL')}` : 'מחיר לא צוין';
-
-const dealLabel = (t: string | null) => (t === 'rent' ? 'להשכרה' : t === 'sale' ? 'למכירה' : '');
+function cleanTitle(card: PublicCard) {
+  const location = [card.street ? stripAddressNumbers(card.street) : null, card.neighborhood, card.city].filter(Boolean);
+  const rawParts = String(card.title ?? '').split(/[·|,]/).map((part) => stripAddressNumbers(part.trim())).filter(Boolean);
+  const unique = Array.from(new Set([...rawParts, ...location].map((part) => String(part).trim()).filter(Boolean)));
+  return unique.slice(0, 3).join(' · ') || 'נכס';
+}
 
 function PhotoCarousel({ photos, alt }: { photos: string[]; alt: string }) {
   const [index, setIndex] = useState(0);
-  if (!photos.length) {
-    return <div className="flex h-44 items-center justify-center rounded-t-xl bg-muted text-xs text-muted-foreground">אין תמונות</div>;
-  }
-  const move = (delta: number) => setIndex((i) => (i + delta + photos.length) % photos.length);
+  if (!photos.length) return <div className="flex h-48 items-center justify-center bg-muted text-sm text-muted-foreground">אין תמונות</div>;
+  const move = (delta: number) => setIndex((current) => (current + delta + photos.length) % photos.length);
   return (
-    <div className="relative h-44 overflow-hidden rounded-t-xl bg-muted">
+    <div className="group relative h-48 overflow-hidden bg-muted">
       <img src={photos[index]} alt={alt} loading="lazy" className="h-full w-full object-cover" />
-      {photos.length > 1 && (
-        <>
-          <button
-            type="button"
-            aria-label="תמונה קודמת"
-            onClick={() => move(-1)}
-            className="absolute end-2 top-1/2 -translate-y-1/2 rounded-full bg-background/85 p-1 text-foreground shadow"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="תמונה הבאה"
-            onClick={() => move(1)}
-            className="absolute start-2 top-1/2 -translate-y-1/2 rounded-full bg-background/85 p-1 text-foreground shadow"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <span className="absolute bottom-2 start-1/2 -translate-x-1/2 rounded-full bg-background/85 px-2 py-0.5 text-[11px] font-semibold">
-            {index + 1}/{photos.length}
-          </span>
-        </>
-      )}
+      {photos.length > 1 && <>
+        <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={() => move(-1)} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
+        <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={() => move(1)} className="absolute start-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronLeft className="h-5 w-5" /></Button>
+        <span className="absolute bottom-2 start-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>
+      </>}
     </div>
   );
 }
 
 export default function PublicListingsBoard() {
+  const { user } = useAuth();
   const [cards, setCards] = useState<PublicCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [deal, setDeal] = useState<'all' | 'sale' | 'rent'>('all');
-
-  // Lead-wall state
+  const [grid, setGrid] = useState(true);
   const [gate, setGate] = useState<{ card: PublicCard; intent: GateIntent } | null>(null);
-  const [form, setForm] = useState({ name: '', phone: '', callback: CALLBACK_WINDOWS[0] });
+  const [form, setForm] = useState({ name: '', phone: '' });
   const [sending, setSending] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [chat, setChat] = useState<{ role: 'rita' | 'visitor'; text: string }[]>([]);
@@ -96,71 +67,48 @@ export default function PublicListingsBoard() {
     const params = new URLSearchParams();
     if (query.trim()) params.set('q', query.trim());
     if (deal !== 'all') params.set('deal_type', deal);
-    const { data, error } = await supabase.functions.invoke(`public-listings-board?${params.toString()}`, {
-      method: 'GET',
-    });
-    if (error) {
-      toast.error('לא ניתן לטעון את לוח הנכסים');
-      setLoading(false);
-      return;
-    }
-    setCards(((data as any)?.properties ?? []) as PublicCard[]);
+    const { data, error } = await supabase.functions.invoke(`public-listings-board?${params.toString()}`, { method: 'GET' });
+    if (error) toast.error('לא ניתן לטעון את לוח הנכסים');
+    setCards(error ? [] : (((data as any)?.properties ?? []) as PublicCard[]));
     setLoading(false);
   };
 
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deal]);
+  useEffect(() => { void load(); }, [deal]);
 
-  const openGate = (card: PublicCard, intent: GateIntent) => {
-    setGate({ card, intent });
-    setToken(null);
-    setUnlocked(null);
-    setChat([]);
-  };
+  useEffect(() => {
+    if (!user?.id) return;
+    const key = `public-board-google-prompt:${user.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    void supabase.from('social_connections').select('id').in('platform', ['gmail', 'google_calendar']).eq('is_connected', true).limit(1).then(({ data }) => {
+      if (data?.length) return;
+      toast('חברו Google לקבלת תיאומים ועדכונים אוטומטיים', { action: { label: 'לחיבור', onClick: () => { window.location.assign('/profile?tab=connections'); } } });
+    });
+  }, [user?.id]);
+
+  const openGate = (card: PublicCard, intent: GateIntent) => { setGate({ card, intent }); setToken(null); setUnlocked(null); setChat([]); };
 
   const submitGate = async () => {
     if (!gate) return;
-    if (!form.name.trim() || form.phone.replace(/\D/g, '').length < 9) {
-      toast.error('נא למלא שם וטלפון תקין');
-      return;
-    }
+    if (!form.name.trim() || form.phone.replace(/\D/g, '').length < 9) { toast.error('נא למלא שם ומספר ווטסאפ תקין'); return; }
     setSending(true);
-    const { data, error } = await supabase.functions.invoke('public-lead-gate', {
-      body: {
-        action: 'register',
-        listing_id: gate.card.id,
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        callback_window: form.callback,
-        intent: gate.intent,
-      },
-    });
+    const { data, error } = await supabase.functions.invoke('public-lead-gate', { body: { action: 'register', listing_id: gate.card.id, name: form.name.trim(), phone: form.phone.trim(), intent: gate.intent } });
     setSending(false);
     const payload = data as any;
-    if (error || !payload?.token) {
-      toast.error(payload?.error || 'השליחה נכשלה, נסו שוב');
-      return;
-    }
-    setToken(payload.token);
-    setChat([{ role: 'rita', text: payload.greeting }]);
+    if (error || !payload?.token) { toast.error(payload?.error || 'השליחה נכשלה, נסו שוב'); return; }
+    setToken(payload.token); setChat([{ role: 'rita', text: payload.greeting }]);
   };
 
   const sendToRita = async () => {
     const text = chatInput.trim();
     if (!text || !token) return;
-    setChatInput('');
-    setChat((c) => [...c, { role: 'visitor', text }]);
-    const { data } = await supabase.functions.invoke('public-lead-gate', {
-      body: { action: 'rita', token, message: text },
-    });
+    setChatInput(''); setChat((current) => [...current, { role: 'visitor', text }]);
+    const { data } = await supabase.functions.invoke('public-lead-gate', { body: { action: 'rita', token, message: text } });
     const payload = data as any;
-    if (payload?.reply) setChat((c) => [...c, { role: 'rita', text: String(payload.reply) }]);
+    if (payload?.reply) setChat((current) => [...current, { role: 'rita', text: String(payload.reply) }]);
     if (payload?.unlocked) {
-      const res = await supabase.functions.invoke('public-lead-gate', { body: { action: 'details', token } });
-      const details = res.data as any;
-      if (details?.property) setUnlocked(details);
+      const result = await supabase.functions.invoke('public-lead-gate', { body: { action: 'details', token } });
+      if ((result.data as any)?.property) setUnlocked(result.data);
     }
   };
 
@@ -170,170 +118,65 @@ export default function PublicListingsBoard() {
     <div dir="rtl" className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto max-w-6xl px-4 py-5">
-          <h1 className="text-2xl font-bold text-foreground">נכסים להשכרה ולמכירה</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            לוח הנכסים הפתוח. הפרטים המלאים והכתובת המדויקת נפתחים לאחר השארת פרטים ושיחה קצרה עם ריטה.
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[220px] flex-1">
-              <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') void load(); }}
-                placeholder="חיפוש לפי עיר או שכונה"
-                className="pe-10"
-              />
+          <div className="relative flex min-h-10 flex-col items-center gap-3 sm:block">
+            <h1 className="text-center text-xl font-bold text-foreground sm:text-2xl">לו״ח נדל״ן שיתופי</h1>
+            <div className="sm:absolute sm:end-0 sm:top-1/2 sm:-translate-y-1/2"><PublicListingPublisher autoResume /></div>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            <div className="relative min-w-[220px] max-w-xl flex-1">
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש לפי עיר או שכונה" className="ps-10 pe-3" />
             </div>
-            <Select value={deal} onValueChange={(v) => setDeal(v as typeof deal)}>
-              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">הכל</SelectItem>
-                <SelectItem value="sale">למכירה</SelectItem>
-                <SelectItem value="rent">להשכרה</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={() => void load()}>חיפוש</Button>
+            <div className="inline-flex rounded-md border bg-background p-1">
+              {([['all', 'הכול'], ['sale', 'מכירה'], ['rent', 'השכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant={deal === value ? 'default' : 'ghost'} onClick={() => setDeal(value)}>{label}</Button>)}
+            </div>
+            <Button size="icon" onClick={() => void load()} aria-label="חיפוש"><Search className="h-4 w-4" /></Button>
+            <Button size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        {loading ? (
-          <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p>
-        ) : filtered.length === 0 ? (
-          <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((card) => (
-              <article key={card.id} className="overflow-hidden rounded-xl border bg-card shadow-sm">
-                <PhotoCarousel photos={card.photos} alt={card.title ?? 'נכס'} />
+        {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
+          <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3')}>
+            {filtered.map((card) => {
+              const title = cleanTitle(card);
+              return <article key={card.id} className={cn('overflow-hidden rounded-lg border bg-card shadow-sm', !grid && 'grid sm:grid-cols-[240px_1fr]')}>
+                <PhotoCarousel photos={card.photos} alt={title} />
                 <div className="space-y-2 p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-sm font-bold leading-snug text-foreground">
-                      {card.title || `${card.city ?? ''} ${card.neighborhood ?? ''}`.trim() || 'נכס'}
-                    </h2>
-                    {card.deal_type && (
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                        {dealLabel(card.deal_type)}
-                      </span>
-                    )}
+                  <div className="flex items-start justify-between gap-3">
+                    <h2 className="min-w-0 text-sm font-bold leading-snug text-foreground">{title}</h2>
+                    <div className="shrink-0 text-left">
+                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning')}>{dealLabel(card.deal_type)}</span>
+                      <p className="mt-1 text-sm font-bold text-foreground">{shekel(card.price)}</p>
+                    </div>
                   </div>
-                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {[card.city, card.neighborhood, card.street].filter(Boolean).join(' · ')}
-                  </p>
-                  <p className="text-sm font-semibold text-foreground">{shekel(card.price)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}` : null]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{[card.city, card.neighborhood, card.street && stripAddressNumbers(card.street)].filter(Boolean).join(' · ')}</p>
+                  <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}` : null].filter(Boolean).join(' · ')}</p>
                   {card.description && <p className="line-clamp-3 text-xs text-muted-foreground">{card.description}</p>}
-                  <p className="flex items-center gap-1 rounded-md bg-muted/60 px-2 py-1 text-[11px] text-muted-foreground">
-                    <Lock className="h-3 w-3" /> מספר הבית ופרטי הקשר נפתחים לאחר הרשמה
-                  </p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" variant="outline" onClick={() => openGate(card, 'favorite')} aria-label="מועדפים">
-                      <Heart className="h-4 w-4 text-rose-600" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => openGate(card, 'navigation')} aria-label="ניווט">
-                      <Navigation className="h-4 w-4 text-sky-600" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => openGate(card, 'contact')} aria-label="יצירת קשר">
-                      <Phone className="h-4 w-4 text-emerald-600" />
-                    </Button>
-                    <Button size="sm" className="flex-1" onClick={() => openGate(card, 'details')}>
-                      פרטים מלאים
-                    </Button>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="icon" variant="outline" onClick={() => openGate(card, 'favorite')} aria-label="שמירה במועדפים"><Heart className="h-4 w-4 text-destructive" /></Button>
+                    <Button size="sm" className="flex-1" onClick={() => openGate(card, 'details')}>השארת פרטים</Button>
                   </div>
                 </div>
-              </article>
-            ))}
+              </article>;
+            })}
           </div>
         )}
       </main>
 
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>
         <DialogContent dir="rtl" className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-right text-base">
-              {gate ? INTENT_TITLES[gate.intent] : ''}
-            </DialogTitle>
-          </DialogHeader>
-
-          {!token ? (
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                השאירו פרטים ונחזור אליכם. לאחר שיחה קצרה עם ריטה תקבלו את הכתובת המדויקת ואת כל פרטי הנכס.
-              </p>
-              <Input placeholder="שם מלא" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              <Input placeholder="טלפון נייד" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <Select value={form.callback} onValueChange={(v) => setForm({ ...form, callback: v })}>
-                <SelectTrigger><SelectValue placeholder="שעת חזרה מועדפת" /></SelectTrigger>
-                <SelectContent>
-                  {CALLBACK_WINDOWS.map((w) => <SelectItem key={w} value={w}>{w}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button className="w-full" disabled={sending} onClick={() => void submitGate()}>
-                {sending ? 'שולח…' : 'שליחה וקבלת הפרטים'}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border bg-muted/30 p-3">
-                {chat.map((m, i) => (
-                  <p
-                    key={i}
-                    className={`max-w-[85%] break-words rounded-lg px-3 py-2 text-xs ${
-                      m.role === 'rita' ? 'bg-card text-foreground' : 'ms-auto bg-primary text-primary-foreground'
-                    }`}
-                  >
-                    {m.text}
-                  </p>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') void sendToRita(); }}
-                  placeholder="כתבו לריטה מה חשוב לכם"
-                />
-                <Button onClick={() => void sendToRita()} aria-label="שליחה"><Send className="h-4 w-4" /></Button>
-              </div>
-
-              {unlocked?.property && (
-                <div className="space-y-1 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-                  <p className="font-bold">הפרטים המלאים נפתחו</p>
-                  <p>כתובת: {[unlocked.property.address, unlocked.property.house_number].filter(Boolean).join(' ')}</p>
-                  {unlocked.property.apartment_number && <p>דירה: {unlocked.property.apartment_number}</p>}
-                  {unlocked.contact?.broker_name && <p>איש קשר: {unlocked.contact.broker_name}</p>}
-                  {unlocked.contact?.office_name && <p>משרד: {unlocked.contact.office_name}</p>}
-                  <div className="flex gap-2 pt-1">
-                    <a
-                      className="rounded-md bg-emerald-600 px-3 py-1.5 font-semibold text-white"
-                      href={unlocked.contact?.whatsapp_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      וואטסאפ
-                    </a>
-                    {unlocked.property.latitude && unlocked.property.longitude && (
-                      <a
-                        className="rounded-md border border-emerald-300 px-3 py-1.5 font-semibold"
-                        href={`https://waze.com/ul?ll=${unlocked.property.latitude},${unlocked.property.longitude}&navigate=yes`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        ניווט
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <DialogHeader className="text-right"><DialogTitle>השארת פרטים</DialogTitle><DialogDescription>ריטה תיצור איתכם מיד קשר בווטסאפ</DialogDescription></DialogHeader>
+          {!token ? <div className="space-y-3">
+            <Input placeholder="שם מלא" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <div className="space-y-1"><label className="text-sm font-semibold">מספר ווטסאפ</label><Input placeholder="05X-XXXXXXX" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+            <Button className="w-full" disabled={sending} onClick={() => void submitGate()}>{sending ? 'שולח…' : 'שלחו לי פרטים נוספים'}</Button>
+          </div> : <div className="space-y-3">
+            <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border bg-muted/30 p-3">{chat.map((message, index) => <p key={index} className={cn('max-w-[85%] break-words rounded-lg px-3 py-2 text-xs', message.role === 'rita' ? 'bg-card text-foreground' : 'ms-auto bg-primary text-primary-foreground')}>{message.text}</p>)}</div>
+            <div className="flex gap-2"><Input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void sendToRita(); }} placeholder="כתבו לריטה מה חשוב לכם" /><Button size="icon" onClick={() => void sendToRita()} aria-label="שליחה"><Send className="h-4 w-4" /></Button></div>
+            {unlocked?.property && <div className="space-y-1 rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-foreground"><p className="font-bold">הפרטים המלאים נפתחו</p><p>כתובת: {[unlocked.property.address, unlocked.property.house_number].filter(Boolean).join(' ')}</p>{unlocked.property.apartment_number && <p>דירה: {unlocked.property.apartment_number}</p>}<a className="inline-flex rounded-md bg-success px-3 py-2 font-semibold text-success-foreground" href={unlocked.contact?.whatsapp_url} target="_blank" rel="noreferrer">פתיחת ווטסאפ</a></div>}
+          </div>}
         </DialogContent>
       </Dialog>
     </div>

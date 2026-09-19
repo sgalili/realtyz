@@ -119,6 +119,9 @@ export type Database = {
           lead_phone: string | null
           listing_id: string | null
           notes: string | null
+          partner_net_amount: number
+          realtyz_commission_amount: number
+          realtyz_commission_rate: number
           referral_id: string | null
           settlement_status: string
           status: string
@@ -142,6 +145,9 @@ export type Database = {
           lead_phone?: string | null
           listing_id?: string | null
           notes?: string | null
+          partner_net_amount?: number
+          realtyz_commission_amount?: number
+          realtyz_commission_rate?: number
           referral_id?: string | null
           settlement_status?: string
           status?: string
@@ -165,6 +171,9 @@ export type Database = {
           lead_phone?: string | null
           listing_id?: string | null
           notes?: string | null
+          partner_net_amount?: number
+          realtyz_commission_amount?: number
+          realtyz_commission_rate?: number
           referral_id?: string | null
           settlement_status?: string
           status?: string
@@ -199,33 +208,75 @@ export type Database = {
           },
         ]
       }
+      affiliate_plans: {
+        Row: {
+          annual_paid_months: number
+          contact_limit: number
+          created_at: string
+          id: string
+          is_active: boolean
+          monthly_price_ils: number
+          name_he: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          annual_paid_months?: number
+          contact_limit: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          monthly_price_ils: number
+          name_he: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          annual_paid_months?: number
+          contact_limit?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          monthly_price_ils?: number
+          name_he?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       affiliate_profiles: {
         Row: {
           auto_funnel_enabled: boolean
+          billing_period: string
           created_at: string
           display_name: string | null
           payout_details: string | null
           phone: string | null
+          plan_slug: string
           rita_auto_mode: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
           auto_funnel_enabled?: boolean
+          billing_period?: string
           created_at?: string
           display_name?: string | null
           payout_details?: string | null
           phone?: string | null
+          plan_slug?: string
           rita_auto_mode?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
           auto_funnel_enabled?: boolean
+          billing_period?: string
           created_at?: string
           display_name?: string | null
           payout_details?: string | null
           phone?: string | null
+          plan_slug?: string
           rita_auto_mode?: boolean
           updated_at?: string
           user_id?: string
@@ -7050,6 +7101,14 @@ export type Database = {
         Returns: Json
       }
       register_as_broker: { Args: { _display_name?: string }; Returns: Json }
+      register_as_property_owner: {
+        Args: { _display_name?: string }
+        Returns: Json
+      }
+      register_as_property_seeker: {
+        Args: { _display_name?: string }
+        Returns: Json
+      }
       register_referral: { Args: { _code: string }; Returns: Json }
       release_fb_group_post_slot: {
         Args: { _group: string; _owner: string }
@@ -7061,6 +7120,10 @@ export type Database = {
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
       seed_demo_data: { Args: never; Returns: Json }
+      select_my_affiliate_plan: {
+        Args: { _billing_period?: string; _plan_slug: string }
+        Returns: Json
+      }
       set_active_workspace: { Args: { _owner: string }; Returns: undefined }
       set_homely_broker_disabled: {
         Args: { _disabled: boolean; _reason?: string; _user_id: string }
@@ -7129,6 +7192,7 @@ export type Database = {
         | "lead_agent"
         | "affiliate"
         | "property_owner"
+        | "property_seeker"
       listing_source: "yad2" | "madlan" | "manual"
     }
     CompositeTypes: {
@@ -7269,6 +7333,7 @@ export const Constants = {
         "lead_agent",
         "affiliate",
         "property_owner",
+        "property_seeker",
       ],
       listing_source: ["yad2", "madlan", "manual"],
     },

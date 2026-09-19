@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { publicUrl } from '@/lib/publicUrl';
+import { partnerNetReward } from '@/lib/affiliatePlans';
 
 export type RewardType = 'fixed' | 'percent';
 
@@ -105,8 +106,8 @@ export type AffiliateReferral = {
 export function formatReward(type: RewardType, amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
   if (!value) return 'טרם נקבע';
-  if (type === 'percent') return `${value}% מהעמלה`;
-  return `₪${value.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
+  if (type === 'percent') return `${value}% ברוטו · 80% לשותף`;
+  return `₪${partnerNetReward(value).toLocaleString('he-IL', { maximumFractionDigits: 0 })} לשותף`;
 }
 
 /** Resolves the ILS payout for a percent-based reward against a deal value. */
@@ -158,6 +159,8 @@ export function useAffiliateMarketplace() {
 export type AffiliatePreferences = {
   rita_auto_mode: boolean;
   auto_funnel_enabled: boolean;
+  plan_slug: string;
+  billing_period: 'monthly' | 'annual';
 };
 
 export function useAffiliatePreferences() {
@@ -168,16 +171,18 @@ export function useAffiliatePreferences() {
     queryKey,
     enabled: !!user?.id,
     queryFn: async (): Promise<AffiliatePreferences> => {
-      if (!user?.id) return { rita_auto_mode: false, auto_funnel_enabled: false };
+      if (!user?.id) return { rita_auto_mode: false, auto_funnel_enabled: false, plan_slug: 'free', billing_period: 'monthly' };
       const { data, error } = await supabase
         .from('affiliate_profiles')
-        .select('rita_auto_mode, auto_funnel_enabled')
+        .select('rita_auto_mode, auto_funnel_enabled, plan_slug, billing_period')
         .eq('user_id', user.id)
         .maybeSingle();
       if (error) throw error;
       return {
         rita_auto_mode: Boolean((data as any)?.rita_auto_mode),
         auto_funnel_enabled: Boolean((data as any)?.auto_funnel_enabled),
+        plan_slug: String((data as any)?.plan_slug || 'free'),
+        billing_period: (data as any)?.billing_period === 'annual' ? 'annual' : 'monthly',
       };
     },
   });
@@ -198,7 +203,7 @@ export function useAffiliatePreferences() {
     },
   });
   return {
-    preferences: query.data ?? { rita_auto_mode: false, auto_funnel_enabled: false },
+    preferences: query.data ?? { rita_auto_mode: false, auto_funnel_enabled: false, plan_slug: 'free', billing_period: 'monthly' },
     isLoading: query.isLoading,
     update: update.mutate,
     isUpdating: update.isPending,
@@ -560,6 +565,9 @@ export type AffiliateLeadSubmission = {
   tier3_type: RewardType;
   tier3_amount: number;
   earned_amount: number;
+  realtyz_commission_rate: number;
+  realtyz_commission_amount: number;
+  partner_net_amount: number;
   settlement_status: SettlementStatus;
   verified_at: string | null;
   closed_at: string | null;

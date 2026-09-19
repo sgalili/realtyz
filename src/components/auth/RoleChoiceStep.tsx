@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { userRolesQueryKey } from '@/hooks/useUserRole';
 import type { AppRole } from '@/hooks/useUserRole';
@@ -17,21 +18,29 @@ import { useNavigate } from 'react-router-dom';
  * matching quick onboarding.
  */
 export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
-  const [busy, setBusy] = useState<'broker' | 'partner' | null>(null);
+  const [busy, setBusy] = useState<'broker' | 'partner' | 'property_owner' | 'property_seeker' | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const pick = async (role: 'broker' | 'partner') => {
+  const pick = async (role: 'broker' | 'partner' | 'property_owner' | 'property_seeker') => {
     if (busy) return;
     setBusy(role);
     try {
       if (!user?.id) throw new Error('ההתחברות הסתיימה. יש להתחבר מחדש.');
-      const expectedRole: AppRole = role === 'partner' ? 'affiliate' : 'agent';
+      const expectedRole: AppRole = role === 'partner' ? 'affiliate' : role === 'property_owner' ? 'property_owner' : role === 'property_seeker' ? 'property_seeker' : 'agent';
       if (role === 'partner') {
         const { data, error } = await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
         if (error) throw error;
         if (!(data as { ok?: boolean } | null)?.ok) throw new Error('יצירת חשבון השותף לא הושלמה');
+      } else if (role === 'property_owner') {
+        const { data, error } = await supabase.rpc('register_as_property_owner', { _display_name: null });
+        if (error) throw error;
+        if (!(data as { ok?: boolean } | null)?.ok) throw new Error('יצירת חשבון מפרסם הנכס לא הושלמה');
+      } else if (role === 'property_seeker') {
+        const { data, error } = await supabase.rpc('register_as_property_seeker', { _display_name: null });
+        if (error) throw error;
+        if (!(data as { ok?: boolean } | null)?.ok) throw new Error('יצירת חשבון מחפש הנכס לא הושלמה');
       } else {
         const { data, error } = await supabase.rpc('register_as_broker', { _display_name: null });
         if (error) throw error;
@@ -52,7 +61,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       queryClient.setQueryData(userRolesQueryKey(user.id), refreshedRoles);
       await queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user.id) });
       onDone?.();
-      navigate(role === 'partner' ? '/affiliate' : '/dashboard', { replace: true });
+      navigate(role === 'partner' ? '/affiliate' : role === 'property_owner' ? '/owner/properties' : role === 'property_seeker' ? '/public-listings' : '/dashboard', { replace: true });
     } catch (err: any) {
       // The role itself may already have been granted; only block the user when
       // no role landed on the account at all.
@@ -65,7 +74,13 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         queryClient.setQueryData(userRolesQueryKey(user?.id), refreshedRoles);
         await queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user?.id) });
         onDone?.();
-        navigate(refreshedRoles.includes('affiliate') && !refreshedRoles.includes('agent') ? '/affiliate' : '/dashboard', { replace: true });
+        navigate(
+          refreshedRoles.includes('property_owner') ? '/owner/properties'
+            : refreshedRoles.includes('property_seeker') ? '/public-listings'
+              : refreshedRoles.includes('affiliate') && !refreshedRoles.includes('agent') ? '/affiliate'
+                : '/dashboard',
+          { replace: true },
+        );
         return;
       }
       toast.error(err?.message ?? 'לא ניתן להשלים את ההרשמה');
@@ -76,21 +91,26 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   return (
     <div dir="rtl" className="min-h-screen flex flex-col items-center justify-center gap-8 bg-background px-6">
       <img src={realtyzLogo} alt="Realtyz AI" className="h-14 w-auto object-contain" />
-      <div className="grid w-full max-w-sm grid-cols-2 gap-3">
-        {(['broker', 'partner'] as const).map((role) => (
-          <button
+      <div className="grid w-full max-w-lg grid-cols-2 gap-3">
+        {([
+          ['broker', 'מתווך'],
+          ['partner', 'שותף'],
+          ['property_owner', 'מפרסם נכס'],
+          ['property_seeker', 'מחפש נכס'],
+        ] as const).map(([role, label]) => (
+          <Button
             key={role}
             type="button"
             onClick={() => pick(role)}
             disabled={!!busy}
             className={cn(
-              'rounded-xl border border-border/60 bg-card py-6 text-lg font-bold text-foreground transition-colors',
+              'h-auto rounded-xl border border-border/60 bg-card py-6 text-lg font-bold text-foreground transition-colors',
               'hover:border-primary hover:bg-primary/10 disabled:opacity-60',
               busy === role && 'border-primary bg-primary/10',
             )}
           >
-            {role === 'broker' ? 'מתווך' : 'שותף'}
-          </button>
+            {label}
+          </Button>
         ))}
       </div>
       {busy && <RealtyzLoader size="sm" label="פותח את החשבון..." />}

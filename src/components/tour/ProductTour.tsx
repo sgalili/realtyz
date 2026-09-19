@@ -49,15 +49,22 @@ const PARTNER_STEPS: TourStep[] = [
 
 /** Private property owner flow: their own properties, leads and rewards. */
 const OWNER_STEPS: TourStep[] = [
-  { title: 'הנכס שלכם משווק, נענה ונמכר - בלי לרדוף אחרי אף אחד' },
+  { title: 'מפרסמים נכס ומפעילים עבורו רשת שיווק של שותפים' },
   { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
-  { title: 'הנכסים שלכם, התמונות והפרטים - בשליטה מלאה', cta: { label: 'פתח את הנכסים שלי', to: '/owner/properties' } },
+  { title: 'מוסיפים תמונות, מחיר ופרטי נכס מלאים במקום אחד', cta: { label: 'פתח את הנכס שלי', to: '/owner/properties' } },
   { title: 'כל מתעניין נשמר, נענה ומטופל', cta: { label: 'פתח מתעניינים', to: '/owner/leads' } },
   { title: 'קובעים תגמול למשווקים ומגדילים חשיפה', cta: { label: 'הגדרת תגמולים', to: '/owner/rewards' } },
   { title: 'ריטה זמינה לכל שאלה על הנכס', cta: { label: 'צ׳אט עם ריטה', to: '/owner/rita' } },
 ];
 
-type TourMode = 'broker' | 'partner' | 'owner';
+const SEEKER_STEPS: TourStep[] = [
+  { title: 'מגדירים עיר, תקציב ומספר חדרים ומקבלים התאמות מדויקות' },
+  { title: 'ריטה מרכזת עבורכם נכסים מכל רשת השותפים' },
+  { title: 'שומרים נכסים ומשאירים פרטים בלי לחפש אנשי קשר', cta: { label: 'פתח את הלוח השיתופי', to: '/public-listings' } },
+  { title: 'ריטה ממשיכה את השיחה בווטסאפ ומעדכנת כשנמצא נכס מתאים', cta: { label: 'חיפוש נכסים', to: '/public-listings' } },
+];
+
+type TourMode = 'broker' | 'partner' | 'owner' | 'seeker';
 
 /**
  * Rita's marketing workspace has no properties, so the property step is dropped
@@ -65,7 +72,7 @@ type TourMode = 'broker' | 'partner' | 'owner';
  * activity city) are never asked again: the intake slide is skipped entirely.
  */
 function buildSteps(mode: TourMode, listingsEnabled: boolean, needsProfile: boolean): TourStep[] {
-  const base = mode === 'partner' ? PARTNER_STEPS : mode === 'owner' ? OWNER_STEPS : BROKER_STEPS;
+  const base = mode === 'partner' ? PARTNER_STEPS : mode === 'owner' ? OWNER_STEPS : mode === 'seeker' ? SEEKER_STEPS : BROKER_STEPS;
   return base.filter((s) => {
     if (s.profileForm && !needsProfile) return false;
     if (mode === 'broker' && !listingsEnabled && s.cta?.to === '/properties') return false;
@@ -103,8 +110,8 @@ export function ProductTour() {
   const [savingProfile, setSavingProfile] = useState(false);
   // Only ask for intake details that the account does not already carry.
   const [needsProfile, setNeedsProfile] = useState(true);
-  const { isAffiliateOnly, isPropertyOwnerOnly } = useUserRole();
-  const tourMode: TourMode = isPropertyOwnerOnly ? 'owner' : isAffiliateOnly ? 'partner' : 'broker';
+  const { isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly } = useUserRole();
+  const tourMode: TourMode = isPropertyOwnerOnly ? 'owner' : isPropertySeekerOnly ? 'seeker' : isAffiliateOnly ? 'partner' : 'broker';
 
   /** Persists the intake details: name, optional email and the default work city. */
   const saveProfileDetails = async () => {

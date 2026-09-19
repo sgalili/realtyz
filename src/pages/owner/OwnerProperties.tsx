@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ownerListingPhotos, useOwnerListings, useUpdateOwnerListing, type OwnerListing } from '@/hooks/useOwnerListings';
+import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 
 /** Private owner screen: their own properties, with details and image editing. */
 export default function OwnerProperties() {
@@ -53,11 +54,14 @@ export default function OwnerProperties() {
 
   return (
     <div dir="rtl" className="space-y-4">
-      <header>
-        <h1 className="flex items-center gap-2 text-xl font-bold text-foreground">
-          <Home className="h-5 w-5 text-amber-600" /> הנכסים שלי
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">צפייה ועריכה של פרטי הנכסים והתמונות שלכם.</p>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-xl font-bold text-foreground">
+            <Home className="h-5 w-5 text-amber-600" /> הנכסים שלי
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">צפייה ועריכה של פרטי הנכסים והתמונות שלכם.</p>
+        </div>
+        <PublicListingPublisher autoResume disabled={listings.length >= 1} />
       </header>
 
       {isLoading ? (

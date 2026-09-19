@@ -71,6 +71,9 @@ import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import { ResultTable } from '@/pages/Properties';
 import type { UnifiedResult } from '@/lib/propertySearch';
+import { AFFILIATE_PLANS, affiliateAnnualPrice, type AffiliatePlanSlug } from '@/lib/affiliatePlans';
+import { partnerNetReward } from '@/lib/affiliatePlans';
+import { supabase } from '@/integrations/supabase/client';
 
 const DEAL_TYPE_LABELS: Record<string, string> = {
   sale: 'למכירה',
@@ -206,6 +209,58 @@ function JoinAffiliateCard() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function AffiliatePlansPanel({ selectedPlan, initialBilling }: { selectedPlan: string; initialBilling: 'monthly' | 'annual' }) {
+  const [billing, setBilling] = useState<'monthly' | 'annual'>(initialBilling);
+  const [selected, setSelected] = useState<AffiliatePlanSlug>(AFFILIATE_PLANS.some((plan) => plan.slug === selectedPlan) ? selectedPlan as AffiliatePlanSlug : 'free');
+  const [saving, setSaving] = useState(false);
+
+  const save = async (slug: AffiliatePlanSlug) => {
+    setSaving(true);
+    const { data, error } = await supabase.rpc('select_my_affiliate_plan', { _plan_slug: slug, _billing_period: billing });
+    setSaving(false);
+    if (error || !(data as { ok?: boolean } | null)?.ok) {
+      toast.error('שמירת החבילה נכשלה');
+      return;
+    }
+    setSelected(slug);
+    toast.success('בחירת החבילה נשמרה');
+  };
+
+  return (
+    <section className="space-y-4" aria-labelledby="affiliate-plans-title">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="affiliate-plans-title" className="text-lg font-bold">חבילות שותפים</h2>
+          <p className="text-xs text-muted-foreground">המחירים מוצגים לצורך בחירת החבילה. לא מתבצעת גבייה.</p>
+        </div>
+        <div className="inline-flex rounded-md border p-1">
+          <Button size="sm" variant={billing === 'monthly' ? 'default' : 'ghost'} onClick={() => setBilling('monthly')}>חודשי</Button>
+          <Button size="sm" variant={billing === 'annual' ? 'default' : 'ghost'} onClick={() => setBilling('annual')}>שנתי · חודשיים מתנה</Button>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {AFFILIATE_PLANS.map((plan) => {
+          const price = billing === 'annual' ? affiliateAnnualPrice(plan.monthlyPrice) : plan.monthlyPrice;
+          return (
+            <Card key={plan.slug} className={plan.highlight ? 'border-primary' : undefined}>
+              <CardContent className="space-y-3 p-4">
+                <div>
+                  <p className="font-bold">{plan.name}</p>
+                  <p className="text-2xl font-black">₪{price.toLocaleString('he-IL')}</p>
+                  <p className="text-xs text-muted-foreground">{billing === 'annual' ? 'לשנה' : 'לחודש'} · עד {plan.contacts.toLocaleString('he-IL')} אנשי קשר</p>
+                </div>
+                <Button className="w-full" variant={selected === plan.slug ? 'secondary' : 'default'} disabled={saving} onClick={() => void save(plan.slug)}>
+                  {selected === plan.slug ? 'נבחרה' : 'בחירת חבילה'}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -660,7 +715,7 @@ export default function AffiliatePortal() {
     const earned = signed
       .filter((r) => r.reward_type === 'fixed')
       .reduce((sum, r) => sum + Number(r.reward_amount ?? 0), 0);
-    const submissionEarned = submissions.reduce((sum, s) => sum + accruedEarnings(s), 0);
+    const submissionEarned = submissions.reduce((sum, s) => sum + partnerNetReward(accruedEarnings(s)), 0);
     return {
       promoting: referrals.length,
       clicks,
@@ -692,6 +747,8 @@ export default function AffiliatePortal() {
   return (
     <>
       <div className="space-y-5 p-4" dir="rtl">
+        <AffiliatePlansPanel selectedPlan={preferences.plan_slug} initialBilling={preferences.billing_period} />
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-3">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -864,7 +921,7 @@ export default function AffiliatePortal() {
                           {SETTLEMENT_LABELS[s.settlement_status] ?? s.settlement_status}
                         </Badge>
                         <div className="text-sm font-bold text-emerald-700">
-                          <bdi dir="ltr">{fmtILS(accruedEarnings(s))}</bdi>
+                          <bdi dir="ltr">{fmtILS(partnerNetReward(accruedEarnings(s)))}</bdi>
                         </div>
                       </div>
 

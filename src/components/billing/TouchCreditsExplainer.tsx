@@ -56,8 +56,8 @@ export function TouchCreditsExplainerBody() {
             לקוח מתכתב איתכם 20 הודעות באותו יום — מגע אחד בלבד (חלון 24 שעות).
           </li>
           <li>
-            איש קשר שקיבל 15 מגעים והמערכת ממשיכה לטפל בו — נוספת עלות של{' '}
-            <PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} /> על אותו איש קשר.
+            איש קשר שקיבל 15 מגעים והמערכת ממשיכה לטפל בו — כל מגע נוסף עולה{' '}
+            <PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} />.
           </li>
         </ul>
       </section>
@@ -65,14 +65,12 @@ export function TouchCreditsExplainerBody() {
       <section className="space-y-2">
         <h3 className="text-base font-extrabold">איך מחושבת חריגה?</h3>
         <p className="text-muted-foreground">
-          החריגה נמדדת <b>לפי איש קשר ולא לפי נפח מצטבר</b>. כל איש קשר שעבר את מכסת{' '}
-          {FREE_TC_PER_CONTACT} המגעים באותו חודש מחויב ב-
-          <PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} /> נוספים, ללא תלות
-          בכמה מגעים נוספים בוצעו מולו. הסכום נגרע מארנק הקרדיטים, שניתן לטעון בתוך המערכת
-          בכל רגע.
+          החריגה נמדדת לכל איש קשר בנפרד. אחרי {FREE_TC_PER_CONTACT} המגעים הכלולים באותו
+          חודש, כל מגע נוסף מחויב ב-<PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} />.
+          הסכום נגרע מארנק הקרדיטים, שניתן לטעון בתוך המערכת בכל רגע.
         </p>
         <p className="text-muted-foreground">
-          לדוגמה: 40 אנשי קשר חרגו מהמכסה בחודש מסוים ⇒ החיוב הנוסף הוא{' '}
+          לדוגמה: בוצעו 40 מגעים נוספים מעבר למכסה ⇒ החיוב הנוסף הוא{' '}
           <PriceTag value={40 * EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} /> בלבד.
         </p>
       </section>

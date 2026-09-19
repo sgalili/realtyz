@@ -534,7 +534,7 @@ function BrokerAffiliateNetwork() {
                         </div>
                       </div>
                       <div className="text-sm font-bold text-emerald-700">
-                        <bdi dir="ltr">{fmtILS(accruedEarnings(s))}</bdi>
+                        <bdi dir="ltr">{fmtILS(Number(s.partner_net_amount ?? accruedEarnings(s) * 0.8))}</bdi>
                       </div>
                     </div>
 

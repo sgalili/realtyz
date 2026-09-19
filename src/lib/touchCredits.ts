@@ -7,7 +7,7 @@
 export const FREE_TC_PER_CONTACT = 15;
 
 /** עלות מגע נוסף מעל המכסה — לכל איש קשר (לא לפי נפח מצטבר). */
-export const EXTRA_TC_PRICE_PER_CONTACT = 0.05;
+export const EXTRA_TC_PRICE_PER_CONTACT = 0.1;
 
 export type ChannelKey = 'sms' | 'whatsapp' | 'voice' | 'ivr' | 'email';
 
@@ -41,7 +41,7 @@ export function includedTc(contacts: number): number {
   return Math.max(0, Math.round(contacts)) * FREE_TC_PER_CONTACT;
 }
 
-/** תמחור מגעים בחריגה — לפי אנשי קשר שחרגו, לא לפי נפח. */
-export function extraTcCost(contactsOverQuota: number): number {
-  return Math.max(0, contactsOverQuota) * EXTRA_TC_PRICE_PER_CONTACT;
+/** תמחור מגעים בחריגה — כל מגע מעבר ל-15 הכלולים. */
+export function extraTcCost(extraTouches: number): number {
+  return Math.max(0, extraTouches) * EXTRA_TC_PRICE_PER_CONTACT;
 }
