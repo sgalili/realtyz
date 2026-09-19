@@ -758,6 +758,36 @@ export default function AffiliatePortal() {
     };
   }, [referrals, submissions]);
 
+  // One row per promoted property/lead with the commission tiers actually earned.
+  const earningRows = useMemo(() => {
+    return submissions
+      .map((s) => {
+        const tiers: { label: string; amount: number }[] = [];
+        if (s.status !== 'rejected') {
+          const t1 = partnerNetReward(Number(s.tier1_amount ?? 0));
+          if (t1) tiers.push({ label: TIER_LABELS.tier1, amount: t1 });
+          if (s.status === 'verified' || s.status === 'closed') {
+            const t2 = partnerNetReward(Number(s.tier2_amount ?? 0));
+            if (t2) tiers.push({ label: TIER_LABELS.tier2, amount: t2 });
+          }
+          if (s.status === 'closed' && s.tier3_type === 'fixed') {
+            const t3 = partnerNetReward(Number(s.tier3_amount ?? 0));
+            if (t3) tiers.push({ label: TIER_LABELS.tier3, amount: t3 });
+          }
+        }
+        return {
+          id: s.id,
+          listingTitle: s.listing?.property_title || s.listing?.address || 'נכס',
+          leadName: s.lead_name,
+          date: fmtDMY(s.created_at),
+          tiers,
+          total: tiers.reduce((sum, t) => sum + t.amount, 0),
+        };
+      })
+      .filter((row) => row.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [submissions]);
+
   if (roleLoading) {
     return (
       <>
