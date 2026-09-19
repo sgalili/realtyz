@@ -53,3 +53,4 @@
 50. [x] Give Rita historical/closed-deal market research for valuations and remove refusal wording
 51. [x] Merge partner marketing pages, unify navigation, and fix the workspace header layout
 52. [x] Add partner Rita/auto-funnel controls and an RTL smart property filter panel
+53. [x] Public listings lead wall, private property-owner UI, partner sidebar order, and unified single-column affiliate actions
