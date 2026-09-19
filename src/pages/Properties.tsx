@@ -1635,11 +1635,11 @@ export function ResultTable({
                         <Pencil className="h-4 w-4" />
                       </Button>
                     ) : null}
-                    {affiliateCell ? null : onAffiliate ? (
+                    {showAffiliateColumn ? null : onAffiliate ? (
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="הגדר שיווק שותפים" aria-label="הגדר שיווק שותפים" onClick={() => onAffiliate(r)}>
                         <Handshake className="h-4 w-4" />
                       </Button>
-                    ) : r.localId ? <AffiliateCommissionButton listingId={r.localId} /> : null}
+                    ) : null}
                   </div>}
                 </td>
 
