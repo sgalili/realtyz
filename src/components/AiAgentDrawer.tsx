@@ -7,7 +7,7 @@ import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useAuth } from '@/hooks/useAuth';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Database, X, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy, Trash2, Send } from 'lucide-react';
+import { Database, X, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy, Trash2, Send, Home } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -273,6 +273,7 @@ export default function AiAgentDrawer() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [expandedTopic, setExpandedTopic] = useState<number | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   // NOTE: quick-action pill bar was removed from the composer — we still keep
   // the topic accordion in the empty state above.
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -609,10 +610,21 @@ ${shareUrl}
           <RitaAvatar className="h-12 w-12 ring-2 ring-primary/20" />
           <h3 className="text-[18px] font-bold text-center">ריטה, סוכנת ה-AI של Realtyz</h3>
 
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="שאלות מומלצות"
+            onClick={() => setShowSuggestions((v) => !v)}
+            className="absolute start-3 top-3 text-muted-foreground"
+          >
+            <Home className="h-4 w-4" />
+          </Button>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button type="button" variant="ghost" size="sm" className="absolute end-3 top-3 gap-1 text-muted-foreground" disabled={messages.length === 0}>
-                <Trash2 className="h-4 w-4" /> איפוס צ׳אט
+              <Button type="button" variant="ghost" size="icon" aria-label="איפוס צ׳אט" className="absolute end-3 top-3 text-muted-foreground" disabled={messages.length === 0}>
+                <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent dir="rtl">
@@ -631,9 +643,9 @@ ${shareUrl}
         {/* Messages */}
         <Conversation className="min-h-0" initial="instant" resize="instant">
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
-          {messages.length === 0 && (
+          {(messages.length === 0 || showSuggestions) && (
             <div className="space-y-5 py-2">
-              <div className="flex items-start gap-2.5 rounded-2xl border border-border bg-card px-3 py-3">
+              <div className={`flex items-start gap-2.5 rounded-2xl border border-border bg-card px-3 py-3 ${messages.length > 0 ? 'hidden' : ''}`}>
                 <RitaAvatar className="h-9 w-9 shrink-0" />
                 <div className="space-y-1 text-[16px] leading-relaxed">
                   <p className="font-semibold">היי, אני ריטה 👋</p>
@@ -665,7 +677,7 @@ ${shareUrl}
                             <button
                               key={pi}
                               type="button"
-                              onClick={() => sendMessage(p)}
+                              onClick={() => { setShowSuggestions(false); sendMessage(p); }}
                               disabled={isLoading}
                               className="w-full text-right text-[15px] leading-relaxed rounded-lg border border-border/60 bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-2.5 py-2 disabled:opacity-50"
                             >
