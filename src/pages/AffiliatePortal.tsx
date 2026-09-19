@@ -708,12 +708,32 @@ export default function AffiliatePortal() {
       .some((value) => (value ?? '').toLowerCase().includes(q)));
   }, [submissions, search]);
 
+  // Property details for every campaign of mine (marketplace first, then the
+  // dedicated lookup so listings pulled from the network still render fully).
+  const referralListingMap = useMemo(() => {
+    const map = new Map<string, MarketplaceListing>();
+    for (const item of referralListings) map.set(item.listing_id, item);
+    for (const item of marketplace) map.set(item.listing_id, item);
+    return map;
+  }, [referralListings, marketplace]);
+
+  const referralCampaigns = useMemo(
+    () => referrals.map((referral) => ({
+      referral,
+      listing: referral.listing_id ? referralListingMap.get(referral.listing_id) ?? null : null,
+    })),
+    [referrals, referralListingMap],
+  );
+
   const filteredReferrals = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return referrals;
-    return referrals.filter((r) => [r.tracking_code, REFERRAL_STATUS_LABELS[r.status], SETTLEMENT_LABELS[r.settlement_status]]
-      .some((value) => (value ?? '').toLowerCase().includes(q)));
-  }, [referrals, search]);
+    const withListing = referralCampaigns.filter((row) => row.listing);
+    if (!q) return withListing;
+    return withListing.filter(({ referral, listing }) => [
+      listing?.property_title, listing?.address, listing?.city, listing?.neighborhood,
+      REFERRAL_STATUS_LABELS[referral.status], SETTLEMENT_LABELS[referral.settlement_status],
+    ].some((value) => (value ?? '').toLowerCase().includes(q)));
+  }, [referralCampaigns, search]);
 
   const searchPlaceholder = activeTab === 'leads'
     ? 'חיפוש אנשי קשר שהגשתי'
