@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Heart, LayoutGrid, List, MapPin, Search, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Search, Send } from 'lucide-react';
+import realtyzLogo from '@/assets/realtyz-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -118,19 +119,23 @@ export default function PublicListingsBoard() {
     <div dir="rtl" className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto max-w-6xl px-4 py-5">
-          <div className="relative flex min-h-10 flex-col items-center gap-3 sm:block">
-            <h1 className="text-center text-xl font-bold text-foreground sm:text-2xl">לו״ח נדל״ן שיתופי</h1>
-            <div className="sm:absolute sm:end-0 sm:top-1/2 sm:-translate-y-1/2"><PublicListingPublisher autoResume /></div>
+          <div className="flex items-center justify-between gap-3">
+            <PublicListingPublisher autoResume />
+            <h1 className="min-w-0 flex-1 text-center text-xl font-bold text-foreground sm:text-2xl">לו״ח נדל״ן שיתופי</h1>
+            <img src={realtyzLogo} alt="Realtyz" className="h-8 w-auto shrink-0 object-contain" />
           </div>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-            <div className="relative min-w-[220px] max-w-xl flex-1">
-              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש לפי עיר או שכונה" className="ps-10 pe-3" />
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <div className="relative min-w-[200px] max-w-md flex-1">
+                <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש לפי עיר או שכונה" className="pe-10 ps-3" />
+                <Button type="button" size="icon" variant="ghost" onClick={() => void load()} aria-label="חיפוש" className="absolute end-1 top-1/2 h-8 w-8 -translate-y-1/2">
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="inline-flex rounded-md border bg-background p-1">
+                {([['all', 'הכול'], ['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant={deal === value ? 'default' : 'ghost'} onClick={() => setDeal(value)}>{label}</Button>)}
+              </div>
             </div>
-            <div className="inline-flex rounded-md border bg-background p-1">
-              {([['all', 'הכול'], ['sale', 'מכירה'], ['rent', 'השכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant={deal === value ? 'default' : 'ghost'} onClick={() => setDeal(value)}>{label}</Button>)}
-            </div>
-            <Button size="icon" onClick={() => void load()} aria-label="חיפוש"><Search className="h-4 w-4" /></Button>
             <Button size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
           </div>
         </div>
@@ -145,13 +150,15 @@ export default function PublicListingsBoard() {
                 <PhotoCarousel photos={card.photos} alt={title} />
                 <div className="space-y-2 p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <h2 className="min-w-0 text-sm font-bold leading-snug text-foreground">{title}</h2>
+                    <p className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-foreground">
+                      <Home className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="min-w-0 break-words">{[card.street && stripAddressNumbers(card.street), card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
+                    </p>
                     <div className="shrink-0 text-left">
                       <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning')}>{dealLabel(card.deal_type)}</span>
                       <p className="mt-1 text-sm font-bold text-foreground">{shekel(card.price)}</p>
                     </div>
                   </div>
-                  <p className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{[card.city, card.neighborhood, card.street && stripAddressNumbers(card.street)].filter(Boolean).join(' · ')}</p>
                   <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}` : null].filter(Boolean).join(' · ')}</p>
                   {card.description && <p className="line-clamp-3 text-xs text-muted-foreground">{card.description}</p>}
                   <div className="flex gap-2 pt-1">

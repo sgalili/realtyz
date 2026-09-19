@@ -83,6 +83,7 @@ const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const AffiliateSignup = lazy(() => import("./pages/AffiliateSignup"));
 const AffiliateNetwork = lazy(() => import("./pages/AffiliateNetwork"));
+const AffiliatePricing = lazy(() => import("./pages/AffiliatePricing"));
 const PartnerPosts = lazy(() => import("./pages/partner/PartnerPosts"));
 const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
 const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
@@ -147,7 +148,7 @@ function PageLoader() {
  * app (CRM, properties, posts, office settings) belongs to brokers and is
  * redirected away, so an affiliate never sees broker tooling.
  */
-const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/profile'];
+const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/affiliate-pricing', '/profile'];
 
 /**
  * Private property owners are a separate product: only their own properties,
@@ -378,6 +379,7 @@ const App = () => (
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
               <Route path="/affiliate" element={<Navigate to="/affiliate-network" replace />} />
               <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
+              <Route path="/affiliate-pricing" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><AffiliatePricing /></Suspense></ProtectedRoute>} />
               <Route path="/owner/properties" element={<ProtectedRoute><OwnerProperties /></ProtectedRoute>} />
               <Route path="/owner/leads" element={<ProtectedRoute><OwnerLeads /></ProtectedRoute>} />
               <Route path="/owner/rewards" element={<ProtectedRoute><OwnerRewards /></ProtectedRoute>} />
