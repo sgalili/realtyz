@@ -241,7 +241,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       if (item.url === '/affiliate-network') return features.partnersEnabled;
       return true;
     });
-  }, [features, affiliateOnlyNav]);
+  }, [features, affiliateOnlyNav, isPropertyOwnerOnly]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
@@ -252,6 +252,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       case '/inbox': return counts.chats;
       case '/deal-room': return counts.deals;
       case '/campaigns': return counts.campaigns;
+      // Partner mode: live shared properties, and total invitations sent.
+      case '/affiliate-network': return affiliateOnlyNav ? counts.sharedListings : undefined;
+      case '/referral': return affiliateOnlyNav ? counts.invitations : undefined;
       default: return undefined;
     }
   };
