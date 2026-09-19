@@ -61,6 +61,7 @@ export function useUserRole() {
   const isAssistant = roles.includes('assistant');
   const isJuniorAgent = roles.includes('junior_agent');
   const isAffiliate = roles.includes('affiliate');
+  const isPropertyOwner = roles.includes('property_owner');
   const isTeamMember =
     isManagingBroker || isLeadAgent || isAgent || isAssistant || isJuniorAgent || isAdmin;
 
@@ -68,6 +69,12 @@ export function useUserRole() {
   // are external marketers: every broker tool, CRM screen and office setting is
   // hidden from them and they are routed to the affiliate portal instead.
   const isAffiliateOnly = isAffiliate && !isTeamMember && !isModerator;
+
+  // Private property owners are NOT brokers and NOT affiliates: they only get
+  // their own listings, the leads interested in them, the reward settings and
+  // Rita. Every broker CRM tool, recruitment screen and affiliate management
+  // surface stays hidden for them.
+  const isPropertyOwnerOnly = isPropertyOwner && !isTeamMember && !isModerator && !isAffiliate;
 
   // True only when junior_agent is the user's *highest* role.
   // Used for Junior-Agent UI restrictions (own-leads-only view).
