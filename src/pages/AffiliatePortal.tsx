@@ -54,6 +54,7 @@ import {
   listingTiers,
   useMySubmissions,
   accruedEarnings,
+  TIER_LABELS,
   SUBMISSION_STATUS_LABELS,
   useRegisterAffiliate,
   useStartPromoting,
