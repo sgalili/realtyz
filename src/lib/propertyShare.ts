@@ -138,7 +138,7 @@ function buildMultiMessage(
 💰 ${priceStr}
 🔗 ${url}`;
   });
-  return `שלום 👋
+  return `${greeting(recipientName)}
 ריכזתי עבורך ${items.length} נכסים שיכולים להתאים:
 
 ${blocks.join('\n\n')}
@@ -160,10 +160,11 @@ export async function shareProperties(
     minted.push({ r, url: await mintShareUrlForResult(r, phone) });
   }
 
+  const recipientName = String(recipient?.name ?? '').trim() || null;
   const text =
     minted.length === 1
-      ? buildPropertyShareMessage(minted[0].r, minted[0].url)
-      : buildMultiMessage(minted);
+      ? buildPropertyShareMessage(minted[0].r, minted[0].url, recipientName)
+      : buildMultiMessage(minted, recipientName);
 
   if (mode === 'whatsapp') {
     // With an explicit recipient we dispatch through our official Meta WBA
