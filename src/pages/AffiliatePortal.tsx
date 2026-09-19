@@ -744,6 +744,7 @@ export default function AffiliatePortal() {
             />
           </div>
         </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
