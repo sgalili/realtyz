@@ -54,3 +54,4 @@
 51. [x] Merge partner marketing pages, unify navigation, and fix the workspace header layout
 52. [x] Add partner Rita/auto-funnel controls and an RTL smart property filter panel
 53. [x] Public listings lead wall, private property-owner UI, partner sidebar order, and unified single-column affiliate actions
+54. [x] Single view switch everywhere, working auto-funnel save with explanation dialog, fixed top header on mobile, Rita chat sizing, and per-role intro slides
