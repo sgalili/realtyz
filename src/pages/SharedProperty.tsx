@@ -131,6 +131,10 @@ export default function SharedProperty() {
     if (data?.property?.id) setSelectedPropertyId(data.property.id);
   }, [data?.property?.id]);
 
+  useEffect(() => {
+    setSlide(0);
+  }, [selectedPropertyId]);
+
   const photos: string[] = useMemo(() => {
     if (!p) return [];
     const all = (Array.isArray(p.media_photos) ? p.media_photos : [])

@@ -294,6 +294,10 @@ function PublicListingContent() {
     if (payload?.property.id) setSelectedId(payload.property.id);
   }, [payload?.property.id]);
 
+  useEffect(() => {
+    setSlide(0);
+  }, [selectedId]);
+
   const handleShare = async () => {
     try {
       if (navigator.share) {
