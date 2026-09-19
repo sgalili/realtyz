@@ -1067,8 +1067,37 @@ export default function AffiliatePortal() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2"><Label>סוג נכס</Label><Select value={propertyType} onValueChange={setPropertyType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">כל הסוגים</SelectItem>{propertyTypes.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>עיר</Label><Select value={city} onValueChange={(value) => { setCity(value); setNeighborhood('all'); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">כל הערים</SelectItem>{cities.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>שכונה</Label><Select value={neighborhood} onValueChange={setNeighborhood}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">כל השכונות</SelectItem>{neighborhoods.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
+                <div className="col-span-2 space-y-2"><Label>מקור הנכס</Label><Select value={propertySource} onValueChange={(value) => setPropertySource(value as 'all' | 'private' | 'broker')}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">הכל</SelectItem><SelectItem value="private">בעלי נכסים פרטיים</SelectItem><SelectItem value="broker">מתווכים</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2">
+                  <Label>עיר</Label>
+                  <Select value={city} onValueChange={(value) => { setCity(value); setNeighborhood('all'); }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <div className="sticky top-0 z-10 bg-popover p-2">
+                        <Input
+                          value={citySearch}
+                          onChange={(event) => setCitySearch(event.target.value)}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          placeholder="חיפוש עיר"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <SelectItem value="all">כל הערים</SelectItem>
+                      {visibleCities.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                      <SelectItem value="other">אחר</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>שכונה</Label>
+                  <Select value={neighborhood} onValueChange={setNeighborhood} disabled={city === 'all' || city === 'other' || neighborhoods.length === 0}>
+                    <SelectTrigger><SelectValue placeholder={city === 'all' ? 'בחרו עיר קודם' : 'אין שכונות'} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">כל השכונות</SelectItem>
+                      {neighborhoods.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2"><Label>מספר חדרים</Label><Select value={rooms} onValueChange={setRooms}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">הכול</SelectItem>{['2','3','4','5','6'].map((value) => <SelectItem key={value} value={value}>{value}+ חדרים</SelectItem>)}</SelectContent></Select></div>
                 <div className="col-span-2 space-y-2"><Label>סוג עסקה</Label><Select value={dealType} onValueChange={setDealType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">השכרה ומכירה</SelectItem><SelectItem value="rent">להשכרה</SelectItem><SelectItem value="sale">למכירה</SelectItem></SelectContent></Select></div>
               </div>
