@@ -149,6 +149,13 @@ function PageLoader() {
  */
 const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/profile'];
 
+/**
+ * Private property owners are a separate product: only their own properties,
+ * the leads interested in them, the reward settings and Rita. Broker CRM,
+ * recruitment and affiliate management are unreachable, not just hidden.
+ */
+export const OWNER_ALLOWED_PATHS = ['/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile'];
+
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
   // A role picked during registration (מתווך / שותף) is applied on the first
