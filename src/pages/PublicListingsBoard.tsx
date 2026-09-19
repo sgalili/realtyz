@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { stripAddressNumbers } from '@/lib/addressNumbers';
 import { useAuth } from '@/hooks/useAuth';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 
@@ -19,6 +18,11 @@ export type PublicCard = {
 type GateIntent = 'favorite' | 'details';
 const shekel = (n: number | null) => typeof n === 'number' && n > 0 ? `₪${n.toLocaleString('he-IL')}` : 'מחיר לא צוין';
 const dealLabel = (t: string | null) => t === 'rent' ? 'להשכרה' : 'למכירה';
+const stripAddressNumbers = (value: string) => value
+  .replace(/(?:,|\s)+(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)\s*\d{1,4}[א-תA-Za-z]?/gi, '')
+  .replace(/\s+\d{1,4}[א-תA-Za-z]?(?=\s*(?:,|$))/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
 
 function cleanTitle(card: PublicCard) {
   const location = [card.street ? stripAddressNumbers(card.street) : null, card.neighborhood, card.city].filter(Boolean);
