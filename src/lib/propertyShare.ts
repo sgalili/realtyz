@@ -92,14 +92,24 @@ export async function mintShareUrlForResult(
   return publicUrl(`/share/property/${token}`);
 }
 
-export function buildPropertyShareMessage(r: UnifiedResult, shareUrl: string): string {
+/** Greeting line — personalized with the recipient name when one was given. */
+function greeting(recipientName?: string | null): string {
+  const name = String(recipientName ?? '').trim();
+  return name ? `שלום ${name} 👋` : 'שלום 👋';
+}
+
+export function buildPropertyShareMessage(
+  r: UnifiedResult,
+  shareUrl: string,
+  recipientName?: string | null,
+): string {
   const priceStr = r.price
     ? `₪${r.price.toLocaleString('he-IL')}${r.listing_type === 'rent' ? '/חודש' : ''}`
     : 'לפרטים';
   const meta = [r.city, r.rooms ? `${r.rooms} חד׳` : null, r.size_sqm ? `${r.size_sqm} מ״ר` : null]
     .filter(Boolean)
     .join(' · ');
-  return `שלום 👋
+  return `${greeting(recipientName)}
 מצאתי עבורך נכס שאני חושב שיעניין אותך:
 
 🏠 ${resultLabel(r)}
@@ -112,7 +122,10 @@ ${shareUrl}
 מוזמנ/ת להגיב כאן ואחזור אליך.`;
 }
 
-function buildMultiMessage(items: Array<{ r: UnifiedResult; url: string }>): string {
+function buildMultiMessage(
+  items: Array<{ r: UnifiedResult; url: string }>,
+  recipientName?: string | null,
+): string {
   const blocks = items.map(({ r, url }, i) => {
     const priceStr = r.price
       ? `₪${r.price.toLocaleString('he-IL')}${r.listing_type === 'rent' ? '/חודש' : ''}`
@@ -125,7 +138,7 @@ function buildMultiMessage(items: Array<{ r: UnifiedResult; url: string }>): str
 💰 ${priceStr}
 🔗 ${url}`;
   });
-  return `שלום 👋
+  return `${greeting(recipientName)}
 ריכזתי עבורך ${items.length} נכסים שיכולים להתאים:
 
 ${blocks.join('\n\n')}
@@ -147,10 +160,11 @@ export async function shareProperties(
     minted.push({ r, url: await mintShareUrlForResult(r, phone) });
   }
 
+  const recipientName = String(recipient?.name ?? '').trim() || null;
   const text =
     minted.length === 1
-      ? buildPropertyShareMessage(minted[0].r, minted[0].url)
-      : buildMultiMessage(minted);
+      ? buildPropertyShareMessage(minted[0].r, minted[0].url, recipientName)
+      : buildMultiMessage(minted, recipientName);
 
   if (mode === 'whatsapp') {
     // With an explicit recipient we dispatch through our official Meta WBA

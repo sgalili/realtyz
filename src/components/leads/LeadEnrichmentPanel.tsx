@@ -177,7 +177,6 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
                 type="tel"
                 inputMode="tel"
                 value={phone}
-                placeholder="05X-XXXXXXX"
                 onChange={(e) => setPhone(formatPhoneAsTyped(e.target.value))}
                 onBlur={() => {
                   if (phone && !/^05\d-\d{7}$/.test(phone)) {

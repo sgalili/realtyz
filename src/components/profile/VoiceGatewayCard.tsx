@@ -178,7 +178,7 @@ export function VoiceGatewayCard() {
 
           <div className="space-y-1.5">
             <Label htmlFor="tw-number" className="text-right block">Twilio Phone Number</Label>
-            <Input id="tw-number" dir="ltr" placeholder="+972XXXXXXXXX"
+            <Input id="tw-number" dir="ltr"
               value={twilioNumber} onChange={(e) => setTwilioNumber(e.target.value)} disabled={loading} />
           </div>
 

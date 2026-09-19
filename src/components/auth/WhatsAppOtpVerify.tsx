@@ -124,7 +124,6 @@ export function WhatsAppOtpVerify({
           inputMode="tel"
           value={phone}
           disabled={lockPhone || busy}
-          placeholder="050-0000000"
           onChange={(e) => setPhone(e.target.value)}
         />
       </div>

@@ -367,7 +367,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">באיזה מספר המתעניינים יוכלו להשיג אותך?</p>
               <div><Label>השם שלך *</Label><Input value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
-              <div><Label>מספר ווטסאפ *</Label><Input inputMode="tel" placeholder="05X-XXXXXXX" value={fields.contactWhatsapp} onChange={(e) => set('contactWhatsapp', e.target.value)} /></div>
+              <div><Label>מספר ווטסאפ *</Label><Input inputMode="tel" value={fields.contactWhatsapp} onChange={(e) => set('contactWhatsapp', e.target.value)} /></div>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={fields.marketingAccepted} onCheckedChange={(checked) => set('marketingAccepted', Boolean(checked))} />
                 אני רוצה לקבל פניות ועדכונים שיווקיים

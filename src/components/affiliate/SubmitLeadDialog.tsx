@@ -76,7 +76,7 @@ export function SubmitLeadDialog({ listing }: { listing: MarketplaceListing }) {
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
               <Label>טלפון</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="05X-XXXXXXX" />
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
             </div>
             <div className="space-y-1.5">
               <Label>אימייל</Label>

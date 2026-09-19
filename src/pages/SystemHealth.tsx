@@ -213,7 +213,6 @@ export default function SystemHealth() {
               <Input
                 id="alert-phone"
                 dir="ltr"
-                placeholder="9725XXXXXXXX"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />

@@ -575,6 +575,83 @@ async function resolveShortLinkListing(
   };
 }
 
+/** Every phone spelling a gateway may deliver (972…, +972…, 05…). */
+function phoneVariants(phone: string): string[] {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  if (!digits) return [];
+  return Array.from(new Set([
+    phone,
+    digits,
+    `+${digits}`,
+    digits.startsWith("972") ? `0${digits.slice(3)}` : digits,
+    digits.startsWith("0") ? `972${digits.slice(1)}` : digits,
+  ].filter(Boolean)));
+}
+
+/**
+ * SHARE CONTEXT — a property link sent to this exact phone from the share
+ * dialog (`property_shares.lead_phone`) or from an affiliate share delivery.
+ * Without this, a recipient who simply replies "מעניין" has no short-link
+ * signature and no ref tag, and Rita would ask "על איזה נכס מדובר?".
+ */
+async function resolveSharedPropertyForPhone(
+  admin: ReturnType<typeof createClient>,
+  senderPhone: string,
+): Promise<{
+  listing_id: string;
+  owner_id: string | null;
+  affiliate_id: string | null;
+  deal_type: string | null;
+  city: string | null;
+  neighborhood: string | null;
+} | null> {
+  const variants = phoneVariants(senderPhone);
+  if (!variants.length) return null;
+  try {
+    const { data: share } = await admin
+      .from("property_shares")
+      .select("listing_id, owner_id, created_at")
+      .in("lead_phone", variants)
+      .not("listing_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const { data: delivery } = await admin
+      .from("affiliate_share_deliveries")
+      .select("listing_id, affiliate_id, broker_id, created_at")
+      .in("recipient_phone", variants)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const shareAt = (share as any)?.created_at ? Date.parse((share as any).created_at) : 0;
+    const deliveryAt = (delivery as any)?.created_at ? Date.parse((delivery as any).created_at) : 0;
+    const winner = deliveryAt > shareAt
+      ? { listing_id: (delivery as any)?.listing_id, owner_id: (delivery as any)?.broker_id ?? null, affiliate_id: (delivery as any)?.affiliate_id ?? null }
+      : { listing_id: (share as any)?.listing_id, owner_id: (share as any)?.owner_id ?? null, affiliate_id: (delivery as any)?.affiliate_id ?? null };
+    if (!winner.listing_id) return null;
+
+    const { data: listing } = await admin
+      .from("listings")
+      .select("id, user_id, city, neighborhood, deal_type")
+      .eq("id", winner.listing_id)
+      .maybeSingle();
+
+    return {
+      listing_id: String(winner.listing_id),
+      owner_id: winner.owner_id ?? (listing as any)?.user_id ?? null,
+      affiliate_id: winner.affiliate_id ?? null,
+      deal_type: (listing as any)?.deal_type ?? null,
+      city: (listing as any)?.city ?? null,
+      neighborhood: (listing as any)?.neighborhood ?? null,
+    };
+  } catch (e) {
+    console.warn("[whatsapp-webhook] share context lookup soft-fail:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
 // Strip raw template markers / system prefixes that occasionally leak from the
 // LLM into customer-facing WhatsApp replies. Output must be pure conversational Hebrew.
 // The agent can answer with a plain string, a JSON-encoded block, or a
@@ -701,6 +778,15 @@ async function handleLeadInboxInbound(
   // Detect short-link signature so we can auto-create / tag the lead before lookup.
   const shortLink = await resolveShortLinkListing(admin, inboundText);
   const hasShortLinkSignature = SHORTLINK_ANCHOR_RE.test(inboundText);
+  // Property shared to this exact phone from the share dialog / affiliate share.
+  const sharedContext = await resolveSharedPropertyForPhone(admin, senderPhone);
+  if (sharedContext) {
+    console.log("[whatsapp-webhook] share context resolved", {
+      listing_id: sharedContext.listing_id,
+      owner_id: sharedContext.owner_id,
+      affiliate_id: sharedContext.affiliate_id,
+    });
+  }
 
   // Affiliate referral tag `[ref:CODE]` from a public property page CTA.
   // Resolution is best-effort: an unknown or malformed code is logged and
@@ -774,10 +860,10 @@ async function handleLeadInboxInbound(
 
 
   // Auto-create lead from short-link inbound when none exists yet.
-  if (!lead?.id && (shortLink || hasShortLinkSignature || referral)) {
-    const dealType = ((referral?.listing?.deal_type ?? shortLink?.deal_type) === "rent" ? "rent" : "sale");
+  if (!lead?.id && (shortLink || hasShortLinkSignature || referral || sharedContext)) {
+    const dealType = ((referral?.listing?.deal_type ?? shortLink?.deal_type ?? sharedContext?.deal_type) === "rent" ? "rent" : "sale");
     const category = dealType === "rent" ? "שוכר" : "קונה";
-    let assignTo: string | null = referral?.broker_id ?? shortLink?.owner_id ?? null;
+    let assignTo: string | null = referral?.broker_id ?? shortLink?.owner_id ?? sharedContext?.owner_id ?? null;
     if (!assignTo) {
       try {
         const { data: adminRow } = await admin
@@ -797,9 +883,9 @@ async function handleLeadInboxInbound(
         .insert({
           phone_number: senderPhone,
           full_name: opts?.senderName?.trim() || "מתעניין/ת חדש/ה",
-          city: referral?.listing?.city ?? shortLink?.city ?? null,
-          neighborhood: referral?.listing?.neighborhood ?? shortLink?.neighborhood ?? null,
-          interest_tag: referral?.listing_id ?? shortLink?.listing_id ?? null,
+          city: referral?.listing?.city ?? shortLink?.city ?? sharedContext?.city ?? null,
+          neighborhood: referral?.listing?.neighborhood ?? shortLink?.neighborhood ?? sharedContext?.neighborhood ?? null,
+          interest_tag: referral?.listing_id ?? shortLink?.listing_id ?? sharedContext?.listing_id ?? null,
           deal_type: dealType,
           lead_stage: "engaging",
           // New contacts start with the digital agent ON.
@@ -808,15 +894,17 @@ async function handleLeadInboxInbound(
           status: "contacted",
           sentiment: "positive",
           assigned_to: assignTo,
-          ...(referral?.broker_id ? { workspace_owner_id: referral.broker_id } : {}),
+          ...(referral?.broker_id ?? sharedContext?.owner_id
+            ? { workspace_owner_id: referral?.broker_id ?? sharedContext?.owner_id }
+            : {}),
           preferences: {
             source: "whatsapp",
-            shortlink_origin: shortLink ? "shortlink" : null,
+            shortlink_origin: shortLink ? "shortlink" : sharedContext ? "property_share" : null,
             category,
-            listing_id: referral?.listing_id ?? shortLink?.listing_id ?? null,
+            listing_id: referral?.listing_id ?? shortLink?.listing_id ?? sharedContext?.listing_id ?? null,
             referral_code: referral?.tracking_code ?? refCode ?? null,
-            affiliate_id: referral?.affiliate_id ?? null,
-            unresolved_listing: !shortLink && !referral,
+            affiliate_id: referral?.affiliate_id ?? sharedContext?.affiliate_id ?? null,
+            unresolved_listing: !shortLink && !referral && !sharedContext,
             inbound_excerpt: inboundText.slice(0, 240),
           },
 
@@ -842,16 +930,18 @@ async function handleLeadInboxInbound(
       console.warn("lead profile name update soft-fail:", e instanceof Error ? e.message : e);
     }
   }
-  if (lead?.id && shortLink && !lead.interest_tag) {
+  const tagSource = shortLink ?? sharedContext ?? null;
+  if (lead?.id && tagSource && !lead.interest_tag) {
     try {
       await admin
         .from("leads")
         .update({
-          interest_tag: shortLink.listing_id,
-          deal_type: shortLink.deal_type || lead.deal_type,
+          interest_tag: tagSource.listing_id,
+          deal_type: tagSource.deal_type || lead.deal_type,
           last_interaction_at: new Date().toISOString(),
         })
         .eq("id", lead.id);
+      lead.interest_tag = tagSource.listing_id;
     } catch (e) {
       console.warn("lead tag update soft-fail:", e instanceof Error ? e.message : e);
     }
@@ -1181,7 +1271,8 @@ async function handleLeadInboxInbound(
     // otherwise a new enquiry about one address gets answered with another
     // property's price and link.
     let focusProperty = "";
-    const focusListingId = referral?.listing_id ?? shortLink?.listing_id ?? lead.interest_tag ?? null;
+    const focusListingId =
+      referral?.listing_id ?? shortLink?.listing_id ?? sharedContext?.listing_id ?? lead.interest_tag ?? null;
     try {
       if (focusListingId) {
         const { data: listing } = await admin
@@ -1261,7 +1352,7 @@ async function handleLeadInboxInbound(
         // System context: the webhook has no interactive user session, so we
         // hand ai-agent the verified workspace owner explicitly.
         workspace_owner_id: aiOwnerId || undefined,
-        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${promptInboundText}${referral ? `\n[REFERRAL_CONTEXT] The contact arrived through an affiliate marketing link for this property: ${referralPropertyLabel(referral)}. It is ALREADY linked to their CRM card — never say you failed to find it. Greet warmly, confirm the property by name and offer a viewing.` : ""}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
+        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${promptInboundText}${referral ? `\n[REFERRAL_CONTEXT] The contact arrived through an affiliate marketing link for this property: ${referralPropertyLabel(referral)}. It is ALREADY linked to their CRM card — never say you failed to find it. Greet warmly, confirm the property by name and offer a viewing.` : ""}${!referral && sharedContext ? `\n[SHARED_PROPERTY_CONTEXT] listing_id=${sharedContext.listing_id}. This contact received a link to THIS property from the office. It is already linked to their CRM card — never ask which property they mean and never say you could not find it. Confirm the property by name, answer about it, and offer a viewing.` : ""}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
         messages: aiMessages,
         enable_research: agentCommand ? true : undefined,
       }),

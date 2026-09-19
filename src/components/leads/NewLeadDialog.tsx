@@ -400,7 +400,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               value={formatPhoneAsTyped(phone)}
               onChange={(e) => setPhone(formatPhoneAsTyped(e.target.value))}
               inputMode="tel"
-              placeholder="05X-XXXXXXX"
               maxLength={11}
             />
           </div>

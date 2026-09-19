@@ -170,7 +170,7 @@ export function WorkspaceSelectorModal() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">טלפון</Label>
-                <Input dir="ltr" type="tel" placeholder="+972501234567" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+                <Input dir="ltr" type="tel" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" size="sm" onClick={() => setShowCreate(false)} disabled={creating}>ביטול</Button>
