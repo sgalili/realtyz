@@ -221,7 +221,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin, isAffiliateOnly } = useUserRole();
+  const { isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
   const { isPartnerMode } = useAppMode();
@@ -233,6 +233,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const features = useWorkspaceFeatures();
   const affiliateOnlyNav = isPartnerMode || isAffiliateOnly;
   const navItems = useMemo(() => {
+    if (isPropertyOwnerOnly) return OWNER_NAV_ITEMS;
     if (affiliateOnlyNav) return PARTNER_NAV_ITEMS;
     return NAV_ITEMS.filter((item) => {
       if (item.url === '/properties') return features.listingsEnabled;
