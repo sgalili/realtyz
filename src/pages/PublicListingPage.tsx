@@ -226,6 +226,7 @@ function PublicListingContent() {
   const slug = typeof params.slug === 'string' ? params.slug : '';
   const [refCode, setRefCode] = useState<string | null>(null);
   const [slide, setSlide] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Referral capture must never break rendering.
   useEffect(() => {
@@ -254,7 +255,6 @@ function PublicListingContent() {
       };
     },
   });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const data = payload?.properties.find((property) => property.id === selectedId) ?? payload?.property ?? null;
 
   const shareUrl = useMemo(() => {
