@@ -852,40 +852,6 @@ export default function AffiliatePortal() {
         </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {[
-            {
-              label: 'נכסים בשיווק',
-              value: String(stats.promoting),
-              icon: Megaphone,
-              accent: 'primary' as const,
-              tooltip: 'מספר הנכסים שיצרתם עבורם קישור שיווק אישי.',
-            },
-            {
-              label: 'לידים שהגשתי',
-              value: String(stats.leads),
-              icon: MousePointerClick,
-              accent: 'primary' as const,
-              tooltip: 'סך אנשי הקשר שהגשתם לנכסים של מתווכים מהרשת.',
-            },
-            {
-              label: 'עסקאות שנחתמו',
-              value: String(stats.signed),
-              icon: TrendingUp,
-              accent: 'success' as const,
-              tooltip: 'עסקאות שנסגרו בעקבות הפניות שלכם.',
-            },
-            {
-              label: 'תגמול מצטבר',
-              value: fmtILS(stats.earned),
-              icon: Banknote,
-              accent: 'warning' as const,
-              tooltip: 'סך התגמול שנצבר לזכותכם מכל העסקאות שנסגרו.',
-            },
-          ].map((s) => (
-            <AffiliateKpiCard key={s.label} {...s} />
-          ))}
-        </div>
 
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3">
