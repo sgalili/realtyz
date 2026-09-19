@@ -160,7 +160,7 @@ export default function PublicListingsBoard() {
                       <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}${card.total_floors ? ` מתוך ${card.total_floors}` : ''}` : null].filter(Boolean).join(' · ')}</p>
                     </div>
                     <div className="shrink-0 text-left">
-                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success/15 text-success' : 'bg-warning text-warning-foreground shadow-sm')}>{dealLabel(card.deal_type)}</span>
+                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success/15 text-success' : 'bg-orange-500 text-white shadow-sm')}>{dealLabel(card.deal_type)}</span>
                       <p className="mt-1 text-sm font-bold text-foreground">{shekel(card.price)}</p>
                     </div>
                   </div>

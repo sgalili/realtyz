@@ -8,7 +8,6 @@ import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { FirstTimeSyncDialog } from '@/components/onboarding/FirstTimeSyncDialog';
 
 import CallSummaryDialog from '@/components/tasks/CallSummaryDialog';
 import { invalidateLiveData } from '@/lib/liveSync';
@@ -364,7 +363,6 @@ export default function CommandCenter() {
 
   return (
     <div dir="rtl" className="p-4 md:p-6">
-      <FirstTimeSyncDialog />
       <NewTourDialog open={newTourOpen} onOpenChange={setNewTourOpen} />
       <NewDemoDialog open={newDemoOpen} onOpenChange={setNewDemoOpen} />
 

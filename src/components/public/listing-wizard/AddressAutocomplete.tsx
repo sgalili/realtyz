@@ -44,7 +44,8 @@ export default function AddressAutocomplete({ value, onPick }: { value: string; 
         toast.error('חיפוש הכתובת לא זמין כרגע', { description: 'בדקו את החיבור ונסו שוב בעוד רגע.' });
         return;
       }
-      setSuggestions(((data as { suggestions?: { place_id: string; label: string }[] })?.suggestions ?? []));
+      setSuggestions(((data as { suggestions?: { place_id: string; label: string }[] })?.suggestions ?? [])
+        .filter((suggestion) => /[\u0590-\u05FF]/.test(suggestion.label)));
       setOpen(true);
     }, 300);
     return () => clearTimeout(timer);

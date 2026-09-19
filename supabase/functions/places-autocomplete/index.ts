@@ -1,5 +1,6 @@
 // Google Places (New) proxy for the public listing wizard address step.
-// Authenticated app users only; all Google calls go through the Lovable connector gateway.
+// Public listing visitors can search before authentication. A valid project bearer
+// token is still required, and all Google calls go through the connector gateway.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -32,9 +33,12 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization') ?? '';
     const token = authHeader.replace('Bearer ', '').trim();
     if (!token) return json({ error: 'unauthorized' }, 401);
-    const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '');
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData?.user) return json({ error: 'unauthorized' }, 401);
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    if (token !== anonKey) {
+      const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', anonKey);
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !userData?.user) return json({ error: 'unauthorized' }, 401);
+    }
 
     if (!LOVABLE_API_KEY || !GOOGLE_MAPS_API_KEY) return json({ error: 'maps_not_configured' }, 503);
 
@@ -74,9 +78,9 @@ Deno.serve(async (req) => {
     if (action === 'details') {
       const placeId = String((body as { place_id?: string }).place_id ?? '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 200);
       if (!placeId) return json({ error: 'place_id_required' }, 400);
-       const params = new URLSearchParams({ languageCode: 'he', regionCode: 'IL' });
-       if (sessionToken) params.set('sessionToken', sessionToken);
-       const query = `?${params.toString()}`;
+      const params = new URLSearchParams({ languageCode: 'he', regionCode: 'IL' });
+      if (sessionToken) params.set('sessionToken', sessionToken);
+      const query = `?${params.toString()}`;
       const response = await fetch(`${GATEWAY_URL}/places/v1/places/${placeId}${query}`, {
         headers: gatewayHeaders('id,formattedAddress,addressComponents,location'),
       });

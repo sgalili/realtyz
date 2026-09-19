@@ -79,6 +79,7 @@ export type PublicListingDraft = PublicListingDraftFields & {
 const DB_NAME = 'realtyz-public-listing-drafts';
 const STORE = 'drafts';
 const KEY = 'pending';
+export const PUBLIC_LISTING_RESUME_KEY = 'realtyz-public-listing-resume';
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -100,6 +101,7 @@ export async function savePublicListingDraft(fields: PublicListingDraftFields, f
     tx.onerror = () => reject(tx.error);
   });
   db.close();
+  try { window.localStorage.setItem(PUBLIC_LISTING_RESUME_KEY, '1'); } catch { /* storage disabled */ }
 }
 
 export async function readPublicListingDraft(): Promise<PublicListingDraft | null> {
@@ -122,4 +124,5 @@ export async function clearPublicListingDraft() {
     tx.onerror = () => reject(tx.error);
   });
   db.close();
+  try { window.localStorage.removeItem(PUBLIC_LISTING_RESUME_KEY); } catch { /* storage disabled */ }
 }

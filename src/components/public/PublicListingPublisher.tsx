@@ -74,6 +74,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const [publishing, setPublishing] = useState(false);
   const [resumed, setResumed] = useState(false);
   const [publishStage, setPublishStage] = useState('');
+  const [publishError, setPublishError] = useState('');
 
   const set = <K extends keyof PublicListingDraftFields>(key: K, value: PublicListingDraftFields[K]) =>
     setFields((current) => ({ ...current, [key]: value }));
@@ -90,6 +91,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       return;
     }
     setPublishing(true);
+    setPublishError('');
     try {
       setPublishStage('השלמת הרשאת מפרסם');
       if (!isPropertyOwner) {
@@ -162,7 +164,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         : message.includes('row-level security') || message.includes('permission')
           ? 'אין הרשאה לפרסם את הנכס בחשבון הזה'
           : message;
-      toast.error('פרסום הנכס נכשל והטיוטה נשמרה', { description: `${publishStage || 'פרסום'}: ${friendly}` });
+      const detailedError = `${publishStage || 'פרסום'}: ${friendly}`;
+      setPublishError(detailedError);
+      toast.error('פרסום הנכס נכשל והטיוטה נשמרה', { description: detailedError });
     } finally {
       setPublishing(false);
     }
@@ -222,7 +226,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       await savePublicListingDraft(fields, files, videos);
       if (!user) { setPendingSignupRole('property_owner'); navigate('/auth'); return; }
       await publish();
-    } catch { toast.error('לא ניתן לשמור את הטיוטה בדפדפן'); }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'שגיאת אחסון בדפדפן';
+      setPublishError(`שמירת הטיוטה: ${reason}`);
+      toast.error('לא ניתן לשמור את הטיוטה בדפדפן', { description: reason });
+    }
   };
 
   const isLast = step === STEP_TITLES.length - 1;
@@ -241,6 +249,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         </DialogHeader>
 
         <div className="space-y-4">
+          {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {step === 0 && (
             <div className="grid grid-cols-2 gap-2">
                <Button type="button" variant="outline" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>

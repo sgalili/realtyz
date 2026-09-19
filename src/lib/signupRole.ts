@@ -3,6 +3,7 @@
 // Buyers / sellers / renters / landlords are CRM contact types, never account
 // roles, so they are deliberately absent here.
 import { supabase } from '@/integrations/supabase/client';
+import { PUBLIC_LISTING_RESUME_KEY } from '@/lib/publicListingDraft';
 
 export type SignupRole = 'broker' | 'partner' | 'property_owner' | 'property_seeker';
 
@@ -58,6 +59,9 @@ export async function applyPendingSignupRole(): Promise<string | null> {
     const { data, error } = await supabase.rpc('register_as_property_owner', { _display_name: null });
     if (error || !(data as { ok?: boolean } | null)?.ok) return null;
     clearPendingSignupRole();
+    try {
+      if (window.localStorage.getItem(PUBLIC_LISTING_RESUME_KEY) === '1') return '/public-listings';
+    } catch { /* storage disabled */ }
     return '/owner/properties';
   }
   if (role === 'property_seeker') {
