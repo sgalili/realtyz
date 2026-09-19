@@ -159,6 +159,8 @@ export function useAffiliateMarketplace() {
 export type AffiliatePreferences = {
   rita_auto_mode: boolean;
   auto_funnel_enabled: boolean;
+  plan_slug: string;
+  billing_period: 'monthly' | 'annual';
 };
 
 export function useAffiliatePreferences() {
@@ -169,16 +171,18 @@ export function useAffiliatePreferences() {
     queryKey,
     enabled: !!user?.id,
     queryFn: async (): Promise<AffiliatePreferences> => {
-      if (!user?.id) return { rita_auto_mode: false, auto_funnel_enabled: false };
+      if (!user?.id) return { rita_auto_mode: false, auto_funnel_enabled: false, plan_slug: 'free', billing_period: 'monthly' };
       const { data, error } = await supabase
         .from('affiliate_profiles')
-        .select('rita_auto_mode, auto_funnel_enabled')
+        .select('rita_auto_mode, auto_funnel_enabled, plan_slug, billing_period')
         .eq('user_id', user.id)
         .maybeSingle();
       if (error) throw error;
       return {
         rita_auto_mode: Boolean((data as any)?.rita_auto_mode),
         auto_funnel_enabled: Boolean((data as any)?.auto_funnel_enabled),
+        plan_slug: String((data as any)?.plan_slug || 'free'),
+        billing_period: (data as any)?.billing_period === 'annual' ? 'annual' : 'monthly',
       };
     },
   });
@@ -199,7 +203,7 @@ export function useAffiliatePreferences() {
     },
   });
   return {
-    preferences: query.data ?? { rita_auto_mode: false, auto_funnel_enabled: false },
+    preferences: query.data ?? { rita_auto_mode: false, auto_funnel_enabled: false, plan_slug: 'free', billing_period: 'monthly' },
     isLoading: query.isLoading,
     update: update.mutate,
     isUpdating: update.isPending,

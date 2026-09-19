@@ -56,4 +56,4 @@
 53. [x] Public listings lead wall, private property-owner UI, partner sidebar order, and unified single-column affiliate actions
 54. [x] Single view switch everywhere, working auto-funnel save with explanation dialog, fixed top header on mobile, Rita chat sizing, and per-role intro slides
 
-55. [ ] Center the workspace identity block and deliver the public board, owner publishing, affiliate pricing, touch-point, commission, and onboarding updates
+55. [x] Center the workspace identity block and deliver the public board, owner publishing, affiliate pricing, touch-point, commission, and onboarding updates

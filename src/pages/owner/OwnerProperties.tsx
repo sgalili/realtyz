@@ -61,7 +61,7 @@ export default function OwnerProperties() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">צפייה ועריכה של פרטי הנכסים והתמונות שלכם.</p>
         </div>
-        <PublicListingPublisher disabled={listings.length >= 1} />
+        <PublicListingPublisher autoResume disabled={listings.length >= 1} />
       </header>
 
       {isLoading ? (

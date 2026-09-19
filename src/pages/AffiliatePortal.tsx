@@ -211,9 +211,9 @@ function JoinAffiliateCard() {
   );
 }
 
-function AffiliatePlansPanel() {
-  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
-  const [selected, setSelected] = useState<AffiliatePlanSlug>('free');
+function AffiliatePlansPanel({ selectedPlan, initialBilling }: { selectedPlan: string; initialBilling: 'monthly' | 'annual' }) {
+  const [billing, setBilling] = useState<'monthly' | 'annual'>(initialBilling);
+  const [selected, setSelected] = useState<AffiliatePlanSlug>(AFFILIATE_PLANS.some((plan) => plan.slug === selectedPlan) ? selectedPlan as AffiliatePlanSlug : 'free');
   const [saving, setSaving] = useState(false);
 
   const save = async (slug: AffiliatePlanSlug) => {
@@ -746,7 +746,7 @@ export default function AffiliatePortal() {
   return (
     <>
       <div className="space-y-5 p-4" dir="rtl">
-        <AffiliatePlansPanel />
+        <AffiliatePlansPanel selectedPlan={preferences.plan_slug} initialBilling={preferences.billing_period} />
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-3">

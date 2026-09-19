@@ -118,10 +118,9 @@ export default function PublicListingsBoard() {
     <div dir="rtl" className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto max-w-6xl px-4 py-5">
-          <div className="relative flex min-h-10 items-center justify-between gap-3">
-            <PublicListingPublisher autoResume />
-            <h1 className="absolute start-1/2 -translate-x-1/2 whitespace-nowrap text-xl font-bold text-foreground sm:text-2xl">לו״ח נדל״ן שיתופי</h1>
-            <div className="w-24" aria-hidden="true" />
+          <div className="relative flex min-h-10 flex-col items-center gap-3 sm:block">
+            <h1 className="text-center text-xl font-bold text-foreground sm:text-2xl">לו״ח נדל״ן שיתופי</h1>
+            <div className="sm:absolute sm:end-0 sm:top-1/2 sm:-translate-y-1/2"><PublicListingPublisher autoResume /></div>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
             <div className="relative min-w-[220px] max-w-xl flex-1">
