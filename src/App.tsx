@@ -280,9 +280,9 @@ function PartnersRoute({ children }: { children: React.ReactNode }) {
  * brokers and property owners are sent back to their own CRM.
  */
 function PartnerOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { isAffiliate, isAffiliateOnly, isLoading } = useUserRole();
+  const { isAffiliate, isAffiliateOnly, loading } = useUserRole();
   const { isPartnerMode } = useAppMode();
-  if (isLoading) return null;
+  if (loading) return null;
   if (isAffiliateOnly || (isAffiliate && isPartnerMode)) return <>{children}</>;
   return <Navigate to="/lead-crm" replace />;
 }
