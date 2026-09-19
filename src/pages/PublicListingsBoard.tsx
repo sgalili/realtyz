@@ -121,7 +121,7 @@ export default function PublicListingsBoard() {
         <div className="mx-auto max-w-6xl px-4 py-5">
           <div className="flex items-center justify-between gap-3">
             <PublicListingPublisher autoResume />
-            <h1 className="min-w-0 flex-1 text-center text-xl font-bold text-foreground sm:text-2xl">לו״ח נדל״ן שיתופי</h1>
+            <h1 className="min-w-0 flex-1 text-center text-xl font-bold text-foreground sm:text-2xl">לוח נדל״ן שיתופי</h1>
             <img src={realtyzLogo} alt="Realtyz" className="h-8 w-auto shrink-0 object-contain" />
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
