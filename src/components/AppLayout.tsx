@@ -44,7 +44,6 @@ import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 // DemoModeToggle removed from app
 import { PageHero } from '@/components/PageHero';
 import { FacebookConnectionBanner } from '@/components/social/FacebookConnectionBanner';
-import HeaderProfileMenu from '@/components/header/HeaderProfileMenu';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 const TUTORIAL_STEPS = [
