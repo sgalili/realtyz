@@ -74,7 +74,13 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         queryClient.setQueryData(userRolesQueryKey(user?.id), refreshedRoles);
         await queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user?.id) });
         onDone?.();
-        navigate(refreshedRoles.includes('affiliate') && !refreshedRoles.includes('agent') ? '/affiliate' : '/dashboard', { replace: true });
+        navigate(
+          refreshedRoles.includes('property_owner') ? '/owner/properties'
+            : refreshedRoles.includes('property_seeker') ? '/public-listings'
+              : refreshedRoles.includes('affiliate') && !refreshedRoles.includes('agent') ? '/affiliate'
+                : '/dashboard',
+          { replace: true },
+        );
         return;
       }
       toast.error(err?.message ?? 'לא ניתן להשלים את ההרשמה');
