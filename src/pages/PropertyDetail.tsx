@@ -1162,7 +1162,10 @@ export default function PropertyDetail() {
   const sourceOrigin = String((meta as JsonRecord).source_origin ?? '').toLowerCase();
   const isYad2Listing = /yad2\.co\.il/i.test(resolvedSourceUrl);
   const isHomelyListing = !isYad2Listing && (sourceOrigin === 'homely' || String(data?.row?.source ?? '').toLowerCase() === 'homely');
-  const yad2Url = isYad2Listing ? resolvedSourceUrl : '';
+  // Only a real ad page (/realestate/item/...) is a live Yad2 ad. Some imports
+  // store a Yad2 *search* URL, which must never look like a link to an ad.
+  const isYad2AdUrl = /yad2\.co\.il\/(realestate\/)?item\//i.test(resolvedSourceUrl);
+  const yad2Url = isYad2AdUrl ? resolvedSourceUrl : '';
   const originalDate = formatIsoDate(
     typeof meta.published_at === 'string' ? meta.published_at
       : typeof meta.original_published_at === 'string' ? meta.original_published_at
@@ -1190,6 +1193,43 @@ export default function PropertyDetail() {
   const yad2SyncUsedToday = !!lastManualYad2Sync
     && new Date(lastManualYad2Sync).toDateString() === new Date().toDateString();
 
+  /**
+   * Traces the live Yad2 ad for THIS property inside the shared market pool
+   * (filled by the twice-daily Bright Data scrape). Used when the stored source
+   * is only a Yad2 *search* URL, or when the previous ad URL is gone.
+   * Returns the ad URL when a confident address match exists, else null.
+   */
+  const traceLiveYad2Ad = async (): Promise<string | null> => {
+    const city = String(property?.city ?? '').trim();
+    const street = String(property?.address ?? '').replace(/\d+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!city || !street) return null;
+    const { data: pool } = await supabase
+      .from('market_listings')
+      .select('source_url, address, house_number, city, rooms, sqm, price, last_seen_at')
+      .eq('source', 'yad2')
+      .ilike('city', `%${city}%`)
+      .order('last_seen_at', { ascending: false })
+      .limit(400);
+    const houseNumber = String((data?.row as any)?.house_number ?? '').trim();
+    const candidates = (pool ?? []).filter((row) => {
+      const addr = String(row.address ?? '');
+      if (!addr.includes(street.split(' ').slice(0, 2).join(' ')) && !addr.includes(street)) return false;
+      if (houseNumber && String(row.house_number ?? '').trim() && String(row.house_number).trim() !== houseNumber) return false;
+      return /yad2\.co\.il\/(realestate\/)?item\//i.test(String(row.source_url ?? ''));
+    });
+    // Prefer the candidate whose rooms + size match the stored property.
+    const scored = candidates
+      .map((row) => {
+        let score = 0;
+        if (property?.rooms && Number(row.rooms) === Number(property.rooms)) score += 2;
+        if (property?.size_sqm && Math.abs(Number(row.sqm ?? 0) - Number(property.size_sqm)) <= 5) score += 2;
+        if (property?.price && Math.abs(Number(row.price ?? 0) - Number(property.price)) <= Number(property.price) * 0.05) score += 1;
+        return { row, score };
+      })
+      .sort((a, b) => b.score - a.score);
+    return scored.length ? String(scored[0].row.source_url) : null;
+  };
+
   const syncFromYad2 = async () => {
     if (!property?.id || syncingSource) return;
     if (yad2SyncUsedToday) {
@@ -1201,18 +1241,34 @@ export default function PropertyDetail() {
     setSyncingSource(true);
     const toastId = toast.loading('מסנכרן את נתוני הנכס מ-Yad2…');
     try {
+      // When no direct ad URL is stored (or it points at a search page), first
+      // trace the live ad for this exact property and persist it.
+      let adUrl = yad2Url;
+      let traced = false;
+      if (!adUrl) {
+        const found = await traceLiveYad2Ad();
+        if (found) {
+          adUrl = found;
+          traced = true;
+          await supabase.from('listings').update({ source_url: found }).eq('id', property.id);
+        }
+      }
+      if (!adUrl) {
+        toast.error('לא נמצאה מודעה חיה ביד2 לנכס הזה', {
+          id: toastId,
+          description: 'המודעה כנראה הוסרה מיד2. הנתונים שמוצגים הם הנתונים השמורים במערכת.',
+        });
+        return;
+      }
+
       const tasks: Promise<unknown>[] = [
         supabase.functions.invoke('listings-metadata-backfill', {
           body: { listing_ids: [property.id], force: true },
         }),
+        supabase.functions.invoke('yad2-unlocker', {
+          body: { url: adUrl, limit: 1 },
+        }),
       ];
-      if (resolvedSourceUrl) {
-        tasks.push(
-          supabase.functions.invoke('yad2-unlocker', {
-            body: { url: resolvedSourceUrl, limit: 1 },
-          }),
-        );
-      }
       const results = await Promise.allSettled(tasks);
       const failed = results.find(
         (r) => r.status === 'rejected' || (r.value as { error?: unknown } | null)?.error,
@@ -1240,7 +1296,7 @@ export default function PropertyDetail() {
           description: 'חלק מהשדות לא התעדכנו. נתוני יד2 מתרעננים גם אוטומטית פעמיים ביום.',
         });
       } else {
-        toast.success('נתוני הנכס סונכרנו', { id: toastId });
+        toast.success(traced ? 'המודעה החיה ביד2 נמצאה והנתונים סונכרנו' : 'נתוני הנכס סונכרנו', { id: toastId });
       }
     } catch (e: any) {
       toast.error('הסנכרון נכשל', { id: toastId, description: e?.message ?? String(e) });
@@ -1279,28 +1335,29 @@ export default function PropertyDetail() {
         {!editMode ? (
           <>
 
-            {/* Source link renders INSTANTLY whenever a Yad2 URL exists — the
-                liveness probe only hides it once it is confirmed 'gone'. */}
-            {yad2Url && liveYad2Status !== 'gone' && (
-              <a href={yad2Url} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה החיה ביד2" title="צפייה במודעה החיה ביד2" className="inline-flex items-center transition-opacity hover:opacity-80">
-                <Yad2Icon className="h-6 w-6" />
-              </a>
-            )}
-
-            {/* Refresh sits right after the Yad2 icon and only while the ad is
-                still on Yad2. Limited to one manual refresh per day. */}
-            {yad2Url && liveYad2Status !== 'gone' && (
+            {/* Borderless refresh comes first, the Yad2 mark after it. The
+                refresh also traces the live ad when only a search URL exists,
+                so it shows for every Yad2-sourced property. Once per day. */}
+            {isYad2Listing && (
               <Button
                 size="icon"
-                variant="outline"
+                variant="ghost"
                 onClick={syncFromYad2}
                 disabled={syncingSource || yad2SyncUsedToday}
                 aria-label="רענון נתונים מיד2"
                 title={yad2SyncUsedToday ? 'הרענון מיד2 בוצע היום. זמין שוב מחר' : 'רענון כל פרטי הנכס מיד2 (פעם ביום)'}
-                className="h-8 w-8 border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50"
+                className="h-8 w-8 border-0 text-primary hover:bg-primary/10 disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 ${syncingSource ? 'animate-spin' : ''}`} />
               </Button>
+            )}
+
+            {/* Only a real ad page gets the Yad2 mark; the liveness probe hides
+                it once the ad is confirmed gone. */}
+            {yad2Url && liveYad2Status !== 'gone' && (
+              <a href={yad2Url} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה החיה ביד2" title="צפייה במודעה החיה ביד2" className="inline-flex items-center transition-opacity hover:opacity-80">
+                <Yad2Icon className="h-6 w-6" />
+              </a>
             )}
 
             {isHomelyListing && resolvedSourceUrl && (
