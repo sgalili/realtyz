@@ -66,6 +66,8 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import { ResultTable } from '@/pages/Properties';
 import type { UnifiedResult } from '@/lib/propertySearch';
@@ -582,6 +584,7 @@ export default function AffiliatePortal() {
   const [activeTab, setActiveTab] = useState('marketplace');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [funnelDialogOpen, setFunnelDialogOpen] = useState(false);
   const [commissionRange, setCommissionRange] = useState<[number, number]>([0, 0]);
   const [propertyType, setPropertyType] = useState('all');
   const [city, setCity] = useState('all');
@@ -689,20 +692,17 @@ export default function AffiliatePortal() {
   return (
     <>
       <div className="space-y-5 p-4" dir="rtl">
-        <header>
-          <p className="text-sm text-slate-500">
-
-            בחרו נכס, קבלו קישור שיווק אישי, וקבלו תגמול על כל עסקה שנסגרת דרככם.
-          </p>
-        </header>
-
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-3">
             <div className="flex min-w-0 items-center gap-2.5">
               <RitaAvatar className="h-9 w-9" />
               <div className="min-w-0">
                 <div className="text-sm font-semibold">ריטה, הסוכנת האישית</div>
-                <div className="text-xs text-muted-foreground">{preferences.rita_auto_mode ? 'מצב אוטומטי' : 'מצב ידני'}</div>
+                <div className="text-xs text-muted-foreground">
+                  {preferences.rita_auto_mode
+                    ? 'מצב אוטומטי: ריטה עונה לכל פנייה, מציגה נכסים ומזמנת סיורים בשמכם'
+                    : 'מצב ידני: ריטה מכינה תשובה ואתם שולחים'}
+                </div>
               </div>
             </div>
             <Switch
@@ -720,7 +720,10 @@ export default function AffiliatePortal() {
             <Switch
               checked={preferences.auto_funnel_enabled}
               disabled={preferencesUpdating}
-              onCheckedChange={(checked) => updatePreferences({ auto_funnel_enabled: checked }, { onError: () => toast.error('שמירת הגדרת המשפך נכשלה') })}
+              onCheckedChange={(checked) => {
+                if (checked) { setFunnelDialogOpen(true); return; }
+                updatePreferences({ auto_funnel_enabled: false }, { onError: () => toast.error('שמירת הגדרת המשפך נכשלה') });
+              }}
               aria-label="הוספה אוטומטית למשפך"
             />
           </div>
@@ -768,15 +771,9 @@ export default function AffiliatePortal() {
               <TabsTrigger value="leads">אנשי הקשר שהגשתי</TabsTrigger>
               <TabsTrigger value="mine">השיווקים שלי</TabsTrigger>
             </TabsList>
-            <div className="flex shrink-0 items-center gap-0.5" aria-label="בחירת תצוגה">
-              <Button type="button" size="icon" variant="ghost" className={`h-8 w-8 border-0 bg-transparent shadow-none ${viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setViewMode('grid')} aria-label="תצוגת כרטיסיות" aria-pressed={viewMode === 'grid'}>
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button type="button" size="icon" variant="ghost" className={`h-8 w-8 border-0 bg-transparent shadow-none ${viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setViewMode('list')} aria-label="תצוגת רשימה" aria-pressed={viewMode === 'list'}>
-                <List className="h-4 w-4" />
-              </Button>
+            <div className="flex shrink-0 items-center" aria-label="בחירת תצוגה">
+              <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} />
             </div>
-          </div>
 
           <div className="mt-4 flex max-w-lg items-center gap-2">
             <div className="relative min-w-0 flex-1">
@@ -946,6 +943,39 @@ export default function AffiliatePortal() {
             )}
           </TabsContent>
         </Tabs>
+
+        <Dialog open={funnelDialogOpen} onOpenChange={setFunnelDialogOpen}>
+          <DialogContent dir="rtl" className="max-w-md">
+            <DialogHeader className="text-right">
+              <DialogTitle>הוספה אוטומטית למשפך</DialogTitle>
+              <DialogDescription className="text-right leading-relaxed">
+                כל נכס חדש שייפתח לשיווק שותפים ייכנס אוטומטית למשפך השיווק שלכם, עם קישור אישי ומעקב תגמולים.
+                אפשר לבחור אילו נכסים ייכנסו: סוג נכס, עיר, חדרים, סוג עסקה, טווח מחירים וטווח התגמול הנדרש.
+              </DialogDescription>
+            </DialogHeader>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => { setFunnelDialogOpen(false); setFiltersOpen(true); }}
+            >
+              הגדרת מסננים ותגמול נדרש
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+            <DialogFooter className="gap-2 sm:space-x-0">
+              <Button
+                disabled={preferencesUpdating}
+                onClick={() => updatePreferences({ auto_funnel_enabled: true }, {
+                  onSuccess: () => { setFunnelDialogOpen(false); toast.success('הוספה אוטומטית למשפך הופעלה'); },
+                  onError: () => toast.error('שמירת הגדרת המשפך נכשלה'),
+                })}
+              >
+                {preferencesUpdating ? 'שומר...' : 'הפעלה'}
+              </Button>
+              <Button variant="outline" onClick={() => setFunnelDialogOpen(false)}>ביטול</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
           <SheetContent side="right" dir="rtl" className="w-[92vw] overflow-y-auto sm:max-w-md">

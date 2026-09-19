@@ -62,6 +62,7 @@ import { ImportProgressDialog, type ImportStep } from '@/components/properties/I
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
 import { AffiliateShareCell } from '@/components/properties/AffiliateShareCell';
+import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { useAffiliateConfigs } from '@/hooks/useAffiliate';
 
 
@@ -928,32 +929,9 @@ export default function Properties() {
 
 
 
-          {/* Side B — view toggle */}
-          <div className="ms-auto inline-flex items-center gap-0.5" role="group" aria-label="מצב תצוגה">
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={() => setViewMode('grid')}
-              aria-pressed={viewMode === 'grid'}
-              aria-label="תצוגת כרטיסיות"
-              title="כרטיסיות"
-              className={`h-8 w-9 border-0 bg-transparent shadow-none ${viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}`}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={() => setViewMode('table')}
-              aria-pressed={viewMode === 'table'}
-              aria-label="תצוגת טבלה"
-              title="טבלה"
-              className={`h-8 w-9 border-0 bg-transparent shadow-none ${viewMode === 'table' ? 'text-primary' : 'text-muted-foreground'}`}
-            >
-              <List className="h-3.5 w-3.5" />
-            </Button>
+          {/* Side B — single mutually-exclusive view switch */}
+          <div className="ms-auto inline-flex items-center">
+            <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
           </div>
         </div>
 

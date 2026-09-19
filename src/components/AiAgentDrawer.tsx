@@ -604,7 +604,7 @@ ${shareUrl}
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {/* Trigger is in AppLayout header */}
-      <SheetContent side="left" className="w-full sm:max-w-md p-0 flex flex-col" dir="rtl">
+      <SheetContent side="left" className="flex h-[100dvh] max-h-[100dvh] w-full flex-col p-0 sm:max-w-md" dir="rtl">
         <div className="relative px-4 py-3 border-b bg-primary/5 flex flex-col items-center justify-center gap-1.5">
           <RitaAvatar className="h-12 w-12 ring-2 ring-primary/20" />
           <h3 className="text-[18px] font-bold text-center">ריטה, סוכנת ה-AI של Realtyz</h3>
