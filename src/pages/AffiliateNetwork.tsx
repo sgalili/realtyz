@@ -706,6 +706,44 @@ function BrokerAffiliateNetwork() {
 
         <RewardDialog listing={editing} open={!!editing} onOpenChange={(v) => !v && setEditing(null)} />
 
+        <AlertDialog open={!!unpublishing} onOpenChange={(v) => !v && setUnpublishing(null)}>
+          <AlertDialogContent dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-right">להפסיק שיווק ע״י שותפים?</AlertDialogTitle>
+              <AlertDialogDescription className="text-right">
+                הנכס {unpublishing?.property_title || ''} ייעלם מרשימת הנכסים לשיווק של כל השותפים. התגמולים שהוגדרו יישמרו.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2">
+              <AlertDialogCancel>ביטול</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  const target = unpublishing;
+                  if (!target) return;
+                  setUnpublishing(null);
+                  try {
+                    await setReward.mutateAsync({
+                      listingId: target.id,
+                      enabled: false,
+                      rewardType: (target.affiliate_reward_type ?? 'fixed') as RewardType,
+                      rewardAmount: Number(target.affiliate_reward_amount ?? 0),
+                      tier1Amount: Number(target.affiliate_tier1_amount ?? 0),
+                      tier2Amount: Number(target.affiliate_tier2_amount ?? 0),
+                      tier3Type: (target.affiliate_tier3_type ?? 'fixed') as RewardType,
+                      tier3Amount: Number(target.affiliate_tier3_amount ?? 0),
+                    });
+                    toast.success('הנכס הוסר משיווק שותפים');
+                  } catch {
+                    toast.error('ההסרה נכשלה');
+                  }
+                }}
+              >
+                הסרה
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
       </div>
     </>
   );
