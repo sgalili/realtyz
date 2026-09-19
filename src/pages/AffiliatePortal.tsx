@@ -924,9 +924,11 @@ export default function AffiliatePortal() {
                       </div>
                       {r.listing_id && (
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          className="gap-1.5"
+                          className="h-8 w-8"
+                          title="העתקת הקישור"
+                          aria-label="העתקת הקישור"
                           onClick={async () => {
                             await navigator.clipboard.writeText(
                               affiliateTrackingLink(null, r.listing_id, r.tracking_code),
@@ -935,7 +937,6 @@ export default function AffiliatePortal() {
                           }}
                         >
                           <Copy className="h-3.5 w-3.5" />
-                          העתקה
                         </Button>
                       )}
                     </CardContent>
