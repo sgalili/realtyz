@@ -3,8 +3,8 @@
 // Deliberately narrow: no CRM, no office settings, no broker tools. An affiliate
 // browses broker-approved properties, sees exactly what they earn per closing,
 // and generates a personal tracking link to market with.
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -151,6 +151,7 @@ function PartnerListingActions({ listing }: { listing: MarketplaceListing }) {
         size="icon"
         onClick={createOrCopy}
         disabled={promote.isPending}
+        variant="outline"
         className="h-8 w-8"
         title={link ? 'העתקת קישור השיווק' : 'יצירת קישור שיווק'}
         aria-label={link ? 'העתקת קישור השיווק' : 'יצירת קישור שיווק'}

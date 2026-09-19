@@ -1338,7 +1338,7 @@ function neighborhoodOf(r: UnifiedResult): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-type SortCol = 'name' | 'neighborhood' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'photos' | 'published';
+type SortCol = 'affiliate' | 'commission' | 'image' | 'name' | 'neighborhood' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'photos' | 'published';
 
 /** Official Yad2 button — rendered only after the ad is verified as still live. */
 function Yad2AdButton({ url }: { url: string }) {
@@ -1371,6 +1371,10 @@ export function ResultTable({
   onEdit,
   propertyHref,
   hideDefaultActions = false,
+  affiliateSortValue,
+  commissionSortValue,
+  publishedAt,
+  publishedLabel = 'תאריך פרסום/עדכון',
 }: {
   results: UnifiedResult[];
   importingKey: string | null;
@@ -1387,6 +1391,10 @@ export function ResultTable({
   propertyHref?: (r: UnifiedResult) => string | null;
   /** Hide workspace-only campaign, share and edit controls. */
   hideDefaultActions?: boolean;
+  affiliateSortValue?: (r: UnifiedResult) => string | number | null;
+  commissionSortValue?: (r: UnifiedResult) => string | number | null;
+  publishedAt?: (r: UnifiedResult) => string | null;
+  publishedLabel?: string;
 }) {
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -1420,7 +1428,9 @@ export function ResultTable({
     const arr = [...results];
     const getVal = (r: UnifiedResult): string | number | null => {
       switch (sortCol) {
-
+        case 'affiliate': return affiliateSortValue?.(r) ?? '';
+        case 'commission': return commissionSortValue?.(r) ?? null;
+        case 'image': return r.photos?.[0] ?? '';
         case 'name': return formatStreetTypeTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
         case 'neighborhood': return neighborhoodOf(r) || '';
         case 'house_number': return Number(houseNumberOf({ address: r.address, raw: r.raw })) || null;
@@ -1432,7 +1442,7 @@ export function ResultTable({
         case 'rooms': return typeof r.rooms === 'number' ? r.rooms : (r.rooms ? Number(r.rooms) : null);
         case 'size_sqm': return typeof r.size_sqm === 'number' ? r.size_sqm : (r.size_sqm ? Number(r.size_sqm) : null);
         case 'photos': return sourcePhotoCount(r, r.photos?.length ?? 0) || null;
-        case 'published': return listingPublishedAt(r) ?? listingActivityAt(r);
+        case 'published': return publishedAt?.(r) ?? listingPublishedAt(r) ?? listingActivityAt(r);
 
 
       }
@@ -1449,7 +1459,7 @@ export function ResultTable({
       return String(av).localeCompare(String(bv), 'he') * dir;
     });
     return arr;
-  }, [results, sortCol, sortDir]);
+  }, [affiliateSortValue, commissionSortValue, publishedAt, results, sortCol, sortDir]);
 
   const HeaderCell = ({ col, label, extraClass }: { col: SortCol; label: string; extraClass?: string }) => (
     <th
@@ -1472,9 +1482,9 @@ export function ResultTable({
       <table className="w-full text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
-            {showAffiliateColumn ? <th className="px-2 py-2 font-semibold whitespace-nowrap">שותפים</th> : null}
-            {commissionCell ? <th className="px-2 py-2 font-semibold whitespace-nowrap">עמלות</th> : null}
-            <th className="px-2 py-2 w-14 font-semibold whitespace-nowrap">תמונה</th>
+            {showAffiliateColumn ? <HeaderCell col="affiliate" label="שותפים" /> : null}
+            {commissionCell ? <HeaderCell col="commission" label="עמלות" /> : null}
+            <HeaderCell col="image" label="תמונה" extraClass="w-14" />
 
             <HeaderCell col="name" label="רחוב" />
             {/* Internal-only: house & apartment numbers never leave the workspace. */}
@@ -1487,8 +1497,8 @@ export function ResultTable({
             <HeaderCell col="rooms" label="חדרים" />
             <HeaderCell col="size_sqm" label='מ"ר' />
             <HeaderCell col="photos" label="תמונות" />
-            <HeaderCell col="published" label="תאריך פרסום/עדכון" />
-            <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th>
+            <HeaderCell col="published" label={publishedLabel} />
+            {!hideDefaultActions ? <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th> : null}
 
 
           </tr>
@@ -1584,10 +1594,12 @@ export function ResultTable({
                     );
                   })()}
                 </td>
-                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground"><ListingDateCell row={r} /></td>
+                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">
+                  {publishedAt ? (publishedAt(r) ? new Date(String(publishedAt(r))).toLocaleDateString('he-IL') : '—') : <ListingDateCell row={r} />}
+                </td>
 
-                <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
-                  {hideDefaultActions ? null : <div className="inline-flex items-center gap-1.5">
+                {!hideDefaultActions ? <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
+                  <div className="inline-flex items-center gap-1.5">
                     {/* Yad2 ad first, campaign second (swapped per workspace spec). */}
                     {(() => {
                       const live = sourceYad2Url(r);
@@ -1618,8 +1630,8 @@ export function ResultTable({
                         <Handshake className="h-4 w-4" />
                       </Button>
                     ) : null}
-                  </div>}
-                </td>
+                  </div>
+                </td> : null}
 
 
               </tr>
