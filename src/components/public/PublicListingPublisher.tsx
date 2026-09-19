@@ -3,7 +3,7 @@
 // everything, sign up through /auth, and have the listing auto-published on return.
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Film, ImagePlus, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Film, ImagePlus, Loader2, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,11 +24,16 @@ import {
 } from '@/lib/publicListingDraft';
 import { setPendingSignupRole } from '@/lib/signupRole';
 import AddressAutocomplete from '@/components/public/listing-wizard/AddressAutocomplete';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'בית פרטי', 'מיני פנטהאוז', 'סטודיו', 'מגרש', 'משרד', 'חנות', 'מחסן'];
 const CONDITIONS = ['חדש מקבלן', 'חדש', 'משופץ', 'שמור', 'דרוש שיפוץ'];
 const AIR_DIRECTIONS = ['1', '2', '3', '4'];
 const ROOM_OPTIONS = ['1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5', '5.5', '6+'];
+const FLOOR_OPTIONS = ['קרקע', ...Array.from({ length: 50 }, (_, index) => String(index + 1))];
+const TOTAL_FLOOR_OPTIONS = Array.from({ length: 50 }, (_, index) => String(index + 1));
+const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
 const STEP_TITLES = [
   'סוג המפרסם',
@@ -68,6 +73,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const [videos, setVideos] = useState<File[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [resumed, setResumed] = useState(false);
+  const [publishStage, setPublishStage] = useState('');
 
   const set = <K extends keyof PublicListingDraftFields>(key: K, value: PublicListingDraftFields[K]) =>
     setFields((current) => ({ ...current, [key]: value }));
@@ -85,6 +91,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     }
     setPublishing(true);
     try {
+      setPublishStage('השלמת הרשאת מפרסם');
       if (!isPropertyOwner) {
         const { error } = await supabase.rpc('register_as_property_owner', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
@@ -93,7 +100,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       const photos: string[] = [];
       const clips: string[] = [];
       for (const file of [...draftFiles, ...draftVideos]) {
-        const row = await uploadMediaToLibrary({ userId: user.id, fileName: file.name, data: file, mimeType: file.type, source: 'public_property_listing' });
+        setPublishStage(`העלאת ${file.name}`);
+        let row: unknown;
+        try {
+          row = await uploadMediaToLibrary({ userId: user.id, fileName: file.name, data: file, mimeType: file.type, source: 'public_property_listing' });
+        } catch (uploadError) {
+          const reason = uploadError instanceof Error ? uploadError.message : 'שגיאת אחסון לא ידועה';
+          throw new Error(`העלאת הקובץ "${file.name}" נכשלה: ${reason}`);
+        }
         const url = (row as { public_url?: string | null })?.public_url;
         if (!url) continue;
         if (file.type.startsWith('video/')) clips.push(url); else photos.push(url);
@@ -101,15 +115,16 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       const street = draftFields.street.trim();
       const address = [street, draftFields.houseNumber.trim()].filter(Boolean).join(' ') || draftFields.address.trim();
       const title = `${draftFields.propertyType.trim()} · ${draftFields.city.trim()}${draftFields.neighborhood.trim() ? ` · ${draftFields.neighborhood.trim()}` : ''}`;
+      setPublishStage('שמירת פרטי הנכס');
       const { data, error } = await supabase.from('listings').insert({
         user_id: user.id, workspace_owner_id: user.id, owner_id: user.id,
         slug: slugFor(user.id), property_title: title, description: draftFields.description.trim(), asking_price: Number(draftFields.price),
         city: draftFields.city.trim(), neighborhood: draftFields.neighborhood.trim() || null, address,
         house_number: draftFields.houseNumber.trim() || null,
         apartment_number: draftFields.apartmentNumber.trim() || null,
-        deal_type: draftFields.dealType, rooms: draftFields.rooms ? Number(draftFields.rooms.replace('+', '')) : null,
+         deal_type: draftFields.dealType, rooms: draftFields.rooms ? Number(draftFields.rooms.replace('+', '')) : null,
         sqm: draftFields.sqm ? Number(draftFields.sqm) : (draftFields.builtSqm ? Number(draftFields.builtSqm) : null),
-        floor: draftFields.floor ? Number(draftFields.floor) : null,
+         floor: draftFields.floor ? (draftFields.floor === 'קרקע' ? 0 : Number(draftFields.floor)) : null,
         features: {
           property_type: draftFields.propertyType.trim(),
           publisher_type: draftFields.publisherType,
@@ -141,8 +156,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0);
       navigate('/owner/properties', { replace: true, state: { publishedListingId: (data as { id?: string } | null)?.id } });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      toast.error(message.includes('one active property') || message.includes('duplicate') ? 'בעל נכס פרטי יכול לפרסם נכס פעיל אחד בלבד' : 'פרסום הנכס נכשל, הטיוטה נשמרה');
+      const message = error instanceof Error ? error.message : 'שגיאה לא ידועה';
+      const friendly = message.includes('one active property') || message.includes('duplicate')
+        ? 'בעל נכס פרטי יכול לפרסם נכס פעיל אחד בלבד'
+        : message.includes('row-level security') || message.includes('permission')
+          ? 'אין הרשאה לפרסם את הנכס בחשבון הזה'
+          : message;
+      toast.error('פרסום הנכס נכשל והטיוטה נשמרה', { description: `${publishStage || 'פרסום'}: ${friendly}` });
     } finally {
       setPublishing(false);
     }
@@ -161,6 +181,33 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const goNext = async () => {
     try { await savePublicListingDraft(fields, files, videos); } catch { /* draft saving is best-effort */ }
     setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
+  };
+
+  const pickAndAdvance = async <K extends 'publisherType' | 'dealType'>(key: K, value: PublicListingDraftFields[K]) => {
+    const nextFields = { ...fields, [key]: value };
+    setFields(nextFields);
+    try { await savePublicListingDraft(nextFields, files, videos); } catch { /* best effort */ }
+    setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
+  };
+
+  const addMedia = (incoming: File[], kind: 'image' | 'video') => {
+    const valid = incoming.filter((file) => {
+      const expected = kind === 'image' ? file.type.startsWith('image/') : file.type.startsWith('video/');
+      const maxSize = kind === 'image' ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
+      if (!expected) toast.error(`הקובץ ${file.name} אינו ${kind === 'image' ? 'תמונה' : 'סרטון'} תקין`);
+      else if (file.size > maxSize) toast.error(`הקובץ ${file.name} גדול מדי`, { description: `הגודל המרבי הוא ${kind === 'image' ? '15MB' : '100MB'}.` });
+      return expected && file.size <= maxSize;
+    });
+    const update = (current: File[], limit: number) => {
+      const merged = [...current];
+      for (const file of valid) {
+        if (!merged.some((item) => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified)) merged.push(file);
+      }
+      if (merged.length > limit) toast.error(`ניתן להעלות עד ${limit} קבצים מסוג זה`);
+      return merged.slice(0, limit);
+    };
+    if (kind === 'image') setFiles((current) => update(current, 20));
+    else setVideos((current) => update(current, 3));
   };
 
   const submit = async () => {
@@ -183,7 +230,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={disabled} className="font-bold bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
+        <Button disabled={disabled} className="font-bold bg-success text-success-foreground hover:bg-success/90"><Plus className="h-4 w-4" />פרסום חינם</Button>
       </DialogTrigger>
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader className="text-right">
@@ -196,22 +243,23 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         <div className="space-y-4">
           {step === 0 && (
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} onClick={() => set('publisherType', 'broker')}>מתווך</Button>
-              <Button type="button" variant={fields.publisherType === 'private' ? 'default' : 'outline'} onClick={() => set('publisherType', 'private')}>פרטי</Button>
+               <Button type="button" variant="outline" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
+               <Button type="button" variant="outline" onClick={() => void pickAndAdvance('publisherType', 'private')}>פרטי</Button>
             </div>
           )}
 
           {step === 1 && (
             <div className="grid grid-cols-2 gap-3">
               {([['rent', 'השכרה'], ['sale', 'מכירה']] as const).map(([value, label]) => (
-                <button
+                <Button
                   key={value}
                   type="button"
-                  onClick={() => set('dealType', value)}
-                  className={`rounded-lg border p-6 text-center text-base font-bold ${fields.dealType === value ? 'border-success bg-success/10 text-success' : 'border-border bg-card'}`}
+                  variant="outline"
+                  onClick={() => void pickAndAdvance('dealType', value)}
+                  className="h-auto p-6 text-center text-base font-bold"
                 >
                   {label}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -224,33 +272,35 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
                 value={addressLine}
                 onPick={(place) => setFields((current) => ({
                   ...current,
-                  street: place.street || current.street,
-                  houseNumber: place.house_number || current.houseNumber,
-                  neighborhood: place.neighborhood || current.neighborhood,
-                  city: place.city || current.city,
-                  area: place.area || current.area,
-                  district: place.district || current.district,
-                  address: place.formatted_address || current.address,
+                   street: place.street,
+                   houseNumber: place.house_number,
+                   neighborhood: place.neighborhood,
+                   city: place.city,
+                   area: place.area,
+                   district: place.district,
+                   address: place.formatted_address,
                 }))}
               />
-              <div className="grid gap-3 sm:grid-cols-2">
+              {fields.address && <div className="grid gap-3 sm:grid-cols-2">
                 <div><Label>עיר *</Label><Input value={fields.city} onChange={(e) => set('city', e.target.value)} /></div>
                 <div><Label>רחוב *</Label><Input value={fields.street} onChange={(e) => set('street', e.target.value)} /></div>
                 <div><Label>מספר בית</Label><Input inputMode="numeric" value={fields.houseNumber} onChange={(e) => set('houseNumber', e.target.value)} /></div>
                 <div><Label>מספר דירה</Label><Input inputMode="numeric" value={fields.apartmentNumber} onChange={(e) => set('apartmentNumber', e.target.value)} /></div>
-                <div><Label>שכונה</Label><Input value={fields.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} /></div>
-                <div><Label>אזור</Label><Input value={fields.area} onChange={(e) => set('area', e.target.value)} /></div>
-                <div><Label>מחוז</Label><Input value={fields.district} onChange={(e) => set('district', e.target.value)} /></div>
-              </div>
+                {fields.neighborhood && <div><Label>שכונה</Label><Input value={fields.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} /></div>}
+                {fields.area && <div><Label>אזור</Label><Input value={fields.area} onChange={(e) => set('area', e.target.value)} /></div>}
+                {fields.district && <div><Label>מחוז</Label><Input value={fields.district} onChange={(e) => set('district', e.target.value)} /></div>}
+              </div>}
             </div>
           )}
 
           {step === 4 && (
             <div className="space-y-3">
-              <div><Label>מספר חדרים</Label><ChoiceGrid options={ROOM_OPTIONS} value={fields.rooms} onPick={(option) => set('rooms', option)} columns={6} /></div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div><Label>קומה</Label><Input inputMode="numeric" value={fields.floor} onChange={(e) => set('floor', e.target.value.replace(/[^\d-]/g, ''))} /></div>
-                <div><Label>מתוך כמה קומות בבניין</Label><Input inputMode="numeric" value={fields.totalFloors} onChange={(e) => set('totalFloors', e.target.value.replace(/\D/g, ''))} /></div>
+              <div><Label>קומות בבניין</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Select value={fields.rooms} onValueChange={(value) => set('rooms', value)}><SelectTrigger><SelectValue placeholder="חדרים" /></SelectTrigger><SelectContent>{ROOM_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} חדרים</SelectItem>)}</SelectContent></Select>
+                <Select value={fields.floor} onValueChange={(value) => set('floor', value)}><SelectTrigger><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent>{FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option === 'קרקע' ? option : `קומה ${option}`}</SelectItem>)}</SelectContent></Select>
+                <Select value={fields.totalFloors} onValueChange={(value) => set('totalFloors', value)}><SelectTrigger><SelectValue placeholder="מתוך" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} קומות</SelectItem>)}</SelectContent></Select>
+              </div>
               </div>
               <div className="flex flex-wrap gap-4">
                 {([['elevator', 'מעלית'], ['parking', 'חניה'], ['balcony', 'מרפסת'], ['openView', 'נוף פתוח']] as const).map(([key, label]) => (
@@ -287,7 +337,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
                 </Label>
                 <input
                   id="wizard-photos" type="file" accept="image/*" multiple className="sr-only"
-                  onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 20))}
+                   onChange={(e) => { addMedia(Array.from(e.target.files ?? []), 'image'); e.target.value = ''; }}
                 />
               </div>
               <div>
@@ -297,9 +347,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
                 </Label>
                 <input
                   id="wizard-videos" type="file" accept="video/*" multiple className="sr-only"
-                  onChange={(e) => setVideos(Array.from(e.target.files ?? []).slice(0, 3))}
+                   onChange={(e) => { addMedia(Array.from(e.target.files ?? []), 'video'); e.target.value = ''; }}
                 />
-              </div>
+               {[...files, ...videos].length > 0 && <div className="sm:col-span-2 space-y-2">{[...files, ...videos].map((file) => <div key={`${file.name}-${file.size}-${file.lastModified}`} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs"><span className="min-w-0 truncate">{file.name}</span><Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label={`הסרת ${file.name}`} onClick={() => { setFiles((current) => current.filter((item) => item !== file)); setVideos((current) => current.filter((item) => item !== file)); }}><X className="h-4 w-4" /></Button></div>)}</div>}
+             </div>
             </div>
           )}
 
@@ -328,9 +379,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
             <Button type="button" disabled={publishing} onClick={() => void submit()} className="bg-success text-success-foreground hover:bg-success/90">
               {publishing ? <><Loader2 className="h-4 w-4 animate-spin" /> מפרסם…</> : user ? 'פרסום הנכס' : 'הרשמה ופרסום'}
             </Button>
-          ) : (
+          ) : step > 1 ? (
             <Button type="button" onClick={() => void goNext()}>לשלב הבא <ArrowLeft className="h-4 w-4" /></Button>
-          )}
+          ) : <span />}
         </div>
       </DialogContent>
     </Dialog>
