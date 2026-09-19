@@ -558,11 +558,15 @@ export type CommissionTiers = {
   tier3: number;
 };
 
-/** Tier labels shown on every marketplace card. */
+/**
+ * Tier labels shown on every marketplace card.
+ * Levels 1-2 are digital marketing / lead-generation fees (open to all
+ * partners). Level 3 is a brokerage commission, licensed brokers only.
+ */
 export const TIER_LABELS = {
-  tier1: 'שלב 1 · ליד חם שהוגש',
-  tier2: 'שלב 2 · ליד שאומת אנושית',
-  tier3: 'שלב 3 · בונוס סגירת עסקה',
+  tier1: 'שלב 1 · דמי חשיפה ושיתוף',
+  tier2: 'שלב 2 · דמי ליד מאומת ופגישה',
+  tier3: 'שלב 3 · עמלת סגירה לבעלי רישיון',
 } as const;
 
 /** Reads the tiers off a marketplace row, defaulting tier 2 to double tier 1. */
