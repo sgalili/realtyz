@@ -440,7 +440,7 @@ export default function SharedProperty() {
               target="_blank"
               rel="noreferrer"
               aria-label="לתיאום סיור"
-              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-social-whatsapp text-[18px] font-bold text-social-foreground shadow-lg transition hover:bg-social-whatsapp/90"
+              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-social-whatsapp text-[18px] font-bold text-white shadow-lg transition hover:bg-social-whatsapp/90"
             >
               <WhatsAppIcon className="h-6 w-6" />
               לתיאום סיור

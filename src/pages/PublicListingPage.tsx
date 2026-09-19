@@ -458,7 +458,7 @@ function PublicListingContent() {
             ))}
 
             <div className="flex flex-wrap gap-2">
-              <Button asChild className="flex-1 bg-social-whatsapp text-social-foreground hover:bg-social-whatsapp/90">
+              <Button asChild className="flex-1 bg-social-whatsapp text-white hover:bg-social-whatsapp/90">
                 <a href={officialWaLink(waText)} target="_blank" rel="noopener noreferrer">
                   <WhatsAppIcon className="h-4 w-4" /> לתיאום סיור
                 </a>
