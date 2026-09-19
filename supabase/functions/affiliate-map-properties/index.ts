@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const { data: affiliate } = await admin.from("affiliate_profiles").select("user_id").eq("user_id", user.id).maybeSingle();
     if (!affiliate) return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const { data, error } = await admin.rpc("get_affiliate_marketplace_v3");
+    const { data, error } = await admin.rpc("get_affiliate_marketplace_map", { _user_id: user.id });
     if (error) throw error;
     return new Response(JSON.stringify(data ?? []), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {

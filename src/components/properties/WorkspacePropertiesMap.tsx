@@ -17,10 +17,18 @@ type Props = {
 
 declare global {
   interface Window {
-    google?: any;
+    google?: {
+      maps: {
+        Map: new (element: HTMLElement, options: Record<string, unknown>) => GoogleMap;
+        Marker: new (options: Record<string, unknown>) => GoogleMarker;
+      };
+    };
     __realtyzGoogleMapsReady?: () => void;
   }
 }
+
+type GoogleMap = { panTo: (position: { lat: number; lng: number }) => void };
+type GoogleMarker = { setMap: (map: GoogleMap | null) => void; addListener: (event: string, callback: () => void) => void };
 
 let mapsPromise: Promise<void> | null = null;
 
@@ -44,8 +52,8 @@ function loadGoogleMaps(): Promise<void> {
 
 export default function WorkspacePropertiesMap({ properties, selectedId, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const mapRef = useRef<GoogleMap | null>(null);
+  const markersRef = useRef<GoogleMarker[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
