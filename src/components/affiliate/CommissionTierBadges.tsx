@@ -3,7 +3,6 @@
 // Levels 1 and 2 are digital marketing and lead-generation fees, open to every
 // partner. Level 3 is a deal-closing brokerage commission and is shown locked
 // until the partner's broker license is verified.
-import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Flame, Lock, Trophy } from 'lucide-react';
 import type { CommissionTiers, RewardType } from '@/hooks/useAffiliate';
 import { partnerNetReward } from '@/lib/affiliatePlans';
