@@ -20,6 +20,7 @@ import {
   DownloadCloud,
   Loader2,
   RefreshCw,
+  Gift,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
