@@ -395,12 +395,6 @@ function PublicListingContent() {
             logoUrl={data.agencyLogoUrl}
           />
 
-          <div className="space-y-2 border-t p-4">
-            <h2 className="text-lg font-bold text-foreground">מיקום והגעה</h2>
-            <WorkspacePropertiesMap properties={mapProperties} selectedId={data.id} onSelect={setSelectedId} />
-            {mapProperties.length > 1 && <p className="text-xs text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס מתחת למפה</p>}
-          </div>
-
           <CardContent className="space-y-4 pt-4 text-right">
             <div className="space-y-1">
               <h1 className="text-2xl font-black leading-tight md:text-3xl">{data.title}</h1>
@@ -415,6 +409,12 @@ function PublicListingContent() {
             <p className="text-2xl font-black text-primary" dir="ltr">
               {formatPrice(data.price, data.dealType)}
             </p>
+
+            <div className="space-y-2 border-t pt-4">
+              <h2 className="text-lg font-bold text-foreground">מיקום והגעה</h2>
+              <WorkspacePropertiesMap properties={mapProperties} selectedId={data.id} onSelect={setSelectedId} />
+              {mapProperties.length > 1 && <p className="text-xs text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס מתחת למפה</p>}
+            </div>
 
             {specs.length > 0 && (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

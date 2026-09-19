@@ -49,7 +49,6 @@ Deno.serve(async (req) => {
       .select(columns)
       .eq("workspace_owner_id", ownerId)
       .eq("affiliate_enabled", true)
-      .eq("is_published", true)
       .eq("status", "live")
       .not("latitude", "is", null)
       .not("longitude", "is", null)

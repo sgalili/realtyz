@@ -69,7 +69,6 @@ Deno.serve(async (req) => {
           .select("id, property_title, description, short_description, long_description, asking_price, city, address, neighborhood, rooms, sqm, floor, parking, elevator, media_photos, deal_type, features, attributes, furniture_details, additional_details, area_perks, price_history, latitude, longitude, project_name, workspace_owner_id, owner_id, is_published, affiliate_enabled, status")
           .eq("workspace_owner_id", workspaceOwnerId)
           .eq("affiliate_enabled", true)
-          .eq("is_published", true)
           .eq("status", "live")
           .not("latitude", "is", null)
           .not("longitude", "is", null)

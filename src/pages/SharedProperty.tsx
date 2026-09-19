@@ -16,7 +16,6 @@ import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetails
 import { sanitizeSqm, sanitizeFloor, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
 
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
-import { Button } from '@/components/ui/button';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 
 import {

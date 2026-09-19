@@ -63,7 +63,6 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     try {
       await setActiveWorkspace(ownerId);
       setOpen(false);
-      if (isMobile) setOpenMobile(false);
       window.dispatchEvent(new CustomEvent('realtyz:workspace-changed', { detail: { ownerId } }));
       toast.success(`מרחב העבודה הוחלף ל${label}`);
     } catch {
