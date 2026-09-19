@@ -308,9 +308,9 @@ function BrokerAffiliateNetwork() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
             { label: 'נכסים פתוחים לשותפים', value: String(totals.active), icon: Building2, color: 'text-deal-blue' },
-            { label: 'שיווקים פעילים', value: String(totals.referrals), icon: Users, color: 'text-destructive' },
+            { label: 'נכסים בשיווק', value: String(totals.referrals), icon: Users, color: 'text-destructive' },
             { label: 'עסקאות דרך שותפים', value: String(totals.signed), icon: Handshake, color: 'text-success' },
-            { label: 'תגמול לתשלום', value: fmtILS(totals.owed), icon: Banknote, color: 'text-warning' },
+            { label: 'עמלות לתשלום', value: fmtILS(totals.owed), icon: Banknote, color: 'text-warning' },
           ].map((s) => (
             <Card key={s.label} className="realtyz-affiliate-kpi border-slate-200">
               <CardContent className="flex flex-col items-center justify-center gap-1.5 p-3.5 text-center">
