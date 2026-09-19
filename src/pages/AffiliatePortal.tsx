@@ -715,7 +715,7 @@ export default function AffiliatePortal() {
                 <div className="text-sm font-semibold">ריטה, הסוכנת האישית</div>
                 <div className="text-xs text-muted-foreground">
                   {preferences.rita_auto_mode
-                    ? 'מצב אוטומטי: ריטה עונה לכל פנייה, מציגה נכסים ומזמנת סיורים בשמכם'
+                    ? 'מצב אוטומטי: ריטה עונה לכל פנייה, מציגה נכסים ומחממת את הלידים שלכם'
                     : 'מצב ידני: ריטה מכינה תשובה ואתם שולחים'}
                 </div>
               </div>
@@ -729,7 +729,7 @@ export default function AffiliatePortal() {
           </div>
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-3">
             <div className="min-w-0">
-              <div className="text-sm font-semibold">הוספה אוטומטית למשפך</div>
+              <div className="text-sm font-semibold">הוספה אוטומטית לפרסום בפייסבוק ובאינסטגרם</div>
               <div className="text-xs text-muted-foreground">נכסים חדשים יתווספו לשיווק באופן אוטומטי</div>
             </div>
             <Switch
