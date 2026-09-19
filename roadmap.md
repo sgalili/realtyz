@@ -60,3 +60,4 @@
 56. [x] Fix affiliate pricing routing, rebuild new-user onboarding, refine the public board, and harden listing publication
 
 - [ ] Form cleanup, sidebar persistence, Hebrew property pages, WhatsApp tour CTA, and multi-property map pins
+- [ ] Affiliate table actions/date/sorting, exact commission tiers, property layout/navigation, and Rita-attributed multichannel sharing
