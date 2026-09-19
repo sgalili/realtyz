@@ -74,6 +74,7 @@ import type { UnifiedResult } from '@/lib/propertySearch';
 import { AFFILIATE_PLANS, affiliateAnnualPrice, type AffiliatePlanSlug } from '@/lib/affiliatePlans';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { supabase } from '@/integrations/supabase/client';
+import { ISRAELI_CITIES } from '@/data/israeliCities';
 
 const DEAL_TYPE_LABELS: Record<string, string> = {
   sale: 'למכירה',
@@ -647,15 +648,28 @@ export default function AffiliatePortal() {
   const [rooms, setRooms] = useState('all');
   const [dealType, setDealType] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
+  const [propertySource, setPropertySource] = useState<'all' | 'private' | 'broker'>('all');
+  const [citySearch, setCitySearch] = useState('');
+
 
   const commissionMax = useMemo(() => Math.max(1000, ...marketplace.map(commissionPotential)), [marketplace]);
   const priceMax = useMemo(() => Math.max(10000, ...marketplace.map((item) => Number(item.asking_price ?? 0))), [marketplace]);
   const effectiveCommissionRange: [number, number] = commissionRange[1] > 0 ? commissionRange : [0, commissionMax];
   const effectivePriceRange: [number, number] = priceRange[1] > 0 ? priceRange : [0, priceMax];
   const propertyTypes = useMemo(() => [...new Set(marketplace.map((item) => item.property_type).filter(Boolean))] as string[], [marketplace]);
-  const cities = useMemo(() => [...new Set(marketplace.map((item) => item.city).filter(Boolean))] as string[], [marketplace]);
-  const neighborhoods = useMemo(() => [...new Set(marketplace.filter((item) => city === 'all' || item.city === city).map((item) => item.neighborhood).filter(Boolean))] as string[], [marketplace, city]);
-  const activeFilterCount = [propertyType, city, neighborhood, rooms, dealType].filter((value) => value !== 'all').length
+  const cities = useMemo(() => {
+    const fromListings = marketplace.map((item) => item.city).filter(Boolean) as string[];
+    return [...new Set([...fromListings, ...ISRAELI_CITIES])].sort((a, b) => a.localeCompare(b, 'he'));
+  }, [marketplace]);
+  const visibleCities = useMemo(() => {
+    const q = citySearch.trim();
+    return q ? cities.filter((value) => value.includes(q)) : cities;
+  }, [cities, citySearch]);
+  const neighborhoods = useMemo(() => {
+    if (city === 'all' || city === 'other') return [];
+    return [...new Set(marketplace.filter((item) => item.city === city).map((item) => item.neighborhood).filter(Boolean))] as string[];
+  }, [marketplace, city]);
+  const activeFilterCount = [propertyType, city, neighborhood, rooms, dealType, propertySource].filter((value) => value !== 'all').length
     + (effectiveCommissionRange[0] > 0 || effectiveCommissionRange[1] < commissionMax ? 1 : 0)
     + (effectivePriceRange[0] > 0 || effectivePriceRange[1] < priceMax ? 1 : 0);
 
@@ -675,9 +689,12 @@ export default function AffiliatePortal() {
         && (city === 'all' || l.city === city)
         && (neighborhood === 'all' || l.neighborhood === neighborhood)
         && (rooms === 'all' || Number(l.rooms) >= Number(rooms))
-        && (dealType === 'all' || l.deal_type === dealType);
+        && (dealType === 'all' || l.deal_type === dealType)
+        && (propertySource === 'all' || (propertySource === 'broker'
+          ? Boolean(l.broker_license_number || l.office_name)
+          : !l.broker_license_number && !l.office_name));
     });
-  }, [marketplace, search, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType]);
+  }, [marketplace, search, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType, propertySource]);
 
   const clearFilters = () => {
     setCommissionRange([0, commissionMax]);
@@ -687,6 +704,8 @@ export default function AffiliatePortal() {
     setNeighborhood('all');
     setRooms('all');
     setDealType('all');
+    setPropertySource('all');
+    setCitySearch('');
   };
 
   const filteredSubmissions = useMemo(() => {
@@ -1021,7 +1040,7 @@ export default function AffiliatePortal() {
               הגדרת מסננים ותגמול נדרש
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
-            <DialogFooter className="gap-2 sm:space-x-0">
+            <DialogFooter className="flex-row items-center justify-between gap-2 sm:justify-between sm:space-x-0">
               <Button
                 disabled={preferencesUpdating}
                 onClick={() => updatePreferences({ auto_funnel_enabled: true }, {
@@ -1038,8 +1057,8 @@ export default function AffiliatePortal() {
 
         <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
           <SheetContent side="right" dir="rtl" className="w-[92vw] overflow-y-auto sm:max-w-md">
-            <SheetHeader className="text-right">
-              <SheetTitle>סינון חכם לנכסים</SheetTitle>
+            <SheetHeader className="text-center">
+              <SheetTitle className="text-center">סינון נכסים לשיווק אוטומטי</SheetTitle>
             </SheetHeader>
             <div className="space-y-6 py-6">
               <div className="space-y-3">
@@ -1048,8 +1067,37 @@ export default function AffiliatePortal() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2"><Label>סוג נכס</Label><Select value={propertyType} onValueChange={setPropertyType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">כל הסוגים</SelectItem>{propertyTypes.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>עיר</Label><Select value={city} onValueChange={(value) => { setCity(value); setNeighborhood('all'); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">כל הערים</SelectItem>{cities.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>שכונה</Label><Select value={neighborhood} onValueChange={setNeighborhood}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">כל השכונות</SelectItem>{neighborhoods.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
+                <div className="col-span-2 space-y-2"><Label>מקור הנכס</Label><Select value={propertySource} onValueChange={(value) => setPropertySource(value as 'all' | 'private' | 'broker')}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">הכל</SelectItem><SelectItem value="private">בעלי נכסים פרטיים</SelectItem><SelectItem value="broker">מתווכים</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2">
+                  <Label>עיר</Label>
+                  <Select value={city} onValueChange={(value) => { setCity(value); setNeighborhood('all'); }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <div className="sticky top-0 z-10 bg-popover p-2">
+                        <Input
+                          value={citySearch}
+                          onChange={(event) => setCitySearch(event.target.value)}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          placeholder="חיפוש עיר"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <SelectItem value="all">כל הערים</SelectItem>
+                      {visibleCities.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                      <SelectItem value="other">אחר</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>שכונה</Label>
+                  <Select value={neighborhood} onValueChange={setNeighborhood} disabled={city === 'all' || city === 'other' || neighborhoods.length === 0}>
+                    <SelectTrigger><SelectValue placeholder={city === 'all' ? 'בחרו עיר קודם' : 'אין שכונות'} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">כל השכונות</SelectItem>
+                      {neighborhoods.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2"><Label>מספר חדרים</Label><Select value={rooms} onValueChange={setRooms}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">הכול</SelectItem>{['2','3','4','5','6'].map((value) => <SelectItem key={value} value={value}>{value}+ חדרים</SelectItem>)}</SelectContent></Select></div>
                 <div className="col-span-2 space-y-2"><Label>סוג עסקה</Label><Select value={dealType} onValueChange={setDealType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">השכרה ומכירה</SelectItem><SelectItem value="rent">להשכרה</SelectItem><SelectItem value="sale">למכירה</SelectItem></SelectContent></Select></div>
               </div>
@@ -1058,9 +1106,9 @@ export default function AffiliatePortal() {
                 <Slider min={0} max={priceMax} step={dealType === 'rent' ? 500 : 50000} value={effectivePriceRange} onValueChange={(value) => setPriceRange([value[0] ?? 0, value[1] ?? priceMax])} />
               </div>
             </div>
-            <SheetFooter className="gap-2 sm:space-x-0">
+            <SheetFooter className="flex-row items-center justify-between gap-2 sm:flex-row sm:justify-between sm:space-x-0">
               <Button onClick={() => setFiltersOpen(false)}>הצגת {filtered.length} נכסים</Button>
-              <Button variant="outline" onClick={clearFilters}>ניקוי מסננים</Button>
+              <Button variant="outline" onClick={clearFilters}>ביטול</Button>
             </SheetFooter>
           </SheetContent>
         </Sheet>
