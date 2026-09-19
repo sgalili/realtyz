@@ -273,7 +273,6 @@ export default function AiAgentDrawer() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [expandedTopic, setExpandedTopic] = useState<number | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   // NOTE: quick-action pill bar was removed from the composer — we still keep
   // the topic accordion in the empty state above.
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -707,7 +706,7 @@ ${shareUrl}
                 })}
               </div>
             </div>
-          )}
+
 
           {messages.map((msg, i) => (
             <AiMessage key={i} from={msg.role} className={msg.role === 'user' ? 'ms-auto' : 'me-auto'}>
