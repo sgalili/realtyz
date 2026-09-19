@@ -147,7 +147,6 @@ export function WhatsAppTwoWayTestCard() {
               dir="ltr"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="0501234567 / 972501234567"
             />
             {phone && (
               <p className="text-[11px] text-muted-foreground" dir="ltr">

@@ -146,7 +146,7 @@ export function StrategicPdfExportButton({
             </div>
             <div className="space-y-2">
               <Label htmlFor="strategic-pdf-whatsapp">מספר WhatsApp</Label>
-              <Input id="strategic-pdf-whatsapp" dir="ltr" type="tel" inputMode="tel" value={whatsapp} onChange={(event) => setWhatsapp(formatWhatsappDisplay(event.target.value))} required placeholder="05X-XXXXXXX" />
+              <Input id="strategic-pdf-whatsapp" dir="ltr" type="tel" inputMode="tel" value={whatsapp} onChange={(event) => setWhatsapp(formatWhatsappDisplay(event.target.value))} required />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'שולח דוח ל-WhatsApp...' : 'שלחו לי דוח בווטסאפ'}

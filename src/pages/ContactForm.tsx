@@ -72,7 +72,7 @@ const ContactForm = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">טלפון *</Label>
-              <Input id="phone" placeholder="050-1234567" type="tel" dir="ltr" value={form.phone_number} onChange={(e) => setForm((p) => ({ ...p, phone_number: e.target.value }))} maxLength={20} />
+              <Input id="phone" type="tel" dir="ltr" value={form.phone_number} onChange={(e) => setForm((p) => ({ ...p, phone_number: e.target.value }))} maxLength={20} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">אימייל</Label>

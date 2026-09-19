@@ -113,7 +113,6 @@ export const NewWhatsAppChatDialog = ({ open, onOpenChange, onStarted, currentUs
             <Input
               dir="ltr"
               className="bg-blue-50 border-blue-200 text-right"
-              placeholder="050-1234567"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />

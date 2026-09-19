@@ -253,7 +253,7 @@ export function ManagersTab() {
             </div>
             <div className="space-y-1">
               <Label>טלפון (WhatsApp)</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" placeholder="05X-XXXXXXX" />
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" />
             </div>
             <div className="space-y-1">
               <Label>הרשאה</Label>

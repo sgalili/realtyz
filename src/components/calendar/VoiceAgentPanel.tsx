@@ -154,7 +154,6 @@ export function VoiceAgentPanel() {
         <div className="space-y-2">
           <Label>מספר טלפון</Label>
           <Input
-            placeholder="לדוגמה: +972-50-123-4567"
             value={row.elevenlabs_phone_number || ''}
             onChange={(e) => setRow({ ...row, elevenlabs_phone_number: e.target.value })}
             onBlur={(e) => update({ elevenlabs_phone_number: e.target.value })}

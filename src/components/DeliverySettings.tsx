@@ -112,7 +112,7 @@ export function DeliverySettings({
         <div className="space-y-1 max-w-sm">
           <Label className="text-xs">מספר בדיקה</Label>
           <div className="flex gap-1">
-            <Input value={testPhone ?? ''} onChange={(e) => onTestPhoneChange(e.target.value)} placeholder="05X-XXXXXXX" dir="rtl" inputMode="tel" className="text-right" />
+            <Input value={testPhone ?? ''} onChange={(e) => onTestPhoneChange(e.target.value)} dir="rtl" inputMode="tel" className="text-right" />
             <Button type="button" variant="outline" size="sm" onClick={onTestSend} className="shrink-0">שלח</Button>
           </div>
         </div>

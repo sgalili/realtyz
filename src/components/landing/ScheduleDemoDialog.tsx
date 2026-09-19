@@ -137,7 +137,6 @@ export function ScheduleDemoDialog({ children }: { children: React.ReactNode }) 
                   inputMode="tel"
                   autoComplete="tel"
                   dir="ltr"
-                  placeholder="050-0000000"
                   value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: formatPhoneAsTyped(e.target.value) }))}
                 />
