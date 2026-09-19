@@ -124,16 +124,6 @@ function marketplaceResult(listing: MarketplaceListing): UnifiedResult {
 }
 
 function PartnerListingActions({ listing }: { listing: MarketplaceListing }) {
-  const promote = useStartPromoting();
-  const [link, setLink] = useState<string | null>(null);
-  const copy = async (value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success('הקישור הועתק');
-    } catch {
-      toast.error('ההעתקה נכשלה');
-    }
-  };
   const result = marketplaceResult(listing);
   return (
     <div className="flex items-center gap-1.5">
