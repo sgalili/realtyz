@@ -2,7 +2,7 @@
 //
 // Flow (strict, auditable — this is the commission paper trail):
 //   1. `register` — a visitor who taps favourite / full details / navigation /
-//      contact leaves name + phone + preferred callback window. A CRM contact is
+//      contact leaves name + WhatsApp number. A CRM contact is
 //      created inside the listing's workspace and an interest record is opened.
 //   2. `rita`    — the visitor talks to Rita. The FIRST real turn marks the
 //      record as engaged and unlocks the full details.
@@ -41,7 +41,6 @@ Deno.serve(async (req) => {
       const listingId = str(body?.listing_id, 60);
       const name = str(body?.name, 80);
       const phone = normalizePhone(str(body?.phone, 30));
-      const callbackWindow = str(body?.callback_window, 60) || null;
       const intent = str(body?.intent, 30) || "details";
       if (!listingId || !name || !phone) {
         return json({ error: "שם וטלפון תקין הם שדות חובה" }, 400);
@@ -53,7 +52,7 @@ Deno.serve(async (req) => {
         .eq("id", listingId)
         .maybeSingle();
       if (listingError) throw listingError;
-      if (!listing || !(listing.is_published || listing.affiliate_enabled)) {
+      if (!listing || !listing.affiliate_enabled) {
         return json({ error: "הנכס אינו זמין" }, 404);
       }
       const ownerId = listing.workspace_owner_id ?? listing.user_id;
@@ -87,7 +86,6 @@ Deno.serve(async (req) => {
             lead_stage: "new",
             status: "new",
             source: "public_listings_board",
-            notes: callbackWindow ? `שעת חזרה מועדפת: ${callbackWindow}` : null,
             last_interaction_at: new Date().toISOString(),
           })
           .select("id")
@@ -103,7 +101,7 @@ Deno.serve(async (req) => {
         workspace_owner_id: ownerId,
         visitor_name: name,
         visitor_phone: phone,
-        callback_window: callbackWindow,
+        callback_window: null,
         access_token: accessToken,
         intent,
       });
@@ -116,7 +114,7 @@ Deno.serve(async (req) => {
         platform: "web",
         action_type: "lead_gate_registration",
         actor_type: "system",
-        content: `מתעניין חדש מהלוח הציבורי: ${name} · ${phone}${callbackWindow ? ` · חזרה ${callbackWindow}` : ""}`,
+        content: `מתעניין חדש מהלוח הציבורי: ${name} · ${phone}`,
         metadata: { listing_id: listing.id, lead_id: leadId, intent },
       });
 

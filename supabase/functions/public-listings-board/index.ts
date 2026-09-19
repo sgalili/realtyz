@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     let query = admin
       .from("listings")
       .select(PUBLIC_CARD_COLUMNS)
-      .or("is_published.eq.true,affiliate_enabled.eq.true")
+      .eq("affiliate_enabled", true)
       .neq("status", "discarded")
       .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1);

@@ -477,25 +477,26 @@ export function AppLayout({ children }: { children: ReactNode }) {
               workspace logo, then the workspace name with the signed-in user's
               full name directly below it (right-aligned). Rita and the other
               icon controls stay at the far left. No profile picture here. */}
-          <header className="flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-3 pt-[env(safe-area-inset-top)] text-foreground z-30 sm:px-4" dir="rtl">
-            <div className="flex min-w-0 items-center gap-2">
+          <header className="relative flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-3 pt-[env(safe-area-inset-top)] text-foreground z-30 sm:px-4" dir="rtl">
+            <div className="flex shrink-0 items-center">
               <HeaderProfileLink />
-              <Link
-                to="/"
-                aria-label={`${headerName} - דף הבית`}
-                className="flex min-w-0 items-center gap-2 overflow-hidden text-right leading-none"
-              >
-                <img src={headerLogo || realtyzLogo} alt={headerName || 'Realtyz AI'} className="h-7 max-w-16 shrink-0 object-contain sm:h-8 sm:max-w-[110px]" />
-                <span className="flex min-w-0 flex-col items-start gap-0.5 text-right">
-                  <span className="min-w-0 truncate text-sm font-bold text-foreground">{headerName}</span>
-                  {headerUserName ? (
-                    <span className="min-w-0 truncate text-[11px] font-semibold text-muted-foreground">
-                      {headerUserName}
-                    </span>
-                  ) : null}
-                </span>
-              </Link>
             </div>
+
+            <Link
+              to="/"
+              aria-label={`${headerName} - דף הבית`}
+              className="absolute start-1/2 top-[calc(50%+env(safe-area-inset-top)/2)] flex max-w-[calc(100%-7rem)] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 overflow-hidden text-right leading-none sm:max-w-[calc(100%-12rem)]"
+            >
+              <img src={headerLogo || realtyzLogo} alt={headerName || 'Realtyz AI'} className="h-8 max-w-20 shrink-0 object-contain" />
+              <span className="flex min-w-0 flex-col items-start justify-center text-right leading-none">
+                <span className="min-w-0 truncate text-sm font-bold leading-4 text-foreground">{headerName}</span>
+                {headerUserName ? (
+                  <span className="min-w-0 truncate text-[11px] font-semibold leading-3 text-muted-foreground">
+                    {headerUserName}
+                  </span>
+                ) : null}
+              </span>
+            </Link>
 
             <div className="flex shrink-0 items-center gap-1">
               <NotificationCenter />

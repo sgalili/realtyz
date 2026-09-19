@@ -4,13 +4,15 @@
 // roles, so they are deliberately absent here.
 import { supabase } from '@/integrations/supabase/client';
 
-export type SignupRole = 'broker' | 'partner';
+export type SignupRole = 'broker' | 'partner' | 'property_owner' | 'property_seeker';
 
 const KEY = 'realtyz-signup-role';
 
 export const SIGNUP_ROLE_LABELS: Record<SignupRole, string> = {
   broker: 'מתווך',
   partner: 'שותף',
+  property_owner: 'מפרסם נכס',
+  property_seeker: 'מחפש נכס',
 };
 
 export function setPendingSignupRole(role: SignupRole) {
@@ -24,7 +26,7 @@ export function setPendingSignupRole(role: SignupRole) {
 export function readPendingSignupRole(): SignupRole | null {
   try {
     const v = window.localStorage.getItem(KEY);
-    return v === 'broker' || v === 'partner' ? v : null;
+    return v === 'broker' || v === 'partner' || v === 'property_owner' || v === 'property_seeker' ? v : null;
   } catch {
     return null;
   }
@@ -51,6 +53,18 @@ export async function applyPendingSignupRole(): Promise<string | null> {
     if (error || !(data as { ok?: boolean } | null)?.ok) return null;
     clearPendingSignupRole();
     return '/affiliate';
+  }
+  if (role === 'property_owner') {
+    const { data, error } = await supabase.rpc('register_as_property_owner', { _display_name: null });
+    if (error || !(data as { ok?: boolean } | null)?.ok) return null;
+    clearPendingSignupRole();
+    return '/owner/properties';
+  }
+  if (role === 'property_seeker') {
+    const { data, error } = await supabase.rpc('register_as_property_seeker', { _display_name: null });
+    if (error || !(data as { ok?: boolean } | null)?.ok) return null;
+    clearPendingSignupRole();
+    return '/public-listings';
   }
   const { data, error } = await supabase.rpc('register_as_broker', { _display_name: null });
   if (error || !(data as { ok?: boolean } | null)?.ok) return null;
