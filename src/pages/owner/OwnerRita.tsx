@@ -46,11 +46,11 @@ export default function OwnerRita() {
   };
 
   return (
-    <div dir="rtl" className="flex h-[calc(100vh-180px)] flex-col gap-3">
+    <div dir="rtl" className="flex h-full min-h-[60svh] flex-col gap-3 pb-2">
       <header>
         <h1 className="text-xl font-bold text-foreground">צ׳אט עם ריטה</h1>
       </header>
-      <div className="flex-1 space-y-2 overflow-y-auto rounded-xl border bg-card p-3">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain rounded-xl border bg-card p-3">
         {turns.map((t, i) => (
           <p
             key={i}
@@ -64,7 +64,7 @@ export default function OwnerRita() {
         ))}
         <div ref={bottomRef} />
       </div>
-      <div className="flex gap-2">
+      <div className="flex shrink-0 items-end gap-2">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
