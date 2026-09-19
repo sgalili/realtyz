@@ -213,57 +213,7 @@ function JoinAffiliateCard() {
   );
 }
 
-function AffiliatePlansPanel({ selectedPlan, initialBilling }: { selectedPlan: string; initialBilling: 'monthly' | 'annual' }) {
-  const [billing, setBilling] = useState<'monthly' | 'annual'>(initialBilling);
-  const [selected, setSelected] = useState<AffiliatePlanSlug>(AFFILIATE_PLANS.some((plan) => plan.slug === selectedPlan) ? selectedPlan as AffiliatePlanSlug : 'free');
-  const [saving, setSaving] = useState(false);
-
-  const save = async (slug: AffiliatePlanSlug) => {
-    setSaving(true);
-    const { data, error } = await supabase.rpc('select_my_affiliate_plan', { _plan_slug: slug, _billing_period: billing });
-    setSaving(false);
-    if (error || !(data as { ok?: boolean } | null)?.ok) {
-      toast.error('שמירת החבילה נכשלה');
-      return;
-    }
-    setSelected(slug);
-    toast.success('בחירת החבילה נשמרה');
-  };
-
-  return (
-    <section className="space-y-4" aria-labelledby="affiliate-plans-title">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 id="affiliate-plans-title" className="text-lg font-bold">חבילות שותפים</h2>
-          <p className="text-xs text-muted-foreground">המחירים מוצגים לצורך בחירת החבילה. לא מתבצעת גבייה.</p>
-        </div>
-        <div className="inline-flex rounded-md border p-1">
-          <Button size="sm" variant={billing === 'monthly' ? 'default' : 'ghost'} onClick={() => setBilling('monthly')}>חודשי</Button>
-          <Button size="sm" variant={billing === 'annual' ? 'default' : 'ghost'} onClick={() => setBilling('annual')}>שנתי · חודשיים מתנה</Button>
-        </div>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {AFFILIATE_PLANS.map((plan) => {
-          const price = billing === 'annual' ? affiliateAnnualPrice(plan.monthlyPrice) : plan.monthlyPrice;
-          return (
-            <Card key={plan.slug} className={plan.highlight ? 'border-primary' : undefined}>
-              <CardContent className="space-y-3 p-4">
-                <div>
-                  <p className="font-bold">{plan.name}</p>
-                  <p className="text-2xl font-black">₪{price.toLocaleString('he-IL')}</p>
-                  <p className="text-xs text-muted-foreground">{billing === 'annual' ? 'לשנה' : 'לחודש'} · עד {plan.contacts.toLocaleString('he-IL')} אנשי קשר</p>
-                </div>
-                <Button className="w-full" variant={selected === plan.slug ? 'secondary' : 'default'} disabled={saving} onClick={() => void save(plan.slug)}>
-                  {selected === plan.slug ? 'נבחרה' : 'בחירת חבילה'}
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
+// Plans and the touch-credit calculator live on the dedicated /affiliate-pricing page.
 
 /** All photos of a marketplace listing (cover first). */
 function allPhotos(listing: MarketplaceListing): string[] {
