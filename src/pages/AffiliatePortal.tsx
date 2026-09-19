@@ -657,9 +657,19 @@ export default function AffiliatePortal() {
   const effectiveCommissionRange: [number, number] = commissionRange[1] > 0 ? commissionRange : [0, commissionMax];
   const effectivePriceRange: [number, number] = priceRange[1] > 0 ? priceRange : [0, priceMax];
   const propertyTypes = useMemo(() => [...new Set(marketplace.map((item) => item.property_type).filter(Boolean))] as string[], [marketplace]);
-  const cities = useMemo(() => [...new Set(marketplace.map((item) => item.city).filter(Boolean))] as string[], [marketplace]);
-  const neighborhoods = useMemo(() => [...new Set(marketplace.filter((item) => city === 'all' || item.city === city).map((item) => item.neighborhood).filter(Boolean))] as string[], [marketplace, city]);
-  const activeFilterCount = [propertyType, city, neighborhood, rooms, dealType].filter((value) => value !== 'all').length
+  const cities = useMemo(() => {
+    const fromListings = marketplace.map((item) => item.city).filter(Boolean) as string[];
+    return [...new Set([...fromListings, ...ISRAELI_CITIES])].sort((a, b) => a.localeCompare(b, 'he'));
+  }, [marketplace]);
+  const visibleCities = useMemo(() => {
+    const q = citySearch.trim();
+    return q ? cities.filter((value) => value.includes(q)) : cities;
+  }, [cities, citySearch]);
+  const neighborhoods = useMemo(() => {
+    if (city === 'all' || city === 'other') return [];
+    return [...new Set(marketplace.filter((item) => item.city === city).map((item) => item.neighborhood).filter(Boolean))] as string[];
+  }, [marketplace, city]);
+  const activeFilterCount = [propertyType, city, neighborhood, rooms, dealType, propertySource].filter((value) => value !== 'all').length
     + (effectiveCommissionRange[0] > 0 || effectiveCommissionRange[1] < commissionMax ? 1 : 0)
     + (effectivePriceRange[0] > 0 || effectivePriceRange[1] < priceMax ? 1 : 0);
 
