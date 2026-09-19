@@ -340,6 +340,7 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/oauth/callback" element={<Suspense fallback={<PageLoader />}><OAuthCallback /></Suspense>} />
               <Route path="/p/:slug" element={<Suspense fallback={<PageLoader />}><PublicListingPage /></Suspense>} />
+              <Route path="/public-listings" element={<Suspense fallback={<PageLoader />}><PublicListingsBoard /></Suspense>} />
               <Route path="/r/:slug" element={<Suspense fallback={<PageLoader />}><ShortLinkRedirect /></Suspense>} />
               <Route path="/portal/:token" element={<Suspense fallback={<PageLoader />}><ClientPortal /></Suspense>} />
               <Route path="/tour-confirm/:token" element={<Suspense fallback={<PageLoader />}><TourConfirm /></Suspense>} />
