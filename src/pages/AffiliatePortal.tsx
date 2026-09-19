@@ -1083,7 +1083,7 @@ export default function AffiliatePortal() {
             ) : earningRows.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
-                  עוד לא נצברו רווחים. הגשת ליד לנכס מהרשת מזכה אותך בתגמול שלב 1.
+                  עוד לא נצברו רווחים
                 </CardContent>
               </Card>
             ) : (
