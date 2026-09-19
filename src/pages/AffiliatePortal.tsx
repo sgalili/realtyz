@@ -1106,9 +1106,9 @@ export default function AffiliatePortal() {
                 <Slider min={0} max={priceMax} step={dealType === 'rent' ? 500 : 50000} value={effectivePriceRange} onValueChange={(value) => setPriceRange([value[0] ?? 0, value[1] ?? priceMax])} />
               </div>
             </div>
-            <SheetFooter className="gap-2 sm:space-x-0">
+            <SheetFooter className="flex-row items-center justify-between gap-2 sm:flex-row sm:justify-between sm:space-x-0">
               <Button onClick={() => setFiltersOpen(false)}>הצגת {filtered.length} נכסים</Button>
-              <Button variant="outline" onClick={clearFilters}>ניקוי מסננים</Button>
+              <Button variant="outline" onClick={clearFilters}>ביטול</Button>
             </SheetFooter>
           </SheetContent>
         </Sheet>
