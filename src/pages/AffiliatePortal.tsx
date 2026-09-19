@@ -574,6 +574,15 @@ export default function AffiliatePortal() {
   const [propertySource, setPropertySource] = useState<'all' | 'private' | 'broker'>('all');
   const [citySearch, setCitySearch] = useState('');
   const scrollKey = 'affiliate-portal:marketplace-scroll';
+  const [automationCardsVisible, setAutomationCardsVisible] = useState(false);
+
+  // The robot icon in the page hero toggles the two automation cards.
+  useEffect(() => {
+    const toggle = () => setAutomationCardsVisible((v) => !v);
+    window.addEventListener('realtyz:affiliate-automation-toggle', toggle);
+    return () => window.removeEventListener('realtyz:affiliate-automation-toggle', toggle);
+  }, []);
+
 
   useEffect(() => {
     const stored = sessionStorage.getItem(scrollKey);
