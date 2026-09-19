@@ -113,6 +113,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         features: {
           property_type: draftFields.propertyType.trim(),
           publisher_type: draftFields.publisherType,
+          street: street || null,
+          media_videos: clips,
           total_floors: draftFields.totalFloors || null,
           elevator: draftFields.elevator,
           parking: draftFields.parking,
