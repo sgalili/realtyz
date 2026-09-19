@@ -502,7 +502,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </Link>
 
             <div className="flex shrink-0 items-center gap-1">
-              <NotificationCenter />
               <HeaderCrisisAlert />
               <Button
                 variant="ghost"
