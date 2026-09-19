@@ -9,6 +9,7 @@ import {
   ClipboardList,
   HelpCircle,
   Gift,
+  Coins,
   Settings,
   type LucideProps,
 } from 'lucide-react';
