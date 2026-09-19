@@ -61,7 +61,7 @@ export async function resolveAffiliateReferral(
   try {
     const { data, error } = await admin
       .from("affiliate_referrals")
-      .select("id, affiliate_id, broker_id, listing_id, lead_id, tracking_code, status, reward_type, reward_amount")
+      .select("id, affiliate_id, broker_id, listing_id, lead_id, tracking_code, status, reward_type, reward_amount, tier1_amount, tier2_amount, tier3_type, tier3_amount")
       .ilike("tracking_code", code)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -89,13 +89,13 @@ export async function resolveAffiliateReferral(
       }
     }
 
-    // Commission tiers live on the listing itself (affiliate_tier* columns);
-    // fall back to the referral's flat reward when they are unset.
+    // Prefer the immutable referral snapshot so a later broker edit cannot
+    // retroactively change what was promised to the affiliate.
     const tiers = {
-      tier1: Number((listing as any)?.affiliate_tier1_amount ?? 0),
-      tier2: Number((listing as any)?.affiliate_tier2_amount ?? 0),
-      tier3Type: String((listing as any)?.affiliate_tier3_type ?? data.reward_type ?? "fixed"),
-      tier3: Number((listing as any)?.affiliate_tier3_amount ?? data.reward_amount ?? 0),
+      tier1: Number((data as any)?.tier1_amount ?? (listing as any)?.affiliate_tier1_amount ?? 0),
+      tier2: Number((data as any)?.tier2_amount ?? (listing as any)?.affiliate_tier2_amount ?? 0),
+      tier3Type: String((data as any)?.tier3_type ?? (listing as any)?.affiliate_tier3_type ?? data.reward_type ?? "fixed"),
+      tier3: Number((data as any)?.tier3_amount ?? (listing as any)?.affiliate_tier3_amount ?? data.reward_amount ?? 0),
     };
 
     return {
