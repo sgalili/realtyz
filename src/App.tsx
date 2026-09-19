@@ -372,6 +372,10 @@ const App = () => (
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
               <Route path="/affiliate" element={<Navigate to="/affiliate-network" replace />} />
               <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
+              <Route path="/owner/properties" element={<ProtectedRoute><OwnerProperties /></ProtectedRoute>} />
+              <Route path="/owner/leads" element={<ProtectedRoute><OwnerLeads /></ProtectedRoute>} />
+              <Route path="/owner/rewards" element={<ProtectedRoute><OwnerRewards /></ProtectedRoute>} />
+              <Route path="/owner/rita" element={<ProtectedRoute><OwnerRita /></ProtectedRoute>} />
               <Route path="/referral" element={<ProtectedRoute><PartnerNetwork /></ProtectedRoute>} />
               <Route path="/partner/posts" element={<ProtectedRoute><PartnerOnlyRoute><PartnerPosts /></PartnerOnlyRoute></ProtectedRoute>} />
               <Route path="/partner/chats" element={<ProtectedRoute><PartnerOnlyRoute><PartnerChats /></PartnerOnlyRoute></ProtectedRoute>} />
