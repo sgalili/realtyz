@@ -698,7 +698,11 @@ export default function AffiliatePortal() {
               <RitaAvatar className="h-9 w-9" />
               <div className="min-w-0">
                 <div className="text-sm font-semibold">ריטה, הסוכנת האישית</div>
-                <div className="text-xs text-muted-foreground">{preferences.rita_auto_mode ? 'מצב אוטומטי' : 'מצב ידני'}</div>
+                <div className="text-xs text-muted-foreground">
+                  {preferences.rita_auto_mode
+                    ? 'מצב אוטומטי: ריטה עונה לכל פנייה, מציגה נכסים ומזמנת סיורים בשמכם'
+                    : 'מצב ידני: ריטה מכינה תשובה ואתם שולחים'}
+                </div>
               </div>
             </div>
             <Switch
