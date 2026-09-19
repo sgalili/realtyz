@@ -21,7 +21,9 @@ import {
   Loader2,
   RefreshCw,
   Gift,
+  Bot,
 } from "lucide-react";
+import { useAffiliatePreferences } from "@/hooks/useAffiliate";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { RealtyzWave } from "@/components/RealtyzWave";
@@ -348,6 +350,21 @@ export function PageHero() {
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
         <div className="flex items-center gap-1">
+          {/^\/affiliate(\/|$)/.test(location.pathname) || location.pathname.startsWith("/affiliate-network") ? (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => window.dispatchEvent(new Event("realtyz:affiliate-automation-toggle"))}
+              aria-label="אוטומציות שותפים"
+              title="אוטומציות שותפים"
+              className={cn(
+                "h-9 w-9 rounded-full hover:bg-white/15",
+                automationAnyOn ? "text-white hover:text-white" : "text-slate-400 grayscale hover:text-slate-400",
+              )}
+            >
+              <Bot className="!h-5 !w-5" strokeWidth={2.5} />
+            </Button>
+          ) : null}
           {(location.pathname.startsWith("/campaigns") || location.pathname.startsWith("/inbox")) && (
             <AiResponseToggle />
           )}
