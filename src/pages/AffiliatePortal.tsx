@@ -856,9 +856,9 @@ export default function AffiliatePortal() {
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3">
             <TabsList>
-              <TabsTrigger value="marketplace">נכסים לשיווק ({marketplace.length})</TabsTrigger>
-              <TabsTrigger value="leads">לידים שהגשתי ({submissions.length})</TabsTrigger>
-              <TabsTrigger value="mine">השיווקים שלי ({referralCampaigns.filter((row) => row.listing).length})</TabsTrigger>
+              <TabsTrigger value="marketplace">נכסים ({marketplace.length})</TabsTrigger>
+              <TabsTrigger value="leads">לידים ({submissions.length})</TabsTrigger>
+              <TabsTrigger value="mine">פרסומים ({referralCampaigns.filter((row) => row.listing).length})</TabsTrigger>
               <TabsTrigger value="earnings">רווחים ({earningRows.length})</TabsTrigger>
             </TabsList>
             <div className="flex shrink-0 items-center" aria-label="בחירת תצוגה">
