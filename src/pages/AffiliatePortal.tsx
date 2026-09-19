@@ -996,7 +996,7 @@ export default function AffiliatePortal() {
               <DialogTitle>הוספה אוטומטית למשפך</DialogTitle>
               <DialogDescription className="text-right leading-relaxed">
                 כל נכס חדש שייפתח לשיווק שותפים ייכנס אוטומטית למשפך השיווק שלכם, עם קישור אישי ומעקב תגמולים.
-                אפשר לבחור אילו נכסים ייכנסו: סוג נכס, עיר, חדרים, סוג עסקה, טווח מחירים וטווח התגמול הנדרש.
+                אפשר לבחור אילו נכסים ייכנסו:
               </DialogDescription>
             </DialogHeader>
             <Button
@@ -1005,7 +1005,7 @@ export default function AffiliatePortal() {
               className="w-full justify-between"
               onClick={() => { setFunnelDialogOpen(false); setFiltersOpen(true); }}
             >
-              הגדרת מסננים ותגמול נדרש
+              סינון נכסים לפרסום אוטומטי
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
             <DialogFooter className="flex-row items-center justify-between gap-2 sm:justify-between sm:space-x-0">
