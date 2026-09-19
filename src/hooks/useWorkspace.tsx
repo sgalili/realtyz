@@ -171,51 +171,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [user?.id, refresh]);
 
-  // Social-connection sentinel. Only warns when EVERY signal says there is no
-  // usable connection (a bound Meta Page or a personal Facebook token).
-  // Any read error is treated as "healthy" so RLS
-  // hiccups never produce a false-positive banner. Dismissed for the session
-  // once shown.
-  const relinkWarnedRef = useRef(false);
-  useEffect(() => {
-    if (!user || loading) return;
-    if (relinkWarnedRef.current) return;
-    if (window.sessionStorage.getItem('social_relink_dismissed') === '1') {
-      relinkWarnedRef.current = true;
-      return;
-    }
-    (async () => {
-      // Workspace-scoped: the sentinel must judge the ACTIVE workspace's
-      // Facebook connection, never the signed-in user's personal one.
-      const owner = activeWorkspaceId ?? user.id;
-      const [pageRes, socialRes, personalRes] = await Promise.all([
-        supabase.from('messenger_page_bindings').select('id, page_id').eq('owner_id', owner).limit(1),
-        supabase.from('social_connections').select('id').limit(1),
-        supabase.from('fb_personal_connections').select('workspace_owner_id, access_token, token_expires_at').eq('workspace_owner_id', owner).limit(1),
-      ]);
-
-      // Errors == unknown state, not broken state.
-      if (pageRes.error || socialRes.error || personalRes.error) return;
-
-      const hasKey = !!(pageRes.data ?? [])[0]?.page_id;
-      const hasAccounts = (socialRes.data?.length ?? 0) > 0;
-      const personal = (personalRes.data ?? [])[0] as any;
-      const personalValid = !!personal?.access_token
-        && (!personal.token_expires_at || new Date(personal.token_expires_at).getTime() > Date.now());
-
-      if (hasKey || hasAccounts || personalValid) return; // healthy — stay silent
-
-      relinkWarnedRef.current = true;
-      window.sessionStorage.setItem('social_relink_dismissed', '1');
-      toast.error('חיבור הרשתות החברתיות אינו תקין — יש לחדש חיבור בהגדרות', {
-        duration: 8000,
-        action: {
-          label: 'חבר מחדש',
-          onClick: () => { window.location.href = '/profile?tab=connections'; },
-        },
-      });
-    })().catch(() => {});
-  }, [user?.id, loading, activeWorkspaceId]);
+  // The "reconnect your social networks" toast was removed by request — it
+  // fired on public/affiliate screens where the connection check isn't useful.
 
   const setActiveWorkspace = useCallback(async (ownerId: string) => {
     if (!user) return;
