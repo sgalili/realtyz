@@ -173,7 +173,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     });
     return () => { alive = false; };
   }, [user, roleApplied]);
-  const { roles, isAffiliateOnly, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
+  const { roles, isAffiliateOnly, isPropertyOwnerOnly, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const location = useLocation();
   if (loading) return (
@@ -201,6 +201,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
       (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
     );
     if (!allowed) return <Navigate to="/affiliate" replace />;
+  }
+
+  // Private property owners are locked to their own four screens.
+  if (!roleLoading && isPropertyOwnerOnly) {
+    const allowed = OWNER_ALLOWED_PATHS.some(
+      (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
+    );
+    if (!allowed) return <Navigate to="/owner/properties" replace />;
   }
 
   // Partner mode (dual-role accounts) keeps broker tooling out of reach until
