@@ -184,8 +184,6 @@ type EditableFields = {
   short_description: string;
   long_description: string;
   features_text: string;
-  latitude: string;
-  longitude: string;
   parking: string;
   elevator: boolean;
   balcony: boolean;
@@ -626,8 +624,6 @@ export default function PropertyDetail() {
         features_text: Array.isArray(data?.row?.features)
           ? (data.row.features as unknown[]).filter((f): f is string => typeof f === 'string').join(', ')
           : '',
-        latitude: (data?.row as any)?.latitude != null ? String((data?.row as any).latitude) : '',
-        longitude: (data?.row as any)?.longitude != null ? String((data?.row as any).longitude) : '',
         parking: String(amenities?.parking ?? meta.parking ?? ''),
         elevator: Boolean(amenities?.elevator),
         balcony: Boolean(amenities?.balcony),
@@ -761,8 +757,6 @@ export default function PropertyDetail() {
         description: form.description?.trim() ? form.description : '',
         short_description: form.short_description || null,
         long_description: form.long_description || null,
-        latitude: form.latitude ? Number(form.latitude) : null,
-        longitude: form.longitude ? Number(form.longitude) : null,
         available_from: form.available_from || null,
         // The sale/rent choice must land on the column every list reads from,
         // not only inside source_metadata.
@@ -1668,8 +1662,6 @@ export default function PropertyDetail() {
                 <Field label="תאריך כניסה"><Input value={form.entry_date} onChange={(e) => setField('entry_date', e.target.value)} placeholder="מיידי / 01/08/2026" /></Field>
                 <Field label="פנוי מתאריך"><Input type="date" value={form.available_from} onChange={(e) => setField('available_from', e.target.value)} /></Field>
                 <Field label="חניות"><Input type="number" min={0} value={form.parking} onChange={(e) => setField('parking', e.target.value)} /></Field>
-                <Field label="קו רוחב (Latitude)"><Input value={form.latitude} onChange={(e) => setField('latitude', e.target.value)} dir="ltr" className="text-left" /></Field>
-                <Field label="קו אורך (Longitude)"><Input value={form.longitude} onChange={(e) => setField('longitude', e.target.value)} dir="ltr" className="text-left" /></Field>
                 <Field label="קישור מקור / יד2"><Input value={form.source_url} onChange={(e) => setField('source_url', e.target.value)} dir="ltr" className="text-left" /></Field>
                 <div className="col-span-2 sm:col-span-3">
                   <Field label="מאפיינים (מופרדים בפסיק)">

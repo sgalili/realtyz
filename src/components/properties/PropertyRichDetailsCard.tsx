@@ -69,6 +69,9 @@ const SKELETON_ROWS = ['סוג הנכס', 'חדרים', 'קומה', 'מ"ר', 'ח
 const HIDDEN_KEYS = new Set([
   'id', 'uuid', 'key', 'texteng', 'slug', 'token', 'orderid', 'adnumber',
   'categoryid', 'subcategoryid', 'source', 'source_url', 'sourceurl',
+  'sources', 'url', 'urls', 'createdat', 'updatedat', 'fetchedat',
+  'removedphotokeys', 'mediavisionchecked', 'mediavisionat',
+  'metadatabackfilledat', 'lastmanualyad2syncat', 'externalid',
 ]);
 
 /**
@@ -248,13 +251,22 @@ function formatDateish(v: unknown): string | null {
   const s = String(v ?? '');
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return null;
-  return `${m[3]}.${m[2]}.${m[1]}`;
+  return `${m[3]}/${m[2]}/${m[1]}`;
 }
+
+const VALUE_TRANSLATIONS: Record<string, string> = {
+  true: 'יש', false: 'אין', yes: 'כן', no: 'לא', sale: 'מכירה', rent: 'השכרה',
+  apartment: 'דירה', house: 'בית פרטי', cottage: 'קוטג׳', penthouse: 'פנטהאוז',
+  duplex: 'דופלקס', studio: 'סטודיו', commercial: 'מסחרי', land: 'מגרש',
+  new: 'חדש', renovated: 'משופץ', good: 'שמור', needs_renovation: 'דורש שיפוץ',
+};
 
 function renderValue(v: unknown): string {
   if (typeof v === 'boolean') return v ? 'יש' : 'אין';
   const d = formatDateish(v);
   if (d) return d;
+  const translated = VALUE_TRANSLATIONS[String(v ?? '').trim().toLowerCase()];
+  if (translated) return translated;
   return cleanDisplayValue(v) ?? '';
 }
 
