@@ -45,6 +45,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/partner\/posts/, title: 'פוסטים' },
   { match: /^\/partner\/chats/, title: 'צ׳אטים' },
   { match: /^\/partner\/contacts/, title: 'אנשי קשר' },
+  { match: /^\/affiliate-pricing/, title: 'חבילות שותפים' },
   { match: /^\/affiliate-network/, title: 'שיווק שותפים' },
   { match: /^\/affiliate$/, title: 'שיווק שותפים' },
   { match: /^\/referral/, title: 'הזמן חברים' },
