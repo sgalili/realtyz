@@ -70,6 +70,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import { ResultTable } from '@/pages/Properties';
+import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { AFFILIATE_PLANS, affiliateAnnualPrice, type AffiliatePlanSlug } from '@/lib/affiliatePlans';
 import { partnerNetReward } from '@/lib/affiliatePlans';
@@ -133,31 +134,11 @@ function PartnerListingActions({ listing }: { listing: MarketplaceListing }) {
       toast.error('ההעתקה נכשלה');
     }
   };
-  const createOrCopy = () => {
-    if (link) return void copy(link);
-    promote.mutate({ listing }, {
-      onSuccess: (result) => {
-        setLink(result.link);
-        void copy(result.link);
-      },
-      onError: () => toast.error('יצירת הקישור נכשלה'),
-    });
-  };
+  const result = marketplaceResult(listing);
   return (
     <div className="flex items-center gap-1.5">
       {/* Icon-only action: the title carries the meaning, no text label. */}
-      <Button
-        type="button"
-        size="icon"
-        onClick={createOrCopy}
-        disabled={promote.isPending}
-        variant="outline"
-        className="h-8 w-8"
-        title={link ? 'העתקת קישור השיווק' : 'יצירת קישור שיווק'}
-        aria-label={link ? 'העתקת קישור השיווק' : 'יצירת קישור שיווק'}
-      >
-        {link ? <Copy className="h-3.5 w-3.5" /> : <Megaphone className="h-3.5 w-3.5" />}
-      </Button>
+      <PropertyShareMenu results={[result]} iconOnly />
       <SubmitLeadDialog listing={listing} />
     </div>
   );

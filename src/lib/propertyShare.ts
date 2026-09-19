@@ -10,7 +10,13 @@ import { autoImportResult } from '@/lib/propertyAutoImport';
 import { openWhatsAppContactPicker, sendViaOfficialWaba } from '@/lib/officialWa';
 
 
-export type ShareMode = 'whatsapp' | 'sms' | 'copy';
+export type ShareMode = 'whatsapp' | 'sms' | 'email' | 'copy';
+
+export type ShareRecipient = {
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+};
 
 export function normalizeIlPhone(raw: string | null | undefined): string | null {
   const digits = String(raw ?? '').replace(/\D/g, '');
@@ -131,10 +137,11 @@ ${blocks.join('\n\n')}
 export async function shareProperties(
   results: UnifiedResult[],
   mode: ShareMode,
-  recipientPhone: string | null = null,
+  recipient: ShareRecipient | null = null,
 ): Promise<void> {
   if (results.length === 0) throw new Error('לא נבחרו נכסים לשיתוף');
-  const phone = normalizeIlPhone(recipientPhone);
+  const phone = normalizeIlPhone(recipient?.phone);
+  const email = String(recipient?.email ?? '').trim().toLowerCase();
   const minted: Array<{ r: UnifiedResult; url: string }> = [];
   for (const r of results) {
     minted.push({ r, url: await mintShareUrlForResult(r, phone) });
@@ -153,6 +160,7 @@ export async function shareProperties(
     if (phone) {
       const res = await sendViaOfficialWaba({ phone_number: phone, message: text });
       if (!res.ok) throw new Error(res.error || 'שליחה בוואטסאפ הרשמי נכשלה');
+      await recordAffiliateDeliveries(minted, mode, text, recipient, res);
       return;
     }
     openWhatsAppContactPicker(text);
@@ -160,9 +168,99 @@ export async function shareProperties(
   }
 
   if (mode === 'sms') {
-    window.location.href = `sms:${phone ?? ''}?&body=${encodeURIComponent(text)}`;
+    if (!phone) throw new Error('יש להזין מספר טלפון');
+    const { data, error } = await supabase.functions.invoke('dispatch-campaign', {
+      body: { mode: 'test', channel: 'sms', recipient: phone, message: text },
+    });
+    if (error || !(data as { ok?: boolean } | null)?.ok) {
+      throw new Error((data as { failure_reason?: string } | null)?.failure_reason || 'שליחת SMS נכשלה');
+    }
+    await recordAffiliateDeliveries(minted, mode, text, recipient, data);
+    return;
+  }
+  if (mode === 'email') {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('יש להזין כתובת אימייל תקינה');
+    const { data, error } = await supabase.functions.invoke('dispatch-campaign', {
+      body: { mode: 'test', channel: 'email', recipient: email, subject: `נכס שעשוי להתאים לך · Realtyz`, message: text },
+    });
+    if (error || !(data as { ok?: boolean } | null)?.ok) {
+      throw new Error((data as { failure_reason?: string } | null)?.failure_reason || 'שליחת האימייל נכשלה');
+    }
+    await recordAffiliateDeliveries(minted, mode, text, recipient, data);
     return;
   }
   const copyPayload = minted.length === 1 ? minted[0].url : text;
   await navigator.clipboard.writeText(copyPayload);
+}
+
+async function recordAffiliateDeliveries(
+  minted: Array<{ r: UnifiedResult; url: string }>,
+  channel: Exclude<ShareMode, 'copy'>,
+  message: string,
+  recipient: ShareRecipient | null,
+  deliveryResult: unknown,
+): Promise<void> {
+  const { data: auth } = await supabase.auth.getUser();
+  const affiliateId = auth.user?.id;
+  if (!affiliateId) return;
+
+  for (const item of minted) {
+    const raw = (item.r.raw ?? {}) as Record<string, unknown>;
+    const listingId = item.r.localId;
+    const brokerId = typeof raw.broker_id === 'string' ? raw.broker_id : null;
+    if (!listingId || !brokerId) continue;
+
+    const referralChannel = channel === 'email' ? 'email' : channel;
+    let { data: referral } = await supabase
+      .from('affiliate_referrals')
+      .select('id')
+      .eq('affiliate_id', affiliateId)
+      .eq('listing_id', listingId)
+      .eq('channel', referralChannel)
+      .maybeSingle();
+
+    if (!referral) {
+      const tiers = {
+        tier1: Number(raw.tier1_amount ?? 0),
+        tier2: Number(raw.tier2_amount ?? 0),
+        tier3: Number(raw.tier3_amount ?? 0),
+        tier3Type: raw.tier3_type === 'percent' ? 'percent' : 'fixed',
+      } as const;
+      const { data: created } = await supabase.from('affiliate_referrals').insert({
+        affiliate_id: affiliateId,
+        broker_id: brokerId,
+        listing_id: listingId,
+        tracking_code: crypto.randomUUID().replace(/-/g, '').slice(0, 12),
+        channel: referralChannel,
+        status: 'promoting',
+        reward_type: raw.reward_type === 'percent' ? 'percent' : 'fixed',
+        reward_amount: Number(raw.reward_amount ?? 0),
+        tier1_amount: tiers.tier1,
+        tier2_amount: tiers.tier2,
+        tier3_type: tiers.tier3Type,
+        tier3_amount: tiers.tier3,
+      }).select('id').single();
+      referral = created;
+    }
+    if (!referral?.id) continue;
+
+    await supabase.from('affiliate_share_deliveries').insert({
+      affiliate_id: affiliateId,
+      broker_id: brokerId,
+      listing_id: listingId,
+      referral_id: referral.id,
+      channel,
+      recipient_name: recipient?.name?.trim() || null,
+      recipient_phone: phoneForStorage(recipient?.phone),
+      recipient_email: recipient?.email?.trim().toLowerCase() || null,
+      message,
+      short_url: item.url,
+      delivery_status: 'sent',
+      delivery_result: JSON.parse(JSON.stringify(deliveryResult ?? {})),
+    });
+  }
+}
+
+function phoneForStorage(value: string | null | undefined): string | null {
+  return normalizeIlPhone(value);
 }
