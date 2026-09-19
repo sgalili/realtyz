@@ -565,6 +565,9 @@ export type AffiliateLeadSubmission = {
   tier3_type: RewardType;
   tier3_amount: number;
   earned_amount: number;
+  realtyz_commission_rate: number;
+  realtyz_commission_amount: number;
+  partner_net_amount: number;
   settlement_status: SettlementStatus;
   verified_at: string | null;
   closed_at: string | null;

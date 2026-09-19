@@ -72,6 +72,7 @@ import { RitaAvatar } from '@/components/RitaAvatar';
 import { ResultTable } from '@/pages/Properties';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { AFFILIATE_PLANS, affiliateAnnualPrice, type AffiliatePlanSlug } from '@/lib/affiliatePlans';
+import { partnerNetReward } from '@/lib/affiliatePlans';
 import { supabase } from '@/integrations/supabase/client';
 
 const DEAL_TYPE_LABELS: Record<string, string> = {
@@ -714,7 +715,7 @@ export default function AffiliatePortal() {
     const earned = signed
       .filter((r) => r.reward_type === 'fixed')
       .reduce((sum, r) => sum + Number(r.reward_amount ?? 0), 0);
-    const submissionEarned = submissions.reduce((sum, s) => sum + accruedEarnings(s), 0);
+    const submissionEarned = submissions.reduce((sum, s) => sum + partnerNetReward(accruedEarnings(s)), 0);
     return {
       promoting: referrals.length,
       clicks,
@@ -920,7 +921,7 @@ export default function AffiliatePortal() {
                           {SETTLEMENT_LABELS[s.settlement_status] ?? s.settlement_status}
                         </Badge>
                         <div className="text-sm font-bold text-emerald-700">
-                          <bdi dir="ltr">{fmtILS(accruedEarnings(s))}</bdi>
+                          <bdi dir="ltr">{fmtILS(partnerNetReward(accruedEarnings(s)))}</bdi>
                         </div>
                       </div>
 
