@@ -1038,8 +1038,8 @@ export default function AffiliatePortal() {
 
         <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
           <SheetContent side="right" dir="rtl" className="w-[92vw] overflow-y-auto sm:max-w-md">
-            <SheetHeader className="text-right">
-              <SheetTitle>סינון חכם לנכסים</SheetTitle>
+            <SheetHeader className="text-center">
+              <SheetTitle className="text-center">סינון נכסים לשיווק אוטומטי</SheetTitle>
             </SheetHeader>
             <div className="space-y-6 py-6">
               <div className="space-y-3">
