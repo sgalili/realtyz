@@ -382,11 +382,13 @@ export default function AiAgentDrawer() {
   // jump the chat scroll container back to the very top so the panel is seen.
   const conversationWrapRef = useRef<HTMLDivElement>(null);
   const scrollConversationToTop = useCallback(() => {
-    // Double rAF: first lets the suggestions block mount, second lets the
-    // stick-to-bottom controller finish its own initial scroll pass.
+    // StickToBottom renders: wrapper > Conversation root > scrollRef div (the
+    // real overflow container) > content. Setting scrollTop on anything other
+    // than the scrollRef div has no effect, hence firstElementChild twice.
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
       const root = conversationWrapRef.current?.firstElementChild as HTMLElement | null;
-      if (root) root.scrollTop = 0;
+      const scroller = (root?.firstElementChild ?? root) as HTMLElement | null;
+      if (scroller) scroller.scrollTop = 0;
     }));
   }, []);
 
@@ -628,11 +630,7 @@ ${shareUrl}
             variant="ghost"
             size="icon"
             aria-label="שאלות מומלצות"
-            onClick={() => {
-              const next = !showSuggestions;
-              setShowSuggestions(next);
-              if (next) scrollConversationToTop();
-            }}
+            onClick={scrollConversationToTop}
             className="absolute end-[52px] top-3 text-muted-foreground"
           >
             <Home className="h-4 w-4" />
@@ -661,7 +659,7 @@ ${shareUrl}
         <div ref={conversationWrapRef} className="flex min-h-0 flex-1 flex-col">
         <Conversation className="min-h-0 flex-1" initial="instant" resize="instant">
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
-          {(messages.length === 0 || showSuggestions) && (
+          {
             <div className="space-y-5 py-2">
               <div className={`flex items-start gap-2.5 rounded-2xl border border-border bg-card px-3 py-3 ${messages.length > 0 ? 'hidden' : ''}`}>
                 <RitaAvatar className="h-9 w-9 shrink-0" />
