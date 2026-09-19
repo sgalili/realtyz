@@ -471,14 +471,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="realtyz-app-shell h-screen overflow-hidden flex w-full bg-background pt-[env(safe-area-inset-top)]">
+      <div className="realtyz-app-shell h-[100dvh] max-h-[100dvh] overflow-hidden flex w-full bg-background">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
-        <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
+        <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
           {/* RTL header: workspace logo sits at the far right with the workspace
               name beside it and the signed-in user's full name directly below,
               right-aligned. Every icon control lives on the opposite side so
               nothing can overlap the identity block on narrow phones. */}
-          <header className="grid min-h-16 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border bg-background px-3 text-foreground sticky top-0 z-30 sm:px-4" dir="rtl">
+          <header className="grid min-h-16 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border bg-background px-3 pt-[env(safe-area-inset-top)] text-foreground z-30 sm:px-4" dir="rtl">
             <Link
               to="/"
               aria-label={`${headerName} - דף הבית`}
@@ -512,7 +512,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
           <PageHero />
-          <main className={`realtyz-main-surface flex-1 overflow-x-hidden px-3 sm:px-6 pt-[20px] ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
+          <main className={`realtyz-main-surface flex-1 overscroll-contain overflow-x-hidden px-3 sm:px-6 pt-[20px] ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
             <div className={`w-full lg:mx-auto lg:w-[60vw] lg:max-w-[60vw] ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'h-full' : ''}`}>
               <FacebookConnectionBanner />
               {children}
