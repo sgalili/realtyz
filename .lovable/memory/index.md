@@ -66,3 +66,4 @@
 - [FB groups extension-only](mem://constraints/fb-groups-extension-only) — No Graph API for group posts; rzPostQueue + campaign_activity_queue fb_group_post handled by the extension.
 - [Yad2 scrape rate limit](mem://constraints/yad2-scrape-rate-limit) — Bright Data scraped only 08:00/18:00 via properties-scheduled-sync slot claim; incremental watermarks; shared market_listings pool serves every workspace (never copy pool rows into listings).
 - [Connections isolation](mem://constraints/workspace-isolation-social-connections) — social_connections per-workspace uniqueness, onConflict rule, hard-delete disconnect, workspace-keyed sticky cache.
+- [Affiliate tier-3 license gate](mem://features/affiliate-tier3-license) — שלבים 1-2 דמי שיווק/לידים לכל שותף; שלב 3 עמלת סגירה רק לבעלי רישיון תיווך מאומת.

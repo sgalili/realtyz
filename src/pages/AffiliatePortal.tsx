@@ -43,6 +43,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
+import AffiliateEligibilityBadge from '@/components/affiliate/AffiliateEligibilityBadge';
+import AffiliateLicenseCard from '@/components/affiliate/AffiliateLicenseCard';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import SubmitLeadDialog from '@/components/affiliate/SubmitLeadDialog';
 import {
   REFERRAL_STATUS_LABELS,
@@ -224,6 +227,7 @@ function allPhotos(listing: MarketplaceListing): string[] {
  */
 function MarketplaceCard({ listing, compact = false, referral }: { listing: MarketplaceListing; compact?: boolean; referral?: AffiliateReferral }) {
   const promote = useStartPromoting();
+  const { tier3Unlocked } = useAffiliateLicense();
   const [link, setLink] = useState<string | null>(null);
   const photos = useMemo(() => allPhotos(listing), [listing]);
   const hasPhotos = photos.length > 0;
@@ -495,8 +499,8 @@ function MarketplaceCard({ listing, compact = false, referral }: { listing: Mark
             </dl>
 
             <div className="space-y-1.5">
-              <div className="text-[11px] font-semibold text-slate-500">פירוט העמלה ב-3 שלבים</div>
-              <CommissionTierBadges tiers={listingTiers(listing)} />
+              <div className="text-[11px] font-semibold text-slate-500">פירוט התגמול ב-3 שלבים</div>
+              <CommissionTierBadges tiers={listingTiers(listing)} tier3Locked={!tier3Unlocked} />
             </div>
 
             <SubmitLeadDialog listing={listing} />
@@ -606,6 +610,7 @@ export default function AffiliatePortal() {
   const { data: referralListings = [], isLoading: refListingsLoading } = useMyReferralListings();
   const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
   const { preferences, update: updatePreferences, isUpdating: preferencesUpdating } = useAffiliatePreferences();
+  const { license, tier3Unlocked } = useAffiliateLicense();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('marketplace');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
@@ -771,7 +776,7 @@ export default function AffiliatePortal() {
             const t2 = partnerNetReward(Number(s.tier2_amount ?? 0));
             if (t2) tiers.push({ label: TIER_LABELS.tier2, amount: t2 });
           }
-          if (s.status === 'closed' && s.tier3_type === 'fixed') {
+          if (tier3Unlocked && s.status === 'closed' && s.tier3_type === 'fixed') {
             const t3 = partnerNetReward(Number(s.tier3_amount ?? 0));
             if (t3) tiers.push({ label: TIER_LABELS.tier3, amount: t3 });
           }
@@ -787,6 +792,26 @@ export default function AffiliatePortal() {
       })
       .filter((row) => row.total > 0)
       .sort((a, b) => b.total - a.total);
+  }, [submissions, tier3Unlocked]);
+
+  // Level 1 / level 2 progress: how many lead-generation fees were earned and
+  // how much cash each level produced, so partners see the incentive clearly.
+  const levelProgress = useMemo(() => {
+    let level1Count = 0, level1Sum = 0, level2Count = 0, level2Sum = 0, level3Count = 0, level3Sum = 0;
+    for (const s of submissions) {
+      if (s.status === 'rejected') continue;
+      const t1 = partnerNetReward(Number(s.tier1_amount ?? 0));
+      if (t1) { level1Count += 1; level1Sum += t1; }
+      if (s.status === 'verified' || s.status === 'closed') {
+        const t2 = partnerNetReward(Number(s.tier2_amount ?? 0));
+        if (t2) { level2Count += 1; level2Sum += t2; }
+      }
+      if (s.status === 'closed' && s.tier3_type === 'fixed') {
+        const t3 = partnerNetReward(Number(s.tier3_amount ?? 0));
+        if (t3) { level3Count += 1; level3Sum += t3; }
+      }
+    }
+    return { level1Count, level1Sum, level2Count, level2Sum, level3Count, level3Sum };
   }, [submissions]);
 
   if (roleLoading) {
@@ -852,6 +877,15 @@ export default function AffiliatePortal() {
         </div>
         )}
 
+
+        <div className="flex flex-wrap items-center gap-2">
+          <AffiliateEligibilityBadge status={license.status} onClick={() => { setActiveTab('earnings'); setSearch(''); }} />
+          <span className="text-[11px] text-muted-foreground">
+            {tier3Unlocked
+              ? 'שלבים 1-3 פעילים, כולל עמלת סגירת עסקה.'
+              : 'שלבים 1-2 פעילים: דמי חשיפה ודמי ליד מאומת. שלב 3 נפתח לאחר אימות רישיון תיווך.'}
+          </span>
+        </div>
 
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3">
@@ -924,7 +958,7 @@ export default function AffiliatePortal() {
                   }}
                   commissionCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
-                    return listing ? <CommissionTierBadges tiers={listingTiers(listing)} compact /> : null;
+                    return listing ? <CommissionTierBadges tiers={listingTiers(listing)} compact tier3Locked={!tier3Unlocked} /> : null;
                   }}
                 />
               ) : (
@@ -936,6 +970,29 @@ export default function AffiliatePortal() {
           </TabsContent>
 
           <TabsContent value="leads" className="space-y-3 pt-4">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {[
+                { label: 'שלב 1 · דמי חשיפה ושיתוף', count: levelProgress.level1Count, sum: levelProgress.level1Sum, locked: false },
+                { label: 'שלב 2 · ליד מאומת ופגישה', count: levelProgress.level2Count, sum: levelProgress.level2Sum, locked: false },
+                { label: 'שלב 3 · סגירת עסקה', count: levelProgress.level3Count, sum: levelProgress.level3Sum, locked: !tier3Unlocked },
+              ].map((tile) => (
+                <div
+                  key={tile.label}
+                  className={`rounded-xl border p-3 ${tile.locked ? 'border-dashed border-slate-200 bg-slate-50 text-slate-500' : 'border-border/60 bg-card'}`}
+                >
+                  <div className="text-[11px] font-semibold">{tile.label}</div>
+                  <div className={`text-lg font-black tabular-nums ${tile.locked ? 'text-slate-400' : 'text-emerald-700'}`} dir="ltr">
+                    <bdi>{tile.locked ? '—' : fmtILS(tile.sum)}</bdi>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {tile.locked ? 'נדרש רישיון תיווך מאומת' : `${tile.count} תגמולים`}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <AffiliateLicenseCard />
+
             {subsLoading ? (
               <Skeleton className="h-48 w-full" />
             ) : filteredSubmissions.length === 0 ? (
@@ -1023,7 +1080,7 @@ export default function AffiliatePortal() {
                 }}
                 commissionCell={(result) => {
                   const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
-                  return row?.listing ? <CommissionTierBadges tiers={listingTiers(row.listing)} compact /> : null;
+                  return row?.listing ? <CommissionTierBadges tiers={listingTiers(row.listing)} compact tier3Locked={!tier3Unlocked} /> : null;
                 }}
                 affiliateSortValue={(result) => filteredReferrals.find((item) => item.listing?.listing_id === result.localId)?.referral.clicks ?? 0}
                 affiliateCell={(result) => {
