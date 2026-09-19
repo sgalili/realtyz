@@ -74,6 +74,7 @@ import type { UnifiedResult } from '@/lib/propertySearch';
 import { AFFILIATE_PLANS, affiliateAnnualPrice, type AffiliatePlanSlug } from '@/lib/affiliatePlans';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { supabase } from '@/integrations/supabase/client';
+import { ISRAELI_CITIES } from '@/data/israeliCities';
 
 const DEAL_TYPE_LABELS: Record<string, string> = {
   sale: 'למכירה',
