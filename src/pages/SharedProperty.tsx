@@ -16,9 +16,7 @@ import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetails
 import { sanitizeSqm, sanitizeFloor, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
 
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
-import TourSchedulerDialog from '@/components/properties/TourSchedulerDialog';
 import { Button } from '@/components/ui/button';
-import { CalendarClock } from 'lucide-react';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 
 import {
@@ -99,7 +97,6 @@ export default function SharedProperty() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
-  const [tourOpen, setTourOpen] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   // HARD RULE: only the official Meta WBA number, resolved live with a constant fallback.
   const [officialWa, setOfficialWa] = useState<string>(OFFICIAL_WABA_PHONE);
@@ -369,7 +366,7 @@ export default function SharedProperty() {
         ) : null}
 
         <PropertyFeatureBadges
-          sources={[features, p.attributes, p.additional_details, p.source_metadata]}
+          sources={[features, p.attributes, p.additional_details]}
           flags={{ elevator: p.elevator, parking: p.parking }}
         />
 
@@ -438,36 +435,20 @@ export default function SharedProperty() {
         />
 
         <div className="sticky bottom-4 flex items-stretch gap-2 pt-2">
-          <Button
-            type="button"
-            onClick={() => setTourOpen(true)}
-            className="h-14 flex-1 gap-2 rounded-xl bg-social-whatsapp text-[18px] font-bold text-social-foreground shadow-lg hover:bg-social-whatsapp/90"
-          >
-            <WhatsAppIcon className="h-6 w-6" />
-            לתיאום סיור
-          </Button>
           {waHref ? (
             <a
               href={waHref}
               target="_blank"
               rel="noreferrer"
-              aria-label="דברו איתי"
-              style={{ backgroundColor: '#25D366' }}
-              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl text-[18px] font-bold text-white shadow-lg transition hover:brightness-95"
+              aria-label="לתיאום סיור"
+              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-social-whatsapp text-[18px] font-bold text-social-foreground shadow-lg transition hover:bg-social-whatsapp/90"
             >
               <WhatsAppIcon className="h-6 w-6" />
-              דברו איתי
+              לתיאום סיור
             </a>
           ) : null}
         </div>
       </main>
-
-      <TourSchedulerDialog
-        open={tourOpen}
-        onOpenChange={setTourOpen}
-        token={token ?? ''}
-        propertyTitle={displayTitle}
-      />
 
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
         <DialogContent className="max-w-4xl p-2">

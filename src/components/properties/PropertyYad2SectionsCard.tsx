@@ -111,7 +111,7 @@ export function PropertyYad2SectionsCard({
   const schools = data?.schools ?? [];
 
 
-  const chart = history.map((p, i) => ({ name: p.date || p.label || `#${i + 1}`, price: Number(p.price) }));
+  const chart = history.map((p, i) => ({ name: cleanDate(p.date || p.label) || `#${i + 1}`, price: Number(p.price) }));
 
   return (
     <Card className="space-y-8 p-4 sm:p-6" dir="rtl">

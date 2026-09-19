@@ -466,7 +466,7 @@ export function PropertyRichDetailsCard({
   ].filter((r) => editing || !hidden.has(`row:${r.name}`));
 
   const chartData = points.map((p, i) => ({
-    name: p.date || p.label || `#${i + 1}`,
+    name: formatDateish(p.date || p.label) || p.label || `#${i + 1}`,
     price: Number(p.price),
   }));
 

@@ -75,6 +75,7 @@ import { AFFILIATE_PLANS, affiliateAnnualPrice, type AffiliatePlanSlug } from '@
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { supabase } from '@/integrations/supabase/client';
 import { ISRAELI_CITIES } from '@/data/israeliCities';
+import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 
 const DEAL_TYPE_LABELS: Record<string, string> = {
   sale: 'למכירה',
@@ -599,6 +600,7 @@ export default function AffiliatePortal() {
   const [dealType, setDealType] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [propertySource, setPropertySource] = useState<'all' | 'private' | 'broker'>('all');
+  const [selectedMapListingId, setSelectedMapListingId] = useState<string | null>(null);
   const [citySearch, setCitySearch] = useState('');
 
 
@@ -645,6 +647,14 @@ export default function AffiliatePortal() {
           : !l.broker_license_number && !l.office_name));
     });
   }, [marketplace, search, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType, propertySource]);
+  const mapProperties = useMemo(() => filtered.flatMap((listing) => {
+    const latitude = Number(listing.latitude);
+    const longitude = Number(listing.longitude);
+    return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude !== 0 && longitude !== 0
+      ? [{ id: listing.listing_id, title: listing.property_title || listing.address || 'נכס', latitude, longitude, price: listing.asking_price }]
+      : [];
+  }), [filtered]);
+  const selectedMapListing = filtered.find((listing) => listing.listing_id === selectedMapListingId) ?? null;
 
   const clearFilters = () => {
     setCommissionRange([0, commissionMax]);
@@ -817,6 +827,14 @@ export default function AffiliatePortal() {
           </div>
 
           <TabsContent value="marketplace" className="space-y-4 pt-4">
+            <div className="space-y-3">
+              <WorkspacePropertiesMap
+                properties={mapProperties}
+                selectedId={selectedMapListingId ?? mapProperties[0]?.id ?? null}
+                onSelect={setSelectedMapListingId}
+              />
+              {selectedMapListing ? <MarketplaceCard listing={selectedMapListing} /> : null}
+            </div>
             {marketLoading ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 w-full" />)}

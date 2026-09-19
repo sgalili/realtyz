@@ -82,6 +82,8 @@ export type MarketplaceListing = {
   office_name: string | null;
   broker_license_number: string | null;
   agency_logo_url: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export type AffiliateReferral = {
@@ -149,7 +151,7 @@ export function useAffiliateMarketplace() {
     enabled: isAffiliate,
     staleTime: 60_000,
     queryFn: async (): Promise<MarketplaceListing[]> => {
-      const { data, error } = await supabase.rpc('get_affiliate_marketplace_v2' as never);
+      const { data, error } = await supabase.functions.invoke('affiliate-map-properties');
       if (error) throw error;
       return (data ?? []) as MarketplaceListing[];
     },
