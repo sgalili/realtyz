@@ -1162,7 +1162,10 @@ export default function PropertyDetail() {
   const sourceOrigin = String((meta as JsonRecord).source_origin ?? '').toLowerCase();
   const isYad2Listing = /yad2\.co\.il/i.test(resolvedSourceUrl);
   const isHomelyListing = !isYad2Listing && (sourceOrigin === 'homely' || String(data?.row?.source ?? '').toLowerCase() === 'homely');
-  const yad2Url = isYad2Listing ? resolvedSourceUrl : '';
+  // Only a real ad page (/realestate/item/...) is a live Yad2 ad. Some imports
+  // store a Yad2 *search* URL, which must never look like a link to an ad.
+  const isYad2AdUrl = /yad2\.co\.il\/(realestate\/)?item\//i.test(resolvedSourceUrl);
+  const yad2Url = isYad2AdUrl ? resolvedSourceUrl : '';
   const originalDate = formatIsoDate(
     typeof meta.published_at === 'string' ? meta.published_at
       : typeof meta.original_published_at === 'string' ? meta.original_published_at
