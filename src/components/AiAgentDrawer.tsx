@@ -616,7 +616,7 @@ ${shareUrl}
             size="icon"
             aria-label="שאלות מומלצות"
             onClick={() => setShowSuggestions((v) => !v)}
-            className="absolute start-3 top-3 text-muted-foreground"
+            className="absolute end-[52px] top-3 text-muted-foreground"
           >
             <Home className="h-4 w-4" />
           </Button>
