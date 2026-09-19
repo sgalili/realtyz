@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import {
   Banknote,
   BedDouble,
+  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -56,7 +57,9 @@ import {
   SUBMISSION_STATUS_LABELS,
   useRegisterAffiliate,
   useStartPromoting,
+  useMyReferralListings,
   type MarketplaceListing,
+  type AffiliateReferral,
 } from '@/hooks/useAffiliate';
 import { useAffiliatePreferences } from '@/hooks/useAffiliate';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -81,6 +84,15 @@ const DEAL_TYPE_LABELS: Record<string, string> = {
   sale: 'למכירה',
   rent: 'להשכרה',
 };
+
+/** Strict dd/mm/yyyy — the single date format used across the app. */
+function fmtDMY(value: string | null | undefined): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
 
 function firstPhoto(listing: MarketplaceListing): string | null {
   if (listing.image_url) return listing.image_url;
@@ -209,7 +221,7 @@ function allPhotos(listing: MarketplaceListing): string[] {
  * navigation, badges over the image, compact meta row, and an expandable
  * details section holding the full affiliate tooling.
  */
-function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceListing; compact?: boolean }) {
+function MarketplaceCard({ listing, compact = false, referral }: { listing: MarketplaceListing; compact?: boolean; referral?: AffiliateReferral }) {
   const promote = useStartPromoting();
   const [link, setLink] = useState<string | null>(null);
   const photos = useMemo(() => allPhotos(listing), [listing]);
@@ -411,6 +423,39 @@ function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceLis
           </Button>
         </div>
 
+        {referral ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-2.5" onClick={stop}>
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {fmtDMY(referral.created_at)}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <MousePointerClick className="h-3.5 w-3.5" />
+              {referral.clicks ?? 0} כניסות
+            </span>
+            <Badge variant="outline" className="text-[11px] font-medium">
+              {REFERRAL_STATUS_LABELS[referral.status] ?? referral.status}
+            </Badge>
+            <Badge variant="outline" className="text-[11px] font-medium">
+              {SETTLEMENT_LABELS[referral.settlement_status] ?? referral.settlement_status}
+            </Badge>
+            <span className="text-xs font-bold text-emerald-700">
+              {formatReward(referral.reward_type, referral.reward_amount)}
+            </span>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="ms-auto h-8 w-8"
+              title="העתקת קישור השיווק"
+              aria-label="העתקת קישור השיווק"
+              onClick={(e) => { stop(e); copy(affiliateTrackingLink(null, referral.listing_id, referral.tracking_code)); }}
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : null}
+
         {expanded && (
           <div className="space-y-3 border-t pt-3" onClick={stop}>
             <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
@@ -443,7 +488,7 @@ function MarketplaceCard({ listing, compact = false }: { listing: MarketplaceLis
               <div>
                 <dt className="text-muted-foreground">אושר לשיווק</dt>
                 <dd className="font-semibold text-slate-900">
-                  {listing.approved_at ? new Date(listing.approved_at).toLocaleDateString('he-IL') : '—'}
+                  {fmtDMY(listing.approved_at)}
                 </dd>
               </div>
             </dl>
@@ -557,6 +602,7 @@ export default function AffiliatePortal() {
   const { isAffiliate, loading: roleLoading } = useUserRole();
   const { data: marketplace = [], isLoading: marketLoading } = useAffiliateMarketplace();
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
+  const { data: referralListings = [], isLoading: refListingsLoading } = useMyReferralListings();
   const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
   const { preferences, update: updatePreferences, isUpdating: preferencesUpdating } = useAffiliatePreferences();
   const [search, setSearch] = useState('');
@@ -663,12 +709,32 @@ export default function AffiliatePortal() {
       .some((value) => (value ?? '').toLowerCase().includes(q)));
   }, [submissions, search]);
 
+  // Property details for every campaign of mine (marketplace first, then the
+  // dedicated lookup so listings pulled from the network still render fully).
+  const referralListingMap = useMemo(() => {
+    const map = new Map<string, MarketplaceListing>();
+    for (const item of referralListings) map.set(item.listing_id, item);
+    for (const item of marketplace) map.set(item.listing_id, item);
+    return map;
+  }, [referralListings, marketplace]);
+
+  const referralCampaigns = useMemo(
+    () => referrals.map((referral) => ({
+      referral,
+      listing: referral.listing_id ? referralListingMap.get(referral.listing_id) ?? null : null,
+    })),
+    [referrals, referralListingMap],
+  );
+
   const filteredReferrals = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return referrals;
-    return referrals.filter((r) => [r.tracking_code, REFERRAL_STATUS_LABELS[r.status], SETTLEMENT_LABELS[r.settlement_status]]
-      .some((value) => (value ?? '').toLowerCase().includes(q)));
-  }, [referrals, search]);
+    const withListing = referralCampaigns.filter((row) => row.listing);
+    if (!q) return withListing;
+    return withListing.filter(({ referral, listing }) => [
+      listing?.property_title, listing?.address, listing?.city, listing?.neighborhood,
+      REFERRAL_STATUS_LABELS[referral.status], SETTLEMENT_LABELS[referral.settlement_status],
+    ].some((value) => (value ?? '').toLowerCase().includes(q)));
+  }, [referralCampaigns, search]);
 
   const searchPlaceholder = activeTab === 'leads'
     ? 'חיפוש אנשי קשר שהגשתי'
@@ -928,57 +994,77 @@ export default function AffiliatePortal() {
           </TabsContent>
 
 
-          <TabsContent value="mine" className="pt-4">
-            {refLoading ? (
-              <Skeleton className="h-48 w-full" />
+          <TabsContent value="mine" className="space-y-4 pt-4">
+            {refLoading || refListingsLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 w-full" />)}
+              </div>
             ) : filteredReferrals.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
                   עוד לא התחלתם לשווק נכסים. עברו ללשונית "נכסים לשיווק".
                 </CardContent>
               </Card>
+            ) : viewMode === 'list' ? (
+              <ResultTable
+                results={filteredReferrals.map(({ listing }) => marketplaceResult(listing!))}
+                importingKey={null}
+                onSelect={(result) => {
+                  const surface = document.querySelector<HTMLElement>('.realtyz-main-surface');
+                  sessionStorage.setItem(scrollKey, String(surface?.scrollTop ?? window.scrollY));
+                  navigate(`/properties/${result.localId}`, {
+                    state: { propertySnapshot: result, returnTo: '/affiliate-network' },
+                  });
+                }}
+                hideDefaultActions
+                publishedLabel="התחלתי לשווק"
+                publishedAt={(result) => filteredReferrals.find((row) => row.listing?.listing_id === result.localId)?.referral.created_at ?? null}
+                commissionSortValue={(result) => {
+                  const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
+                  return row?.listing ? commissionPotential(row.listing) : 0;
+                }}
+                commissionCell={(result) => {
+                  const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
+                  return row?.listing ? <CommissionTierBadges tiers={listingTiers(row.listing)} compact /> : null;
+                }}
+                affiliateSortValue={(result) => filteredReferrals.find((item) => item.listing?.listing_id === result.localId)?.referral.clicks ?? 0}
+                affiliateCell={(result) => {
+                  const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
+                  if (!row) return null;
+                  return (
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="outline" className="text-[11px] font-medium">
+                        {REFERRAL_STATUS_LABELS[row.referral.status] ?? row.referral.status}
+                      </Badge>
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <MousePointerClick className="h-3.5 w-3.5" />
+                        {row.referral.clicks ?? 0}
+                      </span>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        title="העתקת קישור השיווק"
+                        aria-label="העתקת קישור השיווק"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await navigator.clipboard.writeText(
+                            affiliateTrackingLink(null, row.referral.listing_id, row.referral.tracking_code),
+                          );
+                          toast.success('הקישור הועתק');
+                        }}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  );
+                }}
+              />
             ) : (
-              <div className="space-y-2.5">
-                {filteredReferrals.map((r) => (
-                  <Card key={r.id} className="border-slate-200">
-                    <CardContent className="flex flex-wrap items-center gap-3 p-3.5">
-                      <Link2 className="h-4 w-4 shrink-0 text-slate-400" />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-slate-900">
-                          <bdi dir="ltr">{r.tracking_code}</bdi>
-                        </div>
-                        <div className="text-[11px] text-slate-500">
-                          {new Date(r.created_at).toLocaleDateString('he-IL')} · {r.clicks} כניסות
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-[11px]">
-                        {REFERRAL_STATUS_LABELS[r.status] ?? r.status}
-                      </Badge>
-                      <Badge variant="outline" className="text-[11px]">
-                        {SETTLEMENT_LABELS[r.settlement_status] ?? r.settlement_status}
-                      </Badge>
-                      <div className="text-sm font-bold text-emerald-700">
-                        {formatReward(r.reward_type, r.reward_amount)}
-                      </div>
-                      {r.listing_id && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                          title="העתקת הקישור"
-                          aria-label="העתקת הקישור"
-                          onClick={async () => {
-                            await navigator.clipboard.writeText(
-                              affiliateTrackingLink(null, r.listing_id, r.tracking_code),
-                            );
-                            toast.success('הקישור הועתק');
-                          }}
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredReferrals.map(({ referral, listing }) => (
+                  <MarketplaceCard key={referral.id} listing={listing!} referral={referral} />
                 ))}
               </div>
             )}

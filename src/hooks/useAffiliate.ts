@@ -162,6 +162,25 @@ export function useAffiliateMarketplace() {
   });
 }
 
+/**
+ * Property details for every listing the signed-in affiliate is marketing —
+ * including listings that were later pulled from the shared network, so the
+ * "my campaigns" cards never fall back to a bare tracking code.
+ */
+export function useMyReferralListings() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['affiliate-referral-listings', user?.id],
+    enabled: !!user?.id,
+    staleTime: 60_000,
+    queryFn: async (): Promise<MarketplaceListing[]> => {
+      const { data, error } = await supabase.rpc('get_affiliate_referral_listings');
+      if (error) throw error;
+      return (data ?? []) as unknown as MarketplaceListing[];
+    },
+  });
+}
+
 export type AffiliatePreferences = {
   rita_auto_mode: boolean;
   auto_funnel_enabled: boolean;
