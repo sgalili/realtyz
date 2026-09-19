@@ -40,9 +40,9 @@ function PhotoCarousel({ photos, alt }: { photos: string[]; alt: string }) {
     <div className="group relative h-48 overflow-hidden bg-muted">
       <img src={photos[index]} alt={alt} loading="lazy" className="h-full w-full object-cover" />
       {photos.length > 1 && <>
-        <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={() => move(-1)} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
-        <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={() => move(1)} className="absolute start-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronLeft className="h-5 w-5" /></Button>
-        <span className="absolute bottom-2 start-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>
+        <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={() => move(-1)} className="absolute start-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
+        <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={() => move(1)} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronLeft className="h-5 w-5" /></Button>
+        <span className="absolute top-2 right-2 rounded-full bg-background/90 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>
       </>}
     </div>
   );
@@ -155,7 +155,7 @@ export default function PublicListingsBoard() {
                       <span className="min-w-0 break-words">{[card.street && stripAddressNumbers(card.street), card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
                     </p>
                     <div className="shrink-0 text-left">
-                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning')}>{dealLabel(card.deal_type)}</span>
+                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success/15 text-success' : 'bg-warning text-warning-foreground shadow-sm')}>{dealLabel(card.deal_type)}</span>
                       <p className="mt-1 text-sm font-bold text-foreground">{shekel(card.price)}</p>
                     </div>
                   </div>
