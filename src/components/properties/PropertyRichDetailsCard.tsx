@@ -9,7 +9,7 @@ import { cleanMeasurementValue, floorsInBuildingFromSqm } from '@/lib/propertyMe
 import { cleanDisplayValue, isJunkValue } from '@/lib/cleanValue';
 
 import {
-  Sofa, TrendingUp, MapPin, Navigation, Pencil, Plus, Trash2, X, Save,
+  Sofa, TrendingUp, Pencil, Plus, Trash2, X, Save,
   ArrowUpCircle, Wind, Grid2X2, ShieldCheck, Sun, Armchair, DoorClosed,
   Accessibility, Fan, PaintRoller, Package, Warehouse, PawPrint, Users, Car, Home,
 } from 'lucide-react';
@@ -382,8 +382,9 @@ export function PropertyRichDetailsCard({
     .map(([k, v]) => ({ key: k, name: label(k), value: v }))
     .filter((e): e is { key: string; name: string; value: unknown } => !!e.name);
 
+  const mainSpecLabels = new Set(['חדרים', 'מ״ר בנוי סה״כ', 'מ״ר בנוי', 'מ״ר סה״כ', 'קומה', 'קומות בבניין', 'עיר', 'שכונה']);
   const detailRows = deduped.filter(
-    (e) => !isBooleanish(e.value) && e.name !== 'תיאור' && e.name !== 'הערה',
+    (e) => !isBooleanish(e.value) && e.name !== 'תיאור' && e.name !== 'הערה' && !mainSpecLabels.has(e.name),
   );
   const featureFlags = deduped
     .filter((e) => isBooleanish(e.value))
@@ -392,7 +393,6 @@ export function PropertyRichDetailsCard({
 
 
   const points = (priceHistory ?? []).filter((p) => p && p.price != null);
-  const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
 
   const blocks = (aboutBlocks ?? [])
     .filter((b) => b && b.text)
@@ -411,8 +411,7 @@ export function PropertyRichDetailsCard({
     !furnitureEntries.length &&
     !detailRows.length &&
     !featureFlags.length &&
-    !points.length &&
-    !hasCoords
+    !points.length
   ) {
     return null;
   }
@@ -469,10 +468,6 @@ export function PropertyRichDetailsCard({
     name: formatDateish(p.date || p.label) || p.label || `#${i + 1}`,
     price: Number(p.price),
   }));
-
-  const navUrl = hasCoords
-    ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
-    : null;
 
   // Numeric attributes (מ״ר, חדרים, קומה…) always render as a single clean,
   // plausible number — no units, no glued values (80 never becomes 280).
@@ -681,32 +676,6 @@ export function PropertyRichDetailsCard({
         </section>
       )}
 
-      {hasCoords && (
-        <section>
-          <h2 className="text-2xl font-bold text-foreground mb-3 inline-flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-primary" /> מיקום על המפה
-          </h2>
-          <div className="overflow-hidden rounded-lg border border-border/60">
-            <iframe
-              title="מפת הנכס"
-              className="h-56 w-full"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              src={`https://maps.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`}
-            />
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button asChild size="sm">
-              <a href={navUrl!} target="_blank" rel="noopener noreferrer">
-                <Navigation className="h-5 w-5 ms-1" /> נווט לנכס
-              </a>
-            </Button>
-            <span className="text-lg text-muted-foreground">
-              {addressLabel || `${latitude?.toFixed(5)}, ${longitude?.toFixed(5)}`}
-            </span>
-          </div>
-        </section>
-      )}
     </Card>
   );
 }

@@ -3,8 +3,8 @@
 // Deliberately narrow: no CRM, no office settings, no broker tools. An affiliate
 // browses broker-approved properties, sees exactly what they earn per closing,
 // and generates a personal tracking link to market with.
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -70,6 +70,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import { ResultTable } from '@/pages/Properties';
+import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { AFFILIATE_PLANS, affiliateAnnualPrice, type AffiliatePlanSlug } from '@/lib/affiliatePlans';
 import { partnerNetReward } from '@/lib/affiliatePlans';
@@ -123,40 +124,11 @@ function marketplaceResult(listing: MarketplaceListing): UnifiedResult {
 }
 
 function PartnerListingActions({ listing }: { listing: MarketplaceListing }) {
-  const promote = useStartPromoting();
-  const [link, setLink] = useState<string | null>(null);
-  const copy = async (value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success('הקישור הועתק');
-    } catch {
-      toast.error('ההעתקה נכשלה');
-    }
-  };
-  const createOrCopy = () => {
-    if (link) return void copy(link);
-    promote.mutate({ listing }, {
-      onSuccess: (result) => {
-        setLink(result.link);
-        void copy(result.link);
-      },
-      onError: () => toast.error('יצירת הקישור נכשלה'),
-    });
-  };
+  const result = marketplaceResult(listing);
   return (
     <div className="flex items-center gap-1.5">
       {/* Icon-only action: the title carries the meaning, no text label. */}
-      <Button
-        type="button"
-        size="icon"
-        onClick={createOrCopy}
-        disabled={promote.isPending}
-        className="h-8 w-8"
-        title={link ? 'העתקת קישור השיווק' : 'יצירת קישור שיווק'}
-        aria-label={link ? 'העתקת קישור השיווק' : 'יצירת קישור שיווק'}
-      >
-        {link ? <Copy className="h-3.5 w-3.5" /> : <Megaphone className="h-3.5 w-3.5" />}
-      </Button>
+      <PropertyShareMenu results={[result]} iconOnly />
       <SubmitLeadDialog listing={listing} />
     </div>
   );
@@ -581,6 +553,7 @@ function AffiliateKpiCard({
 
 export default function AffiliatePortal() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAffiliate, loading: roleLoading } = useUserRole();
   const { data: marketplace = [], isLoading: marketLoading } = useAffiliateMarketplace();
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
@@ -600,6 +573,22 @@ export default function AffiliatePortal() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [propertySource, setPropertySource] = useState<'all' | 'private' | 'broker'>('all');
   const [citySearch, setCitySearch] = useState('');
+  const scrollKey = 'affiliate-portal:marketplace-scroll';
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem(scrollKey);
+    if (!stored || marketLoading) return;
+    const top = Number(stored);
+    if (!Number.isFinite(top)) return;
+    const restore = () => {
+      const surface = document.querySelector<HTMLElement>('.realtyz-main-surface');
+      if (surface) surface.scrollTo({ top, behavior: 'auto' });
+      else window.scrollTo({ top, behavior: 'auto' });
+    };
+    requestAnimationFrame(restore);
+    const timers = [120, 350, 700].map((delay) => window.setTimeout(restore, delay));
+    return () => timers.forEach(window.clearTimeout);
+  }, [location.key, marketLoading]);
 
 
   const commissionMax = useMemo(() => Math.max(1000, ...marketplace.map(commissionPotential)), [marketplace]);
@@ -835,13 +824,25 @@ export default function AffiliatePortal() {
                   importingKey={null}
                   onSelect={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
-                    if (listing) navigate(`/p/${listing.slug || listing.listing_id}`);
-                  }}
-                  propertyHref={(result) => {
-                    const listing = filtered.find((item) => item.listing_id === result.localId);
-                    return listing ? `/p/${listing.slug || listing.listing_id}` : null;
+                    if (listing) {
+                      const surface = document.querySelector<HTMLElement>('.realtyz-main-surface');
+                      sessionStorage.setItem(scrollKey, String(surface?.scrollTop ?? window.scrollY));
+                      navigate(`/properties/${listing.listing_id}`, {
+                        state: { propertySnapshot: result, returnTo: '/affiliate-network' },
+                      });
+                    }
                   }}
                   hideDefaultActions
+                  publishedLabel="פורסם לרשת"
+                  publishedAt={(result) => {
+                    const listing = filtered.find((item) => item.listing_id === result.localId);
+                    return listing?.approved_at ?? null;
+                  }}
+                  affiliateSortValue={(result) => referrals.some((referral) => referral.listing_id === result.localId) ? 1 : 0}
+                  commissionSortValue={(result) => {
+                    const listing = filtered.find((item) => item.listing_id === result.localId);
+                    return listing ? commissionPotential(listing) : 0;
+                  }}
                   affiliateCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
                     return listing ? <PartnerListingActions listing={listing} /> : null;

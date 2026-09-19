@@ -307,6 +307,10 @@ export type Database = {
           settled_at: string | null
           settlement_status: string
           status: string
+          tier1_amount: number
+          tier2_amount: number
+          tier3_amount: number
+          tier3_type: string
           tracking_code: string
           updated_at: string
         }
@@ -325,6 +329,10 @@ export type Database = {
           settled_at?: string | null
           settlement_status?: string
           status?: string
+          tier1_amount?: number
+          tier2_amount?: number
+          tier3_amount?: number
+          tier3_type?: string
           tracking_code: string
           updated_at?: string
         }
@@ -343,6 +351,10 @@ export type Database = {
           settled_at?: string | null
           settlement_status?: string
           status?: string
+          tier1_amount?: number
+          tier2_amount?: number
+          tier3_amount?: number
+          tier3_type?: string
           tracking_code?: string
           updated_at?: string
         }
@@ -359,6 +371,85 @@ export type Database = {
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_share_deliveries: {
+        Row: {
+          affiliate_id: string
+          broker_id: string
+          channel: string
+          created_at: string
+          delivery_result: Json
+          delivery_status: string
+          id: string
+          lead_id: string | null
+          listing_id: string
+          message: string
+          recipient_email: string | null
+          recipient_name: string | null
+          recipient_phone: string | null
+          referral_id: string
+          short_url: string
+          updated_at: string
+        }
+        Insert: {
+          affiliate_id: string
+          broker_id: string
+          channel: string
+          created_at?: string
+          delivery_result?: Json
+          delivery_status?: string
+          id?: string
+          lead_id?: string | null
+          listing_id: string
+          message: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          referral_id: string
+          short_url: string
+          updated_at?: string
+        }
+        Update: {
+          affiliate_id?: string
+          broker_id?: string
+          channel?: string
+          created_at?: string
+          delivery_result?: Json
+          delivery_status?: string
+          id?: string
+          lead_id?: string | null
+          listing_id?: string
+          message?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          referral_id?: string
+          short_url?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_share_deliveries_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_share_deliveries_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_share_deliveries_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_referrals"
             referencedColumns: ["id"]
           },
         ]

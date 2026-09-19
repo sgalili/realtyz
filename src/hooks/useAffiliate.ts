@@ -102,6 +102,10 @@ export type AffiliateReferral = {
   settled_at: string | null;
   notes: string | null;
   created_at: string;
+  tier1_amount?: number;
+  tier2_amount?: number;
+  tier3_type?: RewardType;
+  tier3_amount?: number;
 };
 
 /** Human-readable reward, e.g. "₪5,000" or "2.5% מהעסקה". */
@@ -289,6 +293,10 @@ export function useStartPromoting() {
           // retroactively shrink what this affiliate was offered.
           reward_type: listing.reward_type,
           reward_amount: listing.reward_amount,
+          tier1_amount: listing.tier1_amount,
+          tier2_amount: listing.tier2_amount,
+          tier3_type: listing.tier3_type,
+          tier3_amount: listing.tier3_amount,
         })
         .select('*')
         .single();

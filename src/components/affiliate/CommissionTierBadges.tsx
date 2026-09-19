@@ -23,16 +23,16 @@ export function CommissionTierBadges({
   compact?: boolean;
 }) {
   const rows = [
-    { key: 'tier1', label: 'ליד חם שהוגש', value: tierValue(tiers.tier1), icon: Flame, tone: 'bg-amber-50 text-amber-800 ring-amber-100' },
-    { key: 'tier2', label: 'ליד שאומת', value: tierValue(tiers.tier2), icon: CheckCircle2, tone: 'bg-sky-50 text-sky-800 ring-sky-100' },
-    { key: 'tier3', label: 'סגירת עסקה', value: tierValue(tiers.tier3, tiers.tier3Type), icon: Trophy, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-100' },
+    { key: 'tier1', index: 1, label: 'איש קשר חם שהוגש', value: tierValue(tiers.tier1), icon: Flame, tone: 'bg-amber-50 text-amber-800 ring-amber-100' },
+    { key: 'tier2', index: 2, label: 'איש קשר שאומת', value: tierValue(tiers.tier2), icon: CheckCircle2, tone: 'bg-sky-50 text-sky-800 ring-sky-100' },
+    { key: 'tier3', index: 3, label: 'סגירת עסקה', value: tierValue(tiers.tier3, tiers.tier3Type), icon: Trophy, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-100' },
   ].filter((row) => row.key === 'tier3' ? tiers.tier3 > 0 : row.key === 'tier2' ? tiers.tier2 > 0 : tiers.tier1 > 0);
 
   if (compact) {
     return (
       <div className="space-y-0.5 text-[11px] font-semibold text-success">
-        {rows.map((r, i) => (
-          <div key={r.key}>{i + 1}: <bdi dir="ltr">{r.value}</bdi></div>
+        {rows.map((r) => (
+          <div key={r.key}>{r.index}: <bdi dir="ltr">{r.value}</bdi></div>
         ))}
       </div>
     );
@@ -40,11 +40,11 @@ export function CommissionTierBadges({
 
   return (
     <div className="grid grid-cols-3 gap-1.5">
-      {rows.map((r, i) => (
+      {rows.map((r) => (
         <div key={r.key} className={`rounded-md px-2 py-1.5 ring-1 ${r.tone}`}>
           <div className="flex items-center gap-1 text-[10px] font-semibold opacity-80">
             <r.icon className="h-3 w-3 shrink-0" />
-            שלב {i + 1}
+            שלב {r.index}
           </div>
           <div className="truncate text-[11px] font-bold">
             <bdi dir="ltr">{r.value}</bdi>

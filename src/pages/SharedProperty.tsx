@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetailsCard';
 import { sanitizeSqm, sanitizeFloor, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
@@ -21,7 +22,7 @@ import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesM
 import {
   Loader2, MapPin, Home, Ruler, Bed, Building2, Car, Layers,
   ArrowUpCircle, Sun, Wind, Shield, ImageIcon, ChevronLeft, ChevronRight,
-  BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves,
+  BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves, Navigation,
 } from 'lucide-react';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 import { officialWaLink, getOfficialWaNumber, OFFICIAL_WABA_PHONE } from '@/lib/officialWa';
@@ -192,7 +193,8 @@ export default function SharedProperty() {
     ? (p.features as Record<string, any>) : {};
   const addr = publicAddress(p.address);
   const locationLine = [addr, p.neighborhood, p.city].filter(Boolean).join(' · ');
-  const displayTitle = publicTitle(p.property_title ?? p.title ?? p.address ?? 'נכס') || 'נכס';
+  const displayTitle = [addr || publicTitle(p.property_title ?? p.title ?? ''), p.neighborhood, p.city]
+    .filter((value, index, values) => value && values.indexOf(value) === index).join(' · ') || 'נכס';
   const about = p.long_description || p.description || p.short_description || null;
 
   const specs: { label: string; value: string; icon: any }[] = [];
@@ -260,12 +262,6 @@ export default function SharedProperty() {
           <h2 className="text-[26px] font-bold leading-snug text-slate-900">
             {displayTitle}
           </h2>
-          {locationLine ? (
-            <p className="inline-flex items-center gap-1.5 text-[17px] text-slate-600">
-              <MapPin className="h-5 w-5 text-primary" />
-              {locationLine}
-            </p>
-          ) : null}
           <div className="flex flex-wrap items-baseline gap-3">
             <span className="text-[34px] font-extrabold tabular-nums text-emerald-600">{priceStr}</span>
             {pricePerMeter ? (
@@ -420,22 +416,24 @@ export default function SharedProperty() {
           </Card>
         ) : null}
 
-        <section className="space-y-2">
-          <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-foreground">
-            <MapPin className="h-5 w-5 text-primary" /> מיקום והגעה
-          </h2>
-          <WorkspacePropertiesMap properties={mapProperties} selectedId={p.id ?? null} onSelect={setSelectedPropertyId} />
-          {mapProperties.length > 1 ? <p className="text-[13px] text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס מתחת למפה</p> : null}
-        </section>
-
         <PropertyRichDetailsCard
           aboutText={about}
           furniture={p.furniture_details ?? null}
           additional={p.additional_details ?? null}
           amenities={Object.keys(features).length ? features : null}
           priceHistory={Array.isArray(p.price_history) ? p.price_history : []}
-          addressLabel={[addr, p.neighborhood, p.city].filter(Boolean).join(', ')}
         />
+
+        {Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)) && Number(p.latitude) !== 0 && Number(p.longitude) !== 0 ? (
+          <section className="space-y-2">
+            <WorkspacePropertiesMap properties={mapProperties} selectedId={p.id ?? null} onSelect={setSelectedPropertyId} />
+            {mapProperties.length > 1 ? <p className="text-[13px] text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס</p> : null}
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm"><a href={`https://waze.com/ul?ll=${p.latitude},${p.longitude}&navigate=yes`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Waze</a></Button>
+              <Button asChild variant="outline" size="sm"><a href={`https://www.google.com/maps/dir/?api=1&destination=${p.latitude},${p.longitude}`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Google Maps</a></Button>
+            </div>
+          </section>
+        ) : null}
 
         <div className="sticky bottom-4 flex items-stretch gap-2 pt-2">
           {waHref ? (
