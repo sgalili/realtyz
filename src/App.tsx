@@ -155,6 +155,7 @@ const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/profile'];
  * recruitment and affiliate management are unreachable, not just hidden.
  */
 export const OWNER_ALLOWED_PATHS = ['/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile'];
+const SEEKER_ALLOWED_PATHS = ['/public-listings', '/profile'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
@@ -173,7 +174,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     });
     return () => { alive = false; };
   }, [user, roleApplied]);
-  const { roles, isAffiliateOnly, isPropertyOwnerOnly, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
+  const { roles, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const location = useLocation();
   if (loading) return (
@@ -209,6 +210,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
       (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
     );
     if (!allowed) return <Navigate to="/owner/properties" replace />;
+  }
+
+  if (!roleLoading && isPropertySeekerOnly) {
+    const allowed = SEEKER_ALLOWED_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
+    if (!allowed) return <Navigate to="/public-listings" replace />;
   }
 
   // Partner mode (dual-role accounts) keeps broker tooling out of reach until
