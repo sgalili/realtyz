@@ -335,7 +335,7 @@ function PersonalTab() {
         </div>
 
 
-        <ProfileArrayRows rows={emails} setRows={setEmails} icon={Mail} label='דוא"ל' placeholder="user@example.com" />
+        <ProfileArrayRows rows={emails} setRows={setEmails} icon={Mail} label='דוא"ל' />
         <ProfileArrayRows rows={whatsapps} setRows={setWhatsapps} icon={MessageCircle} label="וואטסאפ" formatter={formatIsraeliPhone} />
         <ProfileArrayRows rows={phones} setRows={setPhones} icon={Phone} label="טלפון" formatter={formatIsraeliPhone} />
 
