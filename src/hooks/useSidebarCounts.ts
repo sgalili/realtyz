@@ -123,16 +123,25 @@ export function useSidebarCounts() {
         }
       };
 
-      const [leads, listings, chats, deals, campaigns, tasks] = await Promise.all([
+      // Partner-mode badges: live properties open for partner marketing, and
+      // the total invitations the account sent (accepted + still pending).
+      const sharedListingsCount = async (): Promise<number> =>
+        safeCount('listings', (q) => q.eq('affiliate_enabled', true).neq('status', 'discarded'));
+
+      const invitationsCount = async (): Promise<number> => safeCount('referrals');
+
+      const [leads, listings, chats, deals, campaigns, tasks, sharedListings, invitations] = await Promise.all([
         safeCount('leads'),
         yad2FreshCount(),
         distinctChatLeads(),
         activeDealsCount(),
         groupedCampaignCount(),
         waitingTasksAndTours(),
+        sharedListingsCount(),
+        invitationsCount(),
       ]);
 
-      return { leads, listings, chats, deals, campaigns, tasks };
+      return { leads, listings, chats, deals, campaigns, tasks, sharedListings, invitations };
 
 
     },
