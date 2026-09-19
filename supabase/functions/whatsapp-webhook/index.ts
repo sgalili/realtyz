@@ -860,10 +860,10 @@ async function handleLeadInboxInbound(
 
 
   // Auto-create lead from short-link inbound when none exists yet.
-  if (!lead?.id && (shortLink || hasShortLinkSignature || referral)) {
-    const dealType = ((referral?.listing?.deal_type ?? shortLink?.deal_type) === "rent" ? "rent" : "sale");
+  if (!lead?.id && (shortLink || hasShortLinkSignature || referral || sharedContext)) {
+    const dealType = ((referral?.listing?.deal_type ?? shortLink?.deal_type ?? sharedContext?.deal_type) === "rent" ? "rent" : "sale");
     const category = dealType === "rent" ? "שוכר" : "קונה";
-    let assignTo: string | null = referral?.broker_id ?? shortLink?.owner_id ?? null;
+    let assignTo: string | null = referral?.broker_id ?? shortLink?.owner_id ?? sharedContext?.owner_id ?? null;
     if (!assignTo) {
       try {
         const { data: adminRow } = await admin
@@ -883,9 +883,9 @@ async function handleLeadInboxInbound(
         .insert({
           phone_number: senderPhone,
           full_name: opts?.senderName?.trim() || "מתעניין/ת חדש/ה",
-          city: referral?.listing?.city ?? shortLink?.city ?? null,
-          neighborhood: referral?.listing?.neighborhood ?? shortLink?.neighborhood ?? null,
-          interest_tag: referral?.listing_id ?? shortLink?.listing_id ?? null,
+          city: referral?.listing?.city ?? shortLink?.city ?? sharedContext?.city ?? null,
+          neighborhood: referral?.listing?.neighborhood ?? shortLink?.neighborhood ?? sharedContext?.neighborhood ?? null,
+          interest_tag: referral?.listing_id ?? shortLink?.listing_id ?? sharedContext?.listing_id ?? null,
           deal_type: dealType,
           lead_stage: "engaging",
           // New contacts start with the digital agent ON.
@@ -894,15 +894,17 @@ async function handleLeadInboxInbound(
           status: "contacted",
           sentiment: "positive",
           assigned_to: assignTo,
-          ...(referral?.broker_id ? { workspace_owner_id: referral.broker_id } : {}),
+          ...(referral?.broker_id ?? sharedContext?.owner_id
+            ? { workspace_owner_id: referral?.broker_id ?? sharedContext?.owner_id }
+            : {}),
           preferences: {
             source: "whatsapp",
-            shortlink_origin: shortLink ? "shortlink" : null,
+            shortlink_origin: shortLink ? "shortlink" : sharedContext ? "property_share" : null,
             category,
-            listing_id: referral?.listing_id ?? shortLink?.listing_id ?? null,
+            listing_id: referral?.listing_id ?? shortLink?.listing_id ?? sharedContext?.listing_id ?? null,
             referral_code: referral?.tracking_code ?? refCode ?? null,
-            affiliate_id: referral?.affiliate_id ?? null,
-            unresolved_listing: !shortLink && !referral,
+            affiliate_id: referral?.affiliate_id ?? sharedContext?.affiliate_id ?? null,
+            unresolved_listing: !shortLink && !referral && !sharedContext,
             inbound_excerpt: inboundText.slice(0, 240),
           },
 
