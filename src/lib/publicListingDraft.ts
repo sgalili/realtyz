@@ -1,7 +1,7 @@
 export type PublicListingDraftFields = {
   /** מתווך / פרטי */
-  publisherType: 'broker' | 'private';
-  dealType: 'sale' | 'rent';
+  publisherType: 'broker' | 'private' | '';
+  dealType: 'sale' | 'rent' | '';
   propertyType: string;
   city: string;
   street: string;
@@ -36,8 +36,8 @@ export type PublicListingDraftFields = {
 };
 
 export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
-  publisherType: 'private',
-  dealType: 'sale',
+  publisherType: '',
+  dealType: '',
   propertyType: '',
   city: '',
   street: '',

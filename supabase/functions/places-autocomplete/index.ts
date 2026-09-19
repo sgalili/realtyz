@@ -74,7 +74,9 @@ Deno.serve(async (req) => {
     if (action === 'details') {
       const placeId = String((body as { place_id?: string }).place_id ?? '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 200);
       if (!placeId) return json({ error: 'place_id_required' }, 400);
-      const query = sessionToken ? `?sessionToken=${encodeURIComponent(sessionToken)}` : '';
+       const params = new URLSearchParams({ languageCode: 'he', regionCode: 'IL' });
+       if (sessionToken) params.set('sessionToken', sessionToken);
+       const query = `?${params.toString()}`;
       const response = await fetch(`${GATEWAY_URL}/places/v1/places/${placeId}${query}`, {
         headers: gatewayHeaders('id,formattedAddress,addressComponents,location'),
       });

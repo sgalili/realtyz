@@ -148,7 +148,7 @@ function PageLoader() {
  * app (CRM, properties, posts, office settings) belongs to brokers and is
  * redirected away, so an affiliate never sees broker tooling.
  */
-const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/affiliate-pricing', '/profile'];
+const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/referral', '/profile'];
 
 /**
  * Private property owners are a separate product: only their own properties,
@@ -377,7 +377,7 @@ const App = () => (
               <Route path="/automations" element={<ProtectedRoute allowGuestDemo><AutomationStudioPage /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
-              <Route path="/affiliate" element={<Navigate to="/affiliate-network" replace />} />
+               <Route path="/affiliate" element={<Navigate to="/affiliate-pricing" replace />} />
               <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
               <Route path="/affiliate-pricing" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><AffiliatePricing /></Suspense></ProtectedRoute>} />
               <Route path="/owner/properties" element={<ProtectedRoute><OwnerProperties /></ProtectedRoute>} />
