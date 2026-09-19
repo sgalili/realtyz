@@ -87,6 +87,11 @@ const PartnerPosts = lazy(() => import("./pages/partner/PartnerPosts"));
 const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
 const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
+const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
+const OwnerProperties = lazy(() => import("./pages/owner/OwnerProperties"));
+const OwnerLeads = lazy(() => import("./pages/owner/OwnerLeads"));
+const OwnerRewards = lazy(() => import("./pages/owner/OwnerRewards"));
+const OwnerRita = lazy(() => import("./pages/owner/OwnerRita"));
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Terms = lazy(() => import("./pages/Terms"));
