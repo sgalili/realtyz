@@ -1021,7 +1021,7 @@ export default function AffiliatePortal() {
               הגדרת מסננים ותגמול נדרש
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
-            <DialogFooter className="gap-2 sm:space-x-0">
+            <DialogFooter className="flex-row items-center justify-between gap-2 sm:justify-between sm:space-x-0">
               <Button
                 disabled={preferencesUpdating}
                 onClick={() => updatePreferences({ auto_funnel_enabled: true }, {
