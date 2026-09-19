@@ -378,6 +378,19 @@ export default function AiAgentDrawer() {
     window.requestAnimationFrame(() => document.getElementById('rita-chat-input')?.focus());
   }, []);
 
+  // When the Home button opens the suggestions panel above the transcript,
+  // jump the chat scroll container back to the very top so the panel is seen.
+  const conversationWrapRef = useRef<HTMLDivElement>(null);
+  const scrollConversationToTop = useCallback(() => {
+    // Double rAF: first lets the suggestions block mount, second lets the
+    // stick-to-bottom controller finish its own initial scroll pass.
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      const root = conversationWrapRef.current?.firstElementChild as HTMLElement | null;
+      if (root) root.scrollTop = 0;
+    }));
+  }, []);
+
+
 
   // Mint a share token via edge fn for a property card. Works for both local
   // listings (r.id looks like a UUID) and external Webtiv/Homely results
