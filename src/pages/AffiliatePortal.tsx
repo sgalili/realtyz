@@ -878,6 +878,15 @@ export default function AffiliatePortal() {
         )}
 
 
+        <div className="flex flex-wrap items-center gap-2">
+          <AffiliateEligibilityBadge status={license.status} onClick={() => { setActiveTab('earnings'); setSearch(''); }} />
+          <span className="text-[11px] text-muted-foreground">
+            {tier3Unlocked
+              ? 'שלבים 1-3 פעילים, כולל עמלת סגירת עסקה.'
+              : 'שלבים 1-2 פעילים: דמי חשיפה ודמי ליד מאומת. שלב 3 נפתח לאחר אימות רישיון תיווך.'}
+          </span>
+        </div>
+
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3">
             <TabsList>
@@ -961,6 +970,29 @@ export default function AffiliatePortal() {
           </TabsContent>
 
           <TabsContent value="leads" className="space-y-3 pt-4">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {[
+                { label: 'שלב 1 · דמי חשיפה ושיתוף', count: levelProgress.level1Count, sum: levelProgress.level1Sum, locked: false },
+                { label: 'שלב 2 · ליד מאומת ופגישה', count: levelProgress.level2Count, sum: levelProgress.level2Sum, locked: false },
+                { label: 'שלב 3 · סגירת עסקה', count: levelProgress.level3Count, sum: levelProgress.level3Sum, locked: !tier3Unlocked },
+              ].map((tile) => (
+                <div
+                  key={tile.label}
+                  className={`rounded-xl border p-3 ${tile.locked ? 'border-dashed border-slate-200 bg-slate-50 text-slate-500' : 'border-border/60 bg-card'}`}
+                >
+                  <div className="text-[11px] font-semibold">{tile.label}</div>
+                  <div className={`text-lg font-black tabular-nums ${tile.locked ? 'text-slate-400' : 'text-emerald-700'}`} dir="ltr">
+                    <bdi>{tile.locked ? '—' : fmtILS(tile.sum)}</bdi>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {tile.locked ? 'נדרש רישיון תיווך מאומת' : `${tile.count} תגמולים`}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <AffiliateLicenseCard />
+
             {subsLoading ? (
               <Skeleton className="h-48 w-full" />
             ) : filteredSubmissions.length === 0 ? (
