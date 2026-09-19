@@ -16,9 +16,7 @@ import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetails
 import { sanitizeSqm, sanitizeFloor, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
 
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
-import TourSchedulerDialog from '@/components/properties/TourSchedulerDialog';
-import { Button } from '@/components/ui/button';
-import { CalendarClock } from 'lucide-react';
+import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 
 import {
   Loader2, MapPin, Home, Ruler, Bed, Building2, Car, Layers,
@@ -35,6 +33,7 @@ type SharedPayload = {
   logo_url?: string | null;
   owner_name?: string | null;
   property: any | null;
+  workspace_properties?: any[];
 };
 
 type AreaFacts = {
@@ -97,7 +96,7 @@ export default function SharedProperty() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
-  const [tourOpen, setTourOpen] = useState(false);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   // HARD RULE: only the official Meta WBA number, resolved live with a constant fallback.
   const [officialWa, setOfficialWa] = useState<string>(OFFICIAL_WABA_PHONE);
   useEffect(() => {
@@ -121,7 +120,20 @@ export default function SharedProperty() {
     })();
   }, [token]);
 
-  const p = data?.property;
+  const availableProperties = useMemo(() => {
+    if (!data?.property) return [];
+    const all = [data.property, ...(Array.isArray(data.workspace_properties) ? data.workspace_properties : [])];
+    return Array.from(new Map(all.filter((item) => item?.id).map((item) => [item.id, item])).values());
+  }, [data]);
+  const p = availableProperties.find((item) => item.id === selectedPropertyId) ?? data?.property;
+
+  useEffect(() => {
+    if (data?.property?.id) setSelectedPropertyId(data.property.id);
+  }, [data?.property?.id]);
+
+  useEffect(() => {
+    setSlide(0);
+  }, [selectedPropertyId]);
 
   const photos: string[] = useMemo(() => {
     if (!p) return [];
@@ -200,6 +212,12 @@ export default function SharedProperty() {
   const perkBuckets = PERK_BUCKETS
     .map((b) => ({ ...b, items: perkList.filter((x) => b.re.test(x)) }))
     .filter((b) => b.items.length > 0);
+  const mapProperties = availableProperties.flatMap((item) => {
+    const latitude = Number(item?.latitude);
+    const longitude = Number(item?.longitude);
+    if (!item?.id || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude === 0 || longitude === 0) return [];
+    return [{ id: String(item.id), title: publicTitle(item.property_title ?? item.title ?? item.address ?? 'נכס'), latitude, longitude, price: Number(item.asking_price) || null }];
+  });
 
   // HARD RULE: public property pages always open our official Meta WBA number,
   // never the owner's / broker's personal WhatsApp.
@@ -351,7 +369,7 @@ export default function SharedProperty() {
         ) : null}
 
         <PropertyFeatureBadges
-          sources={[features, p.attributes, p.additional_details, p.source_metadata]}
+          sources={[features, p.attributes, p.additional_details]}
           flags={{ elevator: p.elevator, parking: p.parking }}
         />
 
@@ -402,48 +420,38 @@ export default function SharedProperty() {
           </Card>
         ) : null}
 
+        <section className="space-y-2">
+          <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-foreground">
+            <MapPin className="h-5 w-5 text-primary" /> מיקום והגעה
+          </h2>
+          <WorkspacePropertiesMap properties={mapProperties} selectedId={p.id ?? null} onSelect={setSelectedPropertyId} />
+          {mapProperties.length > 1 ? <p className="text-[13px] text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס מתחת למפה</p> : null}
+        </section>
+
         <PropertyRichDetailsCard
           aboutText={about}
           furniture={p.furniture_details ?? null}
           additional={p.additional_details ?? null}
           amenities={Object.keys(features).length ? features : null}
           priceHistory={Array.isArray(p.price_history) ? p.price_history : []}
-          latitude={p.latitude != null ? Number(p.latitude) : null}
-          longitude={p.longitude != null ? Number(p.longitude) : null}
           addressLabel={[addr, p.neighborhood, p.city].filter(Boolean).join(', ')}
         />
 
         <div className="sticky bottom-4 flex items-stretch gap-2 pt-2">
-          <Button
-            type="button"
-            onClick={() => setTourOpen(true)}
-            className="h-14 flex-1 gap-2 rounded-xl text-[18px] font-bold shadow-lg"
-          >
-            <CalendarClock className="h-6 w-6" />
-            תאם סיור
-          </Button>
           {waHref ? (
             <a
               href={waHref}
               target="_blank"
               rel="noreferrer"
-              aria-label="דברו איתי"
-              style={{ backgroundColor: '#25D366' }}
-              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl text-[18px] font-bold text-white shadow-lg transition hover:brightness-95"
+              aria-label="לתיאום סיור"
+              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-social-whatsapp text-[18px] font-bold text-white shadow-lg transition hover:bg-social-whatsapp/90"
             >
               <WhatsAppIcon className="h-6 w-6" />
-              דברו איתי
+              לתיאום סיור
             </a>
           ) : null}
         </div>
       </main>
-
-      <TourSchedulerDialog
-        open={tourOpen}
-        onOpenChange={setTourOpen}
-        token={token ?? ''}
-        propertyTitle={displayTitle}
-      />
 
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
         <DialogContent className="max-w-4xl p-2">

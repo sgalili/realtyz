@@ -17,6 +17,9 @@ const JUNK_KEYS = new Set([
   "customerid", "customer_id", "sessionid", "session_id", "requestid", "request_id",
   "trace", "traceid", "debug", "raw", "raw_html", "html", "cookies", "headers",
   "scrape_token", "brightdata_response", "snapshot_id", "texteng", "hash",
+  "removed_photo_keys", "media_vision_checked", "media_vision_at", "metadata_backfilled_at",
+  "fetched_at", "created_at", "updated_at", "source_metadata", "sources", "source_url",
+  "external_id", "last_manual_yad2_sync_at",
 ]);
 
 function isJunkKey(key: string): boolean {

@@ -33,6 +33,11 @@ export type Yad2Sections = {
 const shekel = (v: number | null | undefined) =>
   v == null ? '—' : `₪${Number(v).toLocaleString('he-IL')}`;
 
+const cleanDate = (value: string | null | undefined) => {
+  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : (value ?? '—');
+};
+
 function SectionShell({
   icon: Icon, title, count, children,
 }: { icon: typeof Building2; title: string; count?: number; children: React.ReactNode }) {
@@ -106,7 +111,7 @@ export function PropertyYad2SectionsCard({
   const schools = data?.schools ?? [];
 
 
-  const chart = history.map((p, i) => ({ name: p.date || p.label || `#${i + 1}`, price: Number(p.price) }));
+  const chart = history.map((p, i) => ({ name: cleanDate(p.date || p.label) || `#${i + 1}`, price: Number(p.price) }));
 
   return (
     <Card className="space-y-8 p-4 sm:p-6" dir="rtl">
@@ -152,7 +157,7 @@ export function PropertyYad2SectionsCard({
               <tbody>
                 {deals.map((d, i) => (
                   <tr key={i} className="border-b last:border-0">
-                    <td className="whitespace-nowrap py-2 pe-2">{d.date ?? '—'}</td>
+                    <td className="whitespace-nowrap py-2 pe-2">{cleanDate(d.date)}</td>
                     <td className="py-2">{d.address ?? '—'}</td>
                     <td className="py-2">{d.rooms ?? '—'}</td>
                     <td className="py-2">{d.sqm ?? '—'}</td>
@@ -195,12 +200,6 @@ export function PropertyYad2SectionsCard({
         </SectionShell>
       )}
 
-
-      {data?.fetched_at && (
-        <p className="text-sm text-muted-foreground">
-          מקור: יד2 · עודכן ב-{new Date(data.fetched_at).toLocaleString('he-IL')}
-        </p>
-      )}
     </Card>
   );
 }

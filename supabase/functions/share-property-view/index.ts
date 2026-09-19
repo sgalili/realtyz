@@ -4,6 +4,8 @@
 // effect so brokers see engagement in the CRM.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { cleanPayload } from "../_shared/cleanValues.ts";
+import { maskAddress, maskContactText } from "../_shared/publicMask.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -39,12 +41,39 @@ Deno.serve(async (req) => {
     if (share.listing_id) {
       const { data: l } = await admin
         .from("listings")
-        .select("id, owner_id, property_title, description, short_description, long_description, asking_price, city, address, neighborhood, rooms, sqm, floor, parking, elevator, media_photos, deal_type, features, attributes, furniture_details, additional_details, source_metadata, area_perks, price_history, latitude, longitude, project_name")
+        .select("id, owner_id, property_title, description, short_description, long_description, asking_price, city, address, neighborhood, rooms, sqm, floor, parking, elevator, media_photos, deal_type, features, attributes, furniture_details, additional_details, area_perks, price_history, latitude, longitude, project_name, workspace_owner_id, is_published, affiliate_enabled, status")
         .eq("id", share.listing_id)
         .maybeSingle();
       if (l) property = l;
     }
     if (!property && share.external_snapshot) property = share.external_snapshot;
+
+    const maskProperty = (row: Record<string, any>) => cleanPayload({
+      ...row,
+      address: maskAddress(row.address),
+      property_title: maskAddress(row.property_title),
+      description: maskContactText(maskAddress(row.description)),
+      short_description: maskContactText(maskAddress(row.short_description)),
+      long_description: maskContactText(maskAddress(row.long_description)),
+      workspace_owner_id: undefined,
+      owner_id: undefined,
+      is_published: undefined,
+      affiliate_enabled: undefined,
+      status: undefined,
+    });
+
+    const workspaceOwnerId = property?.workspace_owner_id ?? share.owner_id;
+    const { data: workspaceListings } = workspaceOwnerId
+      ? await admin
+          .from("listings")
+          .select("id, property_title, description, short_description, long_description, asking_price, city, address, neighborhood, rooms, sqm, floor, parking, elevator, media_photos, deal_type, features, attributes, furniture_details, additional_details, area_perks, price_history, latitude, longitude, project_name, workspace_owner_id, owner_id, is_published, affiliate_enabled, status")
+          .eq("workspace_owner_id", workspaceOwnerId)
+          .eq("affiliate_enabled", true)
+          .eq("status", "live")
+          .not("latitude", "is", null)
+          .not("longitude", "is", null)
+          .limit(100)
+      : { data: [] };
 
     // Workspace branding (logo + name) for the public header.
     let logo_url: string | null = null;
@@ -139,7 +168,8 @@ Deno.serve(async (req) => {
       area_facts,
       owner_name,
       broker_wa: null,
-      property,
+      property: property ? maskProperty(property) : null,
+      workspace_properties: (workspaceListings ?? []).map((row) => maskProperty(row)),
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

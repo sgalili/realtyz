@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAppMode, type AppMode } from '@/hooks/useAppMode';
 import { cn } from '@/lib/utils';
+import { useSidebar } from '@/components/ui/sidebar';
 
 /**
  * Instant switch between broker mode (full CRM + Rita) and partner mode
@@ -15,6 +16,7 @@ export function AppModeSwitcher() {
   const navigate = useNavigate();
   const { mode, setMode } = useAppMode();
   const { isTeamMember, isAffiliateOnly, loading } = useUserRole();
+  const { isMobile, setOpen, setOpenMobile } = useSidebar();
   const [busy, setBusy] = useState(false);
 
   if (loading || isAffiliateOnly || !isTeamMember) return null;
@@ -28,10 +30,12 @@ export function AppModeSwitcher() {
         await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
         setMode('partner');
         navigate('/affiliate-network');
+        requestAnimationFrame(() => isMobile ? setOpenMobile(true) : setOpen(true));
         toast.success('עברת למצב שותף');
       } else {
         setMode('broker');
         navigate('/');
+        requestAnimationFrame(() => isMobile ? setOpenMobile(true) : setOpen(true));
         toast.success('עברת למצב מתווך');
       }
     } catch (e: any) {
