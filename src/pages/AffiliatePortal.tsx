@@ -858,7 +858,7 @@ export default function AffiliatePortal() {
             <TabsList>
               <TabsTrigger value="marketplace">נכסים ({marketplace.length})</TabsTrigger>
               <TabsTrigger value="leads">לידים ({submissions.length})</TabsTrigger>
-              <TabsTrigger value="mine">פרסומים ({referralCampaigns.filter((row) => row.listing).length})</TabsTrigger>
+              <TabsTrigger value="mine">שיווקים ({referralCampaigns.filter((row) => row.listing).length})</TabsTrigger>
               <TabsTrigger value="earnings">רווחים ({earningRows.length})</TabsTrigger>
             </TabsList>
             <div className="flex shrink-0 items-center" aria-label="בחירת תצוגה">
