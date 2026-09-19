@@ -985,6 +985,8 @@ ${shareUrl}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
+        </div>
+
 
         {/* Quick-Actions pill bar removed by design — suggestions live in the
             empty-state topic list at the top of the transcript only. */}
