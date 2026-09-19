@@ -13,7 +13,8 @@ export type AppRole =
   | 'agent'
   | 'assistant'
   | 'junior_agent'
-  | 'affiliate';
+  | 'affiliate'
+  | 'property_owner';
 
 export const userRolesQueryKey = (userId: string | undefined) => ['user-roles', userId] as const;
 
