@@ -43,6 +43,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
+import AffiliateEligibilityBadge from '@/components/affiliate/AffiliateEligibilityBadge';
+import AffiliateLicenseCard from '@/components/affiliate/AffiliateLicenseCard';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import SubmitLeadDialog from '@/components/affiliate/SubmitLeadDialog';
 import {
   REFERRAL_STATUS_LABELS,
@@ -495,8 +498,8 @@ function MarketplaceCard({ listing, compact = false, referral }: { listing: Mark
             </dl>
 
             <div className="space-y-1.5">
-              <div className="text-[11px] font-semibold text-slate-500">פירוט העמלה ב-3 שלבים</div>
-              <CommissionTierBadges tiers={listingTiers(listing)} />
+              <div className="text-[11px] font-semibold text-slate-500">פירוט התגמול ב-3 שלבים</div>
+              <CommissionTierBadges tiers={listingTiers(listing)} tier3Locked={!tier3Unlocked} />
             </div>
 
             <SubmitLeadDialog listing={listing} />
@@ -771,7 +774,7 @@ export default function AffiliatePortal() {
             const t2 = partnerNetReward(Number(s.tier2_amount ?? 0));
             if (t2) tiers.push({ label: TIER_LABELS.tier2, amount: t2 });
           }
-          if (s.status === 'closed' && s.tier3_type === 'fixed') {
+          if (tier3Unlocked && s.status === 'closed' && s.tier3_type === 'fixed') {
             const t3 = partnerNetReward(Number(s.tier3_amount ?? 0));
             if (t3) tiers.push({ label: TIER_LABELS.tier3, amount: t3 });
           }
@@ -787,6 +790,26 @@ export default function AffiliatePortal() {
       })
       .filter((row) => row.total > 0)
       .sort((a, b) => b.total - a.total);
+  }, [submissions, tier3Unlocked]);
+
+  // Level 1 / level 2 progress: how many lead-generation fees were earned and
+  // how much cash each level produced, so partners see the incentive clearly.
+  const levelProgress = useMemo(() => {
+    let level1Count = 0, level1Sum = 0, level2Count = 0, level2Sum = 0, level3Count = 0, level3Sum = 0;
+    for (const s of submissions) {
+      if (s.status === 'rejected') continue;
+      const t1 = partnerNetReward(Number(s.tier1_amount ?? 0));
+      if (t1) { level1Count += 1; level1Sum += t1; }
+      if (s.status === 'verified' || s.status === 'closed') {
+        const t2 = partnerNetReward(Number(s.tier2_amount ?? 0));
+        if (t2) { level2Count += 1; level2Sum += t2; }
+      }
+      if (s.status === 'closed' && s.tier3_type === 'fixed') {
+        const t3 = partnerNetReward(Number(s.tier3_amount ?? 0));
+        if (t3) { level3Count += 1; level3Sum += t3; }
+      }
+    }
+    return { level1Count, level1Sum, level2Count, level2Sum, level3Count, level3Sum };
   }, [submissions]);
 
   if (roleLoading) {
@@ -924,7 +947,7 @@ export default function AffiliatePortal() {
                   }}
                   commissionCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
-                    return listing ? <CommissionTierBadges tiers={listingTiers(listing)} compact /> : null;
+                    return listing ? <CommissionTierBadges tiers={listingTiers(listing)} compact tier3Locked={!tier3Unlocked} /> : null;
                   }}
                 />
               ) : (
@@ -1023,7 +1046,7 @@ export default function AffiliatePortal() {
                 }}
                 commissionCell={(result) => {
                   const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
-                  return row?.listing ? <CommissionTierBadges tiers={listingTiers(row.listing)} compact /> : null;
+                  return row?.listing ? <CommissionTierBadges tiers={listingTiers(row.listing)} compact tier3Locked={!tier3Unlocked} /> : null;
                 }}
                 affiliateSortValue={(result) => filteredReferrals.find((item) => item.listing?.listing_id === result.localId)?.referral.clicks ?? 0}
                 affiliateCell={(result) => {
