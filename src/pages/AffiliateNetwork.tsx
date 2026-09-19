@@ -28,7 +28,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, BedDouble, Building2, Handshake, LayoutGrid, List, MapPin, Ruler, Search, Users } from 'lucide-react';
+import { Banknote, BedDouble, Building2, EyeOff, Handshake, LayoutGrid, List, MapPin, Ruler, Search, Users } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 
