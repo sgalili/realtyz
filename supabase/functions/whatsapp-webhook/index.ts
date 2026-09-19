@@ -930,16 +930,18 @@ async function handleLeadInboxInbound(
       console.warn("lead profile name update soft-fail:", e instanceof Error ? e.message : e);
     }
   }
-  if (lead?.id && shortLink && !lead.interest_tag) {
+  const tagSource = shortLink ?? sharedContext ?? null;
+  if (lead?.id && tagSource && !lead.interest_tag) {
     try {
       await admin
         .from("leads")
         .update({
-          interest_tag: shortLink.listing_id,
-          deal_type: shortLink.deal_type || lead.deal_type,
+          interest_tag: tagSource.listing_id,
+          deal_type: tagSource.deal_type || lead.deal_type,
           last_interaction_at: new Date().toISOString(),
         })
         .eq("id", lead.id);
+      lead.interest_tag = tagSource.listing_id;
     } catch (e) {
       console.warn("lead tag update soft-fail:", e instanceof Error ? e.message : e);
     }
