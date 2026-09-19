@@ -254,6 +254,10 @@ function BrokerAffiliateNetwork() {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
+  // Removing a property from partner marketing is destructive for partners who
+  // are already promoting it, so it always goes through a confirmation.
+  const [unpublishing, setUnpublishing] = useState<BrokerAffiliateListing | null>(null);
+  const setReward = useSetAffiliateReward();
 
   useEffect(() => {
     if (listingsLoading || refsLoading || subsLoading) return;
