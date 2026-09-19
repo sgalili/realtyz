@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
 
@@ -28,7 +29,7 @@ type TourStep = {
   profileForm?: boolean;
 };
 
-const STEPS: TourStep[] = [
+const BROKER_STEPS: TourStep[] = [
   { title: 'Realtyz מנהלת את הלידים שלך 24/7' },
   { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
   { title: 'לוח הבקרה אומר לך מה לעשות עכשיו', cta: { label: 'פתח את משימות היום', to: '/command-center' } },
@@ -37,13 +38,39 @@ const STEPS: TourStep[] = [
   { title: 'חיבור חשבון Facebook', connections: true },
 ];
 
+/** Partner (affiliate) flow: marketing links, rewards and Rita on autopilot. */
+const PARTNER_STEPS: TourStep[] = [
+  { title: 'משווקים נכסים, מקבלים תגמול על כל עסקה' },
+  { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
+  { title: 'בוחרים נכס ומקבלים קישור שיווק אישי', cta: { label: 'פתח שיווק שותפים', to: '/affiliate-network' } },
+  { title: 'ריטה עונה לכל פנייה במקומכם, גם כשאתם לא מול המסך', cta: { label: 'פתח צ׳אטים', to: '/partner/chats' } },
+  { title: 'כל איש קשר, פנייה ותגמול במקום אחד', cta: { label: 'פתח אנשי קשר', to: '/partner/contacts' } },
+];
+
+/** Private property owner flow: their own properties, leads and rewards. */
+const OWNER_STEPS: TourStep[] = [
+  { title: 'הנכס שלכם משווק, נענה ונמכר - בלי לרדוף אחרי אף אחד' },
+  { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
+  { title: 'הנכסים שלכם, התמונות והפרטים - בשליטה מלאה', cta: { label: 'פתח את הנכסים שלי', to: '/owner/properties' } },
+  { title: 'כל מתעניין נשמר, נענה ומטופל', cta: { label: 'פתח מתעניינים', to: '/owner/leads' } },
+  { title: 'קובעים תגמול למשווקים ומגדילים חשיפה', cta: { label: 'הגדרת תגמולים', to: '/owner/rewards' } },
+  { title: 'ריטה זמינה לכל שאלה על הנכס', cta: { label: 'צ׳אט עם ריטה', to: '/owner/rita' } },
+];
+
+type TourMode = 'broker' | 'partner' | 'owner';
+
 /**
  * Rita's marketing workspace has no properties, so the property step is dropped
- * from the tour there.
+ * from the broker tour there. Details the account already holds (name, email,
+ * activity city) are never asked again: the intake slide is skipped entirely.
  */
-function buildSteps(listingsEnabled: boolean): TourStep[] {
-  if (listingsEnabled) return STEPS;
-  return STEPS.filter((s) => s.cta?.to !== '/properties');
+function buildSteps(mode: TourMode, listingsEnabled: boolean, needsProfile: boolean): TourStep[] {
+  const base = mode === 'partner' ? PARTNER_STEPS : mode === 'owner' ? OWNER_STEPS : BROKER_STEPS;
+  return base.filter((s) => {
+    if (s.profileForm && !needsProfile) return false;
+    if (mode === 'broker' && !listingsEnabled && s.cta?.to === '/properties') return false;
+    return true;
+  });
 }
 
 const LOCAL_KEY = 'realtyz-product-tour-done';
@@ -74,6 +101,10 @@ export function ProductTour() {
   const [email, setEmail] = useState('');
   const [activityCity, setActivityCity] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+  // Only ask for intake details that the account does not already carry.
+  const [needsProfile, setNeedsProfile] = useState(true);
+  const { isAffiliateOnly, isPropertyOwnerOnly } = useUserRole();
+  const tourMode: TourMode = isPropertyOwnerOnly ? 'owner' : isAffiliateOnly ? 'partner' : 'broker';
 
   /** Persists the intake details: name, optional email and the default work city. */
   const saveProfileDetails = async () => {
@@ -143,6 +174,19 @@ export function ProductTour() {
       const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
       const metaName = String(meta.full_name ?? meta.name ?? '').trim();
       if (metaName) setFullName(metaName);
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('full_name, email, city')
+        .eq('id', user.id)
+        .maybeSingle();
+      const knownName = String((profileRow as any)?.full_name ?? metaName ?? '').trim();
+      const knownMail = String((profileRow as any)?.email ?? user.email ?? '').trim();
+      const knownCity = String((profileRow as any)?.city ?? meta.activity_city ?? '').trim();
+      if (knownName) setFullName(knownName);
+      if (knownMail) setEmail(knownMail);
+      if (knownCity) setActivityCity(knownCity);
+      setNeedsProfile(!(knownName && knownMail && knownCity));
+      if (cancelled) return;
       setOpen(true);
     })().catch(() => setOpen(true));
     return () => { cancelled = true; };
@@ -173,7 +217,7 @@ export function ProductTour() {
   };
 
   const { listingsEnabled } = useWorkspaceFeatures();
-  const steps = useMemo(() => buildSteps(listingsEnabled), [listingsEnabled]);
+  const steps = useMemo(() => buildSteps(tourMode, listingsEnabled, needsProfile), [tourMode, listingsEnabled, needsProfile]);
   const step = steps[index];
   const isLast = index === steps.length - 1;
   const progress = useMemo(() => ((index + 1) / steps.length) * 100, [index, steps.length]);
