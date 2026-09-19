@@ -1413,6 +1413,19 @@ export function ResultTable({
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { notesByListing } = usePropertyNotesByListing();
 
+  // Partner sharing lives in ONE unified first column. Saved properties get it
+  // automatically; callers may override the cell with their own control.
+  const localIds = useMemo(
+    () => results.map((r) => r.localId).filter((id): id is string => !!id),
+    [results],
+  );
+  const { data: affiliateConfigs } = useAffiliateConfigs(hideDefaultActions ? [] : localIds);
+  const renderAffiliate = affiliateCell
+    ?? ((r: UnifiedResult) => (r.localId
+      ? <AffiliateShareCell listingId={r.localId} config={affiliateConfigs?.get(r.localId)} />
+      : null));
+  const showAffiliateColumn = !!affiliateCell || (!hideDefaultActions && localIds.length > 0);
+
   const toggleSort = (col: SortCol) => {
     if (sortCol === col) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
