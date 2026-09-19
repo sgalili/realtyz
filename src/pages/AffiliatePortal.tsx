@@ -831,7 +831,7 @@ export default function AffiliatePortal() {
               tooltip: 'מספר הנכסים שיצרתם עבורם קישור שיווק אישי.',
             },
             {
-              label: 'אנשי קשר שהוגשו',
+              label: 'לידים שהגשתי',
               value: String(stats.leads),
               icon: MousePointerClick,
               accent: 'primary' as const,
@@ -860,7 +860,7 @@ export default function AffiliatePortal() {
           <div className="flex items-center justify-between gap-3">
             <TabsList>
               <TabsTrigger value="marketplace">נכסים לשיווק</TabsTrigger>
-              <TabsTrigger value="leads">אנשי הקשר שהגשתי</TabsTrigger>
+              <TabsTrigger value="leads">לידים שהגשתי</TabsTrigger>
               <TabsTrigger value="mine">השיווקים שלי</TabsTrigger>
             </TabsList>
             <div className="flex shrink-0 items-center" aria-label="בחירת תצוגה">
