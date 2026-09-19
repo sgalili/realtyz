@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetailsCard';
 import { sanitizeSqm, sanitizeFloor, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
@@ -21,7 +22,7 @@ import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesM
 import {
   Loader2, MapPin, Home, Ruler, Bed, Building2, Car, Layers,
   ArrowUpCircle, Sun, Wind, Shield, ImageIcon, ChevronLeft, ChevronRight,
-  BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves,
+  BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves, Navigation,
 } from 'lucide-react';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 import { officialWaLink, getOfficialWaNumber, OFFICIAL_WABA_PHONE } from '@/lib/officialWa';
