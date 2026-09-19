@@ -1193,6 +1193,43 @@ export default function PropertyDetail() {
   const yad2SyncUsedToday = !!lastManualYad2Sync
     && new Date(lastManualYad2Sync).toDateString() === new Date().toDateString();
 
+  /**
+   * Traces the live Yad2 ad for THIS property inside the shared market pool
+   * (filled by the twice-daily Bright Data scrape). Used when the stored source
+   * is only a Yad2 *search* URL, or when the previous ad URL is gone.
+   * Returns the ad URL when a confident address match exists, else null.
+   */
+  const traceLiveYad2Ad = async (): Promise<string | null> => {
+    const city = String(property?.city ?? '').trim();
+    const street = String(property?.address ?? '').replace(/\d+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!city || !street) return null;
+    const { data: pool } = await supabase
+      .from('market_listings')
+      .select('source_url, address, house_number, city, rooms, sqm, price, last_seen_at')
+      .eq('source', 'yad2')
+      .ilike('city', `%${city}%`)
+      .order('last_seen_at', { ascending: false })
+      .limit(400);
+    const houseNumber = String((data?.row as any)?.house_number ?? '').trim();
+    const candidates = (pool ?? []).filter((row) => {
+      const addr = String(row.address ?? '');
+      if (!addr.includes(street.split(' ').slice(0, 2).join(' ')) && !addr.includes(street)) return false;
+      if (houseNumber && String(row.house_number ?? '').trim() && String(row.house_number).trim() !== houseNumber) return false;
+      return /yad2\.co\.il\/(realestate\/)?item\//i.test(String(row.source_url ?? ''));
+    });
+    // Prefer the candidate whose rooms + size match the stored property.
+    const scored = candidates
+      .map((row) => {
+        let score = 0;
+        if (property?.rooms && Number(row.rooms) === Number(property.rooms)) score += 2;
+        if (property?.size_sqm && Math.abs(Number(row.sqm ?? 0) - Number(property.size_sqm)) <= 5) score += 2;
+        if (property?.price && Math.abs(Number(row.price ?? 0) - Number(property.price)) <= Number(property.price) * 0.05) score += 1;
+        return { row, score };
+      })
+      .sort((a, b) => b.score - a.score);
+    return scored.length ? String(scored[0].row.source_url) : null;
+  };
+
   const syncFromYad2 = async () => {
     if (!property?.id || syncingSource) return;
     if (yad2SyncUsedToday) {
@@ -1204,18 +1241,34 @@ export default function PropertyDetail() {
     setSyncingSource(true);
     const toastId = toast.loading('מסנכרן את נתוני הנכס מ-Yad2…');
     try {
+      // When no direct ad URL is stored (or it points at a search page), first
+      // trace the live ad for this exact property and persist it.
+      let adUrl = yad2Url;
+      let traced = false;
+      if (!adUrl) {
+        const found = await traceLiveYad2Ad();
+        if (found) {
+          adUrl = found;
+          traced = true;
+          await supabase.from('listings').update({ source_url: found }).eq('id', property.id);
+        }
+      }
+      if (!adUrl) {
+        toast.error('לא נמצאה מודעה חיה ביד2 לנכס הזה', {
+          id: toastId,
+          description: 'המודעה כנראה הוסרה מיד2. הנתונים שמוצגים הם הנתונים השמורים במערכת.',
+        });
+        return;
+      }
+
       const tasks: Promise<unknown>[] = [
         supabase.functions.invoke('listings-metadata-backfill', {
           body: { listing_ids: [property.id], force: true },
         }),
+        supabase.functions.invoke('yad2-unlocker', {
+          body: { url: adUrl, limit: 1 },
+        }),
       ];
-      if (resolvedSourceUrl) {
-        tasks.push(
-          supabase.functions.invoke('yad2-unlocker', {
-            body: { url: resolvedSourceUrl, limit: 1 },
-          }),
-        );
-      }
       const results = await Promise.allSettled(tasks);
       const failed = results.find(
         (r) => r.status === 'rejected' || (r.value as { error?: unknown } | null)?.error,
