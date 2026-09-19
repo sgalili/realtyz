@@ -774,6 +774,8 @@ export default function AffiliatePortal() {
             <div className="flex shrink-0 items-center" aria-label="בחירת תצוגה">
               <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} />
             </div>
+          </div>
+
 
           <div className="mt-4 flex max-w-lg items-center gap-2">
             <div className="relative min-w-0 flex-1">
