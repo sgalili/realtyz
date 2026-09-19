@@ -574,6 +574,15 @@ export default function AffiliatePortal() {
   const [propertySource, setPropertySource] = useState<'all' | 'private' | 'broker'>('all');
   const [citySearch, setCitySearch] = useState('');
   const scrollKey = 'affiliate-portal:marketplace-scroll';
+  const [automationCardsVisible, setAutomationCardsVisible] = useState(false);
+
+  // The robot icon in the page hero toggles the two automation cards.
+  useEffect(() => {
+    const toggle = () => setAutomationCardsVisible((v) => !v);
+    window.addEventListener('realtyz:affiliate-automation-toggle', toggle);
+    return () => window.removeEventListener('realtyz:affiliate-automation-toggle', toggle);
+  }, []);
+
 
   useEffect(() => {
     const stored = sessionStorage.getItem(scrollKey);
@@ -707,6 +716,7 @@ export default function AffiliatePortal() {
       <div className="space-y-5 p-4" dir="rtl">
 
 
+        {automationCardsVisible && (
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-3">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -743,6 +753,7 @@ export default function AffiliatePortal() {
             />
           </div>
         </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
