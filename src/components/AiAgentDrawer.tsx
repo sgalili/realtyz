@@ -7,7 +7,7 @@ import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useAuth } from '@/hooks/useAuth';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Database, X, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy, Trash2, Send } from 'lucide-react';
+import { Database, X, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy, Trash2, Send, Home } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -273,6 +273,7 @@ export default function AiAgentDrawer() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [expandedTopic, setExpandedTopic] = useState<number | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   // NOTE: quick-action pill bar was removed from the composer — we still keep
   // the topic accordion in the empty state above.
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -609,10 +610,21 @@ ${shareUrl}
           <RitaAvatar className="h-12 w-12 ring-2 ring-primary/20" />
           <h3 className="text-[18px] font-bold text-center">ריטה, סוכנת ה-AI של Realtyz</h3>
 
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="שאלות מומלצות"
+            onClick={() => setShowSuggestions((v) => !v)}
+            className="absolute start-3 top-3 text-muted-foreground"
+          >
+            <Home className="h-4 w-4" />
+          </Button>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button type="button" variant="ghost" size="sm" className="absolute end-3 top-3 gap-1 text-muted-foreground" disabled={messages.length === 0}>
-                <Trash2 className="h-4 w-4" /> איפוס צ׳אט
+              <Button type="button" variant="ghost" size="icon" aria-label="איפוס צ׳אט" className="absolute end-3 top-3 text-muted-foreground" disabled={messages.length === 0}>
+                <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent dir="rtl">
