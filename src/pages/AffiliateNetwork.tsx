@@ -326,9 +326,9 @@ function BrokerAffiliateNetwork() {
 
         <Tabs defaultValue="rewards">
           <TabsList className="mx-auto grid h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
-            <TabsTrigger value="rewards" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">נכסים ותגמולים</TabsTrigger>
-            <TabsTrigger value="tracking" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">אנשי קשר משותפים</TabsTrigger>
-            <TabsTrigger value="submissions" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">הגשות שותפים</TabsTrigger>
+            <TabsTrigger value="rewards" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">נכסים</TabsTrigger>
+            <TabsTrigger value="tracking" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">בשיווק</TabsTrigger>
+            <TabsTrigger value="submissions" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">לידים</TabsTrigger>
           </TabsList>
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
@@ -519,7 +519,7 @@ function BrokerAffiliateNetwork() {
             ) : submissions.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
-                  שותפים עוד לא הגישו אנשי קשר לנכסים שלכם.
+                  שותפים עוד לא הגישו לידים לנכסים שלכם.
                 </CardContent>
               </Card>
             ) : (
