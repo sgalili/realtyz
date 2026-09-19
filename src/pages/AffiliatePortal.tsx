@@ -689,9 +689,12 @@ export default function AffiliatePortal() {
         && (city === 'all' || l.city === city)
         && (neighborhood === 'all' || l.neighborhood === neighborhood)
         && (rooms === 'all' || Number(l.rooms) >= Number(rooms))
-        && (dealType === 'all' || l.deal_type === dealType);
+        && (dealType === 'all' || l.deal_type === dealType)
+        && (propertySource === 'all' || (propertySource === 'broker'
+          ? Boolean(l.broker_license_number || l.office_name)
+          : !l.broker_license_number && !l.office_name));
     });
-  }, [marketplace, search, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType]);
+  }, [marketplace, search, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType, propertySource]);
 
   const clearFilters = () => {
     setCommissionRange([0, commissionMax]);
@@ -701,6 +704,8 @@ export default function AffiliatePortal() {
     setNeighborhood('all');
     setRooms('all');
     setDealType('all');
+    setPropertySource('all');
+    setCitySearch('');
   };
 
   const filteredSubmissions = useMemo(() => {
