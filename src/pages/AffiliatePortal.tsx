@@ -1069,6 +1069,58 @@ export default function AffiliatePortal() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="earnings" className="space-y-3 pt-4">
+            <Card className="border-emerald-200 bg-emerald-50/60">
+              <CardContent className="flex items-center justify-between gap-3 p-4">
+                <div className="text-sm font-semibold text-emerald-900">סך הרווחים שנצברו</div>
+                <div className="text-2xl font-black text-emerald-700" dir="ltr">
+                  <bdi>{fmtILS(earningRows.reduce((sum, row) => sum + row.total, 0))}</bdi>
+                </div>
+              </CardContent>
+            </Card>
+
+            {subsLoading ? (
+              <Skeleton className="h-48 w-full" />
+            ) : earningRows.length === 0 ? (
+              <Card className="border-dashed border-slate-200">
+                <CardContent className="p-10 text-center text-sm text-slate-500">
+                  עוד לא נצברו רווחים. הגשת ליד לנכס מהרשת מזכה אותך בתגמול שלב 1.
+                </CardContent>
+              </Card>
+            ) : (
+              earningRows.map((row) => (
+                <Card key={row.id} className="border-slate-200">
+                  <CardContent className="space-y-2 p-3.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-bold text-slate-900">
+                          {row.listingTitle}
+                        </div>
+                        <div className="truncate text-[11px] text-slate-500">
+                          {row.leadName} · {row.date}
+                        </div>
+                      </div>
+                      <div className="text-sm font-bold text-emerald-700" dir="ltr">
+                        <bdi>{fmtILS(row.total)}</bdi>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {row.tiers.length === 0 ? (
+                        <Badge variant="outline" className="text-[11px] text-slate-500">ללא תגמול</Badge>
+                      ) : (
+                        row.tiers.map((tier) => (
+                          <Badge key={tier.label} variant="outline" className="text-[11px] text-emerald-700">
+                            {tier.label} · <bdi dir="ltr">{fmtILS(tier.amount)}</bdi>
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
         </Tabs>
 
         <Dialog open={funnelDialogOpen} onOpenChange={setFunnelDialogOpen}>
