@@ -250,10 +250,19 @@ export type Database = {
           billing_period: string
           created_at: string
           display_name: string | null
+          license_holder_name: string | null
+          license_number: string | null
+          license_rejection_reason: string | null
+          license_status: string
+          license_submitted_at: string | null
+          license_verified_at: string | null
+          license_verified_by: string | null
           payout_details: string | null
           phone: string | null
           plan_slug: string
           rita_auto_mode: boolean
+          terms_accepted_at: string | null
+          terms_version: string | null
           updated_at: string
           user_id: string
         }
@@ -262,10 +271,19 @@ export type Database = {
           billing_period?: string
           created_at?: string
           display_name?: string | null
+          license_holder_name?: string | null
+          license_number?: string | null
+          license_rejection_reason?: string | null
+          license_status?: string
+          license_submitted_at?: string | null
+          license_verified_at?: string | null
+          license_verified_by?: string | null
           payout_details?: string | null
           phone?: string | null
           plan_slug?: string
           rita_auto_mode?: boolean
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           updated_at?: string
           user_id: string
         }
@@ -274,10 +292,19 @@ export type Database = {
           billing_period?: string
           created_at?: string
           display_name?: string | null
+          license_holder_name?: string | null
+          license_number?: string | null
+          license_rejection_reason?: string | null
+          license_status?: string
+          license_submitted_at?: string | null
+          license_verified_at?: string | null
+          license_verified_by?: string | null
           payout_details?: string | null
           phone?: string | null
           plan_slug?: string
           rita_auto_mode?: boolean
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -6654,6 +6681,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_affiliate_terms: { Args: { _version: string }; Returns: Json }
       acquire_scheduler_lock: {
         Args: { _job: string; _lease_seconds?: number; _worker?: string }
         Returns: boolean
@@ -6681,6 +6709,7 @@ export type Database = {
         Args: { _lead_id: string }
         Returns: boolean
       }
+      affiliate_tier3_eligible: { Args: { _user_id: string }; Returns: boolean }
       bulk_update_leads: {
         Args: {
           lead_ids: string[]
@@ -7306,6 +7335,10 @@ export type Database = {
         Returns: undefined
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
+      review_affiliate_license: {
+        Args: { _approve: boolean; _reason?: string; _user_id: string }
+        Returns: Json
+      }
       seed_demo_data: { Args: never; Returns: Json }
       select_my_affiliate_plan: {
         Args: { _billing_period?: string; _plan_slug: string }
@@ -7325,6 +7358,10 @@ export type Database = {
         Returns: boolean
       }
       social_identity_key: { Args: { _raw: string }; Returns: string }
+      submit_affiliate_license: {
+        Args: { _holder_name?: string; _license_number: string }
+        Returns: Json
+      }
       subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
       trigger_match_for_lead: {
