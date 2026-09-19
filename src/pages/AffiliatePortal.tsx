@@ -54,6 +54,7 @@ import {
   listingTiers,
   useMySubmissions,
   accruedEarnings,
+  TIER_LABELS,
   SUBMISSION_STATUS_LABELS,
   useRegisterAffiliate,
   useStartPromoting,
@@ -758,6 +759,36 @@ export default function AffiliatePortal() {
     };
   }, [referrals, submissions]);
 
+  // One row per promoted property/lead with the commission tiers actually earned.
+  const earningRows = useMemo(() => {
+    return submissions
+      .map((s) => {
+        const tiers: { label: string; amount: number }[] = [];
+        if (s.status !== 'rejected') {
+          const t1 = partnerNetReward(Number(s.tier1_amount ?? 0));
+          if (t1) tiers.push({ label: TIER_LABELS.tier1, amount: t1 });
+          if (s.status === 'verified' || s.status === 'closed') {
+            const t2 = partnerNetReward(Number(s.tier2_amount ?? 0));
+            if (t2) tiers.push({ label: TIER_LABELS.tier2, amount: t2 });
+          }
+          if (s.status === 'closed' && s.tier3_type === 'fixed') {
+            const t3 = partnerNetReward(Number(s.tier3_amount ?? 0));
+            if (t3) tiers.push({ label: TIER_LABELS.tier3, amount: t3 });
+          }
+        }
+        return {
+          id: s.id,
+          listingTitle: s.listing?.property_title || s.listing?.address || 'נכס',
+          leadName: s.lead_name,
+          date: fmtDMY(s.created_at),
+          tiers,
+          total: tiers.reduce((sum, t) => sum + t.amount, 0),
+        };
+      })
+      .filter((row) => row.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [submissions]);
+
   if (roleLoading) {
     return (
       <>
@@ -821,47 +852,14 @@ export default function AffiliatePortal() {
         </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {[
-            {
-              label: 'נכסים בשיווק',
-              value: String(stats.promoting),
-              icon: Megaphone,
-              accent: 'primary' as const,
-              tooltip: 'מספר הנכסים שיצרתם עבורם קישור שיווק אישי.',
-            },
-            {
-              label: 'לידים שהגשתי',
-              value: String(stats.leads),
-              icon: MousePointerClick,
-              accent: 'primary' as const,
-              tooltip: 'סך אנשי הקשר שהגשתם לנכסים של מתווכים מהרשת.',
-            },
-            {
-              label: 'עסקאות שנחתמו',
-              value: String(stats.signed),
-              icon: TrendingUp,
-              accent: 'success' as const,
-              tooltip: 'עסקאות שנסגרו בעקבות הפניות שלכם.',
-            },
-            {
-              label: 'תגמול מצטבר',
-              value: fmtILS(stats.earned),
-              icon: Banknote,
-              accent: 'warning' as const,
-              tooltip: 'סך התגמול שנצבר לזכותכם מכל העסקאות שנסגרו.',
-            },
-          ].map((s) => (
-            <AffiliateKpiCard key={s.label} {...s} />
-          ))}
-        </div>
 
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3">
             <TabsList>
-              <TabsTrigger value="marketplace">נכסים לשיווק</TabsTrigger>
-              <TabsTrigger value="leads">לידים שהגשתי</TabsTrigger>
-              <TabsTrigger value="mine">השיווקים שלי</TabsTrigger>
+              <TabsTrigger value="marketplace">נכסים לשיווק ({marketplace.length})</TabsTrigger>
+              <TabsTrigger value="leads">לידים שהגשתי ({submissions.length})</TabsTrigger>
+              <TabsTrigger value="mine">השיווקים שלי ({referralCampaigns.filter((row) => row.listing).length})</TabsTrigger>
+              <TabsTrigger value="earnings">רווחים ({earningRows.length})</TabsTrigger>
             </TabsList>
             <div className="flex shrink-0 items-center" aria-label="בחירת תצוגה">
               <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} />
@@ -1067,6 +1065,58 @@ export default function AffiliatePortal() {
                   <MarketplaceCard key={referral.id} listing={listing!} referral={referral} />
                 ))}
               </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="earnings" className="space-y-3 pt-4">
+            <Card className="border-emerald-200 bg-emerald-50/60">
+              <CardContent className="flex items-center justify-between gap-3 p-4">
+                <div className="text-sm font-semibold text-emerald-900">סך הרווחים שנצברו</div>
+                <div className="text-2xl font-black text-emerald-700" dir="ltr">
+                  <bdi>{fmtILS(earningRows.reduce((sum, row) => sum + row.total, 0))}</bdi>
+                </div>
+              </CardContent>
+            </Card>
+
+            {subsLoading ? (
+              <Skeleton className="h-48 w-full" />
+            ) : earningRows.length === 0 ? (
+              <Card className="border-dashed border-slate-200">
+                <CardContent className="p-10 text-center text-sm text-slate-500">
+                  עוד לא נצברו רווחים. הגשת ליד לנכס מהרשת מזכה אותך בתגמול שלב 1.
+                </CardContent>
+              </Card>
+            ) : (
+              earningRows.map((row) => (
+                <Card key={row.id} className="border-slate-200">
+                  <CardContent className="space-y-2 p-3.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-bold text-slate-900">
+                          {row.listingTitle}
+                        </div>
+                        <div className="truncate text-[11px] text-slate-500">
+                          {row.leadName} · {row.date}
+                        </div>
+                      </div>
+                      <div className="text-sm font-bold text-emerald-700" dir="ltr">
+                        <bdi>{fmtILS(row.total)}</bdi>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {row.tiers.length === 0 ? (
+                        <Badge variant="outline" className="text-[11px] text-slate-500">ללא תגמול</Badge>
+                      ) : (
+                        row.tiers.map((tier) => (
+                          <Badge key={tier.label} variant="outline" className="text-[11px] text-emerald-700">
+                            {tier.label} · <bdi dir="ltr">{fmtILS(tier.amount)}</bdi>
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </TabsContent>
         </Tabs>
