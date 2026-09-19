@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export type ResolvedPlace = {
   formatted_address: string;
@@ -19,6 +20,8 @@ export default function AddressAutocomplete({ value, onPick }: { value: string; 
   const [text, setText] = useState(value);
   const [suggestions, setSuggestions] = useState<{ place_id: string; label: string }[]>([]);
   const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState(Boolean(value));
+  const [loading, setLoading] = useState(false);
   const sessionToken = useRef<string>(crypto.randomUUID());
   const latest = useRef(0);
 
@@ -26,27 +29,43 @@ export default function AddressAutocomplete({ value, onPick }: { value: string; 
 
   useEffect(() => {
     const query = text.trim();
-    if (query.length < 2) { setSuggestions([]); return; }
+    if (selected || query.length < 2) { setSuggestions([]); return; }
     const requestId = ++latest.current;
     const timer = setTimeout(async () => {
-      const { data } = await supabase.functions.invoke('places-autocomplete', {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('places-autocomplete', {
         body: { action: 'autocomplete', input: query, sessionToken: sessionToken.current },
       });
       if (requestId !== latest.current) return;
-      setSuggestions(((data as { suggestions?: { place_id: string; label: string }[] })?.suggestions ?? []));
+      setLoading(false);
+      if (error || (data as { error?: string } | null)?.error) {
+        setSuggestions([]);
+        setOpen(false);
+        toast.error('חיפוש הכתובת לא זמין כרגע', { description: 'בדקו את החיבור ונסו שוב בעוד רגע.' });
+        return;
+      }
+      setSuggestions(((data as { suggestions?: { place_id: string; label: string }[] })?.suggestions ?? [])
+        .filter((suggestion) => /[\u0590-\u05FF]/.test(suggestion.label)));
       setOpen(true);
     }, 300);
     return () => clearTimeout(timer);
-  }, [text]);
+  }, [selected, text]);
 
   const choose = async (placeId: string, label: string) => {
     setText(label); setOpen(false); setSuggestions([]);
-    const { data } = await supabase.functions.invoke('places-autocomplete', {
+    setLoading(true);
+    const { data, error } = await supabase.functions.invoke('places-autocomplete', {
       body: { action: 'details', place_id: placeId, sessionToken: sessionToken.current },
     });
+    setLoading(false);
     sessionToken.current = crypto.randomUUID();
     const place = (data as { place?: ResolvedPlace })?.place;
-    if (place) onPick(place);
+    if (error || !place) {
+      toast.error('לא ניתן להשלים את פרטי הכתובת', { description: 'בחרו תוצאה אחרת או נסו שוב.' });
+      return;
+    }
+    setSelected(true);
+    onPick(place);
   };
 
   return (
@@ -57,9 +76,10 @@ export default function AddressAutocomplete({ value, onPick }: { value: string; 
         value={text}
         autoComplete="off"
         placeholder="עיר, רחוב ומספר"
-        onChange={(event) => setText(event.target.value)}
+        onChange={(event) => { setSelected(false); setText(event.target.value); }}
         onFocus={() => { if (suggestions.length) setOpen(true); }}
       />
+      {loading && <p className="mt-1 text-xs text-muted-foreground">מחפש כתובת בעברית…</p>}
       {open && suggestions.length > 0 && (
         <ul className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-md">
           {suggestions.map((suggestion) => (

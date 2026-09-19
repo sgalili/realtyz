@@ -12,7 +12,7 @@ import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
-  street: string; deal_type: string | null; rooms: number | null; sqm: number | null; floor: number | null;
+  street: string; deal_type: string | null; rooms: number | null; sqm: number | null; floor: number | null; total_floors: number | null;
   price: number | null; description: string | null; photos: string[];
 };
 
@@ -122,21 +122,23 @@ export default function PublicListingsBoard() {
           <div className="flex items-center justify-between gap-3">
             <PublicListingPublisher autoResume />
             <h1 className="min-w-0 flex-1 text-center text-xl font-bold text-foreground sm:text-2xl">לוח נדל״ן שיתופי</h1>
-            <img src={realtyzLogo} alt="Realtyz" className="h-8 w-auto shrink-0 object-contain" />
+            <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
           </div>
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-              <div className="relative min-w-[200px] max-w-md flex-1">
-                <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש לפי עיר או שכונה" className="pe-10 ps-3" />
-                <Button type="button" size="icon" variant="ghost" onClick={() => void load()} aria-label="חיפוש" className="absolute end-1 top-1/2 h-8 w-8 -translate-y-1/2">
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="inline-flex rounded-md border bg-background p-1">
-                {([['all', 'הכול'], ['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant={deal === value ? 'default' : 'ghost'} onClick={() => setDeal(value)}>{label}</Button>)}
-              </div>
+          <div className="mt-5 space-y-2">
+            <div className="relative min-w-[200px] max-w-md">
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש לפי עיר או שכונה" className="pe-10 ps-3" />
+              <Button type="button" size="icon" variant="ghost" onClick={() => void load()} aria-label="חיפוש" className="absolute end-1 top-1/2 h-8 w-8 -translate-y-1/2">
+                <Search className="h-4 w-4" />
+              </Button>
             </div>
-            <Button size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
+            <div className="flex w-full items-center justify-between gap-2">
+              <div className="relative min-w-[200px] max-w-md flex-1">
+                <div className="inline-flex rounded-md border bg-background p-1">
+                {([['all', 'הכול'], ['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant={deal === value ? 'default' : 'ghost'} onClick={() => setDeal(value)}>{label}</Button>)}
+                </div>
+              </div>
+              <Button className="shrink-0" size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
+            </div>
           </div>
         </div>
       </header>
@@ -150,16 +152,18 @@ export default function PublicListingsBoard() {
                 <PhotoCarousel photos={card.photos} alt={title} />
                 <div className="space-y-2 p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-foreground">
-                      <Home className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="min-w-0 break-words">{[card.street && stripAddressNumbers(card.street), card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
-                    </p>
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-foreground">
+                        <Home className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="min-w-0 break-words">{[card.street && stripAddressNumbers(card.street), card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}${card.total_floors ? ` מתוך ${card.total_floors}` : ''}` : null].filter(Boolean).join(' · ')}</p>
+                    </div>
                     <div className="shrink-0 text-left">
-                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success/15 text-success' : 'bg-warning text-warning-foreground shadow-sm')}>{dealLabel(card.deal_type)}</span>
+                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success/15 text-success' : 'bg-orange-500 text-white shadow-sm')}>{dealLabel(card.deal_type)}</span>
                       <p className="mt-1 text-sm font-bold text-foreground">{shekel(card.price)}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}` : null].filter(Boolean).join(' · ')}</p>
                   {card.description && <p className="line-clamp-3 text-xs text-muted-foreground">{card.description}</p>}
                   <div className="flex gap-2 pt-1">
                     <Button size="icon" variant="outline" onClick={() => openGate(card, 'favorite')} aria-label="שמירה במועדפים"><Heart className="h-4 w-4 text-destructive" /></Button>

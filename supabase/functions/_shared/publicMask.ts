@@ -50,6 +50,7 @@ export type PublicCard = {
   rooms: number | null;
   sqm: number | null;
   floor: number | null;
+  total_floors: number | null;
   price: number | null;
   description: string | null;
   photos: string[];
@@ -73,6 +74,9 @@ function photosOf(row: Record<string, unknown>): string[] {
 /** Builds the ONLY shape an anonymous visitor may ever receive. */
 export function toPublicCard(row: Record<string, any>): PublicCard {
   const rawDescription = row.short_description || row.description || row.long_description || "";
+  const rawTotalFloors = row.features && typeof row.features === "object"
+    ? row.features.total_floors
+    : null;
   return {
     id: String(row.id),
     slug: row.slug ?? null,
@@ -84,6 +88,7 @@ export function toPublicCard(row: Record<string, any>): PublicCard {
     rooms: row.rooms == null ? null : Number(row.rooms),
     sqm: row.sqm == null ? null : Number(row.sqm),
     floor: row.floor == null ? null : Number(row.floor),
+    total_floors: rawTotalFloors == null || rawTotalFloors === "" ? null : Number(rawTotalFloors),
     price: row.asking_price == null ? null : Number(row.asking_price),
     description: maskContactText(maskAddress(rawDescription)).slice(0, 700) || null,
     photos: photosOf(row),
@@ -92,4 +97,4 @@ export function toPublicCard(row: Record<string, any>): PublicCard {
 }
 
 export const PUBLIC_CARD_COLUMNS =
-  "id, slug, property_title, address, city, neighborhood, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, image_url, media_photos, created_at, is_published, status, affiliate_enabled";
+  "id, slug, property_title, address, city, neighborhood, deal_type, rooms, sqm, floor, features, asking_price, description, short_description, long_description, image_url, media_photos, created_at, is_published, status, affiliate_enabled";

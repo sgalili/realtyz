@@ -1,7 +1,7 @@
 export type PublicListingDraftFields = {
   /** מתווך / פרטי */
-  publisherType: 'broker' | 'private';
-  dealType: 'sale' | 'rent';
+  publisherType: 'broker' | 'private' | '';
+  dealType: 'sale' | 'rent' | '';
   propertyType: string;
   city: string;
   street: string;
@@ -36,8 +36,8 @@ export type PublicListingDraftFields = {
 };
 
 export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
-  publisherType: 'private',
-  dealType: 'sale',
+  publisherType: '',
+  dealType: '',
   propertyType: '',
   city: '',
   street: '',
@@ -79,6 +79,7 @@ export type PublicListingDraft = PublicListingDraftFields & {
 const DB_NAME = 'realtyz-public-listing-drafts';
 const STORE = 'drafts';
 const KEY = 'pending';
+export const PUBLIC_LISTING_RESUME_KEY = 'realtyz-public-listing-resume';
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -100,6 +101,7 @@ export async function savePublicListingDraft(fields: PublicListingDraftFields, f
     tx.onerror = () => reject(tx.error);
   });
   db.close();
+  try { window.localStorage.setItem(PUBLIC_LISTING_RESUME_KEY, '1'); } catch { /* storage disabled */ }
 }
 
 export async function readPublicListingDraft(): Promise<PublicListingDraft | null> {
@@ -122,4 +124,5 @@ export async function clearPublicListingDraft() {
     tx.onerror = () => reject(tx.error);
   });
   db.close();
+  try { window.localStorage.removeItem(PUBLIC_LISTING_RESUME_KEY); } catch { /* storage disabled */ }
 }

@@ -22,6 +22,7 @@ import QuickActionDrawer from '@/components/QuickActionDrawer';
 import ProductTour from '@/components/tour/ProductTour';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
+import { FirstTimeSyncDialog } from '@/components/onboarding/FirstTimeSyncDialog';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -578,7 +579,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          {/* Onboarding wizards permanently disabled per product decision */}
+          <FirstTimeSyncDialog />
         </div>
         
       </div>
