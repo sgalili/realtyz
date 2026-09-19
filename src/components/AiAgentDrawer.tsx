@@ -628,7 +628,11 @@ ${shareUrl}
             variant="ghost"
             size="icon"
             aria-label="שאלות מומלצות"
-            onClick={() => setShowSuggestions((v) => !v)}
+            onClick={() => {
+              const next = !showSuggestions;
+              setShowSuggestions(next);
+              if (next) scrollConversationToTop();
+            }}
             className="absolute end-[52px] top-3 text-muted-foreground"
           >
             <Home className="h-4 w-4" />
@@ -654,7 +658,8 @@ ${shareUrl}
         </div>
 
         {/* Messages */}
-        <Conversation className="min-h-0" initial="instant" resize="instant">
+        <div ref={conversationWrapRef} className="flex min-h-0 flex-1 flex-col">
+        <Conversation className="min-h-0 flex-1" initial="instant" resize="instant">
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
           {(messages.length === 0 || showSuggestions) && (
             <div className="space-y-5 py-2">
