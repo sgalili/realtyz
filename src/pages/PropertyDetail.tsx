@@ -1335,28 +1335,29 @@ export default function PropertyDetail() {
         {!editMode ? (
           <>
 
-            {/* Source link renders INSTANTLY whenever a Yad2 URL exists — the
-                liveness probe only hides it once it is confirmed 'gone'. */}
-            {yad2Url && liveYad2Status !== 'gone' && (
-              <a href={yad2Url} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה החיה ביד2" title="צפייה במודעה החיה ביד2" className="inline-flex items-center transition-opacity hover:opacity-80">
-                <Yad2Icon className="h-6 w-6" />
-              </a>
-            )}
-
-            {/* Refresh sits right after the Yad2 icon and only while the ad is
-                still on Yad2. Limited to one manual refresh per day. */}
-            {yad2Url && liveYad2Status !== 'gone' && (
+            {/* Borderless refresh comes first, the Yad2 mark after it. The
+                refresh also traces the live ad when only a search URL exists,
+                so it shows for every Yad2-sourced property. Once per day. */}
+            {isYad2Listing && (
               <Button
                 size="icon"
-                variant="outline"
+                variant="ghost"
                 onClick={syncFromYad2}
                 disabled={syncingSource || yad2SyncUsedToday}
                 aria-label="רענון נתונים מיד2"
                 title={yad2SyncUsedToday ? 'הרענון מיד2 בוצע היום. זמין שוב מחר' : 'רענון כל פרטי הנכס מיד2 (פעם ביום)'}
-                className="h-8 w-8 border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50"
+                className="h-8 w-8 border-0 text-primary hover:bg-primary/10 disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 ${syncingSource ? 'animate-spin' : ''}`} />
               </Button>
+            )}
+
+            {/* Only a real ad page gets the Yad2 mark; the liveness probe hides
+                it once the ad is confirmed gone. */}
+            {yad2Url && liveYad2Status !== 'gone' && (
+              <a href={yad2Url} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה החיה ביד2" title="צפייה במודעה החיה ביד2" className="inline-flex items-center transition-opacity hover:opacity-80">
+                <Yad2Icon className="h-6 w-6" />
+              </a>
             )}
 
             {isHomelyListing && resolvedSourceUrl && (
