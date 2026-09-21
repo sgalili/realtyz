@@ -33,7 +33,7 @@ import { Banknote, BedDouble, Building2, ClipboardList, Handshake, LayoutGrid, L
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
-import { EMPTY_LEAD_FILTER, leadFilterActiveCount, leadTierAmounts, matchesLeadFilter, type LeadFilterState } from '@/lib/leadTypeFilter';
+import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, leadFilterActiveCount, leadTierAmounts, matchesLeadFilter, matchesPropertyFilter, propertyFilterActiveCount, type LeadFilterState, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import { defaultQuestions, deriveContactOptions, leadCost } from '@/lib/leadTiers';
 
@@ -338,6 +338,7 @@ function BrokerAffiliateNetwork() {
 
   const [search, setSearch] = useState('');
   const [leadFilter, setLeadFilter] = useState<LeadFilterState>(EMPTY_LEAD_FILTER);
+  const [propertyFilter, setPropertyFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
   // Removing a property from partner marketing is destructive for partners who
@@ -357,17 +358,30 @@ function BrokerAffiliateNetwork() {
     navigate(`/lead-crm/${leadId}`, { state: { returnTo: '/affiliate-network' } });
   };
 
+  // Filter option lists come straight off the broker's own properties.
+  const filterCities = useMemo(
+    () => [...new Set(listings.map((l) => l.city).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'he')) as string[],
+    [listings],
+  );
+  const filterNeighborhoods = useMemo(() => {
+    const pool = propertyFilter.city === 'all' ? listings : listings.filter((l) => l.city === propertyFilter.city);
+    return [...new Set(pool.map((l) => l.neighborhood).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'he')) as string[];
+  }, [listings, propertyFilter.city]);
+
   const filteredListings = useMemo(() => {
     const q = search.trim().toLowerCase();
     const leadActive = leadFilterActiveCount(leadFilter) > 0;
-    if (!q && !leadActive) return listings;
+    const propsActive = propertyFilterActiveCount(propertyFilter) > 0;
+    if (!q && !leadActive && !propsActive) return listings;
     return listings.filter((l) => {
+      const row = l as unknown as Record<string, unknown>;
       const matchesText = !q
         || [l.property_title, l.address, l.city].some((f) => (f ?? '').toLowerCase().includes(q));
       if (!matchesText) return false;
-      return !leadActive || matchesLeadFilter(leadTierAmounts(l as unknown as Record<string, unknown>), leadFilter);
+      if (leadActive && !matchesLeadFilter(leadTierAmounts(row), leadFilter)) return false;
+      return !propsActive || matchesPropertyFilter(row, propertyFilter);
     });
-  }, [listings, search, leadFilter]);
+  }, [listings, search, leadFilter, propertyFilter]);
 
   const totals = useMemo(() => {
     const signed = referrals.filter((r) => r.status === 'deal_signed');
