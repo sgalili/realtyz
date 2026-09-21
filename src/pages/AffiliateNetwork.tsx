@@ -402,14 +402,9 @@ function BrokerAffiliateNetwork() {
 
   return (
     <>
-      <div className="space-y-5 p-4" dir="rtl">
-        <header>
-          <h1 className="text-2xl font-bold text-slate-900">רשת השותפים</h1>
-          <p className="text-sm text-slate-500">
-            קבעו תגמול לכל נכס, ועקבו אחרי כל איש קשר שמגיע דרך שותפי השיווק.
-          </p>
-        </header>
-
+      {/* Tabs sit at the same height as on the inbox and campaigns pages:
+          no local page title block, matching top offset. */}
+      <div className="-mt-[25px] space-y-5" dir="rtl">
         <Tabs defaultValue="rewards">
           <TabsList className="mx-auto grid h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
             <TabsTrigger value="rewards" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">נכסים ({listings.length})</TabsTrigger>
