@@ -410,13 +410,13 @@ export default function SharedProperty() {
           priceHistory={Array.isArray(p.price_history) ? p.price_history : []}
         />
 
-        {Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)) && Number(p.latitude) !== 0 && Number(p.longitude) !== 0 ? (
+        {(Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)) && Number(p.latitude) !== 0 && Number(p.longitude) !== 0) || mapQuery ? (
           <section className="space-y-2">
-            <WorkspacePropertiesMap properties={mapProperties} selectedId={p.id ?? null} onSelect={setSelectedPropertyId} />
+            <WorkspacePropertiesMap properties={mapProperties} selectedId={p.id ?? null} onSelect={setSelectedPropertyId} fallbackAddress={mapQuery} />
             {mapProperties.length > 1 ? <p className="text-[13px] text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס</p> : null}
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" size="sm"><a href={`https://waze.com/ul?ll=${p.latitude},${p.longitude}&navigate=yes`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Waze</a></Button>
-              <Button asChild variant="outline" size="sm"><a href={`https://www.google.com/maps/dir/?api=1&destination=${p.latitude},${p.longitude}`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Google Maps</a></Button>
+              <Button asChild variant="outline" size="sm"><a href={(Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)) && Number(p.latitude) !== 0 && Number(p.longitude) !== 0) ? `https://waze.com/ul?ll=${p.latitude},${p.longitude}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(mapQuery)}&navigate=yes`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Waze</a></Button>
+              <Button asChild variant="outline" size="sm"><a href={`https://www.google.com/maps/dir/?api=1&destination=${(Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)) && Number(p.latitude) !== 0 && Number(p.longitude) !== 0) ? `${p.latitude},${p.longitude}` : encodeURIComponent(mapQuery)}`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Google Maps</a></Button>
             </div>
           </section>
         ) : null}
