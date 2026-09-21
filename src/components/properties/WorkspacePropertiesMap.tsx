@@ -157,7 +157,8 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selected) return;
+    if (!map || !selected || !ready) return;
+    map.resize();
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
@@ -197,7 +198,7 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
     };
-  }, [displayPoints, selected?.id, selected?.latitude, selected?.longitude, onSelect]);
+  }, [displayPoints, selected?.id, selected?.latitude, selected?.longitude, onSelect, ready]);
 
   useEffect(() => () => {
     markersRef.current.forEach((marker) => marker.remove());
