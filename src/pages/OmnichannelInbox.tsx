@@ -786,6 +786,18 @@ const OmnichannelInbox = () => {
     return null;
   }, [chatMessages]);
 
+  // Simulated WhatsApp read receipt: the moment an inbound message arrives (i.e.
+  // Rita's webhook received and processed a reply from the contact), every
+  // outbound message sent before it is marked as read (blue double tick).
+  const lastInboundIndex = useMemo(() => {
+    if (!chatMessages?.length) return -1;
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      if ((chatMessages[i] as any)?.direction !== 'outbound') return i;
+    }
+    return -1;
+  }, [chatMessages]);
+
+
   // Edge functions return a short, already-humanized Hebrew reason in `error`.
   // Prefer it over raw provider payloads so the broker never sees JSON blobs.
   const readFunctionError = async (err: any) => {
@@ -1347,7 +1359,15 @@ const OmnichannelInbox = () => {
                         })()}
                         <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
                           <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
-                          {isOutbound && <WhatsAppTicks status={((msg as any)?.metadata?.status as 'sent' | 'delivered' | 'read') || 'delivered'} />}
+                          {isOutbound && (
+                            <WhatsAppTicks
+                              status={
+                                idx < lastInboundIndex
+                                  ? 'read'
+                                  : ((msg as any)?.metadata?.status as 'sent' | 'delivered' | 'read') || 'delivered'
+                              }
+                            />
+                          )}
                         </p>
                       </MessageContent>
                     );

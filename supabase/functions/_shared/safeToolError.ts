@@ -8,9 +8,13 @@ import { logIntegrationError } from "./logIntegrationError.ts";
 export const GRACEFUL_TOOL_FALLBACK_HE =
   "כדי לדייק לך את האפשרויות, מה הכי חשוב כרגע: מספר החדרים או התקציב?";
 
-/** Conversational fallback for write/CRM actions that did not complete. */
+/**
+ * Conversational fallback for write/CRM actions that did not complete.
+ * Never asks which property or contact is meant: the inbound message already
+ * carries the address, so Rita keeps moving with a filtering question instead.
+ */
 export const GRACEFUL_ACTION_FALLBACK_HE =
-  "רק שאדייק לפני שאני ממשיכה: על איזה נכס או איש קשר מדובר?";
+  "רשמתי, ממשיכה. כדי להתקדם: כמה חדרים אתם מחפשים ומה התקציב?";
 
 /**
  * Record a tool/DB failure for developer debugging.
