@@ -272,44 +272,46 @@ function RewardDialog({
           </> : null}
         </div>
 
-        <DialogFooter className="flex-row items-center justify-between sm:justify-between">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>ביטול</Button>
-          <Button
-            disabled={save.isPending}
-            onClick={() =>
-              save.mutate(
-                {
-                  listingId: listing.id,
-                  enabled,
-                  rewardType,
-                  rewardAmount: Number(amount) || 0,
-                  tier1Amount: num(tier1),
-                  tier2Amount: num(tier2),
-                  tier3Type: 'fixed',
-                  tier3Amount: num(tier3),
-                  tier4Type,
-                  tier4Amount: num(tier4),
-                  contactOptions: deriveContactOptions({
-                    tier1: num(tier1),
-                    tier2: num(tier2),
-                    tier3: num(tier3),
-                    questions,
-                    questionsPhone,
-                  }) as unknown as Record<string, unknown>,
-                },
-                {
-                  onSuccess: () => {
-                    toast.success('התגמול נשמר');
-                    onOpenChange(false);
+        {enabled ? (
+          <DialogFooter className="flex-row items-center justify-between sm:justify-between">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>ביטול</Button>
+            <Button
+              disabled={save.isPending}
+              onClick={() =>
+                save.mutate(
+                  {
+                    listingId: listing.id,
+                    enabled,
+                    rewardType,
+                    rewardAmount: Number(amount) || 0,
+                    tier1Amount: num(tier1),
+                    tier2Amount: num(tier2),
+                    tier3Type: 'fixed',
+                    tier3Amount: num(tier3),
+                    tier4Type,
+                    tier4Amount: num(tier4),
+                    contactOptions: deriveContactOptions({
+                      tier1: num(tier1),
+                      tier2: num(tier2),
+                      tier3: num(tier3),
+                      questions,
+                      questionsPhone,
+                    }) as unknown as Record<string, unknown>,
                   },
-                  onError: () => toast.error('השמירה נכשלה'),
-                },
-              )
-            }
-          >
-            {save.isPending ? 'שומר...' : 'שמירה'}
-          </Button>
-        </DialogFooter>
+                  {
+                    onSuccess: () => {
+                      toast.success('התגמול נשמר');
+                      onOpenChange(false);
+                    },
+                    onError: () => toast.error('השמירה נכשלה'),
+                  },
+                )
+              }
+            >
+              {save.isPending ? 'שומר...' : 'שמירה'}
+            </Button>
+          </DialogFooter>
+        ) : null}
 
         <LeadQuestionsDialog
           open={editingQuestions !== null}
