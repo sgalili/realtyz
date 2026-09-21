@@ -32,6 +32,8 @@ import { toast } from 'sonner';
 import { Banknote, BedDouble, Building2, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, MessageCircle, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
+import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
+import { EMPTY_LEAD_FILTER, leadFilterActiveCount, leadTierAmounts, matchesLeadFilter, type LeadFilterState } from '@/lib/leadTypeFilter';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import { defaultQuestions, deriveContactOptions, leadCost } from '@/lib/leadTiers';
 
@@ -335,6 +337,7 @@ function BrokerAffiliateNetwork() {
   const quickSave = useSetAffiliateReward();
 
   const [search, setSearch] = useState('');
+  const [leadFilter, setLeadFilter] = useState<LeadFilterState>(EMPTY_LEAD_FILTER);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
   // Removing a property from partner marketing is destructive for partners who
@@ -356,11 +359,15 @@ function BrokerAffiliateNetwork() {
 
   const filteredListings = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return listings;
-    return listings.filter((l) =>
-      [l.property_title, l.address, l.city].some((f) => (f ?? '').toLowerCase().includes(q)),
-    );
-  }, [listings, search]);
+    const leadActive = leadFilterActiveCount(leadFilter) > 0;
+    if (!q && !leadActive) return listings;
+    return listings.filter((l) => {
+      const matchesText = !q
+        || [l.property_title, l.address, l.city].some((f) => (f ?? '').toLowerCase().includes(q));
+      if (!matchesText) return false;
+      return !leadActive || matchesLeadFilter(leadTierAmounts(l as unknown as Record<string, unknown>), leadFilter);
+    });
+  }, [listings, search, leadFilter]);
 
   const totals = useMemo(() => {
     const signed = referrals.filter((r) => r.status === 'deal_signed');
@@ -419,7 +426,12 @@ function BrokerAffiliateNetwork() {
                   placeholder="חיפוש נכס"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-10 ps-10 pe-4"
+                  className="h-10 ps-10 pe-10"
+                />
+                <LeadTypeFilterButton
+                  state={leadFilter}
+                  onChange={setLeadFilter}
+                  className="absolute left-2 top-1/2 -translate-y-1/2"
                 />
               </div>
               <div className="ms-auto inline-flex items-center">

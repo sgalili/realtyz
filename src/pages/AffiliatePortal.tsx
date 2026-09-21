@@ -83,6 +83,16 @@ import { AFFILIATE_PLANS, affiliateAnnualPrice, type AffiliatePlanSlug } from '@
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { supabase } from '@/integrations/supabase/client';
 import { ISRAELI_CITIES } from '@/data/israeliCities';
+import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
+import {
+  EMPTY_LEAD_FILTER,
+  LEAD_TYPE_LABELS,
+  LEAD_TYPE_ORDER,
+  leadFilterActiveCount,
+  leadTierAmounts,
+  matchesLeadFilter,
+  type LeadFilterState,
+} from '@/lib/leadTypeFilter';
 
 const DEAL_TYPE_LABELS: Record<string, string> = {
   sale: 'למכירה',
@@ -612,6 +622,7 @@ export default function AffiliatePortal() {
   const { preferences, update: updatePreferences, isUpdating: preferencesUpdating } = useAffiliatePreferences();
   const { level4Unlocked } = useAffiliateLicense();
   const [search, setSearch] = useState('');
+  const [leadFilter, setLeadFilter] = useState<LeadFilterState>(EMPTY_LEAD_FILTER);
   const [activeTab, setActiveTab] = useState('marketplace');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -671,7 +682,8 @@ export default function AffiliatePortal() {
   }, [marketplace, city]);
   const activeFilterCount = [propertyType, city, neighborhood, rooms, dealType, propertySource].filter((value) => value !== 'all').length
     + (effectiveCommissionRange[0] > 0 || effectiveCommissionRange[1] < commissionMax ? 1 : 0)
-    + (effectivePriceRange[0] > 0 || effectivePriceRange[1] < priceMax ? 1 : 0);
+    + (effectivePriceRange[0] > 0 || effectivePriceRange[1] < priceMax ? 1 : 0)
+    + leadFilterActiveCount(leadFilter);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -681,6 +693,7 @@ export default function AffiliatePortal() {
       const commission = commissionPotential(l);
       const price = Number(l.asking_price ?? 0);
       return matchesText
+        && matchesLeadFilter(leadTierAmounts(l as unknown as Record<string, unknown>), leadFilter)
         && commission >= effectiveCommissionRange[0]
         && commission <= effectiveCommissionRange[1]
         && price >= effectivePriceRange[0]
@@ -694,7 +707,7 @@ export default function AffiliatePortal() {
           ? Boolean(l.broker_license_number || l.office_name)
           : !l.broker_license_number && !l.office_name));
     });
-  }, [marketplace, search, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType, propertySource]);
+  }, [marketplace, search, leadFilter, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType, propertySource]);
 
   const clearFilters = () => {
     setCommissionRange([0, commissionMax]);
@@ -706,14 +719,20 @@ export default function AffiliatePortal() {
     setDealType('all');
     setPropertySource('all');
     setCitySearch('');
+    setLeadFilter(EMPTY_LEAD_FILTER);
   };
 
   const filteredSubmissions = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return submissions;
-    return submissions.filter((s) => [s.lead_name, s.lead_phone, s.listing?.property_title]
-      .some((value) => (value ?? '').toLowerCase().includes(q)));
-  }, [submissions, search]);
+    const leadActive = leadFilterActiveCount(leadFilter) > 0;
+    if (!q && !leadActive) return submissions;
+    return submissions.filter((s) => {
+      const matchesText = !q || [s.lead_name, s.lead_phone, s.listing?.property_title]
+        .some((value) => (value ?? '').toLowerCase().includes(q));
+      if (!matchesText) return false;
+      return !leadActive || matchesLeadFilter(leadTierAmounts(s as unknown as Record<string, unknown>), leadFilter);
+    });
+  }, [submissions, search, leadFilter]);
 
   // Property details for every campaign of mine (marketplace first, then the
   // dedicated lookup so listings pulled from the network still render fully).
@@ -884,7 +903,8 @@ export default function AffiliatePortal() {
         <div className="mt-4 flex max-w-lg items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" />
+            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10 pl-10" />
+            <LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} className="absolute left-2 top-1/2 -translate-y-1/2" />
           </div>
           {activeTab === 'marketplace' ? (
             <Button type="button" size="icon" variant={activeFilterCount ? 'default' : 'outline'} onClick={() => setFiltersOpen(true)} className="relative shrink-0" aria-label="סינון נכסים" title="סינון נכסים">
@@ -1215,6 +1235,38 @@ export default function AffiliatePortal() {
               <SheetTitle className="text-center">סינון נכסים לשיווק אוטומטי</SheetTitle>
             </SheetHeader>
             <div className="space-y-6 py-6">
+              <div className="space-y-3">
+                <Label>סוג הליד</Label>
+                <div className="flex flex-wrap gap-2">
+                  {LEAD_TYPE_ORDER.map((key) => {
+                    const active = leadFilter.types.includes(key);
+                    return (
+                      <Button
+                        key={key}
+                        type="button"
+                        size="sm"
+                        variant={active ? 'default' : 'outline'}
+                        onClick={() => setLeadFilter({
+                          ...leadFilter,
+                          types: active ? leadFilter.types.filter((value) => value !== key) : [...leadFilter.types, key],
+                        })}
+                      >
+                        {LEAD_TYPE_LABELS[key]}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-[11px] text-muted-foreground">שווי ליד מ־ (₪)</Label>
+                    <Input type="number" min={0} dir="ltr" value={leadFilter.min ?? ''} onChange={(event) => setLeadFilter({ ...leadFilter, min: event.target.value.trim() === '' ? null : Math.max(0, Number(event.target.value) || 0) })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] text-muted-foreground">שווי ליד עד (₪)</Label>
+                    <Input type="number" min={0} dir="ltr" value={leadFilter.max ?? ''} onChange={(event) => setLeadFilter({ ...leadFilter, max: event.target.value.trim() === '' ? null : Math.max(0, Number(event.target.value) || 0) })} />
+                  </div>
+                </div>
+              </div>
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3"><Label>פוטנציאל תגמול</Label><bdi dir="ltr" className="text-sm font-semibold">{fmtILS(effectiveCommissionRange[0])} – {fmtILS(effectiveCommissionRange[1])}</bdi></div>
                 <Slider min={0} max={commissionMax} step={100} value={effectiveCommissionRange} onValueChange={(value) => setCommissionRange([value[0] ?? 0, value[1] ?? commissionMax])} />
