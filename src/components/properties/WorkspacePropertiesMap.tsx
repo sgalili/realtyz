@@ -13,6 +13,11 @@ type Props = {
   properties: WorkspaceMapProperty[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /**
+   * Full street address of the shown property. When no coordinates exist we
+   * render the embedded map by address instead of hiding the map entirely.
+   */
+  fallbackAddress?: string | null;
 };
 
 declare global {
