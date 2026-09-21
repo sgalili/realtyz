@@ -5,7 +5,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { cleanPayload } from "../_shared/cleanValues.ts";
-import { maskAddress, maskContactText } from "../_shared/publicMask.ts";
+import { maskContactText } from "../_shared/publicMask.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -50,11 +50,10 @@ Deno.serve(async (req) => {
 
     const maskProperty = (row: Record<string, any>) => cleanPayload({
       ...row,
-      address: maskAddress(row.address),
-      property_title: maskAddress(row.property_title),
-      description: maskContactText(maskAddress(row.description)),
-      short_description: maskContactText(maskAddress(row.short_description)),
-      long_description: maskContactText(maskAddress(row.long_description)),
+      // Full address (street, house number, apartment) is public.
+      description: maskContactText(row.description),
+      short_description: maskContactText(row.short_description),
+      long_description: maskContactText(row.long_description),
       workspace_owner_id: undefined,
       owner_id: undefined,
       is_published: undefined,
