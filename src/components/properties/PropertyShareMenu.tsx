@@ -9,10 +9,10 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Share2, MessageCircle, Copy, Loader2, Smartphone, Mail } from 'lucide-react';
+import { Share2, MessageCircle, Copy, Loader2, Smartphone, Mail, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import type { UnifiedResult } from '@/lib/propertySearch';
-import { shareProperties, type ShareMode } from '@/lib/propertyShare';
+import { shareProperties, mintShareUrlForResult, type ShareMode } from '@/lib/propertyShare';
 
 export function PropertyShareMenu({
   results,
@@ -57,6 +57,20 @@ export function PropertyShareMenu({
     }
   };
 
+  const openPage = async () => {
+    if (count !== 1) return;
+    setBusy(true);
+    try {
+      const url = await mintShareUrlForResult(results[0]);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      toast.success('הדף נפתח בלשונית חדשה');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'פתיחת דף הנכס נכשלה');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
     <DropdownMenu>
@@ -91,6 +105,11 @@ export function PropertyShareMenu({
         <DropdownMenuItem onSelect={() => run('copy')} className="gap-2 text-sm">
           <Copy className="h-4 w-4" /> העתק קישור
         </DropdownMenuItem>
+        {count === 1 && (
+          <DropdownMenuItem onSelect={() => void openPage()} className="gap-2 text-sm">
+            <ExternalLink className="h-4 w-4" /> פתח דף
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
     <Dialog open={recipientMode !== null} onOpenChange={(open) => { if (!open) setRecipientMode(null); }}>
