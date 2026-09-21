@@ -348,7 +348,7 @@ export default function ClientPortal() {
             <div className="flex flex-wrap gap-2">
               {waLink && (
                 <Button asChild>
-                  <a href={waLink} target="_blank" rel="noreferrer">
+                  <a href={waLink} target="_blank" rel="noopener noreferrer">
                     <MessageCircle className="h-4 w-4 ml-1" />
                     שלח/י WhatsApp
                   </a>

@@ -123,7 +123,7 @@ export function ManagersTab() {
     const phone = rows.find((r) => /^\+?972\d/.test(r.phone_number))?.phone_number
       ?? rows[0].phone_number;
     const wa = phone.replace(/[^\d]/g, '');
-    window.open(`https://wa.me/${wa}`, '_blank');
+    window.open(`https://wa.me/${wa}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleBroadcast = () => {
@@ -132,7 +132,7 @@ export function ManagersTab() {
       .map((g) => g.find((r) => /^\+?972\d/.test(r.phone_number))?.phone_number ?? g[0].phone_number)
       .map((p) => p.replace(/[^\d]/g, ''));
     toast.success(`הודעה קבוצתית תישלח ל-${numbers.length} מנהלים`);
-    window.open(`https://wa.me/?text=${encodeURIComponent('הודעה למנהלי החשבון:')}`, '_blank');
+    window.open(`https://wa.me/?text=${encodeURIComponent('הודעה למנהלי החשבון:')}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
