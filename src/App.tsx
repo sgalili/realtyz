@@ -391,7 +391,7 @@ const App = () => (
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />
               <Route path="/ads" element={<Navigate to="/campaigns?tab=campaigns" replace />} />
               <Route path="/campaigns" element={<ProtectedRoute allowGuestDemo><CampaignCenter /></ProtectedRoute>} />
-              <Route path="/posts" element={<ProtectedRoute><CampaignCenter /></ProtectedRoute>} />
+              <Route path="/posts" element={<ProtectedRoute><PartnerOnlyRoute><CampaignCenter /></PartnerOnlyRoute></ProtectedRoute>} />
               <Route path="/broadcast" element={<ProtectedRoute><Broadcast /></ProtectedRoute>} />
               <Route path="/campaign-strategy" element={<Navigate to="/campaigns?tab=strategy" replace />} />
               <Route path="/approval-queue" element={<Navigate to="/campaigns?tab=approvals" replace />} />

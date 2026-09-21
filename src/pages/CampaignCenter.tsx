@@ -1324,6 +1324,11 @@ const InlineComposer = ({
     setListingQuery('');
     setSaveState('idle');
     if (savedHasWork) setHydrated(true);
+    if (forceFreshDeepLink && typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('fresh');
+      window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel.id, deepLinkListingId, forceFreshDeepLink, wsScope]);
 

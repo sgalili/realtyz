@@ -2,6 +2,8 @@
 // dialog and batch selection all mint the same secure landing-page link.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAppMode } from '@/hooks/useAppMode';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +35,8 @@ export function PropertyShareMenu({
   disabled?: boolean;
 }) {
   const navigate = useNavigate();
+  const { isPartnerMode } = useAppMode();
+  const { isAffiliateOnly } = useUserRole();
   const [busy, setBusy] = useState(false);
   const [recipientMode, setRecipientMode] = useState<Exclude<ShareMode, 'copy'> | null>(null);
   const [recipientName, setRecipientName] = useState('');
@@ -84,7 +88,7 @@ export function PropertyShareMenu({
         listing: ids[0],
         fresh: '1',
       });
-      navigate(`/posts?${params.toString()}`);
+      navigate(`${isPartnerMode || isAffiliateOnly ? '/posts' : '/campaigns'}?${params.toString()}`);
     } catch (e: any) {
       toast.error(e?.message ?? 'הכנת הנכס לפרסום ברשתות נכשלה');
     } finally {
