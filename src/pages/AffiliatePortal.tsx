@@ -776,9 +776,12 @@ export default function AffiliatePortal() {
             const t2 = partnerNetReward(Number(s.tier2_amount ?? 0));
             if (t2) tiers.push({ label: TIER_LABELS.tier2, amount: t2 });
           }
-          if (tier3Unlocked && s.status === 'closed' && s.tier3_type === 'fixed') {
-            const t3 = partnerNetReward(Number(s.tier3_amount ?? 0));
-            if (t3) tiers.push({ label: TIER_LABELS.tier3, amount: t3 });
+          const t3 = partnerNetReward(Number(s.tier3_amount ?? 0));
+          if (t3 && (s.status === 'verified' || s.status === 'closed')) tiers.push({ label: TIER_LABELS.tier3, amount: t3 });
+          // Level 4 (deal closing) pays licensed brokers only.
+          if (tier3Unlocked && s.status === 'closed' && (s.tier4_type ?? 'fixed') === 'fixed') {
+            const t4 = partnerNetReward(Number(s.tier4_amount ?? 0));
+            if (t4) tiers.push({ label: TIER_LABELS.tier4, amount: t4 });
           }
         }
         return {
@@ -806,7 +809,7 @@ export default function AffiliatePortal() {
         const t2 = partnerNetReward(Number(s.tier2_amount ?? 0));
         if (t2) { level2Count += 1; level2Sum += t2; }
       }
-      if (s.status === 'closed' && s.tier3_type === 'fixed') {
+      if (s.status === 'verified' || s.status === 'closed') {
         const t3 = partnerNetReward(Number(s.tier3_amount ?? 0));
         if (t3) { level3Count += 1; level3Sum += t3; }
       }
