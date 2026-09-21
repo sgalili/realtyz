@@ -618,6 +618,8 @@ export type AffiliateLeadSubmission = {
   tier2_amount: number;
   tier3_type: RewardType;
   tier3_amount: number;
+  tier4_type?: RewardType | null;
+  tier4_amount?: number | null;
   earned_amount: number;
   realtyz_commission_rate: number;
   realtyz_commission_amount: number;
