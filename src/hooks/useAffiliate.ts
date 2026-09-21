@@ -359,6 +359,7 @@ export type BrokerAffiliateListing = {
   affiliate_tier2_amount: number;
   affiliate_tier3_type: RewardType;
   affiliate_tier3_amount: number;
+  contact_options?: { digital?: boolean; whatsapp?: boolean; phone?: boolean; questions?: string[] } | null;
 };
 
 /** Workspace properties with their affiliate marketing configuration. */
@@ -371,7 +372,7 @@ export function useBrokerAffiliateListings() {
       const { data, error } = await supabase
         .from('listings')
         .select(
-          'id, property_title, address, city, neighborhood, deal_type, asking_price, rooms, sqm, floor, description, source_url, image_url, media_photos, house_number, apartment_number, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount',
+          'id, property_title, address, city, neighborhood, deal_type, asking_price, rooms, sqm, floor, description, source_url, image_url, media_photos, house_number, apartment_number, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount, contact_options',
         )
         .eq('user_id', ownerId!)
         .order('affiliate_enabled', { ascending: false })

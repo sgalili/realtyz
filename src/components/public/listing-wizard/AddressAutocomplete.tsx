@@ -14,7 +14,6 @@ export type ResolvedPlace = {
   neighborhood: string;
   city: string;
   area: string;
-  district: string;
 };
 
 export default function AddressAutocomplete({ value, onPick }: { value: string; onPick: (place: ResolvedPlace) => void }) {
