@@ -30,7 +30,7 @@ export function AffiliateCommissionButton({ listingId, shared }: { listingId: st
   useEffect(() => {
     if (!data) return;
     setEnabled(Boolean(data.affiliate_enabled));
-    setAmount(String(data.affiliate_reward_amount ?? 0));
+    setAmount(data.affiliate_reward_amount == null || Number(data.affiliate_reward_amount) === 0 ? '' : String(data.affiliate_reward_amount));
   }, [data]);
 
   return (
