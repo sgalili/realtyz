@@ -57,6 +57,20 @@ export function PropertyShareMenu({
     }
   };
 
+  const openPage = async () => {
+    if (count !== 1) return;
+    setBusy(true);
+    try {
+      const url = await mintShareUrlForResult(results[0]);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      toast.success('הדף נפתח בלשונית חדשה');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'פתיחת דף הנכס נכשלה');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
     <DropdownMenu>
