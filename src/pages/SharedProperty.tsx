@@ -17,6 +17,7 @@ import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetails
 import { sanitizeSqm, sanitizeFloor, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
 
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
+import { addressMapQuery, fullPropertyAddress, streetLine } from '@/lib/fullAddress';
 
 import {
   Loader2, MapPin, Home, Ruler, Bed, Building2, Car, Layers,
@@ -183,10 +184,11 @@ export default function SharedProperty() {
 
   const features = (p.features && typeof p.features === 'object' && !Array.isArray(p.features))
     ? (p.features as Record<string, any>) : {};
-  const addr = publicAddress(p.address);
-  const locationLine = [addr, p.neighborhood, p.city].filter(Boolean).join(' · ');
-  const displayTitle = [addr || publicTitle(p.property_title ?? p.title ?? ''), p.neighborhood, p.city]
-    .filter((value, index, values) => value && values.indexOf(value) === index).join(' · ') || 'נכס';
+  // Complete address: street + house number + apartment, neighborhood, city.
+  const addr = streetLine(p);
+  const locationLine = fullPropertyAddress(p);
+  const mapQuery = addressMapQuery(p);
+  const displayTitle = locationLine || String(p.property_title ?? p.title ?? '').trim() || 'נכס';
   const about = p.long_description || p.description || p.short_description || null;
 
   const specs: { label: string; value: string; icon: any }[] = [];
@@ -210,7 +212,7 @@ export default function SharedProperty() {
     const latitude = Number(item?.latitude);
     const longitude = Number(item?.longitude);
     if (!item?.id || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude === 0 || longitude === 0) return [];
-    return [{ id: String(item.id), title: publicTitle(item.property_title ?? item.title ?? item.address ?? 'נכס'), latitude, longitude, price: Number(item.asking_price) || null }];
+    return [{ id: String(item.id), title: fullPropertyAddress(item) || String(item.property_title ?? item.title ?? 'נכס'), latitude, longitude, price: Number(item.asking_price) || null }];
   });
 
   // HARD RULE: public property pages always open our official Meta WBA number,
