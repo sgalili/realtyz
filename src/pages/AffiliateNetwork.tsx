@@ -29,7 +29,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { BedDouble, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, MessageCircle, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy } from 'lucide-react';
+import { BedDouble, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
@@ -175,7 +176,7 @@ function RewardDialog({
       key: 'tier2',
       title: 'סינון בווטסאפ',
       hint: 'ריטה פותחת ווטסאפ ושואלת את שאלות הסינון',
-      Icon: MessageCircle,
+      Icon: WhatsAppIcon,
       value: tier2,
       setValue: setTier2,
       cost: leadCost(num(tier2), questions),
@@ -486,44 +487,44 @@ function BrokerAffiliateNetwork() {
                   const listing = filteredListings.find((item) => item.id === result.localId);
                   if (!listing) return null;
                   const shared = Boolean(listing.affiliate_enabled);
-                  // Plain-text commission amounts under a shared (green) button.
-                  // Level 1 always shows; levels 2-4 only when priced.
-                  const tierTexts: Array<{ value: string; label: string; Icon: typeof ClipboardList }> = [];
-                  if (shared) {
-                    const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
-                    const options = listing.contact_options && typeof listing.contact_options === 'object' ? listing.contact_options : {};
-                    const chatQuestions = Array.isArray(options.questions) ? options.questions : [];
-                    const phoneQuestions = Array.isArray(options.questions_phone) ? options.questions_phone : chatQuestions;
-                    const t1 = Number(listing.affiliate_tier1_amount ?? 0);
-                    const t2 = leadCost(Number(listing.affiliate_tier2_amount ?? 0), chatQuestions);
-                    const t3 = leadCost(Number(listing.affiliate_tier3_amount ?? 0), phoneQuestions);
-                    const t4 = Number(listing.affiliate_tier4_amount ?? 0);
-                    const t4Type = (listing.affiliate_tier4_type ?? 'fixed') as RewardType;
-                    if (t1) tierTexts.push({ value: money(t1), label: 'ליד דיגיטלי', Icon: ClipboardList });
-                    if (Number(listing.affiliate_tier2_amount ?? 0)) tierTexts.push({ value: money(t2), label: 'סינון ב-WhatsApp', Icon: MessageCircle });
-                    if (Number(listing.affiliate_tier3_amount ?? 0)) tierTexts.push({ value: money(t3), label: 'שיחת טלפון', Icon: Phone });
-                    if (t4) tierTexts.push({ value: t4Type === 'percent' ? `${t4}%` : money(t4), label: 'סגירת עסקה · בעלי רישיון תיווך בלבד', Icon: Trophy });
-                  }
                   return (
-                    <div className="flex flex-col items-start gap-1">
-                      <div className="inline-flex items-center gap-1">
-                        <Button
-                          size="icon"
-                          variant={shared ? 'default' : 'outline'}
-                          className={`h-8 w-8 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
-                          title={shared ? 'עריכת עמלות והפסקת שיווק שותפים' : 'פתיחת הנכס לשיווק שותפים'}
-                          aria-label={shared ? 'עריכת עמלות' : 'פתיחת הנכס לשיווק שותפים'}
-                          onClick={() => setEditing(listing)}
-                        >
-                          <Handshake className="h-4 w-4" />
-                        </Button>
-                        {shared ? <Button asChild size="icon" variant="ghost" className="h-8 w-8" title="פתיחת עמוד הנכס" aria-label="פתיחת עמוד הנכס"><a href={publicUrl(`/p/${listing.id}`)} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><SquareArrowOutUpLeft className="h-4 w-4" /></a></Button> : null}
-                      </div>
-                      {tierTexts.length > 0 ? (
-                        <div className="space-y-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
-                          {tierTexts.map(({ value, label, Icon }) => <div key={label} className="flex items-center justify-start gap-1" title={label}><Icon className="h-3 w-3" /><bdi dir="ltr">{value}</bdi></div>)}
-                        </div>
-                      ) : null}
+                    <div className="inline-flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant={shared ? 'default' : 'outline'}
+                        className={`h-8 w-8 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
+                        title={shared ? 'עריכת עמלות והפסקת שיווק שותפים' : 'פתיחת הנכס לשיווק שותפים'}
+                        aria-label={shared ? 'עריכת עמלות' : 'פתיחת הנכס לשיווק שותפים'}
+                        onClick={() => setEditing(listing)}
+                      >
+                        <Handshake className="h-4 w-4" />
+                      </Button>
+                      {shared ? <Button asChild size="icon" variant="ghost" className="h-8 w-8" title="פתיחת עמוד הנכס" aria-label="פתיחת עמוד הנכס"><a href={publicUrl(`/p/${listing.id}`)} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><SquareArrowOutUpLeft className="h-4 w-4" /></a></Button> : null}
+                    </div>
+                  );
+                }}
+                // Dedicated "עמלות" column: amounts per affiliate level.
+                commissionCell={(result) => {
+                  const listing = filteredListings.find((item) => item.id === result.localId);
+                  if (!listing || !listing.affiliate_enabled) return null;
+                  const tierTexts: Array<{ value: string; label: string; Icon: React.ComponentType<{ className?: string }> }> = [];
+                  const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
+                  const options = listing.contact_options && typeof listing.contact_options === 'object' ? listing.contact_options : {};
+                  const chatQuestions = Array.isArray(options.questions) ? options.questions : [];
+                  const phoneQuestions = Array.isArray(options.questions_phone) ? options.questions_phone : chatQuestions;
+                  const t1 = Number(listing.affiliate_tier1_amount ?? 0);
+                  const t2 = leadCost(Number(listing.affiliate_tier2_amount ?? 0), chatQuestions);
+                  const t3 = leadCost(Number(listing.affiliate_tier3_amount ?? 0), phoneQuestions);
+                  const t4 = Number(listing.affiliate_tier4_amount ?? 0);
+                  const t4Type = (listing.affiliate_tier4_type ?? 'fixed') as RewardType;
+                  if (t1) tierTexts.push({ value: money(t1), label: 'ליד דיגיטלי', Icon: ClipboardList });
+                  if (Number(listing.affiliate_tier2_amount ?? 0)) tierTexts.push({ value: money(t2), label: 'סינון ב-WhatsApp', Icon: WhatsAppIcon });
+                  if (Number(listing.affiliate_tier3_amount ?? 0)) tierTexts.push({ value: money(t3), label: 'שיחת טלפון', Icon: Phone });
+                  if (t4) tierTexts.push({ value: t4Type === 'percent' ? `${t4}%` : money(t4), label: 'סגירת עסקה · בעלי רישיון תיווך בלבד', Icon: Trophy });
+                  if (!tierTexts.length) return null;
+                  return (
+                    <div className="space-y-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
+                      {tierTexts.map(({ value, label, Icon }) => <div key={label} className="flex items-center justify-start gap-1" title={label}><Icon className="h-3 w-3" /><bdi dir="ltr">{value}</bdi></div>)}
                     </div>
                   );
                 }}
