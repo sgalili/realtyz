@@ -1636,9 +1636,8 @@ export function ResultTable({
 
               </tr>
               {rowNotes && rowNotes.length > 0 && (
-                <tr className="border-t-0 bg-amber-50/40">
-                  <td className="px-2 pb-2" />
-                  <td className="px-2 pb-2" colSpan={12 + (showAffiliateColumn ? 1 : 0) + (commissionCell ? 1 : 0)}>
+                <tr className="border-t-0 bg-muted/20">
+                  <td className="px-2 pb-2" colSpan={13 + (showAffiliateColumn ? 1 : 0) + (commissionCell ? 1 : 0)}>
                     <PropertyNotesBlock notes={rowNotes} />
                   </td>
                 </tr>

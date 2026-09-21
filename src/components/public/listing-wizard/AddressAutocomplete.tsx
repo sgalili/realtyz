@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Search } from 'lucide-react';
 
 export type ResolvedPlace = {
   formatted_address: string;
@@ -71,11 +72,13 @@ export default function AddressAutocomplete({ value, onPick }: { value: string; 
   return (
     <div className="relative">
       <Label htmlFor="wizard-address">חיפוש כתובת</Label>
+      <Search className="pointer-events-none absolute end-3 top-8 h-4 w-4 text-muted-foreground" />
       <Input
         id="wizard-address"
         value={text}
         autoComplete="off"
         placeholder="עיר, רחוב ומספר"
+        className="pe-9"
         onChange={(event) => { setSelected(false); setText(event.target.value); }}
         onFocus={() => { if (suggestions.length) setOpen(true); }}
       />

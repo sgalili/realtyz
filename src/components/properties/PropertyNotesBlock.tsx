@@ -18,7 +18,7 @@ export function PropertyNotesBlock({
       {notes.map((n) => (
         <div
           key={n.id}
-          className="flex items-start gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-[13px] leading-relaxed text-amber-900 ring-1 ring-amber-200"
+          className="flex items-start gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-[13px] leading-relaxed text-foreground"
         >
           <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-70" />
           <span className="min-w-0 whitespace-pre-wrap break-words">
