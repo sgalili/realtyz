@@ -34,12 +34,13 @@ export function streetLine(parts: AddressParts): string {
     .filter((piece) => piece && piece !== city && piece !== hood)
     .join(', ');
 
+  // A bare number without a street name is never shown.
   const house = clean(parts.house_number);
-  if (house && !hasToken(line, house)) line = line ? `${line} ${house}` : house;
+  if (line && house && !hasToken(line, house)) line = `${line} ${house}`;
 
   const apt = clean(parts.apartment_number);
   const hasApt = /(דירה|דירת|יח["׳']|apt|unit)\s*\d/i.test(line);
-  if (apt && !hasApt) line = line ? `${line}, דירה ${apt}` : `דירה ${apt}`;
+  if (line && apt && !hasApt) line = `${line}, דירה ${apt}`;
 
   return line;
 }
@@ -60,7 +61,8 @@ export function fullPropertyAddress(parts: AddressParts): string {
 export function addressMapQuery(parts: AddressParts): string {
   const city = clean(parts.city);
   const street = streetLine({ ...parts, apartment_number: null });
-  const out = [street, city].filter(Boolean);
+  // Without a street we still map the neighborhood / city area.
+  const out = [street || clean(parts.neighborhood), city].filter(Boolean);
   const query = out.join(', ');
   return query ? `${query}, ישראל` : '';
 }

@@ -19,11 +19,11 @@ export function fullAddress(row: Record<string, any>): string {
   let line = String(row?.address ?? "").replace(/\s+/g, " ").trim();
   const house = row?.house_number == null ? "" : String(row.house_number).trim();
   const apt = row?.apartment_number == null ? "" : String(row.apartment_number).trim();
-  if (house && !new RegExp(`(^|[\\s,])${house.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([\\s,]|$)`).test(line)) {
-    line = line ? `${line} ${house}` : house;
+  if (line && house && !new RegExp(`(^|[\\s,])${house.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([\\s,]|$)`).test(line)) {
+    line = `${line} ${house}`;
   }
-  if (apt && !/(דירה|דירת|יח["׳']|apt|unit)\s*\d/i.test(line)) {
-    line = line ? `${line}, דירה ${apt}` : `דירה ${apt}`;
+  if (line && apt && !/(דירה|דירת|יח["׳']|apt|unit)\s*\d/i.test(line)) {
+    line = `${line}, דירה ${apt}`;
   }
   return line;
 }
