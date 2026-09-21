@@ -747,8 +747,9 @@ export function useSubmitAffiliateLead() {
           status: 'submitted',
           tier1_amount: tiers.tier1,
           tier2_amount: tiers.tier2,
-          tier3_type: tiers.tier3Type,
           tier3_amount: tiers.tier3,
+          tier4_type: tiers.tier4Type,
+          tier4_amount: tiers.tier4,
         })
         .select('*')
         .single();

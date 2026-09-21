@@ -635,8 +635,9 @@ function BrokerAffiliateNetwork() {
                       tiers={{
                         tier1: Number(s.tier1_amount),
                         tier2: Number(s.tier2_amount),
-                        tier3Type: s.tier3_type,
                         tier3: Number(s.tier3_amount),
+                        tier4Type: (s.tier4_type ?? 'fixed'),
+                        tier4: Number(s.tier4_amount ?? 0),
                       }}
                       compact
                     />

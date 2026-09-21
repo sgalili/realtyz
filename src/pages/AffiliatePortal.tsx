@@ -113,8 +113,8 @@ function firstPhoto(listing: MarketplaceListing): string | null {
 
 function commissionPotential(listing: MarketplaceListing): number {
   const tiers = listingTiers(listing);
-  const fixedClosing = tiers.tier3Type === 'fixed' ? tiers.tier3 : 0;
-  return tiers.tier1 + tiers.tier2 + fixedClosing;
+  const fixedClosing = tiers.tier4Type === 'fixed' ? tiers.tier4 : 0;
+  return tiers.tier1 + tiers.tier2 + tiers.tier3 + fixedClosing;
 }
 
 function marketplaceResult(listing: MarketplaceListing): UnifiedResult {
