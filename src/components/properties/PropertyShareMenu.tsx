@@ -105,6 +105,11 @@ export function PropertyShareMenu({
         <DropdownMenuItem onSelect={() => run('copy')} className="gap-2 text-sm">
           <Copy className="h-4 w-4" /> העתק קישור
         </DropdownMenuItem>
+        {count === 1 && (
+          <DropdownMenuItem onSelect={() => void openPage()} className="gap-2 text-sm">
+            <ExternalLink className="h-4 w-4" /> פתח דף
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
     <Dialog open={recipientMode !== null} onOpenChange={(open) => { if (!open) setRecipientMode(null); }}>
