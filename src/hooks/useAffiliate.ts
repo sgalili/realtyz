@@ -78,6 +78,8 @@ export type MarketplaceListing = {
   tier2_amount: number;
   tier3_type: RewardType;
   tier3_amount: number;
+  tier4_type?: RewardType | null;
+  tier4_amount?: number | null;
   broker_name: string | null;
   office_name: string | null;
   broker_license_number: string | null;
@@ -572,30 +574,31 @@ export const SUBMISSION_STATUS_ORDER: SubmissionStatus[] = ['submitted', 'verifi
 export type CommissionTiers = {
   tier1: number;
   tier2: number;
-  tier3Type: RewardType;
   tier3: number;
+  tier4Type: RewardType;
+  tier4: number;
 };
 
 /**
  * Tier labels shown on every marketplace card.
- * Levels 1-2 are digital marketing / lead-generation fees (open to all
- * partners). Level 3 is a brokerage commission, licensed brokers only.
+ * Levels 1-3 are digital marketing / lead-generation fees (open to all
+ * partners). Level 4 is a brokerage commission, licensed brokers only.
  */
 export const TIER_LABELS = {
-  tier1: 'שלב 1 · דמי חשיפה ושיתוף',
-  tier2: 'שלב 2 · דמי ליד מאומת ופגישה',
-  tier3: 'שלב 3 · עמלת סגירה לבעלי רישיון',
+  tier1: 'רמה 1 · ליד דיגיטלי (שם וטלפון)',
+  tier2: 'רמה 2 · סינון בשיחת ווטסאפ',
+  tier3: 'רמה 3 · שיחת טלפון מסוננת',
+  tier4: 'רמה 4 · סגירת עסקה לבעלי רישיון',
 } as const;
 
-/** Reads the tiers off a marketplace row, defaulting tier 2 to double tier 1. */
+/** Reads the tiers off a marketplace row. Level 1 is always present. */
 export function listingTiers(listing: MarketplaceListing): CommissionTiers {
-  const tier1 = Number(listing.tier1_amount ?? 0);
-  const tier2Raw = Number(listing.tier2_amount ?? 0);
   return {
-    tier1,
-    tier2: tier2Raw || tier1 * 2,
-    tier3Type: (listing.tier3_type ?? 'fixed') as RewardType,
+    tier1: Number(listing.tier1_amount ?? 0),
+    tier2: Number(listing.tier2_amount ?? 0),
     tier3: Number(listing.tier3_amount ?? 0),
+    tier4Type: (listing.tier4_type ?? 'fixed') as RewardType,
+    tier4: Number(listing.tier4_amount ?? 0),
   };
 }
 
