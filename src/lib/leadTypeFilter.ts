@@ -59,3 +59,84 @@ export function matchesLeadFilter(amounts: LeadTierAmounts, state: LeadFilterSta
   return values.some((value) =>
     (state.min == null || value >= state.min) && (state.max == null || value <= state.max));
 }
+
+// ---------------------------------------------------------------------------
+// Property filters (deal type, kind, location, rooms, price, size, floor).
+// ---------------------------------------------------------------------------
+export type PropertyFilterState = {
+  dealType: 'all' | 'sale' | 'rent';
+  propertyType: string;
+  city: string;
+  neighborhood: string;
+  roomsMin: number | null;
+  roomsMax: number | null;
+  priceMin: number | null;
+  priceMax: number | null;
+  sizeMin: number | null;
+  sizeMax: number | null;
+  floorMin: number | null;
+  floorMax: number | null;
+};
+
+export const EMPTY_PROPERTY_FILTER: PropertyFilterState = {
+  dealType: 'all',
+  propertyType: 'all',
+  city: 'all',
+  neighborhood: 'all',
+  roomsMin: null,
+  roomsMax: null,
+  priceMin: null,
+  priceMax: null,
+  sizeMin: null,
+  sizeMax: null,
+  floorMin: null,
+  floorMax: null,
+};
+
+export function propertyFilterActiveCount(state: PropertyFilterState): number {
+  let count = 0;
+  if (state.dealType !== 'all') count += 1;
+  if (state.propertyType !== 'all') count += 1;
+  if (state.city !== 'all') count += 1;
+  if (state.neighborhood !== 'all') count += 1;
+  for (const key of ['roomsMin', 'roomsMax', 'priceMin', 'priceMax', 'sizeMin', 'sizeMax', 'floorMin', 'floorMax'] as const) {
+    if (state[key] != null) count += 1;
+  }
+  return count;
+}
+
+function numeric(row: Record<string, unknown>, ...keys: string[]): number | null {
+  for (const key of keys) {
+    const value = row[key];
+    if (value != null && value !== '') {
+      const n = Number(value);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return null;
+}
+
+function text(row: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+export function matchesPropertyFilter(row: Record<string, unknown>, state: PropertyFilterState): boolean {
+  const inRange = (value: number | null, min: number | null, max: number | null) => {
+    if (min == null && max == null) return true;
+    if (value == null) return false;
+    return (min == null || value >= min) && (max == null || value <= max);
+  };
+  if (state.dealType !== 'all' && text(row, 'deal_type', 'listing_type') !== state.dealType) return false;
+  if (state.propertyType !== 'all' && text(row, 'property_type') !== state.propertyType) return false;
+  if (state.city !== 'all' && text(row, 'city') !== state.city) return false;
+  if (state.neighborhood !== 'all' && text(row, 'neighborhood') !== state.neighborhood) return false;
+  if (!inRange(numeric(row, 'rooms'), state.roomsMin, state.roomsMax)) return false;
+  if (!inRange(numeric(row, 'asking_price', 'price'), state.priceMin, state.priceMax)) return false;
+  if (!inRange(numeric(row, 'sqm', 'size_sqm'), state.sizeMin, state.sizeMax)) return false;
+  if (!inRange(numeric(row, 'floor'), state.floorMin, state.floorMax)) return false;
+  return true;
+}
