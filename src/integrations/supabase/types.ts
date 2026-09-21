@@ -6988,6 +6988,8 @@ export type Database = {
           tier2_amount: number
           tier3_amount: number
           tier3_type: string
+          tier4_amount: number
+          tier4_type: string
         }[]
       }
       get_affiliate_marketplace_v2: {
@@ -7050,6 +7052,8 @@ export type Database = {
           tier2_amount: number
           tier3_amount: number
           tier3_type: string
+          tier4_amount: number
+          tier4_type: string
         }[]
       }
       get_affiliate_posts: {
@@ -7103,6 +7107,8 @@ export type Database = {
           tier2_amount: number
           tier3_amount: number
           tier3_type: string
+          tier4_amount: number
+          tier4_type: string
         }[]
       }
       get_business_performance: {
