@@ -482,7 +482,7 @@ function BrokerAffiliateNetwork() {
                     const t3 = leadCost(Number(listing.affiliate_tier3_amount ?? 0), phoneQuestions);
                     const t4 = Number(listing.affiliate_tier4_amount ?? 0);
                     const t4Type = (listing.affiliate_tier4_type ?? 'fixed') as RewardType;
-                    tierTexts.push({ value: money(t1), label: 'ליד דיגיטלי', Icon: ClipboardList });
+                    if (t1) tierTexts.push({ value: money(t1), label: 'ליד דיגיטלי', Icon: ClipboardList });
                     if (Number(listing.affiliate_tier2_amount ?? 0)) tierTexts.push({ value: money(t2), label: 'סינון ב-WhatsApp', Icon: MessageCircle });
                     if (Number(listing.affiliate_tier3_amount ?? 0)) tierTexts.push({ value: money(t3), label: 'שיחת טלפון', Icon: Phone });
                     if (t4) tierTexts.push({ value: t4Type === 'percent' ? `${t4}%` : money(t4), label: 'סגירת עסקה · בעלי רישיון תיווך בלבד', Icon: Trophy });
