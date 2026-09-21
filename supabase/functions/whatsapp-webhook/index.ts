@@ -1253,10 +1253,45 @@ async function handleLeadInboxInbound(
     // Live CRM counters. Staff always get them (they manage the workspace), and
     // anyone explicitly asking "how many contacts do we have" gets the exact
     // number instead of a fallback sentence.
-    if (staffSender || asksForCrmCounts(inboundText)) {
-      const snapshot = await fetchWorkspaceCrmCounts(admin as any, aiOwnerId);
-      if (snapshot.ok) {
-        contextBlock = renderCrmCountsBlock(snapshot.counts);
+    const wantsCounts = !!staffSender || asksForCrmCounts(inboundText);
+
+    // FOCUS PROPERTY — the property this specific inbound message is about.
+    // The current message always wins over the contact's older interest_tag,
+    // otherwise a new enquiry about one address gets answered with another
+    // property's price and link. Our own click-to-chat opener carries the
+    // property type, street + house number and city, so the property is
+    // resolved straight from the text and Rita never asks which one it is.
+    const focusListingId =
+      referral?.listing_id ?? shortLink?.listing_id ?? sharedContext?.listing_id ?? lead.interest_tag ?? null;
+
+    // Latency: the CRM snapshot and the property lookup are independent.
+    const [countsSnapshot, focusRow] = await Promise.all([
+      wantsCounts
+        ? fetchWorkspaceCrmCounts(admin as any, aiOwnerId).catch(() => null)
+        : Promise.resolve(null),
+      (async () => {
+        try {
+          const matched = await matchListingFromText(admin as any, aiOwnerId, promptInboundText);
+          if (matched) return matched;
+          if (focusListingId) {
+            const { data } = await admin
+              .from("listings")
+              .select(FOCUS_COLUMNS)
+              .eq("id", focusListingId)
+              .maybeSingle();
+            return data ?? null;
+          }
+          return null;
+        } catch (e) {
+          console.warn("[autopilot] fast-lane listing context soft-fail:", e instanceof Error ? e.message : e);
+          return null;
+        }
+      })(),
+    ]);
+
+    if (wantsCounts) {
+      if (countsSnapshot?.ok) {
+        contextBlock = renderCrmCountsBlock(countsSnapshot.counts);
       } else {
         await logIntegrationError({
           integration: "whatsapp",
@@ -1267,36 +1302,7 @@ async function handleLeadInboxInbound(
         });
       }
     }
-    // FOCUS PROPERTY — the property this specific inbound message is about.
-    // The current message always wins over the contact's older interest_tag,
-    // otherwise a new enquiry about one address gets answered with another
-    // property's price and link.
-    let focusProperty = "";
-    const focusListingId =
-      referral?.listing_id ?? shortLink?.listing_id ?? sharedContext?.listing_id ?? lead.interest_tag ?? null;
-    try {
-      if (focusListingId) {
-        const { data: listing } = await admin
-          .from("listings")
-          .select("property_title, address, house_number, asking_price, description, city, neighborhood, deal_type, rooms, sqm")
-          .eq("id", focusListingId)
-          .maybeSingle();
-        if (listing) {
-          const l = listing as any;
-          focusProperty = [
-            `כתובת/כותרת: ${[l.address, l.house_number].filter(Boolean).join(" ") || l.property_title || "-"}`,
-            `${l.city ?? ""} ${l.neighborhood ?? ""}`.trim(),
-            l.deal_type === "rent" ? "סוג עסקה: השכרה" : l.deal_type === "sale" ? "סוג עסקה: מכירה" : "",
-            l.rooms ? `חדרים: ${l.rooms}` : "",
-            l.sqm ? `מ"ר: ${l.sqm}` : "",
-            l.asking_price ? `מחיר: ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח` : "",
-            l.description ? `תיאור: ${String(l.description).slice(0, 600)}` : "",
-          ].filter(Boolean).join("\n");
-        }
-      }
-    } catch (e) {
-      console.warn("[autopilot] fast-lane listing context soft-fail:", e instanceof Error ? e.message : e);
-    }
+    const focusProperty = renderFocusPropertyBlock(focusRow as any);
 
     // An internal user (owner / admin / manager / affiliate) writing through a
     // property link or referral tag is role-ambiguous: Rita clarifies once.
