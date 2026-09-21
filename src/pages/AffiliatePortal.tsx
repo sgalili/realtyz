@@ -88,10 +88,14 @@ import {
   EMPTY_LEAD_FILTER,
   LEAD_TYPE_LABELS,
   LEAD_TYPE_ORDER,
+  EMPTY_PROPERTY_FILTER,
   leadFilterActiveCount,
   leadTierAmounts,
   matchesLeadFilter,
+  matchesPropertyFilter,
+  propertyFilterActiveCount,
   type LeadFilterState,
+  type PropertyFilterState,
 } from '@/lib/leadTypeFilter';
 
 const DEAL_TYPE_LABELS: Record<string, string> = {
@@ -623,6 +627,7 @@ export default function AffiliatePortal() {
   const { level4Unlocked } = useAffiliateLicense();
   const [search, setSearch] = useState('');
   const [leadFilter, setLeadFilter] = useState<LeadFilterState>(EMPTY_LEAD_FILTER);
+  const [inlinePropertyFilter, setInlinePropertyFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const [activeTab, setActiveTab] = useState('marketplace');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -680,10 +685,19 @@ export default function AffiliatePortal() {
     if (city === 'all' || city === 'other') return [];
     return [...new Set(marketplace.filter((item) => item.city === city).map((item) => item.neighborhood).filter(Boolean))] as string[];
   }, [marketplace, city]);
+  // Neighborhood list for the in-field filter follows its own city choice.
+  const inlineNeighborhoods = useMemo(() => {
+    const pool = inlinePropertyFilter.city === 'all'
+      ? marketplace
+      : marketplace.filter((item) => item.city === inlinePropertyFilter.city);
+    return [...new Set(pool.map((item) => item.neighborhood).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'he')) as string[];
+  }, [marketplace, inlinePropertyFilter.city]);
+
   const activeFilterCount = [propertyType, city, neighborhood, rooms, dealType, propertySource].filter((value) => value !== 'all').length
     + (effectiveCommissionRange[0] > 0 || effectiveCommissionRange[1] < commissionMax ? 1 : 0)
     + (effectivePriceRange[0] > 0 || effectivePriceRange[1] < priceMax ? 1 : 0)
-    + leadFilterActiveCount(leadFilter);
+    + leadFilterActiveCount(leadFilter)
+    + propertyFilterActiveCount(inlinePropertyFilter);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -694,6 +708,7 @@ export default function AffiliatePortal() {
       const price = Number(l.asking_price ?? 0);
       return matchesText
         && matchesLeadFilter(leadTierAmounts(l as unknown as Record<string, unknown>), leadFilter)
+        && matchesPropertyFilter(l as unknown as Record<string, unknown>, inlinePropertyFilter)
         && commission >= effectiveCommissionRange[0]
         && commission <= effectiveCommissionRange[1]
         && price >= effectivePriceRange[0]
@@ -707,7 +722,7 @@ export default function AffiliatePortal() {
           ? Boolean(l.broker_license_number || l.office_name)
           : !l.broker_license_number && !l.office_name));
     });
-  }, [marketplace, search, leadFilter, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType, propertySource]);
+  }, [marketplace, search, leadFilter, inlinePropertyFilter, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType, propertySource]);
 
   const clearFilters = () => {
     setCommissionRange([0, commissionMax]);
@@ -720,6 +735,7 @@ export default function AffiliatePortal() {
     setPropertySource('all');
     setCitySearch('');
     setLeadFilter(EMPTY_LEAD_FILTER);
+    setInlinePropertyFilter(EMPTY_PROPERTY_FILTER);
   };
 
   const filteredSubmissions = useMemo(() => {
@@ -901,10 +917,19 @@ export default function AffiliatePortal() {
 
 
         <div className="mt-4 flex max-w-lg items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10 pl-10" />
-            <LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} className="absolute left-2 top-1/2 -translate-y-1/2" />
+          {/* Magnifier at the start of the field, filter button at the end. */}
+          <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
+            <Search className="h-4 w-4 shrink-0 text-slate-400" />
+            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" />
+            <LeadTypeFilterButton
+              state={leadFilter}
+              onChange={setLeadFilter}
+              propertyState={inlinePropertyFilter}
+              onPropertyChange={setInlinePropertyFilter}
+              cities={cities}
+              neighborhoods={inlineNeighborhoods}
+              propertyTypes={propertyTypes}
+            />
           </div>
           {activeTab === 'marketplace' ? (
             <Button type="button" size="icon" variant={activeFilterCount ? 'default' : 'outline'} onClick={() => setFiltersOpen(true)} className="relative shrink-0" aria-label="סינון נכסים" title="סינון נכסים">
