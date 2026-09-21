@@ -880,6 +880,19 @@ export default function AffiliatePortal() {
         )}
 
 
+        <div className="mt-4 flex max-w-lg items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" />
+          </div>
+          {activeTab === 'marketplace' ? (
+            <Button type="button" size="icon" variant={activeFilterCount ? 'default' : 'outline'} onClick={() => setFiltersOpen(true)} className="relative shrink-0" aria-label="סינון נכסים" title="סינון נכסים">
+              <SlidersHorizontal className="h-4 w-4" />
+              {activeFilterCount ? <span className="absolute -left-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{activeFilterCount}</span> : null}
+            </Button>
+          ) : null}
+        </div>
+
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3">
             <TabsList>
@@ -893,19 +906,6 @@ export default function AffiliatePortal() {
             </div>
           </div>
 
-
-          <div className="mt-4 flex max-w-lg items-center gap-2">
-            <div className="relative min-w-0 flex-1">
-              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" />
-            </div>
-            {activeTab === 'marketplace' ? (
-              <Button type="button" size="icon" variant={activeFilterCount ? 'default' : 'outline'} onClick={() => setFiltersOpen(true)} className="relative shrink-0" aria-label="סינון נכסים" title="סינון נכסים">
-                <SlidersHorizontal className="h-4 w-4" />
-                {activeFilterCount ? <span className="absolute -left-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{activeFilterCount}</span> : null}
-              </Button>
-            ) : null}
-          </div>
 
           <TabsContent value="marketplace" className="space-y-4 pt-4">
 
