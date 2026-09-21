@@ -175,7 +175,7 @@ function RewardDialog({
       key: 'tier2',
       title: 'סינון בווטסאפ',
       hint: 'ריטה פותחת ווטסאפ ושואלת את שאלות הסינון',
-      Icon: MessageCircle,
+      Icon: WhatsAppIcon,
       value: tier2,
       setValue: setTier2,
       cost: leadCost(num(tier2), questions),
