@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/tooltip';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import AffiliateLicenseCard from '@/components/affiliate/AffiliateLicenseCard';
+import AffiliateCallAttemptsCard from '@/components/affiliate/AffiliateCallAttemptsCard';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import SubmitLeadDialog from '@/components/affiliate/SubmitLeadDialog';
 import {
@@ -964,6 +965,8 @@ export default function AffiliatePortal() {
           </TabsContent>
 
           <TabsContent value="leads" className="space-y-3 pt-4">
+            {/* Automated AI callbacks, including failures only partners can see. */}
+            <AffiliateCallAttemptsCard />
             <div className="grid gap-2 sm:grid-cols-3">
               {[
                 { label: 'ליד דיגיטלי', count: levelProgress.level1Count, sum: levelProgress.level1Sum, locked: false },
