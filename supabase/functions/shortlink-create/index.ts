@@ -84,7 +84,7 @@ function buildShortlinkPayload(listing: any, waPhone: string) {
   const rooms = listing.rooms ? String(listing.rooms).trim() : "";
   const price = formatPrice(listing.asking_price as number | null);
   const text = `היי, אני פונה אליך לגבי הדירה ${dealToken} שפרסמת ${locationPhrase}. דירת ${rooms} חדרים במחיר ${price}. אשמח לקבל פרטים נוספים.`;
-  const long_url = `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(text)}`;
+  const long_url = `https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`;
 
   return { street, neighborhood, city, locationPhrase, dealToken, rooms, price, text, long_url };
 }
@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
       return json(200, {
         error: "LISTING_NOT_FOUND",
         fallback: true,
-        long_url: `https://api.whatsapp.com/send?phone=${await resolveOfficialWaPhone(admin)}`,
+        long_url: `https://wa.me/${await resolveOfficialWaPhone(admin)}`,
       });
     }
 

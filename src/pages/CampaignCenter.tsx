@@ -1817,7 +1817,7 @@ const InlineComposer = ({
   const mintOfficialWaShortLink = async (): Promise<string> => {
     const phone = await getOfficialWaNumber();
     const intro = 'היי, ראיתי את הפוסט של Realtyz ואשמח לשמוע איך זה עובד.';
-    const longUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(intro)}`;
+    const longUrl = `https://wa.me/${phone}?text=${encodeURIComponent(intro)}`;
     try {
       const { data } = await supabase.functions.invoke('shortlink-create', { body: { long_url: longUrl } });
       const slug = (data as any)?.slug;

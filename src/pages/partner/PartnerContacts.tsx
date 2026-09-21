@@ -88,7 +88,7 @@ function ContactCard({ contact }: { contact: PartnerContact }) {
                 </a>
               </Button>
               <Button asChild variant="outline" size="sm" className="text-[13px]">
-                <a href={officialWaLink('')} target="_blank" rel="noreferrer">
+                <a href={officialWaLink('')} target="_blank" rel="noopener noreferrer">
                   וואטסאפ
                 </a>
               </Button>

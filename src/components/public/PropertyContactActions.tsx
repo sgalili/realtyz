@@ -88,7 +88,7 @@ export default function PropertyContactActions({
       <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur">
         {settings.whatsapp === true && (
           <Button asChild className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90">
-            <a href={officialWaLink(waMessage)} target="_blank" rel="noreferrer">
+            <a href={officialWaLink(waMessage)} target="_blank" rel="noopener noreferrer">
               <WhatsAppIcon className="h-5 w-5" />
               שיחה עם ריטה
               {/* RTL: Rita's picture sits on the opposite (left) side of the label. */}

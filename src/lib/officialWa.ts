@@ -79,13 +79,13 @@ export function openWhatsAppContactPicker(text: string): void {
     window.location.href = `whatsapp://send?text=${encoded}`;
     // Safety net for devices without the custom scheme registered.
     setTimeout(() => {
-      window.location.href = `https://api.whatsapp.com/send?text=${encoded}`;
+      window.location.href = `https://wa.me/?text=${encoded}`;
     }, 700);
     return;
   }
   // Desktop: api.whatsapp.com hands off to WhatsApp Desktop / Web with the
   // contact selection list open.
-  window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank', 'noopener,noreferrer');
+  window.open(`https://wa.me/?text=${encoded}`, '_blank', 'noopener,noreferrer');
 }
 
 
