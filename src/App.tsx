@@ -84,7 +84,6 @@ const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const AffiliateSignup = lazy(() => import("./pages/AffiliateSignup"));
 const AffiliateNetwork = lazy(() => import("./pages/AffiliateNetwork"));
 const AffiliatePricing = lazy(() => import("./pages/AffiliatePricing"));
-const PartnerPosts = lazy(() => import("./pages/partner/PartnerPosts"));
 const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
 const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
@@ -148,7 +147,7 @@ function PageLoader() {
  * app (CRM, properties, posts, office settings) belongs to brokers and is
  * redirected away, so an affiliate never sees broker tooling.
  */
-const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/referral', '/profile'];
+const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/referral', '/profile', '/posts'];
 
 /**
  * Private property owners are a separate product: only their own properties,
@@ -385,13 +384,14 @@ const App = () => (
               <Route path="/owner/rewards" element={<ProtectedRoute><OwnerRewards /></ProtectedRoute>} />
               <Route path="/owner/rita" element={<ProtectedRoute><OwnerRita /></ProtectedRoute>} />
               <Route path="/referral" element={<ProtectedRoute><PartnerNetwork /></ProtectedRoute>} />
-              <Route path="/partner/posts" element={<ProtectedRoute><PartnerOnlyRoute><PartnerPosts /></PartnerOnlyRoute></ProtectedRoute>} />
+              <Route path="/partner/posts" element={<Navigate to="/posts" replace />} />
               <Route path="/partner/chats" element={<ProtectedRoute><PartnerOnlyRoute><PartnerChats /></PartnerOnlyRoute></ProtectedRoute>} />
               <Route path="/partner/contacts" element={<ProtectedRoute><PartnerOnlyRoute><PartnerContacts /></PartnerOnlyRoute></ProtectedRoute>} />
 
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />
               <Route path="/ads" element={<Navigate to="/campaigns?tab=campaigns" replace />} />
               <Route path="/campaigns" element={<ProtectedRoute allowGuestDemo><CampaignCenter /></ProtectedRoute>} />
+              <Route path="/posts" element={<ProtectedRoute><CampaignCenter /></ProtectedRoute>} />
               <Route path="/broadcast" element={<ProtectedRoute><Broadcast /></ProtectedRoute>} />
               <Route path="/campaign-strategy" element={<Navigate to="/campaigns?tab=strategy" replace />} />
               <Route path="/approval-queue" element={<Navigate to="/campaigns?tab=approvals" replace />} />

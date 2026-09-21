@@ -1289,6 +1289,10 @@ const InlineComposer = ({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetListingId]);
+  const forceFreshDeepLink = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('fresh') === '1';
+  }, [deepLinkListingId]);
 
 
   useEffect(() => {
@@ -1300,10 +1304,10 @@ const InlineComposer = ({
       String(saved.body || '').trim().length > 0 ||
       (Array.isArray(saved.attachments) && saved.attachments.length > 0) ||
       String(saved.firstComment || '').trim().length > 0;
-    const deepLinked = !!deepLinkListingId && !savedHasWork;
+    const deepLinked = !!deepLinkListingId && (forceFreshDeepLink || !savedHasWork);
     setBody(deepLinked ? '' : cleanBody(saved.body || ''));
     setCustomInstructions(saved.customInstructions || '');
-    setSelectedListingId(saved.selectedListingId ?? deepLinkListingId ?? null);
+    setSelectedListingId(deepLinked ? deepLinkListingId : (saved.selectedListingId ?? deepLinkListingId ?? null));
     setAttachments(deepLinked ? [] : (saved.attachments || []));
     setLogId(deepLinked ? null : (saved.logId ?? null));
     setFirstComment(deepLinked ? '' : (saved.firstComment || ''));
@@ -1321,12 +1325,16 @@ const InlineComposer = ({
     setSaveState('idle');
     if (savedHasWork) setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel.id, deepLinkListingId, wsScope]);
+  }, [channel.id, deepLinkListingId, forceFreshDeepLink, wsScope]);
 
   // Cloud fallback: if this browser has no local copy of the draft (cleared
   // cache, new tab, other device, new auth session), pull the durable mirror
   // back in — even for preset/deep-linked replicas.
   useEffect(() => {
+    if (forceFreshDeepLink) {
+      setHydrated(true);
+      return;
+    }
     const local = readDraft();
     if (local && (String(local.body || '').trim() || (local.attachments || []).length > 0)) {
       setHydrated(true);
@@ -1355,7 +1363,7 @@ const InlineComposer = ({
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel.id, instanceId, deepLinkListingId, wsScope]);
+  }, [channel.id, instanceId, deepLinkListingId, forceFreshDeepLink, wsScope]);
 
 
 
