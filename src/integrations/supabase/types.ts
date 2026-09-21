@@ -6879,6 +6879,26 @@ export type Database = {
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
       gen_referral_code: { Args: never; Returns: string }
       get_account_integrations: { Args: never; Returns: Json }
+      get_affiliate_call_attempts: {
+        Args: never
+        Returns: {
+          address: string
+          callback_reason: string
+          created_at: string
+          duration_seconds: number
+          id: string
+          is_mine: boolean
+          lead_id: string
+          lead_name: string
+          lead_phone: string
+          listing_id: string
+          needs_callback: boolean
+          recording_url: string
+          status: string
+          summary: string
+          transcript_text: string
+        }[]
+      }
       get_affiliate_chat_messages: {
         Args: { p_lead_id: string }
         Returns: {
@@ -7142,6 +7162,7 @@ export type Database = {
       get_growth_analytics: { Args: never; Returns: Json }
       get_homely_admin_overview: { Args: never; Returns: Json }
       get_homely_password: { Args: { _user_id: string }; Returns: string }
+      get_lead_enrichment: { Args: { _lead_id: string }; Returns: Json }
       get_lead_price_recommendation: {
         Args: { _city?: string; _deal_type: string }
         Returns: Json

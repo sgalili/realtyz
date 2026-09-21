@@ -335,6 +335,10 @@ Deno.serve(async (req) => {
     });
     // Strip helper-only field before sending.
     delete (assistant as any)._hdr;
+    // End-of-call report: status, recording URL and transcript land on the call
+    // attempt row so partners (and the lead payload) get the real outcome.
+    (assistant as any).server = { url: `${SUPABASE_URL}/functions/v1/vapi-call-webhook` };
+    (assistant as any).serverMessages = ["end-of-call-report", "status-update"];
 
     // CLEAN PAYLOAD — only fields Vapi accepts on /call/phone.
     const payload = {

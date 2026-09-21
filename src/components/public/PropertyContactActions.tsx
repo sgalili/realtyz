@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Loader2, Phone } from 'lucide-react';
+import { ClipboardList, Loader2, Phone, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -17,11 +17,25 @@ export type ContactOptions = LeadContactOptions;
  * Contact row on a public property page. Which actions appear is decided by the
  * publisher's lead prices (level 1 form, level 2 Rita chat, level 3 phone call)
  * and arrives here already resolved in `contact_options`.
+ *
+ * The share action lives in THIS row, next to the contact buttons, so every
+ * property page shows one single row of primary actions.
  */
-export default function PropertyContactActions({ listingId, title, options, premsg }: { listingId: string; title: string; options?: ContactOptions | null; premsg?: string | null }) {
+export default function PropertyContactActions({
+  listingId,
+  title,
+  options,
+  premsg,
+  shareUrl,
+}: {
+  listingId: string;
+  title: string;
+  options?: ContactOptions | null;
+  premsg?: string | null;
+  shareUrl?: string | null;
+}) {
   const settings = options ?? { digital: true, whatsapp: false, phone: false };
   const showDigital = settings.digital === true && settings.whatsapp !== true;
-  const questions = (Array.isArray(settings.questions) ? settings.questions : []).filter((q) => q.trim()).slice(0, 8);
   const [mode, setMode] = useState<'digital' | 'phone' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -32,30 +46,69 @@ export default function PropertyContactActions({ listingId, title, options, prem
   // exact property (type, street + house number, city) with zero questions.
   const waMessage = premsg?.trim() || `היי ריטה, אשמח לקבל פרטים אודות ${title}.`;
 
+  const share = async () => {
+    const url = shareUrl?.trim() || (typeof window !== 'undefined' ? window.location.href : '');
+    if (!url) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast.success('הקישור הועתק');
+    } catch {
+      /* the visitor cancelled, or the clipboard is blocked */
+    }
+  };
+
   const submit = async () => {
     if (!name.trim() || phone.replace(/\D/g, '').length < 9) {
       toast.error('יש למלא שם מלא ומספר טלפון תקין');
       return;
     }
+    const callback = mode === 'phone';
     setSending(true);
     const { data, error } = await supabase.functions.invoke('public-lead-gate', {
-      body: { action: mode === 'phone' ? 'callback' : 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: mode, ref },
+      body: { action: callback ? 'callback' : 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: mode, ref },
     });
     setSending(false);
-    if (error || (data as { error?: string } | null)?.error) {
-      toast.error(mode === 'phone' ? 'לא הצלחנו להתחיל שיחה כרגע' : 'שליחת הפרטים נכשלה');
+
+    // Callback requests NEVER show a failure to the visitor: the contact is
+    // saved server-side and a failed AI call surfaces on the partner dashboard.
+    if (!callback && (error || (data as { error?: string } | null)?.error)) {
+      toast.error('שליחת הפרטים נכשלה');
       return;
     }
-    toast.success(mode === 'phone' ? 'השיחה יוצאת אליכם עכשיו' : 'הפרטים נשלחו בהצלחה');
+    toast.success(callback ? 'תודה, נחזור אליכם טלפונית בהקדם' : 'הפרטים נשלחו בהצלחה');
     setMode(null); setName(''); setPhone('');
   };
 
   return (
     <>
-      <div className="sticky bottom-3 z-10 grid grid-cols-1 gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur sm:grid-cols-3">
-        {settings.whatsapp === true && <Button asChild className="bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90"><a href={officialWaLink(waMessage)} target="_blank" rel="noreferrer"><WhatsAppIcon className="h-5 w-5" /><RitaAvatar className="h-6 w-6 border-0 ring-0" />שיחה עם ריטה</a></Button>}
-        {settings.phone === true && <Button variant="outline" onClick={() => setMode('phone')}><Phone className="h-4 w-4" />חייגו אליי</Button>}
-        {showDigital && <Button variant="outline" onClick={() => setMode('digital')}><ClipboardList className="h-4 w-4" />השארת פרטים</Button>}
+      <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur">
+        {settings.whatsapp === true && (
+          <Button asChild className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90">
+            <a href={officialWaLink(waMessage)} target="_blank" rel="noreferrer">
+              <WhatsAppIcon className="h-5 w-5" />
+              שיחה עם ריטה
+              {/* RTL: Rita's picture sits on the opposite (left) side of the label. */}
+              <RitaAvatar className="h-6 w-6 border-0 ring-0" />
+            </a>
+          </Button>
+        )}
+        {settings.phone === true && (
+          <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => setMode('phone')}>
+            <Phone className="h-4 w-4" />חייגו אליי
+          </Button>
+        )}
+        {showDigital && (
+          <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => setMode('digital')}>
+            <ClipboardList className="h-4 w-4" />השארת פרטים
+          </Button>
+        )}
+        <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => void share()}>
+          <Share2 className="h-4 w-4" />שיתוף
+        </Button>
       </div>
       <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent dir="rtl" className="sm:max-w-md">

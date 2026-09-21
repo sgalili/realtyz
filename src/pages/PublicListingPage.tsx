@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bed, Building2, ImageIcon, Layers, Loader2, Ruler, Share2 } from 'lucide-react';
+import { Bed, Building2, ImageIcon, Layers, Loader2, Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -291,19 +291,6 @@ function PublicListingContent() {
     setSlide(0);
   }, [selectedId]);
 
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: data?.title ?? 'נכס', url: shareUrl });
-        return;
-      }
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success('הקישור הועתק');
-    } catch {
-      /* user cancelled or clipboard blocked */
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-secondary" dir="rtl">
@@ -447,12 +434,8 @@ function PublicListingContent() {
               </div>
             ) : null}
 
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={handleShare}>
-                <Share2 className="h-4 w-4" /> שיתוף
-              </Button>
-            </div>
-            {data.id && <PropertyContactActions listingId={data.id} title={data.title} premsg={data.premsg} options={data.contactOptions} />}
+            {/* Share lives inside the contact row below, next to WhatsApp / call / form. */}
+            {data.id && <PropertyContactActions listingId={data.id} title={data.title} premsg={data.premsg} options={data.contactOptions} shareUrl={shareUrl} />}
           </CardContent>
         </Card>
       </div>

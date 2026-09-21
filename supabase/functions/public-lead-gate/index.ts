@@ -161,30 +161,98 @@ Deno.serve(async (req) => {
     }
 
     // ---------------------------------------------------------- callback
+    // A visitor asked to be called back. The contact is saved EVERYWHERE first
+    // (CRM contact, interest record, activity log, call task) and only then do we
+    // try the automated AI call. A failed call is never shown to the visitor: it
+    // is logged as a failed attempt that the partner can retry or call manually.
     if (action === "callback") {
       const listingId = str(body?.listing_id, 60);
       const name = str(body?.name, 80);
       const phone = normalizePhone(str(body?.phone, 30));
       if (!listingId || !name || !phone) return json({ error: "שם וטלפון תקין הם שדות חובה" }, 400);
-      const { data: listing } = await admin.from("listings").select("id, city, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published").eq("id", listingId).maybeSingle();
+      const { data: listing } = await admin.from("listings").select("id, city, address, house_number, property_title, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published").eq("id", listingId).maybeSingle();
       if (!listing || !(listing.affiliate_enabled || listing.is_published) || listing.contact_options?.phone !== true) return json({ error: "אפשרות השיחה אינה זמינה" }, 404);
       const ownerId = listing.workspace_owner_id ?? listing.user_id;
-      const { data: existing } = await admin.from("leads").select("id").eq("workspace_owner_id", ownerId).eq("phone_number", phone).maybeSingle();
+      const refCode = str(body?.ref, 40);
+      let affiliateId: string | null = null;
+      if (refCode) {
+        const { data: referral } = await admin.from("affiliate_referrals").select("affiliate_id").eq("tracking_code", refCode).maybeSingle();
+        affiliateId = (referral?.affiliate_id as string | undefined) ?? null;
+      }
+
+      const { data: existing } = await admin.from("leads").select("id, full_name").eq("workspace_owner_id", ownerId).eq("phone_number", phone).maybeSingle();
       let leadId = existing?.id as string | undefined;
-      if (!leadId) {
+      if (leadId) {
+        await admin.from("leads").update({ full_name: existing?.full_name || name, last_interaction_at: new Date().toISOString() }).eq("id", leadId);
+      } else {
         const { data: inserted, error: insertError } = await admin.from("leads").insert({ workspace_owner_id: ownerId, phone_number: phone, full_name: name, city: listing.city ?? null, deal_type: listing.deal_type === "rent" ? "rent" : "sale", lead_stage: "new", status: "new", source: "public_phone_callback", last_interaction_at: new Date().toISOString() }).select("id").single();
         if (insertError) throw insertError;
         leadId = inserted.id as string;
       }
+
+      const addressLabel = [str(listing.address, 80), str(listing.house_number, 10)].filter(Boolean).join(" ") || str(listing.property_title, 80) || "נכס";
+      await admin.from("public_listing_interest").insert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, visitor_name: name, visitor_phone: phone, access_token: crypto.randomUUID().replace(/-/g, ""), intent: "phone" });
+      await admin.from("interaction_activity_log").insert({
+        user_id: ownerId,
+        workspace_owner_id: ownerId,
+        thread_key: `public-board:${listing.id}:${phone}`,
+        platform: "phone",
+        action_type: "callback_requested",
+        actor_type: "system",
+        content: `בקשת חזרה טלפונית: ${name} · ${phone} · ${addressLabel}`,
+        metadata: { listing_id: listing.id, lead_id: leadId, affiliate_id: affiliateId },
+      });
+      // Call task for the workspace so a human can always take over.
+      await admin.from("scheduled_items").insert({
+        user_id: ownerId,
+        workspace_owner_id: ownerId,
+        title: `שיחה חוזרת: ${name}`,
+        content: `${name} ביקש שיחה חוזרת לגבי ${addressLabel}. טלפון: ${phone}`,
+        item_type: "call",
+        channel: "phone",
+        status: "pending",
+        scheduled_for: new Date().toISOString(),
+        metadata: { lead_id: leadId, listing_id: listing.id, phone, affiliate_id: affiliateId, origin: "public_phone_callback" },
+      });
+
       const questions = Array.isArray(listing.contact_options?.questions) ? listing.contact_options.questions.filter((q: unknown) => typeof q === "string").slice(0, 6) : [];
       const instructions = ["השיחה מתייחסת אך ורק לנכס שנשלח אליך.", "שאל לפחות שלוש שאלות סינון לפני סיום השיחה.", ...questions.map((q: string, i: number) => `שאלה ${i + 1}: ${q}`)].join("\n");
-      const response = await fetch(`${backendUrl}/functions/v1/vapi-outbound-call`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` }, body: JSON.stringify({ phone_number: phone, lead_id: leadId, listing_id: listing.id, instructions, workspace_owner_id: ownerId }) });
-      const callData = await response.json().catch(() => ({}));
-      if (!response.ok || callData?.error) return json({ error: "שירות השיחות אינו זמין כרגע" }, 503);
-      await admin.from("public_listing_interest").insert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, visitor_name: name, visitor_phone: phone, access_token: crypto.randomUUID().replace(/-/g, ""), intent: "phone" });
+
+      let callOk = false;
+      let callError = "";
+      let callId: string | null = null;
+      try {
+        const response = await fetch(`${backendUrl}/functions/v1/vapi-outbound-call`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` }, body: JSON.stringify({ phone_number: phone, lead_id: leadId, listing_id: listing.id, instructions, workspace_owner_id: ownerId }) });
+        const callData = await response.json().catch(() => ({}));
+        callOk = response.ok && !callData?.error;
+        callError = callOk ? "" : str(callData?.error ?? `HTTP ${response.status}`, 400);
+        callId = str(callData?.call?.id ?? callData?.call_id, 120) || null;
+      } catch (callException) {
+        callError = str((callException as Error)?.message, 400) || "call_failed";
+      }
+
+      // Attempt log — the partner dashboard reads failures from here.
+      await admin.from("call_records").insert({
+        user_id: ownerId,
+        lead_id: leadId,
+        caller_phone: phone,
+        direction: "outbound",
+        status: callOk ? "queued" : "failed",
+        handled_by: "ai",
+        needs_callback: !callOk,
+        callback_reason: callOk ? null : callError.slice(0, 200),
+        started_at: new Date().toISOString(),
+        metadata: { listing_id: listing.id, affiliate_id: affiliateId, lead_name: name, address: addressLabel, provider: "vapi", provider_call_id: callId, error: callOk ? null : callError },
+      });
+      if (!callOk) {
+        console.error("[public-lead-gate] ai call failed", callError);
+        await admin.from("integration_error_logs").insert({ integration: "vapi", function_name: "vapi-outbound-call", error_message: callError.slice(0, 500), context: { lead_id: leadId, listing_id: listing.id, workspace_owner_id: ownerId } }).then(() => {}, () => {});
+      }
+
       // Level 3 (phone conversation lead).
-      const billing = await chargeLead(admin, listing.id, 3, str(body?.ref, 40));
-      return json({ success: true, billing });
+      const billing = await chargeLead(admin, listing.id, 3, refCode);
+      // Always a success for the visitor.
+      return json({ success: true, lead_id: leadId, billing });
     }
 
     // ------------------------------------------------------------- rita
