@@ -24,7 +24,6 @@ import {
   BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves, Navigation,
 } from 'lucide-react';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
-import { getOfficialWaNumber, OFFICIAL_WABA_PHONE } from '@/lib/officialWa';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 
 type SharedPayload = {
@@ -98,13 +97,6 @@ export default function SharedProperty() {
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  // HARD RULE: only the official Meta WBA number, resolved live with a constant fallback.
-  const [officialWa, setOfficialWa] = useState<string>(OFFICIAL_WABA_PHONE);
-  useEffect(() => {
-    getOfficialWaNumber().then(setOfficialWa).catch(() => setOfficialWa(OFFICIAL_WABA_PHONE));
-  }, []);
-
-
   useEffect(() => {
     if (!token) return;
     (async () => {
