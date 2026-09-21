@@ -43,7 +43,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
-import AffiliateEligibilityBadge from '@/components/affiliate/AffiliateEligibilityBadge';
 import AffiliateLicenseCard from '@/components/affiliate/AffiliateLicenseCard';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import SubmitLeadDialog from '@/components/affiliate/SubmitLeadDialog';
@@ -227,7 +226,7 @@ function allPhotos(listing: MarketplaceListing): string[] {
  */
 function MarketplaceCard({ listing, compact = false, referral }: { listing: MarketplaceListing; compact?: boolean; referral?: AffiliateReferral }) {
   const promote = useStartPromoting();
-  const { tier3Unlocked } = useAffiliateLicense();
+  const { level4Unlocked } = useAffiliateLicense();
   const [link, setLink] = useState<string | null>(null);
   const photos = useMemo(() => allPhotos(listing), [listing]);
   const hasPhotos = photos.length > 0;
@@ -499,8 +498,8 @@ function MarketplaceCard({ listing, compact = false, referral }: { listing: Mark
             </dl>
 
             <div className="space-y-1.5">
-              <div className="text-[11px] font-semibold text-slate-500">פירוט התגמול ב-3 שלבים</div>
-              <CommissionTierBadges tiers={listingTiers(listing)} tier3Locked={!tier3Unlocked} />
+              <div className="text-[11px] font-semibold text-slate-500">פירוט התגמול לפי סוג ליד</div>
+              <CommissionTierBadges tiers={listingTiers(listing)} level4Locked={!level4Unlocked} />
             </div>
 
             <SubmitLeadDialog listing={listing} />
@@ -610,7 +609,7 @@ export default function AffiliatePortal() {
   const { data: referralListings = [], isLoading: refListingsLoading } = useMyReferralListings();
   const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
   const { preferences, update: updatePreferences, isUpdating: preferencesUpdating } = useAffiliatePreferences();
-  const { license, tier3Unlocked } = useAffiliateLicense();
+  const { level4Unlocked } = useAffiliateLicense();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('marketplace');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
@@ -779,7 +778,7 @@ export default function AffiliatePortal() {
           const t3 = partnerNetReward(Number(s.tier3_amount ?? 0));
           if (t3 && (s.status === 'verified' || s.status === 'closed')) tiers.push({ label: TIER_LABELS.tier3, amount: t3 });
           // Level 4 (deal closing) pays licensed brokers only.
-          if (tier3Unlocked && s.status === 'closed' && (s.tier4_type ?? 'fixed') === 'fixed') {
+          if (level4Unlocked && s.status === 'closed' && (s.tier4_type ?? 'fixed') === 'fixed') {
             const t4 = partnerNetReward(Number(s.tier4_amount ?? 0));
             if (t4) tiers.push({ label: TIER_LABELS.tier4, amount: t4 });
           }
@@ -795,7 +794,7 @@ export default function AffiliatePortal() {
       })
       .filter((row) => row.total > 0)
       .sort((a, b) => b.total - a.total);
-  }, [submissions, tier3Unlocked]);
+  }, [submissions, level4Unlocked]);
 
   // Level 1 / level 2 progress: how many lead-generation fees were earned and
   // how much cash each level produced, so partners see the incentive clearly.
@@ -881,15 +880,6 @@ export default function AffiliatePortal() {
         )}
 
 
-        <div className="flex flex-wrap items-center gap-2">
-          <AffiliateEligibilityBadge status={license.status} onClick={() => { setActiveTab('earnings'); setSearch(''); }} />
-          <span className="text-[11px] text-muted-foreground">
-            {tier3Unlocked
-              ? 'שלבים 1-3 פעילים, כולל עמלת סגירת עסקה.'
-              : 'שלבים 1-2 פעילים: דמי חשיפה ודמי ליד מאומת. שלב 3 נפתח לאחר אימות רישיון תיווך.'}
-          </span>
-        </div>
-
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3">
             <TabsList>
@@ -945,6 +935,7 @@ export default function AffiliatePortal() {
                     }
                   }}
                   hideDefaultActions
+                  showPropertyNotes={false}
                   publishedLabel="פורסם לרשת"
                   publishedAt={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
@@ -961,7 +952,7 @@ export default function AffiliatePortal() {
                   }}
                   commissionCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
-                    return listing ? <CommissionTierBadges tiers={listingTiers(listing)} compact tier3Locked={!tier3Unlocked} /> : null;
+                    return listing ? <CommissionTierBadges tiers={listingTiers(listing)} compact level4Locked={!level4Unlocked} /> : null;
                   }}
                 />
               ) : (
@@ -975,9 +966,9 @@ export default function AffiliatePortal() {
           <TabsContent value="leads" className="space-y-3 pt-4">
             <div className="grid gap-2 sm:grid-cols-3">
               {[
-                { label: 'שלב 1 · דמי חשיפה ושיתוף', count: levelProgress.level1Count, sum: levelProgress.level1Sum, locked: false },
-                { label: 'שלב 2 · ליד מאומת ופגישה', count: levelProgress.level2Count, sum: levelProgress.level2Sum, locked: false },
-                { label: 'שלב 3 · סגירת עסקה', count: levelProgress.level3Count, sum: levelProgress.level3Sum, locked: !tier3Unlocked },
+                { label: 'ליד דיגיטלי', count: levelProgress.level1Count, sum: levelProgress.level1Sum, locked: false },
+                { label: 'סינון בשיחת ווטסאפ', count: levelProgress.level2Count, sum: levelProgress.level2Sum, locked: false },
+                { label: 'שיחת טלפון', count: levelProgress.level3Count, sum: levelProgress.level3Sum, locked: false },
               ].map((tile) => (
                 <div
                   key={tile.label}
@@ -1067,6 +1058,7 @@ export default function AffiliatePortal() {
               <ResultTable
                 results={filteredReferrals.map(({ listing }) => marketplaceResult(listing!))}
                 importingKey={null}
+                showPropertyNotes={false}
                 onSelect={(result) => {
                   const surface = document.querySelector<HTMLElement>('.realtyz-main-surface');
                   sessionStorage.setItem(scrollKey, String(surface?.scrollTop ?? window.scrollY));
@@ -1083,7 +1075,7 @@ export default function AffiliatePortal() {
                 }}
                 commissionCell={(result) => {
                   const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
-                  return row?.listing ? <CommissionTierBadges tiers={listingTiers(row.listing)} compact tier3Locked={!tier3Unlocked} /> : null;
+                  return row?.listing ? <CommissionTierBadges tiers={listingTiers(row.listing)} compact level4Locked={!level4Unlocked} /> : null;
                 }}
                 affiliateSortValue={(result) => filteredReferrals.find((item) => item.listing?.listing_id === result.localId)?.referral.clicks ?? 0}
                 affiliateCell={(result) => {

@@ -1,7 +1,7 @@
 // Partner compliance layer.
 //
 // Levels 1 & 2 are digital-marketing / lead-generation fees and are open to
-// every partner. Level 3 (deal-closing commission) is restricted by the Real
+// every partner. Level 4 (deal-closing commission) is restricted by the Real
 // Estate Brokerage Law to holders of a verified broker license, so the portal
 // reads the license status from `affiliate_profiles` and gates it here.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -100,8 +100,8 @@ export function useAffiliateLicense() {
   return {
     license,
     isLoading: query.isLoading,
-    /** True only for a verified broker license — the gate for level 3 rewards. */
-    tier3Unlocked: license.status === 'verified',
+    /** True only for a verified broker license — the gate for level 4 rewards. */
+    level4Unlocked: license.status === 'verified',
     submit: submit.mutateAsync,
     isSubmitting: submit.isPending,
     acceptTerms: acceptTerms.mutateAsync,

@@ -1375,6 +1375,7 @@ export function ResultTable({
   commissionSortValue,
   publishedAt,
   publishedLabel = 'תאריך פרסום/עדכון',
+  showPropertyNotes = true,
 }: {
   results: UnifiedResult[];
   importingKey: string | null;
@@ -1395,6 +1396,8 @@ export function ResultTable({
   commissionSortValue?: (r: UnifiedResult) => string | number | null;
   publishedAt?: (r: UnifiedResult) => string | null;
   publishedLabel?: string;
+  /** Internal office notes must never render on partner-facing tables. */
+  showPropertyNotes?: boolean;
 }) {
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -1507,7 +1510,7 @@ export function ResultTable({
           {sorted.map((r) => {
             const isRent = r.listing_type === 'rent';
             const importing = importingKey === r.key;
-            const rowNotes = r.localId ? notesByListing.get(r.localId) : undefined;
+            const rowNotes = showPropertyNotes && r.localId ? notesByListing.get(r.localId) : undefined;
             return (
               <Fragment key={r.key}>
               <tr className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
