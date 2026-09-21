@@ -61,3 +61,8 @@
 
 - [x] Form cleanup, sidebar persistence, Hebrew property pages, WhatsApp tour CTA, and multi-property map pins
 - [x] Affiliate table actions/date/sorting, exact commission tiers, property layout/navigation, and Rita-attributed multichannel sharing
+64. [ ] Refine office-notes table span and border styling
+65. [ ] Complete public listing wizard validation, previews, confirmation, and immediate board publishing
+66. [ ] Add shared-property contact row with digital, WhatsApp Rita, and Vapi callback lead flows
+67. [ ] Add publisher-configurable lead options, qualification questions, pricing trends, and icon-based tier UI
+68. [ ] Refine affiliate table first-column controls and vertical icon-based commission display
