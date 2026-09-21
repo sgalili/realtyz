@@ -420,18 +420,23 @@ function BrokerAffiliateNetwork() {
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
             <div className="flex items-center gap-3">
-              <div className="relative max-w-sm flex-1">
-                <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              {/* Magnifier at the start of the field, filter button at the end. */}
+              <div className="flex h-10 max-w-sm flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
+                <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
                 <Input
                   placeholder="חיפוש נכס"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-10 ps-10 pe-10"
+                  className="h-8 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
                 />
                 <LeadTypeFilterButton
                   state={leadFilter}
                   onChange={setLeadFilter}
-                  className="absolute left-2 top-1/2 -translate-y-1/2"
+                  propertyState={propertyFilter}
+                  onPropertyChange={setPropertyFilter}
+                  cities={filterCities}
+                  neighborhoods={filterNeighborhoods}
+                  propertyTypes={[]}
                 />
               </div>
               <div className="ms-auto inline-flex items-center">
