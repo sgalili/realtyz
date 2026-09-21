@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 import { officialWaLink, getOfficialWaNumber, OFFICIAL_WABA_PHONE } from '@/lib/officialWa';
+import PropertyContactActions from '@/components/public/PropertyContactActions';
 
 type SharedPayload = {
   workspace_name: string | null;
@@ -435,20 +436,7 @@ export default function SharedProperty() {
           </section>
         ) : null}
 
-        <div className="sticky bottom-4 flex items-stretch gap-2 pt-2">
-          {waHref ? (
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="לתיאום סיור"
-              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-social-whatsapp text-[18px] font-bold text-white shadow-lg transition hover:bg-social-whatsapp/90"
-            >
-              <WhatsAppIcon className="h-6 w-6" />
-              לתיאום סיור
-            </a>
-          ) : null}
-        </div>
+        {p.id ? <PropertyContactActions listingId={String(p.id)} title={displayTitle} options={p.contact_options} /> : null}
       </main>
 
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>

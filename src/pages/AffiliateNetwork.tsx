@@ -29,17 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, BedDouble, Building2, EyeOff, Handshake, LayoutGrid, List, MapPin, Ruler, Search, Users } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { Banknote, BedDouble, Building2, ClipboardList, Handshake, LayoutGrid, List, MapPin, MessageCircle, Phone, Ruler, Search, SquareArrowOutUpLeft, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 
@@ -71,6 +61,7 @@ import { ResultTable } from '@/pages/Properties';
 import AffiliatePortal from '@/pages/AffiliatePortal';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAppMode } from '@/hooks/useAppMode';
+import { publicUrl } from '@/lib/publicUrl';
 
 const AFFILIATE_SCROLL_KEY = 'affiliate-network:scroll-y';
 
@@ -257,8 +248,6 @@ function BrokerAffiliateNetwork() {
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
   // Removing a property from partner marketing is destructive for partners who
   // are already promoting it, so it always goes through a confirmation.
-  const [unpublishing, setUnpublishing] = useState<BrokerAffiliateListing | null>(null);
-  const setReward = useSetAffiliateReward();
 
   useEffect(() => {
     if (listingsLoading || refsLoading || subsLoading) return;
@@ -391,16 +380,16 @@ function BrokerAffiliateNetwork() {
                   const shared = Boolean(listing.affiliate_enabled);
                   // Plain-text commission amounts under a shared (green) button —
                   // zero tiers stay hidden, no pills.
-                  const tierTexts: string[] = [];
+                  const tierTexts: Array<{ value: string; label: string; Icon: typeof ClipboardList }> = [];
                   if (shared) {
                     const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
                     const t1 = Number(listing.affiliate_tier1_amount ?? 0);
                     const t2 = Number(listing.affiliate_tier2_amount ?? 0);
                     const t3 = Number(listing.affiliate_tier3_amount ?? 0);
                     const t3Type = (listing.affiliate_tier3_type ?? 'fixed') as RewardType;
-                    if (t1) tierTexts.push(`1: ${money(t1)}`);
-                    if (t2) tierTexts.push(`2: ${money(t2)}`);
-                    if (t3) tierTexts.push(`3: ${t3Type === 'percent' ? `${t3}%` : money(t3)}`);
+                    if (t1) tierTexts.push({ value: money(t1), label: 'טופס דיגיטלי', Icon: ClipboardList });
+                    if (t2) tierTexts.push({ value: money(t2), label: 'שיחת WhatsApp', Icon: MessageCircle });
+                    if (t3) tierTexts.push({ value: t3Type === 'percent' ? `${t3}%` : money(t3), label: 'שיחת טלפון', Icon: Phone });
                   }
                   return (
                     <div className="flex flex-col items-center gap-1">
@@ -415,22 +404,11 @@ function BrokerAffiliateNetwork() {
                         >
                           <Handshake className="h-4 w-4" />
                         </Button>
-                        {shared ? (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                            title="הפסקת שיווק ע״י שותפים"
-                            aria-label="הפסקת שיווק ע״י שותפים"
-                            onClick={() => setUnpublishing(listing)}
-                          >
-                            <EyeOff className="h-4 w-4" />
-                          </Button>
-                        ) : null}
+                        {shared ? <Button asChild size="icon" variant="ghost" className="h-8 w-8" title="פתיחת עמוד הנכס" aria-label="פתיחת עמוד הנכס"><a href={publicUrl(`/p/${listing.slug || listing.id}`)} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><SquareArrowOutUpLeft className="h-4 w-4" /></a></Button> : null}
                       </div>
                       {tierTexts.length > 0 ? (
-                        <div className="text-[11px] font-semibold whitespace-nowrap text-slate-600">
-                          <bdi dir="ltr">{tierTexts.join(', ')}</bdi>
+                        <div className="space-y-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
+                          {tierTexts.map(({ value, label, Icon }) => <div key={label} className="flex items-center justify-center gap-1" title={label}><Icon className="h-3 w-3" /><bdi dir="ltr">{value}</bdi></div>)}
                         </div>
                       ) : null}
                     </div>
@@ -714,44 +692,6 @@ function BrokerAffiliateNetwork() {
         </Tabs>
 
         <RewardDialog listing={editing} open={!!editing} onOpenChange={(v) => !v && setEditing(null)} />
-
-        <AlertDialog open={!!unpublishing} onOpenChange={(v) => !v && setUnpublishing(null)}>
-          <AlertDialogContent dir="rtl">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-right">להפסיק שיווק ע״י שותפים?</AlertDialogTitle>
-              <AlertDialogDescription className="text-right">
-                הנכס {unpublishing?.property_title || ''} ייעלם מרשימת הנכסים לשיווק של כל השותפים. התגמולים שהוגדרו יישמרו.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2">
-              <AlertDialogCancel>ביטול</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={async () => {
-                  const target = unpublishing;
-                  if (!target) return;
-                  setUnpublishing(null);
-                  try {
-                    await setReward.mutateAsync({
-                      listingId: target.id,
-                      enabled: false,
-                      rewardType: (target.affiliate_reward_type ?? 'fixed') as RewardType,
-                      rewardAmount: Number(target.affiliate_reward_amount ?? 0),
-                      tier1Amount: Number(target.affiliate_tier1_amount ?? 0),
-                      tier2Amount: Number(target.affiliate_tier2_amount ?? 0),
-                      tier3Type: (target.affiliate_tier3_type ?? 'fixed') as RewardType,
-                      tier3Amount: Number(target.affiliate_tier3_amount ?? 0),
-                    });
-                    toast.success('הנכס הוסר משיווק שותפים');
-                  } catch {
-                    toast.error('ההסרה נכשלה');
-                  }
-                }}
-              >
-                הסרה
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
 
       </div>
     </>

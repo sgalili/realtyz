@@ -157,7 +157,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       if (error) throw error;
       await clearPublicListingDraft();
       toast.success('הנכס פורסם בלוח השיתופי');
-      setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0);
+       setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0);
        navigate('/public-listings', { replace: true, state: { publishedListingId: (data as { id?: string } | null)?.id } });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'שגיאה לא ידועה';
