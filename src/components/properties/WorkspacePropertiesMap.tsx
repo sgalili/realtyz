@@ -133,8 +133,14 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
   const [ready, setReady] = useState(false);
 
   const address = (fallbackAddress ?? '').replace(/\s+/g, ' ').trim();
+  const [debouncedAddress, setDebouncedAddress] = useState(address);
   const points = useMemo(() => properties.map(validPoint).filter((item): item is PointProperty => Boolean(item)), [properties]);
-  const { point: fallbackPoint, loading: geocoding } = useGeocodedFallback(address, points.length === 0);
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedAddress(address), 500);
+    return () => window.clearTimeout(handle);
+  }, [address]);
+
+  const { point: fallbackPoint, loading: geocoding } = useGeocodedFallback(debouncedAddress, points.length === 0);
   const displayPoints = points.length > 0 ? points : fallbackPoint ? [fallbackPoint] : [];
   const selected = displayPoints.find((property) => property.id === selectedId) ?? displayPoints[0] ?? null;
   const token = getToken();

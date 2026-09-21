@@ -35,6 +35,8 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
+import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
+import { addressMapQuery, fullPropertyAddress } from '@/lib/fullAddress';
 
 const CONDITION_OPTIONS: { value: string; label: string }[] = [
   { value: 'new', label: 'חדש מקבלן' },
@@ -202,6 +204,9 @@ export function ManualPropertyDialog({ open, onOpenChange, onCreated }: Props) {
     }
   };
 
+  const mapAddress = addressMapQuery({ address, city, neighborhood });
+  const mapTitle = fullPropertyAddress({ address, city, neighborhood }) || title || 'נכס חדש';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -304,6 +309,18 @@ export function ManualPropertyDialog({ open, onOpenChange, onCreated }: Props) {
               <Label className="text-xs font-semibold">כתובת</Label>
               <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="רחוב ומספר" />
             </div>
+
+            {mapAddress ? (
+              <div className="col-span-2 space-y-2">
+                <Label className="text-xs font-semibold">מיקום במפה</Label>
+                <WorkspacePropertiesMap
+                  properties={[]}
+                  selectedId="manual-preview"
+                  onSelect={() => undefined}
+                  fallbackAddress={mapAddress || mapTitle}
+                />
+              </div>
+            ) : null}
 
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">סוג נכס</Label>
