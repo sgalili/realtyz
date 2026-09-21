@@ -236,9 +236,10 @@ function PublicListingContent() {
       if (!response.ok) throw new Error(`public listing failed: ${response.status}`);
       const payload = await response.json();
       if (!payload?.property) return null;
+      const workspaceProperties = Array.isArray(payload.workspace_properties) ? payload.workspace_properties : [];
       return {
         property: normalizeListing(payload.property, payload.attribution),
-        properties: (Array.isArray(payload.workspace_properties) ? payload.workspace_properties : [payload.property])
+        properties: [payload.property, ...workspaceProperties]
           .map((row: unknown) => normalizeListing(row, payload.attribution)),
       };
     },
