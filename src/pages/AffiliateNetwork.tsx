@@ -404,7 +404,7 @@ function BrokerAffiliateNetwork() {
                         >
                           <Handshake className="h-4 w-4" />
                         </Button>
-                        {shared ? <Button asChild size="icon" variant="ghost" className="h-8 w-8" title="פתיחת עמוד הנכס" aria-label="פתיחת עמוד הנכס"><a href={publicUrl(`/p/${listing.slug || listing.id}`)} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><SquareArrowOutUpLeft className="h-4 w-4" /></a></Button> : null}
+                        {shared ? <Button asChild size="icon" variant="ghost" className="h-8 w-8" title="פתיחת עמוד הנכס" aria-label="פתיחת עמוד הנכס"><a href={publicUrl(`/p/${listing.id}`)} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><SquareArrowOutUpLeft className="h-4 w-4" /></a></Button> : null}
                       </div>
                       {tierTexts.length > 0 ? (
                         <div className="space-y-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">

@@ -347,9 +347,6 @@ function PublicListingContent() {
     data.city ? { label: 'עיר', value: data.city, icon: Building2 } : null,
   ].filter(Boolean) as { label: string; value: string; icon: typeof Bed }[];
 
-  const waText = `שלום, מתעניין/ת בנכס: ${data.title}${data.location ? ` (${data.location})` : ''}${
-    refCode ? ` [ref:${refCode}]` : ''
-  }`;
   const cover = data.photos[Math.min(slide, Math.max(0, data.photos.length - 1))];
 
   // Map + navigation: coordinates when we have them, otherwise the address.

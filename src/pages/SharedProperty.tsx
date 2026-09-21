@@ -16,7 +16,6 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetailsCard';
 import { sanitizeSqm, sanitizeFloor, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
 
-import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 
 import {
@@ -25,7 +24,7 @@ import {
   BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves, Navigation,
 } from 'lucide-react';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
-import { officialWaLink, getOfficialWaNumber, OFFICIAL_WABA_PHONE } from '@/lib/officialWa';
+import { getOfficialWaNumber, OFFICIAL_WABA_PHONE } from '@/lib/officialWa';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 
 type SharedPayload = {
@@ -224,14 +223,6 @@ export default function SharedProperty() {
 
   // HARD RULE: public property pages always open our official Meta WBA number,
   // never the owner's / broker's personal WhatsApp.
-  const waHref = officialWaLink(
-    `שלום, ראיתי את הנכס "${displayTitle}" ואשמח לקבל פרטים נוספים.`,
-    officialWa,
-  );
-
-
-
-
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur">
