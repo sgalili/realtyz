@@ -94,6 +94,22 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
     return () => { cancelled = true; };
   }, [properties, selectedId, onSelect]);
 
+  // No coordinates: render the embedded map straight from the street address
+  // so every property view still shows a pin.
+  const embedKey = import.meta.env['VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY'];
+  const address = (fallbackAddress ?? '').trim();
+  if ((properties.length === 0 || error) && address && embedKey) {
+    return (
+      <iframe
+        title="מפת הנכס"
+        className="h-72 w-full overflow-hidden rounded-lg border"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        src={`https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(embedKey)}&q=${encodeURIComponent(address)}&zoom=15&language=he&region=IL`}
+      />
+    );
+  }
+
   if (properties.length === 0) {
     return (
       <div className="flex h-56 items-center justify-center rounded-lg border bg-muted/30 text-sm text-muted-foreground">
