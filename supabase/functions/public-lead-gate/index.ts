@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
       const name = str(body?.name, 80);
       const phone = normalizePhone(str(body?.phone, 30));
       if (!listingId || !name || !phone) return json({ error: "שם וטלפון תקין הם שדות חובה" }, 400);
-      const { data: listing } = await admin.from("listings").select("id, city, street, house_number, property_title, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published").eq("id", listingId).maybeSingle();
+      const { data: listing } = await admin.from("listings").select("id, city, address, house_number, property_title, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published").eq("id", listingId).maybeSingle();
       if (!listing || !(listing.affiliate_enabled || listing.is_published) || listing.contact_options?.phone !== true) return json({ error: "אפשרות השיחה אינה זמינה" }, 404);
       const ownerId = listing.workspace_owner_id ?? listing.user_id;
       const refCode = str(body?.ref, 40);
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
         leadId = inserted.id as string;
       }
 
-      const addressLabel = [str(listing.street, 80), str(listing.house_number, 10)].filter(Boolean).join(" ") || str(listing.property_title, 80) || "נכס";
+      const addressLabel = [str(listing.address, 80), str(listing.house_number, 10)].filter(Boolean).join(" ") || str(listing.property_title, 80) || "נכס";
       await admin.from("public_listing_interest").insert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, visitor_name: name, visitor_phone: phone, access_token: crypto.randomUUID().replace(/-/g, ""), intent: "phone" });
       await admin.from("interaction_activity_log").insert({
         user_id: ownerId,
@@ -246,7 +246,7 @@ Deno.serve(async (req) => {
       });
       if (!callOk) {
         console.error("[public-lead-gate] ai call failed", callError);
-        await admin.from("integration_error_logs").insert({ user_id: ownerId, service: "vapi-outbound-call", error_message: callError.slice(0, 500), context: { lead_id: leadId, listing_id: listing.id } }).then(() => {}, () => {});
+        await admin.from("integration_error_logs").insert({ integration: "vapi", function_name: "vapi-outbound-call", error_message: callError.slice(0, 500), context: { lead_id: leadId, listing_id: listing.id, workspace_owner_id: ownerId } }).then(() => {}, () => {});
       }
 
       // Level 3 (phone conversation lead).
