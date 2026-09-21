@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
         const callData = await response.json().catch(() => ({}));
         callOk = response.ok && !callData?.error;
         callError = callOk ? "" : str(callData?.error ?? `HTTP ${response.status}`, 400);
-        callId = str(callData?.call_id ?? callData?.id, 120) || null;
+        callId = str(callData?.call?.id ?? callData?.call_id, 120) || null;
       } catch (callException) {
         callError = str((callException as Error)?.message, 400) || "call_failed";
       }
