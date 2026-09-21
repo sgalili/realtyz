@@ -685,6 +685,14 @@ export default function AffiliatePortal() {
     if (city === 'all' || city === 'other') return [];
     return [...new Set(marketplace.filter((item) => item.city === city).map((item) => item.neighborhood).filter(Boolean))] as string[];
   }, [marketplace, city]);
+  // Neighborhood list for the in-field filter follows its own city choice.
+  const inlineNeighborhoods = useMemo(() => {
+    const pool = inlinePropertyFilter.city === 'all'
+      ? marketplace
+      : marketplace.filter((item) => item.city === inlinePropertyFilter.city);
+    return [...new Set(pool.map((item) => item.neighborhood).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'he')) as string[];
+  }, [marketplace, inlinePropertyFilter.city]);
+
   const activeFilterCount = [propertyType, city, neighborhood, rooms, dealType, propertySource].filter((value) => value !== 'all').length
     + (effectiveCommissionRange[0] > 0 || effectiveCommissionRange[1] < commissionMax ? 1 : 0)
     + (effectivePriceRange[0] > 0 || effectivePriceRange[1] < priceMax ? 1 : 0)
@@ -919,7 +927,7 @@ export default function AffiliatePortal() {
               propertyState={inlinePropertyFilter}
               onPropertyChange={setInlinePropertyFilter}
               cities={cities}
-              neighborhoods={neighborhoods}
+              neighborhoods={inlineNeighborhoods}
               propertyTypes={propertyTypes}
             />
           </div>
