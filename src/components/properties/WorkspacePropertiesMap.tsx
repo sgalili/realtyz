@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapPin, Navigation } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -76,55 +75,6 @@ function makeMarkerElement(property: PointProperty, selected: boolean) {
   return wrapper;
 }
 
-function useGeocodedFallback(address: string, shouldLookup: boolean) {
-  const [point, setPoint] = useState<PointProperty | null>(null);
-  const [loading, setLoading] = useState(false);
-  const cacheRef = useRef(new Map<string, PointProperty | null>());
-
-  useEffect(() => {
-    const cleanAddress = address.replace(/\s+/g, ' ').trim();
-    if (!shouldLookup || cleanAddress.length < 4) {
-      setPoint(null);
-      setLoading(false);
-      return;
-    }
-    if (cacheRef.current.has(cleanAddress)) {
-      setPoint(cacheRef.current.get(cleanAddress) ?? null);
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    supabase.functions.invoke('mapbox-geocode', { body: { address: cleanAddress } })
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) throw error;
-        const latitude = Number((data as any)?.latitude);
-        const longitude = Number((data as any)?.longitude);
-        const next = Number.isFinite(latitude) && Number.isFinite(longitude)
-          ? { id: 'address-fallback', title: cleanAddress, latitude, longitude, price: null }
-          : null;
-        cacheRef.current.set(cleanAddress, next);
-        setPoint(next);
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.warn('Mapbox address lookup failed:', error);
-          cacheRef.current.set(cleanAddress, null);
-          setPoint(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [address, shouldLookup]);
-
-  return { point, loading };
-}
-
 export default function WorkspacePropertiesMap({ properties, selectedId, onSelect, fallbackAddress }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -133,15 +83,8 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
   const [ready, setReady] = useState(false);
 
   const address = (fallbackAddress ?? '').replace(/\s+/g, ' ').trim();
-  const [debouncedAddress, setDebouncedAddress] = useState(address);
   const points = useMemo(() => properties.map(validPoint).filter((item): item is PointProperty => Boolean(item)), [properties]);
-  useEffect(() => {
-    const handle = window.setTimeout(() => setDebouncedAddress(address), 500);
-    return () => window.clearTimeout(handle);
-  }, [address]);
-
-  const { point: fallbackPoint, loading: geocoding } = useGeocodedFallback(debouncedAddress, points.length === 0);
-  const displayPoints = points.length > 0 ? points : fallbackPoint ? [fallbackPoint] : [];
+  const displayPoints = points;
   const selected = displayPoints.find((property) => property.id === selectedId) ?? displayPoints[0] ?? null;
   const token = getToken();
   const navTarget = navigationTarget(selected, address);
@@ -269,15 +212,6 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
           <MapPin className="h-5 w-5 shrink-0 text-primary" />
           <span>{address || 'מיקום הנכס יוצג לאחר חיבור Mapbox'}</span>
         </div>
-        {navigationButtons}
-      </div>
-    );
-  }
-
-  if (geocoding) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-72 w-full rounded-lg" />
         {navigationButtons}
       </div>
     );
