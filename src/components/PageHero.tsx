@@ -288,7 +288,12 @@ function resolvePageTitle(pathname: string): string {
 }
 
 /** Only super admins and the official platform owners see the wallet balance. */
-const BALANCE_OWNER_EMAILS = ["sgalili@gmail.com", "udi@udiman.com", "udi.vitman@gmail.com"];
+const BALANCE_OWNER_EMAILS = [
+  "sgalili@gmail.com",
+  "udi@udiman.com",
+  "udi.vitman@gmail.com",
+  "udivitman@gmail.com",
+];
 
 export function PageHero() {
   const location = useLocation();
