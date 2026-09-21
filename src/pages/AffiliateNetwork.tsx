@@ -269,6 +269,7 @@ function RewardDialog({
               </div>
             </div>
           </div>
+          </> : null}
         </div>
 
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">
