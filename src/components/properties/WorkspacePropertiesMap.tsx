@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 export type WorkspaceMapProperty = {
   id: string;
   title: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number | null;
+  longitude?: number | null;
   price?: number | null;
 };
 
@@ -13,155 +16,229 @@ type Props = {
   properties: WorkspaceMapProperty[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  /**
-   * Full street address of the shown property. When no coordinates exist we
-   * render the embedded map by address instead of hiding the map entirely.
-   */
+  /** Full geocodable address from the saved property row. */
   fallbackAddress?: string | null;
 };
 
-declare global {
-  interface Window {
-    google?: {
-      maps: {
-        Map: new (element: HTMLElement, options: Record<string, unknown>) => GoogleMap;
-        Marker: new (options: Record<string, unknown>) => GoogleMarker;
-      };
-    };
-    __realtyzGoogleMapsReady?: () => void;
-    gm_authFailure?: () => void;
-  }
+type PointProperty = WorkspaceMapProperty & {
+  latitude: number;
+  longitude: number;
+};
+
+type MapboxMap = import('mapbox-gl').Map;
+type MapboxMarker = import('mapbox-gl').Marker;
+
+function validPoint(property: WorkspaceMapProperty): PointProperty | null {
+  const latitude = Number(property.latitude);
+  const longitude = Number(property.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude === 0 || longitude === 0) return null;
+  return { ...property, latitude, longitude };
 }
 
-type GoogleMap = { panTo: (position: { lat: number; lng: number }) => void };
-type GoogleMarker = { setMap: (map: GoogleMap | null) => void; addListener: (event: string, callback: () => void) => void };
-
-let mapsPromise: Promise<void> | null = null;
-
-/**
- * Google fires `window.gm_authFailure` when the browser key is rejected (for
- * example HTTP-referrer restrictions on a custom domain). We latch that here so
- * every map instance can hide itself instead of rendering Google's black
- * "this page can't load Google Maps correctly" error box.
- */
-let authFailed = false;
-const authListeners = new Set<() => void>();
-
-function markAuthFailure() {
-  authFailed = true;
-  authListeners.forEach((listener) => listener());
+function formatPrice(value?: number | null): string | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `₪${n.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
 }
 
-if (typeof window !== 'undefined') {
-  window.gm_authFailure = markAuthFailure;
+function getToken(): string {
+  return String(import.meta.env['VITE_LOVABLE_CONNECTOR_MAPBOX_PUBLIC_TOKEN'] ?? '').trim();
 }
 
-function loadGoogleMaps(): Promise<void> {
-  if (window.google?.maps?.Map) return Promise.resolve();
-  if (mapsPromise) return mapsPromise;
-  const key = import.meta.env['VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY'];
-  const channel = import.meta.env['VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID'];
-  if (!key) return Promise.reject(new Error('map_unavailable'));
-  mapsPromise = new Promise((resolve, reject) => {
-    window.__realtyzGoogleMapsReady = () => resolve();
-    const script = document.createElement('script');
-    script.async = true;
-    script.defer = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&callback=__realtyzGoogleMapsReady${channel ? `&channel=${encodeURIComponent(channel)}` : ''}`;
-    script.onerror = () => {
-      markAuthFailure();
-      reject(new Error('map_unavailable'));
-    };
-    document.head.appendChild(script);
-  });
-  return mapsPromise;
+function makeMarkerElement(property: PointProperty, selected: boolean) {
+  const wrapper = document.createElement('button');
+  wrapper.type = 'button';
+  wrapper.dir = 'rtl';
+  wrapper.className = selected
+    ? 'group flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/25 transition-transform hover:scale-105'
+    : 'group flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-card text-primary shadow-md ring-1 ring-border transition-transform hover:scale-105';
+  wrapper.setAttribute('aria-label', property.title || 'נכס במפה');
+
+  const icon = document.createElement('span');
+  icon.className = 'h-3 w-3 rounded-full bg-current';
+  wrapper.appendChild(icon);
+  return wrapper;
+}
+
+function useGeocodedFallback(address: string, shouldLookup: boolean) {
+  const [point, setPoint] = useState<PointProperty | null>(null);
+  const [loading, setLoading] = useState(false);
+  const cacheRef = useRef(new Map<string, PointProperty | null>());
+
+  useEffect(() => {
+    const cleanAddress = address.replace(/\s+/g, ' ').trim();
+    if (!shouldLookup || cleanAddress.length < 4) {
+      setPoint(null);
+      setLoading(false);
+      return;
+    }
+    if (cacheRef.current.has(cleanAddress)) {
+      setPoint(cacheRef.current.get(cleanAddress) ?? null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    supabase.functions.invoke('mapbox-geocode', { body: { address: cleanAddress } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) throw error;
+        const latitude = Number((data as any)?.latitude);
+        const longitude = Number((data as any)?.longitude);
+        const next = Number.isFinite(latitude) && Number.isFinite(longitude)
+          ? { id: 'address-fallback', title: cleanAddress, latitude, longitude, price: null }
+          : null;
+        cacheRef.current.set(cleanAddress, next);
+        setPoint(next);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.warn('Mapbox address lookup failed:', error);
+          cacheRef.current.set(cleanAddress, null);
+          setPoint(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [address, shouldLookup]);
+
+  return { point, loading };
 }
 
 export default function WorkspacePropertiesMap({ properties, selectedId, onSelect, fallbackAddress }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<GoogleMap | null>(null);
-  const markersRef = useRef<GoogleMarker[]>([]);
-  const [failed, setFailed] = useState(authFailed);
+  const mapRef = useRef<MapboxMap | null>(null);
+  const markersRef = useRef<MapboxMarker[]>([]);
+  const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  // Any map instance that mounts after a rejection must stay hidden too.
-  useEffect(() => {
-    if (authFailed) setFailed(true);
-    const listener = () => setFailed(true);
-    authListeners.add(listener);
-    return () => { authListeners.delete(listener); };
-  }, []);
+  const address = (fallbackAddress ?? '').replace(/\s+/g, ' ').trim();
+  const points = useMemo(() => properties.map(validPoint).filter((item): item is PointProperty => Boolean(item)), [properties]);
+  const { point: fallbackPoint, loading: geocoding } = useGeocodedFallback(address, points.length === 0);
+  const displayPoints = points.length > 0 ? points : fallbackPoint ? [fallbackPoint] : [];
+  const selected = displayPoints.find((property) => property.id === selectedId) ?? displayPoints[0] ?? null;
+  const token = getToken();
 
   useEffect(() => {
-    if (failed) return;
-    if (!containerRef.current || properties.length === 0) return;
+    if (!token || !containerRef.current || !selected) return;
     let cancelled = false;
-    void loadGoogleMaps().then(() => {
-      if (cancelled || !containerRef.current || !window.google?.maps) return;
-      const selected = properties.find((property) => property.id === selectedId) ?? properties[0];
-      if (!mapRef.current) {
-        mapRef.current = new window.google.maps.Map(containerRef.current, {
-          center: { lat: selected.latitude, lng: selected.longitude },
-          zoom: 14,
-          clickableIcons: false,
-          fullscreenControl: false,
-          mapTypeControl: false,
-          streetViewControl: false,
-        });
+
+    const init = async () => {
+      try {
+        const mapboxgl = (await import('mapbox-gl')).default;
+        if (cancelled || !containerRef.current) return;
+        mapboxgl.accessToken = token;
+        if (!mapboxgl.supported()) {
+          setFailed(true);
+          return;
+        }
+
+        if (!mapRef.current) {
+          mapRef.current = new mapboxgl.Map({
+            container: containerRef.current,
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [selected.longitude, selected.latitude],
+            zoom: displayPoints.length > 1 ? 11 : 15,
+            attributionControl: false,
+            cooperativeGestures: true,
+          });
+          mapRef.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
+          mapRef.current.once('load', () => setReady(true));
+          mapRef.current.on('error', (event: { error?: Error }) => {
+            console.warn('Mapbox render error:', event.error);
+            setFailed(true);
+          });
+        } else {
+          mapRef.current.easeTo({ center: [selected.longitude, selected.latitude], zoom: displayPoints.length > 1 ? 11 : 15, duration: 350 });
+        }
+      } catch (error) {
+        console.warn('Mapbox init error:', error);
+        if (!cancelled) setFailed(true);
       }
-      markersRef.current.forEach((marker) => marker.setMap(null));
-      markersRef.current = properties.map((property) => {
-        const marker = new window.google.maps.Marker({
-          map: mapRef.current,
-          position: { lat: property.latitude, lng: property.longitude },
-          title: property.title,
-          label: property.id === selected.id ? '●' : undefined,
-          zIndex: property.id === selected.id ? 10 : 1,
-        });
-        marker.addListener('click', () => onSelect(property.id));
+    };
+
+    void init();
+    return () => { cancelled = true; };
+  }, [token, selected?.id, selected?.latitude, selected?.longitude, displayPoints.length]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selected) return;
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+
+    const mapboxMarkers = async () => {
+      const mapboxgl = (await import('mapbox-gl')).default;
+      const nextMarkers = displayPoints.map((property) => {
+        const element = makeMarkerElement(property, property.id === selected.id);
+        element.addEventListener('click', () => onSelect(property.id));
+        const marker = new mapboxgl.Marker({ element, anchor: 'center' })
+          .setLngLat([property.longitude, property.latitude]);
+        const price = formatPrice(property.price);
+        if (property.title || price) {
+          marker.setPopup(new mapboxgl.Popup({ offset: 18 }).setHTML(
+            `<div dir="rtl"><strong>${property.title}</strong>${price ? `<br>${price}` : ''}</div>`,
+          ));
+        }
+        marker.addTo(map);
         return marker;
       });
-      mapRef.current.panTo({ lat: selected.latitude, lng: selected.longitude });
-    }).catch(() => setFailed(true));
-    return () => { cancelled = true; };
-  }, [properties, selectedId, onSelect, failed]);
+      markersRef.current = nextMarkers;
 
-  const embedKey = import.meta.env['VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY'];
-  const address = (fallbackAddress ?? '').trim();
+      if (displayPoints.length > 1) {
+        const bounds = new mapboxgl.LngLatBounds();
+        displayPoints.forEach((property) => bounds.extend([property.longitude, property.latitude]));
+        map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 350 });
+      } else {
+        map.easeTo({ center: [selected.longitude, selected.latitude], zoom: 15, duration: 350 });
+      }
+    };
 
-  // Key rejected / script blocked: no Google surface at all, just a clean
-  // address line. The external Waze / Google Maps buttons stay rendered by the
-  // parent page underneath.
-  if (failed) {
+    void mapboxMarkers().catch((error) => {
+      console.warn('Mapbox marker error:', error);
+      setFailed(true);
+    });
+
+    return () => {
+      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current = [];
+    };
+  }, [displayPoints, selected?.id, selected?.latitude, selected?.longitude, onSelect]);
+
+  useEffect(() => () => {
+    markersRef.current.forEach((marker) => marker.remove());
+    mapRef.current?.remove();
+    mapRef.current = null;
+  }, []);
+
+  if (!token) {
     return (
       <div className="flex min-h-24 items-center gap-2 rounded-lg border bg-muted/30 p-4 text-sm font-medium text-foreground">
         <MapPin className="h-5 w-5 shrink-0 text-primary" />
-        <span>{address || 'ניתן לנווט לנכס באמצעות הכפתורים שמתחת'}</span>
+        <span>{address || 'מיקום הנכס יוצג לאחר חיבור Mapbox'}</span>
       </div>
     );
   }
 
-  // No coordinates: render the embedded map straight from the street address
-  // so every property view still shows a pin.
-  if (properties.length === 0 && address && embedKey) {
-    return (
-      <iframe
-        title="מפת הנכס"
-        className="h-72 w-full overflow-hidden rounded-lg border"
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        onError={() => setFailed(true)}
-        src={`https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(embedKey)}&q=${encodeURIComponent(address)}&zoom=15&language=he&region=IL`}
-      />
-    );
-  }
+  if (geocoding) return <Skeleton className="h-72 w-full rounded-lg" />;
 
-  if (properties.length === 0) {
+  if (failed || !selected) {
     return (
-      <div className="flex h-24 items-center justify-center rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
-        <MapPin className="me-2 h-5 w-5" /> {address || 'מיקום הנכס עדיין אינו זמין במפה'}
+      <div className="flex min-h-24 items-center gap-2 rounded-lg border bg-muted/30 p-4 text-sm font-medium text-foreground">
+        <MapPin className="h-5 w-5 shrink-0 text-primary" />
+        <span>{address || 'מיקום הנכס עדיין אינו זמין במפה'}</span>
       </div>
     );
   }
 
-  return <div ref={containerRef} className="h-72 w-full overflow-hidden rounded-lg border" aria-label="מפת נכסי המשרד" />;
+  return (
+    <div className="relative h-72 w-full overflow-hidden rounded-lg border bg-muted/20">
+      {!ready ? <Skeleton className="absolute inset-0 z-10 h-full w-full rounded-none" /> : null}
+      <div ref={containerRef} className="h-full w-full" aria-label="מפת נכסי המשרד" />
+    </div>
+  );
 }
