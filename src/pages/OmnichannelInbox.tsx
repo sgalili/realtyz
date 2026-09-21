@@ -1359,7 +1359,15 @@ const OmnichannelInbox = () => {
                         })()}
                         <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
                           <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
-                          {isOutbound && <WhatsAppTicks status={((msg as any)?.metadata?.status as 'sent' | 'delivered' | 'read') || 'delivered'} />}
+                          {isOutbound && (
+                            <WhatsAppTicks
+                              status={
+                                idx < lastInboundIndex
+                                  ? 'read'
+                                  : ((msg as any)?.metadata?.status as 'sent' | 'delivered' | 'read') || 'delivered'
+                              }
+                            />
+                          )}
                         </p>
                       </MessageContent>
                     );
