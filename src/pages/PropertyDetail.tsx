@@ -26,6 +26,8 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard';
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
+import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
+import { addressMapQuery, fullPropertyAddress } from '@/lib/fullAddress';
 import { PropertyYad2SectionsCard, type Yad2Sections } from '@/components/properties/PropertyYad2SectionsCard';
 
 import SmartTimelineCard from '@/components/SmartTimelineCard';
@@ -1400,8 +1402,8 @@ export default function PropertyDetail() {
           >
             {dynamicHeadline}
           </div>
-          {neighborhood && (
-            <div className="text-lg font-medium text-slate-600">{neighborhood}</div>
+          {(neighborhood || property.city) && (
+            <div className="text-lg font-medium text-slate-600">{[neighborhood, property.city].filter(Boolean).join(', ')}</div>
           )}
         </div>
 
@@ -1780,7 +1782,7 @@ export default function PropertyDetail() {
               priceHistory={data.rich.priceHistory}
               latitude={data.rich.latitude}
               longitude={data.rich.longitude}
-              addressLabel={[property.address, property.city].filter(Boolean).join(', ')}
+              addressLabel={fullPropertyAddress({ address: property.address, city: property.city, neighborhood, house_number: (data?.row as any)?.house_number, apartment_number: (data?.row as any)?.apartment_number })}
               pending={hydrating}
               listingId={property.id}
               meta={isRecord(data?.row?.source_metadata) ? data.row.source_metadata : {}}
@@ -1796,9 +1798,30 @@ export default function PropertyDetail() {
               sections={(isRecord(meta) && isRecord((meta as any).yad2_sections)
                 ? ((meta as any).yad2_sections as Yad2Sections)
                 : null)}
-              propertyAddress={[property.address, property.city].filter(Boolean).join(', ')}
+              propertyAddress={fullPropertyAddress({ address: property.address, city: property.city, neighborhood, house_number: (data?.row as any)?.house_number, apartment_number: (data?.row as any)?.apartment_number })}
             />
           )}
+
+          {/* Interactive map: coordinates when stored, street address otherwise. */}
+          <section className="space-y-2">
+            <h2 className="text-sm font-bold text-foreground">מיקום הנכס</h2>
+            <WorkspacePropertiesMap
+              properties={
+                Number.isFinite(Number(data?.rich?.latitude)) && Number(data?.rich?.latitude) !== 0
+                  && Number.isFinite(Number(data?.rich?.longitude)) && Number(data?.rich?.longitude) !== 0
+                  ? [{
+                    id: property.id,
+                    title: fullPropertyAddress({ address: property.address, city: property.city, neighborhood, house_number: (data?.row as any)?.house_number, apartment_number: (data?.row as any)?.apartment_number }),
+                    latitude: Number(data?.rich?.latitude),
+                    longitude: Number(data?.rich?.longitude),
+                  }]
+                  : []
+              }
+              selectedId={property.id}
+              onSelect={() => undefined}
+              fallbackAddress={addressMapQuery({ address: property.address, city: property.city, neighborhood, house_number: (data?.row as any)?.house_number, apartment_number: (data?.row as any)?.apartment_number })}
+            />
+          </section>
 
 
 

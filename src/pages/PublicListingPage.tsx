@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { publicUrl } from '@/lib/publicUrl';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
+import { addressMapQuery, fullPropertyAddress, streetLine } from '@/lib/fullAddress';
 import PropertyContactActions, { type ContactOptions } from '@/components/public/PropertyContactActions';
 
 type PublicListing = {
@@ -135,19 +136,6 @@ function detailGroups(row: any): Array<{ title: string; rows: Array<{ label: str
   return groups;
 }
 
-/** Public pages must never expose house / apartment numbers. */
-function publicAddress(raw?: string | null): string {
-  if (!raw) return '';
-  try {
-    return String(raw)
-      .replace(/\b(דירה|דירת|כניסה|קומה|בית|מספר)\s*\d+[א-ת]?\b/g, '')
-      .replace(/[,/]\s*\d+[א-ת]?\s*$/g, '')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
-  } catch {
-    return '';
-  }
-}
 
 function toNumber(value: unknown): number {
   const n = Number(value);
@@ -177,13 +165,12 @@ function collectPhotos(row: any): string[] {
 
 /** Never throws: turns any DB row shape into safe display values. */
 function normalizeListing(row: any, attribution?: any): PublicListing {
-  const address = publicAddress(row?.address);
   const city = typeof row?.city === 'string' ? row.city : '';
-  const location = [address, row?.neighborhood, city].filter((v) => typeof v === 'string' && v.trim()).join(' · ');
-  const sourceTitle = typeof row?.property_title === 'string' ? publicAddress(row.property_title.trim()) : '';
-  const title = [address || sourceTitle, row?.neighborhood, city]
-    .filter((value, index, values) => typeof value === 'string' && value.trim() && values.indexOf(value) === index)
-    .join(' · ') || 'נכס';
+  // Complete address: street + house number + apartment, neighborhood, city.
+  const address = streetLine(row ?? {});
+  const location = fullPropertyAddress(row ?? {});
+  const sourceTitle = typeof row?.property_title === 'string' ? row.property_title.trim() : '';
+  const title = location || sourceTitle || 'נכס';
   const dealType = row?.deal_type === 'rent' ? 'rent' : row?.deal_type === 'sale' ? 'sale' : null;
   const floorRaw = Number(row?.floor);
   return {
@@ -211,7 +198,7 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
     groups: detailGroups(row),
     latitude: Number.isFinite(Number(row?.latitude)) && Number(row?.latitude) !== 0 ? Number(row.latitude) : null,
     longitude: Number.isFinite(Number(row?.longitude)) && Number(row?.longitude) !== 0 ? Number(row.longitude) : null,
-    addressForMap: [address, city].filter(Boolean).join(', '),
+    addressForMap: addressMapQuery(row ?? {}),
     contactOptions: row?.contact_options && typeof row.contact_options === 'object' ? row.contact_options : { digital: true, whatsapp: true, phone: false },
   };
 }
@@ -447,13 +434,13 @@ function PublicListingContent() {
               </div>
             ))}
 
-            {data.latitude !== null && data.longitude !== null ? (
+            {(data.latitude !== null && data.longitude !== null) || data.addressForMap ? (
               <div className="space-y-2 border-t pt-4">
-                <WorkspacePropertiesMap properties={mapProperties} selectedId={data.id} onSelect={setSelectedId} />
+                <WorkspacePropertiesMap properties={mapProperties} selectedId={data.id} onSelect={setSelectedId} fallbackAddress={data.addressForMap} />
                 {mapProperties.length > 1 && <p className="text-xs text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס</p>}
                 <div className="flex flex-wrap gap-2">
-                  <Button asChild variant="outline" size="sm"><a href={`https://waze.com/ul?ll=${data.latitude},${data.longitude}&navigate=yes`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Waze</a></Button>
-                  <Button asChild variant="outline" size="sm"><a href={`https://www.google.com/maps/dir/?api=1&destination=${data.latitude},${data.longitude}`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Google Maps</a></Button>
+                  <Button asChild variant="outline" size="sm"><a href={data.latitude !== null && data.longitude !== null ? `https://waze.com/ul?ll=${data.latitude},${data.longitude}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(data.addressForMap)}&navigate=yes`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Waze</a></Button>
+                  <Button asChild variant="outline" size="sm"><a href={`https://www.google.com/maps/dir/?api=1&destination=${data.latitude !== null && data.longitude !== null ? `${data.latitude},${data.longitude}` : encodeURIComponent(data.addressForMap)}`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Google Maps</a></Button>
                 </div>
               </div>
             ) : null}

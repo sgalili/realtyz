@@ -13,6 +13,11 @@ type Props = {
   properties: WorkspaceMapProperty[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /**
+   * Full street address of the shown property. When no coordinates exist we
+   * render the embedded map by address instead of hiding the map entirely.
+   */
+  fallbackAddress?: string | null;
 };
 
 declare global {
@@ -50,7 +55,7 @@ function loadGoogleMaps(): Promise<void> {
   return mapsPromise;
 }
 
-export default function WorkspacePropertiesMap({ properties, selectedId, onSelect }: Props) {
+export default function WorkspacePropertiesMap({ properties, selectedId, onSelect, fallbackAddress }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<GoogleMap | null>(null);
   const markersRef = useRef<GoogleMarker[]>([]);
@@ -88,6 +93,22 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
     }).catch((reason) => setError(reason instanceof Error ? reason.message : 'טעינת המפה נכשלה'));
     return () => { cancelled = true; };
   }, [properties, selectedId, onSelect]);
+
+  // No coordinates: render the embedded map straight from the street address
+  // so every property view still shows a pin.
+  const embedKey = import.meta.env['VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY'];
+  const address = (fallbackAddress ?? '').trim();
+  if ((properties.length === 0 || error) && address && embedKey) {
+    return (
+      <iframe
+        title="מפת הנכס"
+        className="h-72 w-full overflow-hidden rounded-lg border"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        src={`https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(embedKey)}&q=${encodeURIComponent(address)}&zoom=15&language=he&region=IL`}
+      />
+    );
+  }
 
   if (properties.length === 0) {
     return (
