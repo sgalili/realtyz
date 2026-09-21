@@ -488,7 +488,7 @@ function BrokerAffiliateNetwork() {
                     if (t4) tierTexts.push({ value: t4Type === 'percent' ? `${t4}%` : money(t4), label: 'סגירת עסקה · בעלי רישיון תיווך בלבד', Icon: Trophy });
                   }
                   return (
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="flex flex-col items-start gap-1">
                       <div className="inline-flex items-center gap-1">
                         <Button
                           size="icon"
@@ -504,7 +504,7 @@ function BrokerAffiliateNetwork() {
                       </div>
                       {tierTexts.length > 0 ? (
                         <div className="space-y-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
-                          {tierTexts.map(({ value, label, Icon }) => <div key={label} className="flex items-center justify-center gap-1" title={label}><Icon className="h-3 w-3" /><bdi dir="ltr">{value}</bdi></div>)}
+                          {tierTexts.map(({ value, label, Icon }) => <div key={label} className="flex items-center justify-start gap-1" title={label}><Icon className="h-3 w-3" /><bdi dir="ltr">{value}</bdi></div>)}
                         </div>
                       ) : null}
                     </div>
