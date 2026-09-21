@@ -66,3 +66,5 @@
 66. [ ] Add shared-property contact row with digital, WhatsApp Rita, and Vapi callback lead flows
 67. [ ] Add publisher-configurable lead options, qualification questions, pricing trends, and icon-based tier UI
 68. [ ] Refine affiliate table first-column controls and vertical icon-based commission display
+69. [ ] Unify affiliate `/posts` with the global campaigns screen and preserve workspace isolation
+70. [ ] Add `פרסום ברשתות` to property sharing with automatic campaign content and first-comment generation
