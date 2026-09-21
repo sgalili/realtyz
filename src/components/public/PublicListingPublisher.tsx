@@ -381,7 +381,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
               </label>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} />
-                 <span>אני מאשר/ת את <a href="/terms" target="_blank" className="font-semibold text-primary underline">התקנון</a> ואת <a href="/privacy" target="_blank" className="font-semibold text-primary underline">מדיניות הפרטיות</a></span>
+                  <span>אני מאשר/ת את <a href="/terms" target="_blank" className="font-semibold text-primary underline">התקנון</a> ואת <a href="/privacy-policy" target="_blank" className="font-semibold text-primary underline">מדיניות הפרטיות</a></span>
               </label>
             </div>
           )}

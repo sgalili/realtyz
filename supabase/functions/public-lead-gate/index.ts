@@ -87,7 +87,6 @@ Deno.serve(async (req) => {
             lead_stage: "new",
             status: "new",
             source: "public_listings_board",
-            lead_message: comment || null,
             last_interaction_at: new Date().toISOString(),
           })
           .select("id")
