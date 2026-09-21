@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 export type WorkspaceMapProperty = {
@@ -43,6 +44,11 @@ function formatPrice(value?: number | null): string | null {
 
 function getToken(): string {
   return String(import.meta.env['VITE_LOVABLE_CONNECTOR_MAPBOX_PUBLIC_TOKEN'] ?? '').trim();
+}
+
+function navigationTarget(point: PointProperty | null, address: string): string {
+  if (point) return `${point.latitude},${point.longitude}`;
+  return address;
 }
 
 function makeMarkerElement(property: PointProperty, selected: boolean) {
@@ -122,6 +128,31 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
   const displayPoints = points.length > 0 ? points : fallbackPoint ? [fallbackPoint] : [];
   const selected = displayPoints.find((property) => property.id === selectedId) ?? displayPoints[0] ?? null;
   const token = getToken();
+  const navTarget = navigationTarget(selected, address);
+  const navTargetEncoded = encodeURIComponent(navTarget);
+
+  const navigationButtons = navTarget ? (
+    <div className="flex flex-wrap gap-2">
+      <Button asChild variant="outline" size="sm">
+        <a
+          href={selected ? `https://waze.com/ul?ll=${selected.latitude},${selected.longitude}&navigate=yes` : `https://waze.com/ul?q=${navTargetEncoded}&navigate=yes`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Navigation className="h-4 w-4" /> Waze
+        </a>
+      </Button>
+      <Button asChild variant="outline" size="sm">
+        <a
+          href={`https://www.google.com/maps/dir/?api=1&destination=${navTargetEncoded}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Navigation className="h-4 w-4" /> Google Maps
+        </a>
+      </Button>
+    </div>
+  ) : null;
 
   useEffect(() => {
     if (!token || !containerRef.current || !selected) return;
@@ -217,28 +248,44 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
 
   if (!token) {
     return (
-      <div className="flex min-h-24 items-center gap-2 rounded-lg border bg-muted/30 p-4 text-sm font-medium text-foreground">
-        <MapPin className="h-5 w-5 shrink-0 text-primary" />
-        <span>{address || 'מיקום הנכס יוצג לאחר חיבור Mapbox'}</span>
+      <div className="space-y-2">
+        <div className="flex min-h-24 items-center gap-2 rounded-lg border bg-muted/30 p-4 text-sm font-medium text-foreground">
+          <MapPin className="h-5 w-5 shrink-0 text-primary" />
+          <span>{address || 'מיקום הנכס יוצג לאחר חיבור Mapbox'}</span>
+        </div>
+        {navigationButtons}
       </div>
     );
   }
 
-  if (geocoding) return <Skeleton className="h-72 w-full rounded-lg" />;
+  if (geocoding) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-72 w-full rounded-lg" />
+        {navigationButtons}
+      </div>
+    );
+  }
 
   if (failed || !selected) {
     return (
-      <div className="flex min-h-24 items-center gap-2 rounded-lg border bg-muted/30 p-4 text-sm font-medium text-foreground">
-        <MapPin className="h-5 w-5 shrink-0 text-primary" />
-        <span>{address || 'מיקום הנכס עדיין אינו זמין במפה'}</span>
+      <div className="space-y-2">
+        <div className="flex min-h-24 items-center gap-2 rounded-lg border bg-muted/30 p-4 text-sm font-medium text-foreground">
+          <MapPin className="h-5 w-5 shrink-0 text-primary" />
+          <span>{address || 'מיקום הנכס עדיין אינו זמין במפה'}</span>
+        </div>
+        {navigationButtons}
       </div>
     );
   }
 
   return (
-    <div className="relative h-72 w-full overflow-hidden rounded-lg border bg-muted/20">
-      {!ready ? <Skeleton className="absolute inset-0 z-10 h-full w-full rounded-none" /> : null}
-      <div ref={containerRef} className="h-full w-full" aria-label="מפת נכסי המשרד" />
+    <div className="space-y-2">
+      <div className="relative h-72 w-full overflow-hidden rounded-lg border bg-muted/20">
+        {!ready ? <Skeleton className="absolute inset-0 z-10 h-full w-full rounded-none" /> : null}
+        <div ref={containerRef} className="h-full w-full" aria-label="מפת נכסי המשרד" />
+      </div>
+      {navigationButtons}
     </div>
   );
 }
