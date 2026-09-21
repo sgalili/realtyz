@@ -29,7 +29,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { BedDouble, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, MessageCircle, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy } from 'lucide-react';
+import { BedDouble, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
