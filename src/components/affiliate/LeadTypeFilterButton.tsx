@@ -55,7 +55,7 @@ export default function LeadTypeFilterButton({
           type="button"
           aria-label="סינון לפי סוג ליד ושווי ליד"
           title="סינון לפי סוג ליד ושווי ליד"
-          className={`grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${active ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground' : ''} ${className}`}
+          className={`relative grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${active ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground' : ''} ${className}`}
         >
           <SlidersHorizontal className="h-4 w-4" />
           {active ? (
