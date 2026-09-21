@@ -45,7 +45,7 @@ export default function PropertyContactActions({ listingId, title, options }: { 
   return (
     <>
       <div className="sticky bottom-3 z-10 grid grid-cols-1 gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur sm:grid-cols-3">
-        {settings.whatsapp !== false && <Button asChild className="bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90"><a href={officialWaLink(`שלום, אשמח לקבל פרטים על ${title}`)} target="_blank" rel="noreferrer"><WhatsAppIcon className="h-5 w-5" /><RitaAvatar className="h-6 w-6 border-0 ring-0" />WhatsApp</a></Button>}
+        {settings.whatsapp !== false && <Button asChild className="bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90"><a href={officialWaLink(`שלום, אשמח לקבל פרטים על ${title}. אשמח שריטה תשאל אותי: מה סוג העסקה המבוקש? מה התקציב שלי? ומתי ארצה להיכנס לנכס?`)} target="_blank" rel="noreferrer"><WhatsAppIcon className="h-5 w-5" /><RitaAvatar className="h-6 w-6 border-0 ring-0" />WhatsApp</a></Button>}
         {settings.phone && <Button variant="outline" onClick={() => setMode('phone')}><Phone className="h-4 w-4" />חייגו אליי</Button>}
         {settings.digital !== false && <Button variant="outline" onClick={() => setMode('digital')}><ClipboardList className="h-4 w-4" />השארת פרטים</Button>}
       </div>

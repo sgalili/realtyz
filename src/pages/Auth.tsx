@@ -363,7 +363,6 @@ const Auth = () => {
                       className="auth-method-input"
                       type={isPhoneFlow ? 'tel' : 'email'}
                       inputMode={isPhoneFlow ? 'tel' : 'email'}
-                      placeholder={isPhoneFlow ? '05x-xxxxxxx' : 'you@campaign.com'}
                       value={isPhoneFlow ? formattedPhone : email}
                       onChange={(e) => (isPhoneFlow ? handlePhoneChange(e.target.value) : setEmail(e.target.value))}
                       required
@@ -425,7 +424,7 @@ const Auth = () => {
         <div className="auth-footer-legal">
           <span dir="ltr" className="auth-footer-copyright">© 2026 Realtyz. All rights reserved</span>
           <div className="auth-footer-links">
-            <a href="/privacy">מדיניות פרטיות</a>
+            <a href="/privacy-policy">מדיניות פרטיות</a>
             <a href="/terms">תנאי שימוש</a>
           </div>
         </div>
