@@ -13,7 +13,7 @@ import { useSetAffiliateReward, type RewardType } from '@/hooks/useAffiliate';
 export function AffiliateCommissionButton({ listingId, shared }: { listingId: string; shared?: boolean }) {
   const [open, setOpen] = useState(false);
   const [enabled, setEnabled] = useState(false);
-  const [amount, setAmount] = useState('0');
+  const [amount, setAmount] = useState('');
   const save = useSetAffiliateReward();
   const { data } = useQuery({
     queryKey: ['affiliate-listing-config', listingId],
@@ -30,7 +30,7 @@ export function AffiliateCommissionButton({ listingId, shared }: { listingId: st
   useEffect(() => {
     if (!data) return;
     setEnabled(Boolean(data.affiliate_enabled));
-    setAmount(String(data.affiliate_reward_amount ?? 0));
+    setAmount(data.affiliate_reward_amount == null || Number(data.affiliate_reward_amount) === 0 ? '' : String(data.affiliate_reward_amount));
   }, [data]);
 
   return (
