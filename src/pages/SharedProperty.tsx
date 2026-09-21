@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
+import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 
 type SharedPayload = {
   workspace_name: string | null;
@@ -398,7 +399,7 @@ export default function SharedProperty() {
           </section>
         ) : null}
 
-        {p.id ? <PropertyContactActions listingId={String(p.id)} title={displayTitle} options={p.contact_options} /> : null}
+        {p.id ? <PropertyContactActions listingId={String(p.id)} title={displayTitle} premsg={ritaPropertyPremsg(p)} options={p.contact_options} /> : null}
       </main>
 
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>

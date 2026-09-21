@@ -27,6 +27,7 @@ import BrokerAttribution from '@/components/properties/BrokerAttribution';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 import { addressMapQuery, fullPropertyAddress, streetLine } from '@/lib/fullAddress';
 import PropertyContactActions, { type ContactOptions } from '@/components/public/PropertyContactActions';
+import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 
 type PublicListing = {
   id: string | null;
@@ -51,6 +52,8 @@ type PublicListing = {
   latitude: number | null;
   longitude: number | null;
   addressForMap: string;
+  /** Canonical WhatsApp click-to-chat opener for this exact property. */
+  premsg: string;
   contactOptions: ContactOptions;
 };
 
@@ -199,6 +202,7 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
     latitude: Number.isFinite(Number(row?.latitude)) && Number(row?.latitude) !== 0 ? Number(row.latitude) : null,
     longitude: Number.isFinite(Number(row?.longitude)) && Number(row?.longitude) !== 0 ? Number(row.longitude) : null,
     addressForMap: addressMapQuery(row ?? {}),
+    premsg: ritaPropertyPremsg(row ?? {}),
     contactOptions: row?.contact_options && typeof row.contact_options === 'object' ? row.contact_options : { digital: true, whatsapp: true, phone: false },
   };
 }
@@ -448,7 +452,7 @@ function PublicListingContent() {
                 <Share2 className="h-4 w-4" /> שיתוף
               </Button>
             </div>
-            {data.id && <PropertyContactActions listingId={data.id} title={data.title} options={data.contactOptions} />}
+            {data.id && <PropertyContactActions listingId={data.id} title={data.title} premsg={data.premsg} options={data.contactOptions} />}
           </CardContent>
         </Card>
       </div>
