@@ -488,7 +488,7 @@ function BrokerAffiliateNetwork() {
                     if (t4) tierTexts.push({ value: t4Type === 'percent' ? `${t4}%` : money(t4), label: 'סגירת עסקה · בעלי רישיון תיווך בלבד', Icon: Trophy });
                   }
                   return (
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="flex flex-col items-start gap-1">
                       <div className="inline-flex items-center gap-1">
                         <Button
                           size="icon"
