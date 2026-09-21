@@ -1793,8 +1793,22 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     const anchor: Record<string, string> = {};
     {
       const txt = lastUserTextForAnchor;
-      const street = txt.match(/(?:רחוב|רח'|ברחוב)\s+([\u0590-\u05FFA-Za-z'״"\-]+(?:\s+[\u0590-\u05FFA-Za-z'״"\-]+){0,2})/);
-      if (street) anchor.street = street[1].trim();
+      const WORD = `[\\u0590-\\u05FFA-Za-z'״"\\-]+`;
+      // "ברחוב מוהליבר 1" / "רח' סוקולוב 15"
+      const street = txt.match(
+        new RegExp(`(?:רחוב|רח'|רח׳|ברחוב|בשדרות|שדרות|שד'|בשד')\\s+(${WORD}(?:\\s+${WORD}){0,2})(?:\\s+(\\d+[א-ת]?))?`),
+      );
+      if (street) {
+        anchor.street = street[1].trim();
+        if (street[2]) anchor.house_number = street[2];
+      } else {
+        // Bare "מוהליבר 1" with no "רחוב" prefix — still a concrete address.
+        const bare = txt.match(new RegExp(`(?:^|[\\s,])(${WORD}(?:\\s+${WORD})?)\\s+(\\d{1,3}[א-ת]?)(?![\\d])`));
+        if (bare && !/^(?:חדרים?|מ"ר|מר|קומה|מחיר|תקציב|עד|כ)$/.test(bare[1].trim())) {
+          anchor.street = bare[1].trim();
+          anchor.house_number = bare[2];
+        }
+      }
       const cityList = ["הרצליה","תל אביב","תל-אביב","רמת גן","רמת-גן","רעננה","כפר סבא","נתניה","חיפה","ירושלים","ראשון לציון","חולון","בת ים","פתח תקווה","גבעתיים","אשדוד","אשקלון","באר שבע","מודיעין","רחובות","הוד השרון","רמת השרון"];
       for (const c of cityList) { if (txt.includes(c)) { anchor.city = c; break; } }
       const rooms = txt.match(/(\d+(?:\.\d+)?)\s*חדרים/);
