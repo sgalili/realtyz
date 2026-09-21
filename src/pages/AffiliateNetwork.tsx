@@ -504,7 +504,7 @@ function BrokerAffiliateNetwork() {
                       </div>
                       {tierTexts.length > 0 ? (
                         <div className="space-y-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
-                          {tierTexts.map(({ value, label, Icon }) => <div key={label} className="flex items-center justify-center gap-1" title={label}><Icon className="h-3 w-3" /><bdi dir="ltr">{value}</bdi></div>)}
+                          {tierTexts.map(({ value, label, Icon }) => <div key={label} className="flex items-center justify-start gap-1" title={label}><Icon className="h-3 w-3" /><bdi dir="ltr">{value}</bdi></div>)}
                         </div>
                       ) : null}
                     </div>
