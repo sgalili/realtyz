@@ -1825,10 +1825,11 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
           "These facts came directly from the lead. Treat them as 100% verified.",
           anchor.deal   ? `- סטטוס עסקה: ${anchor.deal}` : "",
           anchor.rooms  ? `- חדרים: ${anchor.rooms}` : "",
-          anchor.street ? `- רחוב: ${anchor.street}` : "",
+          anchor.street ? `- רחוב: ${anchor.street}${anchor.house_number ? " " + anchor.house_number : ""}` : "",
           anchor.city   ? `- עיר: ${anchor.city}` : "",
           anchor.price  ? `- מחיר: ${anchor.price} ₪` : "",
           "MANDATE: פתח את התשובה באישור הפרטים האלה במשפט אחד טבעי, בגוף ראשון, כסוכן המכיר את הנכס מצוין.",
+          "ZERO TOLERANCE: הכתובת כבר נמסרה. אסור בתכלית האיסור לשאול \"על איזה נכס או איש קשר מדובר?\", \"באיזה נכס מדובר?\", \"על איזו כתובת מדובר?\", \"רק שאדייק לפני שאני ממשיכה\" או כל וריאציה. אשר את הכתובת ועבור מיד לשאלת הסינון הראשונה (חדרים, תקציב, מועד כניסה או מועד צפייה) — שאלה אחת בלבד.",
         ].filter(Boolean).join("\n")
       : "";
 
