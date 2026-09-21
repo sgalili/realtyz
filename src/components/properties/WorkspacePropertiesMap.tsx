@@ -55,7 +55,7 @@ function loadGoogleMaps(): Promise<void> {
   return mapsPromise;
 }
 
-export default function WorkspacePropertiesMap({ properties, selectedId, onSelect }: Props) {
+export default function WorkspacePropertiesMap({ properties, selectedId, onSelect, fallbackAddress }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<GoogleMap | null>(null);
   const markersRef = useRef<GoogleMarker[]>([]);
