@@ -32,13 +32,14 @@ function cleanTitle(card: PublicCard) {
   return unique.slice(0, 3).join(' · ') || 'נכס';
 }
 
-function PhotoCarousel({ photos, alt }: { photos: string[]; alt: string }) {
+function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: string; onFavorite: () => void }) {
   const [index, setIndex] = useState(0);
   if (!photos.length) return <div className="flex h-48 items-center justify-center bg-muted text-sm text-muted-foreground">אין תמונות</div>;
   const move = (delta: number) => setIndex((current) => (current + delta + photos.length) % photos.length);
   return (
     <div className="group relative h-48 overflow-hidden bg-muted">
       <img src={photos[index]} alt={alt} loading="lazy" className="h-full w-full object-cover" />
+      <Button type="button" size="icon" variant="ghost" onClick={onFavorite} aria-label="שמירה במועדפים" className="absolute left-2 top-2 h-9 w-9 bg-transparent text-destructive shadow-none hover:bg-background/30"><Heart className="h-5 w-5" /></Button>
       {photos.length > 1 && <>
         <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={() => move(-1)} className="absolute start-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
         <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={() => move(1)} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronLeft className="h-5 w-5" /></Button>
@@ -119,9 +120,9 @@ export default function PublicListingsBoard() {
     <div dir="rtl" className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto max-w-6xl px-4 py-5">
-          <div className="flex items-center justify-between gap-3">
+          <div className="relative flex min-h-11 items-center justify-between gap-3">
             <PublicListingPublisher autoResume />
-            <h1 className="min-w-0 flex-1 text-center text-xl font-bold text-foreground sm:text-2xl">לוח נדל״ן שיתופי</h1>
+            <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
             <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
           </div>
           <div className="mt-5 space-y-2">
@@ -148,8 +149,8 @@ export default function PublicListingsBoard() {
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3')}>
             {filtered.map((card) => {
               const title = cleanTitle(card);
-              return <article key={card.id} className={cn('overflow-hidden rounded-lg border bg-card shadow-sm', !grid && 'grid sm:grid-cols-[240px_1fr]')}>
-                <PhotoCarousel photos={card.photos} alt={title} />
+              return <article key={card.id} className={cn('overflow-hidden rounded-lg border bg-card shadow-sm', !grid && 'grid grid-cols-[120px_1fr] sm:grid-cols-[240px_1fr]')}>
+                <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />
                 <div className="space-y-2 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 space-y-0.5">
@@ -166,7 +167,6 @@ export default function PublicListingsBoard() {
                   </div>
                   {card.description && <p className="line-clamp-3 text-xs text-muted-foreground">{card.description}</p>}
                   <div className="flex gap-2 pt-1">
-                    <Button size="icon" variant="outline" onClick={() => openGate(card, 'favorite')} aria-label="שמירה במועדפים"><Heart className="h-4 w-4 text-destructive" /></Button>
                     <Button size="sm" className="flex-1" onClick={() => openGate(card, 'details')}>השארת פרטים</Button>
                   </div>
                 </div>

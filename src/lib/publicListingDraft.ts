@@ -9,7 +9,6 @@ export type PublicListingDraftFields = {
   apartmentNumber: string;
   neighborhood: string;
   area: string;
-  district: string;
   /** Free-text fallback address (kept for backwards compatibility). */
   address: string;
   rooms: string;
@@ -45,7 +44,6 @@ export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
   apartmentNumber: '',
   neighborhood: '',
   area: '',
-  district: '',
   address: '',
   rooms: '',
   floor: '',

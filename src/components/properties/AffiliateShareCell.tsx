@@ -1,19 +1,8 @@
-import { useState } from 'react';
-import { EyeOff, Handshake } from 'lucide-react';
-import { toast } from 'sonner';
+import { ClipboardList, Handshake, MessageCircle, Phone, SquareArrowOutUpLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
-import { useSetAffiliateReward, type AffiliateConfigRow, type RewardType } from '@/hooks/useAffiliate';
+import { type AffiliateConfigRow } from '@/hooks/useAffiliate';
+import { publicUrl } from '@/lib/publicUrl';
 
 const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
 
@@ -25,76 +14,27 @@ const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFr
  */
 export function AffiliateShareCell({ listingId, config }: { listingId: string; config?: AffiliateConfigRow }) {
   const shared = Boolean(config?.affiliate_enabled);
-  const setReward = useSetAffiliateReward();
-  const [confirming, setConfirming] = useState(false);
-
-  const tiers: string[] = [];
+  const tiers: Array<{ value: string; label: string; Icon: typeof ClipboardList }> = [];
   if (shared && config) {
     const t1 = Number(config.affiliate_tier1_amount ?? 0);
     const t2 = Number(config.affiliate_tier2_amount ?? 0);
     const t3 = Number(config.affiliate_tier3_amount ?? 0);
-    if (t1) tiers.push(`1: ${money(t1)}`);
-    if (t2) tiers.push(`2: ${money(t2)}`);
-    if (t3) tiers.push(`3: ${config.affiliate_tier3_type === 'percent' ? `${t3}%` : money(t3)}`);
+    if (t1) tiers.push({ value: money(t1), label: 'טופס דיגיטלי', Icon: ClipboardList });
+    if (t2) tiers.push({ value: money(t2), label: 'שיחת WhatsApp', Icon: MessageCircle });
+    if (t3) tiers.push({ value: config.affiliate_tier3_type === 'percent' ? `${t3}%` : money(t3), label: 'שיחת טלפון', Icon: Phone });
   }
 
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="inline-flex items-center gap-1">
         <AffiliateCommissionButton listingId={listingId} shared={shared} />
-        {shared ? (
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-            title="הפסקת שיווק ע״י שותפים"
-            aria-label="הפסקת שיווק ע״י שותפים"
-            onClick={(e) => { e.stopPropagation(); setConfirming(true); }}
-          >
-            <EyeOff className="h-4 w-4" />
-          </Button>
-        ) : null}
+        {shared ? <Button asChild size="icon" variant="ghost" className="h-8 w-8" title="פתיחת עמוד הנכס" aria-label="פתיחת עמוד הנכס"><a href={publicUrl(`/p/${listingId}`)} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><SquareArrowOutUpLeft className="h-4 w-4" /></a></Button> : null}
       </div>
       {tiers.length > 0 ? (
-        <div className="whitespace-nowrap text-[11px] font-semibold text-slate-600">
-          <bdi dir="ltr">{tiers.join(', ')}</bdi>
+        <div className="space-y-0.5 whitespace-nowrap text-[11px] font-semibold text-muted-foreground">
+          {tiers.map(({ value, label, Icon }) => <div key={label} className="flex items-center justify-center gap-1" title={label}><Icon className="h-3 w-3" /><bdi dir="ltr">{value}</bdi></div>)}
         </div>
       ) : null}
-
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent dir="rtl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-right">להפסיק שיווק ע״י שותפים?</AlertDialogTitle>
-            <AlertDialogDescription className="text-right">
-              הנכס ייעלם מרשימת הנכסים לשיווק של כל השותפים. התגמולים שהוגדרו יישמרו.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel>ביטול</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                try {
-                  await setReward.mutateAsync({
-                    listingId,
-                    enabled: false,
-                    rewardType: 'fixed' as RewardType,
-                    rewardAmount: 0,
-                    tier1Amount: Number(config?.affiliate_tier1_amount ?? 0),
-                    tier2Amount: Number(config?.affiliate_tier2_amount ?? 0),
-                    tier3Type: (config?.affiliate_tier3_type ?? 'fixed') as RewardType,
-                    tier3Amount: Number(config?.affiliate_tier3_amount ?? 0),
-                  });
-                  toast.success('הנכס הוסר משיווק שותפים');
-                } catch {
-                  toast.error('ההסרה נכשלה');
-                }
-              }}
-            >
-              הסרה
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
       const name = str(body?.name, 80);
       const phone = normalizePhone(str(body?.phone, 30));
       const intent = str(body?.intent, 30) || "details";
+      const comment = str(body?.comment, 1000);
       if (!listingId || !name || !phone) {
         return json({ error: "שם וטלפון תקין הם שדות חובה" }, 400);
       }
@@ -115,7 +116,7 @@ Deno.serve(async (req) => {
         action_type: "lead_gate_registration",
         actor_type: "system",
         content: `מתעניין חדש מהלוח הציבורי: ${name} · ${phone}`,
-        metadata: { listing_id: listing.id, lead_id: leadId, intent },
+        metadata: { listing_id: listing.id, lead_id: leadId, intent, comment: comment || null },
       });
 
       return json({
@@ -124,6 +125,31 @@ Deno.serve(async (req) => {
         lead_id: leadId,
         greeting: `היי ${name}, אני ריטה. ספרי לי מה חשוב לך בנכס הזה ואשלח לך מיד את כל הפרטים המלאים.`,
       });
+    }
+
+    // ---------------------------------------------------------- callback
+    if (action === "callback") {
+      const listingId = str(body?.listing_id, 60);
+      const name = str(body?.name, 80);
+      const phone = normalizePhone(str(body?.phone, 30));
+      if (!listingId || !name || !phone) return json({ error: "שם וטלפון תקין הם שדות חובה" }, 400);
+      const { data: listing } = await admin.from("listings").select("id, city, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published").eq("id", listingId).maybeSingle();
+      if (!listing || !(listing.affiliate_enabled || listing.is_published) || listing.contact_options?.phone !== true) return json({ error: "אפשרות השיחה אינה זמינה" }, 404);
+      const ownerId = listing.workspace_owner_id ?? listing.user_id;
+      const { data: existing } = await admin.from("leads").select("id").eq("workspace_owner_id", ownerId).eq("phone_number", phone).maybeSingle();
+      let leadId = existing?.id as string | undefined;
+      if (!leadId) {
+        const { data: inserted, error: insertError } = await admin.from("leads").insert({ workspace_owner_id: ownerId, phone_number: phone, full_name: name, city: listing.city ?? null, deal_type: listing.deal_type === "rent" ? "rent" : "sale", lead_stage: "new", status: "new", source: "public_phone_callback", last_interaction_at: new Date().toISOString() }).select("id").single();
+        if (insertError) throw insertError;
+        leadId = inserted.id as string;
+      }
+      const questions = Array.isArray(listing.contact_options?.questions) ? listing.contact_options.questions.filter((q: unknown) => typeof q === "string").slice(0, 6) : [];
+      const instructions = ["השיחה מתייחסת אך ורק לנכס שנשלח אליך.", "שאל לפחות שלוש שאלות סינון לפני סיום השיחה.", ...questions.map((q: string, i: number) => `שאלה ${i + 1}: ${q}`)].join("\n");
+      const response = await fetch(`${backendUrl}/functions/v1/vapi-outbound-call`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` }, body: JSON.stringify({ phone_number: phone, lead_id: leadId, listing_id: listing.id, instructions, workspace_owner_id: ownerId }) });
+      const callData = await response.json().catch(() => ({}));
+      if (!response.ok || callData?.error) return json({ error: "שירות השיחות אינו זמין כרגע" }, 503);
+      await admin.from("public_listing_interest").insert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, visitor_name: name, visitor_phone: phone, access_token: crypto.randomUUID().replace(/-/g, ""), intent: "phone" });
+      return json({ success: true });
     }
 
     // ------------------------------------------------------------- rita

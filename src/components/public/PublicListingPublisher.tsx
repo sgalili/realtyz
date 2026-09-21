@@ -3,7 +3,7 @@
 // everything, sign up through /auth, and have the listing auto-published on return.
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Film, ImagePlus, Loader2, Plus, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Film, ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -75,6 +75,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const [resumed, setResumed] = useState(false);
   const [publishStage, setPublishStage] = useState('');
   const [publishError, setPublishError] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
+  useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
 
   const set = <K extends keyof PublicListingDraftFields>(key: K, value: PublicListingDraftFields[K]) =>
     setFields((current) => ({ ...current, [key]: value }));
@@ -145,7 +148,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           garden_sqm: draftFields.gardenSqm || null,
           entry_date: draftFields.entryDate || null,
           area: draftFields.area || null,
-          district: draftFields.district || null,
           contact_name: draftFields.contactName || null,
           contact_whatsapp: draftFields.contactWhatsapp || null,
         },
@@ -155,8 +157,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       if (error) throw error;
       await clearPublicListingDraft();
       toast.success('הנכס פורסם בלוח השיתופי');
-      setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0);
-      navigate('/owner/properties', { replace: true, state: { publishedListingId: (data as { id?: string } | null)?.id } });
+       setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0);
+       navigate('/public-listings', { replace: true, state: { publishedListingId: (data as { id?: string } | null)?.id } });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'שגיאה לא ידועה';
       const friendly = message.includes('one active property') || message.includes('duplicate')
@@ -182,12 +184,20 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     });
   }, [autoResume, user?.id, resumed]);
 
+  const stepValid = () => {
+    if (step === 2) return Boolean(fields.propertyType);
+    if (step === 3) return Boolean(fields.city.trim() && (fields.street.trim() || fields.address.trim()));
+    if (step === 4) return Boolean(fields.rooms && fields.floor && fields.totalFloors && fields.condition && fields.airDirections);
+    if (step === 5) return Boolean(fields.price && (fields.sqm || fields.builtSqm));
+    return true;
+  };
   const goNext = async () => {
+    if (!stepValid()) { toast.error('יש להשלים את שדות החובה לפני המעבר'); return; }
     try { await savePublicListingDraft(fields, files, videos); } catch { /* draft saving is best-effort */ }
     setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
   };
 
-  const pickAndAdvance = async <K extends 'publisherType' | 'dealType'>(key: K, value: PublicListingDraftFields[K]) => {
+  const pickAndAdvance = async <K extends 'publisherType' | 'dealType' | 'propertyType'>(key: K, value: PublicListingDraftFields[K]) => {
     const nextFields = { ...fields, [key]: value };
     setFields(nextFields);
     try { await savePublicListingDraft(nextFields, files, videos); } catch { /* best effort */ }
@@ -222,6 +232,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       toast.error('יש למלא שם ומספר ווטסאפ'); return;
     }
     if (!fields.termsAccepted) { toast.error('יש לאשר את התקנון'); return; }
+    if (!confirming) { setConfirming(true); return; }
     try {
       await savePublicListingDraft(fields, files, videos);
       if (!user) { setPendingSignupRole('property_owner'); navigate('/auth'); return; }
@@ -238,7 +249,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={disabled} className="font-bold bg-success text-success-foreground hover:bg-success/90"><Plus className="h-4 w-4" />פרסום חינם</Button>
+        <Button disabled={disabled} className="font-bold bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
       </DialogTrigger>
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader className="text-right">
@@ -273,7 +284,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
             </div>
           )}
 
-          {step === 2 && <ChoiceGrid options={PROPERTY_TYPES} value={fields.propertyType} onPick={(option) => set('propertyType', option)} />}
+          {step === 2 && <ChoiceGrid options={PROPERTY_TYPES} value={fields.propertyType} onPick={(option) => void pickAndAdvance('propertyType', option)} />}
 
           {step === 3 && (
             <div className="space-y-3">
@@ -286,7 +297,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
                    neighborhood: place.neighborhood,
                    city: place.city,
                    area: place.area,
-                   district: place.district,
                    address: place.formatted_address,
                 }))}
               />
@@ -297,7 +307,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
                 <div><Label>מספר דירה</Label><Input inputMode="numeric" value={fields.apartmentNumber} onChange={(e) => set('apartmentNumber', e.target.value)} /></div>
                 {fields.neighborhood && <div><Label>שכונה</Label><Input value={fields.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} /></div>}
                 {fields.area && <div><Label>אזור</Label><Input value={fields.area} onChange={(e) => set('area', e.target.value)} /></div>}
-                {fields.district && <div><Label>מחוז</Label><Input value={fields.district} onChange={(e) => set('district', e.target.value)} /></div>}
               </div>}
             </div>
           )}
@@ -319,8 +328,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
                   </label>
                 ))}
               </div>
-              <div><Label>מצב הנכס</Label><ChoiceGrid options={CONDITIONS} value={fields.condition} onPick={(option) => set('condition', option)} /></div>
-              <div><Label>כיווני אוויר</Label><ChoiceGrid options={AIR_DIRECTIONS} value={fields.airDirections} onPick={(option) => set('airDirections', option)} columns={4} /></div>
+              <div className="grid grid-cols-2 gap-3"><div><Label>מצב הנכס *</Label><Select value={fields.condition} onValueChange={(value) => set('condition', value)}><SelectTrigger><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{CONDITIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div><div><Label>כיווני אוויר *</Label><Select value={fields.airDirections} onValueChange={(value) => set('airDirections', value)}><SelectTrigger><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{AIR_DIRECTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div></div>
               <div><Label>תיאור הנכס</Label><Textarea rows={3} value={fields.description} onChange={(e) => set('description', e.target.value)} /></div>
             </div>
           )}
@@ -358,14 +366,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
                   id="wizard-videos" type="file" accept="video/*" multiple className="sr-only"
                    onChange={(e) => { addMedia(Array.from(e.target.files ?? []), 'video'); e.target.value = ''; }}
                 />
-               {[...files, ...videos].length > 0 && <div className="sm:col-span-2 space-y-2">{[...files, ...videos].map((file) => <div key={`${file.name}-${file.size}-${file.lastModified}`} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs"><span className="min-w-0 truncate">{file.name}</span><Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label={`הסרת ${file.name}`} onClick={() => { setFiles((current) => current.filter((item) => item !== file)); setVideos((current) => current.filter((item) => item !== file)); }}><X className="h-4 w-4" /></Button></div>)}</div>}
+               {previews.length > 0 && <div className="sm:col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-3">{previews.map(({ file, url }) => <div key={`${file.name}-${file.size}-${file.lastModified}`} className="relative aspect-video overflow-hidden rounded-md border bg-muted">{file.type.startsWith('video/') ? <video src={url} controls className="h-full w-full object-cover" /> : <img src={url} alt={file.name} className="h-full w-full object-cover" />}<Button type="button" size="icon" variant="secondary" className="absolute end-1 top-1 h-7 w-7" aria-label={`הסרת ${file.name}`} onClick={() => { setFiles((current) => current.filter((item) => item !== file)); setVideos((current) => current.filter((item) => item !== file)); }}><X className="h-4 w-4" /></Button></div>)}</div>}
              </div>
             </div>
           )}
 
           {step === 7 && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">באיזה מספר המתעניינים יוכלו להשיג אותך?</p>
               <div><Label>השם שלך *</Label><Input value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
               <div><Label>מספר ווטסאפ *</Label><Input inputMode="tel" value={fields.contactWhatsapp} onChange={(e) => set('contactWhatsapp', e.target.value)} /></div>
               <label className="flex items-start gap-2 text-sm">
@@ -374,16 +381,16 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
               </label>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} />
-                אני מאשר/ת את התקנון ומדיניות הפרטיות
+                  <span>אני מאשר/ת את <a href="/terms" target="_blank" className="font-semibold text-primary underline">התקנון</a> ואת <a href="/privacy-policy" target="_blank" className="font-semibold text-primary underline">מדיניות הפרטיות</a></span>
               </label>
             </div>
           )}
         </div>
 
         <div className="flex items-center justify-between gap-2 pt-2">
-          <Button type="button" variant="outline" disabled={step === 0} onClick={() => setStep((current) => Math.max(0, current - 1))}>
+           {step > 0 ? <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(0, current - 1))}>
             <ArrowRight className="h-4 w-4" /> חזרה
-          </Button>
+           </Button> : <span />}
           {isLast ? (
             <Button type="button" disabled={publishing} onClick={() => void submit()} className="bg-success text-success-foreground hover:bg-success/90">
               {publishing ? <><Loader2 className="h-4 w-4 animate-spin" /> מפרסם…</> : user ? 'פרסום הנכס' : 'הרשמה ופרסום'}
@@ -393,6 +400,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           ) : <span />}
         </div>
       </DialogContent>
+      <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="sm:max-w-lg"><DialogHeader><DialogTitle className="text-right">אישור פרסום הנכס</DialogTitle></DialogHeader><div className="space-y-3">{previews[0] && <img src={previews[0].url} alt="תצוגת הנכס" className="aspect-video w-full rounded-md object-cover" />}<p className="text-lg font-bold">{fields.propertyType} · {[fields.street, fields.houseNumber, fields.city].filter(Boolean).join(' ')}</p><p className="font-bold text-primary">₪{Number(fields.price || 0).toLocaleString('he-IL')}</p><p className="text-sm text-muted-foreground">{[fields.rooms && `${fields.rooms} חדרים`, (fields.sqm || fields.builtSqm) && `${fields.sqm || fields.builtSqm} מ״ר`, fields.floor && `קומה ${fields.floor}`].filter(Boolean).join(' · ')}</p></div><div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setConfirming(false)}>חזרה לעריכה</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button></div></DialogContent></Dialog>
     </Dialog>
   );
 }

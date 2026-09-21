@@ -3816,6 +3816,7 @@ export type Database = {
           attributes: Json
           available_from: string | null
           city: string | null
+          contact_options: Json
           created_at: string
           deal_type: string | null
           description: string
@@ -3878,6 +3879,7 @@ export type Database = {
           attributes?: Json
           available_from?: string | null
           city?: string | null
+          contact_options?: Json
           created_at?: string
           deal_type?: string | null
           description: string
@@ -3940,6 +3942,7 @@ export type Database = {
           attributes?: Json
           available_from?: string | null
           city?: string | null
+          contact_options?: Json
           created_at?: string
           deal_type?: string | null
           description?: string
@@ -7112,6 +7115,10 @@ export type Database = {
       get_growth_analytics: { Args: never; Returns: Json }
       get_homely_admin_overview: { Args: never; Returns: Json }
       get_homely_password: { Args: { _user_id: string }; Returns: string }
+      get_lead_price_recommendation: {
+        Args: { _city?: string; _deal_type: string }
+        Returns: Json
+      }
       get_match_stats: { Args: { p_user_id: string }; Returns: Json }
       get_my_referral_code: { Args: never; Returns: string }
       get_my_referral_stats: { Args: never; Returns: Json }

@@ -16,7 +16,6 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import PropertyRichDetailsCard from '@/components/properties/PropertyRichDetailsCard';
 import { sanitizeSqm, sanitizeFloor, floorsInBuildingFromSqm } from '@/lib/propertyMeasures';
 
-import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 
 import {
@@ -25,7 +24,7 @@ import {
   BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves, Navigation,
 } from 'lucide-react';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
-import { officialWaLink, getOfficialWaNumber, OFFICIAL_WABA_PHONE } from '@/lib/officialWa';
+import PropertyContactActions from '@/components/public/PropertyContactActions';
 
 type SharedPayload = {
   workspace_name: string | null;
@@ -98,13 +97,6 @@ export default function SharedProperty() {
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  // HARD RULE: only the official Meta WBA number, resolved live with a constant fallback.
-  const [officialWa, setOfficialWa] = useState<string>(OFFICIAL_WABA_PHONE);
-  useEffect(() => {
-    getOfficialWaNumber().then(setOfficialWa).catch(() => setOfficialWa(OFFICIAL_WABA_PHONE));
-  }, []);
-
-
   useEffect(() => {
     if (!token) return;
     (async () => {
@@ -223,14 +215,6 @@ export default function SharedProperty() {
 
   // HARD RULE: public property pages always open our official Meta WBA number,
   // never the owner's / broker's personal WhatsApp.
-  const waHref = officialWaLink(
-    `שלום, ראיתי את הנכס "${displayTitle}" ואשמח לקבל פרטים נוספים.`,
-    officialWa,
-  );
-
-
-
-
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur">
@@ -435,20 +419,7 @@ export default function SharedProperty() {
           </section>
         ) : null}
 
-        <div className="sticky bottom-4 flex items-stretch gap-2 pt-2">
-          {waHref ? (
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="לתיאום סיור"
-              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-social-whatsapp text-[18px] font-bold text-white shadow-lg transition hover:bg-social-whatsapp/90"
-            >
-              <WhatsAppIcon className="h-6 w-6" />
-              לתיאום סיור
-            </a>
-          ) : null}
-        </div>
+        {p.id ? <PropertyContactActions listingId={String(p.id)} title={displayTitle} options={p.contact_options} /> : null}
       </main>
 
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>

@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { publicUrl } from '@/lib/publicUrl';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
+import PropertyContactActions, { type ContactOptions } from '@/components/public/PropertyContactActions';
 
 type PublicListing = {
   id: string | null;
@@ -49,6 +50,7 @@ type PublicListing = {
   latitude: number | null;
   longitude: number | null;
   addressForMap: string;
+  contactOptions: ContactOptions;
 };
 
 const DETAIL_LABELS: Record<string, string> = {
@@ -210,6 +212,7 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
     latitude: Number.isFinite(Number(row?.latitude)) && Number(row?.latitude) !== 0 ? Number(row.latitude) : null,
     longitude: Number.isFinite(Number(row?.longitude)) && Number(row?.longitude) !== 0 ? Number(row.longitude) : null,
     addressForMap: [address, city].filter(Boolean).join(', '),
+    contactOptions: row?.contact_options && typeof row.contact_options === 'object' ? row.contact_options : { digital: true, whatsapp: true, phone: false },
   };
 }
 
@@ -344,9 +347,6 @@ function PublicListingContent() {
     data.city ? { label: 'עיר', value: data.city, icon: Building2 } : null,
   ].filter(Boolean) as { label: string; value: string; icon: typeof Bed }[];
 
-  const waText = `שלום, מתעניין/ת בנכס: ${data.title}${data.location ? ` (${data.location})` : ''}${
-    refCode ? ` [ref:${refCode}]` : ''
-  }`;
   const cover = data.photos[Math.min(slide, Math.max(0, data.photos.length - 1))];
 
   // Map + navigation: coordinates when we have them, otherwise the address.
@@ -459,15 +459,11 @@ function PublicListingContent() {
             ) : null}
 
             <div className="flex flex-wrap gap-2">
-              <Button asChild className="flex-1 bg-social-whatsapp text-white hover:bg-social-whatsapp/90">
-                <a href={officialWaLink(waText)} target="_blank" rel="noopener noreferrer">
-                  <WhatsAppIcon className="h-4 w-4" /> לתיאום סיור
-                </a>
-              </Button>
               <Button variant="outline" onClick={handleShare}>
                 <Share2 className="h-4 w-4" /> שיתוף
               </Button>
             </div>
+            {data.id && <PropertyContactActions listingId={data.id} title={data.title} options={data.contactOptions} />}
           </CardContent>
         </Card>
       </div>

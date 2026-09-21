@@ -29,17 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, BedDouble, Building2, EyeOff, Handshake, LayoutGrid, List, MapPin, Ruler, Search, Users } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { Banknote, BedDouble, Building2, ClipboardList, Handshake, LayoutGrid, List, MapPin, MessageCircle, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 
@@ -71,6 +61,8 @@ import { ResultTable } from '@/pages/Properties';
 import AffiliatePortal from '@/pages/AffiliatePortal';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAppMode } from '@/hooks/useAppMode';
+import { publicUrl } from '@/lib/publicUrl';
+import { supabase } from '@/integrations/supabase/client';
 
 const AFFILIATE_SCROLL_KEY = 'affiliate-network:scroll-y';
 
@@ -133,6 +125,10 @@ function RewardDialog({
   const [tier2, setTier2] = useState('0');
   const [tier3Type, setTier3Type] = useState<RewardType>('fixed');
   const [tier3, setTier3] = useState('0');
+  const [digitalContact, setDigitalContact] = useState(true);
+  const [whatsappContact, setWhatsappContact] = useState(true);
+  const [phoneContact, setPhoneContact] = useState(false);
+  const [recommendation, setRecommendation] = useState<{ tier1_median?: number; tier2_median?: number; sample_size?: number } | null>(null);
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
   // Sync form state to the listing being edited (render-time, no effect needed).
@@ -145,6 +141,11 @@ function RewardDialog({
     setTier2(String(listing.affiliate_tier2_amount ?? 0));
     setTier3Type((listing.affiliate_tier3_type ?? 'fixed') as RewardType);
     setTier3(String(listing.affiliate_tier3_amount ?? 0));
+    const options = listing.contact_options && typeof listing.contact_options === 'object' ? listing.contact_options : {};
+    setDigitalContact(options.digital !== false);
+    setWhatsappContact(options.whatsapp !== false);
+    setPhoneContact(options.phone === true);
+    void supabase.rpc('get_lead_price_recommendation', { _city: listing.city || undefined, _deal_type: listing.deal_type === 'rent' ? 'rent' : 'sale' }).then(({ data }) => setRecommendation((Array.isArray(data) ? data[0] : data) as typeof recommendation));
   }
 
   const num = (v: string) => Number(v) || 0;
@@ -169,6 +170,15 @@ function RewardDialog({
             </div>
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
+
+          <div className="space-y-3 rounded-lg border border-slate-200 p-3">
+            <div className="font-semibold">דרכי יצירת קשר בעמוד הנכס</div>
+            <label className="flex items-center justify-between text-sm"><span className="flex items-center gap-2"><ClipboardList className="h-4 w-4" />טופס דיגיטלי</span><Switch checked={digitalContact} onCheckedChange={setDigitalContact} /></label>
+            <label className="flex items-center justify-between text-sm"><span className="flex items-center gap-2"><MessageCircle className="h-4 w-4" />WhatsApp עם ריטה</span><Switch checked={whatsappContact} onCheckedChange={setWhatsappContact} /></label>
+            <label className="flex items-center justify-between text-sm"><span className="flex items-center gap-2"><Phone className="h-4 w-4" />חזרה טלפונית</span><Switch checked={phoneContact} onCheckedChange={setPhoneContact} /></label>
+          </div>
+
+          {recommendation && Number(recommendation.sample_size || 0) > 0 ? <div className="rounded-lg border bg-muted/30 p-3"><div className="mb-2 flex items-center gap-2 font-semibold"><TrendingUp className="h-4 w-4 text-primary" />המלצת מחיר לפי מפרסמים דומים</div><div className="grid grid-cols-2 gap-3 text-sm"><div><div className="text-muted-foreground">טופס דיגיטלי</div><div className="h-2 rounded-full bg-muted"><div className="h-2 w-2/3 rounded-full bg-amber-500" /></div><bdi dir="ltr">₪{Number(recommendation.tier1_median || 0).toLocaleString('he-IL')}</bdi></div><div><div className="text-muted-foreground">שיחה מאומתת</div><div className="h-2 rounded-full bg-muted"><div className="h-2 w-3/4 rounded-full bg-sky-500" /></div><bdi dir="ltr">₪{Number(recommendation.tier2_median || 0).toLocaleString('he-IL')}</bdi></div></div><div className="mt-2 text-xs text-muted-foreground">מבוסס על {recommendation.sample_size} נכסים דומים</div></div> : null}
 
           <div className="space-y-3 rounded-lg border border-slate-200 p-3">
             <div className="text-sm font-semibold text-slate-900">מודל עמלה ב-3 שלבים</div>
@@ -226,7 +236,9 @@ function RewardDialog({
                   tier3Amount: num(tier3),
                 },
                 {
-                  onSuccess: () => {
+                  onSuccess: async () => {
+                    const { error } = await supabase.from('listings').update({ contact_options: { digital: digitalContact, whatsapp: whatsappContact, phone: phoneContact } }).eq('id', listing.id);
+                    if (error) { toast.error('שמירת דרכי ההתקשרות נכשלה'); return; }
                     toast.success('התגמול נשמר');
                     onOpenChange(false);
                   },
@@ -257,8 +269,6 @@ function BrokerAffiliateNetwork() {
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
   // Removing a property from partner marketing is destructive for partners who
   // are already promoting it, so it always goes through a confirmation.
-  const [unpublishing, setUnpublishing] = useState<BrokerAffiliateListing | null>(null);
-  const setReward = useSetAffiliateReward();
 
   useEffect(() => {
     if (listingsLoading || refsLoading || subsLoading) return;
@@ -391,16 +401,16 @@ function BrokerAffiliateNetwork() {
                   const shared = Boolean(listing.affiliate_enabled);
                   // Plain-text commission amounts under a shared (green) button —
                   // zero tiers stay hidden, no pills.
-                  const tierTexts: string[] = [];
+                  const tierTexts: Array<{ value: string; label: string; Icon: typeof ClipboardList }> = [];
                   if (shared) {
                     const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
                     const t1 = Number(listing.affiliate_tier1_amount ?? 0);
                     const t2 = Number(listing.affiliate_tier2_amount ?? 0);
                     const t3 = Number(listing.affiliate_tier3_amount ?? 0);
                     const t3Type = (listing.affiliate_tier3_type ?? 'fixed') as RewardType;
-                    if (t1) tierTexts.push(`1: ${money(t1)}`);
-                    if (t2) tierTexts.push(`2: ${money(t2)}`);
-                    if (t3) tierTexts.push(`3: ${t3Type === 'percent' ? `${t3}%` : money(t3)}`);
+                    if (t1) tierTexts.push({ value: money(t1), label: 'טופס דיגיטלי', Icon: ClipboardList });
+                    if (t2) tierTexts.push({ value: money(t2), label: 'שיחת WhatsApp', Icon: MessageCircle });
+                    if (t3) tierTexts.push({ value: t3Type === 'percent' ? `${t3}%` : money(t3), label: 'שיחת טלפון', Icon: Phone });
                   }
                   return (
                     <div className="flex flex-col items-center gap-1">
@@ -415,22 +425,11 @@ function BrokerAffiliateNetwork() {
                         >
                           <Handshake className="h-4 w-4" />
                         </Button>
-                        {shared ? (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                            title="הפסקת שיווק ע״י שותפים"
-                            aria-label="הפסקת שיווק ע״י שותפים"
-                            onClick={() => setUnpublishing(listing)}
-                          >
-                            <EyeOff className="h-4 w-4" />
-                          </Button>
-                        ) : null}
+                        {shared ? <Button asChild size="icon" variant="ghost" className="h-8 w-8" title="פתיחת עמוד הנכס" aria-label="פתיחת עמוד הנכס"><a href={publicUrl(`/p/${listing.id}`)} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><SquareArrowOutUpLeft className="h-4 w-4" /></a></Button> : null}
                       </div>
                       {tierTexts.length > 0 ? (
-                        <div className="text-[11px] font-semibold whitespace-nowrap text-slate-600">
-                          <bdi dir="ltr">{tierTexts.join(', ')}</bdi>
+                        <div className="space-y-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
+                          {tierTexts.map(({ value, label, Icon }) => <div key={label} className="flex items-center justify-center gap-1" title={label}><Icon className="h-3 w-3" /><bdi dir="ltr">{value}</bdi></div>)}
                         </div>
                       ) : null}
                     </div>
@@ -714,44 +713,6 @@ function BrokerAffiliateNetwork() {
         </Tabs>
 
         <RewardDialog listing={editing} open={!!editing} onOpenChange={(v) => !v && setEditing(null)} />
-
-        <AlertDialog open={!!unpublishing} onOpenChange={(v) => !v && setUnpublishing(null)}>
-          <AlertDialogContent dir="rtl">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-right">להפסיק שיווק ע״י שותפים?</AlertDialogTitle>
-              <AlertDialogDescription className="text-right">
-                הנכס {unpublishing?.property_title || ''} ייעלם מרשימת הנכסים לשיווק של כל השותפים. התגמולים שהוגדרו יישמרו.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2">
-              <AlertDialogCancel>ביטול</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={async () => {
-                  const target = unpublishing;
-                  if (!target) return;
-                  setUnpublishing(null);
-                  try {
-                    await setReward.mutateAsync({
-                      listingId: target.id,
-                      enabled: false,
-                      rewardType: (target.affiliate_reward_type ?? 'fixed') as RewardType,
-                      rewardAmount: Number(target.affiliate_reward_amount ?? 0),
-                      tier1Amount: Number(target.affiliate_tier1_amount ?? 0),
-                      tier2Amount: Number(target.affiliate_tier2_amount ?? 0),
-                      tier3Type: (target.affiliate_tier3_type ?? 'fixed') as RewardType,
-                      tier3Amount: Number(target.affiliate_tier3_amount ?? 0),
-                    });
-                    toast.success('הנכס הוסר משיווק שותפים');
-                  } catch {
-                    toast.error('ההסרה נכשלה');
-                  }
-                }}
-              >
-                הסרה
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
 
       </div>
     </>

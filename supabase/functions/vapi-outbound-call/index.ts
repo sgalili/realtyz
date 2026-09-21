@@ -217,7 +217,8 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const serviceRequest = authHeader === `Bearer ${SERVICE_ROLE}`;
+    if (!user && !serviceRequest) {
       return new Response(JSON.stringify({ error: "לא מאומת" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -227,17 +228,17 @@ Deno.serve(async (req) => {
     const {
       phone_number, lead_id, listing_id, voice_id: bodyVoiceId,
       voice_gender: bodyVoiceGender, user_gender: bodyUserGender,
-      instructions: brokerInstructionsRaw,
+      instructions: brokerInstructionsRaw, workspace_owner_id: requestedWorkspaceOwnerId,
     } = body as {
       phone_number?: string; lead_id?: string; listing_id?: string;
       voice_id?: string; voice_gender?: string | null; user_gender?: string | null;
-      instructions?: string | null;
+      instructions?: string | null; workspace_owner_id?: string | null;
     };
     const brokerInstructions = (brokerInstructionsRaw || '').toString().trim() || null;
     const voiceGender = bodyVoiceGender === 'male' || bodyVoiceGender === 'female' ? bodyVoiceGender : null;
     let userGender = bodyUserGender === 'male' || bodyUserGender === 'female' ? bodyUserGender : null;
     // Fallback: look up the caller's gender from profiles if the client didn't pass it.
-    if (!userGender) {
+    if (!userGender && user) {
       const { data: p } = await supabase.from('profiles').select('gender').eq('id', user.id).maybeSingle();
       if (p?.gender === 'male' || p?.gender === 'female') userGender = p.gender;
     }
@@ -291,7 +292,7 @@ Deno.serve(async (req) => {
           // transit instead of generic talking points.
           try {
             const { fetchResearchIntelBlock } = await import("../_shared/research-intel.ts");
-            researchIntel = await fetchResearchIntelBlock(user.id, [
+            researchIntel = await fetchResearchIntelBlock(requestedWorkspaceOwnerId || user?.id || '', [
               l.city, l.neighborhood, l.address, l.property_title,
             ]);
           } catch (e) {
@@ -330,7 +331,7 @@ Deno.serve(async (req) => {
       toolsServerUrl,
 
       leadId: lead_id ?? null,
-      userId: user.id,
+      userId: requestedWorkspaceOwnerId || user?.id || '',
     });
     // Strip helper-only field before sending.
     delete (assistant as any)._hdr;
