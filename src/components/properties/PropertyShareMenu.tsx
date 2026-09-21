@@ -9,10 +9,10 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Share2, MessageCircle, Copy, Loader2, Smartphone, Mail } from 'lucide-react';
+import { Share2, MessageCircle, Copy, Loader2, Smartphone, Mail, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import type { UnifiedResult } from '@/lib/propertySearch';
-import { shareProperties, type ShareMode } from '@/lib/propertyShare';
+import { shareProperties, mintShareUrlForResult, type ShareMode } from '@/lib/propertyShare';
 
 export function PropertyShareMenu({
   results,
