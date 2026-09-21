@@ -219,7 +219,7 @@ function RewardDialog({
             <p className="text-[11px] text-slate-500">
 
             </p>
-          </> : null}
+
 
             {tiers.map((tier) => (
               <div key={tier.key} className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
