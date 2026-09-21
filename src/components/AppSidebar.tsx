@@ -390,6 +390,21 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         </SidebarGroup>
 
 
+        {/* Quick jump to the shared public board, always at the bottom. */}
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupContent className="px-3 pb-3">
+            <NavLink
+              to="/public-listings"
+              onClick={handleNavClick}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              title="לוח נדל״ן שיתופי"
+            >
+              <Globe className="h-4 w-4 shrink-0 text-sky-600" />
+              {!collapsed && <span>לוח נדל״ן שיתופי</span>}
+            </NavLink>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         {/* Super admin section moved BELOW the menu */}
         {isSuperAdmin && (
           <SidebarGroup>
