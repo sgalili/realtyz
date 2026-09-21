@@ -1402,8 +1402,8 @@ export default function PropertyDetail() {
           >
             {dynamicHeadline}
           </div>
-          {neighborhood && (
-            <div className="text-lg font-medium text-slate-600">{neighborhood}</div>
+          {(neighborhood || property.city) && (
+            <div className="text-lg font-medium text-slate-600">{[neighborhood, property.city].filter(Boolean).join(', ')}</div>
           )}
         </div>
 
