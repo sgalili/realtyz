@@ -13,7 +13,7 @@ import { useSetAffiliateReward, type RewardType } from '@/hooks/useAffiliate';
 export function AffiliateCommissionButton({ listingId, shared }: { listingId: string; shared?: boolean }) {
   const [open, setOpen] = useState(false);
   const [enabled, setEnabled] = useState(false);
-  const [amount, setAmount] = useState('0');
+  const [amount, setAmount] = useState('');
   const save = useSetAffiliateReward();
   const { data } = useQuery({
     queryKey: ['affiliate-listing-config', listingId],
