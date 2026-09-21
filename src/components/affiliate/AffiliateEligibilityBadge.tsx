@@ -1,28 +1,28 @@
 // "Verified broker" vs "digital marketer" eligibility chip.
 //
-// Levels 1 & 2 (exposure + qualified leads) are lead-generation fees every
-// partner earns. Level 3 (deal closing) needs a verified broker license.
+// Levels 1-3 are lead-generation services every partner can earn. Level 4
+// (deal closing) needs a verified broker license.
 import { BadgeCheck, Clock, Megaphone, ShieldAlert } from 'lucide-react';
 import type { LicenseStatus } from '@/hooks/useAffiliateLicense';
 
 const TONES: Record<LicenseStatus, { label: string; icon: typeof BadgeCheck; className: string }> = {
   verified: {
-    label: 'מתווך מאומת · שלבים 1-3',
+    label: 'מתווך מאומת · רמות 1-4',
     icon: BadgeCheck,
     className: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
   },
   pending: {
-    label: 'רישיון בבדיקה · שלבים 1-2',
+    label: 'רישיון בבדיקה · רמות 1-3',
     icon: Clock,
     className: 'bg-amber-50 text-amber-800 ring-amber-200',
   },
   rejected: {
-    label: 'הרישיון נדחה · שלבים 1-2',
+    label: 'הרישיון נדחה · רמות 1-3',
     icon: ShieldAlert,
     className: 'bg-rose-50 text-rose-800 ring-rose-200',
   },
   none: {
-    label: 'משווק דיגיטלי · שלבים 1-2',
+    label: 'שותף שיווק · רמות 1-3',
     icon: Megaphone,
     className: 'bg-sky-50 text-sky-800 ring-sky-200',
   },
