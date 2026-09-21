@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bed, Building2, ImageIcon, Layers, Loader2, Navigation, Ruler, Share2 } from 'lucide-react';
+import { Bed, Building2, ImageIcon, Layers, Loader2, Ruler, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -236,9 +236,10 @@ function PublicListingContent() {
       if (!response.ok) throw new Error(`public listing failed: ${response.status}`);
       const payload = await response.json();
       if (!payload?.property) return null;
+      const workspaceProperties = Array.isArray(payload.workspace_properties) ? payload.workspace_properties : [];
       return {
         property: normalizeListing(payload.property, payload.attribution),
-        properties: (Array.isArray(payload.workspace_properties) ? payload.workspace_properties : [payload.property])
+        properties: [payload.property, ...workspaceProperties]
           .map((row: unknown) => normalizeListing(row, payload.attribution)),
       };
     },
@@ -337,11 +338,12 @@ function PublicListingContent() {
   const cover = data.photos[Math.min(slide, Math.max(0, data.photos.length - 1))];
 
   // Map + navigation: coordinates when we have them, otherwise the address.
-  const mapProperties = (payload?.properties ?? []).flatMap((property) =>
-    property.id && property.latitude !== null && property.longitude !== null
-      ? [{ id: property.id, title: property.title, latitude: property.latitude, longitude: property.longitude, price: property.price }]
-      : [],
-  );
+  const mapProperties = (payload?.properties ?? []).flatMap((property, index) => {
+    if (property.latitude === null || property.longitude === null) return [];
+    const id = property.id ?? property.slug ?? `public-property-${index}`;
+    return [{ id, title: property.title, latitude: property.latitude, longitude: property.longitude, price: property.price }];
+  });
+  const selectedMapId = data.id ?? data.slug ?? mapProperties[0]?.id ?? null;
 
   return (
     <div className="min-h-screen bg-secondary pb-12" dir="rtl">
@@ -436,12 +438,8 @@ function PublicListingContent() {
 
             {(data.latitude !== null && data.longitude !== null) || data.addressForMap ? (
               <div className="space-y-2 border-t pt-4">
-                <WorkspacePropertiesMap properties={mapProperties} selectedId={data.id} onSelect={setSelectedId} fallbackAddress={data.addressForMap} />
+                <WorkspacePropertiesMap properties={mapProperties} selectedId={selectedMapId} onSelect={setSelectedId} fallbackAddress={data.addressForMap} />
                 {mapProperties.length > 1 && <p className="text-xs text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס</p>}
-                <div className="flex flex-wrap gap-2">
-                  <Button asChild variant="outline" size="sm"><a href={data.latitude !== null && data.longitude !== null ? `https://waze.com/ul?ll=${data.latitude},${data.longitude}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(data.addressForMap)}&navigate=yes`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Waze</a></Button>
-                  <Button asChild variant="outline" size="sm"><a href={`https://www.google.com/maps/dir/?api=1&destination=${data.latitude !== null && data.longitude !== null ? `${data.latitude},${data.longitude}` : encodeURIComponent(data.addressForMap)}`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Google Maps</a></Button>
-                </div>
               </div>
             ) : null}
 

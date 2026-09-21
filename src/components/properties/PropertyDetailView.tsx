@@ -7,10 +7,12 @@ import {
 import { PROPERTY_TYPE_LABELS_HE, type HomelyProperty } from '@/lib/homelyMockProperties';
 import { useVisibleImageUrls } from '@/lib/imageHealth';
 import { stripAddressNumbers } from '@/lib/formatAddress';
+import { addressMapQuery, fullPropertyAddress } from '@/lib/fullAddress';
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
 import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { buildDescriptionBlocks } from '@/lib/descriptionBlocks';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
+import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -100,6 +102,11 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
     raw: property,
   }) || `${propertyTypeHe} ${transactionHe}`;
   const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
+  const fullAddress = fullPropertyAddress(property as any);
+  const mapAddress = addressMapQuery(property as any);
+  const latitude = Number((property as any).latitude);
+  const longitude = Number((property as any).longitude);
+  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude) && latitude !== 0 && longitude !== 0;
 
   const vaadBayit = Number(meta.vaad_bayit ?? meta.vaad_monthly ?? 200) || 200;
   const arnonaBimonthly = Number(meta.arnona_bimonthly ?? meta.arnona ?? 800) || 800;
@@ -202,10 +209,22 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           additional={asRecord((property as any).additional_details)}
           amenities={asRecord((property as any).attributes)}
           priceHistory={Array.isArray((property as any).price_history) ? ((property as any).price_history as any[]) : []}
-          latitude={(property as any).latitude != null ? Number((property as any).latitude) : null}
-          longitude={(property as any).longitude != null ? Number((property as any).longitude) : null}
-          addressLabel={[stripAddressNumbers(property.address), property.city].filter(Boolean).join(', ')}
+          latitude={hasCoordinates ? latitude : null}
+          longitude={hasCoordinates ? longitude : null}
+          addressLabel={fullAddress || [stripAddressNumbers(property.address), property.city].filter(Boolean).join(', ')}
         />
+
+        {hasCoordinates || mapAddress ? (
+          <Card className="space-y-2 p-4 sm:p-5">
+            <h2 className="text-sm font-bold text-foreground">מיקום הנכס</h2>
+            <WorkspacePropertiesMap
+              properties={hasCoordinates ? [{ id: property.id, title: fullAddress || headline, latitude, longitude, price: property.price }] : []}
+              selectedId={property.id}
+              onSelect={() => undefined}
+              fallbackAddress={mapAddress}
+            />
+          </Card>
+        ) : null}
 
 
 

@@ -22,7 +22,7 @@ import { addressMapQuery, fullPropertyAddress, streetLine } from '@/lib/fullAddr
 import {
   Loader2, MapPin, Home, Ruler, Bed, Building2, Car, Layers,
   ArrowUpCircle, Sun, Wind, Shield, ImageIcon, ChevronLeft, ChevronRight,
-  BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves, Navigation,
+  BarChart3, GraduationCap, Trees, HeartPulse, TrainFront, Waves,
 } from 'lucide-react';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
@@ -188,12 +188,13 @@ export default function SharedProperty() {
   const perkBuckets = PERK_BUCKETS
     .map((b) => ({ ...b, items: perkList.filter((x) => b.re.test(x)) }))
     .filter((b) => b.items.length > 0);
-  const mapProperties = availableProperties.flatMap((item) => {
+  const mapProperties = availableProperties.flatMap((item, index) => {
     const latitude = Number(item?.latitude);
     const longitude = Number(item?.longitude);
     if (!item?.id || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude === 0 || longitude === 0) return [];
-    return [{ id: String(item.id), title: fullPropertyAddress(item) || String(item.property_title ?? item.title ?? 'נכס'), latitude, longitude, price: Number(item.asking_price) || null }];
+    return [{ id: String(item.id ?? `shared-property-${index}`), title: fullPropertyAddress(item) || String(item.property_title ?? item.title ?? 'נכס'), latitude, longitude, price: Number(item.asking_price) || null }];
   });
+  const selectedMapId = p?.id ? String(p.id) : mapProperties[0]?.id ?? null;
 
   // HARD RULE: public property pages always open our official Meta WBA number,
   // never the owner's / broker's personal WhatsApp.
@@ -392,12 +393,8 @@ export default function SharedProperty() {
 
         {(Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)) && Number(p.latitude) !== 0 && Number(p.longitude) !== 0) || mapQuery ? (
           <section className="space-y-2">
-            <WorkspacePropertiesMap properties={mapProperties} selectedId={p.id ?? null} onSelect={setSelectedPropertyId} fallbackAddress={mapQuery} />
+            <WorkspacePropertiesMap properties={mapProperties} selectedId={selectedMapId} onSelect={setSelectedPropertyId} fallbackAddress={mapQuery} />
             {mapProperties.length > 1 ? <p className="text-[13px] text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס</p> : null}
-            <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" size="sm"><a href={(Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)) && Number(p.latitude) !== 0 && Number(p.longitude) !== 0) ? `https://waze.com/ul?ll=${p.latitude},${p.longitude}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(mapQuery)}&navigate=yes`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Waze</a></Button>
-              <Button asChild variant="outline" size="sm"><a href={`https://www.google.com/maps/dir/?api=1&destination=${(Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)) && Number(p.latitude) !== 0 && Number(p.longitude) !== 0) ? `${p.latitude},${p.longitude}` : encodeURIComponent(mapQuery)}`} target="_blank" rel="noopener noreferrer"><Navigation className="h-4 w-4" /> Google Maps</a></Button>
-            </div>
           </section>
         ) : null}
 

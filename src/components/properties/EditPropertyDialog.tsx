@@ -31,6 +31,8 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
+import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
+import { addressMapQuery, fullPropertyAddress } from '@/lib/fullAddress';
 
 const CONDITION_OPTIONS: { value: string; label: string }[] = [
   { value: 'new', label: 'חדש מקבלן' },
@@ -75,6 +77,8 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   const [bars, setBars] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [videos, setVideos] = useState<string[]>([]);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -143,6 +147,10 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     setPhotos(Array.isArray(existingPhotos) ? normalizeImageUrls(existingPhotos) : []);
     const rawVideos = meta.videos ?? (p as any).videos ?? [];
     setVideos(Array.isArray(rawVideos) ? rawVideos.filter((u: unknown): u is string => typeof u === 'string') : []);
+    const lat = Number((p as any).latitude);
+    const lng = Number((p as any).longitude);
+    setLatitude(Number.isFinite(lat) && lat !== 0 ? lat : null);
+    setLongitude(Number.isFinite(lng) && lng !== 0 ? lng : null);
   };
 
   const { visible: visiblePhotos, markBroken } = useVisibleImageUrls(photos);
@@ -159,7 +167,7 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     (async () => {
       const { data } = await supabase
         .from('listings')
-        .select('property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, parking, elevator, features, source_metadata')
+        .select('property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, parking, elevator, features, source_metadata, latitude, longitude')
         .eq('id', property.id)
         .maybeSingle();
       if (data) hydrateFromRow({ ...property, ...data });
@@ -227,6 +235,10 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
       setSyncing(false);
     }
   };
+
+  const mapAddress = addressMapQuery({ address, city, neighborhood });
+  const mapTitle = fullPropertyAddress({ address, city, neighborhood }) || title || 'נכס';
+  const hasCoordinates = latitude !== null && longitude !== null;
 
   const handleSubmit = async () => {
     if (!property) return;
@@ -443,6 +455,18 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
               <Label className="text-xs font-semibold">כתובת</Label>
               <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="רחוב ומספר" />
             </div>
+
+            {hasCoordinates || mapAddress ? (
+              <div className="col-span-2 space-y-2">
+                <Label className="text-xs font-semibold">מיקום במפה</Label>
+                <WorkspacePropertiesMap
+                  properties={hasCoordinates && property ? [{ id: property.id, title: mapTitle, latitude, longitude, price: Number(price) || null }] : []}
+                  selectedId={property?.id ?? null}
+                  onSelect={() => undefined}
+                  fallbackAddress={mapAddress}
+                />
+              </div>
+            ) : null}
 
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">סוג נכס</Label>
