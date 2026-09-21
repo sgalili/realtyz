@@ -122,6 +122,7 @@ function RewardDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const save = useSetAffiliateReward();
+  const zeroToEmpty = (v: unknown) => (v == null || Number(v) === 0 ? '' : String(v));
   const [enabled, setEnabled] = useState(false);
   const [rewardType, setRewardType] = useState<RewardType>('fixed');
   const [amount, setAmount] = useState('');
