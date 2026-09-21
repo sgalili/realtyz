@@ -161,7 +161,7 @@ function RewardDialog({
     {
       key: 'tier1',
       title: 'שלב 1 · ליד דיגיטלי',
-      hint: 'שם מלא + טלפון בעמוד הנכס. חובה.',
+      hint: 'השארת שם מלא + טלפון בעמוד הנכס.',
       Icon: ClipboardList,
       value: tier1,
       setValue: setTier1,
@@ -171,7 +171,7 @@ function RewardDialog({
     {
       key: 'tier2',
       title: 'שלב 2 · סינון בשיחת WhatsApp',
-      hint: 'ריטה פותחת WhatsApp, קולטת טלפון ושם ומעבירה את שאלות הסינון.',
+      hint: 'ריטה פותחת ווטסאפ ושואלת את שאלות הסינון',
       Icon: MessageCircle,
       value: tier2,
       setValue: setTier2,
@@ -181,7 +181,7 @@ function RewardDialog({
     {
       key: 'tier3',
       title: 'שלב 3 · שיחת טלפון',
-      hint: 'שיחה יוצאת שמאמתת את המתעניין לפי אותן שאלות.',
+      hint: 'אימות פרטי המתעניין בשיחה טלפונית (נציג/ריטה) ומענה לשאלות הסינון',
       Icon: Phone,
       value: tier3,
       setValue: setTier3,
@@ -203,7 +203,7 @@ function RewardDialog({
           <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">פתוח לשיווק ע״י שותפים</div>
-              <div className="text-[11px] text-slate-500">הנכס יופיע בזירת השותפים</div>
+              <div className="text-[11px] text-slate-500"></div>
             </div>
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
@@ -213,7 +213,7 @@ function RewardDialog({
           <div className="space-y-3 rounded-lg border border-slate-200 p-3">
             <div className="text-sm font-semibold text-slate-900">מסלולי פנייה ותגמול</div>
             <p className="text-[11px] text-slate-500">
-              כל מסלול נפתח אוטומטית ברגע שמוזן לו מחיר. השארת מחיר 0 סוגרת אותו.
+              
             </p>
 
             {tiers.map((tier) => (
