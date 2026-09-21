@@ -10,6 +10,7 @@ import {
   HelpCircle,
   Gift,
   Coins,
+  Globe,
   Settings,
   type LucideProps,
 } from 'lucide-react';
