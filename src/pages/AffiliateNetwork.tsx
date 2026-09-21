@@ -145,7 +145,7 @@ function RewardDialog({
     setDigitalContact(options.digital !== false);
     setWhatsappContact(options.whatsapp !== false);
     setPhoneContact(options.phone === true);
-    void supabase.rpc('get_lead_price_recommendation', { _listing_id: listing.id }).then(({ data }) => setRecommendation((Array.isArray(data) ? data[0] : data) as typeof recommendation));
+    void supabase.rpc('get_lead_price_recommendation', { _city: listing.city || undefined, _deal_type: listing.deal_type === 'rent' ? 'rent' : 'sale' }).then(({ data }) => setRecommendation((Array.isArray(data) ? data[0] : data) as typeof recommendation));
   }
 
   const num = (v: string) => Number(v) || 0;
