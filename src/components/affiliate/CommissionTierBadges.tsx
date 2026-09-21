@@ -19,19 +19,19 @@ function tierValue(amount: number, type: RewardType = 'fixed'): string {
 export function CommissionTierBadges({
   tiers,
   compact = false,
-  tier3Locked = false,
+  level4Locked = false,
 }: {
   tiers: CommissionTiers;
   compact?: boolean;
   /** True for partners without a verified broker license (locks level 4). */
-  tier3Locked?: boolean;
+  level4Locked?: boolean;
 }) {
   const rows = [
     // Zero-value levels are hidden everywhere.
     { key: 'tier1', label: 'ליד דיגיטלי', value: tierValue(tiers.tier1), icon: ClipboardList, tone: 'bg-amber-50 text-amber-800 ring-amber-100', locked: false, show: tiers.tier1 > 0 },
     { key: 'tier2', label: 'סינון בווטסאפ', value: tierValue(tiers.tier2), icon: CheckCircle2, tone: 'bg-sky-50 text-sky-800 ring-sky-100', locked: false, show: tiers.tier2 > 0 },
     { key: 'tier3', label: 'שיחת טלפון', value: tierValue(tiers.tier3), icon: Phone, tone: 'bg-indigo-50 text-indigo-800 ring-indigo-100', locked: false, show: tiers.tier3 > 0 },
-    { key: 'tier4', label: tier3Locked ? 'נדרש רישיון תיווך' : 'סגירת עסקה', value: tierValue(tiers.tier4, tiers.tier4Type), icon: tier3Locked ? Lock : Trophy, tone: tier3Locked ? 'bg-slate-100 text-slate-500 ring-slate-200' : 'bg-emerald-50 text-emerald-800 ring-emerald-100', locked: tier3Locked, show: tiers.tier4 > 0 },
+    { key: 'tier4', label: level4Locked ? 'סגירת עסקה · נדרש רישיון' : 'סגירת עסקה', value: tierValue(tiers.tier4, tiers.tier4Type), icon: level4Locked ? Lock : Trophy, tone: level4Locked ? 'bg-slate-100 text-slate-500 ring-slate-200' : 'bg-emerald-50 text-emerald-800 ring-emerald-100', locked: level4Locked, show: tiers.tier4 > 0 },
   ].filter((row) => row.show);
 
   if (compact) {

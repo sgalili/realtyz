@@ -1,7 +1,7 @@
 // License verification panel in the partner portal.
 //
 // Compliance rule: a partner without a verified broker license earns marketing
-// and lead-generation fees (levels 1 & 2) only. Level 3, the deal-closing
+// and lead-generation fees (levels 1-3) only. Level 4, the deal-closing
 // commission, unlocks strictly after a valid license is submitted and verified.
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import AffiliateEligibilityBadge from '@/components/affiliate/AffiliateEligibili
 import { formatIsoDate } from '@/lib/listingDates';
 
 export function AffiliateLicenseCard() {
-  const { license, isLoading, tier3Unlocked, submit, isSubmitting } = useAffiliateLicense();
+  const { license, isLoading, level4Unlocked, submit, isSubmitting } = useAffiliateLicense();
   const [number, setNumber] = useState('');
   const [holder, setHolder] = useState('');
 
@@ -47,25 +47,24 @@ export function AffiliateLicenseCard() {
 
         <div className="space-y-2 text-[12px] leading-relaxed text-muted-foreground">
           <p>
-            שלב 1 (חשיפה ושיתוף קישור) ושלב 2 (ליד מאומת ופגישה שנקבעה) הם דמי שיווק דיגיטלי ויצירת לידים,
-            ופתוחים לכל שותף.
+            ליד דיגיטלי, סינון בשיחת ווטסאפ ושיחת טלפון הם שירותי שיווק ויצירת לידים הפתוחים לכל שותף.
           </p>
           <p className="flex items-start gap-1.5 font-semibold text-foreground">
             <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            שלב 3, עמלת סגירת עסקה, נפתח רק לבעלי רישיון תיווך מאומת, בהתאם לחוק המתווכים במקרקעין.
+            רמה 4, עמלת סגירת עסקה, פתוחה רק לבעלי רישיון תיווך מאומת, בהתאם לחוק המתווכים במקרקעין.
           </p>
         </div>
 
-        {tier3Unlocked ? (
+        {level4Unlocked ? (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-[12px] font-semibold text-emerald-800 ring-1 ring-emerald-200">
             <BadgeCheck className="h-4 w-4 shrink-0" />
-            רישיון {license.licenseNumber} אומת ב{formatIsoDate(license.verifiedAt) ?? '—'}. שלב 3 פעיל וניתן למשיכה.
+            רישיון {license.licenseNumber} אומת ב{formatIsoDate(license.verifiedAt) ?? '—'}. רמה 4 פעילה וזמינה.
           </div>
         ) : (
           <div className="space-y-3">
             {license.status === 'pending' ? (
               <div className="rounded-xl bg-amber-50 p-3 text-[12px] font-semibold text-amber-800 ring-1 ring-amber-200">
-                הרישיון הוגש ב{formatIsoDate(license.submittedAt) ?? '—'} ונמצא בבדיקה. עד לאישור, תגמולי שלב 3 אינם נצברים.
+                הרישיון הוגש ב{formatIsoDate(license.submittedAt) ?? '—'} ונמצא בבדיקה. עד לאישור, תגמולי רמה 4 אינם נצברים.
               </div>
             ) : null}
             {license.status === 'rejected' ? (
