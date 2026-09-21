@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, BedDouble, Building2, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, MessageCircle, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy, Users } from 'lucide-react';
+import { BedDouble, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, MessageCircle, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
@@ -337,6 +337,8 @@ function BrokerAffiliateNetwork() {
   const quickSave = useSetAffiliateReward();
 
   const [search, setSearch] = useState('');
+  const [trackingSearch, setTrackingSearch] = useState('');
+  const [submissionsSearch, setSubmissionsSearch] = useState('');
   const [leadFilter, setLeadFilter] = useState<LeadFilterState>(EMPTY_LEAD_FILTER);
   const [propertyFilter, setPropertyFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
@@ -383,18 +385,20 @@ function BrokerAffiliateNetwork() {
     });
   }, [listings, search, leadFilter, propertyFilter]);
 
-  const totals = useMemo(() => {
-    const signed = referrals.filter((r) => r.status === 'deal_signed');
-    const owed = signed
-      .filter((r) => r.settlement_status !== 'paid' && r.reward_type === 'fixed')
-      .reduce((sum, r) => sum + Number(r.reward_amount ?? 0), 0);
-    return {
-      active: listings.filter((l) => l.affiliate_enabled).length,
-      referrals: referrals.length,
-      signed: signed.length,
-      owed,
-    };
-  }, [listings, referrals]);
+  // Marketing and lead tabs each get their own text search.
+  const filteredReferrals = useMemo(() => {
+    const q = trackingSearch.trim().toLowerCase();
+    if (!q) return referrals;
+    return referrals.filter((r) => [r.listing?.property_title, r.listing?.address, r.listing?.city, r.affiliate?.display_name, r.lead?.full_name]
+      .some((f) => (f ?? '').toLowerCase().includes(q)));
+  }, [referrals, trackingSearch]);
+
+  const filteredSubmissions = useMemo(() => {
+    const q = submissionsSearch.trim().toLowerCase();
+    if (!q) return submissions;
+    return submissions.filter((s) => [s.lead?.full_name, s.lead_name, s.lead_phone, s.listing?.property_title, s.affiliate?.display_name]
+      .some((f) => (f ?? '').toLowerCase().includes(q)));
+  }, [submissions, submissionsSearch]);
 
   return (
     <>
@@ -406,30 +410,11 @@ function BrokerAffiliateNetwork() {
           </p>
         </header>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {[
-            { label: 'נכסים פתוחים לשותפים', value: String(totals.active), icon: Building2, color: 'text-deal-blue' },
-            { label: 'נכסים בשיווק', value: String(totals.referrals), icon: Users, color: 'text-destructive' },
-            { label: 'עסקאות דרך שותפים', value: String(totals.signed), icon: Handshake, color: 'text-success' },
-            { label: 'עמלות לתשלום', value: fmtILS(totals.owed), icon: Banknote, color: 'text-warning' },
-          ].map((s) => (
-            <Card key={s.label} className="realtyz-affiliate-kpi border-slate-200">
-              <CardContent className="flex flex-col items-center justify-center gap-1.5 p-3.5 text-center">
-                <s.icon className={`h-6 w-6 shrink-0 ${s.color}`} />
-                <div className="kpi-label text-slate-500">{s.label}</div>
-                <div className={`kpi-value font-bold ${s.color}`}>
-                  <bdi dir="ltr">{s.value}</bdi>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
         <Tabs defaultValue="rewards">
           <TabsList className="mx-auto grid h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
-            <TabsTrigger value="rewards" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">נכסים</TabsTrigger>
-            <TabsTrigger value="tracking" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">בשיווק</TabsTrigger>
-            <TabsTrigger value="submissions" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">לידים</TabsTrigger>
+            <TabsTrigger value="rewards" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">נכסים ({listings.length})</TabsTrigger>
+            <TabsTrigger value="tracking" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">בשיווק ({referrals.length})</TabsTrigger>
+            <TabsTrigger value="submissions" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">לידים ({submissions.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
@@ -438,7 +423,7 @@ function BrokerAffiliateNetwork() {
               <div className="flex h-10 max-w-sm flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
                 <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
                 <Input
-                  placeholder="חיפוש נכס"
+                  placeholder="חיפוש נכס לפי כתובת או עיר"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="h-8 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
@@ -619,16 +604,25 @@ function BrokerAffiliateNetwork() {
           </TabsContent>
 
           <TabsContent value="submissions" className="space-y-2.5 pt-4">
+            <div className="flex h-10 max-w-sm items-center gap-2 rounded-md border border-input bg-background px-3">
+              <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
+              <Input
+                placeholder="חיפוש לפי שם, טלפון או שותף"
+                value={submissionsSearch}
+                onChange={(e) => setSubmissionsSearch(e.target.value)}
+                className="h-8 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+              />
+            </div>
             {subsLoading ? (
               <Skeleton className="h-48 w-full" />
-            ) : submissions.length === 0 ? (
+            ) : filteredSubmissions.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
                   שותפים עוד לא הגישו לידים לנכסים שלכם.
                 </CardContent>
               </Card>
             ) : (
-              submissions.map((s) => (
+              filteredSubmissions.map((s) => (
                 <Card key={s.id} className="border-slate-200">
                   <CardContent className="space-y-3 p-3.5">
                       <div className="flex flex-wrap items-center gap-3">
@@ -720,10 +714,19 @@ function BrokerAffiliateNetwork() {
             )}
           </TabsContent>
 
-          <TabsContent value="tracking" className="pt-4">
+          <TabsContent value="tracking" className="space-y-4 pt-4">
+            <div className="flex h-10 max-w-sm items-center gap-2 rounded-md border border-input bg-background px-3">
+              <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
+              <Input
+                placeholder="חיפוש נכס בשיווק או שותף"
+                value={trackingSearch}
+                onChange={(e) => setTrackingSearch(e.target.value)}
+                className="h-8 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+              />
+            </div>
             {refsLoading ? (
               <Skeleton className="h-64 w-full" />
-            ) : referrals.length === 0 ? (
+            ) : filteredReferrals.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
                   עוד לא נכנסו אנשי קשר דרך שותפים.
@@ -731,7 +734,7 @@ function BrokerAffiliateNetwork() {
               </Card>
             ) : (
               <div className="space-y-2.5">
-                {referrals.map((r) => (
+                {filteredReferrals.map((r) => (
                   <Card key={r.id} className="border-slate-200">
                     <CardContent className="space-y-3 p-3.5">
                       <div className="flex flex-wrap items-center gap-3">
