@@ -4,7 +4,8 @@
 // partner: a digital lead (name + phone), a WhatsApp screening chat, and a
 // screened phone conversation. Level 4 is a deal-closing brokerage commission
 // and stays locked until the partner's broker license is verified.
-import { CheckCircle2, ClipboardList, Lock, Phone, Trophy } from 'lucide-react';
+import { ClipboardList, Lock, Phone, Trophy } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import type { CommissionTiers, RewardType } from '@/hooks/useAffiliate';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 
