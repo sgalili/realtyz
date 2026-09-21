@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { cleanPayload } from "../_shared/cleanValues.ts";
-import { maskAddress, maskContactText } from "../_shared/publicMask.ts";
+import { maskContactText } from "../_shared/publicMask.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!backendUrl || !serviceKey) throw new Error("missing backend configuration");
     const admin = createClient(backendUrl, serviceKey);
-    const columns = "id, slug, property_title, address, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, price_history, contact_options, is_published, status, affiliate_enabled, workspace_owner_id, user_id";
+    const columns = "id, slug, property_title, address, house_number, apartment_number, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, price_history, contact_options, is_published, status, affiliate_enabled, workspace_owner_id, user_id";
 
     let query = admin.from("listings").select(columns).limit(1);
     query = UUID_RE.test(identifier) ? query.eq("id", identifier) : query.eq("slug", identifier);
@@ -62,11 +62,10 @@ Deno.serve(async (req) => {
         affiliate_enabled: _affiliateEnabled,
         ...safe
       } = row;
-      safe.address = maskAddress(safe.address);
-      safe.property_title = maskAddress(safe.property_title);
-      safe.description = maskContactText(maskAddress(safe.description));
-      safe.short_description = maskContactText(maskAddress(safe.short_description));
-      safe.long_description = maskContactText(maskAddress(safe.long_description));
+      // Full address (street, house number, apartment) is public.
+      safe.description = maskContactText(safe.description);
+      safe.short_description = maskContactText(safe.short_description);
+      safe.long_description = maskContactText(safe.long_description);
       return cleanPayload(safe);
     };
     // Only clean, readable values leave the backend: identifiers, hashes and
