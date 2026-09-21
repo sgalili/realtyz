@@ -359,7 +359,15 @@ export type BrokerAffiliateListing = {
   affiliate_tier2_amount: number;
   affiliate_tier3_type: RewardType;
   affiliate_tier3_amount: number;
-  contact_options?: { digital?: boolean; whatsapp?: boolean; phone?: boolean; questions?: string[] } | null;
+  affiliate_tier4_type?: RewardType;
+  affiliate_tier4_amount?: number;
+  contact_options?: {
+    digital?: boolean;
+    whatsapp?: boolean;
+    phone?: boolean;
+    questions?: string[];
+    questions_phone?: string[];
+  } | null;
 };
 
 /** Workspace properties with their affiliate marketing configuration. */
@@ -372,7 +380,7 @@ export function useBrokerAffiliateListings() {
       const { data, error } = await supabase
         .from('listings')
         .select(
-          'id, property_title, address, city, neighborhood, deal_type, asking_price, rooms, sqm, floor, description, source_url, image_url, media_photos, house_number, apartment_number, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount, contact_options',
+          'id, property_title, address, city, neighborhood, deal_type, asking_price, rooms, sqm, floor, description, source_url, image_url, media_photos, house_number, apartment_number, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount, affiliate_tier4_type, affiliate_tier4_amount, contact_options',
         )
         .eq('user_id', ownerId!)
         .order('affiliate_enabled', { ascending: false })
@@ -428,8 +436,11 @@ export function useSetAffiliateReward() {
       tier2Amount?: number;
       tier3Type?: RewardType;
       tier3Amount?: number;
+      tier4Type?: RewardType;
+      tier4Amount?: number;
+      contactOptions?: Record<string, unknown>;
     }) => {
-      const patch = {
+      const patch: Record<string, unknown> = {
         affiliate_enabled: input.enabled,
         affiliate_reward_type: input.rewardType,
         affiliate_reward_amount: input.rewardAmount,
@@ -438,9 +449,15 @@ export function useSetAffiliateReward() {
         affiliate_tier2_amount: input.tier2Amount ?? 0,
         affiliate_tier3_type: input.tier3Type ?? 'fixed',
         affiliate_tier3_amount: input.tier3Amount ?? 0,
+        affiliate_tier4_type: input.tier4Type ?? 'fixed',
+        affiliate_tier4_amount: input.tier4Amount ?? 0,
       };
+      if (input.contactOptions) patch.contact_options = input.contactOptions;
 
-      const { error } = await supabase.from('listings').update(patch).eq('id', input.listingId);
+      const { error } = await supabase
+        .from('listings')
+        .update(patch as never)
+        .eq('id', input.listingId);
       if (error) throw error;
     },
     onSuccess: () => {

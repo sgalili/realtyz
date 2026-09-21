@@ -13,7 +13,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { normalizePhone } from "../_shared/leadIntake.ts";
 import { toPublicCard } from "../_shared/publicMask.ts";
 
-const OFFICIAL_WA = "9725379832";
+const OFFICIAL_WA = "972537983832";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -22,6 +22,35 @@ const json = (body: unknown, status = 200) =>
   });
 
 const str = (v: unknown, max = 120) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+
+/**
+ * Charges the publisher's wallet for a lead of this level and pays the partner
+ * 80% of it (20% stays with the platform). Extra screening questions beyond the
+ * first three add 10 ILS each — priced inside charge_lead_commission().
+ */
+// deno-lint-ignore no-explicit-any
+async function chargeLead(admin: any, listingId: string, tier: number, refCode: string) {
+  let affiliateId: string | null = null;
+  if (refCode) {
+    const { data } = await admin
+      .from("affiliate_referrals")
+      .select("affiliate_id")
+      .eq("tracking_code", refCode)
+      .maybeSingle();
+    affiliateId = (data?.affiliate_id as string | undefined) ?? null;
+  }
+  const { data, error } = await admin.rpc("charge_lead_commission", {
+    _listing_id: listingId,
+    _tier: tier,
+    _affiliate_id: affiliateId,
+    _reference_id: null,
+  });
+  if (error) {
+    console.error("[public-lead-gate] charge failed", error);
+    return null;
+  }
+  return data;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -119,10 +148,14 @@ Deno.serve(async (req) => {
         metadata: { listing_id: listing.id, lead_id: leadId, intent, comment: comment || null },
       });
 
+      // Level 1 (digital lead) settles immediately against the publisher wallet.
+      const billing = await chargeLead(admin, listing.id, 1, str(body?.ref, 40));
+
       return json({
         token: accessToken,
         unlocked: false,
         lead_id: leadId,
+        billing,
         greeting: `היי ${name}, אני ריטה. ספרי לי מה חשוב לך בנכס הזה ואשלח לך מיד את כל הפרטים המלאים.`,
       });
     }
@@ -149,7 +182,9 @@ Deno.serve(async (req) => {
       const callData = await response.json().catch(() => ({}));
       if (!response.ok || callData?.error) return json({ error: "שירות השיחות אינו זמין כרגע" }, 503);
       await admin.from("public_listing_interest").insert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, visitor_name: name, visitor_phone: phone, access_token: crypto.randomUUID().replace(/-/g, ""), intent: "phone" });
-      return json({ success: true });
+      // Level 3 (phone conversation lead).
+      const billing = await chargeLead(admin, listing.id, 3, str(body?.ref, 40));
+      return json({ success: true, billing });
     }
 
     // ------------------------------------------------------------- rita
@@ -173,6 +208,12 @@ Deno.serve(async (req) => {
           unlocked_at: now,
         })
         .eq("id", interest.id);
+
+      // Level 2 (WhatsApp / chat screening) is billed on the first real turn.
+      if (!interest.rita_engaged_at) {
+        await chargeLead(admin, interest.listing_id, 2, str(body?.ref, 40));
+      }
+
 
       let reply = "תודה, קיבלתי. הפרטים המלאים של הנכס נפתחו עבורך למעלה.";
       try {
