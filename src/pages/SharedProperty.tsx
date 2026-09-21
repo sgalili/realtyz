@@ -399,7 +399,7 @@ export default function SharedProperty() {
           </section>
         ) : null}
 
-        {p.id ? <PropertyContactActions listingId={String(p.id)} title={displayTitle} premsg={ritaPropertyPremsg(p)} options={p.contact_options} /> : null}
+        {p.id ? <PropertyContactActions listingId={String(p.id)} title={displayTitle} premsg={ritaPropertyPremsg(p)} options={p.contact_options} shareUrl={typeof window !== 'undefined' ? window.location.href : null} /> : null}
       </main>
 
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>

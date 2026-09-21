@@ -377,8 +377,8 @@ export function PageHero() {
           {(isPostsPage || location.pathname.startsWith("/inbox")) && (
             <AiResponseToggle />
           )}
-          {/* Live Bright Data wallet balance — owners / super admins only. */}
-          {canSeeBalance && <BrightDataHeroPill />}
+          {/* Yad2 scraping balance — owners / super admins, and ONLY on /properties. */}
+          {canSeeBalance && location.pathname.startsWith("/properties") && <BrightDataHeroPill />}
         </div>
 
         {/* Absolute-centered page title — locked to screen center */}

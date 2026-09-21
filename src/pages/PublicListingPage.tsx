@@ -447,12 +447,8 @@ function PublicListingContent() {
               </div>
             ) : null}
 
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={handleShare}>
-                <Share2 className="h-4 w-4" /> שיתוף
-              </Button>
-            </div>
-            {data.id && <PropertyContactActions listingId={data.id} title={data.title} premsg={data.premsg} options={data.contactOptions} />}
+            {/* Share lives inside the contact row below, next to WhatsApp / call / form. */}
+            {data.id && <PropertyContactActions listingId={data.id} title={data.title} premsg={data.premsg} options={data.contactOptions} shareUrl={shareUrl} />}
           </CardContent>
         </Card>
       </div>
