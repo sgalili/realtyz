@@ -129,6 +129,8 @@ export type Database = {
           tier2_amount: number
           tier3_amount: number
           tier3_type: string
+          tier4_amount: number
+          tier4_type: string
           updated_at: string
           verified_at: string | null
         }
@@ -155,6 +157,8 @@ export type Database = {
           tier2_amount?: number
           tier3_amount?: number
           tier3_type?: string
+          tier4_amount?: number
+          tier4_type?: string
           updated_at?: string
           verified_at?: string | null
         }
@@ -181,6 +185,8 @@ export type Database = {
           tier2_amount?: number
           tier3_amount?: number
           tier3_type?: string
+          tier4_amount?: number
+          tier4_type?: string
           updated_at?: string
           verified_at?: string | null
         }
@@ -3810,6 +3816,8 @@ export type Database = {
           affiliate_tier2_amount: number
           affiliate_tier3_amount: number
           affiliate_tier3_type: string
+          affiliate_tier4_amount: number
+          affiliate_tier4_type: string
           apartment_number: string | null
           area_perks: Json | null
           asking_price: number
@@ -3873,6 +3881,8 @@ export type Database = {
           affiliate_tier2_amount?: number
           affiliate_tier3_amount?: number
           affiliate_tier3_type?: string
+          affiliate_tier4_amount?: number
+          affiliate_tier4_type?: string
           apartment_number?: string | null
           area_perks?: Json | null
           asking_price?: number
@@ -3936,6 +3946,8 @@ export type Database = {
           affiliate_tier2_amount?: number
           affiliate_tier3_amount?: number
           affiliate_tier3_type?: string
+          affiliate_tier4_amount?: number
+          affiliate_tier4_type?: string
           apartment_number?: string | null
           area_perks?: Json | null
           asking_price?: number
@@ -6739,6 +6751,15 @@ export type Database = {
         Returns: number
       }
       cancel_my_subscription: { Args: never; Returns: Json }
+      charge_lead_commission: {
+        Args: {
+          _affiliate_id?: string
+          _listing_id: string
+          _reference_id?: string
+          _tier: number
+        }
+        Returns: Json
+      }
       claim_autopilot_jobs: {
         Args: { p_limit?: number; p_worker?: string }
         Returns: {
@@ -6967,6 +6988,8 @@ export type Database = {
           tier2_amount: number
           tier3_amount: number
           tier3_type: string
+          tier4_amount: number
+          tier4_type: string
         }[]
       }
       get_affiliate_marketplace_v2: {
@@ -7029,6 +7052,8 @@ export type Database = {
           tier2_amount: number
           tier3_amount: number
           tier3_type: string
+          tier4_amount: number
+          tier4_type: string
         }[]
       }
       get_affiliate_posts: {
@@ -7082,6 +7107,8 @@ export type Database = {
           tier2_amount: number
           tier3_amount: number
           tier3_type: string
+          tier4_amount: number
+          tier4_type: string
         }[]
       }
       get_business_performance: {

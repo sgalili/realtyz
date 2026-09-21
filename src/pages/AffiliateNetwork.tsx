@@ -29,9 +29,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, BedDouble, Building2, ClipboardList, Handshake, LayoutGrid, List, MapPin, MessageCircle, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Users } from 'lucide-react';
+import { Banknote, BedDouble, Building2, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, MessageCircle, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
+import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
+import { defaultQuestions, deriveContactOptions, leadCost } from '@/lib/leadTiers';
 
 import {
   SUBMISSION_STATUS_LABELS,
@@ -123,11 +125,12 @@ function RewardDialog({
   const [amount, setAmount] = useState('0');
   const [tier1, setTier1] = useState('0');
   const [tier2, setTier2] = useState('0');
-  const [tier3Type, setTier3Type] = useState<RewardType>('fixed');
   const [tier3, setTier3] = useState('0');
-  const [digitalContact, setDigitalContact] = useState(true);
-  const [whatsappContact, setWhatsappContact] = useState(true);
-  const [phoneContact, setPhoneContact] = useState(false);
+  const [tier4Type, setTier4Type] = useState<RewardType>('fixed');
+  const [tier4, setTier4] = useState('0');
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [questionsPhone, setQuestionsPhone] = useState<string[]>([]);
+  const [editingQuestions, setEditingQuestions] = useState<null | 'chat' | 'phone'>(null);
   const [recommendation, setRecommendation] = useState<{ tier1_median?: number; tier2_median?: number; sample_size?: number } | null>(null);
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
@@ -139,12 +142,13 @@ function RewardDialog({
     setAmount(String(listing.affiliate_reward_amount ?? 0));
     setTier1(String(listing.affiliate_tier1_amount ?? 0));
     setTier2(String(listing.affiliate_tier2_amount ?? 0));
-    setTier3Type((listing.affiliate_tier3_type ?? 'fixed') as RewardType);
     setTier3(String(listing.affiliate_tier3_amount ?? 0));
+    setTier4Type((listing.affiliate_tier4_type ?? 'fixed') as RewardType);
+    setTier4(String(listing.affiliate_tier4_amount ?? 0));
     const options = listing.contact_options && typeof listing.contact_options === 'object' ? listing.contact_options : {};
-    setDigitalContact(options.digital !== false);
-    setWhatsappContact(options.whatsapp !== false);
-    setPhoneContact(options.phone === true);
+    const base = Array.isArray(options.questions) && options.questions.length ? options.questions : defaultQuestions(listing.deal_type);
+    setQuestions(base);
+    setQuestionsPhone(Array.isArray(options.questions_phone) && options.questions_phone.length ? options.questions_phone : base);
     void supabase.rpc('get_lead_price_recommendation', { _city: listing.city || undefined, _deal_type: listing.deal_type === 'rent' ? 'rent' : 'sale' }).then(({ data }) => setRecommendation((Array.isArray(data) ? data[0] : data) as typeof recommendation));
   }
 
@@ -152,6 +156,39 @@ function RewardDialog({
   const clean = (v: string) => v.replace(/[^\d.]/g, '');
 
   if (!listing) return null;
+
+  const tiers = [
+    {
+      key: 'tier1',
+      title: 'שלב 1 · ליד דיגיטלי',
+      hint: 'שם מלא + טלפון בעמוד הנכס. חובה.',
+      Icon: ClipboardList,
+      value: tier1,
+      setValue: setTier1,
+      cost: leadCost(num(tier1), []),
+      questionsKey: null as null | 'chat' | 'phone',
+    },
+    {
+      key: 'tier2',
+      title: 'שלב 2 · סינון בשיחת WhatsApp',
+      hint: 'ריטה פותחת WhatsApp, קולטת טלפון ושם ומעבירה את שאלות הסינון.',
+      Icon: MessageCircle,
+      value: tier2,
+      setValue: setTier2,
+      cost: leadCost(num(tier2), questions),
+      questionsKey: 'chat' as const,
+    },
+    {
+      key: 'tier3',
+      title: 'שלב 3 · שיחת טלפון',
+      hint: 'שיחה יוצאת שמאמתת את המתעניין לפי אותן שאלות.',
+      Icon: Phone,
+      value: tier3,
+      setValue: setTier3,
+      cost: leadCost(num(tier3), questionsPhone),
+      questionsKey: 'phone' as const,
+    },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -171,55 +208,65 @@ function RewardDialog({
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
 
-          <div className="space-y-3 rounded-lg border border-slate-200 p-3">
-            <div className="font-semibold">דרכי יצירת קשר בעמוד הנכס</div>
-            <label className="flex items-center justify-between text-sm"><span className="flex items-center gap-2"><ClipboardList className="h-4 w-4" />טופס דיגיטלי</span><Switch checked={digitalContact} onCheckedChange={setDigitalContact} /></label>
-            <label className="flex items-center justify-between text-sm"><span className="flex items-center gap-2"><MessageCircle className="h-4 w-4" />WhatsApp עם ריטה</span><Switch checked={whatsappContact} onCheckedChange={setWhatsappContact} /></label>
-            <label className="flex items-center justify-between text-sm"><span className="flex items-center gap-2"><Phone className="h-4 w-4" />חזרה טלפונית</span><Switch checked={phoneContact} onCheckedChange={setPhoneContact} /></label>
-          </div>
-
-          {recommendation && Number(recommendation.sample_size || 0) > 0 ? <div className="rounded-lg border bg-muted/30 p-3"><div className="mb-2 flex items-center gap-2 font-semibold"><TrendingUp className="h-4 w-4 text-primary" />המלצת מחיר לפי מפרסמים דומים</div><div className="grid grid-cols-2 gap-3 text-sm"><div><div className="text-muted-foreground">טופס דיגיטלי</div><div className="h-2 rounded-full bg-muted"><div className="h-2 w-2/3 rounded-full bg-amber-500" /></div><bdi dir="ltr">₪{Number(recommendation.tier1_median || 0).toLocaleString('he-IL')}</bdi></div><div><div className="text-muted-foreground">שיחה מאומתת</div><div className="h-2 rounded-full bg-muted"><div className="h-2 w-3/4 rounded-full bg-sky-500" /></div><bdi dir="ltr">₪{Number(recommendation.tier2_median || 0).toLocaleString('he-IL')}</bdi></div></div><div className="mt-2 text-xs text-muted-foreground">מבוסס על {recommendation.sample_size} נכסים דומים</div></div> : null}
+          {recommendation && Number(recommendation.sample_size || 0) > 0 ? <div className="rounded-lg border bg-muted/30 p-3"><div className="mb-2 flex items-center gap-2 font-semibold"><TrendingUp className="h-4 w-4 text-primary" />המלצת מחיר לפי מפרסמים דומים</div><div className="grid grid-cols-2 gap-3 text-sm"><div><div className="text-muted-foreground">ליד דיגיטלי</div><div className="h-2 rounded-full bg-muted"><div className="h-2 w-2/3 rounded-full bg-amber-500" /></div><bdi dir="ltr">₪{Number(recommendation.tier1_median || 0).toLocaleString('he-IL')}</bdi></div><div><div className="text-muted-foreground">ליד מסונן</div><div className="h-2 rounded-full bg-muted"><div className="h-2 w-3/4 rounded-full bg-sky-500" /></div><bdi dir="ltr">₪{Number(recommendation.tier2_median || 0).toLocaleString('he-IL')}</bdi></div></div><div className="mt-2 text-xs text-muted-foreground">מבוסס על {recommendation.sample_size} נכסים דומים</div></div> : null}
 
           <div className="space-y-3 rounded-lg border border-slate-200 p-3">
-            <div className="text-sm font-semibold text-slate-900">מודל עמלה ב-3 שלבים</div>
+            <div className="text-sm font-semibold text-slate-900">מסלולי פנייה ותגמול</div>
+            <p className="text-[11px] text-slate-500">
+              כל מסלול נפתח אוטומטית ברגע שמוזן לו מחיר. השארת מחיר 0 סוגרת אותו.
+            </p>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <div className="text-[12px] font-semibold text-slate-900">שלב 1</div>
-                <Label className="text-[11px] font-normal text-slate-500">
-                  ליד דיגיטלי לנכס הספציפי (₪)
-                </Label>
-                <Input value={tier1} inputMode="decimal" onChange={(e) => setTier1(clean(e.target.value))} />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="text-[12px] font-semibold text-slate-900">שלב 2</div>
-                <Label className="text-[11px] font-normal text-slate-500">
-                  ליד שאומת אנושית בשיחת טלפון (₪)
-                </Label>
-                <Input value={tier2} inputMode="decimal" onChange={(e) => setTier2(clean(e.target.value))} />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="text-[12px] font-semibold text-slate-900">שלב 3</div>
-                <Label className="text-[11px] font-normal text-slate-500">בונוס סגירת עסקה</Label>
+            {tiers.map((tier) => (
+              <div key={tier.key} className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
                 <div className="flex items-center gap-2">
-                  <Select value={tier3Type} onValueChange={(v) => setTier3Type(v as RewardType)}>
-                    <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fixed">סכום קבוע (₪)</SelectItem>
-                      <SelectItem value="percent">אחוז מהעמלה (%)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input value={tier3} inputMode="decimal" onChange={(e) => setTier3(clean(e.target.value))} />
+                  <tier.Icon className={`h-4 w-4 ${num(tier.value) > 0 ? 'text-primary' : 'text-slate-400'}`} />
+                  <div className="text-[12px] font-semibold text-slate-900">{tier.title}</div>
+                  {tier.questionsKey ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="ms-auto h-8 w-8"
+                      title="עריכת שאלות הסינון"
+                      aria-label="עריכת שאלות הסינון"
+                      onClick={() => setEditingQuestions(tier.questionsKey)}
+                    >
+                      <ListChecks className="h-4 w-4" />
+                    </Button>
+                  ) : null}
                 </div>
+                <Label className="text-[11px] font-normal text-slate-500">{tier.hint}</Label>
+                <div className="flex items-center gap-2">
+                  <Input value={tier.value} inputMode="decimal" onChange={(e) => tier.setValue(clean(e.target.value))} />
+                  <span className="whitespace-nowrap text-[11px] text-slate-500">
+                    מחיר ליד: <bdi dir="ltr">₪{tier.cost.toLocaleString('he-IL')}</bdi>
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            <div className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
+              <div className="flex items-center gap-2">
+                <Trophy className={`h-4 w-4 ${num(tier4) > 0 ? 'text-success' : 'text-slate-400'}`} />
+                <div className="text-[12px] font-semibold text-slate-900">שלב 4 · סגירת עסקה</div>
+              </div>
+              <Label className="text-[11px] font-normal text-slate-500">
+                עמלת תיווך על סגירת עסקה. משולמת לשותפים בעלי רישיון תיווך בתוקף בלבד.
+              </Label>
+              <div className="flex items-center gap-2">
+                <Select value={tier4Type} onValueChange={(v) => setTier4Type(v as RewardType)}>
+                  <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixed">סכום קבוע (₪)</SelectItem>
+                    <SelectItem value="percent">אחוז מהעמלה (%)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input value={tier4} inputMode="decimal" onChange={(e) => setTier4(clean(e.target.value))} />
               </div>
             </div>
           </div>
-
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-row items-center justify-between sm:justify-between">
           <Button variant="outline" onClick={() => onOpenChange(false)}>ביטול</Button>
           <Button
             disabled={save.isPending}
@@ -232,13 +279,20 @@ function RewardDialog({
                   rewardAmount: Number(amount) || 0,
                   tier1Amount: num(tier1),
                   tier2Amount: num(tier2),
-                  tier3Type,
+                  tier3Type: 'fixed',
                   tier3Amount: num(tier3),
+                  tier4Type,
+                  tier4Amount: num(tier4),
+                  contactOptions: deriveContactOptions({
+                    tier1: num(tier1),
+                    tier2: num(tier2),
+                    tier3: num(tier3),
+                    questions,
+                    questionsPhone,
+                  }) as unknown as Record<string, unknown>,
                 },
                 {
-                  onSuccess: async () => {
-                    const { error } = await supabase.from('listings').update({ contact_options: { digital: digitalContact, whatsapp: whatsappContact, phone: phoneContact } }).eq('id', listing.id);
-                    if (error) { toast.error('שמירת דרכי ההתקשרות נכשלה'); return; }
+                  onSuccess: () => {
                     toast.success('התגמול נשמר');
                     onOpenChange(false);
                   },
@@ -250,6 +304,22 @@ function RewardDialog({
             {save.isPending ? 'שומר...' : 'שמירה'}
           </Button>
         </DialogFooter>
+
+        <LeadQuestionsDialog
+          open={editingQuestions !== null}
+          onOpenChange={(v) => setEditingQuestions(v ? editingQuestions : null)}
+          title={editingQuestions === 'phone' ? 'שאלות סינון · שיחת טלפון' : 'שאלות סינון · שיחת WhatsApp'}
+          questions={editingQuestions === 'phone' ? questionsPhone : questions}
+          onChange={(next) => {
+            if (editingQuestions === 'phone') {
+              setQuestionsPhone(next);
+              return;
+            }
+            setQuestions(next);
+            // Level 3 mirrors the chat questions by default, still editable on its own.
+            if (questionsPhone.join('|') === questions.join('|')) setQuestionsPhone(next);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -399,18 +469,23 @@ function BrokerAffiliateNetwork() {
                   const listing = filteredListings.find((item) => item.id === result.localId);
                   if (!listing) return null;
                   const shared = Boolean(listing.affiliate_enabled);
-                  // Plain-text commission amounts under a shared (green) button —
-                  // zero tiers stay hidden, no pills.
+                  // Plain-text commission amounts under a shared (green) button.
+                  // Level 1 always shows; levels 2-4 only when priced.
                   const tierTexts: Array<{ value: string; label: string; Icon: typeof ClipboardList }> = [];
                   if (shared) {
                     const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
+                    const options = listing.contact_options && typeof listing.contact_options === 'object' ? listing.contact_options : {};
+                    const chatQuestions = Array.isArray(options.questions) ? options.questions : [];
+                    const phoneQuestions = Array.isArray(options.questions_phone) ? options.questions_phone : chatQuestions;
                     const t1 = Number(listing.affiliate_tier1_amount ?? 0);
-                    const t2 = Number(listing.affiliate_tier2_amount ?? 0);
-                    const t3 = Number(listing.affiliate_tier3_amount ?? 0);
-                    const t3Type = (listing.affiliate_tier3_type ?? 'fixed') as RewardType;
-                    if (t1) tierTexts.push({ value: money(t1), label: 'טופס דיגיטלי', Icon: ClipboardList });
-                    if (t2) tierTexts.push({ value: money(t2), label: 'שיחת WhatsApp', Icon: MessageCircle });
-                    if (t3) tierTexts.push({ value: t3Type === 'percent' ? `${t3}%` : money(t3), label: 'שיחת טלפון', Icon: Phone });
+                    const t2 = leadCost(Number(listing.affiliate_tier2_amount ?? 0), chatQuestions);
+                    const t3 = leadCost(Number(listing.affiliate_tier3_amount ?? 0), phoneQuestions);
+                    const t4 = Number(listing.affiliate_tier4_amount ?? 0);
+                    const t4Type = (listing.affiliate_tier4_type ?? 'fixed') as RewardType;
+                    tierTexts.push({ value: money(t1), label: 'ליד דיגיטלי', Icon: ClipboardList });
+                    if (Number(listing.affiliate_tier2_amount ?? 0)) tierTexts.push({ value: money(t2), label: 'סינון ב-WhatsApp', Icon: MessageCircle });
+                    if (Number(listing.affiliate_tier3_amount ?? 0)) tierTexts.push({ value: money(t3), label: 'שיחת טלפון', Icon: Phone });
+                    if (t4) tierTexts.push({ value: t4Type === 'percent' ? `${t4}%` : money(t4), label: 'סגירת עסקה · בעלי רישיון תיווך בלבד', Icon: Trophy });
                   }
                   return (
                     <div className="flex flex-col items-center gap-1">
@@ -560,8 +635,9 @@ function BrokerAffiliateNetwork() {
                       tiers={{
                         tier1: Number(s.tier1_amount),
                         tier2: Number(s.tier2_amount),
-                        tier3Type: s.tier3_type,
                         tier3: Number(s.tier3_amount),
+                        tier4Type: (s.tier4_type ?? 'fixed'),
+                        tier4: Number(s.tier4_amount ?? 0),
                       }}
                       compact
                     />

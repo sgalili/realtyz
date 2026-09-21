@@ -16,6 +16,7 @@ import { MagicMandateSelector } from '@/components/dashboard/MagicMandateSelecto
 import { RotatingHeadline } from '@/components/RotatingHeadline';
 
 import NotificationCenter from '@/components/NotificationCenter';
+import WalletLockGate from '@/components/billing/WalletLockGate';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import QuickActionDrawer from '@/components/QuickActionDrawer';
@@ -471,6 +472,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
+      {/* A negative wallet locks the app until the balance is topped up. */}
+      <WalletLockGate />
       <div className="realtyz-app-shell h-[100dvh] max-h-[100dvh] overflow-hidden flex w-full bg-background">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">

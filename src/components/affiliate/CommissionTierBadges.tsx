@@ -1,9 +1,10 @@
 // Commission breakdown badges shown on every affiliate marketplace card.
 //
-// Levels 1 and 2 are digital marketing and lead-generation fees, open to every
-// partner. Level 3 is a deal-closing brokerage commission and is shown locked
-// until the partner's broker license is verified.
-import { CheckCircle2, Flame, Lock, Trophy } from 'lucide-react';
+// Levels 1-3 are digital marketing and lead-generation fees, open to every
+// partner: a digital lead (name + phone), a WhatsApp screening chat, and a
+// screened phone conversation. Level 4 is a deal-closing brokerage commission
+// and stays locked until the partner's broker license is verified.
+import { CheckCircle2, ClipboardList, Lock, Phone, Trophy } from 'lucide-react';
 import type { CommissionTiers, RewardType } from '@/hooks/useAffiliate';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 
@@ -22,14 +23,16 @@ export function CommissionTierBadges({
 }: {
   tiers: CommissionTiers;
   compact?: boolean;
-  /** True for partners without a verified broker license. */
+  /** True for partners without a verified broker license (locks level 4). */
   tier3Locked?: boolean;
 }) {
   const rows = [
-    { key: 'tier1', label: 'טופס דיגיטלי', value: tierValue(tiers.tier1), icon: Flame, tone: 'bg-amber-50 text-amber-800 ring-amber-100', locked: false },
-    { key: 'tier2', label: 'שיחה מאומתת', value: tierValue(tiers.tier2), icon: CheckCircle2, tone: 'bg-sky-50 text-sky-800 ring-sky-100', locked: false },
-    { key: 'tier3', label: tier3Locked ? 'נדרש רישיון תיווך' : 'סגירת עסקה', value: tierValue(tiers.tier3, tiers.tier3Type), icon: tier3Locked ? Lock : Trophy, tone: tier3Locked ? 'bg-slate-100 text-slate-500 ring-slate-200' : 'bg-emerald-50 text-emerald-800 ring-emerald-100', locked: tier3Locked },
-  ].filter((row) => row.key === 'tier3' ? tiers.tier3 > 0 : row.key === 'tier2' ? tiers.tier2 > 0 : tiers.tier1 > 0);
+    // Level 1 is mandatory and always shown.
+    { key: 'tier1', label: 'ליד דיגיטלי', value: tierValue(tiers.tier1), icon: ClipboardList, tone: 'bg-amber-50 text-amber-800 ring-amber-100', locked: false, show: true },
+    { key: 'tier2', label: 'סינון בווטסאפ', value: tierValue(tiers.tier2), icon: CheckCircle2, tone: 'bg-sky-50 text-sky-800 ring-sky-100', locked: false, show: tiers.tier2 > 0 },
+    { key: 'tier3', label: 'שיחת טלפון', value: tierValue(tiers.tier3), icon: Phone, tone: 'bg-indigo-50 text-indigo-800 ring-indigo-100', locked: false, show: tiers.tier3 > 0 },
+    { key: 'tier4', label: tier3Locked ? 'נדרש רישיון תיווך' : 'סגירת עסקה', value: tierValue(tiers.tier4, tiers.tier4Type), icon: tier3Locked ? Lock : Trophy, tone: tier3Locked ? 'bg-slate-100 text-slate-500 ring-slate-200' : 'bg-emerald-50 text-emerald-800 ring-emerald-100', locked: tier3Locked, show: tiers.tier4 > 0 },
+  ].filter((row) => row.show);
 
   if (compact) {
     return (
@@ -44,7 +47,7 @@ export function CommissionTierBadges({
   }
 
   return (
-    <div className="grid grid-cols-3 gap-1.5">
+    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
       {rows.map((r) => (
         <div key={r.key} className={`rounded-md px-2 py-1.5 ring-1 ${r.tone}`}>
           <div className="flex items-center gap-1 text-[10px] font-semibold opacity-80">
