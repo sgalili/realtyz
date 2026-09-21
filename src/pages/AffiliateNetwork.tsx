@@ -212,7 +212,7 @@ function RewardDialog({
 
           {recommendation && Number(recommendation.sample_size || 0) > 0 ? <div className="rounded-lg border bg-muted/30 p-3"><div className="mb-2 flex items-center gap-2 font-semibold"><TrendingUp className="h-4 w-4 text-primary" />המלצת מחיר לפי מפרסמים דומים</div><div className="grid grid-cols-2 gap-3 text-sm"><div><div className="text-muted-foreground">ליד דיגיטלי</div><div className="h-2 rounded-full bg-muted"><div className="h-2 w-2/3 rounded-full bg-amber-500" /></div><bdi dir="ltr">₪{Number(recommendation.tier1_median || 0).toLocaleString('he-IL')}</bdi></div><div><div className="text-muted-foreground">ליד מסונן</div><div className="h-2 rounded-full bg-muted"><div className="h-2 w-3/4 rounded-full bg-sky-500" /></div><bdi dir="ltr">₪{Number(recommendation.tier2_median || 0).toLocaleString('he-IL')}</bdi></div></div><div className="mt-2 text-xs text-muted-foreground">מבוסס על {recommendation.sample_size} נכסים דומים</div></div> : null}
 
-          <div className="space-y-3 rounded-lg border border-slate-200 p-3">
+          <div className="space-y-3">
             <div className="text-sm font-semibold text-slate-900">{"\n"}</div>
             <p className="text-[11px] text-slate-500">
               
