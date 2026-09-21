@@ -18,7 +18,7 @@ export type ContactOptions = LeadContactOptions;
  * publisher's lead prices (level 1 form, level 2 Rita chat, level 3 phone call)
  * and arrives here already resolved in `contact_options`.
  */
-export default function PropertyContactActions({ listingId, title, options }: { listingId: string; title: string; options?: ContactOptions | null }) {
+export default function PropertyContactActions({ listingId, title, options, premsg }: { listingId: string; title: string; options?: ContactOptions | null; premsg?: string | null }) {
   const settings = options ?? { digital: true, whatsapp: false, phone: false };
   const showDigital = settings.digital === true && settings.whatsapp !== true;
   const questions = (Array.isArray(settings.questions) ? settings.questions : []).filter((q) => q.trim()).slice(0, 8);
@@ -28,11 +28,9 @@ export default function PropertyContactActions({ listingId, title, options }: { 
   const [sending, setSending] = useState(false);
   const ref = new URLSearchParams(window.location.search).get('ref');
 
-  const waMessage = [
-    `שלום, אשמח לקבל פרטים על ${title}.`,
-    'ריטה, אפשר להתחיל?',
-    ...(questions.length ? [] : ['אשמח שתשאלי אותי את שאלות הסינון.']),
-  ].join(' ');
+  // Canonical opener built from the property row itself, so Rita can parse the
+  // exact property (type, street + house number, city) with zero questions.
+  const waMessage = premsg?.trim() || `היי ריטה, אשמח לקבל פרטים אודות ${title}.`;
 
   const submit = async () => {
     if (!name.trim() || phone.replace(/\D/g, '').length < 9) {
