@@ -66,7 +66,12 @@ Deno.serve(async (req) => {
       safe.description = maskContactText(safe.description);
       safe.short_description = maskContactText(safe.short_description);
       safe.long_description = maskContactText(safe.long_description);
-      return cleanPayload(safe);
+      const cleaned = cleanPayload(safe) as Record<string, any>;
+      // Keep stable app identifiers for map selection and lead-gate actions.
+      // They are used only as data attributes, never rendered as public text.
+      if (typeof row.id === "string") cleaned.id = row.id;
+      if (typeof row.slug === "string") cleaned.slug = row.slug;
+      return cleaned;
     };
     // Only clean, readable values leave the backend: identifiers, hashes and
     // debug keys from the ingestion pipeline are stripped here.

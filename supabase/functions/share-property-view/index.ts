@@ -48,18 +48,23 @@ Deno.serve(async (req) => {
     }
     if (!property && share.external_snapshot) property = share.external_snapshot;
 
-    const maskProperty = (row: Record<string, any>) => cleanPayload({
-      ...row,
-      // Full address (street, house number, apartment) is public.
-      description: maskContactText(row.description),
-      short_description: maskContactText(row.short_description),
-      long_description: maskContactText(row.long_description),
-      workspace_owner_id: undefined,
-      owner_id: undefined,
-      is_published: undefined,
-      affiliate_enabled: undefined,
-      status: undefined,
-    });
+    const maskProperty = (row: Record<string, any>) => {
+      const cleaned = cleanPayload({
+        ...row,
+        // Full address (street, house number, apartment) is public.
+        description: maskContactText(row.description),
+        short_description: maskContactText(row.short_description),
+        long_description: maskContactText(row.long_description),
+        workspace_owner_id: undefined,
+        owner_id: undefined,
+        is_published: undefined,
+        affiliate_enabled: undefined,
+        status: undefined,
+      }) as Record<string, any>;
+      // Required by the public map/contact UI; it is not printed on the page.
+      if (typeof row.id === "string") cleaned.id = row.id;
+      return cleaned;
+    };
 
     const workspaceOwnerId = property?.workspace_owner_id ?? share.owner_id;
     const { data: workspaceListings } = workspaceOwnerId
