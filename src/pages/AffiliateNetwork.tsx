@@ -162,7 +162,7 @@ function RewardDialog({
   const tiers = [
     {
       key: 'tier1',
-      title: 'שלב 1 · ליד דיגיטלי',
+      title: 'מילוי טופס',
       hint: 'השארת שם מלא + טלפון בעמוד הנכס.',
       Icon: ClipboardList,
       value: tier1,
@@ -172,7 +172,7 @@ function RewardDialog({
     },
     {
       key: 'tier2',
-      title: 'שלב 2 · סינון בשיחת WhatsApp',
+      title: 'סינון בווטסאפ',
       hint: 'ריטה פותחת ווטסאפ ושואלת את שאלות הסינון',
       Icon: MessageCircle,
       value: tier2,
@@ -182,8 +182,8 @@ function RewardDialog({
     },
     {
       key: 'tier3',
-      title: 'שלב 3 · שיחת טלפון',
-      hint: 'אימות פרטי המתעניין בשיחה טלפונית (נציג/ריטה) ומענה לשאלות הסינון',
+      title: 'סינון בשיחת טלפון',
+      hint: 'אימות פרטי המתעניין בשיחה טלפונית (נציג או AI) ומענה לשאלות הסינון',
       Icon: Phone,
       value: tier3,
       setValue: setTier3,
@@ -249,7 +249,7 @@ function RewardDialog({
             <div className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
               <div className="flex items-center gap-2">
                 <Trophy className={`h-4 w-4 ${num(tier4) > 0 ? 'text-success' : 'text-slate-400'}`} />
-                <div className="text-[12px] font-semibold text-slate-900">שלב 4 · סגירת עסקה</div>
+                <div className="text-[12px] font-semibold text-slate-900">סגירת עסקה</div>
               </div>
               <Label className="text-[11px] font-normal text-slate-500">
                 עמלת תיווך על סגירת עסקה. משולמת לשותפים בעלי רישיון תיווך בתוקף בלבד.
