@@ -59,26 +59,6 @@ const PERK_BUCKETS = [
   { label: 'מרחק מהים', icon: Waves, re: /ים|חוף|מרינה/ },
 ] as const;
 
-/** Public pages must never expose house / apartment numbers. */
-function publicAddress(raw?: string | null) {
-  if (!raw) return '';
-  return String(raw)
-    .replace(/\b(דירה|דירת|ד['׳"]|כניסה|קומה|בית|מספר)\s*\d+[א-ת]?\b/g, '')
-    .replace(/[,/]\s*\d+[א-ת]?\s*$/g, '')
-    .replace(/\s\d+[א-ת]?\b/g, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/\bד['׳"]\b/g, '')
-    .replace(/[,\s]+$/g, '')
-    .trim();
-}
-
-function publicTitle(raw?: string | null) {
-  return publicAddress(raw)
-    .replace(/\s*[,·]\s*[,·]/g, ' · ')
-    .replace(/[\s,·]+$/g, '')
-    .trim();
-}
-
 function Spec({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
     <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">

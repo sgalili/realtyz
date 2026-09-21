@@ -12,22 +12,16 @@ import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
-  street: string; deal_type: string | null; rooms: number | null; sqm: number | null; floor: number | null; total_floors: number | null;
+  street: string; house_number?: string | null; apartment_number?: string | null; deal_type: string | null; rooms: number | null; sqm: number | null; floor: number | null; total_floors: number | null;
   price: number | null; description: string | null; photos: string[];
 };
 
 type GateIntent = 'favorite' | 'details';
 const shekel = (n: number | null) => typeof n === 'number' && n > 0 ? `₪${n.toLocaleString('he-IL')}` : 'מחיר לא צוין';
 const dealLabel = (t: string | null) => t === 'rent' ? 'להשכרה' : 'למכירה';
-const stripAddressNumbers = (value: string) => value
-  .replace(/(?:,|\s)+(?:דירה|דירת|יח["׳']?|apt\.?|apartment|unit|#)\s*\d{1,4}[א-תA-Za-z]?/gi, '')
-  .replace(/\s+\d{1,4}[א-תA-Za-z]?(?=\s*(?:,|$))/g, '')
-  .replace(/\s+/g, ' ')
-  .trim();
-
 function cleanTitle(card: PublicCard) {
-  const location = [card.street ? stripAddressNumbers(card.street) : null, card.neighborhood, card.city].filter(Boolean);
-  const rawParts = String(card.title ?? '').split(/[·|,]/).map((part) => stripAddressNumbers(part.trim())).filter(Boolean);
+  const location = [card.street || null, card.neighborhood, card.city].filter(Boolean);
+  const rawParts = String(card.title ?? '').split(/[·|,]/).map((part) => part.trim()).filter(Boolean);
   const unique = Array.from(new Set([...rawParts, ...location].map((part) => String(part).trim()).filter(Boolean)));
   return unique.slice(0, 3).join(' · ') || 'נכס';
 }
@@ -156,7 +150,7 @@ export default function PublicListingsBoard() {
                     <div className="min-w-0 space-y-0.5">
                       <p className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-foreground">
                         <Home className="h-4 w-4 shrink-0 text-primary" />
-                        <span className="min-w-0 break-words">{[card.street && stripAddressNumbers(card.street), card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
+                        <span className="min-w-0 break-words">{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}${card.total_floors ? ` מתוך ${card.total_floors}` : ''}` : null].filter(Boolean).join(' · ')}</p>
                     </div>
