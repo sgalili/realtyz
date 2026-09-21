@@ -1,4 +1,4 @@
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

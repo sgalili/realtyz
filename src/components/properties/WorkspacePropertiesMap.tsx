@@ -42,6 +42,16 @@ function formatPrice(value?: number | null): string | null {
   return `₪${n.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>'"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;',
+  }[char] ?? char));
+}
+
 function getToken(): string {
   return String(import.meta.env['VITE_LOVABLE_CONNECTOR_MAPBOX_PUBLIC_TOKEN'] ?? '').trim();
 }
@@ -212,7 +222,7 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
         const price = formatPrice(property.price);
         if (property.title || price) {
           marker.setPopup(new mapboxgl.Popup({ offset: 18 }).setHTML(
-            `<div dir="rtl"><strong>${property.title}</strong>${price ? `<br>${price}` : ''}</div>`,
+            `<div dir="rtl"><strong>${escapeHtml(property.title)}</strong>${price ? `<br>${escapeHtml(price)}` : ''}</div>`,
           ));
         }
         marker.addTo(map);
