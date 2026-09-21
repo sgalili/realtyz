@@ -22,6 +22,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/properties/, title: 'נכסים' },
   { match: /^\/automations/, title: 'Automation Studio' },
   { match: /^\/campaigns/, title: 'פוסטים' },
+  { match: /^\/posts/, title: 'פוסטים' },
   { match: /^\/campaign-strategy/, title: 'אסטרטגיית קמפיין' },
   { match: /^\/approval(-queue)?/, title: 'אישור פרסומים' },
   { match: /^\/calendar/, title: 'יומן תוכן' },

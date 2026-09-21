@@ -1,6 +1,9 @@
 // Reusable share control for property results — cards, table rows, preview
 // dialog and batch selection all mint the same secure landing-page link.
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAppMode } from '@/hooks/useAppMode';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,10 +12,10 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Share2, MessageCircle, Copy, Loader2, Smartphone, Mail, ExternalLink } from 'lucide-react';
+import { Share2, MessageCircle, Copy, Loader2, Smartphone, Mail, ExternalLink, Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
 import type { UnifiedResult } from '@/lib/propertySearch';
-import { shareProperties, mintShareUrlForResult, type ShareMode } from '@/lib/propertyShare';
+import { shareProperties, mintShareUrlForResult, prepareCampaignListingIds, type ShareMode } from '@/lib/propertyShare';
 
 export function PropertyShareMenu({
   results,
@@ -31,6 +34,9 @@ export function PropertyShareMenu({
   className?: string;
   disabled?: boolean;
 }) {
+  const navigate = useNavigate();
+  const { isPartnerMode } = useAppMode();
+  const { isAffiliateOnly } = useUserRole();
   const [busy, setBusy] = useState(false);
   const [recipientMode, setRecipientMode] = useState<Exclude<ShareMode, 'copy'> | null>(null);
   const [recipientName, setRecipientName] = useState('');
@@ -71,6 +77,25 @@ export function PropertyShareMenu({
     }
   };
 
+  const publishToSocial = async () => {
+    setBusy(true);
+    try {
+      const ids = await prepareCampaignListingIds(results);
+      const params = new URLSearchParams({
+        tab: 'create',
+        channel: 'facebook',
+        properties: ids.join(','),
+        listing: ids[0],
+        fresh: '1',
+      });
+      navigate(`${isPartnerMode || isAffiliateOnly ? '/posts' : '/campaigns'}?${params.toString()}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'הכנת הנכס לפרסום ברשתות נכשלה');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
     <DropdownMenu>
@@ -92,6 +117,10 @@ export function PropertyShareMenu({
         <DropdownMenuLabel className="text-xs">
           {count > 1 ? `שיתוף ${count} נכסים` : 'שיתוף נכס'}
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void publishToSocial()} className="gap-2 text-sm">
+          <Megaphone className="h-4 w-4" /> פרסום ברשתות
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => setRecipientMode('whatsapp')} className="gap-2 text-sm">
           <MessageCircle className="h-4 w-4" /> וואטסאפ

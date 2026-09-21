@@ -18,6 +18,17 @@ export type ShareRecipient = {
   email?: string | null;
 };
 
+/** Ensures every selected property has a durable listing id for the campaign composer. */
+export async function prepareCampaignListingIds(results: UnifiedResult[]): Promise<string[]> {
+  const ids: string[] = [];
+  for (const result of results) {
+    const id = result.localId ?? await autoImportResult(result);
+    if (!id) throw new Error(`ייבוא הנכס ${resultLabel(result)} לפרסום נכשל`);
+    ids.push(id);
+  }
+  return Array.from(new Set(ids));
+}
+
 export function normalizeIlPhone(raw: string | null | undefined): string | null {
   const digits = String(raw ?? '').replace(/\D/g, '');
   if (!digits) return null;

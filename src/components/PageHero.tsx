@@ -247,6 +247,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/properties/, title: "נכסים" },
   { match: /^\/automations/, title: "Automation Studio" },
   { match: /^\/campaigns/, title: "פוסטים" },
+  { match: /^\/posts/, title: "פוסטים" },
   { match: /^\/campaign-strategy/, title: "אסטרטגיית קמפיין" },
   { match: /^\/approval(-queue)?/, title: "אישור פרסומים" },
   { match: /^\/calendar/, title: "יומן תוכן" },
@@ -305,11 +306,12 @@ export function PageHero() {
   const automationAnyOn = Boolean(affiliatePrefs.rita_auto_mode || affiliatePrefs.auto_funnel_enabled);
   const canSeeBalance = isSuperAdmin || BALANCE_OWNER_EMAILS.includes((user?.email ?? "").toLowerCase());
   const title = resolvePageTitle(location.pathname);
+  const isPostsPage = location.pathname.startsWith("/campaigns") || location.pathname.startsWith("/posts");
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
   const propertySuffix = usePropertyHeroSuffix(location.pathname);
   const campaignsTab = searchParams.get("tab") ?? "published";
-  const isCampaignsCreate = location.pathname.startsWith("/campaigns") && campaignsTab === "create";
-  const isCampaignsCalendar = location.pathname.startsWith("/campaigns") && campaignsTab === "calendar";
+  const isCampaignsCreate = isPostsPage && campaignsTab === "create";
+  const isCampaignsCalendar = isPostsPage && campaignsTab === "calendar";
   // Property-detail title renders strictly as "פרטי נכס" — no external source
   // suffix (Homely/Webtiv/Yad2/etc.) is appended.
   void propertySuffix;
@@ -336,7 +338,7 @@ export function PageHero() {
   // On /campaigns with a lead context, CampaignCenter renders its own
   // avatar+name hero — skip the default hero to avoid a stacked duplicate.
   if (
-    location.pathname.startsWith("/campaigns") &&
+    isPostsPage &&
     (searchParams.get("lead") || searchParams.get("client") || searchParams.get("voter"))
   ) {
     return null;
@@ -372,7 +374,7 @@ export function PageHero() {
               <Bot className="!h-5 !w-5" strokeWidth={2.5} />
             </Button>
           ) : null}
-          {(location.pathname.startsWith("/campaigns") || location.pathname.startsWith("/inbox")) && (
+          {(isPostsPage || location.pathname.startsWith("/inbox")) && (
             <AiResponseToggle />
           )}
           {/* Live Bright Data wallet balance — owners / super admins only. */}
@@ -427,8 +429,8 @@ export function PageHero() {
           )}
           {location.pathname === "/properties" && <PropertiesHeroAddButton />}
           {location.pathname.startsWith("/lead-crm") && <LeadsHeroAddButton />}
-          {location.pathname.startsWith("/campaigns") && !isCampaignsCreate && <CampaignsHeroSyncButton />}
-          {location.pathname.startsWith("/campaigns") && <CampaignsHeroAddButton />}
+          {isPostsPage && !isCampaignsCreate && <CampaignsHeroSyncButton />}
+          {isPostsPage && <CampaignsHeroAddButton />}
           {isPropertyDetail && (
             <Button
               size="icon"

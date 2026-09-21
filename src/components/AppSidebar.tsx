@@ -159,7 +159,7 @@ const PARTNER_NAV_ITEMS: NavItem[] = [
   },
   {
     title: 'פוסטים',
-    url: '/partner/posts',
+    url: '/posts',
     icon: Megaphone,
     iconColor: '!text-[#b45309]', // amber-700
     badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
