@@ -127,11 +127,7 @@ export default function LeadTypeFilterButton({
           className={`relative grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${active ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground' : ''} ${className}`}
         >
           <SlidersHorizontal className="h-4 w-4" />
-          {active ? (
-            <span className="absolute -top-1 start-0 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-              {active}
-            </span>
-          ) : null}
+
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="max-h-[70vh] w-80 space-y-3 overflow-y-auto p-3" dir="rtl">
