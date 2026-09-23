@@ -1423,7 +1423,7 @@ function neighborhoodOf(r: UnifiedResult): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-type SortCol = 'affiliate' | 'commission' | 'image' | 'name' | 'neighborhood' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'photos' | 'published';
+type SortCol = 'affiliate' | 'commission' | 'image' | 'name' | 'neighborhood' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'photos' | 'published' | 'publisher';
 
 /** Official Yad2 button — rendered only after the ad is verified as still live. */
 function Yad2AdButton({ url }: { url: string }) {
