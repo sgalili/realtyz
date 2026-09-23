@@ -7410,6 +7410,7 @@ export type Database = {
         Returns: Json
       }
       subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
+      track_affiliate_click: { Args: { _code: string }; Returns: undefined }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
       trigger_match_for_lead: {
         Args: { p_lead_id: string }
