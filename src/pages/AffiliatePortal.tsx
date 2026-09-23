@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Banknote,
   BedDouble,
@@ -35,6 +36,8 @@ import {
   SlidersHorizontal,
   Sparkles,
   TrendingUp,
+  XCircle,
+  UserPlus,
 } from 'lucide-react';
 import {
   Tooltip as UiTooltip,
@@ -270,7 +273,7 @@ function allPhotos(listing: MarketplaceListing): string[] {
  * navigation, badges over the image, compact meta row, and an expandable
  * details section holding the full affiliate tooling.
  */
-function MarketplaceCard({ listing, compact = false, referral }: { listing: MarketplaceListing; compact?: boolean; referral?: AffiliateReferral }) {
+function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { listing: MarketplaceListing; compact?: boolean; referral?: AffiliateReferral; leadsCount?: number }) {
   const promote = useStartPromoting();
   const { level4Unlocked } = useAffiliateLicense();
   const [link, setLink] = useState<string | null>(null);
@@ -648,6 +651,8 @@ export default function AffiliatePortal() {
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
   const { data: referralListings = [], isLoading: refListingsLoading } = useMyReferralListings();
   const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
+  const leadsForReferral = (r: AffiliateReferral) =>
+    submissions.filter((sub) => sub.referral_id === r.id || (!sub.referral_id && sub.listing_id === r.listing_id)).length;
   const { preferences, update: updatePreferences, isUpdating: preferencesUpdating } = useAffiliatePreferences();
   const { level4Unlocked } = useAffiliateLicense();
   const [search, setSearch] = useState('');
@@ -1168,7 +1173,7 @@ export default function AffiliatePortal() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredReferrals.map(({ referral, listing }) => (
-                  <MarketplaceCard key={referral.id} listing={listing!} referral={referral} />
+                  <MarketplaceCard key={referral.id} listing={listing!} referral={referral} leadsCount={leadsForReferral(referral)} />
                 ))}
               </div>
             )}
