@@ -215,6 +215,14 @@ function formatPrice(value: number, dealType: PublicListing['dealType']): string
 
 function PublicListingContent() {
   const params = useParams();
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('ref');
+    if (!code || !/^[a-z0-9]{6,32}$/i.test(code)) return;
+    const key = `realtyz:aff-click:${code}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    void (supabase as any).rpc('track_affiliate_click', { _code: code });
+  }, []);
   const slug = typeof params.slug === 'string' ? params.slug : '';
   const [refCode, setRefCode] = useState<string | null>(null);
   const [slide, setSlide] = useState(0);

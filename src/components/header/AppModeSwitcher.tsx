@@ -30,11 +30,13 @@ export function AppModeSwitcher() {
         await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
         setMode('partner');
         navigate('/affiliate-network');
+        sessionStorage.setItem('realtyz:keep-sidebar-open', '1');
         requestAnimationFrame(() => isMobile ? setOpenMobile(true) : setOpen(true));
         toast.success('עברת למצב שותף');
       } else {
         setMode('broker');
         navigate('/');
+        sessionStorage.setItem('realtyz:keep-sidebar-open', '1');
         requestAnimationFrame(() => isMobile ? setOpenMobile(true) : setOpen(true));
         toast.success('עברת למצב מתווך');
       }
