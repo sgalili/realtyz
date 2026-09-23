@@ -4000,15 +4000,7 @@ export type Database = {
           user_id?: string
           workspace_owner_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "listings_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "crm_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       market_listings: {
         Row: {
