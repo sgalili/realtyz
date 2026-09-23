@@ -67,7 +67,7 @@ type SectionTab = 'tours' | 'tasks' | 'leads' | 'demos' | 'notes' | 'calls';
 
 const TAB_LABEL: Record<SectionTab, string> = {
   tours: 'סיורים',
-  tasks: 'משימות',
+  tasks: 'מטלות',
   leads: 'לידים',
   demos: 'הדגמות',
   notes: '',
@@ -367,7 +367,7 @@ export default function CommandCenter() {
       <NewDemoDialog open={newDemoOpen} onOpenChange={setNewDemoOpen} />
 
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">משימות</h1>
+        <h1 className="text-2xl font-bold tracking-tight">מטלות</h1>
         <p className="text-sm text-muted-foreground">
           כל המעקבים, ההערות, השיחות והפרסומים שממתינים לך, לפי דחיפות ותאריך יעד.
         </p>
