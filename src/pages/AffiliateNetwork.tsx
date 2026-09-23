@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -584,14 +585,20 @@ function BrokerAffiliateNetwork() {
                 {filteredListings.map((l) => (
                   <Card
                     key={l.id}
-                    className="group cursor-pointer overflow-hidden border-slate-200 transition-shadow hover:shadow-lg"
-                    onClick={() => navigate(`/properties/${l.id}`, {
-                      state: { propertySnapshot: toUnifiedResult(l), returnTo: '/affiliate-network' },
-                    })}
+                    className="group relative cursor-pointer overflow-hidden border-slate-200 transition-shadow hover:shadow-lg"
+                    onClick={() => {
+                      if (multiSelectMode) {
+                        toggleSelectedListing(l.id);
+                        return;
+                      }
+                      navigate(`/properties/${l.id}`, {
+                        state: { propertySnapshot: toUnifiedResult(l), returnTo: '/affiliate-network' },
+                      });
+                    }}
                   >
                     {multiSelectMode ? (
                       <div className="absolute end-3 top-3 z-20" onClick={(event) => event.stopPropagation()}>
-                        <input type="checkbox" checked={selectedListingIds.has(l.id)} onChange={() => toggleSelectedListing(l.id)} aria-label="בחירת נכס" className="h-5 w-5 accent-primary" />
+                        <Checkbox checked={selectedListingIds.has(l.id)} onCheckedChange={() => toggleSelectedListing(l.id)} aria-label="בחירת נכס" className="h-5 w-5 bg-background" />
                       </div>
                     ) : null}
                     <div className="border-b px-4 pb-2 pt-3">
