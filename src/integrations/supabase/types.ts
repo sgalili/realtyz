@@ -7165,6 +7165,7 @@ export type Database = {
           listing_id: string
           publisher_logo: string
           publisher_name: string
+          publisher_user_name: string
           workspace_owner_id: string
         }[]
       }
