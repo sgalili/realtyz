@@ -73,7 +73,6 @@ export type PublicCard = {
   price: number | null;
   description: string | null;
   photos: string[];
-  property_type: string | null;
   contact_options: Record<string, unknown> | null;
   masked: true;
 };
@@ -115,7 +114,6 @@ export function toPublicCard(row: Record<string, any>): PublicCard {
     price: row.asking_price == null ? null : Number(row.asking_price),
     description: maskContactText(rawDescription).slice(0, 700) || null,
     photos: photosOf(row),
-    property_type: row.property_type == null ? null : String(row.property_type),
     contact_options: row.contact_options && typeof row.contact_options === "object"
       ? row.contact_options
       : null,
@@ -124,4 +122,4 @@ export function toPublicCard(row: Record<string, any>): PublicCard {
 }
 
 export const PUBLIC_CARD_COLUMNS =
-  "id, slug, property_title, property_type, address, house_number, apartment_number, city, neighborhood, deal_type, rooms, sqm, floor, features, asking_price, description, short_description, long_description, image_url, media_photos, contact_options, created_at, is_published, status, affiliate_enabled";
+  "id, slug, property_title, address, house_number, apartment_number, city, neighborhood, deal_type, rooms, sqm, floor, features, asking_price, description, short_description, long_description, image_url, media_photos, contact_options, created_at, is_published, status, affiliate_enabled";

@@ -17,7 +17,7 @@ export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
   street: string; house_number?: string | null; apartment_number?: string | null; deal_type: string | null; rooms: number | null; sqm: number | null; floor: number | null; total_floors: number | null;
   price: number | null; description: string | null; photos: string[];
-  property_type: string | null; contact_options: LeadContactOptions | null;
+  contact_options: LeadContactOptions | null;
 };
 
 type GateIntent = 'favorite' | 'details';
