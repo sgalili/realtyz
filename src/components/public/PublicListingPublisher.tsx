@@ -123,13 +123,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       setPublishStage('שמירת פרטי הנכס');
       const { data, error } = await supabase.from('listings').insert({
         user_id: user.id, workspace_owner_id: user.id, owner_id: user.id,
-        slug: slugFor(user.id), property_title: title, description: draftFields.description.trim(), asking_price: Number(draftFields.price),
+        slug: slugFor(user.id), property_title: title, description: draftFields.description.trim() || title, asking_price: toNum(draftFields.price) ?? 0,
         city: draftFields.city.trim(), neighborhood: draftFields.neighborhood.trim() || null, address,
         house_number: draftFields.houseNumber.trim() || null,
         apartment_number: draftFields.apartmentNumber.trim() || null,
-         deal_type: draftFields.dealType, rooms: draftFields.rooms ? Number(draftFields.rooms.replace('+', '')) : null,
-        sqm: draftFields.sqm ? Number(draftFields.sqm) : (draftFields.builtSqm ? Number(draftFields.builtSqm) : null),
-         floor: draftFields.floor ? (draftFields.floor === 'קרקע' ? 0 : Number(draftFields.floor)) : null,
+         deal_type: draftFields.dealType, rooms: toNum(draftFields.rooms),
+        sqm: toInt(draftFields.sqm) ?? toInt(draftFields.builtSqm),
+         floor: draftFields.floor === 'קרקע' ? 0 : toInt(draftFields.floor),
         features: {
           property_type: draftFields.propertyType.trim(),
           publisher_type: draftFields.publisherType,
@@ -160,7 +160,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
        setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0);
        navigate('/public-listings', { replace: true, state: { publishedListingId: (data as { id?: string } | null)?.id } });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'שגיאה לא ידועה';
+      const e = error as { message?: string; details?: string; hint?: string } | null;
+      const message = (error instanceof Error ? error.message : [e?.message, e?.details, e?.hint].filter(Boolean).join(' · ')) || 'שגיאה לא ידועה';
+      console.error('public listing publish failed', error);
       const friendly = message.includes('one active property') || message.includes('duplicate')
         ? 'בעל נכס פרטי יכול לפרסם נכס פעיל אחד בלבד'
         : message.includes('row-level security') || message.includes('permission')
@@ -404,5 +406,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     </Dialog>
   );
 }
+
+const toNum = (raw: unknown): number | null => {
+  const n = Number(String(raw ?? '').replace(/[^\d.]/g, ''));
+  return String(raw ?? '').trim() && Number.isFinite(n) ? n : null;
+};
+const toInt = (raw: unknown): number | null => { const n = toNum(raw); return n == null ? null : Math.round(n); };
 
 export default PublicListingPublisher;
