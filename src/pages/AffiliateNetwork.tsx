@@ -86,6 +86,7 @@ import { publicUrl } from "@/lib/publicUrl";
 import { supabase } from "@/integrations/supabase/client";
 import { useDeleteListings } from "@/hooks/useDeleteListings";
 import { PropertyDeleteDialog } from "@/components/properties/PropertyDeleteDialog";
+import AffiliateAutomationCards from "@/components/affiliate/AffiliateAutomationCards";
 
 const AFFILIATE_SCROLL_KEY = "affiliate-network:scroll-y";
 
@@ -518,6 +519,7 @@ function BrokerAffiliateNetwork() {
       {/* Tabs sit at the same height as on the inbox and campaigns pages:
           no local page title block, matching top offset. */}
       <div className="-mt-[25px] space-y-5" dir="rtl">
+        <AffiliateAutomationCards />
         <Tabs defaultValue="rewards">
           <div className="flex items-center gap-2">
           {/* Master multi-select checkbox sits right before the tabs, same row. */}
