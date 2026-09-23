@@ -12,8 +12,8 @@
 import { useLocation } from 'react-router-dom';
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
-  { match: /^\/$/, title: 'מטלות' },
-  { match: /^\/(command-center|tasks)/, title: 'מטלות' },
+  { match: /^\/$/, title: 'משימות' },
+  { match: /^\/(command-center|tasks)/, title: 'משימות' },
   { match: /^\/dashboard$/, title: 'לוח בקרה' },
   { match: /^\/lead-crm/, title: 'אנשי קשר' },
   { match: /^\/inbox/, title: 'תיבת הודעות' },

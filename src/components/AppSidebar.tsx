@@ -61,7 +61,7 @@ type NavItem = {
  */
 const NAV_ITEMS: NavItem[] = [
   {
-    title: 'מטלות',
+    title: 'משימות',
     url: '/',
     icon: ClipboardList,
     iconColor: '!text-[#0369a1]', // sky-700
