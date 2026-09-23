@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   BedDouble,
   ClipboardList,
@@ -33,6 +34,7 @@ import {
   TrendingUp,
   Trophy,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/properties/WhatsAppIcon";
 import { useNavigate } from "react-router-dom";
@@ -401,6 +403,7 @@ function BrokerAffiliateNetwork() {
   const { data: listings = [], isLoading: listingsLoading } = useBrokerAffiliateListings();
   const { data: referrals = [], isLoading: refsLoading } = useBrokerReferrals();
   const { data: submissions = [], isLoading: subsLoading } = useBrokerSubmissions();
+  const queryClient = useQueryClient();
   const updateSubmission = useUpdateSubmission();
   const updateReferral = useUpdateReferral();
   const quickSave = useSetAffiliateReward();
