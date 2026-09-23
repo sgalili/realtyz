@@ -17,11 +17,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Megaphone, BedDouble, Ruler, MapPin, Building2, List, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon,
-  RefreshCw, Handshake, Pencil,
+   RefreshCw, Handshake, Pencil, Trash2, ListChecks,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,6 +65,8 @@ import { AffiliateCommissionButton } from '@/components/properties/AffiliateComm
 import { AffiliateShareCell } from '@/components/properties/AffiliateShareCell';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { useAffiliateConfigs } from '@/hooks/useAffiliate';
+import { useDeleteListings } from '@/hooks/useDeleteListings';
+import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
 
 
 const PRICE_MIN = 0;
@@ -168,6 +171,10 @@ export default function Properties() {
   const [importOpen, setImportOpen] = useState(false);
   const [homelyBulkOpen, setHomelyBulkOpen] = useState(false);
   const [quickLinkSeed, setQuickLinkSeed] = useState<string | null>(null);
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [selectedListingIds, setSelectedListingIds] = useState<Set<string>>(new Set());
+  const [deleteTargetIds, setDeleteTargetIds] = useState<string[]>([]);
+  const deleteListings = useDeleteListings();
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -554,6 +561,34 @@ export default function Properties() {
     }
   };
 
+  const toggleSelectedListing = useCallback((id: string) => {
+    setSelectedListingIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const confirmDeleteListings = useCallback(async () => {
+    const ids = deleteTargetIds;
+    if (!ids.length) return;
+    try {
+      await deleteListings.mutateAsync(ids);
+      setResults((current) => current.filter((row) => !row.localId || !ids.includes(row.localId)));
+      defaultPoolRef.current.clear();
+      setSelectedListingIds((current) => {
+        const next = new Set(current);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+      setDeleteTargetIds([]);
+      if (selectedListingIds.size <= ids.length) setMultiSelectMode(false);
+      toast.success(ids.length > 1 ? `${ids.length} נכסים נמחקו` : 'הנכס נמחק');
+    } catch (error) {
+      toast.error('מחיקת הנכס נכשלה', { description: error instanceof Error ? error.message : undefined });
+    }
+  }, [deleteListings, deleteTargetIds, selectedListingIds.size]);
+
   const cityOptions = useMemo(() => {
     const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
     results.forEach((r) => { if (r.city) cities.add(r.city); });
@@ -931,9 +966,31 @@ export default function Properties() {
 
           {/* Side B — single mutually-exclusive view switch */}
           <div className="ms-auto inline-flex items-center">
+            <Button
+              type="button"
+              size="sm"
+              variant={multiSelectMode ? 'default' : 'outline'}
+              className="me-2 h-8 gap-1.5 text-xs"
+              onClick={() => {
+                setMultiSelectMode((current) => !current);
+                setSelectedListingIds(new Set());
+              }}
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              בחירה מרובה
+            </Button>
             <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
           </div>
         </div>
+
+        {multiSelectMode && selectedListingIds.size > 0 ? (
+          <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+            <span className="text-sm font-semibold">נבחרו {selectedListingIds.size} נכסים</span>
+            <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}>
+              <Trash2 className="h-4 w-4" /> מחיקת הנבחרים
+            </Button>
+          </div>
+        ) : null}
 
 
 
@@ -1048,6 +1105,10 @@ export default function Properties() {
                 importingKey={importingKey}
                 onSelect={handleSelect}
                 onCampaign={goToCampaign}
+                selectionMode={multiSelectMode}
+                selectedIds={selectedListingIds}
+                onToggleSelected={toggleSelectedListing}
+                onDelete={(result) => result.localId && setDeleteTargetIds([result.localId])}
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1058,6 +1119,10 @@ export default function Properties() {
                     importing={importingKey === r.key}
                     onSelect={() => handleSelect(r)}
                     onCampaign={() => goToCampaign(r)}
+                    selectionMode={multiSelectMode}
+                    selected={Boolean(r.localId && selectedListingIds.has(r.localId))}
+                    onToggleSelected={r.localId ? () => toggleSelectedListing(r.localId as string) : undefined}
+                    onDelete={r.localId ? () => setDeleteTargetIds([r.localId as string]) : undefined}
                   />
                 ))}
               </div>
@@ -1090,6 +1155,13 @@ export default function Properties() {
         steps={importSteps}
         onDone={() => { runSearch(); }}
       />
+      <PropertyDeleteDialog
+        count={deleteTargetIds.length}
+        open={deleteTargetIds.length > 0}
+        deleting={deleteListings.isPending}
+        onOpenChange={(open) => { if (!open) setDeleteTargetIds([]); }}
+        onConfirm={confirmDeleteListings}
+      />
     </div>
   );
 }
@@ -1099,11 +1171,19 @@ function ResultCard({
   importing,
   onSelect,
   onCampaign,
+  selectionMode = false,
+  selected = false,
+  onToggleSelected,
+  onDelete,
 }: {
   result: UnifiedResult;
   importing: boolean;
   onSelect: () => void;
   onCampaign?: () => void;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelected?: () => void;
+  onDelete?: () => void;
 }) {
 
   const [pulledPhotos, setPulledPhotos] = useState<string[] | null>(null);
@@ -1158,7 +1238,12 @@ function ResultCard({
 
 
   return (
-    <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow cursor-pointer relative" onClick={onSelect}>
+    <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow cursor-pointer relative" onClick={selectionMode && onToggleSelected ? onToggleSelected : onSelect}>
+      {selectionMode && onToggleSelected ? (
+        <div className="absolute end-3 top-3 z-30" onClick={(event) => event.stopPropagation()}>
+          <Checkbox checked={selected} onCheckedChange={onToggleSelected} aria-label="בחירת נכס" className="h-5 w-5 bg-background" />
+        </div>
+      ) : null}
       {/* Dedicated full-width title row — always the first element of the card. */}
       <div className="w-full px-4 pt-3 pb-2 border-b">
         <h3 className="w-full font-semibold text-base leading-tight truncate" title={result.title}>
@@ -1307,6 +1392,11 @@ function ResultCard({
               : (<span className="text-sm font-semibold text-amber-600">פרטים חסרים</span>)}
           </div>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            {onDelete && !selectionMode ? (
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDelete} title="מחיקת נכס" aria-label="מחיקת נכס">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : null}
             <PropertyShareMenu results={[result]} />
             {result.localId ? <AffiliateCommissionButton listingId={result.localId} /> : null}
             {onCampaign && (
@@ -1376,6 +1466,10 @@ export function ResultTable({
   publishedAt,
   publishedLabel = 'תאריך פרסום/עדכון',
   showPropertyNotes = true,
+  selectionMode = false,
+  selectedIds,
+  onToggleSelected,
+  onDelete,
 }: {
   results: UnifiedResult[];
   importingKey: string | null;
@@ -1398,6 +1492,10 @@ export function ResultTable({
   publishedLabel?: string;
   /** Internal office notes must never render on partner-facing tables. */
   showPropertyNotes?: boolean;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelected?: (id: string) => void;
+  onDelete?: (r: UnifiedResult) => void;
 }) {
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -1416,6 +1514,7 @@ export function ResultTable({
       ? <AffiliateShareCell listingId={r.localId} config={affiliateConfigs?.get(r.localId)} />
       : null));
   const showAffiliateColumn = !!affiliateCell || (!hideDefaultActions && localIds.length > 0);
+  const allSelected = localIds.length > 0 && localIds.every((id) => selectedIds?.has(id));
 
   const toggleSort = (col: SortCol) => {
     if (sortCol === col) {
@@ -1481,10 +1580,19 @@ export function ResultTable({
   );
 
   return (
-    <Card className="overflow-x-auto max-w-full w-full">
-      <table className="w-full text-[15px]" dir="rtl">
+    <Card className="max-w-full w-full overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
+      <table className="w-full min-w-max text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
+            {selectionMode ? (
+              <th className="sticky right-0 z-10 w-10 bg-muted/95 px-3 py-2">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={() => localIds.forEach((id) => { if (allSelected || !selectedIds?.has(id)) onToggleSelected?.(id); })}
+                  aria-label="בחירת כל הנכסים"
+                />
+              </th>
+            ) : null}
             {showAffiliateColumn ? <HeaderCell col="affiliate" label="שותפים" /> : null}
             {commissionCell ? <HeaderCell col="commission" label="עמלות" /> : null}
             <HeaderCell col="image" label="תמונה" extraClass="w-14" />
@@ -1513,7 +1621,12 @@ export function ResultTable({
             const rowNotes = showPropertyNotes && r.localId ? notesByListing.get(r.localId) : undefined;
             return (
               <Fragment key={r.key}>
-              <tr className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
+              <tr className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => selectionMode && r.localId && onToggleSelected ? onToggleSelected(r.localId) : onSelect(r)}>
+                {selectionMode ? (
+                  <td className="sticky right-0 z-10 bg-background px-3 py-1.5" onClick={(event) => event.stopPropagation()}>
+                    {r.localId ? <Checkbox checked={selectedIds?.has(r.localId)} onCheckedChange={() => onToggleSelected?.(r.localId as string)} aria-label="בחירת נכס" /> : null}
+                  </td>
+                ) : null}
                 {showAffiliateColumn ? (
                   <td className="px-2 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>{renderAffiliate(r)}</td>
                 ) : null}
@@ -1628,6 +1741,11 @@ export function ResultTable({
                         <Pencil className="h-4 w-4" />
                       </Button>
                     ) : null}
+                    {onDelete ? (
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" title="מחיקת נכס" aria-label="מחיקת נכס" onClick={() => onDelete(r)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : null}
                     {showAffiliateColumn ? null : onAffiliate ? (
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="הגדר שיווק שותפים" aria-label="הגדר שיווק שותפים" onClick={() => onAffiliate(r)}>
                         <Handshake className="h-4 w-4" />
@@ -1640,7 +1758,7 @@ export function ResultTable({
               </tr>
               {rowNotes && rowNotes.length > 0 && (
                 <tr className="border-t-0 bg-muted/20">
-                  <td className="px-2 pb-2" colSpan={13 + (showAffiliateColumn ? 1 : 0) + (commissionCell ? 1 : 0)}>
+                  <td className="px-2 pb-2" colSpan={13 + (showAffiliateColumn ? 1 : 0) + (commissionCell ? 1 : 0) + (selectionMode ? 1 : 0)}>
                     <PropertyNotesBlock notes={rowNotes} />
                   </td>
                 </tr>
