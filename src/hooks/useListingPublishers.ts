@@ -7,7 +7,7 @@ export type ListingPublisher = { name: string; logo: string | null; userName: st
 export function useListingPublishers(listingIds: string[]) {
   const ids = [...new Set(listingIds)].sort();
   return useQuery({
-    queryKey: ["listing-publishers", ids],
+    queryKey: ["listing-publishers-v2", ids],
     enabled: ids.length > 0,
     staleTime: 5 * 60_000,
     queryFn: async () => {
