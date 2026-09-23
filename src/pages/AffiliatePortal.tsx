@@ -931,13 +931,8 @@ export default function AffiliatePortal() {
               propertyTypes={propertyTypes}
             />
           </div>
-          {activeTab === 'marketplace' ? (
-            <Button type="button" size="icon" variant={activeFilterCount ? 'default' : 'outline'} onClick={() => setFiltersOpen(true)} className="relative shrink-0" aria-label="סינון נכסים" title="סינון נכסים">
-              <SlidersHorizontal className="h-4 w-4" />
-              {activeFilterCount ? <span className="absolute -left-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{activeFilterCount}</span> : null}
-            </Button>
-          ) : null}
         </div>
+
 
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3">
