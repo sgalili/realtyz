@@ -1638,9 +1638,9 @@ export function ResultTable({
                     return (
                       <span className="inline-flex max-w-[11rem] items-center gap-1.5">
                         {pub.logo ? (
-                          <img src={pub.logo} alt="" loading="lazy" className="h-6 w-6 shrink-0 rounded-full border border-border/60 bg-background object-contain" />
+                          <img src={pub.logo} alt="" loading="lazy" className="h-6 w-6 shrink-0 rounded-md border border-border/60 bg-background object-contain" />
                         ) : (
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">{pub.name.slice(0, 1)}</span>
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-[11px] font-bold text-muted-foreground">{pub.name.slice(0, 1)}</span>
                         )}
                         <span className="flex min-w-0 flex-col leading-tight">
                           <span className="truncate text-sm" title={pub.name}>{pub.name}</span>

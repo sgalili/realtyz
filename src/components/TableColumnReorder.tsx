@@ -40,7 +40,7 @@ function stampRow(row: HTMLTableRowElement) {
 
 function applyOrder(row: HTMLTableRowElement, order: number[]) {
   const cells = cellsOf(row);
-  if (cells.some((c) => c.colSpan > 1)) return;
+  if (cells.some((c) => (c as HTMLTableCellElement).colSpan > 1)) return;
   stampRow(row);
   const byOrig = new Map(cells.map((c) => [Number(c.getAttribute(ORIG)), c]));
   const sequence: HTMLElement[] = [];
