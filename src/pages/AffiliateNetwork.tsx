@@ -516,7 +516,18 @@ function BrokerAffiliateNetwork() {
           no local page title block, matching top offset. */}
       <div className="-mt-[25px] space-y-5" dir="rtl">
         <Tabs defaultValue="rewards">
-          <TabsList className="mx-auto grid h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+          <div className="flex items-center gap-2">
+          {/* Master multi-select checkbox sits right before the tabs, same row. */}
+          <Checkbox
+            checked={multiSelectMode}
+            onCheckedChange={(checked) => {
+              setMultiSelectMode(Boolean(checked));
+              if (!checked) setSelectedListingIds(new Set());
+            }}
+            aria-label="בחירה מרובה"
+            className="h-5 w-5 shrink-0"
+          />
+          <TabsList className="mx-auto grid flex-1 h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
             <TabsTrigger
               value="rewards"
               className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
@@ -536,19 +547,10 @@ function BrokerAffiliateNetwork() {
               לידים ({submissions.length})
             </TabsTrigger>
           </TabsList>
+          </div>
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
             <div className="flex items-center gap-3">
-              {/* Unlabelled multi-select checkbox sits to the right of the search field (RTL). */}
-              <Checkbox
-                checked={multiSelectMode}
-                onCheckedChange={(checked) => {
-                  setMultiSelectMode(Boolean(checked));
-                  if (!checked) setSelectedListingIds(new Set());
-                }}
-                aria-label="בחירה מרובה"
-                className="h-5 w-5 shrink-0"
-              />
               {/* Magnifier at the start of the field, filter button at the end. */}
               <div className="flex h-10 max-w-sm flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
                 <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1025,12 +1027,31 @@ function BrokerAffiliateNetwork() {
                             שותף: {r.affiliate?.display_name || "שותף ללא שם"}
                             {" · "}
                             {r.clicks} כניסות
+                            {" · "}
+                            {submissions.filter((sub: any) => sub.referral_id === r.id).length} לידים
                           </div>
                         </div>
 
                         <div className="text-sm font-bold text-emerald-700">
                           {formatReward(r.reward_type, r.reward_amount)}
                         </div>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          title="הסרה מהשיווק"
+                          aria-label="הסרה מהשיווק"
+                          onClick={async () => {
+                            if (!window.confirm("להסיר את הנכס מהשיווק של השותף?")) return;
+                            const { error } = await supabase.from("affiliate_referrals").delete().eq("id", r.id);
+                            if (error) { toast.error(error.message); return; }
+                            toast.success("הנכס הוסר מהשיווק");
+                            queryClient.invalidateQueries();
+                          }}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
                       </div>
 
                       {r.lead && (
