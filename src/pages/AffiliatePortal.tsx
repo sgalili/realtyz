@@ -956,7 +956,14 @@ export default function AffiliatePortal() {
         )}
 
 
-        <div className="mt-4 flex max-w-lg items-center gap-2">
+        <div className="mt-4 flex max-w-lg items-center gap-3">
+          <Checkbox
+            checked={multiSelectMode}
+            onCheckedChange={(checked) => { setMultiSelectMode(Boolean(checked)); if (!checked) setSelectedIds(new Set()); }}
+            aria-label="בחירה מרובה"
+            title="בחירה מרובה"
+            className="h-5 w-5 shrink-0"
+          />
           {/* Magnifier at the start of the field, filter button at the end. */}
           <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
             <Search className="h-4 w-4 shrink-0 text-slate-400" />
@@ -977,14 +984,6 @@ export default function AffiliatePortal() {
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
-            {/* Master multi-select checkbox sits right before the tabs, same row. */}
-            <Checkbox
-              checked={multiSelectMode}
-              onCheckedChange={(checked) => { setMultiSelectMode(Boolean(checked)); if (!checked) setSelectedIds(new Set()); }}
-              aria-label="בחירה מרובה"
-              title="בחירה מרובה"
-              className="h-5 w-5 shrink-0"
-            />
             <TabsList>
               <TabsTrigger value="marketplace">נכסים ({marketplace.length})</TabsTrigger>
               <TabsTrigger value="leads">לידים ({submissions.length})</TabsTrigger>

@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { ClipboardList, Loader2, Phone, Share2 } from 'lucide-react';
+import { ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
-import { officialWaLink } from '@/lib/officialWa';
+import { officialWaLink, openWhatsAppContactPicker } from '@/lib/officialWa';
+import { openExternal } from '@/lib/openExternal';
 import { supabase } from '@/integrations/supabase/client';
 import type { LeadContactOptions } from '@/lib/leadTiers';
 
@@ -58,16 +60,29 @@ export default function PropertyContactActions({
   // exact property (type, street + house number, city) with zero questions.
   const waMessage = premsg?.trim() || `היי ריטה, אשמח לקבל פרטים אודות ${title}.`;
 
-  const share = async () => {
+  const shareDetails = () => {
     const url = shareUrl?.trim() || (typeof window !== 'undefined' ? window.location.href : '');
+    return { url, text: `${title}\n${url}` };
+  };
+
+  const share = async (channel: 'whatsapp' | 'sms' | 'email' | 'copy' | 'native') => {
+    const { url, text } = shareDetails();
     if (!url) return;
     try {
-      if (navigator.share) {
+      if (channel === 'native' && navigator.share) {
         await navigator.share({ title, url });
         return;
       }
-      await navigator.clipboard.writeText(url);
-      toast.success('הקישור הועתק');
+      if (channel === 'whatsapp') {
+        openWhatsAppContactPicker(text);
+      } else if (channel === 'sms') {
+        openExternal(`sms:?&body=${encodeURIComponent(text)}`);
+      } else if (channel === 'email') {
+        openExternal(`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}`);
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success('הקישור הועתק');
+      }
     } catch {
       /* the visitor cancelled, or the clipboard is blocked */
     }
@@ -107,7 +122,7 @@ export default function PropertyContactActions({
 
   return (
     <>
-      <div className={compact ? 'flex w-full items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur'}>
+      <div onClick={(event) => event.stopPropagation()} className={compact ? 'flex w-full items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur'}>
         {primaryMode === 'whatsapp' && (
           <Button className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90" onClick={() => setMode('whatsapp')}>
             <>
@@ -128,9 +143,26 @@ export default function PropertyContactActions({
             <ClipboardList className="h-4 w-4" />השארת פרטים
           </Button>
         )}
-        {showShare && <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => void share()}>
-          <Share2 className="h-4 w-4" />שיתוף
-        </Button>}
+        {showShare && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size={compact ? 'icon' : 'default'} className={compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1'} aria-label="שיתוף נכס">
+                <Share2 className="h-4 w-4" />{compact ? null : 'שיתוף'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 text-right">
+              <DropdownMenuLabel className="text-xs">שיתוף נכס</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2" onSelect={() => void share('whatsapp')}><MessageCircle className="h-4 w-4" />וואטסאפ</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => void share('sms')}><Smartphone className="h-4 w-4" />SMS</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => void share('email')}><Mail className="h-4 w-4" />אימייל</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => void share('copy')}><Copy className="h-4 w-4" />העתק קישור</DropdownMenuItem>
+              {typeof navigator !== 'undefined' && navigator.share ? (
+                <DropdownMenuItem onSelect={() => void share('native')}>אפשרויות נוספות</DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent dir="rtl" className="sm:max-w-md">

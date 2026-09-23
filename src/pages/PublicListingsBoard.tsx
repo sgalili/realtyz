@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Search, Send } from 'lucide-react';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
+import { publicUrl } from '@/lib/publicUrl';
 import type { LeadContactOptions } from '@/lib/leadTiers';
 
 export type PublicCard = {
@@ -37,10 +39,10 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
   return (
     <div className="group relative h-48 overflow-hidden bg-muted">
       <img src={photos[index]} alt={alt} loading="lazy" className="h-full w-full object-cover" />
-      <Button type="button" size="icon" variant="ghost" onClick={onFavorite} aria-label="שמירה במועדפים" className="absolute left-2 top-2 h-9 w-9 bg-transparent text-destructive shadow-none hover:bg-background/30"><Heart className="h-5 w-5" /></Button>
+      <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label="שמירה במועדפים" className="absolute left-2 top-2 h-9 w-9 bg-transparent text-destructive shadow-none hover:bg-background/30"><Heart className="h-5 w-5" /></Button>
       {photos.length > 1 && <>
-        <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={() => move(-1)} className="absolute start-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
-        <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={() => move(1)} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronLeft className="h-5 w-5" /></Button>
+        <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={(event) => { event.stopPropagation(); move(-1); }} className="absolute start-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
+        <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={(event) => { event.stopPropagation(); move(1); }} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronLeft className="h-5 w-5" /></Button>
         <span className="absolute top-2 right-2 rounded-full bg-background/90 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>
       </>}
     </div>
@@ -48,6 +50,7 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
 }
 
 export default function PublicListingsBoard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [cards, setCards] = useState<PublicCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,7 +151,8 @@ export default function PublicListingsBoard() {
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3')}>
             {filtered.map((card) => {
               const title = cleanTitle(card);
-              return <article key={card.id} className={cn('overflow-hidden rounded-lg border bg-card shadow-sm', !grid && 'grid grid-cols-[120px_1fr] sm:grid-cols-[240px_1fr]')}>
+              const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
+              return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className={cn('cursor-pointer overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !grid && 'grid grid-cols-[120px_1fr] sm:grid-cols-[240px_1fr]')}>
                 <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />
                 <div className="space-y-2 p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -172,7 +176,8 @@ export default function PublicListingsBoard() {
                        premsg={ritaPropertyPremsg(card)}
                        options={card.contact_options}
                        compact
-                       showShare={false}
+                        shareUrl={publicUrl(propertyPath)}
+                        showShare
                      />
                    </div>
                 </div>
