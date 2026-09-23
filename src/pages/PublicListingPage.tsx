@@ -204,7 +204,7 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
     longitude: Number.isFinite(Number(row?.longitude)) && Number(row?.longitude) !== 0 ? Number(row.longitude) : null,
     addressForMap: addressMapQuery(row ?? {}),
     premsg: ritaPropertyPremsg(row ?? {}),
-    contactOptions: row?.contact_options && typeof row.contact_options === 'object' ? row.contact_options : { digital: false, whatsapp: true, phone: false },
+    contactOptions: row?.contact_options && typeof row.contact_options === 'object' ? row.contact_options : null,
   };
 }
 
@@ -358,7 +358,7 @@ function PublicListingContent() {
               </div>
             )}
             {data.dealType && (
-              <Badge className={`absolute end-3 top-3 border-0 font-bold shadow-sm ${data.dealType === 'rent' ? 'bg-success text-success-foreground' : 'bg-orange-500 text-white hover:bg-orange-500'}`}>{data.dealType === 'rent' ? 'להשכרה' : 'למכירה'}</Badge>
+              <Badge className={`absolute end-3 top-3 border-0 font-bold shadow-sm ${data.dealType === 'rent' ? 'bg-success text-success-foreground' : 'bg-sale text-sale-foreground hover:bg-sale'}`}>{data.dealType === 'rent' ? 'להשכרה' : 'למכירה'}</Badge>
             )}
           </div>
 

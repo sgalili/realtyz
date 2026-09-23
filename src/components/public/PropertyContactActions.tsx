@@ -27,17 +27,27 @@ export default function PropertyContactActions({
   options,
   premsg,
   shareUrl,
+  compact = false,
+  showShare = true,
 }: {
   listingId: string;
   title: string;
   options?: ContactOptions | null;
   premsg?: string | null;
   shareUrl?: string | null;
+  compact?: boolean;
+  showShare?: boolean;
 }) {
-  const settings = options ?? { digital: false, whatsapp: true, phone: false };
-  // The form appears ONLY for level-1 ads. Chat and call flows collect name +
-  // phone themselves, so the form never shows next to them.
-  const showDigital = settings.digital === true && settings.whatsapp !== true && settings.phone !== true;
+  const settings = options ?? {};
+  // A listing exposes one publisher-defined path only. Prefer the highest
+  // configured tier when old records contain more than one true value.
+  const primaryMode: 'digital' | 'whatsapp' | 'phone' | null = settings.phone === true
+    ? 'phone'
+    : settings.whatsapp === true
+      ? 'whatsapp'
+      : settings.digital === true
+        ? 'digital'
+        : null;
   const [mode, setMode] = useState<'digital' | 'phone' | 'whatsapp' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -97,8 +107,8 @@ export default function PropertyContactActions({
 
   return (
     <>
-      <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur">
-        {settings.whatsapp === true && (
+      <div className={compact ? 'flex w-full items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur'}>
+        {primaryMode === 'whatsapp' && (
           <Button className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90" onClick={() => setMode('whatsapp')}>
             <>
               <WhatsAppIcon className="h-5 w-5" />
@@ -108,19 +118,19 @@ export default function PropertyContactActions({
             </>
           </Button>
         )}
-        {settings.phone === true && (
+        {primaryMode === 'phone' && (
           <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => setMode('phone')}>
             <Phone className="h-4 w-4" />חייגו אליי
           </Button>
         )}
-        {showDigital && (
+        {primaryMode === 'digital' && (
           <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => setMode('digital')}>
             <ClipboardList className="h-4 w-4" />השארת פרטים
           </Button>
         )}
-        <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => void share()}>
+        {showShare && <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => void share()}>
           <Share2 className="h-4 w-4" />שיתוף
-        </Button>
+        </Button>}
       </div>
       <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent dir="rtl" className="sm:max-w-md">
