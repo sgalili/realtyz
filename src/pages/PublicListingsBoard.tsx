@@ -49,7 +49,7 @@ export default function PublicListingsBoard() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [deal, setDeal] = useState<'all' | 'sale' | 'rent'>('all');
-  const [grid, setGrid] = useState(true);
+  const [grid, setGrid] = useState(false);
   const [gate, setGate] = useState<{ card: PublicCard; intent: GateIntent } | null>(null);
   const [form, setForm] = useState({ name: '', phone: '' });
   const [sending, setSending] = useState(false);

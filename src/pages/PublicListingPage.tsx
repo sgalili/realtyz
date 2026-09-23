@@ -349,7 +349,7 @@ function PublicListingContent() {
               </div>
             )}
             {data.dealType && (
-              <Badge className="absolute end-3 top-3">{data.dealType === 'rent' ? 'להשכרה' : 'למכירה'}</Badge>
+              <Badge className={`absolute end-3 top-3 border-0 font-bold shadow-sm ${data.dealType === 'rent' ? 'bg-success text-success-foreground' : 'bg-orange-500 text-white hover:bg-orange-500'}`}>{data.dealType === 'rent' ? 'להשכרה' : 'למכירה'}</Badge>
             )}
           </div>
 
