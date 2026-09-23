@@ -4,40 +4,53 @@
 //   set the reward (fixed ILS or percent of commission) paid on a signed deal.
 // Tab 2 "אנשי קשר משותפים" — full tracking CRM of every affiliate-generated
 //   referral: status funnel, source affiliate, linked lead, and settlement.
-import { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useEffect, useMemo, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ViewModeSwitch } from "@/components/ui/view-mode-switch";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  BedDouble,
+  ClipboardList,
+  Handshake,
+  LayoutGrid,
+  List,
+  ListChecks,
+  MapPin,
+  Phone,
+  Ruler,
+  Search,
+  SquareArrowOutUpLeft,
+  TrendingUp,
+  Trophy,
+  Trash2,
+} from "lucide-react";
+import { WhatsAppIcon } from "@/components/properties/WhatsAppIcon";
+import { useNavigate } from "react-router-dom";
+import CommissionTierBadges from "@/components/affiliate/CommissionTierBadges";
+import LeadTypeFilterButton from "@/components/affiliate/LeadTypeFilterButton";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { toast } from 'sonner';
-import { BedDouble, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy, Trash2 } from 'lucide-react';
-import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
-import { useNavigate } from 'react-router-dom';
-import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
-import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
-import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, leadFilterActiveCount, leadTierAmounts, matchesLeadFilter, matchesPropertyFilter, propertyFilterActiveCount, type LeadFilterState, type PropertyFilterState } from '@/lib/leadTypeFilter';
-import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
-import { defaultQuestions, deriveContactOptions, leadCost } from '@/lib/leadTiers';
+  EMPTY_LEAD_FILTER,
+  EMPTY_PROPERTY_FILTER,
+  leadFilterActiveCount,
+  leadTierAmounts,
+  matchesLeadFilter,
+  matchesPropertyFilter,
+  propertyFilterActiveCount,
+  type LeadFilterState,
+  type PropertyFilterState,
+} from "@/lib/leadTypeFilter";
+import LeadQuestionsDialog from "@/components/affiliate/LeadQuestionsDialog";
+import { defaultQuestions, deriveContactOptions, leadCost } from "@/lib/leadTiers";
 
 import {
   SUBMISSION_STATUS_LABELS,
@@ -58,32 +71,32 @@ import {
   type ReferralStatus,
   type RewardType,
   type SettlementStatus,
-} from '@/hooks/useAffiliate';
-import { fmtILS } from '@/lib/formatCurrency';
-import { PropertyThumb, propertyFullAddress } from '@/components/leads/LinkedPropertiesField';
-import ContactAvatar from '@/components/contacts/ContactAvatar';
-import type { UnifiedResult } from '@/lib/propertySearch';
-import { ResultTable } from '@/pages/Properties';
-import AffiliatePortal from '@/pages/AffiliatePortal';
-import { useUserRole } from '@/hooks/useUserRole';
-import { useAppMode } from '@/hooks/useAppMode';
-import { publicUrl } from '@/lib/publicUrl';
-import { supabase } from '@/integrations/supabase/client';
-import { useDeleteListings } from '@/hooks/useDeleteListings';
-import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
+} from "@/hooks/useAffiliate";
+import { fmtILS } from "@/lib/formatCurrency";
+import { PropertyThumb, propertyFullAddress } from "@/components/leads/LinkedPropertiesField";
+import ContactAvatar from "@/components/contacts/ContactAvatar";
+import type { UnifiedResult } from "@/lib/propertySearch";
+import { ResultTable } from "@/pages/Properties";
+import AffiliatePortal from "@/pages/AffiliatePortal";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useAppMode } from "@/hooks/useAppMode";
+import { publicUrl } from "@/lib/publicUrl";
+import { supabase } from "@/integrations/supabase/client";
+import { useDeleteListings } from "@/hooks/useDeleteListings";
+import { PropertyDeleteDialog } from "@/components/properties/PropertyDeleteDialog";
 
-const AFFILIATE_SCROLL_KEY = 'affiliate-network:scroll-y';
+const AFFILIATE_SCROLL_KEY = "affiliate-network:scroll-y";
 
 function listingPhotos(listing: BrokerAffiliateListing): string[] {
   const urls: string[] = [];
   if (listing.image_url) urls.push(listing.image_url);
   if (Array.isArray(listing.media_photos)) {
     for (const item of listing.media_photos) {
-      if (typeof item === 'string' && item.trim()) urls.push(item.trim());
-      else if (item && typeof item === 'object') {
+      if (typeof item === "string" && item.trim()) urls.push(item.trim());
+      else if (item && typeof item === "object") {
         const row = item as Record<string, unknown>;
         const candidate = row.url ?? row.src ?? row.image_url ?? row.image;
-        if (typeof candidate === 'string' && candidate.trim()) urls.push(candidate.trim());
+        if (typeof candidate === "string" && candidate.trim()) urls.push(candidate.trim());
       }
     }
   }
@@ -91,13 +104,13 @@ function listingPhotos(listing: BrokerAffiliateListing): string[] {
 }
 
 function toUnifiedResult(listing: BrokerAffiliateListing): UnifiedResult {
-  const dealType = listing.deal_type === 'rent' ? 'rent' : 'sale';
+  const dealType = listing.deal_type === "rent" ? "rent" : "sale";
   return {
     key: `mine:${listing.id}`,
-    source: 'mine',
-    sources: ['mine'],
+    source: "mine",
+    sources: ["mine"],
     localId: listing.id,
-    title: listing.property_title || propertyFullAddress(listing) || 'נכס ללא כותרת',
+    title: listing.property_title || propertyFullAddress(listing) || "נכס ללא כותרת",
     description: listing.description,
     price: listing.asking_price,
     city: listing.city,
@@ -109,7 +122,7 @@ function toUnifiedResult(listing: BrokerAffiliateListing): UnifiedResult {
     photos: listingPhotos(listing),
     url: listing.source_url,
     listing_type: dealType,
-    property_type: 'apartment',
+    property_type: "apartment",
     raw: listing,
     created_at: listing.affiliate_approved_at,
     updated_at: listing.affiliate_approved_at,
@@ -126,74 +139,89 @@ function RewardDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const save = useSetAffiliateReward();
-  const zeroToEmpty = (v: unknown) => (v == null || Number(v) === 0 ? '' : String(v));
+  const zeroToEmpty = (v: unknown) => (v == null || Number(v) === 0 ? "" : String(v));
   const [enabled, setEnabled] = useState(false);
-  const [rewardType, setRewardType] = useState<RewardType>('fixed');
-  const [amount, setAmount] = useState('');
-  const [tier1, setTier1] = useState('');
-  const [tier2, setTier2] = useState('');
-  const [tier3, setTier3] = useState('');
-  const [tier4Type, setTier4Type] = useState<RewardType>('fixed');
-  const [tier4, setTier4] = useState('');
+  const [rewardType, setRewardType] = useState<RewardType>("fixed");
+  const [amount, setAmount] = useState("");
+  const [tier1, setTier1] = useState("");
+  const [tier2, setTier2] = useState("");
+  const [tier3, setTier3] = useState("");
+  const [tier4Type, setTier4Type] = useState<RewardType>("fixed");
+  const [tier4, setTier4] = useState("");
   const [questions, setQuestions] = useState<string[]>([]);
   const [questionsPhone, setQuestionsPhone] = useState<string[]>([]);
-  const [editingQuestions, setEditingQuestions] = useState<null | 'chat' | 'phone'>(null);
-  const [recommendation, setRecommendation] = useState<{ tier1_median?: number; tier2_median?: number; sample_size?: number } | null>(null);
+  const [editingQuestions, setEditingQuestions] = useState<null | "chat" | "phone">(null);
+  const [recommendation, setRecommendation] = useState<{
+    tier1_median?: number;
+    tier2_median?: number;
+    sample_size?: number;
+  } | null>(null);
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
   // Sync form state to the listing being edited (render-time, no effect needed).
   if (listing && hydratedFor !== listing.id) {
     setHydratedFor(listing.id);
     setEnabled(listing.affiliate_enabled);
-    setRewardType(listing.affiliate_reward_type ?? 'fixed');
+    setRewardType(listing.affiliate_reward_type ?? "fixed");
     setAmount(zeroToEmpty(listing.affiliate_reward_amount));
     setTier1(zeroToEmpty(listing.affiliate_tier1_amount));
     setTier2(zeroToEmpty(listing.affiliate_tier2_amount));
     setTier3(zeroToEmpty(listing.affiliate_tier3_amount));
-    setTier4Type((listing.affiliate_tier4_type ?? 'fixed') as RewardType);
+    setTier4Type((listing.affiliate_tier4_type ?? "fixed") as RewardType);
     setTier4(zeroToEmpty(listing.affiliate_tier4_amount));
-    const options = listing.contact_options && typeof listing.contact_options === 'object' ? listing.contact_options : {};
-    const base = Array.isArray(options.questions) && options.questions.length ? options.questions : defaultQuestions(listing.deal_type);
+    const options =
+      listing.contact_options && typeof listing.contact_options === "object" ? listing.contact_options : {};
+    const base =
+      Array.isArray(options.questions) && options.questions.length
+        ? options.questions
+        : defaultQuestions(listing.deal_type);
     setQuestions(base);
-    setQuestionsPhone(Array.isArray(options.questions_phone) && options.questions_phone.length ? options.questions_phone : base);
-    void supabase.rpc('get_lead_price_recommendation', { _city: listing.city || undefined, _deal_type: listing.deal_type === 'rent' ? 'rent' : 'sale' }).then(({ data }) => setRecommendation((Array.isArray(data) ? data[0] : data) as typeof recommendation));
+    setQuestionsPhone(
+      Array.isArray(options.questions_phone) && options.questions_phone.length ? options.questions_phone : base,
+    );
+    void supabase
+      .rpc("get_lead_price_recommendation", {
+        _city: listing.city || undefined,
+        _deal_type: listing.deal_type === "rent" ? "rent" : "sale",
+      })
+      .then(({ data }) => setRecommendation((Array.isArray(data) ? data[0] : data) as typeof recommendation));
   }
 
   const num = (v: string) => Number(v) || 0;
-  const clean = (v: string) => v.replace(/[^\d.]/g, '');
+  const clean = (v: string) => v.replace(/[^\d.]/g, "");
 
   if (!listing) return null;
 
   const tiers = [
     {
-      key: 'tier1',
-      title: 'מילוי טופס',
-      hint: 'השארת שם מלא + טלפון בעמוד הנכס.',
+      key: "tier1",
+      title: "מילוי טופס",
+      hint: "השארת שם מלא + טלפון בעמוד הנכס.",
       Icon: ClipboardList,
       value: tier1,
       setValue: setTier1,
       cost: leadCost(num(tier1), []),
-      questionsKey: null as null | 'chat' | 'phone',
+      questionsKey: null as null | "chat" | "phone",
     },
     {
-      key: 'tier2',
-      title: 'סינון בווטסאפ',
-      hint: 'ריטה פותחת ווטסאפ ושואלת את שאלות הסינון',
+      key: "tier2",
+      title: "סינון בווטסאפ",
+      hint: "ריטה פותחת ווטסאפ ושואלת את שאלות הסינון",
       Icon: WhatsAppIcon,
       value: tier2,
       setValue: setTier2,
       cost: leadCost(num(tier2), questions),
-      questionsKey: 'chat' as const,
+      questionsKey: "chat" as const,
     },
     {
-      key: 'tier3',
-      title: 'סינון בשיחת טלפון',
-      hint: 'אימות פרטי המתעניין בשיחה טלפונית (נציג או AI) ומענה לשאלות הסינון',
+      key: "tier3",
+      title: "סינון בשיחת טלפון",
+      hint: "אימות פרטי המתעניין בשיחה טלפונית (נציג או AI) ומענה לשאלות הסינון",
       Icon: Phone,
       value: tier3,
       setValue: setTier3,
       cost: leadCost(num(tier3), questionsPhone),
-      questionsKey: 'phone' as const,
+      questionsKey: "phone" as const,
     },
   ];
 
@@ -201,9 +229,7 @@ function RewardDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-right">
-            תגמול שותפים · {listing.property_title || 'נכס'}
-          </DialogTitle>
+          <DialogTitle className="text-right">תגמול שותפים · {listing.property_title || "נכס"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -215,70 +241,103 @@ function RewardDialog({
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
 
-          {enabled ? <>
-          {recommendation && Number(recommendation.sample_size || 0) > 0 ? <div className="rounded-lg border bg-muted/30 p-3"><div className="mb-2 flex items-center gap-2 font-semibold"><TrendingUp className="h-4 w-4 text-primary" />המלצת מחיר לפי מפרסמים דומים</div><div className="grid grid-cols-2 gap-3 text-sm"><div><div className="text-muted-foreground">ליד דיגיטלי</div><div className="h-2 rounded-full bg-muted"><div className="h-2 w-2/3 rounded-full bg-amber-500" /></div><bdi dir="ltr">₪{Number(recommendation.tier1_median || 0).toLocaleString('he-IL')}</bdi></div><div><div className="text-muted-foreground">ליד מסונן</div><div className="h-2 rounded-full bg-muted"><div className="h-2 w-3/4 rounded-full bg-sky-500" /></div><bdi dir="ltr">₪{Number(recommendation.tier2_median || 0).toLocaleString('he-IL')}</bdi></div></div><div className="mt-2 text-xs text-muted-foreground">מבוסס על {recommendation.sample_size} נכסים דומים</div></div> : null}
-
-          <div className="space-y-3">
-            <div className="text-sm font-semibold text-slate-900">{"\n"}</div>
-            <p className="text-[11px] text-slate-500">
-
-            </p>
-
-
-            {tiers.map((tier) => (
-              <div key={tier.key} className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
-                <div className="flex items-center gap-2">
-                  <tier.Icon className={`h-4 w-4 ${num(tier.value) > 0 ? 'text-primary' : 'text-slate-400'}`} />
-                  <div className="text-[12px] font-semibold text-slate-900">{tier.title}</div>
-                  {tier.questionsKey ? (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="ms-auto h-8 w-8"
-                      title="עריכת שאלות הסינון"
-                      aria-label="עריכת שאלות הסינון"
-                      onClick={() => setEditingQuestions(tier.questionsKey)}
-                    >
-                      <ListChecks className="h-4 w-4" />
-                    </Button>
-                  ) : null}
+          {enabled ? (
+            <>
+              {recommendation && Number(recommendation.sample_size || 0) > 0 ? (
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="mb-2 flex items-center gap-2 font-semibold">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    המלצת מחיר לפי מפרסמים דומים
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-muted-foreground">ליד דיגיטלי</div>
+                      <div className="h-2 rounded-full bg-muted">
+                        <div className="h-2 w-2/3 rounded-full bg-amber-500" />
+                      </div>
+                      <bdi dir="ltr">₪{Number(recommendation.tier1_median || 0).toLocaleString("he-IL")}</bdi>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">ליד מסונן</div>
+                      <div className="h-2 rounded-full bg-muted">
+                        <div className="h-2 w-3/4 rounded-full bg-sky-500" />
+                      </div>
+                      <bdi dir="ltr">₪{Number(recommendation.tier2_median || 0).toLocaleString("he-IL")}</bdi>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    מבוסס על {recommendation.sample_size} נכסים דומים
+                  </div>
                 </div>
-                <Label className="text-[11px] font-normal text-slate-500">{tier.hint}</Label>
-                <div className="flex items-center gap-2">
-                  <Input value={tier.value} inputMode="decimal" onChange={(e) => tier.setValue(clean(e.target.value))} />
-                  <span className="whitespace-nowrap text-[11px] text-slate-500">
-                    מחיר ליד: <bdi dir="ltr">₪{tier.cost.toLocaleString('he-IL')}</bdi>
-                  </span>
+              ) : null}
+
+              <div className="space-y-3">
+                <div className="text-sm font-semibold text-slate-900">{"\n"}</div>
+                <p className="text-[11px] text-slate-500"></p>
+
+                {tiers.map((tier) => (
+                  <div key={tier.key} className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
+                    <div className="flex items-center gap-2">
+                      <tier.Icon className={`h-4 w-4 ${num(tier.value) > 0 ? "text-primary" : "text-slate-400"}`} />
+                      <div className="text-[12px] font-semibold text-slate-900">{tier.title}</div>
+                      {tier.questionsKey ? (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="ms-auto h-8 w-8"
+                          title="עריכת שאלות הסינון"
+                          aria-label="עריכת שאלות הסינון"
+                          onClick={() => setEditingQuestions(tier.questionsKey)}
+                        >
+                          <ListChecks className="h-4 w-4" />
+                        </Button>
+                      ) : null}
+                    </div>
+                    <Label className="text-[11px] font-normal text-slate-500">{tier.hint}</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={tier.value}
+                        inputMode="decimal"
+                        onChange={(e) => tier.setValue(clean(e.target.value))}
+                      />
+                      <span className="whitespace-nowrap text-[11px] text-slate-500">
+                        מחיר ליד: <bdi dir="ltr">₪{tier.cost.toLocaleString("he-IL")}</bdi>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
+                  <div className="flex items-center gap-2">
+                    <Trophy className={`h-4 w-4 ${num(tier4) > 0 ? "text-success" : "text-slate-400"}`} />
+                    <div className="text-[12px] font-semibold text-slate-900">סגירת עסקה</div>
+                  </div>
+                  <Label className="text-[11px] font-normal text-slate-500">
+                    עמלת תיווך על סגירת עסקה. משולמת לשותפים בעלי רישיון תיווך בתוקף בלבד.
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Select value={tier4Type} onValueChange={(v) => setTier4Type(v as RewardType)}>
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixed">סכום קבוע (₪)</SelectItem>
+                        <SelectItem value="percent">אחוז מהעמלה (%)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input value={tier4} inputMode="decimal" onChange={(e) => setTier4(clean(e.target.value))} />
+                  </div>
                 </div>
               </div>
-            ))}
-
-            <div className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
-              <div className="flex items-center gap-2">
-                <Trophy className={`h-4 w-4 ${num(tier4) > 0 ? 'text-success' : 'text-slate-400'}`} />
-                <div className="text-[12px] font-semibold text-slate-900">סגירת עסקה</div>
-              </div>
-              <Label className="text-[11px] font-normal text-slate-500">
-                עמלת תיווך על סגירת עסקה. משולמת לשותפים בעלי רישיון תיווך בתוקף בלבד.
-              </Label>
-              <div className="flex items-center gap-2">
-                <Select value={tier4Type} onValueChange={(v) => setTier4Type(v as RewardType)}>
-                  <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fixed">סכום קבוע (₪)</SelectItem>
-                    <SelectItem value="percent">אחוז מהעמלה (%)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input value={tier4} inputMode="decimal" onChange={(e) => setTier4(clean(e.target.value))} />
-              </div>
-            </div>
-          </div>
-          </> : null}
+            </>
+          ) : null}
         </div>
 
         {enabled ? (
           <DialogFooter className="flex-row items-center justify-between sm:justify-between">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>ביטול</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              ביטול
+            </Button>
             <Button
               disabled={save.isPending}
               onClick={() =>
@@ -290,7 +349,7 @@ function RewardDialog({
                     rewardAmount: Number(amount) || 0,
                     tier1Amount: num(tier1),
                     tier2Amount: num(tier2),
-                    tier3Type: 'fixed',
+                    tier3Type: "fixed",
                     tier3Amount: num(tier3),
                     tier4Type,
                     tier4Amount: num(tier4),
@@ -304,15 +363,15 @@ function RewardDialog({
                   },
                   {
                     onSuccess: () => {
-                      toast.success('התגמול נשמר');
+                      toast.success("התגמול נשמר");
                       onOpenChange(false);
                     },
-                    onError: () => toast.error('השמירה נכשלה'),
+                    onError: () => toast.error("השמירה נכשלה"),
                   },
                 )
               }
             >
-              {save.isPending ? 'שומר...' : 'שמירה'}
+              {save.isPending ? "שומר..." : "שמירה"}
             </Button>
           </DialogFooter>
         ) : null}
@@ -320,16 +379,16 @@ function RewardDialog({
         <LeadQuestionsDialog
           open={editingQuestions !== null}
           onOpenChange={(v) => setEditingQuestions(v ? editingQuestions : null)}
-          title={editingQuestions === 'phone' ? 'שאלות סינון · שיחת טלפון' : 'שאלות סינון · שיחת WhatsApp'}
-          questions={editingQuestions === 'phone' ? questionsPhone : questions}
+          title={editingQuestions === "phone" ? "שאלות סינון · שיחת טלפון" : "שאלות סינון · שיחת WhatsApp"}
+          questions={editingQuestions === "phone" ? questionsPhone : questions}
           onChange={(next) => {
-            if (editingQuestions === 'phone') {
+            if (editingQuestions === "phone") {
               setQuestionsPhone(next);
               return;
             }
             setQuestions(next);
             // Level 3 mirrors the chat questions by default, still editable on its own.
-            if (questionsPhone.join('|') === questions.join('|')) setQuestionsPhone(next);
+            if (questionsPhone.join("|") === questions.join("|")) setQuestionsPhone(next);
           }}
         />
       </DialogContent>
@@ -346,12 +405,12 @@ function BrokerAffiliateNetwork() {
   const updateReferral = useUpdateReferral();
   const quickSave = useSetAffiliateReward();
 
-  const [search, setSearch] = useState('');
-  const [trackingSearch, setTrackingSearch] = useState('');
-  const [submissionsSearch, setSubmissionsSearch] = useState('');
+  const [search, setSearch] = useState("");
+  const [trackingSearch, setTrackingSearch] = useState("");
+  const [submissionsSearch, setSubmissionsSearch] = useState("");
   const [leadFilter, setLeadFilter] = useState<LeadFilterState>(EMPTY_LEAD_FILTER);
   const [propertyFilter, setPropertyFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
   const [multiSelectMode, setMultiSelectMode] = useState(false);
   const [selectedListingIds, setSelectedListingIds] = useState<Set<string>>(new Set());
@@ -366,18 +425,19 @@ function BrokerAffiliateNetwork() {
     if (!stored) return;
     sessionStorage.removeItem(AFFILIATE_SCROLL_KEY);
     const top = Number(stored);
-    if (Number.isFinite(top)) requestAnimationFrame(() => window.scrollTo({ top, behavior: 'auto' }));
+    if (Number.isFinite(top)) requestAnimationFrame(() => window.scrollTo({ top, behavior: "auto" }));
   }, [listingsLoading, refsLoading, subsLoading]);
 
   const openLead = (leadId: string) => {
     sessionStorage.setItem(AFFILIATE_SCROLL_KEY, String(window.scrollY));
-    navigate(`/lead-crm/${leadId}`, { state: { returnTo: '/affiliate-network' } });
+    navigate(`/lead-crm/${leadId}`, { state: { returnTo: "/affiliate-network" } });
   };
 
   const toggleSelectedListing = (id: string) => {
     setSelectedListingIds((current) => {
       const next = new Set(current);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -390,20 +450,25 @@ function BrokerAffiliateNetwork() {
       setSelectedListingIds(new Set());
       setMultiSelectMode(false);
       setDeleteTargetIds([]);
-      toast.success(ids.length > 1 ? `${ids.length} נכסים נמחקו` : 'הנכס נמחק');
+      toast.success(ids.length > 1 ? `${ids.length} נכסים נמחקו` : "הנכס נמחק");
     } catch (error) {
-      toast.error('מחיקת הנכס נכשלה', { description: error instanceof Error ? error.message : undefined });
+      toast.error("מחיקת הנכס נכשלה", { description: error instanceof Error ? error.message : undefined });
     }
   };
 
   // Filter option lists come straight off the broker's own properties.
   const filterCities = useMemo(
-    () => [...new Set(listings.map((l) => l.city).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'he')) as string[],
+    () =>
+      [...new Set(listings.map((l) => l.city).filter(Boolean))].sort((a, b) =>
+        String(a).localeCompare(String(b), "he"),
+      ) as string[],
     [listings],
   );
   const filterNeighborhoods = useMemo(() => {
-    const pool = propertyFilter.city === 'all' ? listings : listings.filter((l) => l.city === propertyFilter.city);
-    return [...new Set(pool.map((l) => l.neighborhood).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'he')) as string[];
+    const pool = propertyFilter.city === "all" ? listings : listings.filter((l) => l.city === propertyFilter.city);
+    return [...new Set(pool.map((l) => l.neighborhood).filter(Boolean))].sort((a, b) =>
+      String(a).localeCompare(String(b), "he"),
+    ) as string[];
   }, [listings, propertyFilter.city]);
 
   const filteredListings = useMemo(() => {
@@ -413,8 +478,7 @@ function BrokerAffiliateNetwork() {
     if (!q && !leadActive && !propsActive) return listings;
     return listings.filter((l) => {
       const row = l as unknown as Record<string, unknown>;
-      const matchesText = !q
-        || [l.property_title, l.address, l.city].some((f) => (f ?? '').toLowerCase().includes(q));
+      const matchesText = !q || [l.property_title, l.address, l.city].some((f) => (f ?? "").toLowerCase().includes(q));
       if (!matchesText) return false;
       if (leadActive && !matchesLeadFilter(leadTierAmounts(row), leadFilter)) return false;
       return !propsActive || matchesPropertyFilter(row, propertyFilter);
@@ -425,15 +489,25 @@ function BrokerAffiliateNetwork() {
   const filteredReferrals = useMemo(() => {
     const q = trackingSearch.trim().toLowerCase();
     if (!q) return referrals;
-    return referrals.filter((r) => [r.listing?.property_title, r.listing?.address, r.listing?.city, r.affiliate?.display_name, r.lead?.full_name]
-      .some((f) => (f ?? '').toLowerCase().includes(q)));
+    return referrals.filter((r) =>
+      [
+        r.listing?.property_title,
+        r.listing?.address,
+        r.listing?.city,
+        r.affiliate?.display_name,
+        r.lead?.full_name,
+      ].some((f) => (f ?? "").toLowerCase().includes(q)),
+    );
   }, [referrals, trackingSearch]);
 
   const filteredSubmissions = useMemo(() => {
     const q = submissionsSearch.trim().toLowerCase();
     if (!q) return submissions;
-    return submissions.filter((s) => [s.lead?.full_name, s.lead_name, s.lead_phone, s.listing?.property_title, s.affiliate?.display_name]
-      .some((f) => (f ?? '').toLowerCase().includes(q)));
+    return submissions.filter((s) =>
+      [s.lead?.full_name, s.lead_name, s.lead_phone, s.listing?.property_title, s.affiliate?.display_name].some((f) =>
+        (f ?? "").toLowerCase().includes(q),
+      ),
+    );
   }, [submissions, submissionsSearch]);
 
   return (
@@ -443,26 +517,33 @@ function BrokerAffiliateNetwork() {
       <div className="-mt-[25px] space-y-5" dir="rtl">
         <Tabs defaultValue="rewards">
           <TabsList className="mx-auto grid h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
-            <TabsTrigger value="rewards" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">נכסים ({listings.length})</TabsTrigger>
-            <TabsTrigger value="tracking" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">בשיווק ({referrals.length})</TabsTrigger>
-            <TabsTrigger value="submissions" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">לידים ({submissions.length})</TabsTrigger>
+            <TabsTrigger
+              value="rewards"
+              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
+              נכסים ({listings.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="tracking"
+              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
+              בשיווק ({referrals.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="submissions"
+              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
+              לידים ({submissions.length})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
             <div className="flex items-center gap-3">
-              {/* Unlabeled multi-select toggle before the search field. */}
-              <Checkbox
-                checked={multiSelectMode}
-                onCheckedChange={(checked) => { setMultiSelectMode(Boolean(checked)); if (!checked) setSelectedListingIds(new Set()); }}
-                aria-label="בחירה מרובה"
-                title="בחירה מרובה"
-                className="h-5 w-5 shrink-0"
-              />
               {/* Magnifier at the start of the field, filter button at the end. */}
               <div className="flex h-10 max-w-sm flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
                 <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
                 <Input
-                  placeholder="חיפוש נכס לפי כתובת או עיר"
+                  placeholder="חיפוש נכס"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="h-8 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
@@ -478,14 +559,34 @@ function BrokerAffiliateNetwork() {
                 />
               </div>
               <div className="ms-auto inline-flex items-center">
-                <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={multiSelectMode ? "default" : "outline"}
+                  className="me-2 h-8 gap-1.5 text-xs"
+                  onClick={() => {
+                    setMultiSelectMode((current) => !current);
+                    setSelectedListingIds(new Set());
+                  }}
+                >
+                  <ListChecks className="h-3.5 w-3.5" /> בחירה מרובה
+                </Button>
+                <ViewModeSwitch
+                  isGrid={viewMode === "grid"}
+                  onToggle={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
+                />
               </div>
             </div>
 
             {multiSelectMode && selectedListingIds.size > 0 ? (
               <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
                 <span className="text-sm font-semibold">נבחרו {selectedListingIds.size} נכסים</span>
-                <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="gap-1.5"
+                  onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}
+                >
                   <Trash2 className="h-4 w-4" /> מחיקת הנבחרים
                 </Button>
               </div>
@@ -495,37 +596,48 @@ function BrokerAffiliateNetwork() {
               <Skeleton className="h-64 w-full" />
             ) : filteredListings.length === 0 ? (
               <Card className="border-dashed border-slate-200">
-                <CardContent className="p-10 text-center text-sm text-slate-500">
-                  לא נמצאו נכסים בחשבון זה.
-                </CardContent>
+                <CardContent className="p-10 text-center text-sm text-slate-500">לא נמצאו נכסים בחשבון זה.</CardContent>
               </Card>
-            ) : viewMode === 'table' ? (
+            ) : viewMode === "table" ? (
               <ResultTable
                 results={filteredListings.map(toUnifiedResult)}
                 importingKey={null}
                 onSelect={(result) => {
                   if (result.localId) {
-                    const surface = document.querySelector<HTMLElement>('.realtyz-main-surface');
+                    const surface = document.querySelector<HTMLElement>(".realtyz-main-surface");
                     sessionStorage.setItem(AFFILIATE_SCROLL_KEY, String(surface?.scrollTop ?? window.scrollY));
                     navigate(`/properties/${result.localId}`, {
-                      state: { propertySnapshot: result, returnTo: '/affiliate-network' },
+                      state: { propertySnapshot: result, returnTo: "/affiliate-network" },
                     });
                   }
                 }}
                 publishedLabel="פורסם לרשת"
-                publishedAt={(result) => filteredListings.find((item) => item.id === result.localId)?.affiliate_approved_at ?? null}
-                affiliateSortValue={(result) => filteredListings.find((item) => item.id === result.localId)?.affiliate_enabled ? 1 : 0}
+                publishedAt={(result) =>
+                  filteredListings.find((item) => item.id === result.localId)?.affiliate_approved_at ?? null
+                }
+                affiliateSortValue={(result) =>
+                  filteredListings.find((item) => item.id === result.localId)?.affiliate_enabled ? 1 : 0
+                }
                 commissionSortValue={(result) => {
                   const listing = filteredListings.find((item) => item.id === result.localId);
                   if (!listing) return 0;
-                  return Number(listing.affiliate_tier1_amount ?? 0) + Number(listing.affiliate_tier2_amount ?? 0)
-                    + (listing.affiliate_tier3_type === 'fixed' ? Number(listing.affiliate_tier3_amount ?? 0) : 0);
+                  return (
+                    Number(listing.affiliate_tier1_amount ?? 0) +
+                    Number(listing.affiliate_tier2_amount ?? 0) +
+                    (listing.affiliate_tier3_type === "fixed" ? Number(listing.affiliate_tier3_amount ?? 0) : 0)
+                  );
                 }}
                 onCampaign={(result) => {
-                  if (result.localId) navigate(`/campaigns?tab=create&channel=facebook&properties=${result.localId}&listing=${result.localId}`);
+                  if (result.localId)
+                    navigate(
+                      `/campaigns?tab=create&channel=facebook&properties=${result.localId}&listing=${result.localId}`,
+                    );
                 }}
                 onEdit={(result) => {
-                  if (result.localId) navigate(`/properties/${result.localId}`, { state: { returnTo: '/affiliate-network', openEdit: true } });
+                  if (result.localId)
+                    navigate(`/properties/${result.localId}`, {
+                      state: { returnTo: "/affiliate-network", openEdit: true },
+                    });
                 }}
                 selectionMode={multiSelectMode}
                 selectedIds={selectedListingIds}
@@ -541,15 +653,33 @@ function BrokerAffiliateNetwork() {
                     <div className="inline-flex items-center gap-1">
                       <Button
                         size="icon"
-                        variant={shared ? 'default' : 'outline'}
-                        className={`h-8 w-8 ${shared ? 'bg-success text-success-foreground hover:bg-success/90' : ''}`}
-                        title={shared ? 'עריכת עמלות והפסקת שיווק שותפים' : 'פתיחת הנכס לשיווק שותפים'}
-                        aria-label={shared ? 'עריכת עמלות' : 'פתיחת הנכס לשיווק שותפים'}
+                        variant={shared ? "default" : "outline"}
+                        className={`h-8 w-8 ${shared ? "bg-success text-success-foreground hover:bg-success/90" : ""}`}
+                        title={shared ? "עריכת עמלות והפסקת שיווק שותפים" : "פתיחת הנכס לשיווק שותפים"}
+                        aria-label={shared ? "עריכת עמלות" : "פתיחת הנכס לשיווק שותפים"}
                         onClick={() => setEditing(listing)}
                       >
                         <Handshake className="h-4 w-4" />
                       </Button>
-                      {shared ? <Button asChild size="icon" variant="ghost" className="h-8 w-8" title="פתיחת עמוד הנכס" aria-label="פתיחת עמוד הנכס"><a href={publicUrl(`/p/${listing.id}`)} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><SquareArrowOutUpLeft className="h-4 w-4" /></a></Button> : null}
+                      {shared ? (
+                        <Button
+                          asChild
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          title="פתיחת עמוד הנכס"
+                          aria-label="פתיחת עמוד הנכס"
+                        >
+                          <a
+                            href={publicUrl(`/p/${listing.id}`)}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <SquareArrowOutUpLeft className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      ) : null}
                     </div>
                   );
                 }}
@@ -557,24 +687,45 @@ function BrokerAffiliateNetwork() {
                 commissionCell={(result) => {
                   const listing = filteredListings.find((item) => item.id === result.localId);
                   if (!listing || !listing.affiliate_enabled) return null;
-                  const tierTexts: Array<{ value: string; label: string; Icon: React.ComponentType<{ className?: string }> }> = [];
-                  const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
-                  const options = listing.contact_options && typeof listing.contact_options === 'object' ? listing.contact_options : {};
+                  const tierTexts: Array<{
+                    value: string;
+                    label: string;
+                    Icon: React.ComponentType<{ className?: string }>;
+                  }> = [];
+                  const money = (n: number) => `₪${Number(n).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`;
+                  const options =
+                    listing.contact_options && typeof listing.contact_options === "object"
+                      ? listing.contact_options
+                      : {};
                   const chatQuestions = Array.isArray(options.questions) ? options.questions : [];
-                  const phoneQuestions = Array.isArray(options.questions_phone) ? options.questions_phone : chatQuestions;
+                  const phoneQuestions = Array.isArray(options.questions_phone)
+                    ? options.questions_phone
+                    : chatQuestions;
                   const t1 = Number(listing.affiliate_tier1_amount ?? 0);
                   const t2 = leadCost(Number(listing.affiliate_tier2_amount ?? 0), chatQuestions);
                   const t3 = leadCost(Number(listing.affiliate_tier3_amount ?? 0), phoneQuestions);
                   const t4 = Number(listing.affiliate_tier4_amount ?? 0);
-                  const t4Type = (listing.affiliate_tier4_type ?? 'fixed') as RewardType;
-                  if (t1) tierTexts.push({ value: money(t1), label: 'ליד דיגיטלי', Icon: ClipboardList });
-                  if (Number(listing.affiliate_tier2_amount ?? 0)) tierTexts.push({ value: money(t2), label: 'סינון ב-WhatsApp', Icon: WhatsAppIcon });
-                  if (Number(listing.affiliate_tier3_amount ?? 0)) tierTexts.push({ value: money(t3), label: 'שיחת טלפון', Icon: Phone });
-                  if (t4) tierTexts.push({ value: t4Type === 'percent' ? `${t4}%` : money(t4), label: 'סגירת עסקה · בעלי רישיון תיווך בלבד', Icon: Trophy });
+                  const t4Type = (listing.affiliate_tier4_type ?? "fixed") as RewardType;
+                  if (t1) tierTexts.push({ value: money(t1), label: "שם וטלפון", Icon: ClipboardList });
+                  if (Number(listing.affiliate_tier2_amount ?? 0))
+                    tierTexts.push({ value: money(t2), label: "סינון ב-WhatsApp", Icon: WhatsAppIcon });
+                  if (Number(listing.affiliate_tier3_amount ?? 0))
+                    tierTexts.push({ value: money(t3), label: "שיחת טלפון", Icon: Phone });
+                  if (t4)
+                    tierTexts.push({
+                      value: t4Type === "percent" ? `${t4}%` : money(t4),
+                      label: "סגירת עסקה · בעלי רישיון תיווך בלבד",
+                      Icon: Trophy,
+                    });
                   if (!tierTexts.length) return null;
                   return (
                     <div className="space-y-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
-                      {tierTexts.map(({ value, label, Icon }) => <div key={label} className="flex items-center justify-start gap-1" title={label}><Icon className="h-3 w-3" /><bdi dir="ltr">{value}</bdi></div>)}
+                      {tierTexts.map(({ value, label, Icon }) => (
+                        <div key={label} className="flex items-center justify-start gap-1" title={label}>
+                          <Icon className="h-3 w-3" />
+                          <bdi dir="ltr">{value}</bdi>
+                        </div>
+                      ))}
                     </div>
                   );
                 }}
@@ -591,18 +742,23 @@ function BrokerAffiliateNetwork() {
                         return;
                       }
                       navigate(`/properties/${l.id}`, {
-                        state: { propertySnapshot: toUnifiedResult(l), returnTo: '/affiliate-network' },
+                        state: { propertySnapshot: toUnifiedResult(l), returnTo: "/affiliate-network" },
                       });
                     }}
                   >
                     {multiSelectMode ? (
                       <div className="absolute end-3 top-3 z-20" onClick={(event) => event.stopPropagation()}>
-                        <Checkbox checked={selectedListingIds.has(l.id)} onCheckedChange={() => toggleSelectedListing(l.id)} aria-label="בחירת נכס" className="h-5 w-5 bg-background" />
+                        <Checkbox
+                          checked={selectedListingIds.has(l.id)}
+                          onCheckedChange={() => toggleSelectedListing(l.id)}
+                          aria-label="בחירת נכס"
+                          className="h-5 w-5 bg-background"
+                        />
                       </div>
                     ) : null}
                     <div className="border-b px-4 pb-2 pt-3">
                       <h3 className="truncate text-base font-semibold" title={l.property_title || undefined}>
-                        {l.property_title || 'נכס ללא כותרת'}
+                        {l.property_title || "נכס ללא כותרת"}
                       </h3>
                       <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
                         <MapPin className="h-3.5 w-3.5 shrink-0" />
@@ -618,13 +774,25 @@ function BrokerAffiliateNetwork() {
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">אין תמונה</div>
+                        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                          אין תמונה
+                        </div>
                       )}
                     </div>
                     <CardContent className="flex flex-col gap-3 p-4">
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        {l.rooms ? <span className="inline-flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />{l.rooms} חד׳</span> : null}
-                        {l.sqm ? <span className="inline-flex items-center gap-1"><Ruler className="h-3.5 w-3.5" />{l.sqm} מ״ר</span> : null}
+                        {l.rooms ? (
+                          <span className="inline-flex items-center gap-1">
+                            <BedDouble className="h-3.5 w-3.5" />
+                            {l.rooms} חד׳
+                          </span>
+                        ) : null}
+                        {l.sqm ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Ruler className="h-3.5 w-3.5" />
+                            {l.sqm} מ״ר
+                          </span>
+                        ) : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 border-t pt-3">
                         {l.asking_price ? (
@@ -638,25 +806,53 @@ function BrokerAffiliateNetwork() {
                           </Badge>
                         )}
                         <div className="ms-auto flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                          <Label htmlFor={`affiliate-${l.id}`} className="text-xs text-muted-foreground">שיתוף שותפים</Label>
+                          <Label htmlFor={`affiliate-${l.id}`} className="text-xs text-muted-foreground">
+                            שיתוף שותפים
+                          </Label>
                           <Switch
                             id={`affiliate-${l.id}`}
                             checked={l.affiliate_enabled}
                             disabled={quickSave.isPending}
-                            onCheckedChange={(enabled) => quickSave.mutate({
-                              listingId: l.id,
-                              enabled,
-                              rewardType: l.affiliate_reward_type ?? 'fixed',
-                              rewardAmount: Number(l.affiliate_reward_amount ?? 0),
-                              tier1Amount: Number(l.affiliate_tier1_amount ?? 0),
-                              tier2Amount: Number(l.affiliate_tier2_amount ?? 0),
-                              tier3Type: l.affiliate_tier3_type ?? 'fixed',
-                              tier3Amount: Number(l.affiliate_tier3_amount ?? 0),
-                            }, { onError: () => toast.error('העדכון נכשל') })}
+                            onCheckedChange={(enabled) =>
+                              quickSave.mutate(
+                                {
+                                  listingId: l.id,
+                                  enabled,
+                                  rewardType: l.affiliate_reward_type ?? "fixed",
+                                  rewardAmount: Number(l.affiliate_reward_amount ?? 0),
+                                  tier1Amount: Number(l.affiliate_tier1_amount ?? 0),
+                                  tier2Amount: Number(l.affiliate_tier2_amount ?? 0),
+                                  tier3Type: l.affiliate_tier3_type ?? "fixed",
+                                  tier3Amount: Number(l.affiliate_tier3_amount ?? 0),
+                                },
+                                { onError: () => toast.error("העדכון נכשל") },
+                              )
+                            }
                           />
                         </div>
-                        {!multiSelectMode ? <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={(event) => { event.stopPropagation(); setDeleteTargetIds([l.id]); }} title="מחיקת נכס" aria-label="מחיקת נכס"><Trash2 className="h-4 w-4" /></Button> : null}
-                        <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); setEditing(l); }}>
+                        {!multiSelectMode ? (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setDeleteTargetIds([l.id]);
+                            }}
+                            title="מחיקת נכס"
+                            aria-label="מחיקת נכס"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setEditing(l);
+                          }}
+                        >
                           קביעת תגמול
                         </Button>
                       </div>
@@ -689,24 +885,36 @@ function BrokerAffiliateNetwork() {
               filteredSubmissions.map((s) => (
                 <Card key={s.id} className="border-slate-200">
                   <CardContent className="space-y-3 p-3.5">
-                      <div className="flex flex-wrap items-center gap-3">
-                        {s.listing ? <PropertyThumb p={s.listing} size={52} /> : null}
+                    <div className="flex flex-wrap items-center gap-3">
+                      {s.listing ? <PropertyThumb p={s.listing} size={52} /> : null}
                       <div className="min-w-0 flex-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="h-auto max-w-full justify-start gap-2 p-0 text-sm font-bold text-slate-900 hover:bg-transparent"
-                            disabled={!s.lead?.id}
-                            onClick={() => s.lead?.id && openLead(s.lead.id)}
-                          >
-                            <ContactAvatar name={s.lead?.full_name || s.lead_name} imageUrl={s.lead?.profile_picture_url} className="h-8 w-8" />
-                            <span className="truncate">{s.lead?.full_name || s.lead_name}</span>
-                          {s.lead_phone ? <> · <bdi dir="ltr" className="font-normal text-slate-500">{s.lead_phone}</bdi></> : null}
-                          </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-auto max-w-full justify-start gap-2 p-0 text-sm font-bold text-slate-900 hover:bg-transparent"
+                          disabled={!s.lead?.id}
+                          onClick={() => s.lead?.id && openLead(s.lead.id)}
+                        >
+                          <ContactAvatar
+                            name={s.lead?.full_name || s.lead_name}
+                            imageUrl={s.lead?.profile_picture_url}
+                            className="h-8 w-8"
+                          />
+                          <span className="truncate">{s.lead?.full_name || s.lead_name}</span>
+                          {s.lead_phone ? (
+                            <>
+                              {" "}
+                              ·{" "}
+                              <bdi dir="ltr" className="font-normal text-slate-500">
+                                {s.lead_phone}
+                              </bdi>
+                            </>
+                          ) : null}
+                        </Button>
                         <div className="truncate text-[11px] text-slate-500">
-                          {s.listing?.property_title || 'נכס'} · שותף: {s.affiliate?.display_name || 'שותף ללא שם'}
-                          {' · '}
-                          {new Date(s.created_at).toLocaleDateString('he-IL')}
+                          {s.listing?.property_title || "נכס"} · שותף: {s.affiliate?.display_name || "שותף ללא שם"}
+                          {" · "}
+                          {new Date(s.created_at).toLocaleDateString("he-IL")}
                         </div>
                       </div>
                       <div className="text-sm font-bold text-emerald-700">
@@ -725,7 +933,7 @@ function BrokerAffiliateNetwork() {
                         tier1: Number(s.tier1_amount),
                         tier2: Number(s.tier2_amount),
                         tier3: Number(s.tier3_amount),
-                        tier4Type: (s.tier4_type ?? 'fixed'),
+                        tier4Type: s.tier4_type ?? "fixed",
                         tier4: Number(s.tier4_amount ?? 0),
                       }}
                       compact
@@ -738,16 +946,20 @@ function BrokerAffiliateNetwork() {
                           updateSubmission.mutate(
                             { row: s, status: v as SubmissionStatus },
                             {
-                              onSuccess: () => toast.success('הסטטוס עודכן'),
-                              onError: () => toast.error('העדכון נכשל'),
+                              onSuccess: () => toast.success("הסטטוס עודכן"),
+                              onError: () => toast.error("העדכון נכשל"),
                             },
                           )
                         }
                       >
-                        <SelectTrigger className="h-8 w-[160px] text-[12px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 w-[160px] text-[12px]">
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
                           {SUBMISSION_STATUS_ORDER.map((st) => (
-                            <SelectItem key={st} value={st}>{SUBMISSION_STATUS_LABELS[st]}</SelectItem>
+                            <SelectItem key={st} value={st}>
+                              {SUBMISSION_STATUS_LABELS[st]}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -758,16 +970,20 @@ function BrokerAffiliateNetwork() {
                           updateSubmission.mutate(
                             { row: s, settlementStatus: v as SettlementStatus },
                             {
-                              onSuccess: () => toast.success('ההסדרה עודכנה'),
-                              onError: () => toast.error('העדכון נכשל'),
+                              onSuccess: () => toast.success("ההסדרה עודכנה"),
+                              onError: () => toast.error("העדכון נכשל"),
                             },
                           )
                         }
                       >
-                        <SelectTrigger className="h-8 w-[150px] text-[12px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 w-[150px] text-[12px]">
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
                           {(Object.keys(SETTLEMENT_LABELS) as SettlementStatus[]).map((st) => (
-                            <SelectItem key={st} value={st}>{SETTLEMENT_LABELS[st]}</SelectItem>
+                            <SelectItem key={st} value={st}>
+                              {SETTLEMENT_LABELS[st]}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -805,11 +1021,11 @@ function BrokerAffiliateNetwork() {
                         {r.listing ? <PropertyThumb p={r.listing} size={52} /> : null}
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-bold text-slate-900">
-                            {r.listing?.property_title || 'נכס לא ידוע'}
+                            {r.listing?.property_title || "נכס לא ידוע"}
                           </div>
                           <div className="truncate text-[11px] text-slate-500">
-                            שותף: {r.affiliate?.display_name || 'שותף ללא שם'}
-                            {' · '}
+                            שותף: {r.affiliate?.display_name || "שותף ללא שם"}
+                            {" · "}
                             {r.clicks} כניסות
                           </div>
                         </div>
@@ -823,12 +1039,20 @@ function BrokerAffiliateNetwork() {
                         <Button
                           type="button"
                           variant="ghost"
-                          onClick={() => openLead(r.lead?.id ?? '')}
+                          onClick={() => openLead(r.lead?.id ?? "")}
                           className="h-auto w-full justify-start gap-2 bg-slate-50 px-2.5 py-2 text-[12px] font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
                         >
-                          <ContactAvatar name={r.lead.full_name} imageUrl={r.lead.profile_picture_url} className="h-8 w-8" />
-                          <span>{r.lead.full_name || 'איש קשר'}</span>
-                          {r.lead.phone ? <bdi dir="ltr" className="text-slate-500">{r.lead.phone}</bdi> : null}
+                          <ContactAvatar
+                            name={r.lead.full_name}
+                            imageUrl={r.lead.profile_picture_url}
+                            className="h-8 w-8"
+                          />
+                          <span>{r.lead.full_name || "איש קשר"}</span>
+                          {r.lead.phone ? (
+                            <bdi dir="ltr" className="text-slate-500">
+                              {r.lead.phone}
+                            </bdi>
+                          ) : null}
                         </Button>
                       )}
 
@@ -839,16 +1063,20 @@ function BrokerAffiliateNetwork() {
                             updateReferral.mutate(
                               { id: r.id, status: v as ReferralStatus },
                               {
-                                onSuccess: () => toast.success('הסטטוס עודכן'),
-                                onError: () => toast.error('העדכון נכשל'),
+                                onSuccess: () => toast.success("הסטטוס עודכן"),
+                                onError: () => toast.error("העדכון נכשל"),
                               },
                             )
                           }
                         >
-                          <SelectTrigger className="h-8 w-[170px] text-[12px]"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-8 w-[170px] text-[12px]">
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             {REFERRAL_STATUS_ORDER.map((s) => (
-                              <SelectItem key={s} value={s}>{REFERRAL_STATUS_LABELS[s]}</SelectItem>
+                              <SelectItem key={s} value={s}>
+                                {REFERRAL_STATUS_LABELS[s]}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -859,23 +1087,27 @@ function BrokerAffiliateNetwork() {
                             updateReferral.mutate(
                               { id: r.id, settlementStatus: v as SettlementStatus },
                               {
-                                onSuccess: () => toast.success('מצב ההסדרה עודכן'),
-                                onError: () => toast.error('העדכון נכשל'),
+                                onSuccess: () => toast.success("מצב ההסדרה עודכן"),
+                                onError: () => toast.error("העדכון נכשל"),
                               },
                             )
                           }
                         >
-                          <SelectTrigger className="h-8 w-[160px] text-[12px]"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-8 w-[160px] text-[12px]">
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             {(Object.keys(SETTLEMENT_LABELS) as SettlementStatus[]).map((s) => (
-                              <SelectItem key={s} value={s}>{SETTLEMENT_LABELS[s]}</SelectItem>
+                              <SelectItem key={s} value={s}>
+                                {SETTLEMENT_LABELS[s]}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
 
                         <span className="text-[11px] text-slate-400">
-                          נפתח {new Date(r.created_at).toLocaleDateString('he-IL')}
-                          {r.settled_at ? ` · שולם ${new Date(r.settled_at).toLocaleDateString('he-IL')}` : ''}
+                          נפתח {new Date(r.created_at).toLocaleDateString("he-IL")}
+                          {r.settled_at ? ` · שולם ${new Date(r.settled_at).toLocaleDateString("he-IL")}` : ""}
                         </span>
                       </div>
                     </CardContent>
@@ -887,9 +1119,16 @@ function BrokerAffiliateNetwork() {
         </Tabs>
 
         <RewardDialog listing={editing} open={!!editing} onOpenChange={(v) => !v && setEditing(null)} />
-
       </div>
-      <PropertyDeleteDialog count={deleteTargetIds.length} open={deleteTargetIds.length > 0} deleting={deleteListings.isPending} onOpenChange={(open) => { if (!open) setDeleteTargetIds([]); }} onConfirm={confirmDeleteListings} />
+      <PropertyDeleteDialog
+        count={deleteTargetIds.length}
+        open={deleteTargetIds.length > 0}
+        deleting={deleteListings.isPending}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetIds([]);
+        }}
+        onConfirm={confirmDeleteListings}
+      />
     </>
   );
 }
