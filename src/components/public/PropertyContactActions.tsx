@@ -151,7 +151,7 @@ export default function PropertyContactActions({
                 <Share2 className="h-4 w-4" />{compact ? null : 'שיתוף'}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48" dir="rtl">
+            <DropdownMenuContent align="end" className="w-48 text-right">
               <DropdownMenuLabel className="text-xs">שיתוף נכס</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => void share('whatsapp')}>וואטסאפ</DropdownMenuItem>
