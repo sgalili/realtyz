@@ -3,6 +3,7 @@
 // everything, sign up through /auth, and have the listing auto-published on return.
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Film, ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const { user } = useAuth();
   const { isPropertyOwner, refetch: refetchRoles } = useUserRole();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
