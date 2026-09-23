@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useListingPublishers } from '@/hooks/useListingPublishers';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
@@ -1503,6 +1504,7 @@ export function ResultTable({
     [results],
   );
   const { data: affiliateConfigs } = useAffiliateConfigs(hideDefaultActions ? [] : localIds);
+  const { data: publishers } = useListingPublishers(localIds);
   const renderAffiliate = affiliateCell
     ?? ((r: UnifiedResult) => (r.localId
       ? <AffiliateShareCell listingId={r.localId} config={affiliateConfigs?.get(r.localId)} />
@@ -1527,6 +1529,7 @@ export function ResultTable({
         case 'affiliate': return affiliateSortValue?.(r) ?? '';
         case 'commission': return commissionSortValue?.(r) ?? null;
         case 'image': return r.photos?.[0] ?? '';
+        case 'publisher': return (r.localId && publishers?.get(r.localId)?.name) || '';
         case 'name': return formatStreetTypeTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
         case 'neighborhood': return neighborhoodOf(r) || '';
         case 'house_number': return Number(houseNumberOf({ address: r.address, raw: r.raw })) || null;
@@ -1590,6 +1593,7 @@ export function ResultTable({
             {showAffiliateColumn ? <HeaderCell col="affiliate" label="שותפים" /> : null}
             {commissionCell ? <HeaderCell col="commission" label="עמלות" /> : null}
             <HeaderCell col="image" label="תמונה" extraClass="w-14" />
+            <HeaderCell col="publisher" label="משרד מפרסם" />
 
             <HeaderCell col="name" label="רחוב" />
             {/* Internal-only: house & apartment numbers never leave the workspace. */}
@@ -1651,6 +1655,22 @@ export function ResultTable({
                       ) : null;
                     })()}
                   </div>
+                </td>
+                <td className="px-2 py-1.5 whitespace-nowrap">
+                  {(() => {
+                    const pub = r.localId ? publishers?.get(r.localId) : undefined;
+                    if (!pub) return <span className="text-muted-foreground">—</span>;
+                    return (
+                      <span className="inline-flex max-w-[11rem] items-center gap-1.5">
+                        {pub.logo ? (
+                          <img src={pub.logo} alt="" loading="lazy" className="h-6 w-6 shrink-0 rounded-full border border-border/60 bg-background object-contain" />
+                        ) : (
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">{pub.name.slice(0, 1)}</span>
+                        )}
+                        <span className="truncate text-sm" title={pub.name}>{pub.name}</span>
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
                   {(() => {
