@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
+import { publicUrl } from '@/lib/publicUrl';
 import type { LeadContactOptions } from '@/lib/leadTiers';
 
 export type PublicCard = {
@@ -175,7 +176,7 @@ export default function PublicListingsBoard() {
                        premsg={ritaPropertyPremsg(card)}
                        options={card.contact_options}
                        compact
-                        shareUrl={`${window.location.origin}${propertyPath}`}
+                        shareUrl={publicUrl(propertyPath)}
                         showShare
                      />
                    </div>

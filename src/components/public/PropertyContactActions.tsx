@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Loader2, Phone, Share2 } from 'lucide-react';
+import { ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
-import { officialWaLink } from '@/lib/officialWa';
-import { openWhatsAppContactPicker } from '@/lib/officialWa';
+import { officialWaLink, openWhatsAppContactPicker } from '@/lib/officialWa';
 import { openExternal } from '@/lib/openExternal';
 import { supabase } from '@/integrations/supabase/client';
 import type { LeadContactOptions } from '@/lib/leadTiers';
@@ -154,10 +153,10 @@ export default function PropertyContactActions({
             <DropdownMenuContent align="end" className="w-48 text-right">
               <DropdownMenuLabel className="text-xs">שיתוף נכס</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => void share('whatsapp')}>וואטסאפ</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void share('sms')}>SMS</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void share('email')}>אימייל</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void share('copy')}>העתק קישור</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => void share('whatsapp')}><MessageCircle className="h-4 w-4" />וואטסאפ</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => void share('sms')}><Smartphone className="h-4 w-4" />SMS</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => void share('email')}><Mail className="h-4 w-4" />אימייל</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => void share('copy')}><Copy className="h-4 w-4" />העתק קישור</DropdownMenuItem>
               {typeof navigator !== 'undefined' && navigator.share ? (
                 <DropdownMenuItem onSelect={() => void share('native')}>אפשרויות נוספות</DropdownMenuItem>
               ) : null}
