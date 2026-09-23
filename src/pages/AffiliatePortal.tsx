@@ -153,13 +153,44 @@ function marketplaceResult(listing: MarketplaceListing): UnifiedResult {
   };
 }
 
-function PartnerListingActions({ listing }: { listing: MarketplaceListing }) {
+/** Stops marketing a property: deletes the partner's referral row. */
+function RemoveFromMarketingButton({ referralId }: { referralId: string }) {
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      type="button"
+      size="icon"
+      variant="ghost"
+      className="h-8 w-8 text-destructive hover:text-destructive"
+      title="הסרה מהשיווק"
+      aria-label="הסרה מהשיווק"
+      disabled={busy}
+      onClick={async (e) => {
+        e.stopPropagation();
+        if (!window.confirm('להסיר את הנכס מהשיווק שלכם?')) return;
+        setBusy(true);
+        const { error } = await supabase.from('affiliate_referrals').delete().eq('id', referralId);
+        setBusy(false);
+        if (error) { toast.error(error.message); return; }
+        toast.success('הנכס הוסר מהשיווק');
+        queryClient.invalidateQueries({ queryKey: ['affiliate-my-referrals'] });
+        queryClient.invalidateQueries({ queryKey: ['affiliate-referral-listings'] });
+      }}
+    >
+      <XCircle className="h-4 w-4" />
+    </Button>
+  );
+}
+
+function PartnerListingActions({ listing, referralId }: { listing: MarketplaceListing; referralId?: string | null }) {
   const result = marketplaceResult(listing);
   return (
     <div className="flex items-center gap-1.5">
       {/* Icon-only action: the title carries the meaning, no text label. */}
       <PropertyShareMenu results={[result]} iconOnly />
       <SubmitLeadDialog listing={listing} />
+      {referralId ? <RemoveFromMarketingButton referralId={referralId} /> : null}
     </div>
   );
 }
@@ -453,25 +484,19 @@ function MarketplaceCard({ listing, compact = false, referral }: { listing: Mark
               {referral.clicks ?? 0} כניסות
             </span>
             <Badge variant="outline" className="text-[11px] font-medium">
-              {REFERRAL_STATUS_LABELS[referral.status] ?? referral.status}
-            </Badge>
-            <Badge variant="outline" className="text-[11px] font-medium">
               {SETTLEMENT_LABELS[referral.settlement_status] ?? referral.settlement_status}
             </Badge>
             <span className="text-xs font-bold text-emerald-700">
               {formatReward(referral.reward_type, referral.reward_amount)}
             </span>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="ms-auto h-8 w-8"
-              title="העתקת קישור השיווק"
-              aria-label="העתקת קישור השיווק"
-              onClick={(e) => { stop(e); copy(affiliateTrackingLink(null, referral.listing_id, referral.tracking_code)); }}
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <UserPlus className="h-3.5 w-3.5" />
+              {leadsCount ?? 0} לידים
+            </span>
+            <div className="ms-auto flex items-center gap-1">
+              <PropertyShareMenu results={[marketplaceResult(listing)]} iconOnly />
+              <RemoveFromMarketingButton referralId={referral.id} />
+            </div>
           </div>
         ) : null}
 
@@ -780,7 +805,7 @@ export default function AffiliatePortal() {
   const searchPlaceholder = activeTab === 'leads'
     ? 'חיפוש אנשי קשר שהגשתי'
     : activeTab === 'mine'
-      ? 'חיפוש השיווקים שלי'
+      ? 'חיפוש נכסים בשיווק'
       : 'חיפוש נכסים לשיווק';
 
   const stats = useMemo(() => {
@@ -939,7 +964,7 @@ export default function AffiliatePortal() {
             <TabsList>
               <TabsTrigger value="marketplace">נכסים ({marketplace.length})</TabsTrigger>
               <TabsTrigger value="leads">לידים ({submissions.length})</TabsTrigger>
-              <TabsTrigger value="mine">שיווקים ({referralCampaigns.filter((row) => row.listing).length})</TabsTrigger>
+              <TabsTrigger value="mine">בשיווק ({referralCampaigns.filter((row) => row.listing).length})</TabsTrigger>
               <TabsTrigger value="earnings">רווחים ({earningRows.length})</TabsTrigger>
             </TabsList>
             <div className="flex shrink-0 items-center" aria-label="בחירת תצוגה">
@@ -989,7 +1014,7 @@ export default function AffiliatePortal() {
                   }}
                   affiliateCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
-                    return listing ? <PartnerListingActions listing={listing} /> : null;
+                    return listing ? <PartnerListingActions listing={listing} referralId={referrals.find((r) => r.listing_id === listing.listing_id)?.id ?? null} /> : null;
                   }}
                   commissionCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
@@ -1125,31 +1150,17 @@ export default function AffiliatePortal() {
                   const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
                   if (!row) return null;
                   return (
-                    <div className="flex items-center gap-1.5">
-                      <Badge variant="outline" className="text-[11px] font-medium">
-                        {REFERRAL_STATUS_LABELS[row.referral.status] ?? row.referral.status}
-                      </Badge>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" title="כניסות">
                         <MousePointerClick className="h-3.5 w-3.5" />
                         {row.referral.clicks ?? 0}
                       </span>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        title="העתקת קישור השיווק"
-                        aria-label="העתקת קישור השיווק"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          await navigator.clipboard.writeText(
-                            affiliateTrackingLink(null, row.referral.listing_id, row.referral.tracking_code),
-                          );
-                          toast.success('הקישור הועתק');
-                        }}
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" title="לידים">
+                        <UserPlus className="h-3.5 w-3.5" />
+                        {leadsForReferral(row.referral)}
+                      </span>
+                      {row.listing ? <PropertyShareMenu results={[marketplaceResult(row.listing)]} iconOnly /> : null}
+                      <RemoveFromMarketingButton referralId={row.referral.id} />
                     </div>
                   );
                 }}

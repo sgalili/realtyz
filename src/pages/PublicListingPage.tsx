@@ -11,6 +11,7 @@
  *    degrades to a friendly card instead of a white page.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bed, Building2, ImageIcon, Layers, Loader2, Ruler } from 'lucide-react';
