@@ -3,6 +3,7 @@
 // everything, sign up through /auth, and have the listing auto-published on return.
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Film, ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const { user } = useAuth();
   const { isPropertyOwner, refetch: refetchRoles } = useUserRole();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
@@ -156,6 +158,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       } as never).select('id').single();
       if (error) throw error;
       await clearPublicListingDraft();
+      void queryClient.invalidateQueries({ queryKey: ['owner-listings'] });
       toast.success('הנכס פורסם בלוח השיתופי');
        setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0);
        navigate('/public-listings', { replace: true, state: { publishedListingId: (data as { id?: string } | null)?.id } });
@@ -163,10 +166,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       const e = error as { message?: string; details?: string; hint?: string } | null;
       const message = (error instanceof Error ? error.message : [e?.message, e?.details, e?.hint].filter(Boolean).join(' · ')) || 'שגיאה לא ידועה';
       console.error('public listing publish failed', error);
-      const friendly = message.includes('one active property') || message.includes('duplicate')
-        ? 'בעל נכס פרטי יכול לפרסם נכס פעיל אחד בלבד'
+      const friendly = message.includes('one active property')
+        ? `בעל נכס פרטי יכול לפרסם נכס פעיל אחד בלבד (${message})`
         : message.includes('row-level security') || message.includes('permission')
-          ? 'אין הרשאה לפרסם את הנכס בחשבון הזה'
+          ? `אין הרשאה לפרסם את הנכס בחשבון הזה (${message})`
           : message;
       const detailedError = `${publishStage || 'פרסום'}: ${friendly}`;
       setPublishError(detailedError);
