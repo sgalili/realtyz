@@ -450,6 +450,14 @@ function BrokerAffiliateNetwork() {
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
             <div className="flex items-center gap-3">
+              {/* Unlabeled multi-select toggle before the search field. */}
+              <Checkbox
+                checked={multiSelectMode}
+                onCheckedChange={(checked) => { setMultiSelectMode(Boolean(checked)); if (!checked) setSelectedListingIds(new Set()); }}
+                aria-label="בחירה מרובה"
+                title="בחירה מרובה"
+                className="h-5 w-5 shrink-0"
+              />
               {/* Magnifier at the start of the field, filter button at the end. */}
               <div className="flex h-10 max-w-sm flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
                 <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
@@ -470,15 +478,6 @@ function BrokerAffiliateNetwork() {
                 />
               </div>
               <div className="ms-auto inline-flex items-center">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={multiSelectMode ? 'default' : 'outline'}
-                  className="me-2 h-8 gap-1.5 text-xs"
-                  onClick={() => { setMultiSelectMode((current) => !current); setSelectedListingIds(new Set()); }}
-                >
-                  <ListChecks className="h-3.5 w-3.5" /> בחירה מרובה
-                </Button>
                 <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
               </div>
             </div>

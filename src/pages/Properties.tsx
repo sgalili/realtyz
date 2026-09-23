@@ -22,7 +22,7 @@ import {
   Megaphone, BedDouble, Ruler, MapPin, Building2, List, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon,
-   RefreshCw, Handshake, Pencil, Trash2, ListChecks,
+   RefreshCw, Handshake, Pencil, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -763,8 +763,15 @@ export default function Properties() {
 
 
 
-        {/* Row 1 — search field: [filter icon] [active filter words] [text] [go] */}
+        {/* Row 1 — search field: [multi-select checkbox] [filter icon] [active filter words] [text] [go] */}
         <div className="flex items-center gap-2" dir="rtl">
+          <Checkbox
+            checked={multiSelectMode}
+            onCheckedChange={(checked) => { setMultiSelectMode(Boolean(checked)); if (!checked) setSelectedListingIds(new Set()); }}
+            aria-label="בחירה מרובה"
+            title="בחירה מרובה"
+            className="h-5 w-5 shrink-0"
+          />
           <div className="relative flex-1 min-w-[200px]">
             <div className="flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background ps-2 pe-24 py-1 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
               <CollapsibleTrigger asChild>
@@ -966,19 +973,6 @@ export default function Properties() {
 
           {/* Side B — single mutually-exclusive view switch */}
           <div className="ms-auto inline-flex items-center">
-            <Button
-              type="button"
-              size="sm"
-              variant={multiSelectMode ? 'default' : 'outline'}
-              className="me-2 h-8 gap-1.5 text-xs"
-              onClick={() => {
-                setMultiSelectMode((current) => !current);
-                setSelectedListingIds(new Set());
-              }}
-            >
-              <ListChecks className="h-3.5 w-3.5" />
-              בחירה מרובה
-            </Button>
             <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
           </div>
         </div>
