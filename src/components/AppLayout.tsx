@@ -55,6 +55,18 @@ const TUTORIAL_STEPS = [
 ];
 
 
+/** Re-opens the sidebar after a mode switch remounts the layout. */
+function KeepSidebarOpenAfterModeSwitch() {
+  const { setOpen, setOpenMobile, isMobile } = useSidebar();
+  useEffect(() => {
+    if (sessionStorage.getItem('realtyz:keep-sidebar-open') !== '1') return;
+    sessionStorage.removeItem('realtyz:keep-sidebar-open');
+    const t = window.setTimeout(() => (isMobile ? setOpenMobile(true) : setOpen(true)), 50);
+    return () => window.clearTimeout(t);
+  }, [isMobile, setOpen, setOpenMobile]);
+  return null;
+}
+
 function HeaderProfileLink() {
   const { setOpen, setOpenMobile, isMobile } = useSidebar();
 
@@ -472,6 +484,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
+      <KeepSidebarOpenAfterModeSwitch />
       {/* A negative wallet locks the app until the balance is topped up. */}
       <WalletLockGate />
       <div className="realtyz-app-shell h-[100dvh] max-h-[100dvh] overflow-hidden flex w-full bg-background">
