@@ -7159,6 +7159,15 @@ export type Database = {
         Args: { _city?: string; _deal_type: string }
         Returns: Json
       }
+      get_listing_publishers: {
+        Args: { _listing_ids: string[] }
+        Returns: {
+          listing_id: string
+          publisher_logo: string
+          publisher_name: string
+          workspace_owner_id: string
+        }[]
+      }
       get_match_stats: { Args: { p_user_id: string }; Returns: Json }
       get_my_referral_code: { Args: never; Returns: string }
       get_my_referral_stats: { Args: never; Returns: Json }

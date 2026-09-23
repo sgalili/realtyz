@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -673,6 +674,15 @@ export default function AffiliatePortal() {
   const [citySearch, setCitySearch] = useState('');
   const scrollKey = 'affiliate-portal:marketplace-scroll';
   const [automationCardsVisible, setAutomationCardsVisible] = useState(false);
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkRemoving, setBulkRemoving] = useState(false);
+  const bulkQueryClient = useQueryClient();
+  const toggleSelected = (id: string) => setSelectedIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   // The robot icon in the page hero toggles the two automation cards.
   useEffect(() => {
@@ -966,18 +976,48 @@ export default function AffiliatePortal() {
 
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+            {/* Master multi-select checkbox sits right before the tabs, same row. */}
+            <Checkbox
+              checked={multiSelectMode}
+              onCheckedChange={(checked) => { setMultiSelectMode(Boolean(checked)); if (!checked) setSelectedIds(new Set()); }}
+              aria-label="בחירה מרובה"
+              title="בחירה מרובה"
+              className="h-5 w-5 shrink-0"
+            />
             <TabsList>
               <TabsTrigger value="marketplace">נכסים ({marketplace.length})</TabsTrigger>
               <TabsTrigger value="leads">לידים ({submissions.length})</TabsTrigger>
               <TabsTrigger value="mine">בשיווק ({referralCampaigns.filter((row) => row.listing).length})</TabsTrigger>
               <TabsTrigger value="earnings">רווחים ({earningRows.length})</TabsTrigger>
             </TabsList>
+            </div>
             <div className="flex shrink-0 items-center" aria-label="בחירת תצוגה">
               <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} />
             </div>
           </div>
 
 
+
+            {multiSelectMode && selectedIds.size > 0 ? (() => {
+              const refIds = referrals.filter((r) => r.listing_id && selectedIds.has(r.listing_id)).map((r) => r.id);
+              return (
+                <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                  <span>נבחרו {selectedIds.size} נכסים</span>
+                  <Button size="sm" variant="destructive" disabled={bulkRemoving || refIds.length === 0} onClick={async () => {
+                    if (!window.confirm(`להסיר ${refIds.length} נכסים מהשיווק שלכם?`)) return;
+                    setBulkRemoving(true);
+                    const { error } = await supabase.from('affiliate_referrals').delete().in('id', refIds);
+                    setBulkRemoving(false);
+                    if (error) { toast.error(error.message); return; }
+                    toast.success('הנכסים הוסרו מהשיווק');
+                    setSelectedIds(new Set());
+                    bulkQueryClient.invalidateQueries({ queryKey: ['affiliate-my-referrals'] });
+                    bulkQueryClient.invalidateQueries({ queryKey: ['affiliate-referral-listings'] });
+                  }}>הסרה מהשיווק ({refIds.length})</Button>
+                </div>
+              );
+            })() : null}
           <TabsContent value="marketplace" className="space-y-4 pt-4">
 
             {marketLoading ? (
@@ -1005,6 +1045,9 @@ export default function AffiliatePortal() {
                       });
                     }
                   }}
+                  selectionMode={multiSelectMode}
+                  selectedIds={selectedIds}
+                  onToggleSelected={toggleSelected}
                   hideDefaultActions
                   showPropertyNotes={false}
                   publishedLabel="פורסם לרשת"
@@ -1150,6 +1193,9 @@ export default function AffiliatePortal() {
                   const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
                   return row?.listing ? <CommissionTierBadges tiers={listingTiers(row.listing)} compact level4Locked={!level4Unlocked} /> : null;
                 }}
+                selectionMode={multiSelectMode}
+                selectedIds={selectedIds}
+                onToggleSelected={toggleSelected}
                 affiliateSortValue={(result) => filteredReferrals.find((item) => item.listing?.listing_id === result.localId)?.referral.clicks ?? 0}
                 affiliateCell={(result) => {
                   const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
