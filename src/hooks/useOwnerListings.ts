@@ -54,7 +54,7 @@ export function useOwnerListings() {
       const { data, error } = await supabase
         .from('listings')
         .select(OWNER_COLUMNS)
-        .eq('owner_id', user!.id)
+        .or(`owner_id.eq.${user!.id},and(user_id.eq.${user!.id},source.eq.manual,is_published.eq.true)`)
         .order('updated_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as OwnerListing[];

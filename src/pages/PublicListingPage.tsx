@@ -203,7 +203,7 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
     longitude: Number.isFinite(Number(row?.longitude)) && Number(row?.longitude) !== 0 ? Number(row.longitude) : null,
     addressForMap: addressMapQuery(row ?? {}),
     premsg: ritaPropertyPremsg(row ?? {}),
-    contactOptions: row?.contact_options && typeof row.contact_options === 'object' ? row.contact_options : { digital: true, whatsapp: true, phone: false },
+    contactOptions: row?.contact_options && typeof row.contact_options === 'object' ? row.contact_options : { digital: false, whatsapp: true, phone: false },
   };
 }
 

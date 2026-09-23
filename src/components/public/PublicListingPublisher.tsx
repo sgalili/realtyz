@@ -156,6 +156,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       } as never).select('id').single();
       if (error) throw error;
       await clearPublicListingDraft();
+      void queryClient.invalidateQueries({ queryKey: ['owner-listings'] });
       toast.success('הנכס פורסם בלוח השיתופי');
        setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0);
        navigate('/public-listings', { replace: true, state: { publishedListingId: (data as { id?: string } | null)?.id } });
@@ -163,10 +164,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       const e = error as { message?: string; details?: string; hint?: string } | null;
       const message = (error instanceof Error ? error.message : [e?.message, e?.details, e?.hint].filter(Boolean).join(' · ')) || 'שגיאה לא ידועה';
       console.error('public listing publish failed', error);
-      const friendly = message.includes('one active property') || message.includes('duplicate')
-        ? 'בעל נכס פרטי יכול לפרסם נכס פעיל אחד בלבד'
+      const friendly = message.includes('one active property')
+        ? `בעל נכס פרטי יכול לפרסם נכס פעיל אחד בלבד (${message})`
         : message.includes('row-level security') || message.includes('permission')
-          ? 'אין הרשאה לפרסם את הנכס בחשבון הזה'
+          ? `אין הרשאה לפרסם את הנכס בחשבון הזה (${message})`
           : message;
       const detailedError = `${publishStage || 'פרסום'}: ${friendly}`;
       setPublishError(detailedError);

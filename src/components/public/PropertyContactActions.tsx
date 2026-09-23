@@ -34,8 +34,10 @@ export default function PropertyContactActions({
   premsg?: string | null;
   shareUrl?: string | null;
 }) {
-  const settings = options ?? { digital: true, whatsapp: false, phone: false };
-  const showDigital = settings.digital !== false;
+  const settings = options ?? { digital: false, whatsapp: true, phone: false };
+  // The form appears ONLY for level-1 ads. Chat and call flows collect name +
+  // phone themselves, so the form never shows next to them.
+  const showDigital = settings.digital === true && settings.whatsapp !== true && settings.phone !== true;
   const [mode, setMode] = useState<'digital' | 'phone' | 'whatsapp' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
