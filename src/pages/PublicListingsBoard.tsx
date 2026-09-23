@@ -132,6 +132,7 @@ export default function PublicListingsBoard() {
                 {([['all', 'הכול'], ['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant={deal === value ? 'default' : 'ghost'} onClick={() => setDeal(value)}>{label}</Button>)}
                 </div>
               </div>
+              {user ? <Button asChild className="shrink-0" size="sm" variant="outline"><a href="/owner/properties">עריכת המודעות שלי</a></Button> : null}
               <Button className="shrink-0" size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
             </div>
           </div>
