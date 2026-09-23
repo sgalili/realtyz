@@ -384,7 +384,7 @@ export function useBrokerAffiliateListings() {
         .select(
           'id, property_title, address, city, neighborhood, deal_type, asking_price, rooms, sqm, floor, description, source_url, image_url, media_photos, house_number, apartment_number, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount, affiliate_tier4_type, affiliate_tier4_amount, contact_options',
         )
-        .eq('user_id', ownerId!)
+        .eq('workspace_owner_id', ownerId!)
         .order('affiliate_enabled', { ascending: false })
         .order('created_at', { ascending: false });
       if (error) throw error;

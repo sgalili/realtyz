@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -29,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { BedDouble, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy } from 'lucide-react';
+import { BedDouble, ClipboardList, Handshake, LayoutGrid, List, ListChecks, MapPin, Phone, Ruler, Search, SquareArrowOutUpLeft, TrendingUp, Trophy, Trash2 } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { useNavigate } from 'react-router-dom';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
@@ -68,6 +69,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useAppMode } from '@/hooks/useAppMode';
 import { publicUrl } from '@/lib/publicUrl';
 import { supabase } from '@/integrations/supabase/client';
+import { useDeleteListings } from '@/hooks/useDeleteListings';
+import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
 
 const AFFILIATE_SCROLL_KEY = 'affiliate-network:scroll-y';
 
@@ -350,6 +353,10 @@ function BrokerAffiliateNetwork() {
   const [propertyFilter, setPropertyFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [editing, setEditing] = useState<BrokerAffiliateListing | null>(null);
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [selectedListingIds, setSelectedListingIds] = useState<Set<string>>(new Set());
+  const [deleteTargetIds, setDeleteTargetIds] = useState<string[]>([]);
+  const deleteListings = useDeleteListings();
   // Removing a property from partner marketing is destructive for partners who
   // are already promoting it, so it always goes through a confirmation.
 
@@ -365,6 +372,28 @@ function BrokerAffiliateNetwork() {
   const openLead = (leadId: string) => {
     sessionStorage.setItem(AFFILIATE_SCROLL_KEY, String(window.scrollY));
     navigate(`/lead-crm/${leadId}`, { state: { returnTo: '/affiliate-network' } });
+  };
+
+  const toggleSelectedListing = (id: string) => {
+    setSelectedListingIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const confirmDeleteListings = async () => {
+    const ids = deleteTargetIds;
+    if (!ids.length) return;
+    try {
+      await deleteListings.mutateAsync(ids);
+      setSelectedListingIds(new Set());
+      setMultiSelectMode(false);
+      setDeleteTargetIds([]);
+      toast.success(ids.length > 1 ? `${ids.length} נכסים נמחקו` : 'הנכס נמחק');
+    } catch (error) {
+      toast.error('מחיקת הנכס נכשלה', { description: error instanceof Error ? error.message : undefined });
+    }
   };
 
   // Filter option lists come straight off the broker's own properties.
@@ -441,9 +470,27 @@ function BrokerAffiliateNetwork() {
                 />
               </div>
               <div className="ms-auto inline-flex items-center">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={multiSelectMode ? 'default' : 'outline'}
+                  className="me-2 h-8 gap-1.5 text-xs"
+                  onClick={() => { setMultiSelectMode((current) => !current); setSelectedListingIds(new Set()); }}
+                >
+                  <ListChecks className="h-3.5 w-3.5" /> בחירה מרובה
+                </Button>
                 <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
               </div>
             </div>
+
+            {multiSelectMode && selectedListingIds.size > 0 ? (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <span className="text-sm font-semibold">נבחרו {selectedListingIds.size} נכסים</span>
+                <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}>
+                  <Trash2 className="h-4 w-4" /> מחיקת הנבחרים
+                </Button>
+              </div>
+            ) : null}
 
             {listingsLoading ? (
               <Skeleton className="h-64 w-full" />
@@ -481,6 +528,10 @@ function BrokerAffiliateNetwork() {
                 onEdit={(result) => {
                   if (result.localId) navigate(`/properties/${result.localId}`, { state: { returnTo: '/affiliate-network', openEdit: true } });
                 }}
+                selectionMode={multiSelectMode}
+                selectedIds={selectedListingIds}
+                onToggleSelected={toggleSelectedListing}
+                onDelete={(result) => result.localId && setDeleteTargetIds([result.localId])}
                 // First column: shared properties are green; clicking always
                 // opens the commissions dialog with the sharing switch.
                 affiliateCell={(result) => {
@@ -534,11 +585,22 @@ function BrokerAffiliateNetwork() {
                 {filteredListings.map((l) => (
                   <Card
                     key={l.id}
-                    className="group cursor-pointer overflow-hidden border-slate-200 transition-shadow hover:shadow-lg"
-                    onClick={() => navigate(`/properties/${l.id}`, {
-                      state: { propertySnapshot: toUnifiedResult(l), returnTo: '/affiliate-network' },
-                    })}
+                    className="group relative cursor-pointer overflow-hidden border-slate-200 transition-shadow hover:shadow-lg"
+                    onClick={() => {
+                      if (multiSelectMode) {
+                        toggleSelectedListing(l.id);
+                        return;
+                      }
+                      navigate(`/properties/${l.id}`, {
+                        state: { propertySnapshot: toUnifiedResult(l), returnTo: '/affiliate-network' },
+                      });
+                    }}
                   >
+                    {multiSelectMode ? (
+                      <div className="absolute end-3 top-3 z-20" onClick={(event) => event.stopPropagation()}>
+                        <Checkbox checked={selectedListingIds.has(l.id)} onCheckedChange={() => toggleSelectedListing(l.id)} aria-label="בחירת נכס" className="h-5 w-5 bg-background" />
+                      </div>
+                    ) : null}
                     <div className="border-b px-4 pb-2 pt-3">
                       <h3 className="truncate text-base font-semibold" title={l.property_title || undefined}>
                         {l.property_title || 'נכס ללא כותרת'}
@@ -594,6 +656,7 @@ function BrokerAffiliateNetwork() {
                             }, { onError: () => toast.error('העדכון נכשל') })}
                           />
                         </div>
+                        {!multiSelectMode ? <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={(event) => { event.stopPropagation(); setDeleteTargetIds([l.id]); }} title="מחיקת נכס" aria-label="מחיקת נכס"><Trash2 className="h-4 w-4" /></Button> : null}
                         <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); setEditing(l); }}>
                           קביעת תגמול
                         </Button>
@@ -827,6 +890,7 @@ function BrokerAffiliateNetwork() {
         <RewardDialog listing={editing} open={!!editing} onOpenChange={(v) => !v && setEditing(null)} />
 
       </div>
+      <PropertyDeleteDialog count={deleteTargetIds.length} open={deleteTargetIds.length > 0} deleting={deleteListings.isPending} onOpenChange={(open) => { if (!open) setDeleteTargetIds([]); }} onConfirm={confirmDeleteListings} />
     </>
   );
 }
