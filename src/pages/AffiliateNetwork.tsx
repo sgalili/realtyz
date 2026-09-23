@@ -522,16 +522,6 @@ function BrokerAffiliateNetwork() {
         <AffiliateAutomationCards />
         <Tabs defaultValue="rewards">
           <div className="flex items-center gap-2">
-          {/* Master multi-select checkbox sits right before the tabs, same row. */}
-          <Checkbox
-            checked={multiSelectMode}
-            onCheckedChange={(checked) => {
-              setMultiSelectMode(Boolean(checked));
-              if (!checked) setSelectedListingIds(new Set());
-            }}
-            aria-label="בחירה מרובה"
-            className="h-5 w-5 shrink-0"
-          />
           <TabsList className="mx-auto grid flex-1 h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
             <TabsTrigger
               value="rewards"
@@ -556,6 +546,16 @@ function BrokerAffiliateNetwork() {
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
             <div className="flex items-center gap-3">
+              <Checkbox
+                checked={multiSelectMode}
+                onCheckedChange={(checked) => {
+                  setMultiSelectMode(Boolean(checked));
+                  if (!checked) setSelectedListingIds(new Set());
+                }}
+                aria-label="בחירה מרובה"
+                title="בחירה מרובה"
+                className="h-5 w-5 shrink-0"
+              />
               {/* Magnifier at the start of the field, filter button at the end. */}
               <div className="flex h-10 max-w-sm flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
                 <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1000,14 +1000,26 @@ function BrokerAffiliateNetwork() {
           </TabsContent>
 
           <TabsContent value="tracking" className="space-y-4 pt-4">
-            <div className="flex h-10 max-w-sm items-center gap-2 rounded-md border border-input bg-background px-3">
-              <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
-              <Input
-                placeholder="חיפוש נכס בשיווק או שותף"
-                value={trackingSearch}
-                onChange={(e) => setTrackingSearch(e.target.value)}
-                className="h-8 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+            <div className="flex max-w-sm items-center gap-3">
+              <Checkbox
+                checked={multiSelectMode}
+                onCheckedChange={(checked) => {
+                  setMultiSelectMode(Boolean(checked));
+                  if (!checked) setSelectedListingIds(new Set());
+                }}
+                aria-label="בחירה מרובה"
+                title="בחירה מרובה"
+                className="h-5 w-5 shrink-0"
               />
+              <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
+                <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
+                <Input
+                  placeholder="חיפוש נכס בשיווק או שותף"
+                  value={trackingSearch}
+                  onChange={(e) => setTrackingSearch(e.target.value)}
+                  className="h-8 min-w-0 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                />
+              </div>
             </div>
             {refsLoading ? (
               <Skeleton className="h-64 w-full" />
