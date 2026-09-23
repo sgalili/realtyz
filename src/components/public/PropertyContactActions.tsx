@@ -38,14 +38,16 @@ export default function PropertyContactActions({
   compact?: boolean;
   showShare?: boolean;
 }) {
-  const settings = options ?? { digital: false, whatsapp: true, phone: false };
+  const settings = options ?? {};
   // A listing exposes one publisher-defined path only. Prefer the highest
   // configured tier when old records contain more than one true value.
-  const primaryMode: 'digital' | 'whatsapp' | 'phone' = settings.phone === true
+  const primaryMode: 'digital' | 'whatsapp' | 'phone' | null = settings.phone === true
     ? 'phone'
     : settings.whatsapp === true
       ? 'whatsapp'
-      : 'digital';
+      : settings.digital === true
+        ? 'digital'
+        : null;
   const [mode, setMode] = useState<'digital' | 'phone' | 'whatsapp' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
