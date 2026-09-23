@@ -13,7 +13,7 @@ export default function OwnerProperties() {
   const { data: listings = [], isLoading } = useOwnerListings();
   const update = useUpdateOwnerListing();
   const [editing, setEditing] = useState<OwnerListing | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', price: '', rooms: '', sqm: '', address: '', photos: '' });
+  const [form, setForm] = useState({ title: '', description: '', price: '', rooms: '', sqm: '', address: '', city: '', neighborhood: '', photos: '' });
 
   const openEdit = (listing: OwnerListing) => {
     setEditing(listing);
@@ -24,6 +24,8 @@ export default function OwnerProperties() {
       rooms: listing.rooms != null ? String(listing.rooms) : '',
       sqm: listing.sqm != null ? String(listing.sqm) : '',
       address: listing.address ?? '',
+      city: listing.city ?? '',
+      neighborhood: listing.neighborhood ?? '',
       photos: ownerListingPhotos(listing).join('\n'),
     });
   };
@@ -41,11 +43,13 @@ export default function OwnerProperties() {
           rooms: form.rooms ? Number(form.rooms) : null,
           sqm: form.sqm ? Number(form.sqm) : null,
           address: form.address.trim() || null,
+          city: form.city.trim() || null,
+          neighborhood: form.neighborhood.trim() || null,
           media_photos: photos,
           image_url: photos[0] ?? null,
         },
       });
-      toast.success('הנכס עודכן');
+      toast.success('המודעה עודכנה ומוצגת כבר בלוח');
       setEditing(null);
     } catch {
       toast.error('העדכון נכשל');
@@ -108,6 +112,10 @@ export default function OwnerProperties() {
           <div className="space-y-2">
             <Input placeholder="כותרת" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             <Input placeholder="כתובת" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="עיר" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+              <Input placeholder="שכונה" value={form.neighborhood} onChange={(e) => setForm({ ...form, neighborhood: e.target.value })} />
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <Input placeholder="מחיר" inputMode="numeric" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
               <Input placeholder="חדרים" inputMode="decimal" value={form.rooms} onChange={(e) => setForm({ ...form, rooms: e.target.value })} />

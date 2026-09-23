@@ -35,8 +35,8 @@ export default function PropertyContactActions({
   shareUrl?: string | null;
 }) {
   const settings = options ?? { digital: true, whatsapp: false, phone: false };
-  const showDigital = settings.digital === true && settings.whatsapp !== true;
-  const [mode, setMode] = useState<'digital' | 'phone' | null>(null);
+  const showDigital = settings.digital !== false;
+  const [mode, setMode] = useState<'digital' | 'phone' | 'whatsapp' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [sending, setSending] = useState(false);
@@ -66,6 +66,16 @@ export default function PropertyContactActions({
       toast.error('יש למלא שם מלא ומספר טלפון תקין');
       return;
     }
+    if (mode === 'whatsapp') {
+      // Save the contact in the background, then open the chat synchronously so
+      // the browser never blocks the new tab.
+      void supabase.functions.invoke('public-lead-gate', {
+        body: { action: 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: 'whatsapp', ref },
+      });
+      window.open(officialWaLink(`${waMessage} (${name.trim()})`), '_blank', 'noopener,noreferrer');
+      setMode(null); setName(''); setPhone('');
+      return;
+    }
     const callback = mode === 'phone';
     setSending(true);
     const { data, error } = await supabase.functions.invoke('public-lead-gate', {
@@ -87,13 +97,13 @@ export default function PropertyContactActions({
     <>
       <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur">
         {settings.whatsapp === true && (
-          <Button asChild className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90">
-            <a href={officialWaLink(waMessage)} target="_blank" rel="noopener noreferrer">
+          <Button className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90" onClick={() => setMode('whatsapp')}>
+            <>
               <WhatsAppIcon className="h-5 w-5" />
               שיחה עם ריטה
               {/* RTL: Rita's picture sits on the opposite (left) side of the label. */}
               <RitaAvatar className="h-6 w-6 border-0 ring-0" />
-            </a>
+            </>
           </Button>
         )}
         {settings.phone === true && (
@@ -112,12 +122,12 @@ export default function PropertyContactActions({
       </div>
       <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent dir="rtl" className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="text-right">{mode === 'phone' ? 'חזרה טלפונית' : 'השארת פרטים'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-right">{mode === 'phone' ? 'חזרה טלפונית' : mode === 'whatsapp' ? 'שיחה עם ריטה' : 'השארת פרטים'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>שם מלא *</Label><Input value={name} onChange={(event) => setName(event.target.value)} /></div>
             <div><Label>טלפון *</Label><Input inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div>
           </div>
-          <DialogFooter className="flex-row items-center justify-between sm:justify-between"><Button variant="outline" onClick={() => setMode(null)}>ביטול</Button><Button disabled={sending} onClick={() => void submit()}>{sending && <Loader2 className="h-4 w-4 animate-spin" />}{mode === 'phone' ? 'חייגו אליי' : 'שלחו לי פרטים נוספים'}</Button></DialogFooter>
+          <DialogFooter className="flex-row items-center justify-between sm:justify-between"><Button variant="outline" onClick={() => setMode(null)}>ביטול</Button><Button disabled={sending} onClick={() => void submit()}>{sending && <Loader2 className="h-4 w-4 animate-spin" />}{mode === 'phone' ? 'חייגו אליי' : mode === 'whatsapp' ? 'פתיחת צ׳אט בווטסאפ' : 'שלחו לי פרטים נוספים'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </>

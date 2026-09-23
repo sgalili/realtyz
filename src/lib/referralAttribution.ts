@@ -4,7 +4,7 @@
  */
 const KEY = 'realtyz_ref_code';
 const COOKIE = 'realtyz_ref';
-const DAYS = 30;
+const DAYS = 365;
 
 function readCookie(name: string): string | null {
   const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -25,7 +25,7 @@ export function normalizeRefCode(raw: string | null | undefined): string | null 
 /** Stored referral code, if any. */
 export function getStoredRefCode(): string | null {
   try {
-    return normalizeRefCode(localStorage.getItem(KEY) ?? readCookie(COOKIE));
+    return normalizeRefCode(localStorage.getItem(KEY) ?? sessionStorage.getItem(KEY) ?? readCookie(COOKIE));
   } catch {
     return null;
   }
@@ -39,6 +39,7 @@ export function storeRefCode(raw: string | null | undefined): string | null {
   if (existing) return existing;
   try {
     localStorage.setItem(KEY, code);
+    sessionStorage.setItem(KEY, code);
     writeCookie(COOKIE, code);
   } catch {
     /* storage blocked */
