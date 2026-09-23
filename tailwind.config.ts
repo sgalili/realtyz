@@ -99,6 +99,10 @@ export default {
           foreground: "hsl(var(--deal-blue-foreground))",
           soft: "hsl(var(--deal-blue-soft))",
         },
+        sale: {
+          DEFAULT: "hsl(var(--sale))",
+          foreground: "hsl(var(--sale-foreground))",
+        },
         brand: {
           navy: "hsl(var(--brand-navy))",
           blue: "hsl(var(--brand-blue))",

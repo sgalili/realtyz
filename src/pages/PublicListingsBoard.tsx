@@ -9,11 +9,15 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
+import PropertyContactActions from '@/components/public/PropertyContactActions';
+import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
+import type { LeadContactOptions } from '@/lib/leadTiers';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
   street: string; house_number?: string | null; apartment_number?: string | null; deal_type: string | null; rooms: number | null; sqm: number | null; floor: number | null; total_floors: number | null;
   price: number | null; description: string | null; photos: string[];
+  property_type: string | null; contact_options: LeadContactOptions | null;
 };
 
 type GateIntent = 'favorite' | 'details';
@@ -156,14 +160,21 @@ export default function PublicListingsBoard() {
                       <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}${card.total_floors ? ` מתוך ${card.total_floors}` : ''}` : null].filter(Boolean).join(' · ')}</p>
                     </div>
                     <div className="shrink-0 text-left">
-                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success/15 text-success' : 'bg-orange-500 text-white shadow-sm')}>{dealLabel(card.deal_type)}</span>
+                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success text-success-foreground' : 'bg-sale text-sale-foreground shadow-sm')}>{dealLabel(card.deal_type)}</span>
                       <p className="mt-1 text-sm font-bold text-foreground">{shekel(card.price)}</p>
                     </div>
                   </div>
                   {card.description && <p className="line-clamp-3 text-xs text-muted-foreground">{card.description}</p>}
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" className="flex-1" onClick={() => openGate(card, 'details')}>השארת פרטים</Button>
-                  </div>
+                   <div className="pt-1">
+                     <PropertyContactActions
+                       listingId={card.id}
+                       title={title}
+                       premsg={ritaPropertyPremsg(card)}
+                       options={card.contact_options}
+                       compact
+                       showShare={false}
+                     />
+                   </div>
                 </div>
               </article>;
             })}

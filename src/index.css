@@ -45,6 +45,10 @@
     --deal-blue-foreground: 0 0% 100%;
     --deal-blue-soft: 214 90% 42%;
 
+    /* Sale status — deliberately vivid and independent from neutral badge variants. */
+    --sale: 25 95% 53%;
+    --sale-foreground: 0 0% 100%;
+
     --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
 
