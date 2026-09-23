@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type ListingPublisher = { name: string; logo: string | null };
+export type ListingPublisher = { name: string; logo: string | null; userName: string | null };
 
 /** Publisher workspace name + logo per listing id (safe cross-workspace lookup). */
 export function useListingPublishers(listingIds: string[]) {
@@ -15,7 +15,7 @@ export function useListingPublishers(listingIds: string[]) {
       if (error) throw error;
       const map = new Map<string, ListingPublisher>();
       for (const row of (data ?? []) as any[]) {
-        map.set(row.listing_id, { name: row.publisher_name, logo: row.publisher_logo });
+        map.set(row.listing_id, { name: row.publisher_name, logo: row.publisher_logo, userName: row.publisher_user_name ?? null });
       }
       return map;
     },

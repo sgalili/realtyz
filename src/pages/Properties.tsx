@@ -1592,8 +1592,8 @@ export function ResultTable({
             ) : null}
             {showAffiliateColumn ? <HeaderCell col="affiliate" label="שותפים" /> : null}
             {commissionCell ? <HeaderCell col="commission" label="עמלות" /> : null}
-            <HeaderCell col="image" label="תמונה" extraClass="w-14" />
             <HeaderCell col="publisher" label="משרד מפרסם" />
+            <HeaderCell col="image" label="תמונה" extraClass="w-14" />
 
             <HeaderCell col="name" label="רחוב" />
             {/* Internal-only: house & apartment numbers never leave the workspace. */}
@@ -1631,6 +1631,25 @@ export function ResultTable({
                 {commissionCell ? (
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{commissionCell(r)}</td>
                 ) : null}
+                <td className="px-2 py-1.5 whitespace-nowrap">
+                  {(() => {
+                    const pub = r.localId ? publishers?.get(r.localId) : undefined;
+                    if (!pub) return <span className="text-muted-foreground">—</span>;
+                    return (
+                      <span className="inline-flex max-w-[11rem] items-center gap-1.5">
+                        {pub.logo ? (
+                          <img src={pub.logo} alt="" loading="lazy" className="h-6 w-6 shrink-0 rounded-full border border-border/60 bg-background object-contain" />
+                        ) : (
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">{pub.name.slice(0, 1)}</span>
+                        )}
+                        <span className="flex min-w-0 flex-col leading-tight">
+                          <span className="truncate text-sm" title={pub.name}>{pub.name}</span>
+                          {pub.userName && pub.userName !== pub.name ? <span className="truncate text-[11px] text-muted-foreground" title={pub.userName}>{pub.userName}</span> : null}
+                        </span>
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td className="px-2 py-1.5">
                   <div className="relative h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
@@ -1655,22 +1674,6 @@ export function ResultTable({
                       ) : null;
                     })()}
                   </div>
-                </td>
-                <td className="px-2 py-1.5 whitespace-nowrap">
-                  {(() => {
-                    const pub = r.localId ? publishers?.get(r.localId) : undefined;
-                    if (!pub) return <span className="text-muted-foreground">—</span>;
-                    return (
-                      <span className="inline-flex max-w-[11rem] items-center gap-1.5">
-                        {pub.logo ? (
-                          <img src={pub.logo} alt="" loading="lazy" className="h-6 w-6 shrink-0 rounded-full border border-border/60 bg-background object-contain" />
-                        ) : (
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">{pub.name.slice(0, 1)}</span>
-                        )}
-                        <span className="truncate text-sm" title={pub.name}>{pub.name}</span>
-                      </span>
-                    );
-                  })()}
                 </td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
                   {(() => {
