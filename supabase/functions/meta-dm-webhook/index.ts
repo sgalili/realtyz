@@ -11,6 +11,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { graphCall, metaAdminClient, ownerForPage } from "../_shared/metaPage.ts";
 import { dmText, type InboundDm, persistInboundDm } from "../_shared/metaDm.ts";
+import { runRitaForDm } from "../_shared/metaDmRita.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const verifyToken = () =>
@@ -107,7 +108,12 @@ Deno.serve(async (req) => {
               ? new Date(Number(ev.timestamp)).toISOString()
               : new Date().toISOString(),
           };
-          await persistInboundDm(admin, binding.ownerId, dm, "meta-dm-webhook");
+          const stored = await persistInboundDm(admin, binding.ownerId, dm, "meta-dm-webhook");
+          // Only a freshly stored message gets a Rita reply (Meta retries are idempotent).
+          if (stored === "inserted") {
+            await runRitaForDm(admin, binding.ownerId, binding as any, dm).catch((e) =>
+              console.error("[meta-dm-webhook] rita leg failed", e instanceof Error ? e.message : e));
+          }
         }
       }
     } catch (e) {
