@@ -498,7 +498,7 @@ export function useBrokerReferrals() {
 
       const [listingsRes, leadsRes, affiliatesRes] = await Promise.all([
         listingIds.length
-          ? supabase.from('listings').select('id, property_title, address, city, deal_type, asking_price, image_url, media_photos').in('id', listingIds)
+          ? supabase.from('listings').select('id, slug, property_title, address, city, deal_type, asking_price, image_url, media_photos').in('id', listingIds)
           : Promise.resolve({ data: [] as any[] }),
         leadIds.length
           ? supabase.from('leads').select('id, full_name, phone, status, profile_picture_url').in('id', leadIds)
