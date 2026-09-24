@@ -22,6 +22,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "./cors.ts";
 import { sendSms019, toLocalIL } from "./sms019.ts";
 import { logIntegrationError } from "./logIntegrationError.ts";
+import { renderFocusPropertyBlock } from "./focusProperty.ts";
+import { answerPropertyFact, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState } from "./ritaIntel.ts";
+import { generateFastReply } from "./waFastReply.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -463,7 +466,15 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
         .filter((m) => m.content);
     } catch { /* soft-fail: Rita can answer on the inbound text alone */ }
 
-    try {
+    // Same property resolution as WhatsApp: current text, earlier messages,
+    // then the contact's linked listing.
+    const focusRow = await resolveFocusListing(admin as any, workspaceOwnerId, bodyText, history, (lead as any).interest_tag ?? null);
+    const focusBlock = renderFocusPropertyBlock(focusRow as any);
+    const stateBlock = renderRitaStateBlock(readRitaState((lead as any).preferences));
+    const factAnswer = answerPropertyFact(bodyText, focusRow as any);
+    if (factAnswer) reply = factAnswer;
+
+    if (!reply) try {
       const aiRes = await fetch(`${SUPABASE_URL}/functions/v1/ai-agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
@@ -477,7 +488,9 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
           context:
             `Inbound SMS from ${realName ?? "the contact (name unknown — do not invent one)"}: ${bodyText}\n` +
             `[CHANNEL: SMS] Keep the reply short (under 300 characters), plain text, no markdown and no emojis. ` +
-            `Never mention WhatsApp and never include any link — the system appends the WhatsApp invitation itself when it is due.`,
+            `Never mention WhatsApp and never include any link — the system appends the WhatsApp invitation itself when it is due.` +
+            (focusBlock ? `\n[FOCUS_PROPERTY] The contact is asking about THIS property. Never ask which property. Answer from these facts:\n${focusBlock}` : "") +
+            stateBlock,
           messages: history,
         }),
       });
@@ -507,6 +520,18 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
         context: { lead_id: lead.id },
       });
     }
+
+    if (reply && !factAnswer && isRepeatReply(reply, history)) {
+      const fresh = await generateFastReply({
+        lead: { id: lead.id, full_name: realName, preferences: (lead as any).preferences ?? null },
+        inboundText: bodyText,
+        history,
+        contextBlock: `[CHANNEL: SMS] תשובה קצרה, בלי קישורים ובלי אימוג׳י.${stateBlock}`,
+        focusProperty: focusBlock || null,
+      }).catch(() => ({ text: "" }));
+      if (fresh.text) reply = fresh.text;
+    }
+    if (reply) void saveRitaState(admin as any, lead.id, (lead as any).preferences, bodyText, reply);
 
     if (!reply) {
       reply = `קיבלנו את ההודעה שלך ונחזור אליך עם תשובה מדויקת.`;
