@@ -568,9 +568,124 @@ Deno.serve(async (req) => {
     }
 
     // Scheduled posts are persisted and dispatched later by the queue drain.
+    const groupResults: any[] = [];
+    const stageGroups = async (scheduledFor: string) => {
+    // Facebook Groups are NEVER published through Meta's Graph API (group
+    // publishing requires App Review). Every group target is staged as an
+    // `fb_group_post` job in campaign_activity_queue and executed locally by
+    // the Realtyz browser extension from the broker's own Facebook session.
+    
+    // Optional per-group text variations (anti-duplicate filter): { [group_id]: text }
+    const groupTexts: Record<string, string> =
+      body?.group_texts && typeof body.group_texts === "object" ? body.group_texts : {};
+
+    // Facebook flags identical posts across groups as spam. Every group gets a
+    // different main picture (rotated, and re-mixed when there are >10 photos)
+    // plus a light text variation when the caller did not supply one.
+    const shuffle = <T,>(arr: T[]): T[] => {
+      const out = [...arr];
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    };
+    const groupVariants = [
+      "",
+      "\n\nמוזמנים לפנות לפרטים נוספים.",
+      "\n\nאשמח לענות על שאלות בפרטי.",
+      "\n\nזמין לתיאום צפייה בהמשך השבוע.",
+      "\n\nניתן לקבל עוד תמונות ומידע בהודעה.",
+    ];
+
+    if (groupIds.length > 0) {
+      let groupUrls: Record<string, string | null> = {};
+      try {
+        const { data: grows } = await db
+          .from("fb_user_groups")
+          .select("group_id, group_url")
+          .eq("workspace_owner_id", ownerId)
+          .in("group_id", groupIds);
+        groupUrls = Object.fromEntries(((grows ?? []) as any[]).map((r) => [String(r.group_id), r.group_url ?? null]));
+      } catch { /* best effort */ }
+
+      const nowIso = scheduledFor;
+      const jobs = groupIds.map((gid, gi) => {
+        const groupMedia = media.length > 10 ? shuffle(media).slice(0, 10) : media;
+        const groupImage = groupMedia.length ? groupMedia[gi % groupMedia.length] : null;
+        const groupText = typeof groupTexts[gid] === "string" && groupTexts[gid].trim()
+          ? String(groupTexts[gid])
+          : `${text}${groupVariants[gi % groupVariants.length]}`;
+        return {
+          workspace_owner_id: ownerId,
+          created_by: ownerId,
+          activity_type: "fb_group_post",
+          target_ref: gid,
+          target_label: gid,
+          scheduled_for: nowIso,
+          status: "pending",
+          publication_status: "scheduled",
+          variation_index: 0,
+          variations: [{ body: groupText }],
+          payload: {
+            body: groupText,
+            outbound_text: groupText,
+            image_url: groupImage,
+            media_urls: groupMedia,
+            link: null,
+            group_url: groupUrls[gid] ?? `https://www.facebook.com/groups/${gid}`,
+            first_comment: firstComment || null,
+            campaign_name: campaignName,
+            listing_id: body?.listing_id ?? null,
+            published_via: "browser_extension",
+          },
+        };
+      });
+      const { data: inserted, error: qErr } = await db
+        .from("campaign_activity_queue")
+        .insert(jobs)
+        .select("id, target_ref");
+      if (qErr) {
+        console.error("[meta-publish] extension queue insert failed", qErr.message);
+        for (const gid of groupIds) {
+          groupResults.push({ group_id: gid, ok: false, code: "queue_failed", reason: `שמירת הפוסט לתור התוסף נכשלה: ${qErr.message}` });
+        }
+      } else {
+        for (const row of (inserted ?? []) as any[]) {
+          groupResults.push({
+            group_id: String(row.target_ref),
+            ok: true,
+            code: "queued_for_extension",
+            reason: "ממתין לפרסום דרך תוסף הדפדפן של Realtyz",
+            queue_id: row.id,
+            post_id: null,
+          });
+        }
+      }
+    }
+
+
+    };
+
     if (scheduledIso) {
       let queued = 0;
+      // Groups are staged NOW with the chosen time, so the extension queue
+      // holds them until that exact moment (ext_claim_jobs filters on
+      // scheduled_for <= now()). The Page row therefore carries no groups.
+      if (groupIds.length > 0) {
+        const { data: already } = await db
+          .from("campaign_activity_queue")
+          .select("id")
+          .eq("workspace_owner_id", ownerId)
+          .eq("activity_type", "fb_group_post")
+          .eq("scheduled_for", new Date(scheduledIso).toISOString())
+          .in("target_ref", groupIds)
+          .in("status", ["pending", "processing"])
+          .limit(1);
+        if (!already?.length) await stageGroups(new Date(scheduledIso).toISOString());
+      }
       for (const ch of channels) {
+        if (!publishToPage && ch === "facebook") continue;
         const existing = await findReusableRow(db, ownerId, ch, hashes[ch], ["scheduled"], 24 * 30);
         if (existing) continue; // already queued for the same slot — never duplicate
         const { error: queueError } = await db.from("campaign_logs").insert({
@@ -583,7 +698,7 @@ Deno.serve(async (req) => {
           sent_at: scheduledIso,
           media_urls: media,
           first_comment: firstComment || null,
-          group_ids: groupIds,
+          group_ids: [],
           target_profile_key: body?.target_profile_key ?? null,
           target_account_ref: body?.target_account_ref ?? null,
           listing_id: body?.listing_id ?? null,
@@ -607,7 +722,7 @@ Deno.serve(async (req) => {
         }
         queued++;
       }
-      return json({ success: true, verified: true, scheduled: true, queued, group_count: groupIds.length, post_ids: [] });
+      return json({ success: true, verified: true, scheduled: true, queued, group_count: groupIds.length, group_results: groupResults, post_ids: [] });
     }
 
     // Strict duplicate prevention: an identical post already live on the same
@@ -761,100 +876,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Facebook Groups are NEVER published through Meta's Graph API (group
-    // publishing requires App Review). Every group target is staged as an
-    // `fb_group_post` job in campaign_activity_queue and executed locally by
-    // the Realtyz browser extension from the broker's own Facebook session.
-    const groupResults: any[] = [];
-    // Optional per-group text variations (anti-duplicate filter): { [group_id]: text }
-    const groupTexts: Record<string, string> =
-      body?.group_texts && typeof body.group_texts === "object" ? body.group_texts : {};
-
-    // Facebook flags identical posts across groups as spam. Every group gets a
-    // different main picture (rotated, and re-mixed when there are >10 photos)
-    // plus a light text variation when the caller did not supply one.
-    const shuffle = <T,>(arr: T[]): T[] => {
-      const out = [...arr];
-      for (let i = out.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [out[i], out[j]] = [out[j], out[i]];
-      }
-      return out;
-    };
-    const groupVariants = [
-      "",
-      "\n\nמוזמנים לפנות לפרטים נוספים.",
-      "\n\nאשמח לענות על שאלות בפרטי.",
-      "\n\nזמין לתיאום צפייה בהמשך השבוע.",
-      "\n\nניתן לקבל עוד תמונות ומידע בהודעה.",
-    ];
-
-    if (groupIds.length > 0) {
-      let groupUrls: Record<string, string | null> = {};
-      try {
-        const { data: grows } = await db
-          .from("fb_user_groups")
-          .select("group_id, group_url")
-          .eq("workspace_owner_id", ownerId)
-          .in("group_id", groupIds);
-        groupUrls = Object.fromEntries(((grows ?? []) as any[]).map((r) => [String(r.group_id), r.group_url ?? null]));
-      } catch { /* best effort */ }
-
-      const nowIso = new Date().toISOString();
-      const jobs = groupIds.map((gid, gi) => {
-        const groupMedia = media.length > 10 ? shuffle(media).slice(0, 10) : media;
-        const groupImage = groupMedia.length ? groupMedia[gi % groupMedia.length] : null;
-        const groupText = typeof groupTexts[gid] === "string" && groupTexts[gid].trim()
-          ? String(groupTexts[gid])
-          : `${text}${groupVariants[gi % groupVariants.length]}`;
-        return {
-          workspace_owner_id: ownerId,
-          created_by: ownerId,
-          activity_type: "fb_group_post",
-          target_ref: gid,
-          target_label: gid,
-          scheduled_for: nowIso,
-          status: "pending",
-          publication_status: "scheduled",
-          variation_index: 0,
-          variations: [{ body: groupText }],
-          payload: {
-            body: groupText,
-            outbound_text: groupText,
-            image_url: groupImage,
-            media_urls: groupMedia,
-            link: null,
-            group_url: groupUrls[gid] ?? `https://www.facebook.com/groups/${gid}`,
-            first_comment: firstComment || null,
-            campaign_name: campaignName,
-            listing_id: body?.listing_id ?? null,
-            published_via: "browser_extension",
-          },
-        };
-      });
-      const { data: inserted, error: qErr } = await db
-        .from("campaign_activity_queue")
-        .insert(jobs)
-        .select("id, target_ref");
-      if (qErr) {
-        console.error("[meta-publish] extension queue insert failed", qErr.message);
-        for (const gid of groupIds) {
-          groupResults.push({ group_id: gid, ok: false, code: "queue_failed", reason: `שמירת הפוסט לתור התוסף נכשלה: ${qErr.message}` });
-        }
-      } else {
-        for (const row of (inserted ?? []) as any[]) {
-          groupResults.push({
-            group_id: String(row.target_ref),
-            ok: true,
-            code: "queued_for_extension",
-            reason: "ממתין לפרסום דרך תוסף הדפדפן של Realtyz",
-            queue_id: row.id,
-            post_id: null,
-          });
-        }
-      }
-    }
-
+    await stageGroups(new Date().toISOString());
 
     // One history row per channel attempt. A retry of the same content REUSES
     // the previous failed row (updated in place) so the queue never fills with
