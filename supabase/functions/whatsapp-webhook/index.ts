@@ -1273,6 +1273,18 @@ async function handleLeadInboxInbound(
         try {
           const matched = await matchListingFromText(admin as any, aiOwnerId, promptInboundText);
           if (matched) return matched;
+          // Follow-ups ("כמה חדרים יש בדירה הזאת?") carry no address: keep the
+          // property identified earlier in this thread in focus.
+          const priorText = aiMessages
+            .filter((m: any) => m.role === "user")
+            .slice(-8)
+            .map((m: any) => String(m.content ?? ""))
+            .reverse()
+            .join("\n");
+          if (priorText) {
+            const prior = await matchListingFromText(admin as any, aiOwnerId, priorText);
+            if (prior) return prior;
+          }
           if (focusListingId) {
             const { data } = await admin
               .from("listings")

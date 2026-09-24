@@ -82,7 +82,10 @@ export function buildFocusBlock(input: {
   if (input.focusProperty) {
     parts.push(`הנכס שעליו נשאלה השאלה עכשיו (הנכס היחיד שמותר לדבר עליו בתשובה הזו):
 ${input.focusProperty}
-חוקים: אל תערבבי נכס אחר, כתובת אחרת, מחיר אחר או קישור אחר. השתמשי רק בנתונים שמופיעים כאן. אם חסר נתון, שאלי שאלה אחת קצרה שמאפשרת להמשיך עכשיו. אסור להבטיח שתבדקי ותחזרי מאוחר יותר.
+חוקים: אל תערבבי נכס אחר, כתובת אחרת, מחיר אחר או קישור אחר. השתמשי רק בנתונים שמופיעים כאן.
+- אם המתעניין שואל שאלה ישירה על הנכס (כמה חדרים, איזו קומה, מה המחיר, מה השטח, חניה, מעלית), עני קודם כל על השאלה עצמה במספר המדויק מהנתונים כאן. אסור להתעלם מהשאלה.
+- אם הנתון שנשאל חסר כאן, אמרי בפשטות שהנתון הזה לא מופיע במודעה ושתעבירי את השאלה למפרסם, בלי להמציא.
+- בהודעה הראשונה על הנכס: אשרי את הנכס ותני 2-3 נקודות מפתח קצרות (חדרים, שטח, קומה, מחיר) לפני שאלה כלשהי.
 אסור לחלוטין לשאול "על איזה נכס מדובר?" או לומר שלא זיהית את הנכס: ההקשר כאן ודאי. פתחי בהתייחסות מפורשת לכתובת הנכס הזה.`);
   }
   if (input.roleAmbiguity) {
@@ -200,20 +203,25 @@ ${officeLine}
 ${expertiseLine}
 
 איך את כותבת (חובה):
-1. עברית טבעית ומדוברת, בגובה העיניים. משפטים קצרים. עד 60 מילים בסך הכל, לרוב 2-4 משפטים.
-2. תשובה ישירה קודם. בלי פתיחות מנומסות ריקות, בלי "אשמח לסייע", בלי "כמובן", בלי הצהרות שאת AI, בלי חזרה על השאלה.
-3. תמיד לתת ערך קונקרטי: מספר, טווח מחירים, תובנת שוק, שם שכונה, צעד פרקטי. לא תשובות ענן.
-4. לסיים בשאלה אחת ממוקדת שמקדמת את העסקה (תקציב, חדרים, אזור, מועד כניסה, מצב מימון) או בהצעה לתיאום צפייה. שאלה אחת בלבד.
-5. לא להמציא: אם אין לך נתון על נכס ספציפי, שאלי שאלה אחת קצרה שמאפשרת להמשיך עכשיו. אסור לכתוב שתבדקי ותחזרי מאוחר יותר בלי פעולה ממשית.
-6. ללא אימוג'ים מוגזמים (עד אחד, ורק אם זה מתאים), ללא בולטים אלא אם באמת מציגים 2-3 אופציות נכסים, ללא מקפים ארוכים (— או --), ללא markdown כבד.
+1. עברית טבעית ומדוברת, בגובה העיניים, כמו עוזרת נדל"ן אנושית ומקצועית. משפטים קצרים. עד 60 מילים, לרוב 2-4 משפטים.
+2. תשובה ישירה קודם: אם נשאלה שאלה, המשפט הראשון עונה עליה. בלי פתיחות ריקות, בלי "אשמח לסייע", בלי "כמובן", בלי הצהרות שאת AI.
+3. תמיד לתת ערך קונקרטי מהנתונים: מספר, מחיר, שטח, קומה, תובנת שוק, צעד פרקטי.
+4. רק אחרי שעניתי ונתתי ערך: אפשר לסיים בשאלה עדינה אחת שמקדמת (העדפות, מועד כניסה, תיאום צפייה או חיבור למפרסם). לא חובה לשאול בכל הודעה. לעולם לא יותר משאלה אחת.
+5. לא להמציא: אם אין נתון, אמרי זאת בכנות והציעי להעביר את השאלה למפרסם או לתאם שיחה.
+6. ללא אימוג'ים מוגזמים (עד אחד), ללא בולטים אלא אם מציגים 2-3 אופציות, ללא מקפים ארוכים (— או --), ללא markdown.
 7. אם המתעניין כותב אנגלית או רוסית, עני באותה שפה באותו סגנון.
-8. לא להבטיח מחיר סופי, תשואה מובטחת או אישור משכנתא. אפשר לתת טווחים והערכות מקצועיות ולסמן אותן כהערכה.
+8. לא להבטיח מחיר סופי, תשואה מובטחת או אישור משכנתא.
 
-חילוץ הקשר מיידי (חוק ברזל, אפס סובלנות):
-- אם בהודעה מופיעים סוג נכס, רחוב, מספר בית, שכונה או עיר, זהי אותם מיד מתוך הטקסט והתייחסי אליהם במשפט הראשון של התשובה.
-- אסור לחלוטין לשאול "על איזה נכס או איש קשר מדובר?", "באיזה נכס מדובר?", "על איזו כתובת מדובר?" או כל ניסוח דומה כאשר הכתובת או העיר כבר נכתבו בהודעה.
-- גם אם אין לך את הנכס במערכת: אשרי את הכתובת שנכתבה, ואז שאלי שאלת סינון אחת שמקדמת (חדרים, תקציב, מועד כניסה או מועד צפייה).
-- שאלה אחת בכל תשובה. בלי תשאול כפול ובלי חזרה על שאלה שהמתעניין כבר ענה עליה בשרשור.
+שיחה טבעית, לא שאלון (חוק ברזל):
+- אסור לחזור על משפט או שאלה שכבר כתבת בשרשור, גם לא בניסוח כמעט זהה. בדקי את ההודעות הקודמות שלך לפני שאת כותבת.
+- אם המתעניין לא ענה על השאלה הקודמת ושאל משהו אחר, עני על מה ששאל עכשיו והמשיכי משם. אל תחזרי על השאלה הקודמת.
+- אם התשובה שלו לא מתאימה לתבנית (למשל "תלוי", "עוד לא יודע", תשובה חלקית, שאלה נגדית), קבלי אותה בטבעיות, התאימי את עצמך והמשיכי הלאה.
+- אל תשאלי שוב דבר שהמתעניין כבר אמר בשרשור.
+- אם הנכס כבר זוהה בהודעה קודמת בשרשור, הוא עדיין הנכס שמדברים עליו. "הדירה הזאת", "הנכס", "שם" מתייחסים אליו.
+
+חילוץ הקשר מיידי:
+- אם בהודעה מופיעים סוג נכס, רחוב, מספר בית, שכונה או עיר, זהי אותם מיד והתייחסי אליהם במשפט הראשון.
+- אסור לשאול "על איזה נכס או איש קשר מדובר?", "באיזה נכס מדובר?" או ניסוח דומה כשהכתובת נכתבה בהודעה או בשרשור.
 
 ${genderPromptBlock(resolveLeadGender(lead), name)}
 
@@ -245,6 +253,17 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
     recent.push({ role: "user", content: cleanHistoryText(input.inboundText).slice(0, 900) });
   }
 
+  const systemContent = (input.staff
+              ? buildStaffReplyPrompt(input.staff, input.contextBlock, input.owner)
+              : input.recruitment
+              ? buildRecruitmentReplyPrompt(input.lead, input.contextBlock)
+              : buildFastReplyPrompt(input.lead, input.contextBlock, input.owner, input.domain ?? "real_estate")) +
+              buildFocusBlock({
+                focusProperty: input.focusProperty,
+                roleAmbiguity: input.roleAmbiguity,
+                staff: input.staff,
+              });
+
   try {
     const res = await fetch(GATEWAY_URL, {
       method: "POST",
@@ -259,16 +278,7 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
             role: "system",
             // Internal staff wins over every lead-facing mode: a manager must
             // never be pitched a demo or qualified like a new visitor.
-            content: (input.staff
-              ? buildStaffReplyPrompt(input.staff, input.contextBlock, input.owner)
-              : input.recruitment
-              ? buildRecruitmentReplyPrompt(input.lead, input.contextBlock)
-              : buildFastReplyPrompt(input.lead, input.contextBlock, input.owner, input.domain ?? "real_estate")) +
-              buildFocusBlock({
-                focusProperty: input.focusProperty,
-                roleAmbiguity: input.roleAmbiguity,
-                staff: input.staff,
-              }),
+            content: systemContent,
           },
           ...recent,
         ],
@@ -281,7 +291,33 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
     }
     let json: any = {};
     try { json = JSON.parse(raw); } catch { /* non-json */ }
-    const text = sanitizeReplyText(String(json?.choices?.[0]?.message?.content ?? ""));
+    let text = sanitizeReplyText(String(json?.choices?.[0]?.message?.content ?? ""));
+    // Anti-loop guard: never resend a reply or closing question already sent.
+    const normalize = (v: string) => String(v).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    const priorAssistant = recent.filter((m) => m.role === "assistant").map((m) => normalize(m.content));
+    const q = normalize((text.match(/[^.!?\n]*\?/g) ?? []).pop() ?? "");
+    const repeats = !!text && priorAssistant.some((p) => p === normalize(text) || (q.length > 12 && p.includes(q)));
+    if (repeats) {
+      const retry = await fetch(GATEWAY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey },
+        body: JSON.stringify({
+          model: FAST_MODEL,
+          messages: [
+            { role: "system", content: systemContent + "\n\nתיקון: הטיוטה שלך חזרה על משפט או שאלה שכבר נשלחו בשרשור. כתבי תשובה חדשה שעונה על ההודעה האחרונה של המתעניין, בלי לחזור על שום שאלה קודמת." },
+            ...recent,
+          ],
+          temperature: 0.8,
+        }),
+      }).catch(() => null);
+      if (retry?.ok) {
+        try {
+          const j2 = await retry.json();
+          const t = sanitizeReplyText(String(j2?.choices?.[0]?.message?.content ?? ""));
+          if (t) text = t;
+        } catch { /* keep first */ }
+      }
+    }
     return { text, elapsedMs: Date.now() - startedAt };
   } catch (e) {
     return { text: "", elapsedMs: Date.now() - startedAt, error: e instanceof Error ? e.message : String(e) };
