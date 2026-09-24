@@ -30,6 +30,7 @@ import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
 import { FOCUS_COLUMNS, matchListingFromText, renderFocusPropertyBlock } from "../_shared/focusProperty.ts";
+import { answerPropertyFact, isRepeatReply, readRitaState, renderRitaStateBlock, saveRitaState } from "../_shared/ritaIntel.ts";
 import { resolveLeadGender } from "../_shared/hebrewGender.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
 import {
@@ -1248,6 +1249,10 @@ async function handleLeadInboxInbound(
 
   let reply = "";
   const aiStartedAt = Date.now();
+  // Shared with the rescue fast-lane call below so it never loses the property.
+  let rescueContextBlock = "";
+  let rescueFocusProperty = "";
+  const ritaStateBlock = staffSender || recruitmentMode ? "" : renderRitaStateBlock(readRitaState(lead.preferences));
   if (!agentCommand) {
     let contextBlock = "";
     // Live CRM counters. Staff always get them (they manage the workspace), and
@@ -1315,6 +1320,15 @@ async function handleLeadInboxInbound(
       }
     }
     const focusProperty = renderFocusPropertyBlock(focusRow as any);
+    contextBlock += ritaStateBlock;
+    rescueContextBlock = contextBlock;
+    rescueFocusProperty = focusProperty;
+    // Direct fact questions ("כמה חדרים?") are answered straight from the listing.
+    const factAnswer = !staffSender && !recruitmentMode ? answerPropertyFact(promptInboundText, focusRow as any) : null;
+    if (factAnswer) {
+      reply = factAnswer;
+      console.log("[autopilot] deterministic property-fact answer", { lead_id: lead.id });
+    }
 
     // An internal user (owner / admin / manager / affiliate) writing through a
     // property link or referral tag is role-ambiguous: Rita clarifies once.
@@ -1324,7 +1338,7 @@ async function handleLeadInboxInbound(
     const roleAmbiguity = !!staffSender && !alreadyClarified &&
       !!(referral || shortLink || hasShortLinkSignature || focusListingId);
 
-    const fast = await generateFastReply({
+    const fast = reply ? { text: "", elapsedMs: 0, error: undefined as string | undefined } : await generateFastReply({
       owner: ownerIdentity,
       domain: ownerDomain,
       lead: {
@@ -1347,7 +1361,7 @@ async function handleLeadInboxInbound(
     if (fast.text) {
       reply = sanitizeAiReply(fast.text);
       console.log("[autopilot] fast lane reply ready", { lead_id: lead.id, elapsedMs: fast.elapsedMs });
-    } else {
+    } else if (!reply) {
       console.error("[autopilot] fast lane failed, falling back to ai-agent:", fast.error);
       await logIntegrationError({
         integration: "ai_gateway",
@@ -1402,6 +1416,12 @@ async function handleLeadInboxInbound(
       const intelTail = formatMarketIntelForWhatsApp(aiJson?.market_intel);
       if (webtivTail) reply = (reply || "מצאתי כמה אופציות מתאימות:") + webtivTail;
       if (intelTail) reply = (reply || "הנה מה שמצאתי על השוק באזור:") + intelTail;
+      // Repeat guard for the slower path: a verbatim repeat is dropped and the
+      // fast lane (which has its own corrective retry) writes a fresh answer.
+      if (!webtivTail && !intelTail && isRepeatReply(reply, aiMessages)) {
+        console.warn("[autopilot] ai-agent reply repeats an earlier turn — regenerating", { lead_id: lead.id });
+        reply = "";
+      }
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -1425,6 +1445,8 @@ async function handleLeadInboxInbound(
       lead: { id: lead.id, full_name: lead.full_name, deal_type: lead.deal_type, gender: lead.gender ?? null, preferences: lead.preferences ?? null },
       inboundText: promptInboundText,
       history: aiMessages,
+      contextBlock: rescueContextBlock || ritaStateBlock || undefined,
+      focusProperty: rescueFocusProperty || null,
       recruitment: recruitmentMode,
       staff: staffSender ? { role: staffSender.label, name: staffSender.displayName } : null,
     });
@@ -1459,6 +1481,10 @@ async function handleLeadInboxInbound(
       context: { lead_id: lead.id, inbound_excerpt: inboundText.slice(0, 200) },
     });
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "empty_ai_reply" };
+  }
+
+  if (!staffSender && !recruitmentMode) {
+    void saveRitaState(admin as any, lead.id, lead.preferences, promptInboundText, reply);
   }
 
 
