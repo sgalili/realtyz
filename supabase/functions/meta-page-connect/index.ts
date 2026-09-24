@@ -757,6 +757,7 @@ async function handleRequest(req: Request): Promise<Response> {
         { onConflict: "owner_id,page_id" },
       );
       if (manualErr) return json({ error: manualErr.message }, 500);
+      await subscribePageWebhooks(pageId, token);
 
       const igManual = verify.payload?.instagram_business_account;
       return json({
