@@ -30,7 +30,33 @@ const PAGE_SCOPES = [
   "pages_show_list",
   "pages_manage_posts",
   "pages_read_engagement",
+  // Needed so the Page can be subscribed to webhooks (Messenger + comments)
+  // and so Rita can answer Messenger. Dropped by the basic retry tier.
+  "pages_manage_metadata",
+  "pages_messaging",
 ];
+
+/**
+ * Subscribe a Page to this app's webhooks. Without this call Meta never
+ * delivers Messenger messages or comment events, even when the Page is bound.
+ */
+async function subscribePageWebhooks(pageId: string, token: string): Promise<void> {
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/subscribed_apps`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ subscribed_fields: "messages,messaging_postbacks,feed", access_token: token }),
+      },
+    );
+    const text = await res.text();
+    if (!res.ok) console.warn("[meta-page-connect] webhook subscribe failed", pageId, text.slice(0, 300));
+    else console.log("[meta-page-connect] webhook subscribed", pageId);
+  } catch (e) {
+    console.warn("[meta-page-connect] webhook subscribe threw", e instanceof Error ? e.message : e);
+  }
+}
 
 /**
  * Scopes that MUST appear in every dialog request (including the "basic" retry),
@@ -1091,6 +1117,7 @@ async function handleRequest(req: Request): Promise<Response> {
         console.error("[meta-page-connect] upsert failed", upsertErr);
         return json({ error: `שמירת חיבור העמוד נכשלה: ${upsertErr.message}`, stage: "db_save" }, 200);
       }
+      await Promise.all((rows as any[]).map((r) => subscribePageWebhooks(String(r.page_id), String(r.page_access_token))));
       await admin
         .from("messenger_page_bindings")
         .update({ is_selected: false })
