@@ -8,3 +8,9 @@
 - [x] Add the public property-card share menu beside the active contact action.
 - [x] Keep RTL search icons clear of placeholder text.
 - [x] Place the master property selector immediately right of the search field.
+
+## Facebook fixes (2026-09-25)
+- [x] Rita auto-replies on Messenger/Instagram DMs
+- [x] Scheduled group posts wait in the extension queue until the chosen time
+- [x] Page connect subscribes the Page to Messenger/comment webhooks + asks pages_manage_metadata/pages_messaging
+- [ ] Reconnect both Facebook Pages (blocked: owner must reconnect; current tokens can't enable delivery)
