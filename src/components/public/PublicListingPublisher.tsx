@@ -31,8 +31,8 @@ const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'דופל
 const CONDITIONS = ['חדש מקבלן', 'חדש', 'משופץ', 'שמור', 'דרוש שיפוץ'];
 const AIR_DIRECTIONS = ['1', '2', '3', '4'];
 const ROOM_OPTIONS = ['1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5', '5.5', '6+'];
-const FLOOR_OPTIONS = ['קרקע', ...Array.from({ length: 50 }, (_, index) => String(index + 1))];
-const TOTAL_FLOOR_OPTIONS = Array.from({ length: 50 }, (_, index) => String(index + 1));
+const FLOOR_OPTIONS = ['קרקע', ...Array.from({ length: 9 }, (_, index) => String(index + 1)), '10+'];
+const TOTAL_FLOOR_OPTIONS = [...Array.from({ length: 9 }, (_, index) => String(index + 1)), '10+'];
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
@@ -130,7 +130,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         house_number: draftFields.houseNumber.trim() || null,
         apartment_number: draftFields.apartmentNumber.trim() || null,
          deal_type: draftFields.dealType, rooms: toNum(draftFields.rooms),
-        sqm: toInt(draftFields.sqm) ?? toInt(draftFields.builtSqm),
+        sqm: toNum(draftFields.sqm) ?? toNum(draftFields.builtSqm),
          floor: draftFields.floor === 'קרקע' ? 0 : toInt(draftFields.floor),
         features: {
           property_type: draftFields.propertyType.trim(),
@@ -342,9 +342,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
             <div className="grid gap-3 sm:grid-cols-2">
               <div><Label>ארנונה לחודשיים</Label><Input inputMode="numeric" value={fields.arnona} onChange={(e) => set('arnona', e.target.value.replace(/\D/g, ''))} /></div>
               <div><Label>ועד בית</Label><Input inputMode="numeric" value={fields.vaadBayit} onChange={(e) => set('vaadBayit', e.target.value.replace(/\D/g, ''))} /></div>
-              <div><Label>מ״ר בנוי</Label><Input inputMode="numeric" value={fields.builtSqm} onChange={(e) => set('builtSqm', e.target.value.replace(/\D/g, ''))} /></div>
+              <div><Label>מ״ר בנוי</Label><Input inputMode="decimal" value={fields.builtSqm} onChange={(e) => set('builtSqm', decimalInput(e.target.value))} /></div>
               <div><Label>מ״ר גינה</Label><Input inputMode="numeric" value={fields.gardenSqm} onChange={(e) => set('gardenSqm', e.target.value.replace(/\D/g, ''))} /></div>
-              <div><Label>גודל במ״ר סך הכל</Label><Input inputMode="numeric" value={fields.sqm} onChange={(e) => set('sqm', e.target.value.replace(/\D/g, ''))} /></div>
+              <div><Label>גודל במ״ר סך הכל</Label><Input inputMode="decimal" value={fields.sqm} onChange={(e) => set('sqm', decimalInput(e.target.value))} /></div>
               <div><Label>מחיר *</Label><Input inputMode="numeric" value={fields.price} onChange={(e) => set('price', e.target.value.replace(/\D/g, ''))} /></div>
               <div><Label>תאריך כניסה</Label><Input type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} /></div>
             </div>
@@ -414,6 +414,7 @@ const toNum = (raw: unknown): number | null => {
   const n = Number(String(raw ?? '').replace(/[^\d.]/g, ''));
   return String(raw ?? '').trim() && Number.isFinite(n) ? n : null;
 };
+const decimalInput = (v: string) => { const c = v.replace(/[^\d.]/g, ''); const [a, ...rest] = c.split('.'); return rest.length ? `${a}.${rest.join('').slice(0, 2)}` : a; };
 const toInt = (raw: unknown): number | null => { const n = toNum(raw); return n == null ? null : Math.round(n); };
 
 export default PublicListingPublisher;

@@ -79,6 +79,8 @@ import { PropertyThumb, propertyFullAddress } from "@/components/leads/LinkedPro
 import ContactAvatar from "@/components/contacts/ContactAvatar";
 import type { UnifiedResult } from "@/lib/propertySearch";
 import { ResultTable } from "@/pages/Properties";
+import { useListingPublishers } from "@/hooks/useListingPublishers";
+import { PropertyShareMenu } from "@/components/properties/PropertyShareMenu";
 import AffiliatePortal from "@/pages/AffiliatePortal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAppMode } from "@/hooks/useAppMode";
@@ -403,6 +405,11 @@ function BrokerAffiliateNetwork() {
   const navigate = useNavigate();
   const { data: listings = [], isLoading: listingsLoading } = useBrokerAffiliateListings();
   const { data: referrals = [], isLoading: refsLoading } = useBrokerReferrals();
+  const referralListingIds = useMemo(
+    () => [...new Set(referrals.map((r: any) => r.listing?.id).filter(Boolean))] as string[],
+    [referrals],
+  );
+  const { data: referralPublishers } = useListingPublishers(referralListingIds);
   const { data: submissions = [], isLoading: subsLoading } = useBrokerSubmissions();
   const queryClient = useQueryClient();
   const updateSubmission = useUpdateSubmission();
@@ -1049,9 +1056,29 @@ function BrokerAffiliateNetwork() {
                           </div>
                         </div>
 
+                        {(() => {
+                          const pub = r.listing?.id ? referralPublishers?.get(r.listing.id) : undefined;
+                          if (!pub) return null;
+                          return (
+                            <span className="inline-flex max-w-[11rem] items-center gap-1.5">
+                              {pub.logo ? (
+                                <img src={pub.logo} alt="" loading="lazy" className="h-6 w-6 shrink-0 rounded-md border border-border/60 bg-background object-contain" />
+                              ) : (
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-[11px] font-bold text-muted-foreground">{pub.name.slice(0, 1)}</span>
+                              )}
+                              <span className="flex min-w-0 flex-col leading-tight">
+                                <span className="truncate text-xs" title={pub.name}>{pub.name}</span>
+                                {pub.userName && pub.userName !== pub.name ? <span className="truncate text-[11px] text-muted-foreground">{pub.userName}</span> : null}
+                              </span>
+                            </span>
+                          );
+                        })()}
                         <div className="text-sm font-bold text-emerald-700">
                           {formatReward(r.reward_type, r.reward_amount)}
                         </div>
+                        {r.listing?.id ? (
+                          <PropertyShareMenu results={[toUnifiedResult(r.listing as any)]} iconOnly variant="ghost" />
+                        ) : null}
                         <Button
                           type="button"
                           size="icon"
