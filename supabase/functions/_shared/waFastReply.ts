@@ -253,6 +253,17 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
     recent.push({ role: "user", content: cleanHistoryText(input.inboundText).slice(0, 900) });
   }
 
+  const systemContent = (input.staff
+              ? buildStaffReplyPrompt(input.staff, input.contextBlock, input.owner)
+              : input.recruitment
+              ? buildRecruitmentReplyPrompt(input.lead, input.contextBlock)
+              : buildFastReplyPrompt(input.lead, input.contextBlock, input.owner, input.domain ?? "real_estate")) +
+              buildFocusBlock({
+                focusProperty: input.focusProperty,
+                roleAmbiguity: input.roleAmbiguity,
+                staff: input.staff,
+              });
+
   try {
     const res = await fetch(GATEWAY_URL, {
       method: "POST",
@@ -267,16 +278,7 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
             role: "system",
             // Internal staff wins over every lead-facing mode: a manager must
             // never be pitched a demo or qualified like a new visitor.
-            content: (input.staff
-              ? buildStaffReplyPrompt(input.staff, input.contextBlock, input.owner)
-              : input.recruitment
-              ? buildRecruitmentReplyPrompt(input.lead, input.contextBlock)
-              : buildFastReplyPrompt(input.lead, input.contextBlock, input.owner, input.domain ?? "real_estate")) +
-              buildFocusBlock({
-                focusProperty: input.focusProperty,
-                roleAmbiguity: input.roleAmbiguity,
-                staff: input.staff,
-              }),
+            content: systemContent,
           },
           ...recent,
         ],
@@ -289,7 +291,33 @@ export async function generateFastReply(input: FastReplyInput): Promise<{ text: 
     }
     let json: any = {};
     try { json = JSON.parse(raw); } catch { /* non-json */ }
-    const text = sanitizeReplyText(String(json?.choices?.[0]?.message?.content ?? ""));
+    let text = sanitizeReplyText(String(json?.choices?.[0]?.message?.content ?? ""));
+    // Anti-loop guard: never resend a reply or closing question already sent.
+    const normalize = (v: string) => String(v).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    const priorAssistant = recent.filter((m) => m.role === "assistant").map((m) => normalize(m.content));
+    const q = normalize((text.match(/[^.!?\n]*\?/g) ?? []).pop() ?? "");
+    const repeats = !!text && priorAssistant.some((p) => p === normalize(text) || (q.length > 12 && p.includes(q)));
+    if (repeats) {
+      const retry = await fetch(GATEWAY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey },
+        body: JSON.stringify({
+          model: FAST_MODEL,
+          messages: [
+            { role: "system", content: systemContent + "\n\nתיקון: הטיוטה שלך חזרה על משפט או שאלה שכבר נשלחו בשרשור. כתבי תשובה חדשה שעונה על ההודעה האחרונה של המתעניין, בלי לחזור על שום שאלה קודמת." },
+            ...recent,
+          ],
+          temperature: 0.8,
+        }),
+      }).catch(() => null);
+      if (retry?.ok) {
+        try {
+          const j2 = await retry.json();
+          const t = sanitizeReplyText(String(j2?.choices?.[0]?.message?.content ?? ""));
+          if (t) text = t;
+        } catch { /* keep first */ }
+      }
+    }
     return { text, elapsedMs: Date.now() - startedAt };
   } catch (e) {
     return { text: "", elapsedMs: Date.now() - startedAt, error: e instanceof Error ? e.message : String(e) };
