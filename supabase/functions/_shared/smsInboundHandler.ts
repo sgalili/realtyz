@@ -180,7 +180,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
 
   // ── 2. Existing CRM contact for this phone (workspace-scoped when known) ──
   const LEAD_COLS =
-    "id, full_name, phone_number, assigned_to, workspace_owner_id, ai_autopilot, deal_type, preferences";
+    "id, full_name, phone_number, assigned_to, workspace_owner_id, ai_autopilot, deal_type, preferences, interest_tag";
   let lead: any = null;
   try {
     let q = admin.from("leads").select(LEAD_COLS).in("phone_number", phoneVariants(fromNormalized));
