@@ -33,6 +33,7 @@ const OmnichannelInbox = lazy(() => import("./pages/OmnichannelInbox"));
 const AIContentGenerator = lazy(() => import("./pages/AIContentGenerator"));
 const CampaignCenter = lazy(() => import("./pages/CampaignCenter"));
 const ActivityLog = lazy(() => import("./pages/ActivityLog"));
+const Mailbox = lazy(() => import("./pages/Mailbox"));
 const ApiSettings = lazy(() => import("./pages/ApiSettings"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Billing = lazy(() => import("./pages/Billing"));
@@ -396,6 +397,7 @@ const App = () => (
               <Route path="/campaign-strategy" element={<Navigate to="/campaigns?tab=strategy" replace />} />
               <Route path="/approval-queue" element={<Navigate to="/campaigns?tab=approvals" replace />} />
               <Route path="/activity-log" element={<ProtectedRoute allowGuestDemo><ActivityLog /></ProtectedRoute>} />
+              <Route path="/mailbox" element={<ProtectedRoute><Mailbox /></ProtectedRoute>} />
               <Route path="/logs" element={<Navigate to="/activity-log" replace />} />
               <Route path="/calendar" element={<Navigate to="/campaigns?tab=calendar" replace />} />
               <Route path="/sentiment" element={<ProtectedRoute allowGuestDemo><SentimentDashboard /></ProtectedRoute>} />

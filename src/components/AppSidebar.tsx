@@ -12,6 +12,7 @@ import {
   Coins,
   Globe,
   Settings,
+  Mail,
   type LucideProps,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -106,6 +107,13 @@ const NAV_ITEMS: NavItem[] = [
     iconColor: '!text-[#0e7490]', // cyan-700
     badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
     aliases: ['/communication'],
+  },
+  {
+    title: 'תיבת מייל',
+    url: '/mailbox',
+    icon: Mail,
+    iconColor: '!text-[#1d4ed8]', // blue-700
+    badgeClass: 'bg-blue-50 text-blue-700 ring-blue-200',
   },
   {
     title: 'עסקאות',
