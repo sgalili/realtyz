@@ -610,6 +610,11 @@ Deno.serve(async (req) => {
       } catch { /* best effort */ }
 
       const nowIso = scheduledFor;
+      // Scheduled group posts get the same destination link + mandatory first
+      // comment as instant posts (the extension appends the link to the text).
+      const groupLink = typeof body?.link === "string" && body.link.trim() ? body.link.trim() : null;
+      const groupFirstComment = (firstComment && String(firstComment).trim())
+        || (groupLink ? `לפרטים נוספים ותיאום צפייה: ${groupLink}` : null);
       const jobs = groupIds.map((gid, gi) => {
         const groupMedia = media.length > 10 ? shuffle(media).slice(0, 10) : media;
         const groupImage = groupMedia.length ? groupMedia[gi % groupMedia.length] : null;
@@ -632,9 +637,9 @@ Deno.serve(async (req) => {
             outbound_text: groupText,
             image_url: groupImage,
             media_urls: groupMedia,
-            link: null,
+            link: groupLink,
             group_url: groupUrls[gid] ?? `https://www.facebook.com/groups/${gid}`,
-            first_comment: firstComment || null,
+            first_comment: groupFirstComment,
             campaign_name: campaignName,
             listing_id: body?.listing_id ?? null,
             published_via: "browser_extension",
