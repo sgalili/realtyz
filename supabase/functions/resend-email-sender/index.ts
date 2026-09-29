@@ -155,6 +155,12 @@ Deno.serve(async (req) => {
       signatureLine: `${alias}@${SENDER_DOMAIN}`,
     });
 
+    const logSent = (row: Record<string, unknown>) =>
+      admin.from("outbound_emails_log").insert({
+        workspace_owner_id: wsOwner, sent_by: userId, to_email: recipient_email,
+        subject, body_text: intro, ...row,
+      }).then(({ error }) => { if (error) console.error("outbound log failed", error); });
+
     if (gToken && gFrom) {
       const b64 = (str: string) => btoa(Array.from(new TextEncoder().encode(str), (b) => String.fromCharCode(b)).join(""));
       const hdr = (v: string) => (/^[\x00-\x7F]*$/.test(v) ? v : `=?UTF-8?B?${b64(v)}?=`);
@@ -170,6 +176,7 @@ Deno.serve(async (req) => {
       });
       const gOut = await g.json().catch(() => ({}));
       if (g.ok) {
+        await logSent({ from_email: gFrom, provider: "gmail", provider_message_id: (gOut as any)?.id ?? null });
         return new Response(JSON.stringify({ success: true, provider: "gmail", id: (gOut as any)?.id, from: gFrom }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -195,6 +202,11 @@ Deno.serve(async (req) => {
       }),
     });
     const out = await r.json().catch(() => ({}));
+    await logSent({
+      from_email: `${alias}@${SENDER_DOMAIN}`, provider: "resend",
+      provider_message_id: (out as any)?.id ?? null,
+      status: r.ok ? "sent" : "failed", error: r.ok ? null : JSON.stringify(out).slice(0, 500),
+    });
     if (!r.ok) {
       return new Response(JSON.stringify({ error: "Resend rejected", status: r.status, body: out }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
