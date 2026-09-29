@@ -6,7 +6,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const RESEND_URL = "https://api.resend.com/emails";
+const RESEND_URL = "https://connector-gateway.lovable.dev/resend/emails";
 const SENDER_DOMAIN = "realtyz.co.il";
 
 function escapeHtml(s: string) {
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
 
     const r = await fetch(RESEND_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY") ?? ""}`, "X-Connection-Api-Key": RESEND_API_KEY },
       body: JSON.stringify({
         from: fromAddress,
         to: [recipient_email],

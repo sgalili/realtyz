@@ -123,8 +123,8 @@ Deno.serve(async (req) => {
   // Resend "email.received" events carry metadata only; fetch the full message.
   if (payload?.type === "email.received" && data?.email_id && RESEND_API_KEY) {
     try {
-      const r = await fetch(`https://api.resend.com/emails/receiving/${data.email_id}`, {
-        headers: { Authorization: `Bearer ${RESEND_API_KEY}` },
+      const r = await fetch(`https://connector-gateway.lovable.dev/resend/emails/receiving/${data.email_id}`, {
+        headers: { Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY") ?? ""}`, "X-Connection-Api-Key": RESEND_API_KEY },
       });
       if (r.ok) data = { ...data, ...(await r.json()) };
       else console.error("[resend-inbound] fetch body failed", r.status, await r.text());
