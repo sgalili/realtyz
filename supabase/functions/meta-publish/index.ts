@@ -530,7 +530,7 @@ Deno.serve(async (req) => {
     const campaignName = String(body?.campaign_name ?? "Realtyz").trim();
     const scheduledIso = body?.scheduled_at ? String(body.scheduled_at) : null;
     // HARD RULE: every published post carries the mandatory contact comment.
-    const firstComment = ensureMandatoryComment(body?.first_comment);
+    const firstComment = ensureMandatoryComment(body?.first_comment, typeof body?.link === "string" ? body.link : null);
     // "פרסם גם בעמוד הפייסבוק העסקי" — checked by default. When the caller
     // explicitly sends false, only the selected groups are published to.
     const publishToPage = body?.publish_to_page === undefined || body?.publish_to_page === null
@@ -613,8 +613,7 @@ Deno.serve(async (req) => {
       // Scheduled group posts get the same destination link + mandatory first
       // comment as instant posts (the extension appends the link to the text).
       const groupLink = typeof body?.link === "string" && body.link.trim() ? body.link.trim() : null;
-      const groupFirstComment = (firstComment && String(firstComment).trim())
-        || (groupLink ? `לפרטים נוספים ותיאום צפייה: ${groupLink}` : null);
+      const groupFirstComment = ensureMandatoryComment(firstComment, groupLink);
       const jobs = groupIds.map((gid, gi) => {
         const groupMedia = media.length > 10 ? shuffle(media).slice(0, 10) : media;
         const groupImage = groupMedia.length ? groupMedia[gi % groupMedia.length] : null;
