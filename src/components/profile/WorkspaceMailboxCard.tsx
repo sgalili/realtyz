@@ -17,8 +17,7 @@ export function WorkspaceMailboxCard() {
   const useRealtyz = mb?.provider === 'realtyz';
 
   const setProvider = async (realtyz: boolean) => {
-    if (realtyz && !mb?.address) return toast.error('יש להגדיר קודם כתובת @realtyz.co.il');
-    if (!realtyz && !mb?.gmail_connected) return toast.error('Gmail אינו מחובר. יש לחבר אותו בכרטיס גוגל');
+    if (!realtyz && !mb?.gmail_connected) toast.message('שימו לב: Gmail אינו מחובר עדיין. יש לחבר אותו בכרטיס גוגל');
     const { error } = await supabase.rpc('set_workspace_email_provider' as never, { p_provider: realtyz ? 'realtyz' : 'gmail' } as never);
     if (error) return toast.error(error.message.includes('only_workspace_owner') ? 'רק בעל מרחב העבודה יכול לשנות' : error.message);
     qc.invalidateQueries({ queryKey: ['workspace-mailbox'] });
