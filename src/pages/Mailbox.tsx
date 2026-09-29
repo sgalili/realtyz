@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Mail, Search, SquarePen, Send, Pencil, Check, RefreshCw } from 'lucide-react';
+import { Search, SquarePen, Send, Pencil, Check, RefreshCw } from 'lucide-react';
 
 type Row = {
   id: string;
