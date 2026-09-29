@@ -131,6 +131,7 @@ const groupUrl = (job) => absoluteGroupUrl(job.group_url) || absoluteGroupUrl(jo
 const AUTOMATION_FLAG = 'rzAutomationEnabled';
 const DONE_KEY = 'rzDoneJobs';
 const RATE_KEY = 'rzActionRate';
+const ACTIVE_WORKSPACE_KEY = 'rzActiveWorkspaceOwner';
 const MAX_PER_HOUR = 12;
 const MAX_PER_DAY = 60;
 
@@ -450,6 +451,8 @@ async function drainQueue() {
   try {
     const token = await getToken();
     let queue = await loadQueue();
+    const activeState = await local([ACTIVE_WORKSPACE_KEY]);
+    const activeWorkspaceOwner = String(activeState[ACTIVE_WORKSPACE_KEY] || '').trim();
     // Recover jobs left "posting" by a killed service worker so nothing hangs.
     let recovered = false;
     for (const e of queue) {
@@ -468,6 +471,9 @@ async function drainQueue() {
       .sort((a, b) => (b && (b.type === 'page_first_comment') ? 1 : 0) - (a && (a.type === 'page_first_comment') ? 1 : 0));
     for (const entry of ordered) {
       if (!entry || entry.status !== 'pending') continue;
+      // Browser storage is shared across tenants. Execute only jobs belonging
+      // to the workspace currently open in the Realtyz app.
+      if (!activeWorkspaceOwner || entry.workspaceOwnerId !== activeWorkspaceOwner) continue;
       if (Number(entry.scheduledTime || 0) > Date.now()) continue;
 
       entry.status = 'posting';
@@ -610,6 +616,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     mergeQueue(msg.queue).then((merged) => {
       try { sendResponse({ ok: true, queue: merged }); } catch (e) { /* noop */ }
       drainQueue();
+    });
+    return true;
+  }
+
+  if (msg.type === 'RZ_WORKSPACE_ACTIVATE' && typeof msg.workspaceOwnerId === 'string') {
+    chrome.storage.local.set({ [ACTIVE_WORKSPACE_KEY]: msg.workspaceOwnerId }, () => {
+      drainQueue();
+      sendResponse({ ok: true });
     });
     return true;
   }

@@ -234,6 +234,7 @@ export const EXT_POSTING_RESULT_MESSAGE = "RZ_POSTING_RESULT";
 export const EXT_POST_QUEUE_KEY = "rzPostQueue";
 export const EXT_QUEUE_EVENT = "rz:update-queue";
 export const EXT_QUEUE_MESSAGE = "RZ_QUEUE_UPDATE";
+export const EXT_WORKSPACE_MESSAGE = "RZ_WORKSPACE_ACTIVATE";
 /** Origin-agnostic alias broadcast with "*" for the content script. */
 export const EXT_QUEUE_BROADCAST_MESSAGE = "REALTYZ_QUEUE_UPDATE";
 
@@ -609,6 +610,11 @@ export const useExtensionQueue = (workspaceOwnerId?: string | null): QueuedExten
   const [queue, setQueue] = useState<QueuedExtensionPost[]>(() => readPostQueue(workspaceOwnerId));
 
   useEffect(() => {
+    if (workspaceOwnerId) {
+      try {
+        window.postMessage({ source: 'realtyz-app', type: EXT_WORKSPACE_MESSAGE, workspaceOwnerId }, '*');
+      } catch { /* noop */ }
+    }
     const commit = (next: unknown) => {
       const all = Array.isArray(next) ? (next as QueuedExtensionPost[]) : readPostQueue();
       const value = workspaceOwnerId ? all.filter((job) => job.workspaceOwnerId === workspaceOwnerId) : [];
