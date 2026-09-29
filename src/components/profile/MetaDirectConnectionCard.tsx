@@ -47,6 +47,8 @@ const STATE_PREFIX = 'facebook_page:';
 const EXCHANGE_TIMEOUT_MS = 20_000;
 /** Absolute safety net: the spinner is force-cleared this long after it starts. */
 const SPINNER_SAFETY_MS = 5_000;
+/** OAuth must never leave the connect/cancel button spinning indefinitely. */
+const CONNECT_ATTEMPT_TIMEOUT_MS = 30_000;
 
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -105,6 +107,30 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const disconnectedRef = useRef(false);
   const expectedStateRef = useRef<string | null>(null);
   const exchangingRef = useRef(false);
+  const connectAttemptRef = useRef(0);
+  const connectTimerRef = useRef<number | null>(null);
+
+  const clearConnectTimer = useCallback(() => {
+    if (connectTimerRef.current === null) return;
+    window.clearTimeout(connectTimerRef.current);
+    connectTimerRef.current = null;
+  }, []);
+
+  const finishConnecting = useCallback(() => {
+    clearConnectTimer();
+    setConnecting(false);
+  }, [clearConnectTimer]);
+
+  const cancelConnecting = useCallback(() => {
+    // Invalidate the current async continuation. A late response from
+    // startMetaPageConnect can no longer reopen OAuth or restore the spinner.
+    connectAttemptRef.current += 1;
+    exchangingRef.current = false;
+    clearPendingOAuth();
+    finishConnecting();
+  }, [finishConnecting]);
+
+  useEffect(() => () => clearConnectTimer(), [clearConnectTimer]);
 
 
 
@@ -264,7 +290,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   // and saved the page binding, so we only refresh the local state here.
   useEffect(() => {
     return onOAuthResult('facebook_page', (result) => {
-      setConnecting(false);
+      finishConnecting();
       if (result.ok) {
         clearPendingOAuth();
         setManualOpen(false);
@@ -279,7 +305,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         toast.error('חיבור עמוד הפייסבוק נכשל', { description: result.reason || 'החיבור לפייסבוק נכשל.' });
       }
     });
-  }, [probe, refreshBinding, refreshHealth, loadPageOptions]);
+  }, [probe, refreshBinding, refreshHealth, loadPageOptions, finishConnecting]);
 
   // Full-page redirect result: /oauth/callback exchanged the code in the main
   // app context and came back here with an explicit success/error state.
@@ -297,7 +323,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     if (outcome === 'connected') {
       strip();
       clearPendingOAuth();
-      setConnecting(false);
+      finishConnecting();
       setManualOpen(false);
       refreshBinding();
       refreshHealth();
@@ -308,7 +334,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     if (outcome === 'choose') {
       strip();
       clearPendingOAuth();
-      setConnecting(false);
+      finishConnecting();
       toast.message('בחר את עמוד הפרסום', { description: 'לא הצלחנו לבחור עמוד אוטומטית.' });
       void loadPageOptions();
       return;
@@ -317,7 +343,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     if (outcome === 'error') {
       strip();
       clearPendingOAuth();
-      setConnecting(false);
+      finishConnecting();
       const reason = params.get('fb_reason');
       setManualOpen(true);
       toast.error('חיבור עמוד הפייסבוק נכשל', { description: reason || 'החיבור לפייסבוק נכשל.' });
@@ -342,10 +368,21 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   }, []);
 
   const connect = async () => {
+    const attemptId = connectAttemptRef.current + 1;
+    connectAttemptRef.current = attemptId;
     disconnectedRef.current = false;
     expectedStateRef.current = null;
     exchangingRef.current = false;
+    clearConnectTimer();
     setConnecting(true);
+    connectTimerRef.current = window.setTimeout(() => {
+      if (connectAttemptRef.current !== attemptId) return;
+      connectAttemptRef.current += 1;
+      finishConnecting();
+      toast.error('החיבור לפייסבוק לא הושלם בזמן', {
+        description: 'אפשר לנסות להתחבר שוב.',
+      });
+    }, CONNECT_ATTEMPT_TIMEOUT_MS);
     try {
       clearPendingOAuth();
       // Shared start path — identical function, scopes and DB upsert as the
@@ -355,17 +392,21 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         EXCHANGE_TIMEOUT_MS,
         'שירות החיבור לפייסבוק לא הגיב בזמן. נסה שוב.',
       );
+      // The user may have pressed "בטל חיבור" while the request was pending.
+      // Ignore that stale result instead of reopening OAuth and reviving state.
+      if (connectAttemptRef.current !== attemptId) return;
       // Open in a popup / new tab. Assigning window.top.location throws a
       // sandbox permission error inside the preview iframe.
       const opened = openOAuthWindow(authUrl);
       if (!opened) {
-        setConnecting(false);
+        finishConnecting();
         toast.error('הדפדפן חסם את חלון ההתחברות', {
           description: 'אפשרו חלונות קופצים עבור האתר ונסו שוב.',
         });
       }
     } catch (e: any) {
-      setConnecting(false);
+      if (connectAttemptRef.current !== attemptId) return;
+      finishConnecting();
       setLoading(false);
 
       setManualOpen(true);
@@ -379,6 +420,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
   const disconnect = async () => {
     if (disconnecting) return;
+    cancelConnecting();
     setDisconnecting(true);
     disconnectedRef.current = true;
     forgetConnected('facebook', workspaceOwnerId);
@@ -395,10 +437,12 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       // Hard 10s ceiling on the cache reset so even a wedged React Query
       // cancellation can never delay the finally block below.
       await withTimeout(resetHealth(), 10_000, 'reset-timeout').catch(() => undefined);
-      setConnectionEpoch((value) => value + 1);
       const result = await callPageConnect<{ ok?: boolean }>({ action: 'disconnect' });
       if (!result?.ok) throw new Error('השרת לא אישר שהחיבור נמחק');
       await withTimeout(resetHealth(), 10_000, 'reset-timeout').catch(() => undefined);
+      // Refresh only the nested targets after the server has completed. Never
+      // remount this card while its disconnect closure is still in flight.
+      setConnectionEpoch((value) => value + 1);
       refreshHealth();
       refreshBinding();
       toast.success('עמוד הפייסבוק נותק');
@@ -541,7 +585,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const actionButtons = null;
 
   return (
-    <Card key={connectionEpoch} ref={ref} dir="rtl" className="text-right">
+    <Card ref={ref} dir="rtl" className="text-right">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-right">
           <Facebook className="h-5 w-5 text-primary" />
@@ -612,7 +656,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
               variant="outline"
               size="sm"
               className="w-full gap-2 text-[12px]"
-              onClick={() => (connecting ? setConnecting(false) : void connect())}
+              onClick={() => (connecting ? cancelConnecting() : void connect())}
             >
               {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />}
               {connecting ? 'בטל' : 'חבר חשבון או עמוד נוסף'}
@@ -624,7 +668,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           <div className="rounded-xl border border-dashed p-3 space-y-2">
             {/* Clicking the spinning button cancels the pending attempt. */}
             <Button
-              onClick={() => (connecting ? setConnecting(false) : void connect())}
+              onClick={() => (connecting ? cancelConnecting() : void connect())}
               className="w-full gap-2 bg-[#1877F2] text-white hover:bg-[#1877F2]/90"
             >
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
