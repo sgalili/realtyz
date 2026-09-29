@@ -30,10 +30,6 @@ const PAGE_SCOPES = [
   "pages_show_list",
   "pages_manage_posts",
   "pages_read_engagement",
-  // Needed so the Page can be subscribed to webhooks (Messenger + comments)
-  // and so Rita can answer Messenger. Dropped by the basic retry tier.
-  "pages_manage_metadata",
-  "pages_messaging",
 ];
 
 /**
