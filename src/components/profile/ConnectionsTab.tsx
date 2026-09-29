@@ -411,6 +411,7 @@ export function ConnectionsTab() {
           alt={fbHealth?.pageName ?? fbBinding?.pageName ?? 'עמוד פייסבוק מחובר'}
           className="h-8 w-8 shrink-0 rounded-md border object-cover"
           loading="lazy"
+          onError={(e) => { const g = fbPageId ? `https://graph.facebook.com/${fbPageId}/picture?type=square&width=64&height=64` : ''; if (g && e.currentTarget.src !== g) e.currentTarget.src = g; else e.currentTarget.style.display = 'none'; }}
         />
       ) : undefined,
       node: <MetaDirectConnectionCard onStatus={setMeta} />,

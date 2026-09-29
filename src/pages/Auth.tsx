@@ -147,7 +147,7 @@ const Auth = () => {
 
     // Phone codes (SMS and WhatsApp) always go out through the real gateways so
     // a code actually arrives; only email keeps the preview shortcut.
-    if (isPreviewHost && !isPhoneFlow) {
+    if (false) {
       setCodeSent(true);
       setResendSeconds(0);
       setOtpAttempts(0);
@@ -225,7 +225,7 @@ const Auth = () => {
       const ok = await tryMasterOtp(code, normalizedPhone);
       if (ok) { setLoading(false); return; }
       // Phone codes fall through to real verification; only email stops here.
-      if (isPreviewHost && !isPhoneFlow) {
+      if (false) {
         setOtpAttempts((a) => a + 1);
         setOtp('');
         toast.error('קוד מאסטר שגוי');
