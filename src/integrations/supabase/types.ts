@@ -5068,6 +5068,7 @@ export type Database = {
           direct_channels: Json
           email: string | null
           email_alias: string | null
+          email_provider: string
           full_name: string | null
           gender: string | null
           id: string
@@ -5098,6 +5099,7 @@ export type Database = {
           direct_channels?: Json
           email?: string | null
           email_alias?: string | null
+          email_provider?: string
           full_name?: string | null
           gender?: string | null
           id: string
@@ -5128,6 +5130,7 @@ export type Database = {
           direct_channels?: Json
           email?: string | null
           email_alias?: string | null
+          email_provider?: string
           full_name?: string | null
           gender?: string | null
           id?: string
@@ -7457,6 +7460,10 @@ export type Database = {
         Returns: undefined
       }
       set_workspace_email_alias: { Args: { p_alias: string }; Returns: string }
+      set_workspace_email_provider: {
+        Args: { p_provider: string }
+        Returns: string
+      }
       shares_workspace_with: {
         Args: { _row_user: string; _viewer: string }
         Returns: boolean
