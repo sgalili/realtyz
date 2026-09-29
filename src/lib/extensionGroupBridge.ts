@@ -217,7 +217,7 @@ export const publishViaExtension = (payload: ExtensionPublishPayload): number =>
     source: "realtyz-app",
     type: EXT_PUBLISH_MESSAGE,
     // HARD RULE: the mandatory contact comment ships with every group post.
-    payload: { ...payload, firstComment: ensureMandatoryComment(payload.firstComment), groups: resolved, jobId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` },
+    payload: { ...payload, firstComment: ensureMandatoryComment(payload.firstComment, payload.link), groups: resolved, jobId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` },
   };
   try { window.postMessage(job, window.location.origin); } catch { /* noop */ }
   try { document.dispatchEvent(new CustomEvent(EXT_PUBLISH_EVENT, { detail: job.payload })); } catch { /* noop */ }
@@ -541,7 +541,7 @@ export const enqueueExtensionPosts = (input: {
         link: input.link ?? null,
         workspaceOwnerId: input.workspaceOwnerId,
         listing: input.listing ?? null,
-        firstComment: safeUtf8(ensureMandatoryComment(input.firstComment)),
+        firstComment: safeUtf8(ensureMandatoryComment(input.firstComment, input.link)),
         status: "pending" as const,
         scheduledTime,
         createdAt: Date.now(),
@@ -898,7 +898,7 @@ export const startLocalPosting = (payload: ExtensionPublishPayload): number => {
   const post = {
     text: safeUtf8(payload.text),
     images: payload.imageUrls ?? [],
-    firstComment: ensureMandatoryComment(payload.firstComment),
+    firstComment: ensureMandatoryComment(payload.firstComment, payload.link),
     link: payload.link ?? null,
     workspaceOwnerId: payload.workspaceOwnerId,
     groups: groups.map((g) => ({
