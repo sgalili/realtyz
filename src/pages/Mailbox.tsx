@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Mail, Search } from 'lucide-react';
+import { Mail, Search, SquarePen, Send } from 'lucide-react';
 
 type Row = {
   id: string;
@@ -25,8 +29,32 @@ const fmt = (iso: string) => {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-export default function Mailbox() {
+export default function Mailbox({ embedded = false }: { embedded?: boolean } = {}) {
   const { isAdmin } = useUserRole();
+  const qc = useQueryClient();
+  const [compose, setCompose] = useState(false);
+  const [to, setTo] = useState('');
+  const [subject, setSubject] = useState('');
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const send = async () => {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to.trim())) return toast.error('כתובת מייל לא תקינה');
+    if (!text.trim()) return toast.error('יש לכתוב תוכן');
+    setSending(true);
+    const { data, error } = await supabase.functions.invoke('resend-email-sender', {
+      body: { recipient_email: to.trim(), subject: subject.trim() || '(ללא נושא)', body_text: text },
+    });
+    setSending(false);
+    if (error || (data as any)?.error) {
+      let msg = (data as any)?.error ?? error?.message;
+      try { msg = JSON.parse(await (error as any).context.text()).error ?? msg; } catch { /* */ }
+      return toast.error(msg || 'השליחה נכשלה');
+    }
+    toast.success('המייל נשלח');
+    setCompose(false); setTo(''); setSubject(''); setText('');
+    qc.invalidateQueries({ queryKey: ['mailbox-outbound'] });
+  };
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
 
@@ -108,26 +136,36 @@ export default function Mailbox() {
   };
 
   return (
-    <div dir="rtl" className="max-w-4xl mx-auto p-4 space-y-4">
+    <div dir="rtl" className={embedded ? 'space-y-4' : 'max-w-4xl mx-auto p-4 space-y-4'}>
       <div className="flex items-center gap-2">
-        <Mail className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-bold">תיבת מייל</h1>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        {mailbox?.gmail_connected
-          ? 'Gmail מחובר ומשמש לשליחה. '
-          : ''}
+        <Mail className="h-5 w-5 text-primary shrink-0" />
         {mailbox?.address ? (
-          <>כתובת מרחב העבודה: <span dir="ltr" className="font-mono">{mailbox.address}</span></>
+          <span dir="ltr" className="font-mono text-sm font-semibold truncate">{mailbox.address}</span>
         ) : (
-          'טרם הוגדרה כתובת @realtyz.co.il למרחב העבודה (ניתן להגדיר בפרופיל).'
+          <span className="text-sm text-muted-foreground">טרם הוגדרה כתובת @realtyz.co.il למרחב העבודה</span>
         )}
-        {isAdmin && ' · כמנהל מערכת מוצגים גם מיילים ל-info@realtyz.co.il ולכל המרחבים.'}
-      </p>
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label="מייל חדש" title="מייל חדש" onClick={() => setCompose(true)}>
+          <SquarePen className="h-4 w-4" />
+        </Button>
+      </div>
+      {isAdmin && <p className="text-xs text-muted-foreground">כמנהל מערכת מוצגים גם מיילים ל-info@realtyz.co.il ולכל המרחבים.</p>}
       <div className="relative">
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש לפי כתובת, נושא או תוכן" className="pr-9" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש מייל" className="pr-9" />
       </div>
+      <Dialog open={compose} onOpenChange={setCompose}>
+        <DialogContent dir="rtl" className="max-w-lg">
+          <DialogHeader><DialogTitle>מייל חדש</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input dir="ltr" type="email" placeholder="נמען" value={to} onChange={(e) => setTo(e.target.value)} />
+            <Input placeholder="נושא" value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <Textarea rows={8} placeholder="תוכן המייל" value={text} onChange={(e) => setText(e.target.value)} />
+            <div className="flex justify-end">
+              <Button onClick={send} disabled={sending} className="gap-2"><Send className="h-4 w-4" />{sending ? 'שולח…' : 'שליחה'}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Tabs defaultValue="in">
         <TabsList>
           <TabsTrigger value="in">דואר נכנס ({inbound.length})</TabsTrigger>
