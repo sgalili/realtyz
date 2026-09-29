@@ -102,6 +102,7 @@ Deno.serve(async (req) => {
       intro = "מצורפים הפרטים העדכניים שביקשת.",
       cta_question = "מתי נוח לך לקפוץ לראות?",
       listing_id,
+      body_text,
     } = body as Record<string, any>;
 
     if (!recipient_email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(recipient_email)) {
@@ -115,7 +116,7 @@ Deno.serve(async (req) => {
     const { data: ownerId } = await sb.rpc("current_workspace_owner");
     const wsOwner = (ownerId as string) || userId;
     const { data: profile } = await admin.from("profiles")
-      .select("full_name, email, email_alias").eq("id", wsOwner).maybeSingle();
+      .select("full_name, email, email_alias, email_provider").eq("id", wsOwner).maybeSingle();
 
     // Gmail first: when the workspace has Gmail connected, send through it.
     const { data: gmailRows } = await admin.from("social_connections")
@@ -127,6 +128,7 @@ Deno.serve(async (req) => {
     const gFrom = (gCreds?.verified_identity?.email ?? gCreds?.account_name ?? "") as string;
 
     const alias = (profile?.email_alias || "").trim();
+    const preferRealtyz = (profile as any)?.email_provider === "realtyz" && !!alias;
     if (!alias && !(gToken && gFrom)) {
       return new Response(JSON.stringify({ error: "טרם הוגדרה תיבת מייל למרחב העבודה (Gmail או כתובת @realtyz.co.il)" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -149,7 +151,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    const html = buildHtml({
+    const escapeHtml = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+    const customBody = typeof body_text === "string" && body_text.trim() ? body_text.trim().slice(0, 20000) : null;
+    const html = customBody
+      ? `<div dir="rtl" style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;white-space:pre-wrap">${escapeHtml(customBody)}</div>`
+      : buildHtml({
       brokerName, leadName: recipient_name, subject, intro,
       listing, ctaQuestion: cta_question,
       signatureLine: `${alias}@${SENDER_DOMAIN}`,
@@ -158,10 +164,10 @@ Deno.serve(async (req) => {
     const logSent = (row: Record<string, unknown>) =>
       admin.from("outbound_emails_log").insert({
         workspace_owner_id: wsOwner, sent_by: userId, to_email: recipient_email,
-        subject, body_text: intro, ...row,
+        subject, body_text: customBody ?? intro, ...row,
       }).then(({ error }) => { if (error) console.error("outbound log failed", error); });
 
-    if (gToken && gFrom) {
+    if (gToken && gFrom && !preferRealtyz) {
       const b64 = (str: string) => btoa(Array.from(new TextEncoder().encode(str), (b) => String.fromCharCode(b)).join(""));
       const hdr = (v: string) => (/^[\x00-\x7F]*$/.test(v) ? v : `=?UTF-8?B?${b64(v)}?=`);
       const mime = [
