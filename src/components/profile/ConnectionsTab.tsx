@@ -184,6 +184,7 @@ export function ConnectionsTab() {
   // once, active in every workspace of this user.
   const { data: account } = useAccountIntegrations();
   const { isSuperAdmin } = useUserRole();
+  const { data: mailboxInfo } = useWorkspaceMailbox();
 
   useEffect(() => {
     (async () => {
