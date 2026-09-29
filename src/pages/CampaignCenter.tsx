@@ -1,3 +1,4 @@
+import { resolvePosterDestination, applyContactCta } from '@/lib/posterDestination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { shortenName } from "@/lib/shortenName";
@@ -3364,7 +3365,7 @@ const ConfirmDispatchDialog = ({
         const groupTexts: Record<string, string> = {};
         let variationEnabled = true;
         try { variationEnabled = localStorage.getItem('campaign:groupTextVariation') !== 'false'; } catch { /* noop */ }
-        if (!scheduledAt && channel.id === 'facebook' && variationEnabled && apiGroupIds.length > 1) {
+        if (channel.id === 'facebook' && variationEnabled && apiGroupIds.length > 1) {
           await Promise.all(apiGroupIds.map(async (gid, i) => {
             try {
               const { data, error } = await supabase.functions.invoke('spin-group-post', {
@@ -3383,7 +3384,17 @@ const ConfirmDispatchDialog = ({
           // Preserve the exact branded/referral destination already generated
           // into the first comment. The extension also appends it to the post
           // body when Facebook cannot create a separate link preview.
-          const publicLink = firstComment.match(/https:\/\/realtyz\.co\.il\/[^\s]+/i)?.[0] ?? null;
+          let publicLink = firstComment.match(/https:\/\/realtyz\.co\.il\/[^\s]+/i)?.[0] ?? null;
+          let groupFirstComment = firstComment || null;
+          if (listingId) {
+            // Poster-specific tracked link + the property's own contact type,
+            // so the post and the property page always match.
+            try {
+              const dest = await resolvePosterDestination(listingId, user?.id);
+              publicLink = dest.link;
+              groupFirstComment = applyContactCta(firstComment, dest.ctaLine);
+            } catch { /* keep composer link */ }
+          }
           // Retry / re-publish: clear stale completed+failed entries (and legacy
           // Meta errors) for this text so the card reflects the fresh queue run.
           resetQueueEntriesForText(bodyToPublish);
@@ -3393,7 +3404,7 @@ const ConfirmDispatchDialog = ({
             texts: groupTexts,
             images: mediaUrls,
             link: publicLink,
-            firstComment: firstComment || null,
+            firstComment: groupFirstComment,
             listing: listingId ? {
               id: listingId,
               title: brandName || null,
