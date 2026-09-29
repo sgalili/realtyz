@@ -340,10 +340,11 @@ async function sendEmailResend(
   htmlBody: string,
 ): Promise<SendResult> {
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetch("https://connector-gateway.lovable.dev/resend/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY") ?? ""}`,
+        "X-Connection-Api-Key": apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
