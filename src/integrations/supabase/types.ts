@@ -4718,6 +4718,51 @@ export type Database = {
         }
         Relationships: []
       }
+      outbound_emails_log: {
+        Row: {
+          body_text: string | null
+          created_at: string
+          error: string | null
+          from_email: string
+          id: string
+          provider: string
+          provider_message_id: string | null
+          sent_by: string | null
+          status: string
+          subject: string | null
+          to_email: string
+          workspace_owner_id: string | null
+        }
+        Insert: {
+          body_text?: string | null
+          created_at?: string
+          error?: string | null
+          from_email: string
+          id?: string
+          provider: string
+          provider_message_id?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+          to_email: string
+          workspace_owner_id?: string | null
+        }
+        Update: {
+          body_text?: string | null
+          created_at?: string
+          error?: string | null
+          from_email?: string
+          id?: string
+          provider?: string
+          provider_message_id?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+          to_email?: string
+          workspace_owner_id?: string | null
+        }
+        Relationships: []
+      }
       outreach_auto_policies: {
         Row: {
           auto_draft: boolean
