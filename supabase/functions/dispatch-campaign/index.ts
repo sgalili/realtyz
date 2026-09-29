@@ -614,8 +614,15 @@ Deno.serve(async (req) => {
     // Resend availability — used for >100 recipients or when explicitly requested
     const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
     const resendReady = resendApiKey.length > 0;
-    const resendFromAddress =
-      Deno.env.get("RESEND_FROM_ADDRESS") ?? "Realtyz <updates@realtyz.co.il>";
+    // Workspace mailbox: each workspace sends from its own <alias>@realtyz.co.il
+    // (stored on the workspace owner's profile). Used only when Gmail is not connected.
+    const { data: wsOwnerProfile } = await admin
+      .from("profiles").select("email_alias, full_name").eq("id", ownerUserId).maybeSingle();
+    const wsAlias = String((wsOwnerProfile as any)?.email_alias ?? "").trim();
+    const wsName = String((wsOwnerProfile as any)?.full_name ?? "Realtyz").trim().replace(/[<>"]/g, "");
+    const resendFromAddress = wsAlias
+      ? `${wsName} <${wsAlias}@realtyz.co.il>`
+      : (Deno.env.get("RESEND_FROM_ADDRESS") ?? "Realtyz <info@realtyz.co.il>");
 
     // Load the user's connected Green API (with shared admin row as fallback)
     const { session: waSession, reason: waReason } =
@@ -896,7 +903,8 @@ Deno.serve(async (req) => {
           const htmlWithFooter = appendUnsubscribeFooter(baseHtml, emailAddr, campaignName);
 
           // Decide route: Resend (bulk / explicit) vs Gmail (personal account).
-          const useResend = preferResend && resendReady;
+          // Gmail first; the workspace realtyz.co.il mailbox is the fallback when Gmail isn't connected.
+          const useResend = resendReady && (preferResend || gmailSessions.length === 0);
 
           if (useResend) {
             result = await sendEmailResend(
