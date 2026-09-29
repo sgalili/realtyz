@@ -185,6 +185,7 @@ export const useExtensionGroups = (owner?: string | null) => {
 };
 
 export type ExtensionPublishPayload = {
+  workspaceOwnerId?: string;
   text: string;
   firstComment?: string | null;
   imageUrls?: string[];
@@ -893,6 +894,7 @@ export const startLocalPosting = (payload: ExtensionPublishPayload): number => {
     images: payload.imageUrls ?? [],
     firstComment: ensureMandatoryComment(payload.firstComment),
     link: payload.link ?? null,
+    workspaceOwnerId: payload.workspaceOwnerId,
     groups: groups.map((g) => ({
       group_id: g.group_id.replace(/^ext:/, ""),
       group_name: g.group_name,
