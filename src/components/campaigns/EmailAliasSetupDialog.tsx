@@ -31,12 +31,13 @@ export const EmailAliasSetupDialog = ({
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: mb } = await supabase.rpc('get_workspace_mailbox' as never);
+      const ownerId = (mb as any)?.owner_id;
+      if (!ownerId) return;
       const { data } = await supabase
         .from('profiles')
         .select('email_alias, full_name, email')
-        .eq('id', user.id)
+        .eq('id', ownerId)
         .maybeSingle();
       const existing = ((data as any)?.email_alias ?? '').trim();
       if (existing) {
@@ -58,27 +59,18 @@ export const EmailAliasSetupDialog = ({
     if (!canSubmit) return;
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { toast.error('יש להתחבר'); return; }
-      const { data: prof } = await supabase
-        .from('profiles').select('direct_channels').eq('id', user.id).maybeSingle();
-      const nextDirect = {
-        ...(((prof as any)?.direct_channels ?? {}) as Record<string, boolean>),
-        email: true,
-      };
-      const { error } = await supabase
-        .from('profiles')
-        .update({ email_alias: clean, direct_channels: nextDirect })
-        .eq('id', user.id);
+      const { error } = await supabase.rpc('set_workspace_email_alias' as never, { p_alias: clean } as never);
       if (error) {
-        if ((error as any).code === '23505') {
-          toast.error('הכתובת תפוסה — בחר prefix אחר');
-        } else {
-          toast.error(error.message);
-        }
+        const m = error.message || '';
+        toast.error(
+          m.includes('alias_taken') || (error as any).code === '23505' ? 'הכתובת תפוסה, בחרו שם אחר'
+          : m.includes('alias_reserved') ? 'כתובת זו שמורה למערכת, בחרו שם אחר'
+          : m.includes('only_workspace_owner') ? 'רק בעל מרחב העבודה יכול להגדיר את תיבת המייל'
+          : m,
+        );
         return;
       }
-      toast.success(`אימייל מותג מחובר: ${clean}@${DOMAIN}`);
+      toast.success(`תיבת המייל של מרחב העבודה: ${clean}@${DOMAIN}`);
       onConnected(clean);
       onClose();
     } finally {
@@ -95,7 +87,7 @@ export const EmailAliasSetupDialog = ({
             הגדרת דואר אלקטרוני מקצועי
           </DialogTitle>
           <DialogDescription className="text-right text-[12px] text-muted-foreground">
-            בחרו את ה-prefix של תיבת המייל המותגית שלכם. כתובת זו תשמש לשליחה וקבלת הודעות עם אנשי קשר.
+            בחרו את ה-prefix של תיבת המייל המותגית שלכם. תיבה אחת לכל מרחב העבודה. כשחשבון Gmail מחובר, השליחה תתבצע דרכו.
           </DialogDescription>
         </DialogHeader>
 

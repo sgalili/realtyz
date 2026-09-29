@@ -7228,6 +7228,7 @@ export type Database = {
           total_topups: number
         }[]
       }
+      get_workspace_mailbox: { Args: never; Returns: Json }
       get_workspace_member_ids: {
         Args: { _owner: string }
         Returns: {
@@ -7410,6 +7411,7 @@ export type Database = {
         Args: { _password: string; _user_id: string }
         Returns: undefined
       }
+      set_workspace_email_alias: { Args: { p_alias: string }; Returns: string }
       shares_workspace_with: {
         Args: { _row_user: string; _viewer: string }
         Returns: boolean

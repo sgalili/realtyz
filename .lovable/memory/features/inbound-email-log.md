@@ -1,10 +1,10 @@
 ---
-name: Inbound Email Log
-description: inbound_emails_log table + resend-inbound-webhook tee + inline EmailAliasSetupDialog on dashboard.
+name: Workspace Mailbox (Resend)
+description: One email box per workspace; Gmail first, else <alias>@realtyz.co.il via Resend; info@ is platform-reserved; inbound matched only inside the mailbox's workspace.
 type: feature
 ---
-Inline email provisioning: clicking "חבר" on the Email channel card in CampaignCenter opens `EmailAliasSetupDialog` (writes profiles.email_alias + direct_channels.email=true). No profile redirect.
-
-`inbound_emails_log` table mirrors every Resend inbound POST (from/to/subject/body/raw_payload/provider_message_id) and records matched_lead_id + matched_broker_user_id (resolved via profiles.email_alias from the recipient prefix). RLS: broker reads own rows, admins read all, service_role writes.
-
-resend-inbound-webhook still inserts into `messages` when a lead matches but now ALWAYS tees into inbound_emails_log first (status=matched|unmatched). resend-email-sender continues to read sender alias from profiles.email_alias dynamically.
+- Each workspace has exactly ONE mailbox. If the workspace owner has Gmail connected, Gmail is used; otherwise the workspace's <alias>@realtyz.co.il (Resend) is used.
+- Alias lives on the workspace owner's profiles.email_alias; set only by the owner via set_workspace_email_alias RPC; read via get_workspace_mailbox RPC.
+- Reserved aliases: info, noreply, admin, support, etc. info@realtyz.co.il is the platform mailbox (inbound logged, never attached to a workspace).
+- Inbound: Resend webhook (email.received, svix-signed, RESEND_INBOUND_SIGNING_SECRET) -> resend-inbound-webhook fetches body, matches leads ONLY where workspace_owner_id = alias owner, idempotent by provider_message_id, always logs to inbound_emails_log.
+- Resend API called directly with RESEND_API_KEY (not the connector gateway). Replies-To = workspace alias.

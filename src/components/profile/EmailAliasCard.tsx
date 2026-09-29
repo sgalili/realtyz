@@ -20,14 +20,16 @@ export function EmailAliasCard() {
   const [alias, setAlias] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [gmail, setGmail] = useState(false);
+  const [isOwner, setIsOwner] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
-      const { data } = await supabase.from("profiles")
-        .select("email_alias").eq("id", user.id).maybeSingle();
-      setAlias((data as any)?.email_alias ?? "");
+      const { data } = await supabase.rpc("get_workspace_mailbox" as never);
+      const mb = (data ?? {}) as any;
+      setAlias(mb.alias ?? "");
+      setGmail(!!mb.gmail_connected);
+      setIsOwner(mb.is_owner !== false);
       setLoading(false);
     })();
   }, []);
@@ -35,16 +37,19 @@ export function EmailAliasCard() {
   const save = async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("יש להתחבר");
-      const clean = alias.toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 32);
-      const { error } = await supabase.from("profiles")
-        .update({ email_alias: clean || null }).eq("id", user.id);
+      const { data, error } = await supabase.rpc("set_workspace_email_alias" as never, { p_alias: alias } as never);
       if (error) throw error;
-      setAlias(clean);
-      toast.success("כתובת המייל המותג נשמרה");
+      setAlias(String(data ?? "").split("@")[0]);
+      toast.success("תיבת המייל של מרחב העבודה נשמרה");
     } catch (e: any) {
-      toast.error(`שמירה נכשלה: ${e?.message ?? e}`);
+      const m = String(e?.message ?? e);
+      toast.error(
+        m.includes("alias_taken") ? "הכתובת תפוסה, בחרו שם אחר"
+        : m.includes("alias_reserved") ? "כתובת זו שמורה למערכת, בחרו שם אחר"
+        : m.includes("alias_too_short") ? "יש להזין לפחות 2 תווים"
+        : m.includes("only_workspace_owner") ? "רק בעל מרחב העבודה יכול לשנות את התיבה"
+        : `שמירה נכשלה: ${m}`,
+      );
     } finally {
       setSaving(false);
     }
@@ -58,13 +63,18 @@ export function EmailAliasCard() {
     <Card>
       <CardHeader>
         <CardTitle className="text-right flex items-center gap-2 justify-end">
-          <span>כתובת מייל מותג (Resend)</span>
+          <span>תיבת מייל של מרחב העבודה</span>
           <Mail className="h-5 w-5 text-primary" />
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground text-right">
-          בחר את ה-prefix שיופיע לפני {DOMAIN} בכל אימייל יוצא מהקמפיינים שלך. דוגמה: <code dir="ltr">udi{DOMAIN}</code>.
+          תיבה אחת לכל מרחב העבודה, לשליחה ולקבלת מיילים. תשובות מאנשי קשר נכנסות אוטומטית לתיבת השיחות. דוגמה: <code dir="ltr">udi{DOMAIN}</code>.
+        </p>
+        <p className="text-xs text-right rounded-md bg-muted px-3 py-2">
+          {gmail
+            ? "Gmail מחובר ומשמש לשליחה. כתובת זו היא אפשרות גיבוי."
+            : "Gmail לא מחובר, לכן המיילים יישלחו מכתובת זו."}
         </p>
         <div className="space-y-2">
           <Label htmlFor="email-alias" className="text-right block">Prefix</Label>
@@ -75,7 +85,7 @@ export function EmailAliasCard() {
               placeholder="udi"
               value={alias}
               onChange={(e) => setAlias(e.target.value)}
-              disabled={loading}
+              disabled={loading || !isOwner}
               className="rounded-r-none border-r-0 font-mono"
             />
             <span className="inline-flex h-10 items-center rounded-l-md border border-l-0 border-input bg-muted px-3 text-sm text-muted-foreground font-mono whitespace-nowrap">
@@ -87,7 +97,7 @@ export function EmailAliasCard() {
           </div>
         </div>
         <div className="flex justify-end">
-          <Button size="sm" onClick={save} disabled={saving || loading}>
+          <Button size="sm" onClick={save} disabled={saving || loading || !isOwner}>
             {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
             שמור כתובת
           </Button>

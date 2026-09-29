@@ -23,6 +23,22 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WEBHOOK_SECRET = Deno.env.get("RESEND_WEBHOOK_SECRET") ?? "";
+const SIGNING_SECRET = Deno.env.get("RESEND_INBOUND_SIGNING_SECRET") ?? "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const MAIL_DOMAIN = "realtyz.co.il";
+
+// Svix-style signature check used by Resend webhooks.
+async function verifySvix(raw: string, h: Headers): Promise<boolean> {
+  const id = h.get("svix-id"), ts = h.get("svix-timestamp"), sig = h.get("svix-signature");
+  if (!id || !ts || !sig) return false;
+  if (Math.abs(Date.now() / 1000 - Number(ts)) > 600) return false;
+  const keyB64 = SIGNING_SECRET.replace(/^whsec_/, "");
+  const keyBytes = Uint8Array.from(atob(keyB64), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${id}.${ts}.${raw}`)));
+  const expected = btoa(String.fromCharCode(...mac));
+  return sig.split(" ").some((part) => part.split(",")[1] === expected);
+}
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -80,36 +96,50 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
-  if (WEBHOOK_SECRET) {
+  const rawBody = await req.text();
+  const hasSvix = !!req.headers.get("svix-signature");
+  if (hasSvix && SIGNING_SECRET) {
+    if (!(await verifySvix(rawBody, req.headers))) return json({ error: "bad_signature" }, 401);
+  } else if (WEBHOOK_SECRET || SIGNING_SECRET) {
     const provided = req.headers.get("x-webhook-secret") ?? "";
-    if (provided !== WEBHOOK_SECRET) return json({ error: "unauthorized" }, 401);
+    if (!WEBHOOK_SECRET || provided !== WEBHOOK_SECRET) return json({ error: "unauthorized" }, 401);
   }
 
   let payload: any = {};
   const ct = (req.headers.get("content-type") ?? "").toLowerCase();
   try {
-    if (ct.includes("application/json")) {
-      payload = await req.json();
+    if (ct.includes("application/json") || rawBody.trim().startsWith("{")) {
+      payload = JSON.parse(rawBody);
     } else if (ct.includes("application/x-www-form-urlencoded") || ct.includes("multipart/form-data")) {
-      const form = await req.formData();
-      payload = Object.fromEntries([...form.entries()]);
+      payload = Object.fromEntries(new URLSearchParams(rawBody).entries());
     } else {
-      const raw = await req.text();
-      try { payload = JSON.parse(raw); } catch { payload = { text: raw }; }
+      payload = { text: rawBody };
     }
   } catch {
     return json({ error: "invalid_payload" }, 400);
   }
 
-  const data = payload?.data ?? payload ?? {};
+  let data = payload?.data ?? payload ?? {};
+  // Resend "email.received" events carry metadata only; fetch the full message.
+  if (payload?.type === "email.received" && data?.email_id && RESEND_API_KEY) {
+    try {
+      const r = await fetch(`https://api.resend.com/emails/receiving/${data.email_id}`, {
+        headers: { Authorization: `Bearer ${RESEND_API_KEY}` },
+      });
+      if (r.ok) data = { ...data, ...(await r.json()) };
+      else console.error("[resend-inbound] fetch body failed", r.status, await r.text());
+    } catch (e) { console.error("[resend-inbound] fetch body error", e); }
+  }
   const fromEmail = extractEmail(
     data.from ?? data.From ?? data.sender ?? data?.envelope?.from ??
     data?.FromFull?.Email ?? data?.headers?.From,
   );
-  const toEmail = extractEmail(
-    data.to ?? data.To ?? data.recipient ?? data?.envelope?.to ??
-    data?.ToFull?.[0]?.Email ?? data?.headers?.To,
-  );
+  // Pick the recipient on our domain (there may be several To/Cc addresses).
+  const allTo: unknown[] = [data.to, data.cc, data.To, data.recipient, data?.envelope?.to]
+    .flatMap((v) => (Array.isArray(v) ? v : v ? [v] : []));
+  const toEmail =
+    allTo.map(extractEmail).find((e) => e.endsWith(`@${MAIL_DOMAIN}`)) ??
+    extractEmail(data.to ?? data.To ?? data?.headers?.To);
   const subject = String(data.subject ?? data.Subject ?? data?.headers?.Subject ?? "").trim();
   const rawText = String(
     data.text ?? data["body-plain"] ?? data.plain ?? data.TextBody ?? data?.body?.plain ?? "",
@@ -119,7 +149,7 @@ Deno.serve(async (req) => {
   ).trim();
   const messageId = String(
     data.message_id ?? data["Message-Id"] ?? data["message-id"] ??
-    data.MessageID ?? data.id ?? payload?.message_id ?? "",
+    data.MessageID ?? data.email_id ?? data.id ?? payload?.message_id ?? "",
   ).trim();
 
   const bodyText = stripQuotedReply(rawText || (html ? stripHtml(html) : ""));
@@ -133,22 +163,33 @@ Deno.serve(async (req) => {
   let matchedBrokerUserId: string | null = null;
   if (toEmail) {
     const prefix = toEmail.split("@")[0]?.toLowerCase() ?? "";
-    if (prefix) {
+    if (prefix && toEmail.endsWith(`@${MAIL_DOMAIN}`) && prefix !== "info") {
       const { data: brokerRow } = await supabase
         .from("profiles").select("id").eq("email_alias", prefix).maybeSingle();
       matchedBrokerUserId = (brokerRow as any)?.id ?? null;
     }
   }
 
-  // Workspace-wide lead resolution by email
-  const { data: leadRow } = await supabase
-    .from("leads")
-    .select("id")
-    .ilike("email", fromEmail)
-    .limit(1)
-    .maybeSingle();
+  // Idempotency: Resend may retry the same event.
+  if (messageId) {
+    const { data: dup } = await supabase.from("inbound_emails_log")
+      .select("id").eq("provider_message_id", messageId).limit(1).maybeSingle();
+    if (dup) return json({ ok: true, duplicate: true });
+  }
 
-  const leadId = (leadRow as any)?.id ?? null;
+  // Strict workspace isolation: only match contacts inside the mailbox's workspace.
+  // Mail to info@ or an unknown alias is logged but never attached to any workspace.
+  let leadId: string | null = null;
+  if (matchedBrokerUserId) {
+    const { data: leadRow } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("workspace_owner_id", matchedBrokerUserId)
+      .ilike("email", fromEmail)
+      .limit(1)
+      .maybeSingle();
+    leadId = (leadRow as any)?.id ?? null;
+  }
 
   // Always log to inbound_emails_log for traceability
   await supabase.from("inbound_emails_log").insert({
@@ -161,7 +202,7 @@ Deno.serve(async (req) => {
     matched_lead_id: leadId,
     matched_broker_user_id: matchedBrokerUserId,
     status: leadId ? "matched" : "unmatched",
-    raw_payload: data ?? null,
+    raw_payload: { ...data, html: undefined, raw: undefined } ?? null,
   });
 
   if (!leadId) {

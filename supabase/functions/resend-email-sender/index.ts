@@ -6,7 +6,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
+const RESEND_URL = "https://api.resend.com/emails";
 const SENDER_DOMAIN = "realtyz.co.il";
 
 function escapeHtml(s: string) {
@@ -77,10 +77,10 @@ Deno.serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (!LOVABLE_API_KEY || !RESEND_API_KEY) {
-      return new Response(JSON.stringify({ error: "Resend אינו מחובר עדיין. חבר את Resend ב-Lovable Cloud → Connectors" }), {
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    if (!RESEND_API_KEY) {
+      return new Response(JSON.stringify({ error: "תיבת הדואר של realtyz.co.il אינה מוגדרת" }), {
         status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -110,11 +110,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: profile } = await sb.from("profiles")
-      .select("full_name, email, email_alias").eq("id", userId).maybeSingle();
+    // One mailbox per workspace: resolve the active workspace owner.
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const { data: ownerId } = await sb.rpc("current_workspace_owner");
+    const wsOwner = (ownerId as string) || userId;
+    const { data: profile } = await admin.from("profiles")
+      .select("full_name, email, email_alias").eq("id", wsOwner).maybeSingle();
+
+    // Gmail first: when the workspace has Gmail connected, send through it.
+    const { data: gmailRows } = await admin.from("social_connections")
+      .select("id, credentials").in("platform", ["gmail", "google"])
+      .eq("created_by", wsOwner).eq("is_connected", true).limit(1);
+    const gmailRow = gmailRows?.[0] as any;
+    const gCreds = (gmailRow?.credentials ?? {}) as Record<string, any>;
+    const gToken = gCreds?.manual?.access_token as string | undefined;
+    const gFrom = (gCreds?.verified_identity?.email ?? gCreds?.account_name ?? "") as string;
+
     const alias = (profile?.email_alias || "").trim();
-    if (!alias) {
-      return new Response(JSON.stringify({ error: "טרם הוגדר prefix לאימייל המותג בפרופיל" }), {
+    if (!alias && !(gToken && gFrom)) {
+      return new Response(JSON.stringify({ error: "טרם הוגדרה תיבת מייל למרחב העבודה (Gmail או כתובת @realtyz.co.il)" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -141,19 +155,43 @@ Deno.serve(async (req) => {
       signatureLine: `${alias}@${SENDER_DOMAIN}`,
     });
 
-    const r = await fetch(`${GATEWAY_URL}/emails`, {
+    if (gToken && gFrom) {
+      const b64 = (str: string) => btoa(Array.from(new TextEncoder().encode(str), (b) => String.fromCharCode(b)).join(""));
+      const hdr = (v: string) => (/^[\x00-\x7F]*$/.test(v) ? v : `=?UTF-8?B?${b64(v)}?=`);
+      const mime = [
+        `From: ${hdr(brokerName)} <${gFrom}>`, `To: ${recipient_email}`, `Subject: ${hdr(subject)}`,
+        "MIME-Version: 1.0", 'Content-Type: text/html; charset="UTF-8"', "", html,
+      ].join("\r\n");
+      const raw = b64(mime).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      const g = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${gToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ raw }),
+      });
+      const gOut = await g.json().catch(() => ({}));
+      if (g.ok) {
+        return new Response(JSON.stringify({ success: true, provider: "gmail", id: (gOut as any)?.id, from: gFrom }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      console.error("gmail send failed", g.status, gOut);
+      if (!alias) {
+        return new Response(JSON.stringify({ error: "שליחה דרך Gmail נכשלה - יש לחבר מחדש", status: g.status, details: gOut }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    const r = await fetch(RESEND_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": RESEND_API_KEY,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
       body: JSON.stringify({
         from: fromAddress,
         to: [recipient_email],
         subject,
         html,
-        reply_to: profile?.email || undefined,
+        // Replies go back to the workspace mailbox so they land in the CRM inbox.
+        reply_to: `${alias}@${SENDER_DOMAIN}`,
       }),
     });
     const out = await r.json().catch(() => ({}));
@@ -162,7 +200,7 @@ Deno.serve(async (req) => {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    return new Response(JSON.stringify({ success: true, id: (out as any)?.id, from: fromAddress }), {
+    return new Response(JSON.stringify({ success: true, provider: "resend", id: (out as any)?.id, from: fromAddress }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
