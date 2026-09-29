@@ -392,13 +392,13 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     onStatus?.(null);
     clearPendingOAuth();
     try {
-      // Everything that can hang or throw lives INSIDE the try — the cache
-      // reset (React Query cancellation) must never keep the spinner alive.
-      await resetHealth().catch(() => undefined);
+      // Hard 10s ceiling on the cache reset so even a wedged React Query
+      // cancellation can never delay the finally block below.
+      await withTimeout(resetHealth(), 10_000, 'reset-timeout').catch(() => undefined);
       setConnectionEpoch((value) => value + 1);
       const result = await callPageConnect<{ ok?: boolean }>({ action: 'disconnect' });
       if (!result?.ok) throw new Error('השרת לא אישר שהחיבור נמחק');
-      await resetHealth().catch(() => undefined);
+      await withTimeout(resetHealth(), 10_000, 'reset-timeout').catch(() => undefined);
       refreshHealth();
       refreshBinding();
       toast.success('עמוד הפייסבוק נותק');
