@@ -3380,6 +3380,10 @@ const ConfirmDispatchDialog = ({
         // Facebook session.
         let queuedGroups = 0;
         if (channel.id === 'facebook' && apiGroupIds.length > 0) {
+          // Preserve the exact branded/referral destination already generated
+          // into the first comment. The extension also appends it to the post
+          // body when Facebook cannot create a separate link preview.
+          const publicLink = firstComment.match(/https:\/\/realtyz\.co\.il\/[^\s]+/i)?.[0] ?? null;
           // Retry / re-publish: clear stale completed+failed entries (and legacy
           // Meta errors) for this text so the card reflects the fresh queue run.
           resetQueueEntriesForText(bodyToPublish);
@@ -3388,14 +3392,14 @@ const ConfirmDispatchDialog = ({
             text: bodyToPublish,
             texts: groupTexts,
             images: mediaUrls,
-            link: waShortUrl || null,
+            link: publicLink,
             firstComment: firstComment || null,
             listing: listingId ? {
               id: listingId,
               title: brandName || null,
               description: bodyToPublish,
               media: mediaUrls,
-              publicUrl: waShortUrl || null,
+              publicUrl: publicLink,
             } : null,
             scheduledAt: scheduledAt,
             groups: apiGroupIds.map((bare) => ({
