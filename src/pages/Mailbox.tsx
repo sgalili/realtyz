@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Mail, Search, SquarePen, Send } from 'lucide-react';
+import { Mail, Search, SquarePen, Send, Pencil, Check, RefreshCw } from 'lucide-react';
 
 type Row = {
   id: string;
@@ -57,11 +57,40 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
   };
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [aliasDraft, setAliasDraft] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   const { data: mailbox } = useQuery({
     queryKey: ['workspace-mailbox'],
     queryFn: async () => ((await supabase.rpc('get_workspace_mailbox' as never)).data ?? {}) as any,
   });
+
+  const saveAlias = async () => {
+    const { error } = await supabase.rpc('set_workspace_email_alias' as never, { p_alias: aliasDraft } as never);
+    if (error) {
+      const m = error.message;
+      return toast.error(
+        m.includes('alias_taken') ? 'הכתובת תפוסה, בחרו שם אחר'
+        : m.includes('alias_reserved') ? 'כתובת זו שמורה למערכת'
+        : m.includes('alias_too_short') ? 'יש להזין לפחות 2 תווים באנגלית'
+        : m.includes('only_workspace_owner') ? 'רק בעל מרחב העבודה יכול לשנות' : m,
+      );
+    }
+    setEditing(false);
+    qc.invalidateQueries({ queryKey: ['workspace-mailbox'] });
+    toast.success('הכתובת עודכנה');
+  };
+
+  const refresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      qc.refetchQueries({ queryKey: ['mailbox-inbound'] }),
+      qc.refetchQueries({ queryKey: ['mailbox-outbound'] }),
+      qc.refetchQueries({ queryKey: ['workspace-mailbox'] }),
+    ]);
+    setRefreshing(false);
+  };
 
   const { data: inbound = [], isLoading: inLoading } = useQuery({
     queryKey: ['mailbox-inbound'],
@@ -143,14 +172,35 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
     <div dir="rtl" className={embedded ? 'space-y-4' : 'max-w-4xl mx-auto p-4 space-y-4'}>
       <div className="flex items-center gap-2">
         <Mail className="h-5 w-5 text-primary shrink-0" />
-        {mailbox?.address ? (
-          <span dir="ltr" className="font-mono text-sm font-semibold truncate">{mailbox.address}</span>
+        {editing ? (
+          <div className="flex items-center min-w-0" dir="ltr">
+            <Input autoFocus dir="ltr" value={aliasDraft} onChange={(e) => setAliasDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') saveAlias(); if (e.key === 'Escape') setEditing(false); }}
+              className="h-8 w-28 rounded-r-none font-mono text-sm" />
+            <span className="inline-flex h-8 items-center rounded-l-md border border-l-0 bg-muted px-2 text-xs font-mono">@realtyz.co.il</span>
+          </div>
         ) : (
-          <span className="text-sm text-muted-foreground">טרם הוגדרה כתובת @realtyz.co.il למרחב העבודה</span>
+          <span dir="ltr" className="font-mono text-sm font-semibold truncate">{mailbox?.address ?? '…'}</span>
         )}
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label="מייל חדש" title="מייל חדש" onClick={() => setCompose(true)}>
-          <SquarePen className="h-4 w-4" />
-        </Button>
+        {editing ? (
+          <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label="שמירה" onClick={saveAlias}>
+            <Check className="h-4 w-4" />
+          </Button>
+        ) : mailbox?.is_owner !== false && (
+          <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label="עריכת כתובת" title="עריכת כתובת"
+            onClick={() => { setAliasDraft(mailbox?.alias ?? ''); setEditing(true); }}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
+        <div className="ms-auto flex items-center gap-1">
+          <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label="רענון" title="רענון"
+            onClick={refresh} disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label="מייל חדש" title="מייל חדש" onClick={() => setCompose(true)}>
+            <SquarePen className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       {isAdmin && <p className="text-xs text-muted-foreground">כמנהל מערכת מוצגים גם מיילים ל-info@realtyz.co.il ולכל המרחבים.</p>}
       <div className="relative">

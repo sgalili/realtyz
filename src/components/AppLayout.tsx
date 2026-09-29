@@ -468,7 +468,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const headerIdentity = resolveWorkspaceIdentity(activeWorkspace, brand as any);
   const headerLogo = headerIdentity.logo || '';
   const headerName = headerIdentity.name;
-  const headerUserName = String((headerUserProfile as any)?.full_name || friendlyUserDisplayName(user, '') || '').trim();
+  const headerUserName = String((activeWorkspace && !(activeWorkspace as any).is_self ? (activeWorkspace as any).owner_full_name : '') || (headerUserProfile as any)?.full_name || friendlyUserDisplayName(user, '') || '').trim();
 
 
   const advanceTutorial = () => {
