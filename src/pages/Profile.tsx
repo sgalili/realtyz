@@ -195,62 +195,58 @@ function PersonalTab() {
   const [gender, setGender] = useState<string>('');
   const [brokerLicense, setBrokerLicense] = useState<string>('');
   const [editing, setEditing] = useState<Record<string, boolean>>({});
-  const [hydrated, setHydrated] = useState(false);
+  const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
   useEffect(() => {
-    if (hydrated || !user) return;
+    if (!user || hydratedFor === user.id) return;
+    const uid = user.id;
+    // Reset everything the moment the signed-in account changes so nothing
+    // from a previous account/workspace can linger on screen.
+    setEmails([newRow('')]); setWhatsapps([newRow('')]); setPhones([newRow('')]);
+    setFullName(''); setCity(''); setGender(''); setBrokerLicense('');
     const meta = (user.user_metadata ?? {}) as Record<string, any>;
     const contacts = meta.profile_contacts ?? null;
     const userPhone = ((user as any).phone ?? meta.phone_number ?? meta.phone ?? '').toString();
     const defaultName = String(meta.full_name || meta.name || '').trim();
-    const apply = (p: any, fallback: any = {}) => {
-      setEmails(rowList(
-        Array.isArray(p.emails) ? p.emails.filter((it: any) => realEmail(typeof it === 'string' ? it : it?.value)) : p.emails,
-        [realEmail(p.email) || realEmail(fallback.email) || realEmail(user.email)].filter(Boolean),
-      ));
-      setWhatsapps(rowList(p.whatsapps, [p.whatsapp || p.phone || fallback.phone || userPhone].filter(Boolean)));
-      setPhones(rowList(p.phones, [p.phone || fallback.phone || userPhone].filter(Boolean)));
-      if (typeof p.fullName === 'string') setFullName(p.fullName);
-      else if (typeof p.full_name === 'string') setFullName(p.full_name);
-      else setFullName(defaultName);
-      if (typeof p.city === 'string') setCity(p.city);
-      if (typeof p.gender === 'string') setGender(p.gender);
+    const firstVal = (list: any) => {
+      const it = Array.isArray(list) ? list[0] : null;
+      return String((typeof it === 'string' ? it : it?.value) ?? '').trim().toLowerCase();
     };
     (async () => {
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('email, full_name, phone, city, gender, broker_license_number')
-          .eq('id', user!.id)
+          .select('id, email, full_name, phone, city, gender, broker_license_number')
+          .eq('id', uid)
           .maybeSingle();
+        if ((data as any)?.id && (data as any).id !== uid) return;
+        const server: any = data ?? {};
+        const serverEmail = realEmail(server.email) || realEmail(user.email);
+        const serverName = String(server.full_name ?? '').trim() || defaultName;
         let local: any = null;
         try {
-          const raw = window.localStorage.getItem(profileStorageKey(user.id));
+          const raw = window.localStorage.getItem(profileStorageKey(uid));
           if (raw) local = JSON.parse(raw);
         } catch {}
-        const serverProfile = data ? {
-          email: (data as any).email,
-          full_name: (data as any).full_name,
-          phone: (data as any).phone,
-          city: (data as any).city,
-          gender: (data as any).gender,
-        } : {};
-        const contactEmails = Array.isArray(contacts?.emails)
-          ? contacts.emails.map((item: any) => (typeof item === 'string' ? item : item?.value)).filter(Boolean)
-          : [];
-        const contactsBelongToUser = contactEmails.length > 0 && !!user.email && contactEmails.includes(user.email);
-        if (local) apply(local, serverProfile);
-        else if (contactsBelongToUser) apply(contacts, serverProfile);
-        else apply(serverProfile);
-        if (data) {
-          if (typeof (data as any).broker_license_number === 'string') {
-            setBrokerLicense((data as any).broker_license_number ?? '');
-          }
-        }
+        // A cached/metadata contact card is trusted only if it belongs to this
+        // exact account (same primary email AND same name). Otherwise discard.
+        const owns = (p: any) => !!p && !!serverEmail
+          && firstVal(p.emails) === serverEmail.toLowerCase()
+          && (!serverName || String(p.fullName ?? p.full_name ?? '').trim() === serverName);
+        const extra = owns(local) ? local : owns(contacts) ? contacts : null;
+        if (!extra && local) { try { window.localStorage.removeItem(profileStorageKey(uid)); } catch {} }
+        const phone = String(server.phone ?? '') || userPhone;
+        setEmails(rowList(extra?.emails, [serverEmail].filter(Boolean)));
+        setWhatsapps(rowList(extra?.whatsapps, [phone].filter(Boolean)));
+        setPhones(rowList(extra?.phones, [phone].filter(Boolean)));
+        setFullName(serverName);
+        setCity(String(server.city ?? extra?.city ?? ''));
+        setGender(String(server.gender ?? extra?.gender ?? ''));
+        setBrokerLicense(String(server.broker_license_number ?? ''));
       } catch { /* ignore */ }
-      setHydrated(true);
+      setHydratedFor(uid);
     })();
-  }, [user, hydrated]);
+  }, [user, hydratedFor]);
 
   const setEdit = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }));
 
