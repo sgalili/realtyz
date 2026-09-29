@@ -1,5 +1,5 @@
 /**
- * Referral attribution: captures ?ref=CODE (or /ref/CODE) and keeps it for 30 days
+ * Referral attribution: captures ?ref=CODE (or /ref/CODE) and keeps it for one year
  * in both localStorage and a cookie. The first captured code wins.
  */
 const KEY = 'realtyz_ref_code';

@@ -38,6 +38,7 @@ import {
   type ChannelKey,
 } from '@/lib/touchCredits';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -90,6 +91,7 @@ td,th{border:1px solid #dbe1ee;padding:10px;text-align:right}
 
 export default function BillingTab() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const { contactsUsed, propertiesUsed } = useFreemiumStatus();
   const currentPackage = useMemo(
     () => recommendedPackage(contactsUsed, propertiesUsed),
@@ -99,14 +101,14 @@ export default function BillingTab() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   const { data: usageRows = [] } = useQuery({
-    queryKey: ['tc_usage_month', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['tc_usage_month', workspaceOwnerId],
+    enabled: !!user?.id && !!workspaceOwnerId,
     refetchInterval: 15_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('usage_logs')
         .select('service_type, quantity, cost, created_at')
-        .eq('user_id', user!.id)
+        .eq('user_id', workspaceOwnerId!)
         .eq('is_demo', false)
         .gte('created_at', monthStartIso());
       if (error) throw error;
@@ -115,13 +117,13 @@ export default function BillingTab() {
   });
 
   const { data: invoices = [] } = useQuery({
-    queryKey: ['billing_invoices', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['billing_invoices', workspaceOwnerId],
+    enabled: !!user?.id && !!workspaceOwnerId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('balance_adjustments')
         .select('id, amount, reason, created_at')
-        .eq('user_id', user!.id)
+        .eq('user_id', workspaceOwnerId!)
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;

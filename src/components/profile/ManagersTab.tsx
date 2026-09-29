@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Trash2, MessageSquare, Megaphone, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -49,7 +49,7 @@ function pickPrimaryPhone(rows: { phone_number: string }[]): string {
 }
 
 export function ManagersTab() {
-  const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -59,12 +59,13 @@ export function ManagersTab() {
   const [tiers, setTiers] = useState<Record<string, string>>({});
 
   const { data: managers = [], isLoading } = useQuery({
-    queryKey: ['kb_whitelist_managers', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['kb_whitelist_managers', workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
     queryFn: async (): Promise<ManagerRow[]> => {
       const { data, error } = await supabase
         .from('kb_whitelist')
         .select('id,user_id,phone_number,label')
+        .eq('user_id', workspaceOwnerId as string)
         .order('created_at', { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -80,7 +81,7 @@ export function ManagersTab() {
   );
 
   const handleAdd = async () => {
-    if (!user?.id) return;
+    if (!workspaceOwnerId) return;
     if (!name.trim() || !phone.trim()) {
       toast.error('יש למלא שם וטלפון');
       return;
@@ -94,7 +95,7 @@ export function ManagersTab() {
     const variants = Array.from(new Set([national, intl, '+' + intl]));
     const { error } = await supabase.from('kb_whitelist').upsert(
       variants.map((p) => ({
-        user_id: user.id,
+          user_id: workspaceOwnerId,
         phone_number: p,
         label: name.trim(),
       })),

@@ -254,6 +254,16 @@ export type QueuedExtensionPost = {
   firstComment?: string | null;
   images?: string[];
   link?: string | null;
+  /** Active workspace that owns this browser job. Never execute across tenants. */
+  workspaceOwnerId?: string;
+  listing?: {
+    id: string;
+    title?: string | null;
+    description?: string | null;
+    price?: number | null;
+    media?: string[];
+    publicUrl?: string | null;
+  } | null;
   status: "pending" | "posting" | "completed" | "failed";
   /** Live automation stage reported by the browser extension. */
   stage?: ExtensionStage;
@@ -298,10 +308,11 @@ const STAGE_META: Record<ExtensionStage, { label: string; percent: number }> = {
 
 export const stageLabel = (stage: ExtensionStage) => STAGE_META[stage].label;
 
-export const readPostQueue = (): QueuedExtensionPost[] => {
+export const readPostQueue = (workspaceOwnerId?: string | null): QueuedExtensionPost[] => {
   try {
     const raw = JSON.parse(localStorage.getItem(EXT_POST_QUEUE_KEY) || "[]");
-    return Array.isArray(raw) ? (raw as QueuedExtensionPost[]) : [];
+    const queue = Array.isArray(raw) ? (raw as QueuedExtensionPost[]) : [];
+    return workspaceOwnerId ? queue.filter((job) => job.workspaceOwnerId === workspaceOwnerId) : queue;
   } catch {
     return [];
   }
@@ -372,6 +383,8 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
     for (let i = 0; i < next.length; i++) {
       const job = next[i];
       if (!job || typeof job !== "object") continue;
+      const ownerId = String(job.workspaceOwnerId || "").trim();
+      if (!ownerId) continue;
       const payload = {
         local_id: job.id,
         job,
@@ -381,7 +394,7 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
         const { data, error } = await (supabase as any)
           .from("campaign_activity_queue")
           .insert({
-            workspace_owner_id: uid,
+            workspace_owner_id: ownerId,
             created_by: uid,
             activity_type: job.type === "page_first_comment" ? "fb_comment" : "fb_group_post",
             target_ref: job.groupUrl ?? job.postUrl ?? null,
@@ -437,16 +450,16 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
 };
 
 /** Read mirrored jobs back so any domain renders the same queue + pills. */
-export const fetchCloudQueue = async (): Promise<QueuedExtensionPost[]> => {
+export const fetchCloudQueue = async (workspaceOwnerId: string): Promise<QueuedExtensionPost[]> => {
   try {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth?.user?.id;
-    if (!uid) return [];
+    if (!uid || !workspaceOwnerId) return [];
     const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
     const { data, error } = await (supabase as any)
       .from("campaign_activity_queue")
       .select("id, status, last_error, scheduled_for, created_at, payload")
-      .eq("workspace_owner_id", uid)
+      .eq("workspace_owner_id", workspaceOwnerId)
       .in("activity_type", ["fb_group_post", "fb_comment"])
       .gte("created_at", since)
       .order("created_at", { ascending: false })
@@ -496,6 +509,7 @@ const mergeQueues = (
  * Returns the number of queued entries.
  */
 export const enqueueExtensionPosts = (input: {
+  workspaceOwnerId: string;
   text: string;
   /** Optional per-group phrasing ({ [group_id]: text }) to avoid duplicate-content filtering. */
   texts?: Record<string, string>;
@@ -503,6 +517,7 @@ export const enqueueExtensionPosts = (input: {
   images?: string[];
   link?: string | null;
   firstComment?: string | null;
+  listing?: QueuedExtensionPost['listing'];
   /** ISO string or ms timestamp; omit for immediate posting. */
   scheduledAt?: string | number | null;
 }): number => {
@@ -522,6 +537,8 @@ export const enqueueExtensionPosts = (input: {
         groupName: g.group_name || bare,
         images: input.images ?? [],
         link: input.link ?? null,
+        workspaceOwnerId: input.workspaceOwnerId,
+        listing: input.listing ?? null,
         firstComment: safeUtf8(ensureMandatoryComment(input.firstComment)),
         status: "pending" as const,
         scheduledTime,
@@ -587,12 +604,13 @@ const sameQueue = (a: QueuedExtensionPost[], b: QueuedExtensionPost[]) => {
   try { return JSON.stringify(a) === JSON.stringify(b); } catch { return false; }
 };
 
-export const useExtensionQueue = (): QueuedExtensionPost[] => {
-  const [queue, setQueue] = useState<QueuedExtensionPost[]>(() => readPostQueue());
+export const useExtensionQueue = (workspaceOwnerId?: string | null): QueuedExtensionPost[] => {
+  const [queue, setQueue] = useState<QueuedExtensionPost[]>(() => readPostQueue(workspaceOwnerId));
 
   useEffect(() => {
     const commit = (next: unknown) => {
-      const value = Array.isArray(next) ? (next as QueuedExtensionPost[]) : readPostQueue();
+      const all = Array.isArray(next) ? (next as QueuedExtensionPost[]) : readPostQueue();
+      const value = workspaceOwnerId ? all.filter((job) => job.workspaceOwnerId === workspaceOwnerId) : [];
       // Keep the previous array identity when nothing actually changed, so the
       // campaign cards do not unmount/remount on every poll tick.
       setQueue((curr) => (sameQueue(curr, value) ? curr : value));
@@ -623,7 +641,7 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
     // Re-broadcast pending jobs so a content script injected after the queue was
     // written still receives it and mirrors it into chrome.storage.local.
     const rebroadcast = () => {
-      const current = readPostQueue();
+      const current = readPostQueue(workspaceOwnerId);
       if (!current.some((j) => !j.status || j.status === 'pending')) return;
       try { window.postMessage({ source: 'realtyz-app', type: EXT_QUEUE_BROADCAST_MESSAGE, queue: current }, '*'); } catch { /* noop */ }
     };
@@ -635,7 +653,7 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
     // preview) render here with identical status pills.
     let alive = true;
     const pullCloud = async () => {
-      const cloud = await fetchCloudQueue();
+      const cloud = workspaceOwnerId ? await fetchCloudQueue(workspaceOwnerId) : [];
       if (!alive || cloud.length === 0) return;
       setQueue((curr) => {
         const merged = mergeQueues(curr, cloud);
@@ -657,7 +675,7 @@ export const useExtensionQueue = (): QueuedExtensionPost[] => {
       window.removeEventListener('message', onMessage);
       window.clearInterval(poll);
     };
-  }, []);
+  }, [workspaceOwnerId]);
 
   return queue;
 };

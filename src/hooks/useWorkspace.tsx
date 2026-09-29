@@ -33,10 +33,9 @@ type WorkspaceContextType = {
 };
 
 const STORAGE_KEY = 'realtyz-active-workspace';
-const WS_LIST_CACHE_KEY = 'realtyz-workspaces-cache';
-const WS_LAST_ACTIVE_KEY = `${STORAGE_KEY}:last`;
-
 const workspaceStorageKey = (userId: string) => `${STORAGE_KEY}:${userId}`;
+const workspaceListCacheKey = (userId: string) => `realtyz-workspaces-cache:${userId}`;
+const workspaceLastActiveKey = (userId: string) => `${STORAGE_KEY}:${userId}:last`;
 
 function dedupeWorkspaces(rows: Workspace[], currentUserId?: string): Workspace[] {
   const byOwner = new Map<string, Workspace>();
@@ -69,20 +68,21 @@ function dedupeWorkspaces(rows: Workspace[], currentUserId?: string): Workspace[
  * paints on the FIRST frame after a refresh instead of flashing the default
  * Realtyz logo for ~2s while get_my_workspaces() round-trips.
  */
-function readWorkspaceCache(): { list: Workspace[]; activeId: string | null } {
+function readWorkspaceCache(userId: string | null): { list: Workspace[]; activeId: string | null } {
+  if (!userId) return { list: [], activeId: null };
   try {
-    const list = JSON.parse(localStorage.getItem(WS_LIST_CACHE_KEY) ?? '[]') as Workspace[];
-    const activeId = localStorage.getItem(WS_LAST_ACTIVE_KEY);
+    const list = JSON.parse(localStorage.getItem(workspaceListCacheKey(userId)) ?? '[]') as Workspace[];
+    const activeId = localStorage.getItem(workspaceLastActiveKey(userId));
     return { list: Array.isArray(list) ? dedupeWorkspaces(list) : [], activeId: activeId || null };
   } catch {
     return { list: [], activeId: null };
   }
 }
 
-function writeWorkspaceCache(list: Workspace[], activeId: string | null) {
+function writeWorkspaceCache(userId: string, list: Workspace[], activeId: string | null) {
   try {
-    localStorage.setItem(WS_LIST_CACHE_KEY, JSON.stringify(list));
-    if (activeId) localStorage.setItem(WS_LAST_ACTIVE_KEY, activeId);
+    localStorage.setItem(workspaceListCacheKey(userId), JSON.stringify(list));
+    if (activeId) localStorage.setItem(workspaceLastActiveKey(userId), activeId);
   } catch { /* storage unavailable */ }
 }
 
@@ -103,7 +103,7 @@ const WorkspaceContext = createContext<WorkspaceContextType>({
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const cachedInit = readWorkspaceCache();
+  const cachedInit = readWorkspaceCache(user?.id ?? null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>(cachedInit.list);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(cachedInit.activeId);
   const [loading, setLoading] = useState(cachedInit.list.length === 0);
@@ -118,7 +118,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    setLoading(workspaces.length === 0);
+    const accountCache = readWorkspaceCache(user.id);
+    setWorkspaces(accountCache.list);
+    setActiveWorkspaceId(accountCache.activeId);
+    setLoading(accountCache.list.length === 0);
     try {
       const [{ data, error }, { data: profile }] = await Promise.all([
         supabase.rpc('get_my_workspaces'),
@@ -131,16 +134,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const stored = window.localStorage.getItem(workspaceStorageKey(user.id));
       const validStored = stored && rows.some((r) => r.workspace_owner_id === stored) ? stored : null;
       const profileActive = (profile as any)?.active_workspace_owner_id as string | null | undefined;
+      const validProfileActive = profileActive && rows.some((r) => r.workspace_owner_id === profileActive)
+        ? profileActive
+        : null;
       const fallback = rows.find((r) => r.is_self)?.workspace_owner_id ?? rows[0]?.workspace_owner_id ?? user.id;
-      // A browser choice is explicit and account-scoped. Without one, always
-      // start in the user's own empty workspace; never inherit a workspace
-      // selection left on the profile by an admin/super-admin session.
-      const nextActive = validStored ?? fallback;
+      // Trust the server selection only after proving the signed-in member can
+      // access it. This preserves invited tenant assignments without accepting
+      // stale or foreign workspace ids.
+      const nextActive = validStored ?? validProfileActive ?? fallback;
       setActiveWorkspaceId(nextActive);
       if (nextActive) {
         window.localStorage.setItem(workspaceStorageKey(user.id), nextActive);
       }
-      writeWorkspaceCache(rows, nextActive);
+      writeWorkspaceCache(user.id, rows, nextActive);
       if (profileActive !== nextActive) {
         void supabase.rpc('set_active_workspace', { _owner: nextActive });
       }
@@ -186,7 +192,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     setActiveWorkspaceId(ownerId);
     window.localStorage.setItem(workspaceStorageKey(user.id), ownerId);
-    writeWorkspaceCache(workspaces, ownerId);
+    writeWorkspaceCache(user.id, workspaces, ownerId);
 
     // A workspace hand-off always lands in broker mode, so the מתווך/שותף
     // toggle and the routes it guards never keep the previous tenant's state.

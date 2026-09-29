@@ -39,7 +39,7 @@ const WORKSPACE_STORAGE_KEY = 'realtyz-workspace-details';
 const LOGO_STORAGE_KEY = 'realtyz-agency-logo';
 const PROFILE_STORAGE_KEY = 'realtyz-profile-contacts';
 
-const profileStorageKey = (userId: string) => `${PROFILE_STORAGE_KEY}:${userId}`;
+const profileStorageKey = (workspaceOwnerId: string) => `${PROFILE_STORAGE_KEY}:${workspaceOwnerId}`;
 
 function rowList(value: any, fallback: string[] = []): Row[] {
   const source = Array.isArray(value) && value.length ? value : fallback;
@@ -187,7 +187,10 @@ function realEmail(value: unknown): string {
 
 function PersonalTab() {
   const { user, signOut } = useAuth();
-  const [emails, setEmails] = useState<Row[]>([newRow(realEmail(user?.email))]);
+  const { activeWorkspaceId } = useWorkspace();
+  const profileOwnerId = activeWorkspaceId ?? user?.id ?? null;
+  const isOwnProfile = profileOwnerId === user?.id;
+  const [emails, setEmails] = useState<Row[]>([newRow('')]);
   const [whatsapps, setWhatsapps] = useState<Row[]>([newRow('')]);
   const [phones, setPhones] = useState<Row[]>([newRow('')]);
   const [fullName, setFullName] = useState('');
@@ -198,16 +201,16 @@ function PersonalTab() {
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || hydratedFor === user.id) return;
-    const uid = user.id;
-    // Reset everything the moment the signed-in account changes so nothing
-    // from a previous account/workspace can linger on screen.
+    if (!user || !profileOwnerId || hydratedFor === profileOwnerId) return;
+    const ownerId = profileOwnerId;
+    // Reset everything the moment the active workspace changes so nothing
+    // from the previous tenant can linger on screen.
     setEmails([newRow('')]); setWhatsapps([newRow('')]); setPhones([newRow('')]);
     setFullName(''); setCity(''); setGender(''); setBrokerLicense('');
-    const meta = (user.user_metadata ?? {}) as Record<string, any>;
-    const contacts = meta.profile_contacts ?? null;
-    const userPhone = ((user as any).phone ?? meta.phone_number ?? meta.phone ?? '').toString();
-    const defaultName = String(meta.full_name || meta.name || '').trim();
+    const meta = isOwnProfile ? (user.user_metadata ?? {}) as Record<string, any> : {};
+    const contacts = isOwnProfile ? meta.profile_contacts ?? null : null;
+    const userPhone = isOwnProfile ? ((user as any).phone ?? meta.phone_number ?? meta.phone ?? '').toString() : '';
+    const defaultName = isOwnProfile ? String(meta.full_name || meta.name || '').trim() : '';
     const firstVal = (list: any) => {
       const it = Array.isArray(list) ? list[0] : null;
       return String((typeof it === 'string' ? it : it?.value) ?? '').trim().toLowerCase();
@@ -217,15 +220,15 @@ function PersonalTab() {
         const { data } = await supabase
           .from('profiles')
           .select('id, email, full_name, phone, city, gender, broker_license_number')
-          .eq('id', uid)
+          .eq('id', ownerId)
           .maybeSingle();
-        if ((data as any)?.id && (data as any).id !== uid) return;
+        if ((data as any)?.id && (data as any).id !== ownerId) return;
         const server: any = data ?? {};
-        const serverEmail = realEmail(server.email) || realEmail(user.email);
+        const serverEmail = realEmail(server.email) || (isOwnProfile ? realEmail(user.email) : '');
         const serverName = String(server.full_name ?? '').trim() || defaultName;
         let local: any = null;
         try {
-          const raw = window.localStorage.getItem(profileStorageKey(uid));
+          const raw = window.localStorage.getItem(profileStorageKey(ownerId));
           if (raw) local = JSON.parse(raw);
         } catch {}
         // A cached/metadata contact card is trusted only if it belongs to this
@@ -234,7 +237,7 @@ function PersonalTab() {
           && firstVal(p.emails) === serverEmail.toLowerCase()
           && (!serverName || String(p.fullName ?? p.full_name ?? '').trim() === serverName);
         const extra = owns(local) ? local : owns(contacts) ? contacts : null;
-        if (!extra && local) { try { window.localStorage.removeItem(profileStorageKey(uid)); } catch {} }
+        if (!extra && local) { try { window.localStorage.removeItem(profileStorageKey(ownerId)); } catch {} }
         const phone = String(server.phone ?? '') || userPhone;
         setEmails(rowList(extra?.emails, [serverEmail].filter(Boolean)));
         setWhatsapps(rowList(extra?.whatsapps, [phone].filter(Boolean)));
@@ -244,34 +247,34 @@ function PersonalTab() {
         setGender(String(server.gender ?? extra?.gender ?? ''));
         setBrokerLicense(String(server.broker_license_number ?? ''));
       } catch { /* ignore */ }
-      setHydratedFor(uid);
+      setHydratedFor(ownerId);
     })();
-  }, [user, hydratedFor]);
+  }, [user, profileOwnerId, isOwnProfile, hydratedFor]);
 
   const setEdit = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }));
 
   const save = async () => {
     const payload = { emails, whatsapps, phones, fullName, city, gender };
-    try { if (user?.id) window.localStorage.setItem(profileStorageKey(user.id), JSON.stringify(payload)); } catch {}
+    if (!profileOwnerId) return;
+    try { window.localStorage.setItem(profileStorageKey(profileOwnerId), JSON.stringify(payload)); } catch {}
     try {
-      const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload } });
-      if (error) throw error;
-      // Also mirror city/gender/phone to profiles for cross-device + workspace use.
-      // Upsert (not update): a brand-new account may not have a profile row yet,
-      // and a plain update silently matches zero rows so nothing gets saved.
       const primaryPhone = whatsapps[0]?.value || phones[0]?.value || null;
       const { error: profErr } = await supabase
         .from('profiles')
-        .upsert({
-          id: user!.id,
+        .update({
           city: city || null,
           gender: gender || null,
           phone: primaryPhone,
           full_name: fullName || null,
           email: realEmail(emails[0]?.value) || null,
           broker_license_number: brokerLicense.trim() || null,
-        } as any, { onConflict: 'id' });
+        } as any)
+        .eq('id', profileOwnerId);
       if (profErr) throw profErr;
+      if (isOwnProfile) {
+        const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload } });
+        if (error) throw error;
+      }
       toast.success('הפרופיל נשמר');
       window.dispatchEvent(new Event('realtyz:profile-saved'));
     } catch (err: any) {
@@ -294,7 +297,7 @@ function PersonalTab() {
         <CardTitle className="text-right"></CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <ProfileAvatarUploader />
+        <ProfileAvatarUploader profileOwnerId={profileOwnerId} />
 
         <div className="flex flex-col items-center gap-1 pb-1">
           {editing.fullName ? (
@@ -620,7 +623,7 @@ function LogoBox({ title, url, disabled, aspect, onUpload, onRemove }: {
 
 export default function Profile() {
   const [params, setParams] = useSearchParams();
-  const { activeWorkspace } = useWorkspace();
+  const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const { user } = useAuth();
   // Managers are only relevant for agencies with multiple brokers.
   const isAgency = (activeWorkspace?.account_type ?? '').toLowerCase() === 'agency';
@@ -633,7 +636,7 @@ export default function Profile() {
 
   /* One-time nudge to train the AI brain, after the profile is saved
      or when the new user moves off the personal tab for the first time. */
-  const brainKey = user?.id ? `rz-ai-brain-prompt:${user.id}` : null;
+  const brainKey = activeWorkspaceId ? `rz-ai-brain-prompt:${activeWorkspaceId}` : null;
   const [brainPrompt, setBrainPrompt] = useState(false);
   const brainSeen = () => !brainKey || window.localStorage.getItem(brainKey) === '1';
   const openBrainPrompt = () => {
@@ -718,26 +721,26 @@ export default function Profile() {
           {isAgency && <TabsTrigger value="managers">מנהלים</TabsTrigger>}
         </TabsList>
         <TabsContent value="personal" className="mt-[20px] space-y-4">
-          <PersonalTab />
+          <PersonalTab key={activeWorkspaceId ?? user?.id ?? 'profile'} />
         </TabsContent>
         <TabsContent value="aibrain" className="mt-[20px] space-y-4" dir="rtl">
-          <KnowledgeBase />
+          <KnowledgeBase key={activeWorkspaceId ?? user?.id ?? 'brain'} />
         </TabsContent>
         {isAgency && (
           <TabsContent value="managers" className="mt-[20px] space-y-4">
-            <ManagersTab />
+            <ManagersTab key={activeWorkspaceId ?? user?.id ?? 'managers'} />
           </TabsContent>
         )}
         <TabsContent value="workspace" className="mt-[20px] space-y-4">
-          <WorkspaceTab />
+          <WorkspaceTab key={activeWorkspaceId ?? user?.id ?? 'workspace'} />
         </TabsContent>
         <TabsContent value="connections" className="mt-[20px] space-y-4" dir="rtl">
-          <ConnectionsTab />
+          <ConnectionsTab key={activeWorkspaceId ?? user?.id ?? 'connections'} />
         </TabsContent>
         <TabsContent value="billing" className="mt-[20px] space-y-4" dir="rtl">
-          <LaunchPromoBanner />
-          <BillingTab />
-          <ReferralProgramCard />
+          <LaunchPromoBanner key={`promo-${activeWorkspaceId ?? user?.id ?? 'billing'}`} />
+          <BillingTab key={`billing-${activeWorkspaceId ?? user?.id ?? 'billing'}`} />
+          <ReferralProgramCard key={`referrals-${activeWorkspaceId ?? user?.id ?? 'billing'}`} />
         </TabsContent>
 
       </Tabs>

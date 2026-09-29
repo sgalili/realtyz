@@ -3384,11 +3384,19 @@ const ConfirmDispatchDialog = ({
           // Meta errors) for this text so the card reflects the fresh queue run.
           resetQueueEntriesForText(bodyToPublish);
           queuedGroups = enqueueExtensionPosts({
+            workspaceOwnerId: ownerScope,
             text: bodyToPublish,
             texts: groupTexts,
             images: mediaUrls,
-            link: null,
+            link: waShortUrl || null,
             firstComment: firstComment || null,
+            listing: listingId ? {
+              id: listingId,
+              title: brandName || null,
+              description: bodyToPublish,
+              media: mediaUrls,
+              publicUrl: waShortUrl || null,
+            } : null,
             scheduledAt: scheduledAt,
             groups: apiGroupIds.map((bare) => ({
               group_id: bare,
@@ -4310,7 +4318,7 @@ const PublishedFeed = ({
   const queryClient = useQueryClient();
   const fbGroupMeta = useFbGroupMeta();
   // Live local extension queue — cards flip failed → pending → completed on their own.
-  const extensionQueue = useExtensionQueue();
+  const extensionQueue = useExtensionQueue(workspaceOwnerId);
   const initialScopedRows = workspaceOwnerId ? FEED_ROWS_CACHE.get(workspaceOwnerId) ?? null : null;
   const [rows, setRows] = useState<CampaignRow[] | null>(initialScopedRows);
   // True only during the very first cold load (no cache anywhere, in-memory or
