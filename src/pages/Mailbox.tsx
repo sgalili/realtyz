@@ -74,6 +74,8 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
       if (error) throw error;
       return (data ?? []) as unknown as Row[];
     },
+    refetchInterval: 20000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: outbound = [], isLoading: outLoading } = useQuery({
@@ -87,6 +89,8 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
       if (error) throw error;
       return (data ?? []) as unknown as Row[];
     },
+    refetchInterval: 20000,
+    refetchOnWindowFocus: true,
   });
 
   const filter = (rows: Row[]) => {
