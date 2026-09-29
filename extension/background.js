@@ -198,6 +198,11 @@ const rateRecord = async () => {
 /* ── one job ────────────────────────────────────────────────────────────── */
 
 async function runJob(token, job) {
+  const destinationLink = String(job.link || '').trim();
+  const message = String(job.message || '').trim();
+  if (destinationLink && !message.includes(destinationLink)) {
+    job = { ...job, message: `${message}\n\n${destinationLink}`.trim() };
+  }
   const url = groupUrl(job);
   if (!url) return report(token, job, false, 'כתובת הקבוצה חסרה');
   if (BLOCKED_URL.test(url)) return report(token, job, false, 'הפעולה בוטלה: היעד אינו קבוצת פייסבוק');
