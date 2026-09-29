@@ -420,6 +420,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
   const disconnect = async () => {
     if (disconnecting) return;
+    cancelConnecting();
     setDisconnecting(true);
     disconnectedRef.current = true;
     forgetConnected('facebook', workspaceOwnerId);
@@ -436,10 +437,12 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       // Hard 10s ceiling on the cache reset so even a wedged React Query
       // cancellation can never delay the finally block below.
       await withTimeout(resetHealth(), 10_000, 'reset-timeout').catch(() => undefined);
-      setConnectionEpoch((value) => value + 1);
       const result = await callPageConnect<{ ok?: boolean }>({ action: 'disconnect' });
       if (!result?.ok) throw new Error('השרת לא אישר שהחיבור נמחק');
       await withTimeout(resetHealth(), 10_000, 'reset-timeout').catch(() => undefined);
+      // Refresh only the nested targets after the server has completed. Never
+      // remount this card while its disconnect closure is still in flight.
+      setConnectionEpoch((value) => value + 1);
       refreshHealth();
       refreshBinding();
       toast.success('עמוד הפייסבוק נותק');
@@ -582,7 +585,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const actionButtons = null;
 
   return (
-    <Card key={connectionEpoch} ref={ref} dir="rtl" className="text-right">
+    <Card ref={ref} dir="rtl" className="text-right">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-right">
           <Facebook className="h-5 w-5 text-primary" />
