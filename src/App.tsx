@@ -18,6 +18,7 @@ import { RouteScrollRestoration } from "@/components/navigation/RouteScrollResto
 import { toast } from "sonner";
 import { Suspense } from "react";
 import { lazyWithRetry as lazy } from "@/lib/lazyWithRetry";
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 import { RealtyzLoader } from "@/components/RealtyzLoader";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -235,6 +236,11 @@ function RootRoute() {
   const { user, loading } = useAuth();
   const isMarketingHost = typeof window !== 'undefined' &&
     ROOT_MARKETING_HOSTS.has(window.location.hostname.toLowerCase());
+  if (user && !loading) {
+    let next: string | null = null;
+    try { next = window.localStorage.getItem('realtyz-pending-oauth-consent'); } catch { /* */ }
+    if (next && next.startsWith('/.lovable/oauth/consent')) return <Navigate to={next} replace />;
+  }
   if (isMarketingHost && !user && !loading) return <Navigate to="/landing" replace />;
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -321,7 +327,12 @@ function AuthRoute() {
       <RealtyzLoader size="lg" />
     </div>
   );
-  if (user) return <Navigate to="/" replace />;
+  if (user) {
+    let next: string | null = null;
+    try { next = window.localStorage.getItem('realtyz-pending-oauth-consent'); } catch { /* */ }
+    if (next && next.startsWith('/.lovable/oauth/consent')) return <Navigate to={next} replace />;
+    return <Navigate to="/" replace />;
+  }
   return <Auth />;
 }
 
@@ -343,6 +354,7 @@ const App = () => (
             <WorkspaceScope>
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
+              <Route path="/.lovable/oauth/consent" element={<Suspense fallback={<PageLoader />}><OAuthConsent /></Suspense>} />
               <Route path="/affiliates" element={<Suspense fallback={<PageLoader />}><AffiliateSignup /></Suspense>} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/oauth/callback" element={<Suspense fallback={<PageLoader />}><OAuthCallback /></Suspense>} />
