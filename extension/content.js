@@ -106,6 +106,9 @@
 
     if (d.type === 'RZ_EXT_POLL_NOW') chrome.runtime.sendMessage({ type: 'RZ_EXT_POLL_NOW' });
     if (d.type === 'RZ_EXT_UNPAIR') chrome.runtime.sendMessage({ type: 'RZ_EXT_UNPAIR' });
+    if (d.type === 'RZ_WORKSPACE_ACTIVATE' && typeof d.workspaceOwnerId === 'string') {
+      chrome.runtime.sendMessage({ type: 'RZ_WORKSPACE_ACTIVATE', workspaceOwnerId: d.workspaceOwnerId });
+    }
   });
 
   /* ── Instant local posting handed over by the app ─────────────────────── */

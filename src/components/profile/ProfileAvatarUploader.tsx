@@ -8,25 +8,26 @@ import { useAuth } from '@/hooks/useAuth';
 
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
-export function ProfileAvatarUploader() {
+export function ProfileAvatarUploader({ profileOwnerId }: { profileOwnerId: string | null }) {
   const { user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const meta = ((user?.user_metadata ?? {}) as Record<string, any>);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarPath, setAvatarPath] = useState<string | null>(meta.avatar_path ?? null);
+  const isOwnProfile = profileOwnerId === user?.id;
+  const [avatarPath, setAvatarPath] = useState<string | null>(isOwnProfile ? meta.avatar_path ?? null : null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!profileOwnerId) return;
     setAvatarUrl(null);
-    setAvatarPath(meta.avatar_path ?? null);
+    setAvatarPath(isOwnProfile ? meta.avatar_path ?? null : null);
     supabase
       .from('profiles')
       .select('avatar_url')
-      .eq('id', user.id)
+      .eq('id', profileOwnerId)
       .maybeSingle()
       .then(({ data }) => setAvatarUrl((data as any)?.avatar_url ?? null));
-  }, [user?.id, meta.avatar_path]);
+  }, [profileOwnerId, isOwnProfile, meta.avatar_path]);
 
   if (!user) return null;
 
@@ -35,11 +36,11 @@ export function ProfileAvatarUploader() {
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file) return;
+    if (!file || !profileOwnerId) return;
     setBusy(true);
     try {
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const path = `${profileOwnerId}/avatar-${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from('avatars')
         .upload(path, file, {
@@ -59,16 +60,16 @@ export function ProfileAvatarUploader() {
         await supabase.storage.from('avatars').remove([avatarPath]).catch(() => {});
       }
 
-      const { error: metaErr } = await supabase.auth.updateUser({
-        data: { avatar_path: path, avatar_url: signed.signedUrl },
-      });
-      if (metaErr) throw metaErr;
-
-      // Upsert: a new account may not have a profile row yet, and a plain
-      // update would silently match zero rows and lose the picture.
+      if (isOwnProfile) {
+        const { error: metaErr } = await supabase.auth.updateUser({
+          data: { avatar_path: path, avatar_url: signed.signedUrl },
+        });
+        if (metaErr) throw metaErr;
+      }
       const { error: profErr } = await supabase
         .from('profiles')
-        .upsert({ id: user.id, avatar_url: signed.signedUrl } as any, { onConflict: 'id' });
+        .update({ avatar_url: signed.signedUrl } as any)
+        .eq('id', profileOwnerId);
       if (profErr) throw profErr;
 
 
@@ -89,11 +90,12 @@ export function ProfileAvatarUploader() {
       if (avatarPath) {
         await supabase.storage.from('avatars').remove([avatarPath]).catch(() => {});
       }
-      await supabase.auth.updateUser({ data: { avatar_path: null, avatar_url: null } });
-      await supabase
+      if (isOwnProfile) await supabase.auth.updateUser({ data: { avatar_path: null, avatar_url: null } });
+      const { error } = await supabase
         .from('profiles')
-        .upsert({ id: user.id, avatar_url: null } as any, { onConflict: 'id' })
-        .then(() => undefined, () => undefined);
+        .update({ avatar_url: null } as any)
+        .eq('id', profileOwnerId);
+      if (error) throw error;
 
       setAvatarPath(null);
       setAvatarUrl(null);

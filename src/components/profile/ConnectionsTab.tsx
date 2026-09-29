@@ -22,7 +22,6 @@ import { GoogleApiCredentialsCard } from '@/components/profile/GoogleApiCredenti
 import { GoogleBrandGlyph, GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
 import { Button } from '@/components/ui/button';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useAccountIntegrations } from '@/hooks/useAccountIntegrations';
 import {
   isRememberedConnected,
   rememberConnected,
@@ -180,9 +179,6 @@ export function ConnectionsTab() {
   const [googleAdvancedOpen, setGoogleAdvancedOpen] = useState(false);
   const { data: fbHealth, isPending: fbHealthPending } = useFacebookHealth();
   const { data: fbBinding, isPending: fbBindingPending } = useMetaPageBinding();
-  // Facebook / Instagram, WBA, Green API and Yad2 are account-level: connected
-  // once, active in every workspace of this user.
-  const { data: account } = useAccountIntegrations();
   const { isSuperAdmin } = useUserRole();
   const { data: mailboxInfo } = useWorkspaceMailbox();
 
@@ -209,6 +205,7 @@ export function ConnectionsTab() {
           .from('social_connections')
           .select('credentials')
           .eq('platform', 'whatsapp_green')
+          .eq('workspace_owner_id', activeWorkspaceId as string)
           .maybeSingle();
         const creds = ((green as any)?.credentials ?? {}) as any;
         const gp = String(creds.phone ?? creds.wid ?? creds.manual?.phone ?? '');
@@ -299,7 +296,6 @@ export function ConnectionsTab() {
     fbHealth?.pageConnected
     || meta?.connected
     || (fbBinding?.pageId && fbBinding?.hasToken)
-    || (account?.facebook?.pageId && account.facebook.hasToken)
   );
   useEffect(() => {
     if (fbLive) rememberConnected('facebook', activeWorkspaceId, null);
@@ -311,10 +307,9 @@ export function ConnectionsTab() {
       ? ['בודק חיבור…', 'idle']
       : ['לא מחובר', 'idle'];
 
-  // WhatsApp / Yad2 stay account-level: connected once, live in every workspace.
-  const officialPhone = waPhone ?? account?.waPhone ?? null;
-  const personalPhone = greenPhone ?? account?.greenPhone ?? null;
-  const greenLive = greenReady || !!account?.greenConnected;
+  const officialPhone = waPhone;
+  const personalPhone = greenPhone;
+  const greenLive = greenReady;
 
   // Single WhatsApp parent card: the collapsed header shows the live number
   // (official first, personal as fallback) instead of "לא הוגדר".
@@ -363,13 +358,12 @@ export function ConnectionsTab() {
 
   // Portal connection state drives the Yad2 / Homely brand marks in the header.
   const { data: portalStatus = { yad2: false, homely: false } } = useQuery({
-    queryKey: ['listing-portals-status'],
+    queryKey: ['listing-portals-status', activeWorkspaceId],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.id) return { yad2: false, homely: false };
+      if (!activeWorkspaceId) return { yad2: false, homely: false };
       const [keys, homely] = await Promise.all([
-        supabase.from('user_api_keys').select('brightdata_api_token, brightdata_zone').eq('user_id', user.id).maybeSingle(),
-        supabase.from('homely_broker_credentials' as never).select('connection_status, homely_password_encrypted').eq('user_id', user.id).maybeSingle(),
+        supabase.from('user_api_keys').select('brightdata_api_token, brightdata_zone').eq('user_id', activeWorkspaceId).maybeSingle(),
+        supabase.from('homely_broker_credentials' as never).select('connection_status, homely_password_encrypted').eq('user_id', activeWorkspaceId).maybeSingle(),
       ]);
       const k = (keys.data ?? {}) as any;
       const h = (homely.data ?? {}) as any;

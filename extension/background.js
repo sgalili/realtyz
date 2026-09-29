@@ -131,6 +131,7 @@ const groupUrl = (job) => absoluteGroupUrl(job.group_url) || absoluteGroupUrl(jo
 const AUTOMATION_FLAG = 'rzAutomationEnabled';
 const DONE_KEY = 'rzDoneJobs';
 const RATE_KEY = 'rzActionRate';
+const ACTIVE_WORKSPACE_KEY = 'rzActiveWorkspaceOwner';
 const MAX_PER_HOUR = 12;
 const MAX_PER_DAY = 60;
 
@@ -198,13 +199,19 @@ const rateRecord = async () => {
 /* ── one job ────────────────────────────────────────────────────────────── */
 
 async function runJob(token, job) {
+  const destinationLink = String(job.link || '').trim();
+  const message = String(job.message || '').trim();
+  if (destinationLink && !message.includes(destinationLink)) {
+    job = { ...job, message: `${message}\n\n${destinationLink}`.trim() };
+  }
   const url = groupUrl(job);
   if (!url) return report(token, job, false, 'כתובת הקבוצה חסרה');
   if (BLOCKED_URL.test(url)) return report(token, job, false, 'הפעולה בוטלה: היעד אינו קבוצת פייסבוק');
   if (!(await automationEnabled())) return report(token, job, false, 'האוטומציה בדפדפן מושבתת');
+  if (!String(job.message || '').trim()) return report(token, job, false, 'תוכן הפוסט ריק');
+  if (await alreadyDone(job)) return report(token, job, true, null, null);
   if (!(await rateAllows())) return report(token, job, false, 'הגעת לתקרת הפעולות לשעה — הפעולה תרוץ בהמשך');
   await rateRecord();
-  if (!String(job.message || '').trim()) return report(token, job, false, 'תוכן הפוסט ריק');
 
   let tabId = null;
   try {
@@ -235,8 +242,16 @@ async function runJob(token, job) {
       JOB_TIMEOUT_MS,
     );
 
-    await report(token, job, result.ok === true, result.reason || null, result.post_url || null);
-    return result.ok === true;
+    const requiredCommentFailed = Boolean(job.first_comment) && result.first_comment_ok !== true;
+    const verified = result.ok === true && result.verified_in_feed === true && !requiredCommentFailed;
+    if (verified) await markDone(job);
+    const reason = requiredCommentFailed
+      ? (result.first_comment_error || 'הפוסט פורסם אך התגובה הראשונה לא נוספה')
+      : result.ok === true && result.verified_in_feed !== true
+        ? 'פייסבוק סגר את העורך, אך הפוסט לא אומת בפיד'
+        : (result.reason || null);
+    await report(token, job, verified, reason, result.post_url || null);
+    return verified;
   } catch (e) {
     await report(token, job, false, String((e && e.message) || e));
     return false;
@@ -436,6 +451,8 @@ async function drainQueue() {
   try {
     const token = await getToken();
     let queue = await loadQueue();
+    const activeState = await local([ACTIVE_WORKSPACE_KEY]);
+    const activeWorkspaceOwner = String(activeState[ACTIVE_WORKSPACE_KEY] || '').trim();
     // Recover jobs left "posting" by a killed service worker so nothing hangs.
     let recovered = false;
     for (const e of queue) {
@@ -454,6 +471,9 @@ async function drainQueue() {
       .sort((a, b) => (b && (b.type === 'page_first_comment') ? 1 : 0) - (a && (a.type === 'page_first_comment') ? 1 : 0));
     for (const entry of ordered) {
       if (!entry || entry.status !== 'pending') continue;
+      // Browser storage is shared across tenants. Execute only jobs belonging
+      // to the workspace currently open in the Realtyz app.
+      if (!activeWorkspaceOwner || entry.workspaceOwnerId !== activeWorkspaceOwner) continue;
       if (Number(entry.scheduledTime || 0) > Date.now()) continue;
 
       entry.status = 'posting';
@@ -596,6 +616,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     mergeQueue(msg.queue).then((merged) => {
       try { sendResponse({ ok: true, queue: merged }); } catch (e) { /* noop */ }
       drainQueue();
+    });
+    return true;
+  }
+
+  if (msg.type === 'RZ_WORKSPACE_ACTIVATE' && typeof msg.workspaceOwnerId === 'string') {
+    chrome.storage.local.set({ [ACTIVE_WORKSPACE_KEY]: msg.workspaceOwnerId }, () => {
+      drainQueue();
+      sendResponse({ ok: true });
     });
     return true;
   }

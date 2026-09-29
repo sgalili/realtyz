@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 
 export type PlanName = 'free' | 'agent' | 'pro' | 'max';
@@ -25,11 +26,12 @@ const db = supabase as any;
 
 export function useSubscription() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const qc = useQueryClient();
 
   const query = useQuery<SubscriptionStatus | null>({
-    queryKey: ['subscription-status', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['subscription-status', workspaceOwnerId],
+    enabled: !!user?.id && !!workspaceOwnerId,
     staleTime: 15_000,
     queryFn: async () => {
       const { data, error } = await db.rpc('get_my_subscription_status');
@@ -82,10 +84,11 @@ export interface WalletTransaction {
 
 export function useCreditWallet() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
 
   return useQuery({
-    queryKey: ['credit-wallet', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['credit-wallet', workspaceOwnerId],
+    enabled: !!user?.id && !!workspaceOwnerId,
     staleTime: 10_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
@@ -95,6 +98,7 @@ export function useCreditWallet() {
         db
           .from('credit_transactions')
           .select('id, amount_ils, type, note, created_at')
+          .eq('user_id', workspaceOwnerId)
           .order('created_at', { ascending: false })
           .limit(30),
       ]);

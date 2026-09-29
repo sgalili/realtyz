@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Save, Link2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { BrightDataBalanceWidget, type BrightDataBalance } from './BrightDataBalanceWidget';
 
@@ -46,6 +47,7 @@ const PORTALS: Portal[] = [
 
 export function ListingPortalsCard() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -85,13 +87,13 @@ export function ListingPortalsCard() {
   }, []);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !workspaceOwnerId) return;
     (async () => {
       // Yad2 creds from user_api_keys
       const { data: keys } = await supabase
         .from('user_api_keys')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', workspaceOwnerId)
         .maybeSingle();
       const v: Record<string, string> = {};
       ['homely_api_key', 'brightdata_api_token', 'brightdata_zone'].forEach((c) => {
@@ -102,7 +104,7 @@ export function ListingPortalsCard() {
       const { data: cred } = await supabase
         .from('homely_broker_credentials' as any)
         .select('homely_username, homely_agency, connection_status, homely_password_encrypted')
-        .eq('user_id', user.id)
+        .eq('user_id', workspaceOwnerId)
         .maybeSingle();
       v['homely_agency'] = (cred as any)?.homely_agency ?? '';
       v['homely_username'] = (cred as any)?.homely_username ?? '';
@@ -114,10 +116,10 @@ export function ListingPortalsCard() {
       setLoading(false);
       void refreshBrightDataBalance();
     })();
-  }, [user?.id, refreshBrightDataBalance]);
+  }, [user?.id, workspaceOwnerId, refreshBrightDataBalance]);
 
   const saveHomely = async () => {
-    if (!user?.id) return;
+    if (!user?.id || !workspaceOwnerId) return;
     const agency = (values.homely_agency ?? '').trim();
     const username = (values.homely_username ?? '').trim();
     const password = (values.homely_password ?? '').trim();
@@ -130,7 +132,7 @@ export function ListingPortalsCard() {
       const { error: upErr } = await supabase
         .from('homely_broker_credentials' as any)
         .upsert({
-          user_id: user.id,
+          user_id: workspaceOwnerId,
           homely_agency: agency,
           homely_username: username,
           updated_at: new Date().toISOString(),
@@ -139,7 +141,7 @@ export function ListingPortalsCard() {
 
       if (password) {
         const { error: pwErr } = await supabase.rpc('set_homely_password' as any, {
-          _user_id: user.id,
+          _user_id: workspaceOwnerId,
           _password: password,
         });
         if (pwErr) throw pwErr;
@@ -151,7 +153,7 @@ export function ListingPortalsCard() {
       const { error: keyErr } = await supabase
         .from('user_api_keys')
         .upsert({
-          user_id: user.id,
+          user_id: workspaceOwnerId,
           homely_api_key: apiKey || null,
           updated_at: new Date().toISOString(),
         } as any, { onConflict: 'user_id' });
@@ -195,10 +197,10 @@ export function ListingPortalsCard() {
 
   const savePortal = async (p: Portal) => {
     if (p.id === 'homely') return saveHomely();
-    if (!user?.id) return;
+    if (!user?.id || !workspaceOwnerId) return;
     setSaving(p.id);
     try {
-      const patch: Record<string, any> = { user_id: user.id, updated_at: new Date().toISOString() };
+      const patch: Record<string, any> = { user_id: workspaceOwnerId, updated_at: new Date().toISOString() };
       p.fields.forEach((f) => {
         const raw = (values[f.col] ?? '').trim();
         // Never persist the masked project token placeholder over the real value.

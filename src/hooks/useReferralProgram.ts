@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 const db = supabase as any;
 
@@ -23,10 +24,11 @@ export interface ReferralStats {
 
 export function useReferralProgram() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
 
   return useQuery<ReferralStats | null>({
-    queryKey: ['referral-stats', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['referral-stats', workspaceOwnerId],
+    enabled: !!user?.id && !!workspaceOwnerId,
     staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await db.rpc('get_my_referral_stats');

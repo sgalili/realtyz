@@ -3,10 +3,13 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Switch } from '@/components/ui/switch';
 import Mailbox from '@/pages/Mailbox';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 export function useWorkspaceMailbox() {
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   return useQuery({
-    queryKey: ['workspace-mailbox'],
+    queryKey: ['workspace-mailbox', workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
     queryFn: async () => ((await supabase.rpc('get_workspace_mailbox' as never)).data ?? {}) as any,
   });
 }

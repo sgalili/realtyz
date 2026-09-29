@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Search, SquarePen, Send, Pencil, Check, RefreshCw } from 'lucide-react';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 type Row = {
   id: string;
@@ -31,6 +32,7 @@ const fmt = (iso: string) => {
 
 export default function Mailbox({ embedded = false }: { embedded?: boolean } = {}) {
   const { isAdmin } = useUserRole();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const qc = useQueryClient();
   const [compose, setCompose] = useState(false);
   const [to, setTo] = useState('');
@@ -53,7 +55,7 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
     }
     toast.success('המייל נשלח');
     setCompose(false); setTo(''); setSubject(''); setText('');
-    qc.invalidateQueries({ queryKey: ['mailbox-outbound'] });
+    qc.invalidateQueries({ queryKey: ['mailbox-outbound', workspaceOwnerId] });
   };
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
@@ -62,7 +64,8 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: mailbox } = useQuery({
-    queryKey: ['workspace-mailbox'],
+    queryKey: ['workspace-mailbox', workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
     queryFn: async () => ((await supabase.rpc('get_workspace_mailbox' as never)).data ?? {}) as any,
   });
 
@@ -78,22 +81,23 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
       );
     }
     setEditing(false);
-    qc.invalidateQueries({ queryKey: ['workspace-mailbox'] });
+    qc.invalidateQueries({ queryKey: ['workspace-mailbox', workspaceOwnerId] });
     toast.success('הכתובת עודכנה');
   };
 
   const refresh = async () => {
     setRefreshing(true);
     await Promise.all([
-      qc.refetchQueries({ queryKey: ['mailbox-inbound'] }),
-      qc.refetchQueries({ queryKey: ['mailbox-outbound'] }),
-      qc.refetchQueries({ queryKey: ['workspace-mailbox'] }),
+      qc.refetchQueries({ queryKey: ['mailbox-inbound', workspaceOwnerId] }),
+      qc.refetchQueries({ queryKey: ['mailbox-outbound', workspaceOwnerId] }),
+      qc.refetchQueries({ queryKey: ['workspace-mailbox', workspaceOwnerId] }),
     ]);
     setRefreshing(false);
   };
 
   const { data: inbound = [], isLoading: inLoading } = useQuery({
-    queryKey: ['mailbox-inbound'],
+    queryKey: ['mailbox-inbound', workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('inbound_emails_log' as any)
@@ -108,7 +112,8 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
   });
 
   const { data: outbound = [], isLoading: outLoading } = useQuery({
-    queryKey: ['mailbox-outbound'],
+    queryKey: ['mailbox-outbound', workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('outbound_emails_log' as any)

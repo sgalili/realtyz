@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 export interface FreemiumStatus {
   daysLeft: number;
@@ -27,10 +28,11 @@ const PROPERTY_CAP = FREE_PROPERTIES;
  */
 export function useFreemiumStatus(): FreemiumStatus {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['freemium-status', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['freemium-status', workspaceOwnerId],
+    enabled: !!user?.id && !!workspaceOwnerId,
     staleTime: 30_000,
     refetchInterval: 60_000,
     queryFn: async () => {
@@ -38,7 +40,7 @@ export function useFreemiumStatus(): FreemiumStatus {
         supabase
           .from('profiles')
           .select('plan_status, trial_start_date, trial_end_date, wallet_balance_agorot')
-          .eq('id', user!.id)
+          .eq('id', workspaceOwnerId!)
           .maybeSingle(),
         supabase
           .from('leads')

@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { ensureMandatoryComment } from '@/lib/mandatoryComment';
 import { Users, Send, Loader2, CheckCircle2, XCircle, Search, Eye, MessageCircle, Share2, Sparkles, CalendarClock, Megaphone } from 'lucide-react';
 
 type Group = {
@@ -52,6 +53,7 @@ export const FacebookGroupBulkPostCard = () => {
         .from('custom_user_groups')
         .select('id, group_name, group_url')
         .eq('platform', 'facebook')
+        .eq('workspace_owner_id', workspaceOwnerId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
@@ -184,6 +186,7 @@ export const FacebookGroupBulkPostCard = () => {
             body: text,
             link: link.trim() || null,
             image_url: imageUrl.trim() || null,
+            first_comment: ensureMandatoryComment(link.trim() || null),
             group_url: group?.group_url ?? null,
             ai_variation: aiVariation,
           },
@@ -233,11 +236,13 @@ export const FacebookGroupBulkPostCard = () => {
       targets.push({ group_id: groupId, group_name: group?.group_name ?? undefined, group_url: group?.group_url ?? null });
     }
     const queued = enqueueExtensionPosts({
+      workspaceOwnerId: workspaceOwnerId!,
       text: message.trim(),
       texts,
       groups: targets,
       images: imageUrl.trim() ? [imageUrl.trim()] : [],
       link: link.trim() || null,
+      firstComment: link.trim() || null,
     });
     const next: Record<string, { ok: boolean; reason?: string }> = {};
     for (const id of ids) next[id] = queued > 0 ? { ok: true } : { ok: false, reason: 'לא ניתן היה להוסיף לתור התוסף' };
