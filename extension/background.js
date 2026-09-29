@@ -231,6 +231,7 @@ async function runJobInner(token, job) {
   await rateRecord();
 
   let tabId = null;
+  let writingStarted = false;
   try {
     await setJobStage(job.id, 'navigating');
     const tab = await chrome.tabs.create({ url, active: false });
@@ -242,6 +243,7 @@ async function runJobInner(token, job) {
     }
     await sleep(2500); // let Facebook hydrate the feed
     await setJobStage(job.id, 'writing');
+    writingStarted = true;
 
     const result = await sendToTab(
       tabId,
@@ -272,7 +274,12 @@ async function runJobInner(token, job) {
     await report(token, job, verified, reason, result.post_url || null);
     return verified;
   } catch (e) {
-    await report(token, job, false, String((e && e.message) || e));
+    // A timeout after the composer was filled is ambiguous: the post may be
+    // live. Lock it in the ledger so a retry can never publish it twice.
+    if (writingStarted) await markDone(job);
+    await report(token, job, false, writingStarted
+      ? 'לא התקבל אישור מפייסבוק — בדוק בקבוצה לפני פרסום חוזר'
+      : String((e && e.message) || e));
     return false;
   } finally {
     if (tabId != null) {
