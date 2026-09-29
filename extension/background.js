@@ -254,6 +254,7 @@ async function runJobInner(token, job) {
           id: job.id,
           message: job.message,
           image_url: job.image_url || null,
+          image_urls: Array.isArray(job.image_urls) ? job.image_urls : (job.image_url ? [job.image_url] : []),
           first_comment: job.first_comment || null,
           link: job.link || null,
         },
@@ -411,6 +412,8 @@ async function runLocalPost(post) {
         group_url: g.group_url || g.url || null,
         message: text,
         image_url: image,
+        image_urls: (Array.isArray(post && post.images) && post.images.length ? post.images
+          : Array.isArray(post && post.imageUrls) ? post.imageUrls : (image ? [image] : [])),
         first_comment: post.firstComment || post.first_comment || null,
         link: post.link || null,
       });
@@ -522,6 +525,7 @@ async function drainQueue() {
           group_url: entry.groupUrl,
           message: String(entry.text || ''),
           image_url: (Array.isArray(entry.images) && entry.images[0]) || null,
+          image_urls: Array.isArray(entry.images) ? entry.images : [],
           first_comment: entry.firstComment || null,
           link: entry.link || null,
         });

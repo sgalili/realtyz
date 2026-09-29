@@ -89,28 +89,34 @@
     return textOf(box).length > 0;
   };
 
-  const attachImage = async (url) => {
+  // Attach every property photo (Facebook allows many; we cap at 10) in one go.
+  const attachImages = async (urls) => {
+    const list = [...new Set((urls || []).filter(Boolean))].slice(0, 10);
+    if (!list.length) return null;
     const scope = dialog() || document;
     const input = [...scope.querySelectorAll('input[type="file"]')].find(
       (i) => !i.disabled && /image|video|\*/.test(i.getAttribute('accept') || '*'),
     );
     if (!input) return 'לא נמצא שדה העלאת תמונה בעורך הפוסט';
-    let blob;
-    try {
-      const res = await fetch(url, { mode: 'cors' });
-      if (!res.ok) return `הורדת התמונה נכשלה (${res.status})`;
-      blob = await res.blob();
-    } catch (e) {
-      return 'הורדת התמונה לפרסום נכשלה';
-    }
-    const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-    const file = new File([blob], `realtyz.${ext}`, { type: blob.type || 'image/jpeg' });
     const dt = new DataTransfer();
-    dt.items.add(file);
+    for (let i = 0; i < list.length; i++) {
+      try {
+        const res = await fetch(list[i], { mode: 'cors' });
+        if (!res.ok) continue;
+        const blob = await res.blob();
+        const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+        dt.items.add(new File([blob], `realtyz-${i + 1}.${ext}`, { type: blob.type || 'image/jpeg' }));
+      } catch (e) { /* skip this photo */ }
+    }
+    if (!dt.files.length) return 'הורדת התמונות לפרסום נכשלה';
+    if (!input.multiple && dt.files.length > 1) input.multiple = true;
     input.files = dt.files;
     input.dispatchEvent(new Event('change', { bubbles: true }));
-    // Wait for the thumbnail to render inside the composer
-    await waitFor(() => (dialog() || document).querySelector('div[role="dialog"] img[src^="blob:"], img[src^="blob:"]'), 25000);
+    const want = dt.files.length;
+    await waitFor(() => {
+      const n = (dialog() || document).querySelectorAll('img[src^="blob:"]').length;
+      return n >= want ? true : null;
+    }, 25000 + want * 3000);
     return null;
   };
 
@@ -213,8 +219,9 @@
     if (!injected) return { ok: false, reason: 'הזנת תוכן הפוסט נכשלה' };
 
     // 3. media
-    if (job.image_url) {
-      const mediaErr = await attachImage(job.image_url);
+    const photoList = Array.isArray(job.image_urls) && job.image_urls.length ? job.image_urls : (job.image_url ? [job.image_url] : []);
+    if (photoList.length) {
+      const mediaErr = await attachImages(photoList);
       if (mediaErr) return { ok: false, reason: mediaErr };
     }
 
