@@ -109,13 +109,6 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/communication'],
   },
   {
-    title: 'תיבת מייל',
-    url: '/mailbox',
-    icon: Mail,
-    iconColor: '!text-[#1d4ed8]', // blue-700
-    badgeClass: 'bg-blue-50 text-blue-700 ring-blue-200',
-  },
-  {
     title: 'עסקאות',
     url: '/deal-room',
     icon: Handshake,
