@@ -171,7 +171,6 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
   return (
     <div dir="rtl" className={embedded ? 'space-y-4' : 'max-w-4xl mx-auto p-4 space-y-4'}>
       <div className="flex items-center gap-2">
-        <Mail className="h-5 w-5 text-primary shrink-0" />
         {editing ? (
           <div className="flex items-center min-w-0" dir="ltr">
             <Input autoFocus dir="ltr" value={aliasDraft} onChange={(e) => setAliasDraft(e.target.value)}
@@ -186,7 +185,7 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
           <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label="שמירה" onClick={saveAlias}>
             <Check className="h-4 w-4" />
           </Button>
-        ) : mailbox?.is_owner !== false && (
+        ) : (
           <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label="עריכת כתובת" title="עריכת כתובת"
             onClick={() => { setAliasDraft(mailbox?.alias ?? ''); setEditing(true); }}>
             <Pencil className="h-4 w-4" />
