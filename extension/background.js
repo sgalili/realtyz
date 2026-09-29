@@ -155,7 +155,7 @@ const automationEnabled = async () => {
 
 /** Persisted one-shot ledger keyed by job id and target post/group. */
 const jobKey = (entry) =>
-  [String((entry && entry.id) || ''), String((entry && (entry.postId || entry.post_id)) || ''), String((entry && (entry.postUrl || entry.groupUrl)) || '')]
+  [String((entry && (entry.dedupe_key || entry.id)) || ''), String((entry && (entry.postId || entry.post_id)) || ''), String((entry && (entry.postUrl || entry.groupUrl)) || '')]
     .filter(Boolean)
     .join('|');
 
@@ -198,7 +198,24 @@ const rateRecord = async () => {
 
 /* ── one job ────────────────────────────────────────────────────────────── */
 
+// In-memory lock: the same job (by dedupe key) can never run twice at once,
+// even if it arrives from the local queue, the cloud claim and an instant
+// handoff simultaneously.
+const inflight = new Set();
+
 async function runJob(token, job) {
+  const dedupe = String(job.dedupe_key || job.id || '');
+  const lockKey = `${dedupe}|${groupUrl(job) || ''}`;
+  if (inflight.has(lockKey)) return report(token, job, false, 'הפוסט כבר בתהליך פרסום');
+  inflight.add(lockKey);
+  try {
+    return await runJobInner(token, { ...job, dedupe_key: dedupe });
+  } finally {
+    inflight.delete(lockKey);
+  }
+}
+
+async function runJobInner(token, job) {
   const destinationLink = String(job.link || '').trim();
   const message = String(job.message || '').trim();
   if (destinationLink && !message.includes(destinationLink)) {
@@ -244,7 +261,9 @@ async function runJob(token, job) {
 
     const requiredCommentFailed = Boolean(job.first_comment) && result.first_comment_ok !== true;
     const verified = result.ok === true && result.verified_in_feed === true && !requiredCommentFailed;
-    if (verified) await markDone(job);
+    // Once Facebook accepted the post, never auto-repost it (even if feed
+    // verification or the first comment failed) — that is what caused duplicates.
+    if (result.ok === true) await markDone(job);
     const reason = requiredCommentFailed
       ? (result.first_comment_error || 'הפוסט פורסם אך התגובה הראשונה לא נוספה')
       : result.ok === true && result.verified_in_feed !== true
@@ -490,6 +509,7 @@ async function drainQueue() {
       } else {
         ok = await runJob(token, {
           id: `queue-${entry.id}`,
+          dedupe_key: String(entry.id),
           local: true,
           group_id: '',
           group_url: entry.groupUrl,
