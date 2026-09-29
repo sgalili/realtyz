@@ -236,6 +236,11 @@ function RootRoute() {
   const { user, loading } = useAuth();
   const isMarketingHost = typeof window !== 'undefined' &&
     ROOT_MARKETING_HOSTS.has(window.location.hostname.toLowerCase());
+  if (user && !loading) {
+    let next: string | null = null;
+    try { next = window.localStorage.getItem('realtyz-pending-oauth-consent'); } catch { /* */ }
+    if (next && next.startsWith('/.lovable/oauth/consent')) return <Navigate to={next} replace />;
+  }
   if (isMarketingHost && !user && !loading) return <Navigate to="/landing" replace />;
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
