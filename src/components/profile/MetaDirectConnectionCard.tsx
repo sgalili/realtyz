@@ -44,7 +44,6 @@ type PageStatus = {
 
 const STATE_PREFIX = 'facebook_page:';
 /** Emergency ceiling for the callback token exchange — spinner never outlives it. */
-const EXCHANGE_TIMEOUT_MS = 20_000;
 /** OAuth must never leave the connect/cancel button spinning indefinitely. */
 
 

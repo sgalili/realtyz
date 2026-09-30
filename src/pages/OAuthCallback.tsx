@@ -28,7 +28,6 @@ const CONNECTIONS_PATH = '/profile?tab=connections';
  */
 const EXCHANGE_TIMEOUT_MS = 15_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
-const HARD_TIMEOUT_MS = 20_000;
 
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive', 'google_all'] as const;
@@ -112,7 +111,6 @@ export default function OAuthCallback() {
   const [error, setError] = useState<OAuthError>(null);
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState('מסיים אימות...');
-  const hardTimerRef = useRef<number | null>(null);
   const exchangeDoneRef = useRef(false);
   const exchangeStartedRef = useRef(false);
   const [restarting, setRestarting] = useState(false);
