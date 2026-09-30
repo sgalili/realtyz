@@ -380,6 +380,37 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           window.clearInterval(popupWatch);
           if (connectAttemptRef.current === attemptId) {
             cancelConnecting();
+            // ROOT CAUSE FIX: the callback runs on realtyz.co.il, so its
+            // postMessage to this (possibly different-origin) window is dropped
+            // and the popup just closes. Never reset silently: ask the server
+            // what actually happened and surface it.
+            void (async () => {
+              try {
+                const st = await callPageConnect<PageStatus>({ action: 'status' }).catch(() => null);
+                if ((st as any)?.connected) {
+                  toast.success('עמוד הפייסבוק חובר');
+                  refreshBinding();
+                  refreshHealth();
+                  void probe(false).catch(() => undefined);
+                  return;
+                }
+                const list = await callPageConnect<{ pages?: { id: string; name: string | null; picture?: string | null }[] }>({
+                  action: 'list_pages',
+                }).catch((err: any) => {
+                  throw err;
+                });
+                if (list?.pages?.length) {
+                  setPageOptions(list.pages);
+                  toast.message('בחר את עמוד הפרסום', { description: 'יש בחשבון יותר מעמוד אחד. בחר עמוד מהרשימה.' });
+                  return;
+                }
+                toast.error('החיבור לפייסבוק לא הושלם', {
+                  description: 'חלון ההתחברות נסגר לפני שפייסבוק אישר עמוד. נסה שוב ובחר עמוד בחלון האישור.',
+                });
+              } catch (err: any) {
+                toast.error('החיבור לפייסבוק נכשל', { description: String(err?.message ?? err) });
+              }
+            })();
           }
         }
       }, 1000);
