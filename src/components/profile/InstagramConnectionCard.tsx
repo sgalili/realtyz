@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Instagram, Loader2, RefreshCw } from 'lucide-react';
@@ -57,7 +57,13 @@ export function InstagramConnectionCard() {
 
   return (
     <Card dir="rtl" className="text-right">
-      <CardContent className="space-y-4 pt-4">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-right">
+          <Instagram className="h-5 w-5 text-[#E4405F]" />
+          <span>אינסטגרם</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
         {igConnected ? (
           <div className="flex items-center gap-3 rounded-xl border p-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E4405F]/10">
