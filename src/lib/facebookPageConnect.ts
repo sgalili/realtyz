@@ -14,7 +14,7 @@ import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 export const FACEBOOK_PAGE_PROVIDER = 'facebook_page';
 
 export function describeMetaConnectError(payload: any): string {
-  const parts = [payload?.error, payload?.fb_message, payload?.error_detail?.details, payload?.error_detail?.hint]
+  const parts = [payload?.error, payload?.fb_message, payload?.error_detail?.message, payload?.error_detail?.details, payload?.error_detail?.hint]
     .filter((p) => typeof p === 'string' && p.trim().length > 0);
   return Array.from(new Set(parts)).join(' — ');
 }
