@@ -5298,34 +5298,49 @@ const PublishedFeed = ({
           });
           const pulled = Number((syncData as any)?.count ?? 0);
           if (providerError || (graphFailure && pulled === 0)) {
-            console.warn('[campaign] facebook post refresh was non-fatal', {
-              providerError,
-              raw_status: (syncData as any)?.raw_status,
-              raw_error: (syncData as any)?.raw_error,
-              graph_source: (syncData as any)?.graph_source,
-            });
-            // If the workspace already has a bound Facebook Page, transient
-            // blips (timeouts, rate limits, empty responses) must not trigger
-            // the disruptive reconnect banner.
-            const isFbConnected = facebookIsLive();
-            const isTransient = isTransientFacebookError({
-              raw_error: (syncData as any)?.raw_error,
-              message: providerError,
-            });
-            // A missing read scope (#10 pages_read_engagement / Page Public
-            // Content Access) is an app-review limitation, NOT a broken Page
-            // binding. While a Page with a live token is bound we keep the
-            // existing posts and stay silent instead of forcing a reconnect.
-            const isScopeLimitation = graphFailure === 'permission';
-            // Always tell the user the exact Graph reason, even for a transient
-            // blip — silence used to hide expired tokens and missing scopes.
-            const exactReason = facebookSyncErrorText(syncData, syncError)
-              ?? 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
-            setFacebookSyncWarning(exactReason);
-            if (isFbConnected && (isTransient || isScopeLimitation)) {
+            // Meta Development Mode restriction (Graph code 10,
+            // dev_mode_restricted): bypass silently. Log in the background,
+            // keep the existing posts, and let the page load as if the
+            // refresh simply returned an empty list — no banner, no popup.
+            const isDevModeRestricted =
+              facebookDevModeNote(syncData, providerError) !== null;
+            if (isDevModeRestricted) {
+              console.info('[campaign] facebook post refresh skipped: Meta app in Development Mode (code 10)', {
+                raw_status: (syncData as any)?.raw_status,
+                graph_source: (syncData as any)?.graph_source,
+              });
+              setFacebookSyncWarning(null);
               hadTransientIssue = true;
             } else {
-              refreshWarning = exactReason;
+              console.warn('[campaign] facebook post refresh was non-fatal', {
+                providerError,
+                raw_status: (syncData as any)?.raw_status,
+                raw_error: (syncData as any)?.raw_error,
+                graph_source: (syncData as any)?.graph_source,
+              });
+              // If the workspace already has a bound Facebook Page, transient
+              // blips (timeouts, rate limits, empty responses) must not trigger
+              // the disruptive reconnect banner.
+              const isFbConnected = facebookIsLive();
+              const isTransient = isTransientFacebookError({
+                raw_error: (syncData as any)?.raw_error,
+                message: providerError,
+              });
+              // A missing read scope (#10 pages_read_engagement / Page Public
+              // Content Access) is an app-review limitation, NOT a broken Page
+              // binding. While a Page with a live token is bound we keep the
+              // existing posts and stay silent instead of forcing a reconnect.
+              const isScopeLimitation = graphFailure === 'permission';
+              // Always tell the user the exact Graph reason, even for a transient
+              // blip — silence used to hide expired tokens and missing scopes.
+              const exactReason = facebookSyncErrorText(syncData, syncError)
+                ?? 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
+              setFacebookSyncWarning(exactReason);
+              if (isFbConnected && (isTransient || isScopeLimitation)) {
+                hadTransientIssue = true;
+              } else {
+                refreshWarning = exactReason;
+              }
             }
           } else {
             setFacebookSyncWarning(null);
