@@ -210,6 +210,11 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           redirect_uri: redirectUri,
         });
         setManualOpen(false);
+        if (res?.needs_page_selection) {
+          setPageOptions(res.pages ?? []);
+          toast.message('בחר את עמוד הפרסום', { description: res.message || 'יש בחשבון יותר מעמוד אחד.' });
+          return;
+        }
         if (res?.page?.id) {
           setPage({
             connected: true,
