@@ -287,23 +287,18 @@ export function ConnectionsTab() {
     : ['לא מחובר', 'idle'];
 
 
-  // Collapsed header badge reads the exact same shared state as the expanded
-  // card badge and the global banner. Facebook / Instagram are strictly
-  // workspace-scoped: never fall back to another workspace's binding.
-  // The saved DB page binding is read here too, so the COLLAPSED header shows
-  // "מחובר" without waiting for the card to mount and probe Graph.
-  const fbLive = !!(
-    fbHealth?.pageConnected
-    || meta?.connected
-    || (fbBinding?.pageId && fbBinding?.hasToken)
-  );
-  useEffect(() => {
-    if (fbLive) rememberConnected('facebook', activeWorkspaceId, null);
-  }, [fbLive, activeWorkspaceId]);
-  const fbConnected = fbLive || isRememberedConnected('facebook', activeWorkspaceId);
-  const metaStatus: [string, Tone] = fbConnected
+  // Collapsed header badge must STRICTLY match the expanded card: "מחובר" only
+  // when a valid, active, successfully VERIFIED Page token exists (the health
+  // probe answers Graph live, or the card's own status probe confirmed it).
+  // A raw DB binding or the sticky localStorage cache is never enough — an
+  // expired, timed-out or failed token must surface as "לא מחובר" so the badge
+  // always matches the "חבר עמוד פייסבוק" action button in the card below.
+  // Facebook / Instagram are strictly workspace-scoped: never fall back to
+  // another workspace's binding.
+  const fbVerified = !!(fbHealth?.pageConnected || meta?.connected) && fbHealth?.needsReconnect !== true;
+  const metaStatus: [string, Tone] = fbVerified
     ? ['מחובר', 'ok']
-    : (fbHealthPending || fbBindingPending) && !meta
+    : (fbHealthPending || fbBindingPending) && !meta && fbHealth?.needsReconnect !== true
       ? ['בודק חיבור…', 'idle']
       : ['לא מחובר', 'idle'];
 
