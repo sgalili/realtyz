@@ -14,6 +14,7 @@ import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { CalendarSyncCard } from '@/components/profile/CalendarSyncCard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
+import { InstagramConnectionCard } from '@/components/profile/InstagramConnectionCard';
 import { useFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
@@ -160,7 +161,7 @@ export function ConnectionsTab() {
     try {
       const params = new URLSearchParams(window.location.search);
       const target = params.get('connect');
-      if (params.has('fb') || target === 'facebook') return 'meta';
+      if (params.has('fb') || target === 'facebook') return 'facebook';
       if (target === 'whatsapp-meta' || target === 'whatsapp') return 'whatsapp';
       if (params.has('google') || target === 'google') return 'google';
       return null;
@@ -301,6 +302,16 @@ export function ConnectionsTab() {
   const metaStatus: [string, Tone] = fbVerified
     ? ['מחובר', 'ok']
     : (fbHealthPending || fbBindingPending) && !meta && fbHealth?.needsReconnect !== true
+      ? ['בודק חיבור…', 'idle']
+      : ['לא מחובר', 'idle'];
+
+  // Instagram card: "מחובר" only when the Page token is verified AND an IG
+  // professional account is actually linked to it. Anything else (timeout,
+  // failed probe, no linked account) is strictly "לא מחובר".
+  const igConnected = fbVerified && !!fbHealth?.instagram?.id;
+  const igStatus: [string, Tone] = igConnected
+    ? ['מחובר', 'ok']
+    : (fbHealthPending || fbBindingPending) && fbHealth?.needsReconnect !== true
       ? ['בודק חיבור…', 'idle']
       : ['לא מחובר', 'idle'];
 

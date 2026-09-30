@@ -12,7 +12,7 @@ import { requestExtensionGroups } from '@/lib/extensionGroupBridge';
 import { openExternal } from '@/lib/openExternal';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Facebook, Instagram, Loader2, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
+import { Facebook, Loader2, Unlink, KeyRound, ChevronDown } from 'lucide-react';
 
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
@@ -82,7 +82,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
   const [removingPageId, setRemovingPageId] = useState<string | null>(null);
 
-  const [igHelpOpen, setIgHelpOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
 
@@ -496,8 +495,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const pageName =
     health?.pageName ?? page?.page?.name ?? status?.facebook?.name ?? binding?.pageName
     ?? health?.pageId ?? status?.facebook?.id ?? binding?.pageId ?? null;
-  const igHandle =
-    health?.instagram?.username ?? page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
   const pagePicture = page?.page?.picture ?? health?.pagePicture ?? binding?.pageAvatarUrl ?? null;
   // STRICT verified-only state: "connected" requires a token that actually
   // answers Graph — either the health probe verified it or the card's own
