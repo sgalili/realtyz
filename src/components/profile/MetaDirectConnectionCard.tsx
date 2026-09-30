@@ -643,13 +643,16 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
         {!isConnected && (
           <div className="rounded-xl border border-dashed p-3 space-y-2">
-            {/* Clicking the spinning button cancels the pending attempt. */}
+            {/* Clicking the spinning button cancels the pending attempt. The
+                label never reads "בטל חיבור" while disconnected — that text is
+                reserved for an active connection. */}
             <Button
               onClick={() => (connecting ? cancelConnecting() : void connect())}
+              title={connecting ? 'לחיצה מבטלת את ניסיון ההתחברות' : undefined}
               className="w-full gap-2 bg-[#1877F2] text-white hover:bg-[#1877F2]/90"
             >
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
-              {connecting ? 'בטל חיבור' : 'חבר עמוד פייסבוק'}
+              {'חבר עמוד פייסבוק'}
             </Button>
             {pageOptions.length > 0 && (
               <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2">
