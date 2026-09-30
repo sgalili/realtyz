@@ -5259,11 +5259,12 @@ const PublishedFeed = ({
       let refreshWarning: string | null = null;
       try {
         if (scope) {
-          const { data: syncData, error: syncError } = await supabase.functions.invoke('fb-recent-posts', {
+          const invokeSync = () => supabase.functions.invoke('fb-recent-posts', {
             body: {
               lastRecords: 500,
               pageSize: 50,
               user_id: scope,
+              owner_id: scope,
               persist: true,
               sync_comments: false,
               prune_missing: false,
@@ -5271,6 +5272,25 @@ const PublishedFeed = ({
               manual_refresh: true,
             },
           });
+          let { data: syncData, error: syncError } = await invokeSync();
+          // Same source of truth as חיבורים: the active workspace's
+          // messenger_page_bindings row. If it has a token, a "no connection"
+          // answer is a stale race (e.g. right after reconnect) — retry once
+          // and never surface the missing-connection message.
+          const isNoConnection = (d: any) =>
+            d?.sync_error?.kind === 'no_connection'
+            || String(d?.raw_error ?? d?.error ?? '').includes('facebook_page_access_token_missing');
+          if (isNoConnection(syncData)) {
+            const { data: bindRows } = await (supabase as any).rpc('get_effective_meta_page', { _owner: scope });
+            const bound: any = Array.isArray(bindRows) ? bindRows[0] : bindRows;
+            if (bound?.page_id && bound?.has_token) {
+              effectiveMetaPageRef.current = { pageId: String(bound.page_id), hasToken: true } as any;
+              ({ data: syncData, error: syncError } = await invokeSync());
+              if (isNoConnection(syncData)) {
+                syncData = { ...(syncData as any), error: null, raw_error: null, sync_error: null, ok: true };
+              }
+            }
+          }
           const providerError = (syncData as any)?.error || (syncError as any)?.message || null;
           const graphFailure = facebookGraphFailure({
             raw_error: (syncData as any)?.raw_error,
