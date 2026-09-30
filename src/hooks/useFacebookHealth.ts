@@ -75,7 +75,13 @@ export function useFacebookHealth() {
   return useQuery<FacebookHealth>({
     queryKey: [FACEBOOK_HEALTH_KEY, user?.id, workspaceOwnerId],
     enabled: !!user?.id,
-    initialData: () => readCache(user?.id, workspaceOwnerId),
+    // The cache only pre-fills display fields (page name/picture). A cached
+    // entry is never proof of a live token, so pageConnected starts false
+    // until a fresh probe verifies it.
+    initialData: () => {
+      const cached = readCache(user?.id, workspaceOwnerId);
+      return cached ? { ...cached, pageConnected: false } : undefined;
+    },
     staleTime: 30_000,
     refetchInterval: 5 * 60_000,
     // Never poll while the tab is hidden/backgrounded — zero idle credit drain.
