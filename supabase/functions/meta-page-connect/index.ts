@@ -96,12 +96,15 @@ const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 const CANONICAL_REDIRECT_URI = "https://realtyz.co.il/oauth/callback";
 
 /** Structured Graph error so failures are never a generic Hebrew sentence. */
-function graphErrorDetail(payload: any): {
+function graphErrorDetail(payload: any, status?: number | null): {
   message: string | null;
   type: string | null;
   code: number | null;
   subcode: number | null;
   trace: string | null;
+  user_title: string | null;
+  user_msg: string | null;
+  http_status: number | null;
 } {
   const e = payload?.error ?? {};
   return {
@@ -110,16 +113,20 @@ function graphErrorDetail(payload: any): {
     code: typeof e?.code === "number" ? e.code : null,
     subcode: typeof e?.error_subcode === "number" ? e.error_subcode : null,
     trace: e?.fbtrace_id ? String(e.fbtrace_id) : null,
+    user_title: e?.error_user_title ? String(e.error_user_title) : null,
+    user_msg: e?.error_user_msg ? String(e.error_user_msg) : null,
+    http_status: typeof status === "number" ? status : null,
   };
 }
 
-/** Logs the verbatim Graph payload and returns the structured detail. */
-function logGraphFailure(stage: string, payload: any) {
-  const detail = graphErrorDetail(payload);
+/** Logs the verbatim Graph payload (plus HTTP status) and returns the structured detail. */
+function logGraphFailure(stage: string, payload: any, status?: number | null) {
+  const detail = graphErrorDetail(payload, status);
   // describeMetaError flags Development Mode / unverified-business refusals so
   // the logs say whether the account simply needs a tester role in the app.
   const meta = describeMetaError(payload, null);
   console.error(`[meta-page-connect] ${stage} failed`, JSON.stringify({
+    http_status: detail.http_status,
     detail,
     kind: meta.kind,
     dev_mode_restricted: meta.dev_mode_restricted,
@@ -151,12 +158,15 @@ async function graph(path: string) {
     const text = await res.text();
     let payload: any = null;
     try { payload = text ? JSON.parse(text) : null; } catch { payload = { raw: text }; }
-    return { ok: res.ok, payload };
+    // Status is kept so every caller can log/report Meta's real HTTP code
+    // (400 invalid code, 401 bad token, 5xx Meta outage) instead of "failed".
+    return { ok: res.ok, status: res.status, payload };
   } catch (e) {
     const aborted = (e as any)?.name === "AbortError";
-    console.error("[meta-page-connect] graph call failed", aborted ? "timeout" : String(e));
+    console.error("[meta-page-connect] graph call failed", aborted ? "timeout" : String(e), "path =", path.split("access_token")[0]);
     return {
       ok: false,
+      status: null,
       payload: {
         error: {
           message: aborted
