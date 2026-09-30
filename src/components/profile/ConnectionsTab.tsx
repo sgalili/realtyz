@@ -296,6 +296,8 @@ export function ConnectionsTab() {
   // Facebook / Instagram are strictly workspace-scoped: never fall back to
   // another workspace's binding.
   const fbVerified = !!(fbHealth?.pageConnected || meta?.connected) && fbHealth?.needsReconnect !== true;
+  // Header icon/photo state uses the same strict verified value.
+  const fbConnected = fbVerified;
   const metaStatus: [string, Tone] = fbVerified
     ? ['מחובר', 'ok']
     : (fbHealthPending || fbBindingPending) && !meta && fbHealth?.needsReconnect !== true
