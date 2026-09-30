@@ -4900,7 +4900,10 @@ const PublishedFeed = ({
             });
             const importedCount = Number((importData as any)?.count) || 0;
             const importFailure = facebookSyncErrorText(importData, importError);
-            if (importError || (importData as any)?.ok === false || (importedCount === 0 && importFailure)) {
+            // Meta Development Mode (code 10): bypass silently — log only.
+            if (facebookDevModeNote(importData, null)) {
+              console.info('[PublishedFeed] fb import skipped: Meta Development Mode (code 10)');
+            } else if (importError || (importData as any)?.ok === false || (importedCount === 0 && importFailure)) {
               console.warn('[PublishedFeed] fb persistent import failed', { importError, importData });
               if (importFailure) setFacebookSyncWarning(importFailure);
             } else if (importedCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
@@ -4940,7 +4943,10 @@ const PublishedFeed = ({
                 },
               });
               const reconcileFailure = facebookSyncErrorText(data, reconcileError);
-              if (reconcileFailure) {
+              // Meta Development Mode (code 10): bypass silently — log only.
+              if (facebookDevModeNote(data, null)) {
+                console.info('[PublishedFeed] native reconcile skipped: Meta Development Mode (code 10)');
+              } else if (reconcileFailure) {
                 console.warn('[PublishedFeed] native reconcile failed', { reconcileError, data });
                 setFacebookSyncWarning(reconcileFailure);
               }
