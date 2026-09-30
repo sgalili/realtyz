@@ -499,21 +499,25 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const igHandle =
     health?.instagram?.username ?? page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
   const pagePicture = page?.page?.picture ?? health?.pagePicture ?? binding?.pageAvatarUrl ?? null;
-  // The stored DB binding (page id + token) renders "connected" instantly,
-  // without waiting for the Graph health probe to come back.
+  // STRICT verified-only state: "connected" requires a token that actually
+  // answers Graph — either the health probe verified it or the card's own
+  // status probe succeeded. A raw DB binding (pageId + hasToken) is NOT proof:
+  // an expired/revoked token must render the "חבר עמוד פייסבוק" button so the
+  // card always matches the collapsed "מחובר"/"לא מחובר" badge.
   const isConnected = disconnectedRef.current
     ? false
-    : !!health?.pageConnected || !!page?.connected || !!(binding?.hasToken && binding?.pageId);
+    : (health?.needsReconnect === true
+        ? false
+        : !!health?.pageConnected || !!page?.connected);
 
   useEffect(() => {
     if (!isConnected) return;
-    rememberConnected('facebook', workspaceOwnerId, pageName);
     onStatus?.({
       connected: true,
       facebook: { id: binding?.pageId ?? health?.pageId ?? page?.page?.id ?? '', name: pageName },
       instagram: health?.instagram ?? page?.instagram ?? null,
     });
-  }, [isConnected, workspaceOwnerId, pageName, binding?.pageId, health?.pageId, health?.instagram, page?.page?.id, page?.instagram, onStatus]);
+  }, [isConnected, binding?.pageId, health?.pageId, health?.instagram, page?.page?.id, page?.instagram, pageName, onStatus]);
 
 
   // MULTI-ACCOUNT: every Page bound to THIS workspace (strictly isolated).
