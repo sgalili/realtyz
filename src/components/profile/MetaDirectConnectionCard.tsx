@@ -123,6 +123,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
   const probe = useCallback(async (notify = false) => {
     setLoading(true);
+    try {
     // The stored page binding is the source of truth for "connected".
     // meta-publish/status is only an extra health probe: if it fails we must
     // NOT drop the binding-based connected state.
