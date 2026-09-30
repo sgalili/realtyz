@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from '@/lib/oauthRedirect';
 import { isOAuthPopup, notifyOAuthOpener } from '@/lib/oauthPopupBridge';
@@ -63,6 +63,8 @@ type OAuthError = {
   detail: string | null;
   /** Plain-Hebrew guidance shown above the technical line. */
   hint?: string | null;
+  /** The verbatim exception / server message, printed bold on the screen. */
+  raw?: string | null;
   /** Google Cloud Console link that fixes a disabled API. */
   enableUrl?: string | null;
   /** Primary recovery action label, e.g. back to Facebook's Page picker. */
@@ -70,6 +72,44 @@ type OAuthError = {
   /** True when the only way forward is a brand-new Facebook login. */
   restartLogin?: boolean;
 } | null;
+
+/**
+ * Render-crash safety net: if the callback UI itself throws while rendering,
+ * the user still sees a bold fallback with the EXACT exception message —
+ * never a blank white page.
+ */
+class CallbackCrashBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[oauth-callback] render crash', error, info.componentStack?.slice(0, 1000));
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div dir="rtl" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
+        <div className="text-center space-y-4 max-w-md w-full" role="alert">
+          <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
+          <h1 className="text-lg font-bold text-destructive">שגיאת דפדפן במסך האימות</h1>
+          <div
+            dir="ltr"
+            className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-left text-sm font-mono font-bold break-all text-destructive"
+          >
+            {String(this.state.error?.message ?? this.state.error)}
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button onClick={() => window.location.reload()}>נסה שוב</Button>
+            <Button variant="outline" onClick={() => window.location.replace('/profile?tab=connections')}>
+              חזרה למערכת
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
