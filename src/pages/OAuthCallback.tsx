@@ -141,32 +141,9 @@ export default function OAuthCallback() {
     }
   };
 
-  // Absolute escape hatch: whatever happens, never sit on the loader.
-  useEffect(() => {
-    hardTimerRef.current = window.setTimeout(() => {
-      if (exchangeDoneRef.current) return;
-      exchangeDoneRef.current = true;
-      console.error('[oauth-callback] absolute callback timeout', { timeoutMs: HARD_TIMEOUT_MS });
-      setIsLoading(false);
-      setError({
-        title: 'החיבור לא הושלם בזמן',
-        detail: `callback exceeded ${HARD_TIMEOUT_MS}ms without a server answer`,
-        hint: 'פייסבוק לא סיים את האישור. הקוד הנוכחי חד-פעמי, לכן יש להתחיל חיבור חדש.',
-        actionLabel: 'התחברות מחדש לפייסבוק',
-        restartLogin: true,
-      });
-    }, HARD_TIMEOUT_MS);
-
-    return () => {
-      if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
-    };
-  }, []);
-
-  // Once we have a definitive outcome, kill the safety timer.
-  useEffect(() => {
-    if (!error && !success) return;
-    if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
-  }, [error, success]);
+  // No artificial timeout: the UI waits passively for the real OAuth
+  // redirect / server response. The edge function caps its own Graph calls
+  // and always returns a definitive success or error.
 
   // Token exchange logic. Completely separate from the UI safety timer.
   useEffect(() => {

@@ -351,11 +351,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       clearPendingOAuth();
       // Shared start path — identical function, scopes and DB upsert as the
       // /campaigns banner.
-      const authUrl = await withTimeout(
-        startMetaPageConnect(),
-        EXCHANGE_TIMEOUT_MS,
-        'שירות החיבור לפייסבוק לא הגיב בזמן. נסה שוב.',
-      );
+      const authUrl = await startMetaPageConnect();
       // The user may have pressed "בטל חיבור" while the request was pending.
       // Ignore that stale result instead of reopening OAuth and reviving state.
       if (connectAttemptRef.current !== attemptId) return;
