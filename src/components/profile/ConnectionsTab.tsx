@@ -469,7 +469,7 @@ export function ConnectionsTab() {
     },
     {
       id: 'google_calendar',
-      title: 'Google Calendar',
+      title: 'יומן גוגל',
       titleLead: <GoogleBrandGlyph brand="calendar" connected={connectedGoogle.has('google_calendar') || isRememberedConnected('google_calendar', activeWorkspaceId)} />,
       status: connectedGoogle.has('google_calendar') ? 'מחובר' : 'לא מחובר',
       tone: (connectedGoogle.has('google_calendar') ? 'ok' : 'idle') as Tone,
@@ -477,7 +477,7 @@ export function ConnectionsTab() {
         <div data-plain>
           <GoogleServiceConnectCard
             platform="google_calendar"
-            title="Google Calendar"
+            title="יומן גוגל"
             hint="סנכרון פגישות וסיורים ליומן."
             ctaLabel="חיבור יומן"
             brand="calendar"
