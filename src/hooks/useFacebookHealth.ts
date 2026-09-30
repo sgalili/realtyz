@@ -75,7 +75,13 @@ export function useFacebookHealth() {
   return useQuery<FacebookHealth>({
     queryKey: [FACEBOOK_HEALTH_KEY, user?.id, workspaceOwnerId],
     enabled: !!user?.id,
-    initialData: () => readCache(user?.id, workspaceOwnerId),
+    // The cache only pre-fills display fields (page name/picture). A cached
+    // entry is never proof of a live token, so pageConnected starts false
+    // until a fresh probe verifies it.
+    initialData: () => {
+      const cached = readCache(user?.id, workspaceOwnerId);
+      return cached ? { ...cached, pageConnected: false } : undefined;
+    },
     staleTime: 30_000,
     refetchInterval: 5 * 60_000,
     // Never poll while the tab is hidden/backgrounded — zero idle credit drain.
@@ -98,32 +104,16 @@ export function useFacebookHealth() {
       const page = (pageRes as any)?.data ?? null;
       const personal = (personalRes as any)?.data ?? null;
       if (!page) {
-        const cached = readCache(user?.id, workspaceOwnerId);
-        if (cached) return cached;
-        // The probe is unavailable (timeout / rate limit), but the stored Page
-        // binding is the durable truth. A live binding must NEVER surface as
-        // "Facebook not connected".
-        try {
-          const { data } = await (supabase as any).rpc('get_effective_meta_page', { _owner: workspaceOwnerId });
-          const row: any = Array.isArray(data) ? data[0] : data;
-          if (row?.page_id) {
-            const fromDb: FacebookHealth = {
-              pageConnected: true,
-              needsReconnect: false,
-              reason: null,
-              pageName: row.page_name ?? null,
-              pageId: String(row.page_id),
-              pagePicture: row.page_avatar_url ?? null,
-              instagram: null,
-              neverConnected: false,
-            };
-            writeCache(user?.id, workspaceOwnerId, fromDb);
-            return fromDb;
-          }
-        } catch {
-          /* fall through */
-        }
-        throw new Error('facebook_health_unavailable');
+        // STRICT TRUE-STATE: the probe timed out / failed, so the token is NOT
+        // verified right now. A raw DB binding or a stale cache entry is never
+        // proof of a live connection — surface "לא מחובר" until a probe
+        // succeeds. neverConnected stays false so no "never connected" empty
+        // state flashes for a workspace that did connect before.
+        return {
+          ...DISCONNECTED_HEALTH,
+          neverConnected: false,
+          reason: 'לא ניתן לאמת את חיבור הפייסבוק כעת. נסו לרענן.',
+        };
       }
 
 

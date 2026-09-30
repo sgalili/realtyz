@@ -12,7 +12,7 @@ import { requestExtensionGroups } from '@/lib/extensionGroupBridge';
 import { openExternal } from '@/lib/openExternal';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Facebook, Instagram, Loader2, Unlink, CheckCircle2, KeyRound, ChevronDown } from 'lucide-react';
+import { Facebook, Loader2, Unlink, KeyRound, ChevronDown } from 'lucide-react';
 
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
@@ -21,7 +21,7 @@ import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 import { purgeCachedPostsForPage } from '@/lib/campaignFeedCache';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 
-import { forgetConnected, rememberConnected } from '@/lib/connectionStatusCache';
+import { forgetConnected } from '@/lib/connectionStatusCache';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import {
   callMetaPageConnect as callPageConnect,
@@ -82,7 +82,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
   const [removingPageId, setRemovingPageId] = useState<string | null>(null);
 
-  const [igHelpOpen, setIgHelpOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
 
@@ -496,8 +495,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const pageName =
     health?.pageName ?? page?.page?.name ?? status?.facebook?.name ?? binding?.pageName
     ?? health?.pageId ?? status?.facebook?.id ?? binding?.pageId ?? null;
-  const igHandle =
-    health?.instagram?.username ?? page?.instagram?.username ?? status?.instagram?.username ?? status?.instagram?.id ?? null;
   const pagePicture = page?.page?.picture ?? health?.pagePicture ?? binding?.pageAvatarUrl ?? null;
   // STRICT verified-only state: "connected" requires a token that actually
   // answers Graph — either the health probe verified it or the card's own
@@ -704,46 +701,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         ) : (
           <div className="flex flex-wrap items-center gap-2">{actionButtons}</div>
         )}
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={igHandle ? 'default' : 'secondary'} className="gap-1.5">
-            <Instagram className="h-3.5 w-3.5" />
-            {igHandle ? `אינסטגרם: @${igHandle}` : 'אינסטגרם לא מקושר'}
-          </Badge>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1 text-[15px]"
-            onClick={() => setIgHelpOpen(true)}
-          >
-            <Instagram className="h-3.5 w-3.5" /> איך מחברים?
-          </Button>
-        </div>
-
-        <Dialog open={igHelpOpen} onOpenChange={setIgHelpOpen}>
-          <DialogContent dir="rtl" className="text-right sm:max-w-md">
-            <DialogHeader className="text-right">
-              <DialogTitle>חיבור אינסטגרם ב-3 צעדים</DialogTitle>
-              <DialogDescription>
-                אינסטגרם מתחבר דרך עמוד הפייסבוק — אין צורך בהתחברות נפרדת.
-              </DialogDescription>
-            </DialogHeader>
-            <ol className="list-inside list-decimal space-y-1.5 text-[15px] text-muted-foreground">
-              <li>ודא שחשבון האינסטגרם הוא חשבון מקצועי (Business או Creator).</li>
-              <li>באפליקציית אינסטגרם: הגדרות ← קישור חשבונות ← פייסבוק, ובחר את עמוד הפייסבוק המחובר כאן.</li>
-              <li>חזור לכאן — האינסטגרם יופיע מקושר אוטומטית.</li>
-            </ol>
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 text-[15px]"
-              onClick={() => { setIgHelpOpen(false); void probe(true); }}
-            >
-              בדוק חיבור אינסטגרם
-            </Button>
-          </DialogContent>
-        </Dialog>
 
         <Dialog open={tokenHelpOpen} onOpenChange={setTokenHelpOpen}>
           <DialogContent dir="rtl" className="text-right sm:max-w-md">
