@@ -468,29 +468,13 @@ export function ConnectionsTab() {
       node: <WorkspaceMailboxCard />,
     },
     {
-      id: 'google',
-      title: 'גוגל',
-      titleLead: <GoogleGMark className={someGoogleConnected ? undefined : 'grayscale opacity-40'} />,
-      headerAside: (
-        <span className="flex items-center gap-1.5" aria-label="שירותי Google">
-          <GoogleBrandGlyph brand="gmail" connected={connectedGoogle.has('gmail') || isRememberedConnected('gmail', activeWorkspaceId)} />
-          <GoogleBrandGlyph brand="calendar" connected={connectedGoogle.has('google_calendar') || isRememberedConnected('google_calendar', activeWorkspaceId)} />
-          <GoogleBrandGlyph brand="youtube" connected={connectedGoogle.has('youtube') || isRememberedConnected('youtube', activeWorkspaceId)} />
-        </span>
-      ),
-      status: googleStatus[0],
-      tone: googleStatus[1],
+      id: 'google_calendar',
+      title: 'Google Calendar',
+      titleLead: <GoogleBrandGlyph brand="calendar" connected={connectedGoogle.has('google_calendar') || isRememberedConnected('google_calendar', activeWorkspaceId)} />,
+      status: connectedGoogle.has('google_calendar') ? 'מחובר' : 'לא מחובר',
+      tone: (connectedGoogle.has('google_calendar') ? 'ok' : 'idle') as Tone,
       node: (
-        <div data-plain className="space-y-3">
-          {/* Three official Google service connections, all using the shared
-              Google Cloud app credentials configured in the system. */}
-          <GoogleServiceConnectCard
-            platform="gmail"
-            title="Gmail"
-            hint="שליחה וקבלה של מיילים מהמערכת."
-            ctaLabel="חיבור Gmail"
-            brand="gmail"
-          />
+        <div data-plain>
           <GoogleServiceConnectCard
             platform="google_calendar"
             title="Google Calendar"
@@ -499,6 +483,17 @@ export function ConnectionsTab() {
             brand="calendar"
             accountEmail={googleAccountEmail}
           />
+        </div>
+      ),
+    },
+    {
+      id: 'youtube',
+      title: 'YouTube',
+      titleLead: <GoogleBrandGlyph brand="youtube" connected={connectedGoogle.has('youtube') || isRememberedConnected('youtube', activeWorkspaceId)} />,
+      status: connectedGoogle.has('youtube') ? 'מחובר' : 'לא מחובר',
+      tone: (connectedGoogle.has('youtube') ? 'ok' : 'idle') as Tone,
+      node: (
+        <div data-plain className="space-y-3">
           <GoogleServiceConnectCard
             platform="youtube"
             title="YouTube"
@@ -507,6 +502,7 @@ export function ConnectionsTab() {
             brand="youtube"
             accountEmail={googleAccountEmail}
           />
+
           {isSuperAdmin && (
             <section className="border-t pt-3" style={{ borderTopColor: 'hsl(0 72% 51%)' }}>
               <Button

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Switch } from '@/components/ui/switch';
 import Mailbox from '@/pages/Mailbox';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
 
 export function useWorkspaceMailbox() {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
@@ -20,9 +21,8 @@ export function WorkspaceMailboxCard() {
   const useRealtyz = mb?.provider === 'realtyz';
 
   const setProvider = async (realtyz: boolean) => {
-    if (!realtyz && !mb?.gmail_connected) toast.message('שימו לב: Gmail אינו מחובר עדיין. יש לחבר אותו בכרטיס גוגל');
     const { error } = await supabase.rpc('set_workspace_email_provider' as never, { p_provider: realtyz ? 'realtyz' : 'gmail' } as never);
-    if (error) return toast.error(error.message.includes('only_workspace_owner') ? 'רק בעל מרחב העבודה יכול לשנות' : error.message);
+    if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ['workspace-mailbox'] });
     toast.success(realtyz ? 'השליחה תתבצע מכתובת Realtyz' : 'השליחה תתבצע דרך Gmail');
   };
@@ -32,11 +32,26 @@ export function WorkspaceMailboxCard() {
       <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
         <span className="text-sm font-medium">תיבה לשליחה</span>
         <div className="flex items-center gap-2 text-sm">
-          <span className={!useRealtyz ? 'font-semibold' : 'text-muted-foreground'}>Gmail</span>
-          <Switch dir="ltr" checked={useRealtyz} onCheckedChange={setProvider} disabled={mb?.is_owner === false} aria-label="בחירת תיבת מייל" />
-          <span className={useRealtyz ? 'font-semibold' : 'text-muted-foreground'}>Realtyz</span>
+          <span className={!useRealtyz ? 'font-semibold text-destructive' : 'text-muted-foreground'}>Gmail</span>
+          <Switch
+            dir="ltr"
+            checked={useRealtyz}
+            onCheckedChange={setProvider}
+            aria-label="בחירת תיבת מייל"
+            className="data-[state=checked]:!bg-primary data-[state=unchecked]:!bg-destructive"
+          />
+          <span className={useRealtyz ? 'font-semibold text-primary' : 'text-muted-foreground'}>Realtyz</span>
         </div>
       </div>
+      {!useRealtyz && (
+        <GoogleServiceConnectCard
+          platform="gmail"
+          title="Gmail"
+          hint="שליחה וקבלה של מיילים מהמערכת."
+          ctaLabel="חיבור Gmail"
+          brand="gmail"
+        />
+      )}
       <Mailbox embedded />
     </div>
   );
