@@ -154,6 +154,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       else toast.error('דף הפייסבוק אינו מחובר');
     }
     setLoading(false);
+    } catch {
+      setLoading(false);
+    }
   }, [onStatus, refreshHealth, refreshBinding, health?.pageConnected, binding?.hasToken]);
 
 
@@ -423,8 +426,15 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       toast.success('עמוד הפייסבוק נותק');
     } catch (e: any) {
       toast.error('ניתוק נכשל', { description: e?.message });
+      // The optimistic wipe above already cleared the local state; resync from
+      // the server so the badge and button don't desync from reality.
+      disconnectedRef.current = false;
+      refreshBinding();
+      refreshHealth();
+      void probe(false).catch(() => undefined);
     } finally {
       // ALWAYS executed — the spinner can never get stuck, success or failure.
+      disconnectedRef.current = true;
       setDisconnecting(false);
     }
   };
