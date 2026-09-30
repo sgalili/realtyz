@@ -461,7 +461,7 @@ export function ConnectionsTab() {
     },
     {
       id: 'mailbox',
-      title: 'תיבת מייל',
+      title: 'אימייל',
       titleLead: <Mail className={cn('h-5 w-5 shrink-0 text-[#1d4ed8]', !mailboxInfo?.address && 'grayscale opacity-40')} strokeWidth={2.25} />,
       status: mailboxInfo?.provider === 'realtyz' ? 'Realtyz' : mailboxInfo?.gmail_connected ? 'Gmail' : mailboxInfo?.address ? 'Realtyz' : 'לא הוגדר',
       tone: (mailboxInfo?.address || mailboxInfo?.gmail_connected ? 'ok' : 'idle') as Tone,
