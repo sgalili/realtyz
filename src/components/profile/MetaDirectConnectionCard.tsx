@@ -204,31 +204,19 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (exchangingRef.current) return;
       exchangingRef.current = true;
       setConnecting(true);
-      // Emergency safety net: the spinner is released after 5s so the user can
-      // retry or use the manual token path. The request itself keeps running —
-      // if it succeeds afterwards the connected state still lands.
-      const safety = window.setTimeout(() => {
-        setConnecting(false);
-        setLoading(false);
-        setManualOpen(true);
-        toast.error('החיבור לפייסבוק לא הושלם בזמן', {
-          description: 'נסה להתחבר שוב, או חבר את העמוד ידנית באמצעות Page Access Token.',
-        });
-      }, SPINNER_SAFETY_MS);
       try {
         if (!grant.code && !grant.accessToken) {
           throw new Error('פייסבוק לא החזיר קוד אימות. נסה להתחבר שוב.');
         }
-        const res = await withTimeout(
-          callPageConnect<any>({
-            action: 'exchange',
-            code: grant.code ?? undefined,
-            user_access_token: grant.accessToken ?? undefined,
-            redirect_uri: redirectUri,
-          }),
-          EXCHANGE_TIMEOUT_MS,
-          'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
-        );
+        // No arbitrary frontend timeout: the edge function caps every Graph call
+        // at 8s and always answers, so we await its real response and show the
+        // exact error it returns instead of a generic "timed out" message.
+        const res = await callPageConnect<any>({
+          action: 'exchange',
+          code: grant.code ?? undefined,
+          user_access_token: grant.accessToken ?? undefined,
+          redirect_uri: redirectUri,
+        });
         window.clearTimeout(safety);
         setManualOpen(false);
         if (res?.page?.id) {
