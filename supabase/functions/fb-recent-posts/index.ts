@@ -957,6 +957,32 @@ Deno.serve(async (req) => {
           new Date(cred.updatedAt ?? 0).getTime() > new Date(prev.updatedAt ?? 0).getTime();
         if (newer) freshestByPage.set(key, cred);
       }
+      // A reconnect may have written the newly verified token (with
+      // pages_read_engagement) on a different binding row for the SAME Page
+      // (e.g. the shared binding). Always use the freshest token for that Page.
+      const pageKeys = [...freshestByPage.keys()].filter(Boolean);
+      if (pageKeys.length) {
+        const { data: freshRows } = await admin
+          .from("messenger_page_bindings")
+          .select("id, page_id, page_access_token, updated_at")
+          .in("page_id", pageKeys)
+          .not("page_access_token", "is", null)
+          .order("updated_at", { ascending: false });
+        for (const r of (freshRows ?? []) as any[]) {
+          const key = String(r.page_id);
+          const cur = freshestByPage.get(key);
+          if (!cur || !r.page_access_token) continue;
+          if (new Date(r.updated_at ?? 0).getTime() > new Date(cur.updatedAt ?? 0).getTime()) {
+            freshestByPage.set(key, {
+              ...cur,
+              token: String(r.page_access_token),
+              recordId: String(r.id),
+              updatedAt: r.updated_at ?? null,
+            });
+          }
+        }
+      }
+      invalidateMetaTokenCache(pageKeys);
       const ordered: GraphCred[] = freshestByPage.size
         ? [...freshestByPage.values()]
         : [await resolveGraphCredential()];
